@@ -1,0 +1,19 @@
+# .gitignore
+
+# SUBVERSION
+.svn/
+
+# MAVEN
+/target/
+
+# ECLIPSE
+.classpath
+.project
+.settings/
+.scala_dependencies
+
+# INTELLIJ IDEA
+/.idea/
+/out/
+*.iml
+atlassian-ide-plugin.xml

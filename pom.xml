@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>engine</artifactId>
+    <packaging>pom</packaging>
+
+    <parent>
+        <groupId>com.sos.scheduler.engine</groupId>
+        <artifactId>parent</artifactId>
+        <version>1.7.5-SNAPSHOT</version>
+        <relativePath>parent</relativePath>
+    </parent>
+
+    <name>${project.artifactId}</name>
+    <inceptionYear>2010</inceptionYear>
+
+    <modules>
+        <module>cppjava</module>
+        <module>opensource</module>
+        <module>parent</module>
+        <module>plugins</module>
+        <module>playground</module>
+        <module>setup</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <configuration>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <tagBase>scm:git:git@github.com:sos-berlin/scheduler-engine.git</tagBase>
+                    <!--tagNameFormat>{1}</tagNameFormat--><!-- {0} ist ${project.artifactId}, {1} ist ${project.version} -->
+                    <tag>v${releaseVersion}</tag>
+                    <allowTimestampedSnapshots>true</allowTimestampedSnapshots>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- This profile is for collecting the sources of all artifacts in one jar (in the install phase). In case of deployment the sources will also deployed -->
+        <profile>
+            <id>collect-sources</id>
+            <build>
+                <plugins>
+                    <!-- Aggregate the source of all artifacts -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>2.4</version>
+                        <executions>
+                            <execution>
+                                <id>aggregate-sources</id>
+                                <goals>
+                                    <goal>aggregate</goal>
+                                </goals>
+                                <inherited>false</inherited>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <scm>
+        <connection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</connection>
+        <developerConnection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</developerConnection>
+        <url>https://github.com/sos-berlin/scheduler-engine</url>
+        <tag>HEAD</tag>
+    </scm>
+</project>
