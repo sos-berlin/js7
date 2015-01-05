@@ -53,6 +53,7 @@ object ScalaUtils {
 
   def cast[A : ClassTag](o: Any): A = {
     val a = implicitClass[A]
+    if (o == null) throw new NullPointerException(s"${a.getName} expected instead of null")
     if (!(a isAssignableFrom o.getClass)) throw new ClassCastException(s"${a.getName} expected instead of ${o.getClass}")
     o.asInstanceOf[A]
   }
