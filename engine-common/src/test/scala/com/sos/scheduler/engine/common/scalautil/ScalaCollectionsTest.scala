@@ -1,11 +1,13 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import ScalaCollections._
-import ScalaCollectionsTest._
+import com.sos.scheduler.engine.common.scalautil.ScalaCollections._
+import com.sos.scheduler.engine.common.scalautil.ScalaCollections.implicits._
+import com.sos.scheduler.engine.common.scalautil.ScalaCollectionsTest._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
+import scala.collection.mutable
 
 @RunWith(classOf[JUnitRunner])
 final class ScalaCollectionsTest extends FreeSpec {
@@ -32,6 +34,13 @@ final class ScalaCollectionsTest extends FreeSpec {
 
   "toSeqMultiMap" in {
     List(1 -> 11, 2 -> 22, 3 -> 33, 2 -> 222).toSeqMultiMap shouldEqual Map(1 -> List(11), 2 -> List(22, 222), 3 -> List(33))
+  }
+
+  "insert" in {
+    val m = mutable.Map(1 → "eins", 2 → "zwei")
+    m.insert(3 → "drei")
+    m(3) shouldEqual "drei"
+    intercept[DuplicateKeyException] { m.insert(3 → "drei") }
   }
 
   "emptyToNone" in {
