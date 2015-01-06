@@ -5,7 +5,7 @@
         <maven>3.2.3</maven>
     </prerequisites>
 
-    <groupId>com.sos.scheduler.engine</groupId>
+    <groupId>com.sos-berlin.jobscheduler.engine</groupId>
     <artifactId>engine</artifactId>
     <version>1.9-SNAPSHOT</version>
 
@@ -537,32 +537,32 @@
                 <version>3.0</version>
             </dependency>
             <dependency>
-                <groupId>com.sos.scheduler.engine</groupId>
+                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
                 <artifactId>engine-cppjava-generator</artifactId>
                 <version>1.9-SNAPSHOT</version>
             </dependency>
             <dependency>
-                <groupId>com.sos.scheduler.engine</groupId>
+                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
                 <artifactId>engine-cppjava-common</artifactId>
                 <version>1.9-SNAPSHOT</version>
             </dependency>
             <dependency>
-                <groupId>com.sos.scheduler.engine</groupId>
+                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
                 <artifactId>engine-cppjava-runtime</artifactId>
                 <version>1.9-SNAPSHOT</version>
             </dependency>
             <dependency>
-                <groupId>com.sos.scheduler.engine</groupId>
+                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
                 <artifactId>engine-common</artifactId>
                 <version>1.9-SNAPSHOT</version>
             </dependency>
             <dependency>
-                <groupId>com.sos.scheduler.engine</groupId>
+                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
                 <artifactId>engine-data</artifactId>
                 <version>1.9-SNAPSHOT</version>
             </dependency>
             <dependency>
-                <groupId>com.sos.scheduler.engine</groupId>
+                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
                 <artifactId>engine-web</artifactId>
                 <version>1.9-SNAPSHOT</version>
             </dependency>
