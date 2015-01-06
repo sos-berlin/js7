@@ -31,7 +31,7 @@
         <module>engine-jar</module>
         <module>engine-playground</module>
         <module>engine-plugins-legacy</module>
-        <module>setup</module>
+        <module>engine-setup</module>
     </modules>
 
     <properties>
