@@ -7,17 +7,17 @@
 
     <parent>
         <groupId>com.sos.scheduler.engine</groupId>
-        <artifactId>parent</artifactId>
+        <artifactId>engine-parent</artifactId>
         <version>1.9-SNAPSHOT</version>
-        <relativePath>parent</relativePath>
+        <relativePath>engine-parent</relativePath>
     </parent>
 
     <name>${project.artifactId}</name>
     <inceptionYear>2010</inceptionYear>
 
     <modules>
-        <module>cppjava</module>
-        <module>data</module>
+        <module>engine-cppjava</module>
+        <module>engine-data</module>
         <module>engine-common</module>
         <module>engine-job-api</module>
         <module>engine-newkernel</module>
@@ -25,15 +25,15 @@
         <module>engine-test</module>
         <module>engine-tests</module>
         <module>engine-testwar</module>
-        <module>jetty</module>
-        <module>kernel</module>
-        <module>kernel.cppproxy-generated</module>
-        <module>kernel-cpp</module>
-        <module>web</module>
-        <module>jar</module>
-        <module>parent</module>
-        <module>playground</module>
-        <module>plugins</module>
+        <module>engine-plugins-jetty</module>
+        <module>engine-kernel</module>
+        <module>engine-kernelcpp-generated</module>
+        <module>engine-kernelcpp</module>
+        <module>engine-web</module>
+        <module>engine-jar</module>
+        <module>engine-parent</module>
+        <module>engine-playground</module>
+        <module>engine-plugins-legacy</module>
         <module>setup</module>
     </modules>
 
