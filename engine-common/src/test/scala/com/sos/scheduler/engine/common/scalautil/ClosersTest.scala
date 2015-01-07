@@ -31,7 +31,7 @@ final class ClosersTest extends FreeSpec {
     verify(autoCloseable, times(1)).close()
   }
 
-  "registerCloseable AutoClosable" in {
+  "closeWithCloser AutoClosable" in {
     implicit val closer = Closer.create()
     val c = mock[AutoCloseable].closeWithCloser
     verify(c, times(0)).close()
@@ -39,7 +39,7 @@ final class ClosersTest extends FreeSpec {
     verify(c, times(1)).close()
   }
 
-  "registerCloseable with some close" in {
+  "closeWithCloser with some close" in {
     implicit val closer = Closer.create()
     trait A { def close() }
     val c = mock[A].closeWithCloser

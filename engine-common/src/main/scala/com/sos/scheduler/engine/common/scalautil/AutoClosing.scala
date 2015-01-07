@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil
 
+import org.scalactic.Requirements.requireNonNull
 import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 
@@ -12,17 +13,20 @@ object AutoClosing {
   private val logger = Logger(getClass)
 
   /** Wie Java 7 try-with-resource */
-  def autoClosing[A <: HasClose, B](resource: A)(f: A ⇒ B): B = {
-    if (resource eq null) throw new NullPointerException("closingFinally: object is null")
-    val result =
-      try f(resource)
-      catch {
-        case t: Throwable ⇒
-          closeAfterError(resource, t)
-          throw t
-      }
+  def autoClosing[A <: HasClose, B](resource: A)(body: A ⇒ B): B = {
+    val result = closeOnError(resource) { body(resource) }
     resource.close()
     result
+  }
+
+  final def closeOnError[A <: HasClose, B](closeable: A)(body: ⇒ B): B = {
+    if (closeable == null) throw new NullPointerException
+    try body
+    catch {
+      case t: Throwable ⇒
+        closeAfterError(closeable, t)
+        throw t
+    }
   }
 
   private def closeAfterError[A <: HasClose](resource: A, t: Throwable): Unit = {

@@ -13,7 +13,7 @@ trait HasCloser extends AutoCloseable {
   }
 
   /** Registers the function for execution in close(), in reverse order of registering. */
-  protected final def onClose(f: ⇒ Unit): Unit = closer.onClose { f }
+  protected def onClose(f: ⇒ Unit): Unit = closer.onClose { f }
 
   def close(): Unit = closer.close()
 }
