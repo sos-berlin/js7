@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.data.job
 
-import com.sos.scheduler.engine.data.event.KeyedEvent
+import com.sos.scheduler.engine.data.event.{AbstractEvent, KeyedEvent}
 
-trait TaskEvent extends KeyedEvent {
+trait TaskEvent extends AbstractEvent with KeyedEvent {
   type Key = TaskId
   final def key = taskId
 
