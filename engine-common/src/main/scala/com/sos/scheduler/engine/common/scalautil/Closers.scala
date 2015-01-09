@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.scalautil
 
 import com.google.common.io.Closer
+import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import scala.language.reflectiveCalls
 
 /**
@@ -61,4 +62,6 @@ object Closers {
     new GuavaCloseable {
       def close() = f
     }
+
+  def withCloser[A](f: Closer ⇒ A): A = autoClosing(Closer.create())(f)
 }

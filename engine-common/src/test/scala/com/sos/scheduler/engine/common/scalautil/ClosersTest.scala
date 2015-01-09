@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.scalautil
 
 import com.google.common.io.Closer
+import com.sos.scheduler.engine.common.scalautil.Closers._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import org.junit.runner.RunWith
 import org.mockito.Mockito._
@@ -26,26 +27,26 @@ final class ClosersTest extends FreeSpec {
     implicit val closer = Closer.create()
     val autoCloseable = mock[AutoCloseable]
     closer.registerAutoCloseable(autoCloseable)
-    verify(autoCloseable, times(0)).close()
+    verify(autoCloseable, never).close()
     closer.close()
-    verify(autoCloseable, times(1)).close()
+    verify(autoCloseable).close()
   }
 
   "closeWithCloser AutoClosable" in {
     implicit val closer = Closer.create()
     val c = mock[AutoCloseable].closeWithCloser
-    verify(c, times(0)).close()
+    verify(c, never).close()
     closer.close()
-    verify(c, times(1)).close()
+    verify(c).close()
   }
 
   "closeWithCloser with some close" in {
     implicit val closer = Closer.create()
     trait A { def close() }
     val c = mock[A].closeWithCloser
-    verify(c, times(0)).close()
+    verify(c, never).close()
     closer.close()
-    verify(c, times(1)).close()
+    verify(c).close()
   }
 
   "onCloseOrShutdownn" in {
@@ -55,5 +56,13 @@ final class ClosersTest extends FreeSpec {
     closed shouldBe false
     closer.close()
     closed shouldBe true
+  }
+
+  "withCloser" in {
+    val a = mock[GuavaCloseable]
+    withCloser { closer ⇒
+      closer.register(a)
+    }
+    verify(a).close()
   }
 }
