@@ -16,7 +16,7 @@ public enum FileBasedType {
     private final String cppName;
     private final String printName;
 
-    <_ extends TypedPath> FileBasedType(String cppName, String printName) {
+    FileBasedType(String cppName, String printName) {
         this.cppName = cppName;
         this.printName = printName;
     }
