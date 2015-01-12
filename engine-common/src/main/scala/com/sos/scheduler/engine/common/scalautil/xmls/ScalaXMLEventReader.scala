@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.ScalaUtils.{cast, implicitClass
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import java.util.NoSuchElementException
-import javax.xml.stream.events._
+import javax.xml.stream.events.{XMLEvent, Characters, Comment, EndElement, StartElement, EndDocument, StartDocument}
 import javax.xml.stream.{EventFilter, Location, XMLEventReader, XMLInputFactory}
 import javax.xml.transform.Source
 import org.scalactic.Requirements._
@@ -154,7 +154,7 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
   @tailrec
   def peek: XMLEvent =
     delegate.peek match {
-      case e: Characters if e.isWhiteSpace ⇒
+      case e if xmlEventIsIgnored(e) =>
         delegate.nextEvent()
         peek
       case e ⇒ e
@@ -186,6 +186,12 @@ object ScalaXMLEventReader {
   private def newXMLEventReader(inputFactory: XMLInputFactory, source: Source) =
     inputFactory.createXMLEventReader(source)
     //inputFactory.createFilteredReader(inputFactory.createXMLEventReader(source), IgnoreWhitespaceFilter)
+
+  private def xmlEventIsIgnored(e: XMLEvent) =
+    cond(e) {
+      case e: Characters if e.isWhiteSpace ⇒ true
+      case _: Comment ⇒ true
+    }
 
   object IgnoreWhitespaceFilter extends EventFilter {
     def accept(e: XMLEvent) = cond(e) { case e: Characters ⇒ !e.isWhiteSpace }
