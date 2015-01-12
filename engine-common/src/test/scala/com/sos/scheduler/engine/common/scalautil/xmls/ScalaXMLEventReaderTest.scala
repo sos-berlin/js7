@@ -60,12 +60,14 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
     parseString(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "oo", List(D(), D())))
   }
 
-  "Whitespace is ignored" in {
+  "Whitespace and comment are ignored" in {
     val testXmlString =
       <A>
         <AA>
+          <!-- comment -->
           <B/>
           <C x="xx" optional="oo"/>
+          <!-- comment -->
         </AA>
       </A>.toString()
     parseString(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "oo", Nil))
