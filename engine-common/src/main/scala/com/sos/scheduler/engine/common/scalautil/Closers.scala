@@ -32,7 +32,7 @@ object Closers {
         delegate.register(toGuavaCloseable(autoCloseable))
 
       final def onClose(body: ⇒ Unit): Unit =
-        delegate.register(toGuavaCloseable(body))
+        delegate.register(guavaCloseable(body))
     }
 
     implicit class RichClosersAutoCloseable[A <: AutoCloseable](val delegate: A) extends AnyVal {
@@ -48,17 +48,24 @@ object Closers {
         delegate
       }
     }
+
+    implicit class RichClosersAny[A <: AnyRef](val delegate: A) extends AnyVal {
+      final def withCloser(onClose: A ⇒ Unit)(implicit closer: Closer): A = {
+        closer.register(guavaCloseable { onClose(delegate) })
+        delegate
+      }
+    }
   }
 
   def toGuavaCloseable(autoCloseable: AutoCloseable): GuavaCloseable =
     autoCloseable match {
       case o: GuavaCloseable ⇒ o
-      case o ⇒ toGuavaCloseable { o.close() }
+      case o ⇒ guavaCloseable { o.close() }
     }
 
-  def toGuavaCloseable(closeable: HasClose): GuavaCloseable = toGuavaCloseable { closeable.close() }
+  def toGuavaCloseable(closeable: HasClose): GuavaCloseable = guavaCloseable { closeable.close() }
 
-  def toGuavaCloseable(f: ⇒ Unit): GuavaCloseable =
+  private def guavaCloseable(f: ⇒ Unit): GuavaCloseable =
     new GuavaCloseable {
       def close() = f
     }
