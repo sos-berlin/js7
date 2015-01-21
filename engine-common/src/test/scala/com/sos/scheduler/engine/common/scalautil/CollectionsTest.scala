@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.ScalaCollections._
-import com.sos.scheduler.engine.common.scalautil.ScalaCollections.implicits._
-import com.sos.scheduler.engine.common.scalautil.ScalaCollectionsTest._
+import com.sos.scheduler.engine.common.scalautil.Collections._
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
+import com.sos.scheduler.engine.common.scalautil.CollectionsTest._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -10,7 +10,22 @@ import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
 
 @RunWith(classOf[JUnitRunner])
-final class ScalaCollectionsTest extends FreeSpec {
+final class CollectionsTest extends FreeSpec {
+
+  "toImmutableSeq of an already immutable.Seq" in {
+    val list = List(1, 2, 3)
+    assert(list.toImmutableSeq eq list)
+  }
+
+  "countEquals" in {
+    Iterator(11, 22, 33, 22, 33, 33).countEquals shouldEqual Map(11 -> 1, 22 -> 2, 33 -> 3)
+    Map[Int, Int]().countEquals shouldEqual Map()
+  }
+
+  "toKeyedMap" in {
+    case class A(name: String, i: Int)
+    List(A("eins", 1), A("zwei", 2)) toKeyedMap { _.i } shouldEqual Map(1 -> A("eins", 1), 2 -> A("zwei", 2))
+  }
 
   "duplicateKeys" in {
     def dup(o: Seq[A]) = o duplicates { _.i }
@@ -54,7 +69,7 @@ final class ScalaCollectionsTest extends FreeSpec {
   }
 }
 
-private object ScalaCollectionsTest {
+private object CollectionsTest {
   private case class A(i: Int, s: String)
 
   private val a1 = A(1, "eins")

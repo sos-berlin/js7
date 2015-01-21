@@ -1,11 +1,12 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.{cast, implicitClass, _}
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
+import com.sos.scheduler.engine.common.scalautil.ScalaUtils.{cast, implicitClass}
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import java.util.NoSuchElementException
-import javax.xml.stream.events.{XMLEvent, Characters, Comment, EndElement, StartElement, EndDocument, StartDocument}
+import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
 import javax.xml.stream.{EventFilter, Location, XMLEventReader, XMLInputFactory}
 import javax.xml.transform.Source
 import org.scalactic.Requirements._

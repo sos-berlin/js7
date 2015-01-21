@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.common.io
 import java.io.InputStream
 import scala.sys._
 
-// TODO Test
+// NOT IN USE, NO TEST
 private final class InputStreamIterator(in: InputStream) extends Iterator[Byte] {
   private var nextByte: Int = -2
 

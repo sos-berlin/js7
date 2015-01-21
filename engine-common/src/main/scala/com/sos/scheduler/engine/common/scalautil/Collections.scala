@@ -1,11 +1,40 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
+import scala.collection.JavaConversions._
 import scala.collection.{TraversableLike, immutable, mutable}
 import scala.sys.error
 
-object ScalaCollections {
+object Collections {
   object implicits {
+    implicit class RichTraversableOnce[A](val delegate: TraversableOnce[A]) extends AnyVal {
+      def toImmutableSeq: immutable.Seq[A] =
+        delegate match {
+          case o: immutable.Seq[A] ⇒ o
+          case _ ⇒ Vector() ++ delegate
+        }
+
+      def countEquals: Map[A, Int] =
+        delegate.toTraversable groupBy identity map { case (k, v) ⇒ k -> v.size }
+
+      def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] =
+        (delegate map { o ⇒ toKey(o) -> o }).toMap
+    }
+
+    implicit class RichArray[A](val delegate: Array[A]) extends AnyVal {
+      def toImmutableSeq: immutable.Seq[A] =
+        Vector() ++ delegate
+    }
+
+    implicit class RichJavaIterable[A](val delegate: java.lang.Iterable[A]) extends AnyVal {
+      def toImmutableSeq: immutable.Seq[A] =
+        Vector() ++ delegate
+    }
+
+    implicit class RichJavaIterator[A](val delegate: java.util.Iterator[A]) extends AnyVal {
+      def toImmutableSeq: immutable.Seq[A] =
+        Vector() ++ delegate
+    }
+
     implicit class RichTraversable[A](val delegate: Traversable[A]) extends AnyVal {
       def requireDistinct[K](key: A ⇒ K) = {
         duplicates(key) match {
