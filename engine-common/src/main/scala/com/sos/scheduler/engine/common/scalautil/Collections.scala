@@ -60,6 +60,11 @@ object Collections {
         delegate += kv
       }
     }
+
+    implicit class JavaToScalaStream[A](val delegate: java.util.stream.Stream[A]) extends AnyVal {
+      def toVector: Vector[A] = Vector() ++ delegate.iterator
+      def toSet: Set[A] = Set() ++ delegate.iterator
+    }
   }
 
   def emptyToNone(o: String): Option[String] =

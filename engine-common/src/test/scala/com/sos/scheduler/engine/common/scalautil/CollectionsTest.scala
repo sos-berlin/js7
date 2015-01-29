@@ -67,6 +67,10 @@ final class CollectionsTest extends FreeSpec {
     val a = Array(1)
     emptyToNone(a) shouldEqual Some(a)
   }
+
+  "java.util.stream.Stream.toSet" in {
+    java.util.stream.Stream.of(1, 2, 2, 3).toSet shouldEqual Set(1, 2, 3)
+  }
 }
 
 private object CollectionsTest {
