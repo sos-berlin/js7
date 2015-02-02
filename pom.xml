@@ -30,8 +30,7 @@
         <module>engine-web</module>
         <module>engine-jar</module>
         <module>engine-playground</module>
-        <module>engine-plugins-legacy</module>
-        <module>engine-plugins-newwebservice</module>
+        <module>engine-plugins</module>
         <module>engine-setup</module>
     </modules>
 
