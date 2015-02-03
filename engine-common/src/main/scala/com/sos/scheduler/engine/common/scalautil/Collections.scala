@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil
 
+import javax.annotation.Nullable
 import scala.collection.JavaConversions._
 import scala.collection.{TraversableLike, immutable, mutable}
 import scala.sys.error
@@ -67,14 +68,14 @@ object Collections {
     }
   }
 
-  def emptyToNone(o: String): Option[String] =
-    if (o.isEmpty) None else Some(o)
+  def emptyToNone(@Nullable o: String): Option[String] =
+    if (o == null || o.isEmpty) None else Some(o)
 
-  def emptyToNone[A <: TraversableLike[_, _]](o: A): Option[A] =
-    if (o.isEmpty) None else Some(o)
+  def emptyToNone[A <: TraversableLike[_, _]](@Nullable o: A): Option[A] =
+    if (o == null || o.isEmpty) None else Some(o)
 
-  def emptyToNone[A](o: Array[A]): Option[Array[A]] =
-    if (o.isEmpty) None else Some(o)
+  def emptyToNone[A](@Nullable o: Array[A]): Option[Array[A]] =
+    if (o == null || o.isEmpty) None else Some(o)
 
   class DuplicateKeyException(override val getMessage: String) extends RuntimeException
 }

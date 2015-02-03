@@ -60,10 +60,13 @@ final class CollectionsTest extends FreeSpec {
 
   "emptyToNone" in {
     emptyToNone("") shouldEqual None
+    emptyToNone(null: String) shouldEqual None
     emptyToNone("x") shouldEqual Some("x")
     emptyToNone(Nil) shouldEqual None
+    emptyToNone(null: Iterable[_]) shouldEqual None
     emptyToNone(List(1)) shouldEqual Some(List(1))
     emptyToNone(Array[Int]()) shouldEqual None
+    emptyToNone(null: Array[Int]) shouldEqual None
     val a = Array(1)
     emptyToNone(a) shouldEqual Some(a)
   }
