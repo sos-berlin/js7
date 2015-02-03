@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import org.scalactic.Requirements.requireNonNull
 import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 
