@@ -161,6 +161,15 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
       }
     } shouldEqual "YY"
   }
+
+  "ignoreElement" in {
+    val testXmlString = <A><AA><C x="xx">aa<D/>bb<D/>cc</C></AA></A>.toString()
+    parseString(testXmlString) { eventReader ⇒
+      eventReader.parseElement("A") {
+        eventReader.ignoreElement()
+      }
+    }
+  }
 }
 
 private object ScalaXMLEventReaderTest {

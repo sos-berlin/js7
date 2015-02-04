@@ -32,6 +32,16 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
     result
   }
 
+  def ignoreElement(): Unit = {
+    parseElement() {
+      attributeMap.ignoreUnread()
+      while(!peek.isEndElement) {
+        if (peek.isCharacters) eatText()
+        else ignoreElement()
+      }
+    }
+  }
+
   def parseElement[A](name: String)(body: ⇒ A): A = {
     requireStartElement(name)
     parseElement()(body)
