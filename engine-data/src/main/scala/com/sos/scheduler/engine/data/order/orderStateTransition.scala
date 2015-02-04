@@ -28,12 +28,14 @@ object ProceedingOrderStateTransition {
     case 0 ⇒ SuccessOrderStateTransition
     case i ⇒ ErrorOrderStateTransition(i)
   }
+
+  def unapply(o: ProceedingOrderStateTransition) = Some(o.resultValue)
 }
 
 /**
  * Order proceeds to another jobchain node, used by attribute "next_state".
  */
-case object SuccessOrderStateTransition extends OrderStateTransition {
+case object SuccessOrderStateTransition extends ProceedingOrderStateTransition {
   def resultValue = 0
 }
 
@@ -41,6 +43,10 @@ case object SuccessOrderStateTransition extends OrderStateTransition {
  * Order proceeds to another jobchain node, used by attribute "error_state".
  */
 final case class ErrorOrderStateTransition(resultValue: Int) extends ProceedingOrderStateTransition
+
+object ErrorOrderStateTransition {
+  def Standard = ErrorOrderStateTransition(1)
+}
 
 /**
  * Order step could not been completed and order stays in same jobchain node.
