@@ -17,6 +17,11 @@ final class CollectionsTest extends FreeSpec {
     assert(list.toImmutableSeq eq list)
   }
 
+  "toImmutableIterable of an already immutable.Iterable" in {
+    val list = List(1, 2, 3)
+    assert(list.toImmutableIterable eq list)
+  }
+
   "countEquals" in {
     Iterator(11, 22, 33, 22, 33, 33).countEquals shouldEqual Map(11 -> 1, 22 -> 2, 33 -> 3)
     Map[Int, Int]().countEquals shouldEqual Map()
@@ -44,7 +49,7 @@ final class CollectionsTest extends FreeSpec {
     def r(o: Seq[A]) = o requireDistinct { _.i }
 
     r(Seq[A]()) shouldBe 'empty
-    intercept[Exception] { r(Seq(a1, a2)) }
+    intercept[DuplicateKeyException] { r(Seq(a1, a2)) }
   }
 
   "toSeqMultiMap" in {
@@ -73,6 +78,12 @@ final class CollectionsTest extends FreeSpec {
 
   "java.util.stream.Stream.toSet" in {
     java.util.stream.Stream.of(1, 2, 2, 3).toSet shouldEqual Set(1, 2, 3)
+  }
+
+  "toDistinctMap" in {
+    val list = List(1 → "eins", 2 → "zwei", 3 → "drei")
+    list.toDistinctMap shouldEqual list.toMap
+    intercept[DuplicateKeyException] { List(1 → "eins", 2 → "zwei", 1 → "duplicate").toDistinctMap }
   }
 }
 

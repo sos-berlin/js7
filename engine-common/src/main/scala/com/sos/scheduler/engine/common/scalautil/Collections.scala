@@ -3,7 +3,6 @@ package com.sos.scheduler.engine.common.scalautil
 import javax.annotation.Nullable
 import scala.collection.JavaConversions._
 import scala.collection.{TraversableLike, immutable, mutable}
-import scala.sys.error
 
 object Collections {
   object implicits {
@@ -12,6 +11,12 @@ object Collections {
         delegate match {
           case o: immutable.Seq[A] ⇒ o
           case _ ⇒ Vector() ++ delegate
+        }
+
+      def toImmutableIterable: immutable.Iterable[A] =
+        delegate match {
+          case o: immutable.Iterable[A] ⇒ o
+          case _ ⇒ immutable.Iterable() ++ delegate
         }
 
       def countEquals: Map[A, Int] =
@@ -39,7 +44,7 @@ object Collections {
     implicit class RichTraversable[A](val delegate: Traversable[A]) extends AnyVal {
       def requireDistinct[K](key: A ⇒ K) = {
         duplicates(key) match {
-          case o if o.nonEmpty ⇒ error("Unexpected duplicates: "+ o.keys.mkString(", "))
+          case o if o.nonEmpty ⇒ throw new DuplicateKeyException(s"Unexpected duplicates: ${o.keys mkString ", "}")
           case _ ⇒
         }
         delegate
@@ -51,6 +56,11 @@ object Collections {
     }
 
     implicit class RichPairTraversable[A, B](val delegate: Traversable[(A, B)]) extends AnyVal {
+      def toDistinctMap = {
+        delegate.requireDistinct { _._1 }
+        delegate.toMap
+      }
+
       def toSeqMultiMap: Map[A, immutable.Seq[B]] =
         delegate groupBy { _._1 } map { case (k, v) ⇒ k -> (v map { _._2 }).toImmutableSeq }
     }
