@@ -5,4 +5,6 @@ import com.sos.scheduler.engine.data.order.OrderState
 /**
  * @author Joacim Zschimmer
  */
-final case class NodeKey(jobChainPath: JobChainPath, state: OrderState)
+final case class NodeKey(jobChainPath: JobChainPath, state: OrderState) {
+  override def toString = s"${jobChainPath.string}:${state.string}"
+}
