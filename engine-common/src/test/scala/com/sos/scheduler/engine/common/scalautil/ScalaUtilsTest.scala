@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.scalautil
 
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
+import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicits._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -8,6 +9,14 @@ import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 final class ScalaUtilsTest extends FreeSpec {
+
+  "Function1.withToString" in {
+    def function(o: Int) = 2*o
+    val f = function _
+    val g = f.withToString("My function")
+    g(3) shouldEqual f(3)
+    g.toString() shouldEqual "My function"
+  }
 
   "Throwable.rootCause" in {
     new Exception("A", new Exception("B", new Exception("ROOT"))).rootCause.getMessage shouldEqual "ROOT"

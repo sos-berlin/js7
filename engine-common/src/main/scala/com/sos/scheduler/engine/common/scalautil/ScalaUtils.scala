@@ -8,6 +8,15 @@ object ScalaUtils {
   def implicitClass[A : ClassTag]: Class[A] =
     implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
 
+  object implicits {
+    implicit class ToStringFunction1[A, R](val delegate: A ⇒ R) {
+      def withToString(string: String) = new (A ⇒ R) {
+        def apply(a: A) = delegate(a)
+        override def toString() = string
+      }
+    }
+  }
+
   implicit class RichThrowable[A <: Throwable](val delegate: A) extends AnyVal {
     def rootCause: Throwable = {
       @tailrec def cause(t: Throwable): Throwable =
