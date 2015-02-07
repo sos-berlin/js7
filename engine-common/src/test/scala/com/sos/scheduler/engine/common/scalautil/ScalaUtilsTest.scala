@@ -6,9 +6,15 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
+import scala.reflect.ClassTag
 
 @RunWith(classOf[JUnitRunner])
 final class ScalaUtilsTest extends FreeSpec {
+
+  "implicitClass" in {
+    def f[A : ClassTag] = implicitClass[A]
+    f[String] shouldEqual classOf[String]
+  }
 
   "Function1.withToString" in {
     def function(o: Int) = 2*o

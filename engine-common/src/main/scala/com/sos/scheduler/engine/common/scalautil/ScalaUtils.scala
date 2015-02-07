@@ -4,9 +4,8 @@ import scala.annotation.tailrec
 import scala.reflect.ClassTag
 
 object ScalaUtils {
-  // Warum ist das nicht in Scala enthalten?
-  def implicitClass[A : ClassTag]: Class[A] =
-    implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
+
+  def implicitClass[A : ClassTag]: Class[A] = implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
 
   object implicits {
     implicit class ToStringFunction1[A, R](val delegate: A ⇒ R) {
