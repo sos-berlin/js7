@@ -20,7 +20,7 @@ object OrderStateTransition {
  * Order proceeds to another jobchain node.
  */
 trait ProceedingOrderStateTransition extends OrderStateTransition {
-  def resultValue: Int
+  def returnCode: Int
 }
 
 object ProceedingOrderStateTransition {
@@ -29,20 +29,20 @@ object ProceedingOrderStateTransition {
     case i ⇒ ErrorOrderStateTransition(i)
   }
 
-  def unapply(o: ProceedingOrderStateTransition) = Some(o.resultValue)
+  def unapply(o: ProceedingOrderStateTransition) = Some(o.returnCode)
 }
 
 /**
  * Order proceeds to another jobchain node, used by attribute "next_state".
  */
 case object SuccessOrderStateTransition extends ProceedingOrderStateTransition {
-  def resultValue = 0
+  def returnCode = 0
 }
 
 /**
  * Order proceeds to another jobchain node, used by attribute "error_state".
  */
-final case class ErrorOrderStateTransition(resultValue: Int) extends ProceedingOrderStateTransition
+final case class ErrorOrderStateTransition(returnCode: Int) extends ProceedingOrderStateTransition
 
 object ErrorOrderStateTransition {
   def Standard = ErrorOrderStateTransition(1)
