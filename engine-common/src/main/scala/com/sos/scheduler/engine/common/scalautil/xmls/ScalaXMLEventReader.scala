@@ -283,7 +283,9 @@ object ScalaXMLEventReader {
     override def getMessage = s"Unknown XML attributes " + (names map { "'"+ _ +"'" } mkString ", ")
   }
 
-  final class WrappedException(override val getMessage: String, override val getCause: Exception) extends RuntimeException
+  final class WrappedException(override val getMessage: String, override val getCause: Exception) extends RuntimeException {
+    override def toString = s"In XML: $getMessage - $getCause"
+  }
   
   object WrappedException {
     def unapply(o: WrappedException) = Some(o.getCause)
