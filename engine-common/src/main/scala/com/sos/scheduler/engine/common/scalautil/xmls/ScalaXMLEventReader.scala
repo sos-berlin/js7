@@ -73,7 +73,7 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
     attributeMap foreach callF
   }
 
-  def parseEachRepeatingElement[A](name: String)(f: ⇒ A): Iterable[A] =
+  def parseEachRepeatingElement[A](name: String)(f: ⇒ A): immutable.Seq[A] =
     forEachStartElement[A] { case `name` ⇒ parseElement() { f } }.values
 
   def forEachStartElement[A](f: PartialFunction[String, A]): ConvertedElementMap[A] = {
