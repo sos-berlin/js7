@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
+import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.{cast, implicitClass}
@@ -267,7 +268,7 @@ object ScalaXMLEventReader {
     }
 
     def byClass[B <: A : ClassTag]: immutable.IndexedSeq[B] =
-      pairs collect { case (_, v) if implicitClass[B] isAssignableFrom v.getClass ⇒ v.asInstanceOf[B] }
+      values collect assignableFrom[B]
 
     def byName[B <: A : ClassTag](elementName: String): immutable.Seq[B] =
       apply(elementName) map cast[B]
