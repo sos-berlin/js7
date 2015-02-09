@@ -20,10 +20,10 @@ object Collections {
         }
 
       def countEquals: Map[A, Int] =
-        delegate.toTraversable groupBy identity map { case (k, v) ⇒ k -> v.size }
+        delegate.toTraversable groupBy identity map { case (k, v) ⇒ k → v.size }
 
       def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] =
-        (delegate map { o ⇒ toKey(o) -> o }).toMap
+        (delegate map { o ⇒ toKey(o) → o }).toMap
     }
 
     implicit class RichArray[A](val delegate: Array[A]) extends AnyVal {
@@ -62,7 +62,7 @@ object Collections {
       }
 
       def toSeqMultiMap: Map[A, immutable.Seq[B]] =
-        delegate groupBy { _._1 } map { case (k, v) ⇒ k -> (v map { _._2 }).toImmutableSeq }
+        delegate groupBy { _._1 } map { case (k, v) ⇒ k → (v map { _._2 }).toImmutableSeq }
     }
 
     implicit class InsertableMutableMap[K, V](val delegate: mutable.Map[K, V]) extends AnyVal {

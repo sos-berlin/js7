@@ -6,7 +6,7 @@ import scala.reflect.ClassTag
 /**
  * @author Joacim Zschimmer
  */
-private class AssignableFrom[A <: Any : ClassTag] extends PartialFunction[Any, A] {
+private class AssignableFrom[A : ClassTag] extends PartialFunction[Any, A] {
   def apply(o: Any) = {
     if (!isDefinedAt(o)) throw new ClassCastException(s"Not a ${implicitClass[A].getName}: '$o' (${o.getClass})")
     o.asInstanceOf[A]
@@ -19,5 +19,5 @@ object AssignableFrom {
   /**
    * @return A [[PartialFunction]]`[Any, A]`, defined iff the argument is an `A`, and then returning the argument as an `A`
    */
-  def assignableFrom[A <: Any : ClassTag]: PartialFunction[Any, A] = new AssignableFrom[A]
+  def assignableFrom[A : ClassTag]: PartialFunction[Any, A] = new AssignableFrom[A]
 }

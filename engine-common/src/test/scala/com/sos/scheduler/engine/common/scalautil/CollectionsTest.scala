@@ -23,13 +23,13 @@ final class CollectionsTest extends FreeSpec {
   }
 
   "countEquals" in {
-    Iterator(11, 22, 33, 22, 33, 33).countEquals shouldEqual Map(11 -> 1, 22 -> 2, 33 -> 3)
+    Iterator(11, 22, 33, 22, 33, 33).countEquals shouldEqual Map(11 → 1, 22 → 2, 33 → 3)
     Map[Int, Int]().countEquals shouldEqual Map()
   }
 
   "toKeyedMap" in {
     case class A(name: String, i: Int)
-    List(A("eins", 1), A("zwei", 2)) toKeyedMap { _.i } shouldEqual Map(1 -> A("eins", 1), 2 -> A("zwei", 2))
+    List(A("eins", 1), A("zwei", 2)) toKeyedMap { _.i } shouldEqual Map(1 → A("eins", 1), 2 → A("zwei", 2))
   }
 
   "duplicateKeys" in {
@@ -39,10 +39,10 @@ final class CollectionsTest extends FreeSpec {
     dup(Seq(a1)) shouldBe 'empty
     dup(Seq(a1, b1)) shouldBe 'empty
     dup(Seq(a1, b1, c1)) shouldBe 'empty
-    dup(Seq(a1, a1)) shouldEqual Map(1 -> Seq(a1, a1))
-    dup(Seq(a1, a2)) shouldEqual Map(1 -> Seq(a1, a2))
-    dup(Seq(a1, a2, b1)) shouldEqual Map(1 -> Seq(a1, a2))
-    dup(Seq(a1, a2, b1, c1, c2, c3)) shouldEqual Map(1 -> Seq(a1, a2), 3 -> Seq(c1, c2, c3))
+    dup(Seq(a1, a1)) shouldEqual Map(1 → Seq(a1, a1))
+    dup(Seq(a1, a2)) shouldEqual Map(1 → Seq(a1, a2))
+    dup(Seq(a1, a2, b1)) shouldEqual Map(1 → Seq(a1, a2))
+    dup(Seq(a1, a2, b1, c1, c2, c3)) shouldEqual Map(1 → Seq(a1, a2), 3 → Seq(c1, c2, c3))
   }
 
   "requireDistinct" in {
@@ -53,7 +53,7 @@ final class CollectionsTest extends FreeSpec {
   }
 
   "toSeqMultiMap" in {
-    List(1 -> 11, 2 -> 22, 3 -> 33, 2 -> 222).toSeqMultiMap shouldEqual Map(1 -> List(11), 2 -> List(22, 222), 3 -> List(33))
+    List(1 → 11, 2 → 22, 3 → 33, 2 → 222).toSeqMultiMap shouldEqual Map(1 → List(11), 2 → List(22, 222), 3 → List(33))
   }
 
   "insert" in {
