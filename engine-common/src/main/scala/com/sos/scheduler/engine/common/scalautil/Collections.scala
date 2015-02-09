@@ -85,6 +85,6 @@ object Collections {
 
   def emptyToNone[A](@Nullable o: Array[A]): Option[Array[A]] =
     if (o == null || o.isEmpty) None else Some(o)
-
-  class DuplicateKeyException(override val getMessage: String) extends RuntimeException
 }
+
+
