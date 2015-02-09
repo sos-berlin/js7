@@ -30,6 +30,7 @@ final class CollectionsTest extends FreeSpec {
   "toKeyedMap" in {
     case class A(name: String, i: Int)
     List(A("eins", 1), A("zwei", 2)) toKeyedMap { _.i } shouldEqual Map(1 → A("eins", 1), 2 → A("zwei", 2))
+    intercept[DuplicateKeyException] { List(1 → "eins", 1 → "ett") toKeyedMap { _._1 } }
   }
 
   "duplicateKeys" in {
@@ -46,7 +47,7 @@ final class CollectionsTest extends FreeSpec {
   }
 
   "requireDistinct" in {
-    def r(o: Seq[A]) = o requireDistinct { _.i }
+    def r(o: Seq[A]) = o requireUniqueness { _.i }
 
     r(Seq[A]()) shouldBe 'empty
     intercept[DuplicateKeyException] { r(Seq(a1, a2)) }
@@ -80,10 +81,10 @@ final class CollectionsTest extends FreeSpec {
     java.util.stream.Stream.of(1, 2, 2, 3).toSet shouldEqual Set(1, 2, 3)
   }
 
-  "toDistinctMap" in {
+  "uniqueToMap" in {
     val list = List(1 → "eins", 2 → "zwei", 3 → "drei")
-    list.toDistinctMap shouldEqual list.toMap
-    intercept[DuplicateKeyException] { List(1 → "eins", 2 → "zwei", 1 → "duplicate").toDistinctMap }
+    list.uniqueToMap shouldEqual list.toMap
+    intercept[DuplicateKeyException] { List(1 → "eins", 2 → "zwei", 1 → "duplicate").uniqueToMap }
   }
 }
 

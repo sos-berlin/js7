@@ -21,9 +21,6 @@ object Collections {
 
       def countEquals: Map[A, Int] =
         delegate.toTraversable groupBy identity map { case (k, v) ⇒ k → v.size }
-
-      def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] =
-        (delegate map { o ⇒ toKey(o) → o }).toMap
     }
 
     implicit class RichArray[A](val delegate: Array[A]) extends AnyVal {
@@ -42,7 +39,9 @@ object Collections {
     }
 
     implicit class RichTraversable[A](val delegate: Traversable[A]) extends AnyVal {
-      def requireDistinct[K](key: A ⇒ K) = {
+      def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap
+
+      def requireUniqueness[K](key: A ⇒ K) = {
         duplicates(key) match {
           case o if o.nonEmpty ⇒ throw new DuplicateKeyException(s"Unexpected duplicates: ${o.keys mkString ", "}")
           case _ ⇒
@@ -56,8 +55,8 @@ object Collections {
     }
 
     implicit class RichPairTraversable[A, B](val delegate: Traversable[(A, B)]) extends AnyVal {
-      def toDistinctMap = {
-        delegate.requireDistinct { _._1 }
+      def uniqueToMap = {
+        delegate.requireUniqueness { _._1 }
         delegate.toMap
       }
 
