@@ -109,7 +109,7 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
 
   "Detects extra attribute" in {
     val testXmlString = <A><AA><B/><C x="xx" optional="oo" z="zz"><D/><D/></C></AA></A>.toString()
-    intercept[WrappedException] { parseString(testXmlString)(parseA) }
+    intercept[XmlException] { parseString(testXmlString)(parseA) }
       .rootCause.asInstanceOf[UnparsedAttributesException].names shouldEqual List("z")
   }
 
@@ -128,18 +128,18 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
 
   "Detects missing attribute" in {
     val testXmlString = <A><AA><B/><C><D/><D/></C></AA></A>.toString()
-    intercept[WrappedException] { parseString(testXmlString)(parseA) }
+    intercept[XmlException] { parseString(testXmlString)(parseA) }
       .rootCause.asInstanceOf[NoSuchElementException]
   }
 
   "Detects extra element" in {
     val testXmlString = <A><AA><B/><C x="xx"><D/><D/></C><EXTRA/></AA></A>.toString()
-    intercept[WrappedException] { parseString(testXmlString)(parseA) }
+    intercept[XmlException] { parseString(testXmlString)(parseA) }
   }
 
   "Detects extra repeating element" in {
     val testXmlString = <A><AA><B/><C x="xx"><D/><D/><EXTRA/></C></AA></A>.toString()
-    intercept[WrappedException] { parseString(testXmlString)(parseA) }
+    intercept[XmlException] { parseString(testXmlString)(parseA) }
   }
 
   "Detects missing element" in {
@@ -169,6 +169,12 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
         eventReader.ignoreElement()
       }
     }
+  }
+
+  "Exception with XML element path" in {
+    val testXmlString = <A><AA><Y/></AA></A>.toString()
+    intercept[XmlException] { parseString(testXmlString)(parseA) }
+      .toString shouldEqual """XmlException: Unexpected XML element <Y> - In <A> (:1:4) <AA> (:1:8)"""
   }
 }
 

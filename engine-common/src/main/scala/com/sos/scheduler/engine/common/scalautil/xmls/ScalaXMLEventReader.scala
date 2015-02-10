@@ -48,10 +48,11 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
     parseElement()(body)
   }
 
-  def parseElement[A]()(body: ⇒ A): A = {
-    eat[StartElement]
-    parseStartElement()(body)
-  }
+  def parseElement[A]()(body: ⇒ A): A =
+    wrapException {
+      eat[StartElement]
+      parseStartElement()(body)
+    }
 
   def parseStartElement[A]()(body: ⇒ A): A = {
     val result = body
@@ -96,12 +97,15 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
   }
 
   def parseStartElementAlternative[A](f: PartialFunction[String, A]): A = {
+    val name = peek.asStartElement.getName.toString
+    f.applyOrElse(name, { name: String ⇒ sys.error(s"Unexpected XML element <$name>") })
+  }
+
+  private def wrapException[A](f: ⇒ A): A = {
     val element = peek.asStartElement()
-    def errorSuffix = s"at ${locationToString(element.getLocation)}"
-    val name = element.getName.toString
-    try f.applyOrElse(name, { name: String ⇒ sys.error(s"Unexpected XML element <$name>, $errorSuffix") })
+    try f
     catch {
-      case x: Exception ⇒ throw new WrappedException(s"Error in XML element <$name>: $x - $errorSuffix", x)
+      case x: Exception ⇒ throw new XmlException(element.getName.toString, element.getLocation, x)
     }
   }
 
@@ -124,9 +128,7 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
 //  private def parseElementInto(result: Result): Unit =
 //  Liest bis zum Stream-Ende statt nur bis zum Endetag:  transformerFactory.newTransformer().transform(new StAXSource(xmlEventReader), result)
 
-  def requireStartElement(name: String) = {
-    require(peek.asStartElement.getName.getLocalPart == name)
-  }
+  def requireStartElement(name: String) = require(peek.asStartElement.getName.getLocalPart == name)
 
   def eatText() = {
     val result = new StringBuilder
@@ -209,9 +211,6 @@ object ScalaXMLEventReader {
     def accept(e: XMLEvent) = cond(e) { case e: Characters ⇒ !e.isWhiteSpace }
   }
 
-  private def locationToString(o: Location) =
-    (Option(o.getSystemId) ++ Option(o.getPublicId)).flatten.mkString(":") + ":" + o.getLineNumber +":" + o.getColumnNumber
-
   final class SimpleAttributeMap private[xmls](pairs: TraversableOnce[(String, String)]) extends mutable.HashMap[String, String] {
     this ++= pairs
     private val readAttributes = mutable.HashSet[String]()
@@ -284,11 +283,34 @@ object ScalaXMLEventReader {
     override def getMessage = s"Unknown XML attributes " + (names map { "'"+ _ +"'" } mkString ", ")
   }
 
-  final class WrappedException(override val getMessage: String, override val getCause: Exception) extends RuntimeException {
-    override def toString = s"In XML: $getMessage - $getCause"
+  final class XmlException(elementName: String, location: Location, override val getCause: Exception) extends RuntimeException {
+
+    override def toString = s"XmlException: $getMessage"
+    override def getMessage = s"$nonWrappedCauseString - In $text"
+
+    private def nonWrappedCauseString = nonWrappedCause.toString stripPrefix "java.lang.RuntimeException: "
+
+    @tailrec
+    def nonWrappedCause: Throwable = getCause match {
+      case cause: XmlException ⇒ cause.nonWrappedCause
+      case cause ⇒ cause
+    }
+
+    private def text: String =
+      s"<$elementName> (${locationToString(location)})" + (
+        getCause match {
+          case cause: XmlException ⇒ " " + cause.text
+          case _ ⇒ ""
+        })
   }
-  
-  object WrappedException {
-    def unapply(o: WrappedException) = Some(o.getCause)
+
+  object XmlException {
+    def unapply(o: XmlException) = o.getCause match {
+      case cause: XmlException ⇒ Some(cause.nonWrappedCause)
+      case cause ⇒ Some(cause)
+    }
   }
+
+  private def locationToString(o: Location) =
+    (Option(o.getSystemId) ++ Option(o.getPublicId)).flatten.mkString(":") + ":" + o.getLineNumber + ":" + o.getColumnNumber
 }
