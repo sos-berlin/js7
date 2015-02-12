@@ -4,7 +4,7 @@ import java.util.concurrent.Callable
 
 trait ShortTermCall[A] extends TimedCall[A] {
   final def epochMillis =
-    TimedCall.shortTermMillis
+    TimedCall.ShortTermMillis
 }
 
 object ShortTermCall {

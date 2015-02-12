@@ -29,7 +29,7 @@ final class StandardCallQueueTest extends FunSuite with OneInstancePerTest {
 
   test("add(short_term, TimedCall)") {
     var a = 0
-    val call = TimedCall(TimedCall.shortTerm) { a += 1 }
+    val call = TimedCall(TimedCall.ShortTerm) { a += 1 }
     callQueue add call
     val c = callQueue.popMature().get
     c should be theSameInstanceAs call

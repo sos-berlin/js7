@@ -1,12 +1,12 @@
 package com.sos.scheduler.engine.common.async
 
-import com.sos.scheduler.engine.common.async.FutureCompletion.{futureCall, futureTimedCall, callFuture}
+import com.sos.scheduler.engine.common.async.FutureCompletion.{callFuture, futureCall, futureTimedCall}
 import com.sos.scheduler.engine.common.time.ScalaJoda._
 import org.joda.time.Instant.now
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.{FreeSpec, OneInstancePerTest, FunSuite}
+import org.scalatest.{FreeSpec, OneInstancePerTest}
 import scala.util.Success
 
 @RunWith(classOf[JUnitRunner])
@@ -46,6 +46,13 @@ final class FutureCompletionTest extends FreeSpec with OneInstancePerTest {
     dispatcher.executeMatureCalls()
     future.isCompleted shouldBe true
     intercept[TestException] { future.value.get.get }
+  }
+
+  "futureTimedCall.future toString" in {
+    var called = false
+    val call = futureTimedCall(now() + 500.ms) { called = true }
+    call.toString should startWith ("TimedCall")
+    assert(!called)
   }
 
   "ShortTermCall Success" in {

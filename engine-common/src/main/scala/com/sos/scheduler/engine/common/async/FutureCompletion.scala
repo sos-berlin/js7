@@ -20,25 +20,31 @@ trait FutureCompletion[A] {
 object FutureCompletion {
   type FutureCall[A] = TimedCall[A] with FutureCompletion[A]
 
-  /** Future, der f als TimedCall in callQueue ausführt. */
-  def callFuture[A](f: => A)(implicit callQueue: CallQueue): Future[A] =
-    timedCallFuture(TimedCall.shortTerm)(f)(callQueue)
+  /** Future, die f als TimedCall in callQueue ausführt. */
+  def callFuture[A](f: ⇒ A)(implicit callQueue: CallQueue): Future[A] =
+    timedCallFuture(TimedCall.ShortTerm)(f)(callQueue)
 
-  /** Future, der f als TimedCall in callQueue ausführt. */
-  def timedCallFuture[A](at: Instant)(f: => A)(implicit callQueue: CallQueue): Future[A] = {
+  /** Future, die f als TimedCall in callQueue ausführt. */
+  def timedCallFuture[A](at: Instant)(f: ⇒ A)(implicit callQueue: CallQueue): Future[A] = {
     val call = futureTimedCall(at)(f)
     callQueue add call
     call.future
   }
 
   /** TimedCall als Future, nicht in eine [[CallQueue]] eingehängt. */
-  def futureCall[A](f: => A): FutureCall[A] =
-    futureTimedCall(TimedCall.shortTerm)(f)
+  def futureCall[A](body: ⇒ A): FutureCall[A] =
+    futureTimedCall(TimedCall.ShortTerm)(body)
 
   /** TimedCall als Future, nicht in eine [[CallQueue]] eingehängt. */
-  def futureTimedCall[A](at: Instant)(f: => A): FutureCall[A] =
+  def futureTimedCall[A](at: Instant)(body: ⇒ A): FutureCall[A] =
+    functionToFutureTimedCall[A](at, () ⇒ body)
+
+  def functionToFutureTimedCall[A](at: Instant, function: () ⇒ A): FutureCall[A] =
     new TimedCall[A] with FutureCompletion[A] {
       def epochMillis = at.getMillis
-      def call(): A = f
+
+      def call(): A = function()
+
+      override def toStringPrefix = s"${function.getClass.getName} ${function.toString()}"
     }
 }

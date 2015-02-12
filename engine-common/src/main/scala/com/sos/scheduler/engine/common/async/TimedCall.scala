@@ -14,8 +14,7 @@ trait TimedCall[A] extends Callable[A] {
 
   def call(): A
 
-  final def instant =
-    new Instant(epochMillis)
+  final def instant = new Instant(epochMillis)
 
   private[async] final def onApply(): Unit = {
     logger.trace(s"Calling $toString")
@@ -28,7 +27,7 @@ trait TimedCall[A] extends Callable[A] {
 
   private[async] final def onCancel(): Unit = {
     logger.debug(s"Cancel $toString")
-    callOnComplete(Failure(CancelledException()))
+    callOnComplete(Failure(new CancelledException(s"TimedCall cancelled: '$toString'")))
   }
 
   private def callOnComplete(o: Try[A]): Unit = {
@@ -46,25 +45,24 @@ trait TimedCall[A] extends Callable[A] {
 
   override def toString = {
     val s = Seq(
-      Some(Try(toStringPrefix) getOrElse "toString error"),
-        Some(s"at=$atString") filter { _ => epochMillis != shortTermMillis })
-        .flatten mkString " "
+      Some(Try(toStringPrefix) getOrElse "toStringPrefix error"),
+      Some(s"at=$atString") filter { _ => epochMillis != ShortTermMillis })
+      .flatten mkString " "
     s"TimedCall '$s'"
   }
 
   final def atString =
-    if (epochMillis == shortTermMillis) "short-term"
+    if (epochMillis == ShortTermMillis) "short-term"
     else ISODateTimeFormat.dateTime.print(epochMillis)
 
-  def toStringPrefix =
-    getClass.getSimpleName
+  def toStringPrefix = getClass.getSimpleName
 }
 
 object TimedCall {
   /** So bald wie möglich. */
-  private[async] val shortTermMillis = 0
+  private[async] val ShortTermMillis = 0
   /** So bald wie möglich. */
-  private[async] val shortTerm = new Instant(0)
+  private[async] val ShortTerm = new Instant(0)
   private val logger = Logger(getClass)
 
   def apply[A](at: Instant)(f: => A) = new TimedCall[A] {
@@ -72,5 +70,5 @@ object TimedCall {
     def call() = f
   }
 
-  final case class CancelledException protected[async]() extends RuntimeException
+  final class CancelledException protected[async](override val getMessage: String) extends RuntimeException
 }
