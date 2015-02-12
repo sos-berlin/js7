@@ -7,6 +7,12 @@ object ScalaUtils {
 
   def implicitClass[A : ClassTag]: Class[A] = implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
 
+  def withToString[R](lazyString: ⇒ String)(body: ⇒ R): () ⇒ R =
+    new (() ⇒ R) {
+      def apply() = body
+      override def toString() = lazyString
+    }
+
   object implicits {
     implicit class ToStringFunction1[A, R](val delegate: A ⇒ R) {
       def withToString(string: String) = new (A ⇒ R) {
