@@ -15,6 +15,7 @@ final class OrderCommandTest extends FreeSpec {
   "OrderCommand" in {
     val orderKey = JobChainPath("/JOBCHAIN") orderKey "ID"
     OrderCommand(orderKey).xmlElem shouldEqual <order job_chain="/JOBCHAIN" id="ID"/>
+    OrderCommand(orderKey, suspended = Some(true)).xmlElem shouldEqual <order job_chain="/JOBCHAIN" id="ID" suspended="true"/>
     OrderCommand(orderKey, state = Some(OrderState("STATE"))).xmlElem shouldEqual <order job_chain="/JOBCHAIN" id="ID" state="STATE"/>
     OrderCommand(orderKey, title= Some("TITLE")).xmlElem shouldEqual <order job_chain="/JOBCHAIN" id="ID" title="TITLE"/>
     OrderCommand(orderKey, parameters = Map("a" -> "1", "b" -> "2")).xmlElem shouldEqual
