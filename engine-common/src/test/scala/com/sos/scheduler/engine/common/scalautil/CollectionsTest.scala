@@ -8,6 +8,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
+import scala.collection.immutable
 
 @RunWith(classOf[JUnitRunner])
 final class CollectionsTest extends FreeSpec {
@@ -77,8 +78,21 @@ final class CollectionsTest extends FreeSpec {
     emptyToNone(a) shouldEqual Some(a)
   }
 
+  "java.util.stream.Stream.toImmutableSeq" in {
+    java.util.stream.Stream.of(1, 2, 3).toImmutableSeq shouldEqual List(1, 2, 3)
+  }
+
+  "java.util.stream.Stream.toVector" in {
+    java.util.stream.Stream.of(1, 2, 3).toVector shouldEqual Vector(1, 2, 3)
+  }
+
   "java.util.stream.Stream.toSet" in {
     java.util.stream.Stream.of(1, 2, 2, 3).toSet shouldEqual Set(1, 2, 3)
+  }
+
+  "java.util.stream.Stream.toIterator" in {
+    for ((a, b) ← java.util.stream.Stream.of(1, 2, 3).toIterator zip Iterator(1, 2, 3))
+      assert(a == b)
   }
 
   "uniqueToMap" in {

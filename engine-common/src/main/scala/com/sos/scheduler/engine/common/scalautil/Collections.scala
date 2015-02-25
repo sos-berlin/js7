@@ -71,9 +71,11 @@ object Collections {
       }
     }
 
-    implicit class JavaToScalaStream[A](val delegate: java.util.stream.Stream[A]) extends AnyVal {
+    implicit class RichJavaStream[A](val delegate: java.util.stream.Stream[A]) extends AnyVal {
+      def toImmutableSeq: immutable.Seq[A] = toVector
       def toVector: Vector[A] = Vector() ++ delegate.iterator
       def toSet: Set[A] = Set() ++ delegate.iterator
+      def toIterator: Iterator[A] = delegate.iterator
     }
   }
 
