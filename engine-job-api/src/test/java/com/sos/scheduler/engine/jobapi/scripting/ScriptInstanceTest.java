@@ -1,16 +1,11 @@
 package com.sos.scheduler.engine.jobapi.scripting;
 
-import com.google.common.base.Charsets;
-import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.io.Resources;
-import java.io.IOException;
+import com.sos.scheduler.engine.common.utils.JavaResource;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 
-import static com.google.common.base.Throwables.propagate;
-import static com.google.common.io.Resources.getResource;
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -18,8 +13,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public final class ScriptInstanceTest {
-    private static final String javaScriptResourcePath = "com/sos/scheduler/engine/jobapi/scripting/test.js";
-    private static final String groovyResourcePath = "com/sos/scheduler/engine/jobapi/scripting/test.groovy";
+    private static final JavaResource javaScriptResource = JavaResource.apply("com/sos/scheduler/engine/jobapi/scripting/test.js");
+    private static final JavaResource groovyResource = JavaResource.apply("com/sos/scheduler/engine/jobapi/scripting/test.groovy");
     private static final ImmutableMap<String, Object> emptyBindings = ImmutableMap.of();
 
     private final JavaScriptLogger scriptLogger = new JavaScriptLogger();
@@ -101,14 +96,14 @@ public final class ScriptInstanceTest {
      * The script contains some funtions called by the call method. */
     @Test
 	public void groovyScriptFromFile() throws Exception {
-        runScript("groovy", resourceString(groovyResourcePath));
+        runScript("groovy", groovyResource.asUTF8String());
 	}
 
     /** Executes a simple java script.
      * Calls a java script and gives them some objects via the addObject method. */
     @Test
     public void javaScriptFromFile() throws Exception {
-        runScript("javascript", resourceString(javaScriptResourcePath));
+        runScript("javascript", javaScriptResource.asUTF8String());
     }
 
     private void runScript(String language, String script) throws Exception {
@@ -126,25 +121,15 @@ public final class ScriptInstanceTest {
                 scriptLogger.lines);
     }
 
-    private static String resourceString(String path) {
-        try {
-            return Resources.toString(getResource(path), Charsets.UTF_8);
-        } catch (IOException e) { throw propagate(e); }
-    }
-
     private TestExecutor newExecutor(ImmutableMap<String, Object> bindings, String language, String script) {
         final ImmutableMap<String, Object> completeBindings = new ImmutableMap.Builder<String,Object>()
                 .put("spooler_log", scriptLogger)
                 .putAll(bindings).build();
-        JobScriptInstanceAdapter adapter = new JobScriptInstanceAdapter(language, new Supplier<ImmutableMap<String, Object>>() {
-            @Override public ImmutableMap<String, Object> get() {
-                return completeBindings;
-            }}, script);
-        return new TestExecutor(adapter);
+        return new TestExecutor(new JobScriptInstanceAdapter(language, () -> completeBindings, script));
     }
 
     public static class JavaScriptLogger {
-        private final List<String> lines = new ArrayList<String>();
+        private final List<String> lines = new ArrayList<>();
 
         public final void info(String line) {
             lines.add(line);
