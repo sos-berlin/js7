@@ -15,6 +15,11 @@ final class JavaResourceTest extends FreeSpec {
   private val path = "com/sos/scheduler/engine/common/utils/test.txt"
   private val nonExistentPath = "com/sos/scheduler/engine/common/utils/non-existent"
 
+  "simpleName" in {
+    JavaResource(path).simpleName shouldEqual "test.txt"
+    JavaResource(nonExistentPath).simpleName shouldEqual "non-existent"
+  }
+
   "path" in {
     JavaResource(path).path shouldEqual path
     JavaResource(nonExistentPath).path shouldEqual nonExistentPath
