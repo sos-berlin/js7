@@ -230,15 +230,17 @@ object ScalaXMLEventReader {
       super.apply(o)
     }
 
-    override def get(o: String): Option[String] = {
-      readAttributes += o
-      super.get(o)
+    override def get(name: String): Option[String] = {
+      readAttributes += name
+      super.get(name)
     }
 
-    override def default(o: String) = throw new NoSuchElementException(s"XML attribute '$o' is required")
+    override def default(name: String) = throw new NoSuchElementException(s"XML attribute '$name' is required")
 
-    /** Marks all attribute as read, so that requireAllAttributesRead does not fail. */
-    def ignoreUnread(): Unit = keys foreach apply
+    def ignore(name: String): Unit = readAttributes += name
+
+    /** Marks all attributes as read, so that requireAllAttributesRead does not fail. */
+    def ignoreUnread(): Unit = readAttributes ++= keys
 
     def requireAllAttributesRead(): Unit = {
       val names = keySet -- readAttributes
