@@ -15,7 +15,6 @@ import scala.PartialFunction._
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 import scala.reflect.ClassTag
-import scala.util.control.NonFatal
 
 final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable {
 
@@ -215,15 +214,6 @@ object ScalaXMLEventReader {
     this ++= pairs
     private val readAttributes = mutable.HashSet[String]()
     readAttributes.sizeHint(size)
-
-    def asConverted[A](name: String)(convert: String ⇒ A): A =
-      getAsConverted(name)(convert) getOrElse { throw new NoSuchElementException(s"XML attribute '$name' expected") }
-
-    def getAsConverted[A](name: String)(convert: String ⇒ A): Option[A] =
-      get(name) map {
-        try convert
-        catch { case NonFatal(t) ⇒ throw new IllegalArgumentException(s"XML attribute '$name': $t", t) }
-      }
 
     override def apply(o: String): String = {
       readAttributes += o

@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReaderTest._
@@ -82,12 +83,12 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
     parseString(<X int="1" empty="" wrong="xx"/>.toString()) { eventReader ⇒
       import eventReader._
       parseElement("X") {
-        assertResult(Some(1)) { attributeMap.getAsConverted("int") { _.toInt } }
-        assertResult(1) { attributeMap.asConverted("int") { _.toInt } }
-        assertResult(None) { attributeMap.getAsConverted("missing") { _.toInt } }
-        intercept[NoSuchElementException] { attributeMap.asConverted("missing") { _.toInt } }
-        intercept[IllegalArgumentException] { attributeMap.getAsConverted("empty") { _.toInt } }
-        intercept[IllegalArgumentException] { attributeMap.getAsConverted("wrong") { _.toInt } }
+        assertResult(Some(1)) { attributeMap.getConverted("int") { _.toInt } }
+        assertResult(1) { attributeMap.convert("int") { _.toInt } }
+        assertResult(None) { attributeMap.getConverted("missing") { _.toInt } }
+        intercept[NoSuchElementException] { attributeMap.convert("missing") { _.toInt } }
+        intercept[IllegalArgumentException] { attributeMap.getConverted("empty") { _.toInt } }
+        intercept[IllegalArgumentException] { attributeMap.getConverted("wrong") { _.toInt } }
       }
     }
   }

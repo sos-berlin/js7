@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.common.scalautil
 import javax.annotation.Nullable
 import scala.collection.JavaConversions._
 import scala.collection.{TraversableLike, immutable, mutable}
+import scala.util.control.NonFatal
 
 object Collections {
   object implicits {
@@ -62,6 +63,22 @@ object Collections {
 
       def toSeqMultiMap: Map[A, immutable.Seq[B]] =
         delegate groupBy { _._1 } map { case (k, v) ⇒ k → (v map { _._2 }).toImmutableSeq }
+    }
+
+    implicit class ConvertingPF[K, V](val delegate: PartialFunction[K, V]) extends AnyVal {
+      /**
+       * @throws IllegalArgumentException with 'key', wrapping the exception of `delegate`
+       */
+      def convert[A](key: K)(f: V ⇒ A): A = handleException[A](key, f, delegate(key))
+
+      /**
+       * @throws IllegalArgumentException with 'key', wrapping the exception of `delegate`
+       */
+      def getConverted[A](key: K)(f: V ⇒ A): Option[A] = delegate.lift(key) map { handleException[A](key, f, _) }
+
+      private def handleException[A](key: K, f: V ⇒ A, value: V): A =
+        try f(value)
+        catch { case NonFatal(t) ⇒ throw new IllegalArgumentException(s"Key '$key': $t", t) }
     }
 
     implicit class InsertableMutableMap[K, V](val delegate: mutable.Map[K, V]) extends AnyVal {
