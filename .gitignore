@@ -1,0 +1,20 @@
+# .gitignore
+
+# MAVEN
+/target/
+
+# ECLIPSE
+.classpath
+.project
+.scala_dependencies
+.settings/
+
+# INTELLIJ IDEA
+*.iml
+.idea/
+/out/
+/atlassian-ide-plugin.xml
+
+# DOUBLE-CHECK GENERATED FILES
+*.class
+*.jar
