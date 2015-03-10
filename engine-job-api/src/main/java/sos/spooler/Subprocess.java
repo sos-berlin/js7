@@ -21,7 +21,7 @@ public class Subprocess extends Idispatch implements HasBean<SubprocessBean>
     public void             start               ( String command_line )             {                com_call( "start", command_line ); }
 
     
-    public void             start               ( String filename_and_arguments[] ) {                com_call( "start", filename_and_arguments ); }
+    public void             start               ( String filename_and_arguments[] ) {                com_call( "start", (Object[])filename_and_arguments ); }
 
 
     @SchedulerGetter

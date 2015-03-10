@@ -16,11 +16,12 @@ package sos.spooler;
 
 public class Task extends Idispatch implements HasBean<TaskBean>
 {
-    private                 Task                ( long idispatch )                  { super(idispatch); }
-    
-  //public Object_set       object_set
+    public Task(Invoker invoker) {
+        super(invoker);
+    }
 
-    
+    private                 Task                ( long idispatch )                  { super(idispatch); }
+
     /*+ Liefert den {@link Job}, zu der die Task gehört. */
     @SchedulerGetter
     public Job              job                 ()                                  { return (Job)          com_call( "<job"                            ); }
@@ -264,7 +265,7 @@ public class Task extends Idispatch implements HasBean<TaskBean>
 
     public Subprocess       create_subprocess   ( String command_line )             { return (Subprocess)   com_call( "create_subprocess", command_line ); }
 
-    public Subprocess       create_subprocess   ( String filename_and_arguments[] ) { return (Subprocess)   com_call( "create_subprocess", filename_and_arguments ); }
+    public Subprocess       create_subprocess   ( String filename_and_arguments[] ) { return (Subprocess)   com_call( "create_subprocess", (Object[])filename_and_arguments ); }
 
     @SchedulerGetter
     public Web_service      web_service         ()                                  { return (Web_service)  com_call( "<web_service" ); }

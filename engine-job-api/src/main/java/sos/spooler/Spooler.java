@@ -14,6 +14,10 @@ public class Spooler extends Idispatch implements HasBean<SpoolerBean>
 {
     private                 Spooler             ( long idispatch )                  { super(idispatch); }
 
+    public Spooler(Invoker invoker) {
+        super(invoker);
+    }
+
     /*+ @return Wert der Kommandozeilenoption -id= beim Start des Schedulers */
     @SchedulerGetter
     public String           id                  ()                                  { return (String)       com_call( "<id"                             ); }

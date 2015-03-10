@@ -17,8 +17,11 @@ import java.io.File;
 
 public class Log extends Idispatch implements HasBean<LogBean>
 {
-    private                     Log                     ( long idispatch )                          { super(idispatch); }
+    public Log(Invoker invoker) {
+        super(invoker);
+    }
 
+    private                     Log                     ( long idispatch )                          { super(idispatch); }
 
     /*+ Eine Fehlermeldung (Gewicht 2). */
     public void                 error                   ( String line )                             { com_call( "error" , line ); }

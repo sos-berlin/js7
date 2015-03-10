@@ -18,6 +18,10 @@ package sos.spooler;
 
 public class Job extends Idispatch implements HasBean<JobBean>
 {
+    public Job(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Job                 ( long idispatch )                  { super(idispatch); }
     
     /*+ Erzeugt eine neue Task und reiht sie in die Task-Warteschlange ein.
