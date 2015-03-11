@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<job_chain xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.sos-berlin.com/repository/scheduler/1.7/scheduler.xsd">
+    <job_chain_node state="100" job="test"/>
+    <job_chain_node.end state="end"/>
+</job_chain>
