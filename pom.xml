@@ -15,13 +15,12 @@
 
     <modules>
         <module>engine-agent</module>
-        <module>engine-filewatcher</module>
-        <module>engine-taskserver</module>
-        <module>engine-minicom</module>
         <module>engine-cppjava</module>
         <module>engine-data</module>
+        <module>engine-filewatcher</module>
         <module>engine-common</module>
         <module>engine-job-api</module>
+        <module>engine-minicom</module>
         <module>engine-newkernel</module>
         <module>engine-persistence</module>
         <module>engine-test</module>
@@ -35,6 +34,7 @@
         <module>engine-playground</module>
         <module>engine-plugins</module>
         <module>engine-setup</module>
+        <module>engine-taskserver</module>
     </modules>
 
     <properties>
