@@ -1,20 +1,20 @@
 package com.sos.scheduler.engine.common.xml
 
-import java.nio.charset.StandardCharsets.UTF_8
 import com.google.common.base.MoreObjects.firstNonNull
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalaThreadLocal._
 import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.scheduler.engine.common.scalautil.StringWriters.writingString
-import com.sos.scheduler.engine.common.scalautil.xmls.{ScalaStax, SafeXML}
+import com.sos.scheduler.engine.common.scalautil.xmls.{SafeXML, ScalaStax}
 import com.sos.scheduler.engine.cplusplus.runtime.annotation.ForCpp
 import java.io._
 import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
 import javax.annotation.Nullable
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.OutputKeys._
 import javax.xml.transform.dom.DOMSource
-import javax.xml.transform.stream.{StreamSource, StreamResult}
+import javax.xml.transform.stream.{StreamResult, StreamSource}
 import javax.xml.transform.{Result, TransformerFactory}
 import javax.xml.xpath.{XPathConstants, XPathFactory}
 import org.w3c.dom.{Document, Element, Node, NodeList}
@@ -129,13 +129,18 @@ import scala.collection.immutable
     booleanOptionOf(value, default) getOrElse sys.error(s"Invalid Boolean value in <${xmlElement.getNodeName} $attributeName=${xmlQuoted(value)}>")
   }
 
-  private def booleanOptionOf(s: String, default: Boolean): Option[Boolean] = s match {
-    case "true" => Some(true)
-    case "false" => Some(false)
-    case "1" => Some(true)
-    case "0" => Some(false)
-    case _ if s.isEmpty => Some(default)
-    case _ => None
+  private def booleanOptionOf(s: String, default: Boolean): Option[Boolean] =
+    s match {
+      case "true" | "yes" | "1" ⇒ Some(true)
+      case "false" | "no" | "0" ⇒ Some(false)
+      case "" ⇒ Some(default)
+      case _ => None
+    }
+
+  def xmlStringToBoolean(o: String) = o match {
+    case "true" | "yes" | "1" ⇒ true
+    case "false" | "no" | "0" ⇒ false
+    case _ ⇒ throw new IllegalArgumentException(s"Boolean value expected instead of '$o'")
   }
 
   @ForCpp
