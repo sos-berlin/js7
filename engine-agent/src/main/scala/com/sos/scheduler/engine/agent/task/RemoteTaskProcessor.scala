@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.task
 
-import com.sos.scheduler.engine.agent.commands.{CloseRemoteTask, CloseRemoteTaskResponse, RemoteTaskCommand, Response, StartRemoteTask, StartRemoteTaskResponse}
+import com.sos.scheduler.engine.agent.commands.{CloseRemoteTask, CloseRemoteTaskResponse, RemoteTaskCommand, Response, StartRemoteDedicatedProcessTask, StartRemoteInProcessTask, StartRemoteTask, StartRemoteTaskResponse}
 import com.sos.scheduler.engine.agent.task.RemoteTaskProcessor._
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import com.sos.scheduler.engine.data.agent.RemoteTaskId
@@ -14,7 +14,7 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 @Singleton
-final class RemoteTaskProcessor @Inject private(newRemoteTaskId: () ⇒ RemoteTaskId, newRemoteTask: TaskStartArguments ⇒ RemoteTask) {
+final class RemoteTaskProcessor @Inject private(newRemoteTaskId: () ⇒ RemoteTaskId, newRemoteTask: RemoteTaskFactoryArguments ⇒ RemoteTask) {
 
   private val taskRegister = new ScalaConcurrentHashMap[RemoteTaskId, RemoteTask] {
     override def default(id: RemoteTaskId) = throwUnknownTask(id)
@@ -22,15 +22,10 @@ final class RemoteTaskProcessor @Inject private(newRemoteTaskId: () ⇒ RemoteTa
 
   def executeCommand(command: RemoteTaskCommand) = Future[Response] {
     command match {
-      case StartRemoteTask(controllerAddress, usesApi, javaOptions, javaClasspath) ⇒
+      case command: StartRemoteTask ⇒
         val remoteTaskId = newRemoteTaskId()
-        val startArguments = TaskStartArguments(
-          remoteTaskId,
-          controllerAddress = controllerAddress,
-          usesApi = usesApi,
-          javaOptions = javaOptions,
-          javaClasspath = javaClasspath)
-        val task = newRemoteTask(startArguments)
+        val launchArguments = toTaskFactoryArguments(command, remoteTaskId)
+        val task = newRemoteTask(launchArguments)
         assert(task.id == remoteTaskId)
         taskRegister += task.id → task
         task.start()
@@ -47,6 +42,14 @@ final class RemoteTaskProcessor @Inject private(newRemoteTaskId: () ⇒ RemoteTa
 
 private object RemoteTaskProcessor {
   private val logger = Logger(getClass)
+
+  private def toTaskFactoryArguments(command: StartRemoteTask, remoteTaskId: RemoteTaskId): RemoteTaskFactoryArguments = {
+    val startArguments = TaskStartArguments(remoteTaskId, controllerAddress = command.controllerAddress)
+    command match {
+      case _: StartRemoteInProcessTask ⇒ InProcessRemoteTaskFactoryArguments(startArguments)
+      case o: StartRemoteDedicatedProcessTask ⇒ DedicatedProcessRemoteTaskFactoryArguments(javaOptions = o.javaOptions, javaClasspath = o.javaClasspath, startArguments)
+    }
+  }
 
   private def tryKillTask(task: RemoteTask) =
     try task.kill()

@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{CloseRemoteTask, StartRemoteTask}
+import com.sos.scheduler.engine.agent.commands.{CloseRemoteTask, StartRemoteDedicatedProcessTask, StartRemoteInProcessTask}
 import com.sos.scheduler.engine.data.agent.RemoteTaskId
-import java.net.{InetAddress, InetSocketAddress}
+import java.net.InetAddress
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -13,14 +13,14 @@ import org.scalatest.junit.JUnitRunner
  */
 @RunWith(classOf[JUnitRunner])
 final class CommandXmlTest extends FreeSpec {
-  private val IP = InetAddress.getByName("127.0.0.1")
+  private val IP = "127.0.0.1"
 
   "StartRemoteTask" in {
     intercept[Exception] { parse(<remote_scheduler.start_remote_task/>) }
-    parse(<remote_scheduler.start_remote_task tcp_port="999"/>) shouldEqual
-      StartRemoteTask(controllerAddress = new InetSocketAddress(IP, 999), usesApi = true, javaOptions = "", javaClassPath = "")
-    parse(<remote_scheduler.start_remote_task tcp_port="999" kind="process" java_options="OPTIONS" java_classpath="CLASSPATH"/>) shouldEqual
-      StartRemoteTask(controllerAddress = new InetSocketAddress(IP, 999), usesApi = false, javaOptions = "OPTIONS", javaClassPath = "CLASSPATH")
+    parse(<remote_scheduler.start_remote_task tcp_port="999" java_options="OPTIONS" java_classpath="CLASSPATH"/>) shouldEqual
+      StartRemoteDedicatedProcessTask(controllerAddress = s"$IP:999", javaOptions = "OPTIONS", javaClasspath = "CLASSPATH")
+    parse(<remote_scheduler.start_remote_task tcp_port="999" kind="process"/>) shouldEqual
+      StartRemoteInProcessTask(controllerAddress = s"$IP:999")
     intercept[Exception] { parse(<remote_scheduler.start_remote_task tcp_port="-1"/>) }
     intercept[Exception] { parse(<remote_scheduler.start_remote_task tcp_port="0"/>) }
     intercept[Exception] { parse(<remote_scheduler.start_remote_task tcp_port="65536"/>) }
@@ -35,5 +35,5 @@ final class CommandXmlTest extends FreeSpec {
       CloseRemoteTask(RemoteTaskId(111222333444555666L), kill = true)
   }
 
-  private def parse(elem: xml.Elem) = CommandXml.parseString(IP, elem.toString())
+  private def parse(elem: xml.Elem) = CommandXml.parseString(InetAddress.getByName(IP), elem.toString())
 }

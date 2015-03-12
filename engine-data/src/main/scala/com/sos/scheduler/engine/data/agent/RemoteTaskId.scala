@@ -1,18 +1,20 @@
 package com.sos.scheduler.engine.data.agent
 
-import com.sos.scheduler.engine.data.agent.RemoteTaskId._
+import com.sos.scheduler.engine.data.base.GenericLong
 import java.util.concurrent.ThreadLocalRandom
 import scala.math.abs
 
 /**
  * @author Joacim Zschimmer
  */
-final case class RemoteTaskId(value: Long) {
+final case class RemoteTaskId(value: Long) extends GenericLong {
+  import com.sos.scheduler.engine.data.agent.RemoteTaskId._
   def string = value.toString
   def index = value / Factor
 }
 
-object RemoteTaskId {
+object RemoteTaskId extends GenericLong.HasJsonFormat[RemoteTaskId] {
+
   private val Factor = 1000*1000*1000L
   private val MaxIndex = Int.MaxValue
 

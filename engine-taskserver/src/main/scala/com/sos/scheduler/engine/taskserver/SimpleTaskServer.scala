@@ -16,7 +16,7 @@ import scala.concurrent.duration.Duration
  */
 final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskServer with HasCloser {
 
-  private val controllingScheduler = new TcpConnection(startArguments.controllerAddress).closeWithCloser
+  private val controllingScheduler = new TcpConnection(startArguments.controllerInetSocketAddress).closeWithCloser
   private val remoting = new Remoting(controllingScheduler, IDispatchFactories, ProxyIDispatchFactories)
 
   private val terminatedPromise = Promise[Unit]()

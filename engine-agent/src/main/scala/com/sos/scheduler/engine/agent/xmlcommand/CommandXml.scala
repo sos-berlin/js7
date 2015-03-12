@@ -9,7 +9,7 @@ import java.net.InetAddress
  */
 object CommandXml {
   def parseString(clientIPAddress: InetAddress, commandString: String): Command =
-    ScalaXMLEventReader.parseString(commandString)(CommandXml.parseXml(clientIPAddress))
+    ScalaXMLEventReader.parseString(commandString)(parseXml(clientIPAddress))
 
   private def parseXml(clientIPAddress: InetAddress)(eventReader: ScalaXMLEventReader): Command = {
     import eventReader._

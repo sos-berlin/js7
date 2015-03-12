@@ -1,12 +1,10 @@
 package com.sos.scheduler.engine.agent.task
 
 import com.google.inject.{AbstractModule, Guice, Provides}
-import com.sos.scheduler.engine.agent.commands.{CloseRemoteTask, CloseRemoteTaskResponse, StartRemoteTask, StartRemoteTaskResponse}
+import com.sos.scheduler.engine.agent.commands.{CloseRemoteTask, CloseRemoteTaskResponse, StartRemoteDedicatedProcessTask, StartRemoteTaskResponse}
 import com.sos.scheduler.engine.agent.task.RemoteTaskProcessorTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.data.agent.RemoteTaskId
-import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
-import java.net.InetSocketAddress
 import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.mockito.Mockito._
@@ -30,7 +28,7 @@ final class RemoteTaskProcessorTest extends FreeSpec {
   private lazy val remoteTaskHandler = Guice.createInjector(new TestModule(remoteTasks)).apply[RemoteTaskProcessor]
 
   "StartRemoteTask" in {
-    val command = StartRemoteTask(new InetSocketAddress("127.0.0.1", 9999), usesApi = false, javaOptions = JavaOptions, javaClassPath = JavaClasspath)
+    val command = StartRemoteDedicatedProcessTask(controllerAddress = "127.0.0.1:9999", javaOptions = JavaOptions, javaClasspath = JavaClasspath)
     for (nextRemoteTaskId ← RemoteTaskIds) {
       val response = Await.result(remoteTaskHandler.executeCommand(command), 1.seconds)
       inside(response) { case StartRemoteTaskResponse(id) ⇒ id shouldEqual nextRemoteTaskId }
@@ -71,12 +69,15 @@ private object RemoteTaskProcessorTest {
     def configure() = {}
 
     @Provides @Singleton
-    private def newRemoteTask: TaskStartArguments ⇒ RemoteTask = { conf: TaskStartArguments ⇒
-      conf.javaOptions shouldEqual JavaOptions
-      conf.javaClasspath shouldEqual JavaClasspath
+    private def newRemoteTask: RemoteTaskFactoryArguments ⇒ RemoteTask = { conf: RemoteTaskFactoryArguments ⇒
+      inside(conf) {
+        case conf: DedicatedProcessRemoteTaskFactoryArguments ⇒
+          conf.javaOptions shouldEqual JavaOptions
+          conf.javaClasspath shouldEqual JavaClasspath
+      }
       val remoteTask = remoteTaskIterator.synchronized { remoteTaskIterator.next() }
       verifyNoMoreInteractions(remoteTask)
-      when(remoteTask.id) thenReturn conf.remoteTaskId
+      when(remoteTask.id) thenReturn conf.startArguments.remoteTaskId
       remoteTask
     }
 

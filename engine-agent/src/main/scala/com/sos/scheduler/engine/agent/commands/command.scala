@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.agent.commands
 
 import com.sos.scheduler.engine.data.agent.RemoteTaskId
-import java.net.{InetSocketAddress, InetAddress}
 
 /**
  * @author Joacim Zschimmer
@@ -21,12 +20,15 @@ sealed trait Response
 trait RemoteTaskCommand extends Command
 
 
-final case class StartRemoteTask(
-  controllerAddress: InetSocketAddress,
-  usesApi: Boolean,
-  javaOptions: String = "",
-  javaClassPath: String = "")
-extends RemoteTaskCommand
+trait StartRemoteTask extends RemoteTaskCommand {
+  val controllerAddress: String
+}
+
+final case class StartRemoteInProcessTask(controllerAddress: String)
+extends StartRemoteTask
+
+final case class StartRemoteDedicatedProcessTask(controllerAddress: String, javaOptions: String, javaClasspath: String)
+extends StartRemoteTask
 
 
 /**

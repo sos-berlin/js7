@@ -1,19 +1,12 @@
 package com.sos.scheduler.engine.agent.task
 
-import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
-
 /**
  * @author Joacim Zschimmer
  */
-object RemoteTaskFactory {
+object RemoteTaskFactory extends (RemoteTaskFactoryArguments ⇒ RemoteTask) {
 
-  def apply(startArguments: TaskStartArguments): RemoteTask = {
-    if (startArguments.usesApi) {
-      throw new UnsupportedOperationException("Remote API tasks are not yet implemented")
-      //          val task = new DedicatedProcessRemoteTask(remoteTaskId, startConfiguration)
-      //          task.start()
-      // Prozess starten (java -classpath ... -controller=x.x.x.x/nnn)
-    } else
-      new InProcessRemoteTask(startArguments)
+  def apply(arguments: RemoteTaskFactoryArguments): RemoteTask = arguments match {
+    case InProcessRemoteTaskFactoryArguments(args) ⇒ new InProcessRemoteTask(args)
+    case o: DedicatedProcessRemoteTaskFactoryArguments ⇒ new DedicatedProcessRemoteTask(o)
   }
 }
