@@ -15,10 +15,10 @@ object CommandXml {
     import eventReader._
     parseStartElementAlternative[Command] {
       case "remote_scheduler.start_remote_task" ⇒
-        StartRemoteTaskXml.parseXml(clientIPAddress, eventReader)
+        StartProcessXml.parseXml(clientIPAddress, eventReader)
 
       case "remote_scheduler.remote_task.close" ⇒
-        CloseRemoteTaskXml.parseCommandXml(eventReader)
+        CloseProcessXml.parseCommandXml(eventReader)
     }
   }
 }

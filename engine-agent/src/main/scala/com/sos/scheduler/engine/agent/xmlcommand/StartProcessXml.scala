@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{StartRemoteDedicatedProcessTask, StartRemoteInProcessTask, StartRemoteTask, StartRemoteTaskResponse}
+import com.sos.scheduler.engine.agent.commands.{StartDedicatedProcess, StartProcess, StartProcessResponse, StartThread}
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
@@ -10,9 +10,9 @@ import org.scalactic.Requirements._
 /**
  * @author Joacim Zschimmer
  */
-object StartRemoteTaskXml {
+object StartProcessXml {
 
-  def parseXml(inetAddress: InetAddress, eventReader: ScalaXMLEventReader): StartRemoteTask = {
+  def parseXml(inetAddress: InetAddress, eventReader: ScalaXMLEventReader): StartProcess = {
     import eventReader._
     parseElement() {
       val host: String = inetAddress.getHostAddress
@@ -27,14 +27,14 @@ object StartRemoteTaskXml {
       if (kindProcess) {
         attributeMap.ignore("java_options")
         attributeMap.ignore("java_classpath")
-        StartRemoteInProcessTask(controllerAddress = controller)
+        StartThread(controllerAddress = controller)
       } else
-        StartRemoteDedicatedProcessTask(
+        StartDedicatedProcess(
           controllerAddress = controller,
           javaOptions = attributeMap.getOrElse("java_options", ""),
           javaClasspath = attributeMap.getOrElse("java_classpath", ""))
     }
   }
 
-  def responseToXmlElem(response: StartRemoteTaskResponse): xml.Elem = <process process_id={response.remoteTaskId.value.toString}/>
+  def responseToXmlElem(response: StartProcessResponse): xml.Elem = <process process_id={response.processId.value.toString}/>
 }

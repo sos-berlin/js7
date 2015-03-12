@@ -4,10 +4,10 @@ import akka.actor.ActorSystem
 import com.google.common.io.Closer
 import com.google.inject.Provides
 import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
-import com.sos.scheduler.engine.agent.task.{RemoteTask, RemoteTaskFactory, RemoteTaskFactoryArguments}
+import com.sos.scheduler.engine.agent.process.{AgentProcess, AgentProcessArguments, AgentProcessFactory}
 import com.sos.scheduler.engine.agent.{AgentCommandExecutor, AgentConfiguration, CommandExecutor}
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
-import com.sos.scheduler.engine.data.agent.RemoteTaskId
+import com.sos.scheduler.engine.data.agent.AgentProcessId
 import javax.inject.Singleton
 
 /**
@@ -25,8 +25,8 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
   }
 
   @Provides @Singleton
-  private def newRemoteTask: RemoteTaskFactoryArguments ⇒ RemoteTask = RemoteTaskFactory
+  private def newAgentProcess: AgentProcessArguments ⇒ AgentProcess = AgentProcessFactory
 
   @Provides @Singleton
-  private def newRemoteTaskId: () ⇒ RemoteTaskId = RemoteTaskId.newGenerator().next
+  private def newAgentProcessId: () ⇒ AgentProcessId = AgentProcessId.newGenerator().next
 }

@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{CloseRemoteTaskResponse, Command, Response, StartRemoteTaskResponse}
+import com.sos.scheduler.engine.agent.commands.{CloseProcessResponse, Command, Response, StartProcessResponse}
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor._
 import java.net.InetAddress
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -20,8 +20,8 @@ final class CommandXmlExecutor(executeCommand: Command ⇒ Future[Response]) {
       map { contentElem ⇒ <spooler><answer>{contentElem}</answer></spooler> })
 
   private def responseToXml(response: Response): xml.Elem = response match {
-    case o: StartRemoteTaskResponse ⇒ StartRemoteTaskXml.responseToXmlElem(o)
-    case CloseRemoteTaskResponse ⇒ CloseRemoteTaskXml.responseXmlElem
+    case o: StartProcessResponse ⇒ StartProcessXml.responseToXmlElem(o)
+    case CloseProcessResponse ⇒ CloseProcessXml.responseXmlElem
   }
 }
 

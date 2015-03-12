@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent
 
-import com.sos.scheduler.engine.agent.commands.{Command, RemoteTaskCommand, Response}
-import com.sos.scheduler.engine.agent.task.RemoteTaskProcessor
+import com.sos.scheduler.engine.agent.commands.{Command, ProcessCommand, Response}
+import com.sos.scheduler.engine.agent.process.ProcessCommandExecutor
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Future
 
@@ -10,12 +10,12 @@ import scala.concurrent.Future
  * @author Joacim Zschimmer
  */
 @Singleton
-final class AgentCommandExecutor @Inject private(remoteTaskHandler: RemoteTaskProcessor)
+final class AgentCommandExecutor @Inject private(processCommandExecutor: ProcessCommandExecutor)
 extends CommandExecutor {
 
   def executeCommand(command: Command): Future[Response] =
     command match {
-      case command: RemoteTaskCommand ⇒ remoteTaskHandler.executeCommand(command)
+      case command: ProcessCommand ⇒ processCommandExecutor.executeCommand(command)
       //case Terminate ⇒
     }
 }
