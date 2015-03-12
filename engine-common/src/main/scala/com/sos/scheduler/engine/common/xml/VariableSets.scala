@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.task.common
+package com.sos.scheduler.engine.common.xml
 
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
 import scala.xml.{TopScope, UnprefixedAttribute}
@@ -7,6 +7,8 @@ import scala.xml.{TopScope, UnprefixedAttribute}
  * @author Joacim Zschimmer
  */
 object VariableSets {
+
+  def toParamsXmlElem(variables: Iterable[(String, String)]) = toXmlElem(variables, "params", "param")
 
   def toXmlElem(
       variables: Iterable[(String, String)],
@@ -21,7 +23,7 @@ object VariableSets {
         scope = TopScope,
         minimizeEmpty = true)
     }
-    xml.Elem(prefix = null, label = elementName, attributes = xml.Null, scope = TopScope, minimizeEmpty = children.isEmpty, child = children.toSeq: _*)
+    xml.Elem(null: String, elementName, xml.Null, TopScope, children.isEmpty, children.toSeq: _*)
   }
 
   def parseXml(string: String, groupName: String = "", elementName: String = "variable"): Map[String, String] =

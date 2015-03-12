@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.task.common
+package com.sos.scheduler.engine.common.xml
 
-import com.sos.scheduler.engine.taskserver.task.common.VariableSets.{parseXml, toXmlElem}
+import com.sos.scheduler.engine.common.xml.VariableSets.{parseXml, toParamsXmlElem, toXmlElem}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -29,5 +29,10 @@ final class VariableSetsTest extends FreeSpec {
   "toXmlElem o parseXml" in {
     val m = Map("A" → "B", "b" → "b")
     assert(parseXml(toXmlElem(Map("A" → "B", "b" → "b")).toString()) == m)
+  }
+
+  "toParamsXmlElem" in {
+    assert(toParamsXmlElem(Map("A" → "a")) == <params><param name="A" value="a"/></params>)
+    assert(toParamsXmlElem(Map()) == <params/>)
   }
 }

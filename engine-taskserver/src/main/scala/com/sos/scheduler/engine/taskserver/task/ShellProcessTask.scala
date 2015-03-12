@@ -4,10 +4,10 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.HasCloser
+import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
-import com.sos.scheduler.engine.taskserver.task.common.VariableSets
 import com.sos.scheduler.engine.taskserver.task.process.{ShellProcess, ShellProcessStarter}
 import java.nio.charset.StandardCharsets._
 import java.nio.file.Files._

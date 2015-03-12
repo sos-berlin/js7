@@ -3,11 +3,11 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
+import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.minicom.types.{VariantArray, variant}
 import com.sos.scheduler.engine.taskserver.module.{Module, ModuleLanguage, Script}
 import com.sos.scheduler.engine.taskserver.task.TaskArguments._
-import com.sos.scheduler.engine.taskserver.task.common.VariableSets
 import scala.collection.{immutable, mutable}
 import scala.util.Sorting.stableSort
 

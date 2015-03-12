@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
+import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.minicom.idispatch.Invocable
 import com.sos.scheduler.engine.taskserver.spoolerapi.SpoolerTask._
-import com.sos.scheduler.engine.taskserver.task.common.VariableSets
 
 /**
  * @author Joacim Zschimmer
