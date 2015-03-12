@@ -20,6 +20,8 @@ import com.sos.scheduler.engine.kernel.order.Order
 import com.sos.scheduler.engine.test.EventBusTestFutures.implicits._
 import com.sos.scheduler.engine.test.SchedulerTestUtils._
 import com.sos.scheduler.engine.test.scalatest.ScalaSchedulerTest
+import java.nio.file.Files
+import java.nio.file.Files.createTempFile
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -112,9 +114,19 @@ final class AgentIT extends FreeSpec with ScalaSchedulerTest {
   "Multiple concurrent tasks" in {
     pending
   }
+
+  "Shell with monitor - crash of one monitor does not disturb the other task" in {
+    pending
+    val file = createTempFile("sos", ".tmp") withCloser Files.delete
+    toleratingErrorCodes(Set(MessageCode("SCHEDULER-202"), MessageCode("SCHEDULER-280"), MessageCode("WINSOCK-10054"))) {
+      val test = runJobFuture(JobPath("/no-crash"), variables = Map(SignalName → file.toString))
+      awaitSuccess(runJobFuture(JobPath("/crash"), variables = Map(SignalName → file.toString)).result).logString should include ("SCHEDULER-202")
+      awaitSuccess(test.result).logString should include ("SPOOLER_PROCESS_AFTER")
+    }
+  }
 }
 
-private object AgentIT {
+object AgentIT {
   private val TestJobchainPath = JobChainPath("/test")
   private val TestJobPath = JobPath("/test")
   private val TestResultCode = ResultCode(42)
@@ -126,6 +138,7 @@ private object AgentIT {
   private val SchedulerVariables = List(OrderVariable, OrderParamOverridesJobParam, JobParam)
   private val ScriptOutputRegex = "[^!]*!(.*)".r  // Our test script output start with '!'
   private val ChangedVariable = Variable("CHANGED", "CHANGED-VALUE")
+  val SignalName = "signalFile"
 
   private case class Variable(name: String, value: String) {
     override def toString = name
