@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.agent.task.{RemoteTask, RemoteTaskFactory}
 import com.sos.scheduler.engine.agent.{AgentCommandExecutor, AgentConfiguration, CommandExecutor}
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.data.agent.RemoteTaskId
-import com.sos.scheduler.engine.taskserver.task.StartConfiguration
+import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
 import javax.inject.Singleton
 
 /**
@@ -26,7 +26,7 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
   }
 
   @Provides @Singleton
-  private def newRemoteTask: StartConfiguration ⇒ RemoteTask = RemoteTaskFactory.apply
+  private def newRemoteTask: TaskStartArguments ⇒ RemoteTask = RemoteTaskFactory.apply
 
   @Provides @Singleton
   private def newRemoteTaskId: () ⇒ RemoteTaskId = RemoteTaskId.newGenerator().next

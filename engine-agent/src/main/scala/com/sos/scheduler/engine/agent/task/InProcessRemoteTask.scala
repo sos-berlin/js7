@@ -1,16 +1,16 @@
 package com.sos.scheduler.engine.agent.task
 
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer
-import com.sos.scheduler.engine.taskserver.task.StartConfiguration
+import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
 
 /**
  * @author Joacim Zschimmer
  */
-final class InProcessRemoteTask(val configuration: StartConfiguration) extends RemoteTask {
+final class InProcessRemoteTask(val startArguments: TaskStartArguments) extends RemoteTask {
 
-  def id = configuration.remoteTaskId
+  def id = startArguments.remoteTaskId
 
-  private val taskServer = new SimpleTaskServer(configuration)
+  private val taskServer = new SimpleTaskServer(startArguments)
   
   def start(): Unit = taskServer.start()
 

@@ -6,7 +6,7 @@ import java.net.InetSocketAddress
 /**
  * @author Joacim Zschimmer
  */
-final case class StartConfiguration(
+final case class TaskStartArguments(
   remoteTaskId: RemoteTaskId,
   controllerAddress: InetSocketAddress,
   usesApi: Boolean,

@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.agent.commands.{CloseRemoteTask, CloseRemoteTask
 import com.sos.scheduler.engine.agent.task.RemoteTaskProcessorTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.data.agent.RemoteTaskId
-import com.sos.scheduler.engine.taskserver.task.StartConfiguration
+import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
 import java.net.InetSocketAddress
 import javax.inject.Singleton
 import org.junit.runner.RunWith
@@ -71,7 +71,7 @@ private object RemoteTaskProcessorTest {
     def configure() = {}
 
     @Provides @Singleton
-    private def newRemoteTask: StartConfiguration ⇒ RemoteTask = { conf: StartConfiguration ⇒
+    private def newRemoteTask: TaskStartArguments ⇒ RemoteTask = { conf: TaskStartArguments ⇒
       conf.javaOptions shouldEqual JavaOptions
       conf.javaClasspath shouldEqual JavaClasspath
       val remoteTask = remoteTaskIterator.synchronized { remoteTaskIterator.next() }

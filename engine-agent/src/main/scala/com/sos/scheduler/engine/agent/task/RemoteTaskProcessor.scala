@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.agent.commands.{CloseRemoteTask, CloseRemoteTask
 import com.sos.scheduler.engine.agent.task.RemoteTaskProcessor._
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import com.sos.scheduler.engine.data.agent.RemoteTaskId
-import com.sos.scheduler.engine.taskserver.task.StartConfiguration
+import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -14,7 +14,7 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 @Singleton
-final class RemoteTaskProcessor @Inject private(newRemoteTaskId: () ⇒ RemoteTaskId, newRemoteTask: StartConfiguration ⇒ RemoteTask) {
+final class RemoteTaskProcessor @Inject private(newRemoteTaskId: () ⇒ RemoteTaskId, newRemoteTask: TaskStartArguments ⇒ RemoteTask) {
 
   private val taskRegister = new ScalaConcurrentHashMap[RemoteTaskId, RemoteTask] {
     override def default(id: RemoteTaskId) = throwUnknownTask(id)
@@ -24,13 +24,13 @@ final class RemoteTaskProcessor @Inject private(newRemoteTaskId: () ⇒ RemoteTa
     command match {
       case StartRemoteTask(controllerAddress, usesApi, javaOptions, javaClasspath) ⇒
         val remoteTaskId = newRemoteTaskId()
-        val startConfiguration = StartConfiguration(
+        val startArguments = TaskStartArguments(
           remoteTaskId,
           controllerAddress = controllerAddress,
           usesApi = usesApi,
           javaOptions = javaOptions,
           javaClasspath = javaClasspath)
-        val task = newRemoteTask(startConfiguration)
+        val task = newRemoteTask(startArguments)
         assert(task.id == remoteTaskId)
         taskRegister += task.id → task
         task.start()

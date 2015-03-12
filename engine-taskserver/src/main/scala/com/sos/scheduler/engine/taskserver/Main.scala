@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.taskserver.task.StartConfiguration
+import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
 
 /**
  * @author Joacim Zschimmer
@@ -11,7 +11,7 @@ private object Main {
 
   def main(arg: Array[String]): Unit = {
     // <task_process> von stdin lesen
-    val startConfiguration: StartConfiguration = ???
-    SimpleTaskServer.run(startConfiguration)
+    val startArguments: TaskStartArguments = ???
+    SimpleTaskServer.run(startArguments)
   }
 }
