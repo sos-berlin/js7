@@ -1,15 +1,13 @@
 package com.sos.scheduler.engine.agent.process
 
 import com.sos.scheduler.engine.data.agent.AgentProcessId
+import com.sos.scheduler.engine.taskserver.TaskServer
 
 /**
- * @author Joacim Zschimmer
- */
-trait AgentProcess extends AutoCloseable {
-
-  def id: AgentProcessId
-
-  def start(): Unit
-
-  def kill(): Unit
+* @author Joacim Zschimmer
+*/
+final class AgentProcess(val id: AgentProcessId, val taskServer: TaskServer) extends AutoCloseable {
+  def start(): Unit = taskServer.start()
+  def kill(): Unit = taskServer.kill()
+  def close(): Unit = taskServer.close()
 }

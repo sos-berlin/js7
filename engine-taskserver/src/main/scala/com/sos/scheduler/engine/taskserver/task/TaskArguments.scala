@@ -14,7 +14,7 @@ import scala.util.Sorting.stableSort
 /**
  * @author Joacim Zschimmer
  */
-final class TaskArguments(arguments: List[(String, String)]) {
+private[task] final class TaskArguments(arguments: List[(String, String)]) {
   lazy val moduleLanguage = ModuleLanguage(apply(LanguageKey))
   lazy val script = Script.parseXmlString(apply(ScriptKey))
   lazy val jobName = apply(JobKey)
@@ -41,7 +41,7 @@ final class TaskArguments(arguments: List[(String, String)]) {
   private def get(name: String): Option[String] = arguments collectFirst { case (k, v) if k == name ⇒ v }
 }
 
-object TaskArguments {
+private[task] object TaskArguments {
   private val LanguageKey = "language"
   //"com_class",
   //JS-1295 @deprecated private val FilenameKey = "filename"

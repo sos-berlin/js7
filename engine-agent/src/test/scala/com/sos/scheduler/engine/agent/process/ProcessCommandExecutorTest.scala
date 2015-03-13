@@ -1,10 +1,11 @@
 package com.sos.scheduler.engine.agent.process
 
 import com.google.inject.{AbstractModule, Guice, Provides}
-import com.sos.scheduler.engine.agent.commands.{CloseProcess, CloseProcessResponse, StartDedicatedProcess, StartProcessResponse}
+import com.sos.scheduler.engine.agent.commands.{CloseProcess, CloseProcessResponse, StartDedicatedProcess, StartProcess, StartProcessResponse}
 import com.sos.scheduler.engine.agent.process.ProcessCommandExecutorTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.data.agent.AgentProcessId
+import com.sos.scheduler.engine.taskserver.TaskServer
 import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.mockito.Mockito._
@@ -24,7 +25,8 @@ import scala.util.{Failure, Try}
  */
 @RunWith(classOf[JUnitRunner])
 final class ProcessCommandExecutorTest extends FreeSpec {
-  private lazy val processes = List.fill(2) { mock[AgentProcess] }
+  private lazy val taskServers = List.fill(2) { mock[TaskServer] }
+  private lazy val processes = AgentProcessIds zip taskServers map { case (id, taskServer) ⇒ new AgentProcess(id, taskServer) }
   private lazy val commandExecutor = Guice.createInjector(new TestModule(processes)).apply[ProcessCommandExecutor]
 
   "StartProcess" in {
@@ -33,10 +35,10 @@ final class ProcessCommandExecutorTest extends FreeSpec {
       val response = Await.result(commandExecutor.executeCommand(command), 1.seconds)
       inside(response) { case StartProcessResponse(id) ⇒ id shouldEqual nextProcessId }
     }
-    for (process ← processes) {
-      verify(process, times(1)).start()
-      verify(process, never).kill()
-      verify(process, never).close()
+    for (taskServer ← taskServers) {
+      verify(taskServer, times(1)).start()
+      verify(taskServer, never).kill()
+      verify(taskServer, never).close()
     }
   }
 
@@ -48,13 +50,13 @@ final class ProcessCommandExecutorTest extends FreeSpec {
       val response = Await.result(commandExecutor.executeCommand(command), 3.seconds)
       inside(response) { case CloseProcessResponse ⇒ }
     }
-    verify(processes(0), times(1)).start()
-    verify(processes(0), never).kill()
-    verify(processes(0), times(1)).close()
+    verify(taskServers(0), times(1)).start()
+    verify(taskServers(0), never).kill()
+    verify(taskServers(0), times(1)).close()
 
-    verify(processes(1), times(1)).start()
-    verify(processes(1), times(1)).kill()
-    verify(processes(1), times(1)).close()
+    verify(taskServers(1), times(1)).start()
+    verify(taskServers(1), times(1)).kill()
+    verify(taskServers(1), times(1)).close()
   }
 }
 
@@ -69,16 +71,15 @@ private object ProcessCommandExecutorTest {
     def configure() = {}
 
     @Provides @Singleton
-    private def newAgentProcess: AgentProcessArguments ⇒ AgentProcess = { arguments: AgentProcessArguments ⇒
-      inside(arguments) {
-        case arguments: DedicatedProcessArguments ⇒
-          arguments.javaOptions shouldEqual JavaOptions
-          arguments.javaClasspath shouldEqual JavaClasspath
+    private def newAgentProcess: AgentProcessFactory = new AgentProcessFactory {
+      def apply(command: StartProcess) = {
+        inside(command) {
+          case command: StartDedicatedProcess ⇒
+            command.javaOptions shouldEqual JavaOptions
+            command.javaClasspath shouldEqual JavaClasspath
+        }
+        processIterator.synchronized { processIterator.next() }
       }
-      val process = processIterator.synchronized { processIterator.next() }
-      verifyNoMoreInteractions(process)
-      when(process.id) thenReturn arguments.processId
-      process
     }
 
     @Provides @Singleton

@@ -12,6 +12,8 @@ import scala.concurrent._
 import scala.concurrent.duration.Duration
 
 /**
+ * A blocking [[TaskServer]], running in a own thread.
+ *
  * @author Joacim Zschimmer
  */
 final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskServer with HasCloser {

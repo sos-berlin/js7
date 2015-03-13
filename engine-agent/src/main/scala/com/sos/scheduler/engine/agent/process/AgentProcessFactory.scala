@@ -1,12 +1,10 @@
 package com.sos.scheduler.engine.agent.process
 
+import com.google.inject.ImplementedBy
+import com.sos.scheduler.engine.agent.commands.StartProcess
+
 /**
  * @author Joacim Zschimmer
  */
-object AgentProcessFactory extends (AgentProcessArguments ⇒ AgentProcess) {
-
-  def apply(arguments: AgentProcessArguments): AgentProcess = arguments match {
-    case o: DummyProcessArguments ⇒ new DummyAgentProcess(o)
-    case o: DedicatedProcessArguments ⇒ new DedicatedAgentProcess(o)
-  }
-}
+@ImplementedBy(classOf[StandardAgentProcessFactory])
+trait AgentProcessFactory extends (StartProcess ⇒ AgentProcess)
