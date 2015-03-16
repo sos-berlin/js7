@@ -10,4 +10,6 @@ trait Task extends AutoCloseable {
   def end(): Unit
 
   def step(): String
+
+  def callIfExists(s: String): Any
 }

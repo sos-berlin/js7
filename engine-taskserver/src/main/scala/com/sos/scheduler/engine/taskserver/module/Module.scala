@@ -11,6 +11,15 @@ trait Module {
 }
 
 object Module {
+
+  //val SpoolerInitSignature = "spooler_open()Z"  // Z: returns Boolean
+  val SpoolerExitSignature = "spooler_exit()V"  // V: returns Unit
+  val SpoolerOpenSignature = "spooler_open()Z"
+  //val SpoolerCloseSignature = "spooler_open()V"
+  //val SpoolerProcessSignature = "spooler_open()Z"
+  val SpoolerOnSuccessSignature = "spooler_on_success()V"
+  val SpoolerOnErrorSignature = "spooler_on_error()V"
+
   def apply(moduleLanguage: ModuleLanguage, script: Script, javaClassNameOption: Option[String]) =
     moduleLanguage match {
       case ShellModuleLanguage ⇒

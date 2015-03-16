@@ -116,9 +116,8 @@ final class AgentIT extends FreeSpec with ScalaSchedulerTest {
   }
 
   "Shell with monitor - crash of one monitor does not disturb the other task" in {
-    pending
     val file = createTempFile("sos", ".tmp") withCloser Files.delete
-    toleratingErrorCodes(Set(MessageCode("SCHEDULER-202"), MessageCode("SCHEDULER-280"), MessageCode("WINSOCK-10054"))) {
+    toleratingErrorCodes(Set(MessageCode("SCHEDULER-202"), MessageCode("SCHEDULER-280"), MessageCode("WINSOCK-10054"), MessageCode("ERRNO-32"), MessageCode("Z-REMOTE-101"))) {
       val test = runJobFuture(JobPath("/no-crash"), variables = Map(SignalName → file.toString))
       awaitSuccess(runJobFuture(JobPath("/crash"), variables = Map(SignalName → file.toString)).result).logString should include ("SCHEDULER-202")
       awaitSuccess(test.result).logString should include ("SPOOLER_PROCESS_AFTER")
