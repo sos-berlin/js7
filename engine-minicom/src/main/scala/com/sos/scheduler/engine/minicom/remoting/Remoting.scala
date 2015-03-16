@@ -85,12 +85,14 @@ extends ServerRemoting with ClientRemoting {
   private[remoting] def invocable(proxyId: ProxyId) = proxyRegister.invocable(proxyId)
 
   private[remoting] def getIdOfName(proxyId: ProxyId, name: String) = {
+    logger.trace(s"getIdOfName $proxyId '${proxyRegister.invocable(proxyId)}' $name")
     val call = GetIDsOfNamesCall(proxyId, IID.Null, localeId = 0, names = List(name))
     val GetIDsOfNamesResult(dispIds) = sendReceive(call).readGetIDsOfNamesResult(1)
     dispIds.head
   }
 
   private[remoting] def invoke(proxyId: ProxyId, dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any], namedArguments: Seq[(DISPID, Any)]) = {
+    logger.trace(s"invoke $proxyId $dispId '${proxyRegister.invocable(proxyId)}' $dispatchTypes ${arguments.mkString("(", ",", ")")} ${(namedArguments map { case (k, v) ⇒ s"$k -> $v"}).mkString("(", ",", ")")}")
     val call = InvokeCall(proxyId, dispId, IID.Null, dispatchTypes, arguments.toImmutableSeq, namedArguments.toImmutableSeq)
     val InvokeResult(value) = sendReceive(call).readInvokeResult()
     value
