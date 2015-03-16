@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.minicom.remoting.calls
 
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
+import javax.annotation.Nullable
 import scala.collection.immutable
 
 /**
@@ -15,7 +16,7 @@ private[remoting] trait SessionCall extends Call
 
 private[remoting] final case class CreateInstanceCall(
   clsid: CLSID,
-  outer: Option[IUnknown],
+  @Nullable outer: IUnknown,
   context: Int,
   iids: immutable.Seq[IID])
 extends SessionCall

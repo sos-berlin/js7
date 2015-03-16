@@ -76,8 +76,7 @@ object RemoteModuleInstanceServer extends InvocableFactory {
   /**
    * Expects an VariantArray with Some[IUnknown]
    * @return IUnknown, interpreted as Invocable
-   * @throws NullPointerException when an IDispatch is null.
+   * @throws NullPointerException when an IUnknown is null.
    */
-  private def variantArrayToInvocable(a: VariantArray): immutable.IndexedSeq[Invocable] =
-    a.indexedSeq.asInstanceOf[immutable.IndexedSeq[Some[_]]] map { case Some(o) ⇒ cast[Invocable](o) }
+  private def variantArrayToInvocable(a: VariantArray) = a.indexedSeq map { case o ⇒ cast[Invocable](o) }
 }

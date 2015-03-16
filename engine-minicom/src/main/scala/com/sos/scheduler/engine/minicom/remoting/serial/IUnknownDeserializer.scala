@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.minicom.remoting.serial
 
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.types.CLSID
+import javax.annotation.Nullable
 import scala.collection.immutable
 
 /**
@@ -11,7 +12,8 @@ private[remoting] trait IUnknownDeserializer extends VariantDeserializer {
 
   protected val remoting: ServerRemoting
 
-  override final def readInvocableOption() = {
+  @Nullable
+  override final def readInvocableOrNull() = {
     val proxyId = ProxyId(readInt64())
     val isNew = readBoolean()
     if (isNew) {
@@ -22,12 +24,12 @@ private[remoting] trait IUnknownDeserializer extends VariantDeserializer {
         val value = readVariant()
         name → value
       }
-      Some(remoting.newProxy(proxyId, name, proxyClsid, proxyProperties))
+      remoting.newProxy(proxyId, name, proxyClsid, proxyProperties)
     }
     else
       proxyId match {
-        case ProxyId.Null ⇒ None
-        case _ ⇒ Some(remoting.invocable(proxyId))
+        case ProxyId.Null ⇒ null
+        case _ ⇒ remoting.invocable(proxyId)
       }
   }
 }

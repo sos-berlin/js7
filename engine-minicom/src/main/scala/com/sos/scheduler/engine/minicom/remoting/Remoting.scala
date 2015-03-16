@@ -57,7 +57,7 @@ extends ServerRemoting with ClientRemoting {
 
   private def executeCall(call: Call): Result = call match {
     case CreateInstanceCall(clsid, outer, context, iids) ⇒
-      require(outer == None && context == 0 && iids.size == 1)
+      require(outer == null && context == 0 && iids.size == 1)
       CreateInstanceResult(invocable = createInvocable(clsid, iids.head))
 
     case ReleaseCall(proxyId) ⇒

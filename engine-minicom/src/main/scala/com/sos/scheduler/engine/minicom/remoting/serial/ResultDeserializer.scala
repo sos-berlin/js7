@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.minicom.remoting.serial.ResultDeserializer._
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, HRESULT}
 import java.nio.ByteBuffer
+import java.util.Objects.requireNonNull
 import org.scalactic.Requirements._
 import scala.collection.mutable
 
@@ -20,7 +21,7 @@ extends IUnknownDeserializer {
   def readCreateInstanceResult(): CreateInstanceResult = {
     readAnswerHeader()
     require(HRESULT(readInt32()) == S_OK)
-    CreateInstanceResult(readInvocableOption().get)
+    CreateInstanceResult(requireNonNull(readInvocableOrNull()))
   }
 
   def readGetIDsOfNamesResult(): GetIDsOfNamesResult = {

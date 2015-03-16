@@ -16,7 +16,7 @@ private[remoting] trait VariantDeserializer extends BaseDeserializer {
     val vt = readInt32()
     vt match {
       case _ if (vt & VT_ARRAY) != 0 ⇒ readVariantArray()
-      case VT_UNKNOWN | VT_DISPATCH ⇒ readInvocableOption()  // To make any sense, VT_UNKNOWN should denote here an  IDispatch
+      case VT_UNKNOWN | VT_DISPATCH ⇒ readInvocableOrNull()  // To make any sense, VT_UNKNOWN should denote here an IDispatch
       case _ ⇒ readSimpleVariant(vt)
     }
   }
@@ -67,5 +67,5 @@ private[remoting] trait VariantDeserializer extends BaseDeserializer {
       case o ⇒ throw new COMException(DISP_E_BADVARTYPE, f"Unsupported Variant VT=$o%x")
     }
 
-  protected def readInvocableOption(): Option[Invocable] = throw new UnsupportedOperationException("readInvocableOption is not implemented")  // Method is overridden
+  protected def readInvocableOrNull(): Invocable = throw new UnsupportedOperationException("readInvocableOption is not implemented")  // Method is overridden
 }
