@@ -18,7 +18,6 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.mock.MockitoSugar.mock
 import scala.collection.mutable
 
 /**
@@ -67,14 +66,16 @@ private object ShellProcessTaskTest {
       namedInvocables = NamedInvocables(List(
         SpoolerLogName → spoolerLog,
         SpoolerTaskName → TestSpoolerTask,
-        SpoolerJobName → mock[Invocable],
-        SpoolerName → mock[Invocable])),
+        SpoolerJobName → DummyInvocable,
+        SpoolerName → DummyInvocable)),
       monitors = List(
         Monitor(JavaModule(() ⇒ new AMonitor), name="Monitor A"),
         Monitor(JavaModule(() ⇒ new BMonitor), name="Monitor B")),
       jobName = "TEST-JOB",
       hasOrder = false,
       environment = Map(TestName → TestValue))
+
+  private object DummyInvocable extends Invocable
 
   private object TestSpoolerTask extends SpoolerTask {
     def setErrorCodeAndText(code: String, text: String) = throw new NotImplementedError

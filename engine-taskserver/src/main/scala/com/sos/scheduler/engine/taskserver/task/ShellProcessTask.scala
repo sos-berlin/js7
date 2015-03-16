@@ -3,12 +3,12 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.HasCloser
+import com.sos.scheduler.engine.common.scalautil.{Logger, HasCloser}
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
-import com.sos.scheduler.engine.taskserver.task.process.{ShellProcess, ShellProcessStarter}
+import com.sos.scheduler.engine.taskserver.task.process.RichProcess
 import java.nio.charset.StandardCharsets._
 import java.nio.file.Files._
 import org.scalactic.Requirements._
@@ -31,25 +31,25 @@ extends Task with HasCloser {
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
   private var startCalled = false
-  private var shellProcess: ShellProcess = null
+  private var richProcess: RichProcess = null
 
   def start() = {
     startCalled = true
     monitorProcessor.preTask() && {
       if (monitorProcessor.preStep()) {
-        shellProcess = startProcess()
+        richProcess = startProcess()
       }
       true
     }
   }
 
-  private def startProcess(): ShellProcess = {
+  private def startProcess(): RichProcess = {
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
       val paramEnv = params map { case (k, v) ⇒ s"$EnvironmentParameterPrefix$k" → v }
       environment + (ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
-    ShellProcessStarter.start(name = jobName, additionalEnvironment = env, scriptString = module.script.string.trim).closeWithCloser
+    RichProcess.startShellScript(name = jobName, additionalEnvironment = env, scriptString = module.script.string.trim).closeWithCloser
   }
 
   def end() =
@@ -59,14 +59,20 @@ extends Task with HasCloser {
 
   def step() = {
     requireState(startCalled)
-    if (shellProcess == null)
+    if (richProcess == null)
       <process.result spooler_process_result="false"/>.toString()
     else {
-      val rc = shellProcess.waitForTermination(logOutputLine = spoolerLog.info)
+      val rc = richProcess.waitForTermination(logOutputLine = spoolerLog.info)
       val success = monitorProcessor.postStep(rc.isSuccess)
       transferReturnValuesToMaster()
-      <process.result spooler_process_result={success.toString} exit_code={rc.value.toString} state_text={shellProcess.firstStdoutLine}/>.toString()
+      <process.result spooler_process_result={success.toString} exit_code={rc.value.toString} state_text={richProcess.firstStdoutLine}/>.toString()
     }
+  }
+
+  def callIfExists(javaSignature: String) = {
+    requireState(startCalled)
+    logger.debug(s"Ignoring call $javaSignature")
+    true
   }
 
   private def transferReturnValuesToMaster(): Unit = {
@@ -87,7 +93,7 @@ extends Task with HasCloser {
 
   def files = {
     requireState(startCalled)
-    shellProcess match {
+    richProcess match {
       case null ⇒ Nil
       case o ⇒ o.files
     }
@@ -99,6 +105,7 @@ object ShellProcessTask {
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesFileEncoding = ISO_8859_1  // For v1.9 (and later ???)
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
+  private val logger = Logger(getClass)
 
   private def lineToKeyValue(line: String): (String, String) = line match {
     case ReturnValuesRegex(name, value) ⇒ name.trim → value.trim
