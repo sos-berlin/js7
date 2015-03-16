@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver.spoolerapi
 
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.idispatch.DISPID
+import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
 import com.sos.scheduler.engine.minicom.types.CLSID
@@ -13,15 +14,15 @@ import java.util.UUID
 final class ProxySpoolerTask private(protected val remoting: ClientRemoting, val id: ProxyId, val name: String)
 extends SpoolerTask with SpecializedProxyIDispatch {
 
-  def setErrorCodeAndText(code: String, text: String): Unit = invokeMethod(DISPID(26), List(code, text))
+  def setErrorCodeAndText(code: String, text: String): Unit = this.invokeMethod(DISPID(26), List(code, text))
 
-  def paramsXml = invokeGet(DISPID(35)).asInstanceOf[String]
+  def paramsXml = this.invokeGet(DISPID(35)).asInstanceOf[String]
 
-  def paramsXml_=(o: String) = invokePut(DISPID(35), o)
+  def paramsXml_=(o: String) = this.invokePut(DISPID(35), o)
 
-  def orderParamsXml = invokeGet(DISPID(36)).asInstanceOf[String]
+  def orderParamsXml = this.invokeGet(DISPID(36)).asInstanceOf[String]
 
-  def orderParamsXml_=(o: String) = invokePut(DISPID(36), o)
+  def orderParamsXml_=(o: String) = this.invokePut(DISPID(36), o)
 }
 
 object ProxySpoolerTask extends ProxyIDispatchFactory {

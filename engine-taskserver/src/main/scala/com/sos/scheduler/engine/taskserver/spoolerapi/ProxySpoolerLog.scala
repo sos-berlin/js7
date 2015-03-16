@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.taskserver.spoolerapi
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.idispatch.DISPID
+import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
 import com.sos.scheduler.engine.minicom.types.CLSID
@@ -14,7 +15,7 @@ import java.util.UUID
 final class ProxySpoolerLog private(protected val remoting: ClientRemoting, val id: ProxyId, val name: String)
 extends SpoolerLog with SpecializedProxyIDispatch {
 
-  def log(level: SchedulerLogLevel, message: String) = invokeMethod(DISPID(14), Vector(level.cppNumber, message))
+  def log(level: SchedulerLogLevel, message: String) = this.invokeMethod(DISPID(14), Vector(level.cppNumber, message))
 }
 
 object ProxySpoolerLog extends ProxyIDispatchFactory {
