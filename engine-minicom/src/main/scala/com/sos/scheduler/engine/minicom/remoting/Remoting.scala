@@ -50,9 +50,14 @@ extends ServerRemoting with ClientRemoting {
       val result = executeCall(call)
       serializeResult(proxyRegister, result)
     }
-    catch { case NonFatal(t) ⇒
-      logger.debug(t.toString, t)
-      serializeError(t)
+    catch {
+      case NonFatal(t) ⇒
+        logger.debug(t.toString, t)
+        serializeError(t)
+      case t: Throwable ⇒
+        // Try to respond in any case (even LinkageError, OutOfMemoryError), to let the client know and continue
+        logger.error(t.toString, t)
+        serializeError(t)
     }
 
   private def executeCall(call: Call): Result = call match {
@@ -81,8 +86,7 @@ extends ServerRemoting with ClientRemoting {
 
   private[remoting] def getIdOfName(proxyId: ProxyId, name: String) = {
     val call = GetIDsOfNamesCall(proxyId, IID.Null, localeId = 0, names = List(name))
-    val GetIDsOfNamesResult(dispIds) = sendReceive(call).readGetIDsOfNamesResult()
-    require(dispIds.size == 1)
+    val GetIDsOfNamesResult(dispIds) = sendReceive(call).readGetIDsOfNamesResult(1)
     dispIds.head
   }
 
