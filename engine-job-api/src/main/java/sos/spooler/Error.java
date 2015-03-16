@@ -12,6 +12,10 @@ package sos.spooler;
 
 public class Error extends Idispatch implements HasBean<ErrorBean>
 {
+    public Error(Invoker invoker) {
+        super(invoker);
+    }
+
     private                     Error                       ( long idispatch )                      { super(idispatch); }
 
     

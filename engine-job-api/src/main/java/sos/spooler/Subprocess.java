@@ -12,6 +12,10 @@ package sos.spooler;
 
 public class Subprocess extends Idispatch implements HasBean<SubprocessBean>
 {
+    public Subprocess(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Subprocess          ( long idispatch )                  { super(idispatch); }
 
 

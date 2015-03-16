@@ -9,6 +9,10 @@ package sos.spooler;
 
 public class Process_class extends Idispatch implements HasBean<Process_classBean>
 {
+    public Process_class(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Process_class       ( long idispatch )                  { super(idispatch); }
 
     public void         set_name                ( String name )                     {                       com_call( ">name"             , name ); }

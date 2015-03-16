@@ -12,6 +12,10 @@ import java.io.File;
 
 public class Xslt_stylesheet extends Idispatch implements HasBean<Xslt_stylesheetBean>
 {
+    public Xslt_stylesheet(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Xslt_stylesheet     ( long idispatch )                  { super(idispatch); }
 
     /*+ Sollte nach dem Gebrauch gerufen werden. */

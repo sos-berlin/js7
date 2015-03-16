@@ -16,6 +16,10 @@ import java.io.File;
 
 public class Mail extends Idispatch implements HasBean<MailBean>
 {
+    public Mail(Invoker invoker) {
+        super(invoker);
+    }
+
     private             Mail                ( long idispatch )                              { super(idispatch); }
 
     

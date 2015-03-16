@@ -11,6 +11,10 @@ package sos.spooler;
 
 public class Web_service_response extends Idispatch implements HasBean<Web_service_responseBean>
 {
+    public Web_service_response(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Web_service_response    ( long idispatch )             { super(idispatch); }
 
     public void         set_status_code             ( int code )                   {                   com_call( ">status_code", code ); }

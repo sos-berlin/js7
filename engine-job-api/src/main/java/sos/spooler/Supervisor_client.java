@@ -9,6 +9,10 @@ package sos.spooler;
 
 public class Supervisor_client extends Idispatch implements HasBean<Supervisor_clientBean>
 {
+    public Supervisor_client(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Supervisor_client   ( long idispatch )                  { super(idispatch); }
 
     @SchedulerGetter

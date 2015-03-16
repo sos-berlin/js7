@@ -9,6 +9,10 @@ package sos.spooler;
 
 public class Lock extends Idispatch implements HasBean<LockBean>
 {
+    public Lock(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Lock                ( long idispatch )                  { super(idispatch); }
 
     public void         set_name                ( String name )                     {                       com_call( ">name"             , name ); }

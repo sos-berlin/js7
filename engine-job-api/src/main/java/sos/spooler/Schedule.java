@@ -9,6 +9,10 @@ package sos.spooler;
 
 public class Schedule  extends Idispatch implements HasBean<ScheduleBean>
 {
+    public Schedule(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Schedule            ( long idispatch )                  { super(idispatch); }
 
     

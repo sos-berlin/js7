@@ -11,6 +11,10 @@ package sos.spooler;
 
 public class Web_service_request extends Idispatch implements HasBean<Web_service_requestBean>
 {
+    public Web_service_request(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Web_service_request     ( long idispatch )                  { super(idispatch); }
 
     @SchedulerGetter

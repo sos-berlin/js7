@@ -25,6 +25,10 @@ package sos.spooler;
 
 public class Order_queue extends Idispatch implements HasBean<Order_queueBean>
 {
+    public Order_queue(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Order_queue         ( long idispatch )                  { super(idispatch); }
 
     /*+ Liefert die Anzahl der Aufträge in der Auftragswarteschlange. */

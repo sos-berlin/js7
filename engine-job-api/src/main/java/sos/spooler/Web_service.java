@@ -11,6 +11,10 @@ package sos.spooler;
 
 public class Web_service extends Idispatch implements HasBean<Web_serviceBean>
 {
+    public Web_service(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Web_service         ( long idispatch )                  { super(idispatch); }
 
 

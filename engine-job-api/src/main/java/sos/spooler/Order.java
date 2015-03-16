@@ -42,6 +42,10 @@ import java.util.Date;
 
 public class Order extends Idispatch implements HasBean<OrderBean>
 {
+    public Order(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Order               ( long idispatch )                  { super(idispatch); }
 
     

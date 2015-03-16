@@ -13,6 +13,10 @@ package sos.spooler;
 
 public class Run_time extends Idispatch implements HasBean<Run_timeBean>
 {
+    public Run_time(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Run_time            ( long idispatch )                  { super(idispatch); }
 
     

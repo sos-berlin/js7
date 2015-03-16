@@ -29,6 +29,10 @@ package sos.spooler;
 
 public class Variable_set extends Idispatch implements HasBean<Variable_setBean>
 {
+    public Variable_set(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Variable_set        ( long idispatch )                  { super(idispatch); }
 
     /*+ Setzt eine Variable.

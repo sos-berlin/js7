@@ -19,6 +19,10 @@ package sos.spooler;
 
 public class Job_chain_node extends Idispatch implements HasBean<Job_chain_nodeBean>
 {
+    public Job_chain_node(Invoker invoker) {
+        super(invoker);
+    }
+
     private                 Job_chain_node      ( long idispatch )                  { super(idispatch); }
 
 

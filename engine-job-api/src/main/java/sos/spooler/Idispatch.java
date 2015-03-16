@@ -5,7 +5,7 @@ package sos.spooler;
  */
 public class Idispatch {
     // Two different use cases: Dispatcher for C++ or pure Java (the Agent).
-    // For compatibility with C++ and due to the lack of mixins in Java both use cases are implemented in this class. See com_call.
+    // For compatibility with C++ and due to the lack of mixins in Java, both use cases are implemented in this class. See com_call.
     private volatile long _idispatch;
     private final Invoker invoker;
 
@@ -19,33 +19,30 @@ public class Idispatch {
         this.invoker = invoker;
     }
 
-    final void com_clear() {
+    private void com_clear() {
+        // Called by C++
         _idispatch = 0;
     }
 
-    Object com_call(String name) {
-        return com_call(_idispatch, name, null);
-    }
-
-    boolean boolean_com_call(String name) {
+    protected boolean boolean_com_call(String name) {
         return (Boolean)com_call(name);
     }
 
-    boolean boolean_com_call(String name, Object par1) {
+    protected boolean boolean_com_call(String name, Object par1) {
         Object[] params = new Object[1];
         params[0] = par1;
         return (Boolean)com_call(name, params);
     }
 
-    int int_com_call(String name) {
+    protected int int_com_call(String name) {
         return (Integer)com_call(name);
     }
 
-    double double_com_call(String name) {
+    protected double double_com_call(String name) {
         return (Double)com_call(name);
     }
 
-    Object com_call(String name, Object... arguments) {
+    protected Object com_call(String name, Object... arguments) {
         if (invoker != null) {
             return invoker.call(name, arguments);
         } else {
