@@ -1,7 +1,5 @@
 package com.sos.scheduler.engine.minicom.idispatch
 
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.minicom.idispatch.Invocable._
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.types.IUnknown
 import java.lang.reflect.Method
@@ -13,14 +11,5 @@ import java.lang.reflect.Method
  * @author Joacim Zschimmer
  */
 trait Invocable extends IUnknown {
-
-  def invocableMethods: Seq[Method] = {
-    val r = getClass.getMethods filter { _.getAnnotation(classOf[invocable]) != null }
-    if (r.nonEmpty) logger.warn(s"$getClass contains no methods declared with @invocable")
-    r
-  }
-}
-
-object Invocable {
-  private val logger = Logger(getClass)
+  def invocableMethods: Seq[Method] = getClass.getMethods filter { _.getAnnotation(classOf[invocable]) != null }
 }
