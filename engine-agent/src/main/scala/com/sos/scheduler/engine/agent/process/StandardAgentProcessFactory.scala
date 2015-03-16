@@ -1,9 +1,12 @@
 package com.sos.scheduler.engine.agent.process
 
+import com.google.common.base.Splitter
 import com.sos.scheduler.engine.agent.commands.{StartDedicatedProcess, StartProcess, StartThread}
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.data.agent.AgentProcessId
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer
-import com.sos.scheduler.engine.taskserver.task.{DedicatedProcessTaskServer, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.task.{SeparateProcessTaskServer, TaskStartArguments}
+import java.util.regex.Pattern
 import javax.inject.{Inject, Singleton}
 
 /**
@@ -20,7 +23,13 @@ final class StandardAgentProcessFactory @Inject private extends AgentProcessFact
     val taskStartArguments = TaskStartArguments(controllerAddress = command.controllerAddress)
     command match {
       case _: StartThread ⇒ new SimpleTaskServer(taskStartArguments)
-      case o: StartDedicatedProcess ⇒ new DedicatedProcessTaskServer(taskStartArguments, javaOptions = o.javaOptions, javaClasspath = o.javaClasspath)
+      case o: StartDedicatedProcess ⇒ new SeparateProcessTaskServer(
+        taskStartArguments,
+        javaOptions = splitJavaOptions(o.javaOptions),
+        javaClasspath = o.javaClasspath)
     }
   }
+
+  private def splitJavaOptions(options: String) =
+    Splitter.on(Pattern.compile("\\s+")).trimResults.omitEmptyStrings.split(options).toImmutableSeq
 }

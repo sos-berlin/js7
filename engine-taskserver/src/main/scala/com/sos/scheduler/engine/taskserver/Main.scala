@@ -7,7 +7,14 @@ import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
  */
 object Main {
   def main(args: Array[String]): Unit = {
-    val startArguments = new TaskStartArguments(controllerAddress = args(1))
-    SimpleTaskServer.run(startArguments)
+    try {
+      val startArguments = new TaskStartArguments(controllerAddress = args(0) stripPrefix "-controller=")
+      SimpleTaskServer.run(startArguments)
+    } catch {
+      case t: Throwable ⇒
+        System.err.println(t.toString)
+        t.printStackTrace(System.err)
+        System.exit(1)
+    }
   }
 }
