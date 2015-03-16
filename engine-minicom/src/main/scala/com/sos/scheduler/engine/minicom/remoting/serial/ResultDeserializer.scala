@@ -24,9 +24,9 @@ extends IUnknownDeserializer {
     CreateInstanceResult(requireNonNull(readInvocableOrNull()))
   }
 
-  def readGetIDsOfNamesResult(): GetIDsOfNamesResult = {
+  def readGetIDsOfNamesResult(n: Int): GetIDsOfNamesResult = {
     readAnswerHeader()
-    val dispids = Vector.fill(readInt32()) { DISPID(readInt32()) }
+    val dispids = Vector.fill(n) { DISPID(readInt32()) }
     GetIDsOfNamesResult(dispids)
   }
 
