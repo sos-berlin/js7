@@ -1,35 +1,57 @@
 package com.sos.scheduler.engine.minicom.idispatch
 
-import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch._
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, VariantArray}
 import java.lang.reflect.{InvocationTargetException, Method}
 
 /**
+ * Converts an `Invocable` to an `IDispatch`, exhibiting the methods of an possible `IDispatch`.
+ * First the methods of the `Invocable` are checked.
+ * If the `Invocable` is an `IDispatch` itself, its methods are used, too.
+ *
  * @author Joacim Zschimmer
  */
 final case class InvocableIDispatch(invocable: Invocable) extends IDispatch {
 
-  private val methods = invocable.invocableMethods
+  private val methods = invocable.invocableMethods.toVector
 
-  def call(methodName: String, arguments: Seq[Any] = Nil): Any =
-    invokeMethod(methods(methodIndex(methodName)), arguments)
+  def call(name: String, arguments: Seq[Any] = Nil): Any =
+    methodIndexOption(name) map { i ⇒ invokeMethod(methods(i), arguments) } getOrElse {
+      invocable match {
+        case o: IDispatch ⇒ o.invoke(o.getIdOfName(name), Set(DISPATCH_METHOD), arguments)
+        case _ ⇒ throw new COMException(DISP_E_UNKNOWNNAME, s"Unknown name '$name'")
+      }
+    }
 
-  def getIdOfName(name: String) = DISPID(methodIndex(name))
+  def getIdOfName(name: String) =
+    methodIndexOption(name) map methodIndexToDISPID getOrElse {
+      invocable match {
+        case o: IDispatch ⇒
+          val dispid = o.getIdOfName(name)
+          if (isInvocableDISPID(dispid)) throw new RuntimeException(s"IDispatch $dispid of ${invocable.getClass} $name collides with DISPIDs of Invocable")  // !!!
+          dispid
+        case _ ⇒ throw new COMException(DISP_E_UNKNOWNNAME, s"Unknown name '$name'")
+      }
+    }
 
-  private def methodIndex(name: String): Int = {
+  private def methodIndexOption(name: String): Option[Int] = {
     val methodIndices = methods.indices filter { i ⇒ methods(i).getName.compareToIgnoreCase(name) == 0 }
-    if (methodIndices.size < 1) throw new COMException(DISP_E_UNKNOWNNAME, s"Unknown name '$name'")
-    if (methodIndices.size > 1) throw new COMException(DISP_E_UNKNOWNNAME, s"Ambiguous name '$name'")
-    methodIndices.head
+    if (methodIndices.size > 1) throw new COMException(DISP_E_UNKNOWNNAME, s"Name '$name' is ambiguous in ${invocable.getClass}")
+    methodIndices.headOption
   }
 
-  def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any], namedArguments: Seq[(DISPID, Any)]): Any = {
-    if (dispatchTypes != Set(DISPATCH_METHOD)) throw new COMException(DISP_E_MEMBERNOTFOUND, "Only DISPATCH_METHOD is supported")
-    val method = methods(dispId.value)
-    if (namedArguments.nonEmpty) throw new COMException(DISP_E_PARAMNOTFOUND, "Named arguments are not supported")
-    invokeMethod(method, arguments)
+  def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any] = Nil, namedArguments: Seq[(DISPID, Any)] = Nil): Any = {
+    if (isInvocableDISPID(dispId)) {
+      if (dispatchTypes != Set(DISPATCH_METHOD)) throw new COMException(DISP_E_MEMBERNOTFOUND, "Only DISPATCH_METHOD is supported")
+      val method = methods(DISPIDToMethodIndex(dispId))
+      if (namedArguments.nonEmpty) throw new COMException(DISP_E_PARAMNOTFOUND, "Named arguments are not supported")
+      invokeMethod(method, arguments)
+    } else
+      invocable match {
+        case iDispatch: IDispatch ⇒ iDispatch.invoke(dispId, dispatchTypes, arguments, namedArguments)
+        case _ ⇒ throw new COMException(DISP_E_MEMBERNOTFOUND, s"$dispId in ${invocable.getClass}")
+      }
   }
 
   private def invokeMethod(method: Method, arguments: Seq[Any]): Any = {
@@ -40,6 +62,8 @@ final case class InvocableIDispatch(invocable: Invocable) extends IDispatch {
       catch { case e: InvocationTargetException ⇒ throw e.getTargetException }
     if (result == null) Unit else result
   }
+
+  private def isInvocableDISPID(o: DISPID) = o.value <= MethodDispatchIdBase && o.value > MethodDispatchIdBase - methods.size
 }
 
 object InvocableIDispatch {
@@ -48,6 +72,10 @@ object InvocableIDispatch {
       def call(methodName: String, arguments: Seq[Any]): Any = new InvocableIDispatch(delegate).call(methodName, arguments)
     }
   }
+
+  private val MethodDispatchIdBase = -1000000000
+  private def methodIndexToDISPID(i: Int) = DISPID(MethodDispatchIdBase - i)
+  private def DISPIDToMethodIndex(o: DISPID) = -(o.value - MethodDispatchIdBase)
 
   private val IntClass = classOf[Int]
   private val BoxedIntegerClass = classOf[java.lang.Integer]
@@ -59,7 +87,6 @@ object InvocableIDispatch {
   private val BoxedBooleanClass = classOf[java.lang.Boolean]
   private val StringClass = classOf[String]
   private val VariantArraySerializableClass = classOf[VariantArray]
-  private val logger = Logger(getClass)
 
   private def convert[A <: AnyRef](c: Class[A], v: Any): A =
     (c match {
