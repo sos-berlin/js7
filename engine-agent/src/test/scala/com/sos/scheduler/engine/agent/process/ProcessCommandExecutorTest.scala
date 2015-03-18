@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.process
 
 import com.google.inject.{AbstractModule, Guice, Provides}
-import com.sos.scheduler.engine.agent.commands.{CloseProcess, CloseProcessResponse, StartDedicatedProcess, StartProcess, StartProcessResponse}
+import com.sos.scheduler.engine.agent.commands.{CloseProcess, CloseProcessResponse, StartSeparateProcess, StartProcess, StartProcessResponse}
 import com.sos.scheduler.engine.agent.process.ProcessCommandExecutorTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.data.agent.AgentProcessId
@@ -30,7 +30,7 @@ final class ProcessCommandExecutorTest extends FreeSpec {
   private lazy val commandExecutor = Guice.createInjector(new TestModule(processes)).apply[ProcessCommandExecutor]
 
   "StartProcess" in {
-    val command = StartDedicatedProcess(controllerAddress = "127.0.0.1:9999", javaOptions = JavaOptions, javaClasspath = JavaClasspath)
+    val command = StartSeparateProcess(controllerAddress = "127.0.0.1:9999", javaOptions = JavaOptions, javaClasspath = JavaClasspath)
     for (nextProcessId ← AgentProcessIds) {
       val response = Await.result(commandExecutor.executeCommand(command), 1.seconds)
       inside(response) { case StartProcessResponse(id) ⇒ id shouldEqual nextProcessId }
@@ -74,7 +74,7 @@ private object ProcessCommandExecutorTest {
     private def newAgentProcess: AgentProcessFactory = new AgentProcessFactory {
       def apply(command: StartProcess) = {
         inside(command) {
-          case command: StartDedicatedProcess ⇒
+          case command: StartSeparateProcess ⇒
             command.javaOptions shouldEqual JavaOptions
             command.javaClasspath shouldEqual JavaClasspath
         }

@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{Command, StartDedicatedProcess, StartProcessResponse, StartThread}
+import com.sos.scheduler.engine.agent.commands.{Command, StartSeparateProcess, StartProcessResponse, StartThread}
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor.throwableToString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutorTest._
 import com.sos.scheduler.engine.data.agent.AgentProcessId
@@ -56,7 +56,7 @@ private object CommandXmlExecutorTest {
   private def execute(command: Command) = command match {
     case StartThread(ASocketAddress) ⇒ Future { throw new Exception }
     case StartThread(BSocketAddress) ⇒ Future { StartProcessResponse(AgentProcessId(111)) }
-    case StartDedicatedProcess(BSocketAddress, "OPTIONS", "CLASSPATH") ⇒ Future { StartProcessResponse(AgentProcessId(222)) }
+    case StartSeparateProcess(BSocketAddress, "OPTIONS", "CLASSPATH") ⇒ Future { StartProcessResponse(AgentProcessId(222)) }
     case o ⇒ fail(o.toString)
   }
 

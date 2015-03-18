@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{StartDedicatedProcess, StartProcess, StartProcessResponse, StartThread}
+import com.sos.scheduler.engine.agent.commands.{StartSeparateProcess, StartProcess, StartProcessResponse, StartThread}
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
@@ -29,7 +29,7 @@ object StartProcessXml {
         attributeMap.ignore("java_classpath")
         StartThread(controllerAddress = controller)
       } else
-        StartDedicatedProcess(
+        StartSeparateProcess(
           controllerAddress = controller,
           javaOptions = attributeMap.getOrElse("java_options", ""),
           javaClasspath = attributeMap.getOrElse("java_classpath", ""))

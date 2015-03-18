@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{CloseProcess, StartDedicatedProcess, StartThread}
+import com.sos.scheduler.engine.agent.commands.{CloseProcess, StartSeparateProcess, StartThread}
 import com.sos.scheduler.engine.data.agent.AgentProcessId
 import java.net.InetAddress
 import org.junit.runner.RunWith
@@ -18,7 +18,7 @@ final class CommandXmlTest extends FreeSpec {
   "StartRemoteTask" in {
     intercept[Exception] { parse(<remote_scheduler.start_remote_task/>) }
     parse(<remote_scheduler.start_remote_task tcp_port="999" java_options="OPTIONS" java_classpath="CLASSPATH"/>) shouldEqual
-      StartDedicatedProcess(controllerAddress = s"$IP:999", javaOptions = "OPTIONS", javaClasspath = "CLASSPATH")
+      StartSeparateProcess(controllerAddress = s"$IP:999", javaOptions = "OPTIONS", javaClasspath = "CLASSPATH")
     parse(<remote_scheduler.start_remote_task tcp_port="999" kind="process"/>) shouldEqual
       StartThread(controllerAddress = s"$IP:999")
     intercept[Exception] { parse(<remote_scheduler.start_remote_task tcp_port="-1"/>) }

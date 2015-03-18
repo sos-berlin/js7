@@ -27,7 +27,7 @@ trait StartProcess extends ProcessCommand {
 final case class StartThread(controllerAddress: String)
 extends StartProcess
 
-final case class StartDedicatedProcess(controllerAddress: String, javaOptions: String, javaClasspath: String)
+final case class StartSeparateProcess(controllerAddress: String, javaOptions: String, javaClasspath: String)
 extends StartProcess
 
 
