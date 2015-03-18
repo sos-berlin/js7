@@ -34,13 +34,13 @@ extends Task with HasCloser {
   private var richProcess: RichProcess = null
 
   def start() = {
+    requireState(!startCalled)
     startCalled = true
-    monitorProcessor.preTask() && {
-      if (monitorProcessor.preStep()) {
+    monitorProcessor.preTask() &&
+      monitorProcessor.preStep() && {
         richProcess = startProcess()
+        true
       }
-      true
-    }
   }
 
   private def startProcess(): RichProcess = {
