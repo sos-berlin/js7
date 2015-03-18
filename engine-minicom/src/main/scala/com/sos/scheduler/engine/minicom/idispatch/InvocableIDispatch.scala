@@ -6,9 +6,9 @@ import com.sos.scheduler.engine.minicom.types.{COMException, VariantArray}
 import java.lang.reflect.{InvocationTargetException, Method}
 
 /**
- * Converts an `Invocable` to an `IDispatch`, exhibiting the methods of an possible `IDispatch`.
- * First the methods of the `Invocable` are checked.
- * If the `Invocable` is an `IDispatch` itself, its methods are used, too.
+ * Converts an with @`invocable` annotated `Invocable` to an `IDispatch`.
+ * If the `Invocable` is itself an `IDispatch`, its methods are used when not implemented by @`invocable`.
+ * Thus with an `IDispatch`, the methods can be overridden by @`invocable` to implement a proxy.
  *
  * @author Joacim Zschimmer
  */

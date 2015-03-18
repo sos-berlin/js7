@@ -59,10 +59,16 @@ final class InvocableIDispatchTest extends FreeSpec {
   "PublicMethodsAreInvocable" in {
     InvocableIDispatch(B).call("someMethod") shouldEqual 1
   }
+
+  "Underlying IDispatch methods are called, when not overriden by @invocable" in {
+    InvocableIDispatch(C).call("overridden") shouldEqual "OVERRIDDEN"
+    InvocableIDispatch(C).call("notOverridden") shouldEqual "NOT OVERRIDDEN"
+  }
 }
 
 private object InvocableIDispatchTest {
   private val ALong = 111222333444555666L
+
   private object A extends Invocable {
     @invocable def int(o: Int) = o + 1
     @invocable def boxedInteger(o: java.lang.Integer): java.lang.Integer = o + 1
@@ -79,5 +85,21 @@ private object InvocableIDispatchTest {
 
   private object B extends PublicMethodsAreInvocable {
     def someMethod = 1
+  }
+
+  private object C extends IDispatch {
+    @invocable def overridden = "OVERRIDDEN"
+
+    override def getIdOfName(name: String) = name match {
+      case "overridden" ⇒ fail("overridden used")
+      case "notOverridden" ⇒ DISPID(2)
+    }
+
+    override def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any], namedArguments: Seq[(DISPID, Any)]) = {
+      assert(dispatchTypes == Set(DISPATCH_METHOD))
+      (dispId, arguments, namedArguments) match {
+        case (DISPID(2), Nil, Nil) ⇒ "NOT OVERRIDDEN"
+      }
+    }
   }
 }
