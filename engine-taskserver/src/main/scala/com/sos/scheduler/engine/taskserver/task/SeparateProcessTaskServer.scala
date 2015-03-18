@@ -3,13 +3,15 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.task.SeparateProcessTaskServer._
-import com.sos.scheduler.engine.taskserver.task.process.RichProcess
+import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, RichProcess}
 import java.io.File
 
 /**
  * @author Joacim Zschimmer
  */
-final class SeparateProcessTaskServer(arguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String) extends TaskServer {
+final class SeparateProcessTaskServer(arguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String)
+extends TaskServer {
+
   private var process: RichProcess = null
 
   def start() = {
@@ -20,10 +22,16 @@ final class SeparateProcessTaskServer(arguments: TaskStartArguments, javaOptions
       arguments = List(s"-controller=${arguments.controllerAddress}"))
   }
 
-  def close() = {
-    process.waitForTermination( o ⇒ logger.info(o))
-    process.close()
-  }
+  override def close(): Unit =
+    process match {
+      case null ⇒
+      case p ⇒
+        try process.waitForTermination(o ⇒ StdoutStderrlogger.info(o))
+        finally {
+          process.close()
+          process = null
+        }
+    }
 
   def kill() = {
     if (process != null) {
@@ -33,5 +41,5 @@ final class SeparateProcessTaskServer(arguments: TaskStartArguments, javaOptions
 }
 
 object SeparateProcessTaskServer {
-  private val logger = Logger(getClass)
+  private val StdoutStderrlogger = Logger(getClass.getName.stripSuffix("$") + ".stdout-stderr")
 }
