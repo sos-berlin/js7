@@ -1,9 +1,8 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.RichAny
 import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.taskserver.task.process.RichProcess
 import java.io.File
 
 /**

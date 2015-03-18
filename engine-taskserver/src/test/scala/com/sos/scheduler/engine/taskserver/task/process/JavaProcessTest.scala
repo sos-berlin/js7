@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.data.job.ResultCode
-import com.sos.scheduler.engine.taskserver.task.JavaProcessTest._
+import com.sos.scheduler.engine.taskserver.task.process.JavaProcessTest._
 import java.lang.System.{err, exit, out}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -38,7 +38,7 @@ final class JavaProcessTest extends FreeSpec {
   }
 }
 
-object JavaProcessTest {
+private object JavaProcessTest {
   private val TestValue = "TEST TEST"
   private val Arguments = Vector("a", "1 2")
   private val logger = Logger(getClass)
