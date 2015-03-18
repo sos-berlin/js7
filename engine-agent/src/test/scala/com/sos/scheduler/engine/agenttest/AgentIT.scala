@@ -36,7 +36,7 @@ import scala.concurrent.{Await, Promise}
 @RunWith(classOf[JUnitRunner])
 final class AgentIT extends FreeSpec with ScalaSchedulerTest {
 
-  import controller.{newEventPipe, toleratingErrorCodes}
+  import controller.{newEventPipe, toleratingErrorCodes, toleratingErrorLogEvent}
 
   private lazy val agentTcpPort = findRandomFreeTcpPort()
   private lazy val agentApp = new Main(AgentConfiguration(httpPort = agentTcpPort, httpInterfaceRestriction = Some("127.0.0.1"))).closeWithCloser
@@ -45,11 +45,11 @@ final class AgentIT extends FreeSpec with ScalaSchedulerTest {
   private lazy val taskLogLines = eventsPromise.successValue collect { case e: InfoLogEvent ⇒ e.message }
   private val finishedOrderParametersPromise = Promise[Map[String, String]]()
 
-  protected override def onSchedulerActivated(): Unit = {
+  protected override def onSchedulerActivated() = {
     val started = agentApp.start()
     scheduler executeXml TestJobElem
     scheduler executeXml <process_class name="test-agent" remote_scheduler={s"http://127.0.0.1:$agentTcpPort"}/>
-    Await.result(started, 5.seconds)
+    Await.result(started, 10.seconds)
   }
 
   "Run shell job via order" in {
@@ -115,12 +115,19 @@ final class AgentIT extends FreeSpec with ScalaSchedulerTest {
     pending
   }
 
-  "Shell with monitor - crash of one monitor does not disturb the other task" in {
+  "Shell with monitor - unexpected process termination of one monitor does not disturb the other task" in {
     val file = createTempFile("sos", ".tmp") withCloser Files.delete
     toleratingErrorCodes(Set(MessageCode("SCHEDULER-202"), MessageCode("SCHEDULER-280"), MessageCode("WINSOCK-10054"), MessageCode("ERRNO-32"), MessageCode("Z-REMOTE-101"))) {
       val test = runJobFuture(JobPath("/no-crash"), variables = Map(SignalName → file.toString))
       awaitSuccess(runJobFuture(JobPath("/crash"), variables = Map(SignalName → file.toString)).result).logString should include ("SCHEDULER-202")
       awaitSuccess(test.result).logString should include ("SPOOLER_PROCESS_AFTER")
+    }
+  }
+
+  "Exception in Monitor" in {
+    toleratingErrorLogEvent({ e ⇒ e.codeOption == Some(MessageCode("SCHEDULER-280")) || (e.message startsWith "COM-80020009 java.lang.RuntimeException: MONITOR EXCEPTION") }) {
+    //toleratingErrorCodes(Set(MessageCode("COM-80020009"), MessageCode("SCHEDULER-280"))) {
+      runJobAndWaitForEnd(JobPath("/throwing-monitor"))
     }
   }
 }

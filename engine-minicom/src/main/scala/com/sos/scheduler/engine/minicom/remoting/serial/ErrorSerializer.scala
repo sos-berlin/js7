@@ -12,9 +12,10 @@ private[remoting] object ErrorSerializer {
   def serializeError(t: Throwable): (Array[Byte], Int) = {
     val b = new BaseSerializer
     b.writeByte(MessageClass.Error)
+    val code = throwableToHResult(t).comString
     b.writeString("name=COM")
-    b.writeString(f"code=${throwableToHResult(t).comString}")
-    b.writeString(s"what=$t")
+    b.writeString(f"code=$code")
+    b.writeString(s"what=$code $t")   // Code prefix COM-xxxxxxxx compatible with C++ agent
     b.byteArrayAndLength
   }
 
