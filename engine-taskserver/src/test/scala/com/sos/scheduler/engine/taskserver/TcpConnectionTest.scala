@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.test.scalatest.HasCloserBeforeAndAfterAll
 import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket, SocketException}
 import java.nio.ByteBuffer
@@ -21,11 +20,11 @@ import scala.util.Random
 @RunWith(classOf[JUnitRunner])
 final class TcpConnectionTest extends FreeSpec with HasCloserBeforeAndAfterAll {
 
-  private val ipAddress = InetAddress.getByName("127.0.0.1")
-  private lazy val port = findRandomFreeTcpPort()
-  private lazy val tcpConnection = new TcpConnection(new InetSocketAddress(ipAddress, port))
+  private val localhost = InetAddress.getByName("127.0.0.1")
+  private lazy val listenSocket = new ServerSocket(0, 1, localhost).closeWithCloser
+  private lazy val port = listenSocket.getLocalPort
+  private lazy val tcpConnection = new TcpConnection(new InetSocketAddress(localhost, port))
   private var testSocket: Socket = null
-  private lazy val listenSocket = new ServerSocket(port, 1, ipAddress).closeWithCloser
   private def out = testSocket.getOutputStream
   private def in = testSocket.getInputStream
 
@@ -59,7 +58,7 @@ final class TcpConnectionTest extends FreeSpec with HasCloserBeforeAndAfterAll {
   }
 
   "Close while receiving" in {
-    val myTcpConnection = new TcpConnection(new InetSocketAddress(ipAddress, port))
+    val myTcpConnection = new TcpConnection(new InetSocketAddress(localhost, port))
     connect(myTcpConnection)
     val future = Future { myTcpConnection.receiveMessage() }
     intercept[TimeoutException] { Await.result(future, 500.millis) }

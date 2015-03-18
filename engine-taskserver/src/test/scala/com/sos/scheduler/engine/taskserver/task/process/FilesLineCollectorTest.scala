@@ -26,8 +26,8 @@ final class FilesLineCollectorTest extends FreeSpec  {
       val writers = files map { f ⇒ new OutputStreamWriter(new FileOutputStream(f), UTF_8).closeWithCloser }
       val fileLogger = new FilesLineCollector(files, UTF_8).closeWithCloser
 
-      for (_ ← 1 to 3) {
-        val testLines = List.fill(10) { Random.nextString(10) }
+      for (_ ← 1 to 1000) {
+        val testLines = List.fill(10) { randomString(100) }
         for (line ← testLines) writers(Random.nextInt(writers.size)).write(s"$line\n")
         for (w ← writers) w.flush()
         val (files, lines) = fileLogger.nextLinesIterator.toList.unzip
@@ -35,5 +35,13 @@ final class FilesLineCollectorTest extends FreeSpec  {
         lines.toSet shouldEqual testLines.toSet
       }
     }
+  }
+
+  private def randomString(size: Int): String = {
+    def randomCodePoint() = Random.nextInt(10) match {
+      case 0 ⇒ 0x20 + Random.nextInt(95)
+      case _ ⇒ 0x120 + Random.nextInt(0xf00)
+    }
+    "" ++ Iterator.fill(size) { randomCodePoint().toChar }
   }
 }
