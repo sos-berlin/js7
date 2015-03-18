@@ -1,6 +1,8 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
+import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import java.net.ServerSocket
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -11,11 +13,15 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class SeparateProcessTaskServerTest extends FreeSpec {
 
-  "DedicatedTaskServerProcess" in {
-    val taskArguments = TaskStartArguments(controllerAddress = "127.0.0.1:9999")
-    autoClosing(new SeparateProcessTaskServer(taskArguments, javaOptions = Nil, javaClasspath = "")) { process ⇒
-      process.start()
-      process.close()
+  "SeperateTaskServerProcess" in {
+    val tcpPort = findRandomFreeTcpPort()
+    autoClosing(new ServerSocket(tcpPort, 1)) { listener ⇒
+      val taskArguments = TaskStartArguments(controllerAddress = s"127.0.0.1:$tcpPort")
+      autoClosing(new SeparateProcessTaskServer(taskArguments, javaOptions = Nil, javaClasspath = "")) { process ⇒
+        process.start()
+        listener.setSoTimeout(10*1000)
+        listener.accept().close()  // The immediate close lets the task process abort, but we don't care.
+      }
     }
   }
 }
