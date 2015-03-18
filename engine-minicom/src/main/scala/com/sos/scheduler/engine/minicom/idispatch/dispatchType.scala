@@ -7,7 +7,9 @@ import scala.collection.{immutable, mutable}
 /**
  * Type of call using a [[DISPID]].
  */
-sealed abstract class DispatchType(val value: Int)
+sealed abstract class DispatchType(val value: Int) {
+  override def toString = getClass.getSimpleName stripSuffix "$"   // Scala object class name ends with '$'
+}
 
 object DispatchType {
   private[minicom] val values = Vector(DISPATCH_METHOD, DISPATCH_PROPERTYGET, DISPATCH_PROPERTYPUT, DISPATCH_PROPERTYPUTREF)

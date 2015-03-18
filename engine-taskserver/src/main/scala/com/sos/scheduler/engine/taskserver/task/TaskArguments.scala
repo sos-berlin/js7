@@ -14,7 +14,7 @@ import scala.util.Sorting.stableSort
 /**
  * @author Joacim Zschimmer
  */
-private[task] final class TaskArguments(arguments: List[(String, String)]) {
+private[task] final class TaskArguments private(arguments: List[(String, String)]) {
   lazy val moduleLanguage = ModuleLanguage(apply(LanguageKey))
   lazy val script = Script.parseXmlString(apply(ScriptKey))
   lazy val jobName = apply(JobKey)

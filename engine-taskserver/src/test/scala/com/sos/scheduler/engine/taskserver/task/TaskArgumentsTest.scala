@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.minicom.types.VariantArray
-import com.sos.scheduler.engine.taskserver.module.Script
+import com.sos.scheduler.engine.taskserver.module.{ModuleLanguage, Script}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -43,7 +43,7 @@ final class TaskArgumentsTest extends FreeSpec {
   }
 
   "moduleLanguage" in {
-    taskArguments.moduleLanguage
+    assert(taskArguments.moduleLanguage == ModuleLanguage("shell"))
   }
 
   "script" in {
