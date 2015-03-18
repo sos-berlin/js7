@@ -26,21 +26,49 @@ import scala.collection.mutable
 @RunWith(classOf[JUnitRunner])
 final class ShellProcessTaskTest extends FreeSpec {
 
-  "ShellProcessTask" in {
+  "ShellProcessTask exit 0" in {
+    runTask(Setting(exitCode = 0, preTask = true, preStep = true, postStep = identity), expectedSpoolerProcessResult = Some(true))
+  }
+
+  "ShellProcessTask exit 0 pretask false" in {
+    runTask(Setting(exitCode = 0, preTask = false, preStep = true, postStep = identity), expectedStartResult = false)
+  }
+
+  "ShellProcessTask exit 7" in {
+    runTask(Setting(exitCode = 7, preTask = true, preStep = true, postStep = identity), expectedSpoolerProcessResult = Some(false))
+  }
+
+  private def runTask(setting: Setting, expectedStartResult: Boolean = true, expectedSpoolerProcessResult: Option[Boolean] = None): Unit = {
     val spoolerLog = new TestSpoolerLog
-    val (result, files) = autoClosing(newShellProcessTask(spoolerLog)) { task ⇒
-      task.start() shouldBe true
-      val result = task.step()
+    val (stepResultOption, files) = autoClosing(newShellProcessTask(spoolerLog, setting)) { task ⇒
+      val taskResult = task.start()
+      assert(taskResult == expectedStartResult)
+      val r =
+        if (taskResult) Some(task.step())
+        else None
       task.end()
-      (result, task.files)
+      (r, task.files)
     }
-    SafeXML.loadString(result) shouldEqual <process.result
-      state_text={s"$TestName=$TestValue"}
-      spooler_process_result="false"
-      exit_code={ExitCode.toString}/>
-    assert(spoolerLog.infoMessages contains TestString)
-    assert(spoolerLog.infoMessages contains s"$TestName=$TestValue")
-    assert((spoolerLog.infoMessages filter ExpectedMonitorMessages.toSet) == ExpectedMonitorMessages)
+    stepResultOption match {
+      case Some(stepResult) ⇒
+        SafeXML.loadString(stepResult) shouldEqual <process.result
+          state_text={s"$TestName=$TestValue"}
+          spooler_process_result={expectedSpoolerProcessResult.get.toString}
+          exit_code={setting.exitCode.toString}/>
+        assert(spoolerLog.infoMessages contains TestString)
+        assert(spoolerLog.infoMessages contains s"$TestName=$TestValue")
+        val expectedMonitorMessages = List(
+          s"A $PreTaskMessage", s"B $PreTaskMessage",
+          s"A $PreStepMessage", s"B $PreStepMessage",
+          s"B $PostStepMessage", s"A $PostStepMessage",
+          s"B $PostTaskMessage", s"A $PostTaskMessage")
+        assert((spoolerLog.infoMessages filter expectedMonitorMessages.toSet) == expectedMonitorMessages)
+      case None ⇒
+        val expectedMonitorMessages = List(
+          s"A $PreTaskMessage",
+          s"B $PostTaskMessage", s"A $PostTaskMessage")
+        assert((spoolerLog.infoMessages filter expectedMonitorMessages.toSet) == expectedMonitorMessages)
+    }
     waitForCondition(timeout = 3.s, step = 10.ms) { files forall { !_.exists }}  // Waiting for Future
     files filter { _.exists } match {
       case Nil ⇒
@@ -50,30 +78,32 @@ final class ShellProcessTaskTest extends FreeSpec {
 }
 
 private object ShellProcessTaskTest {
-  private val ExitCode = 7
   private val TestName = "TESTENV"
   private val TestValue = "TESTENV-VALUE"
   private val TestString = "TEST-SCRIPT"
-  private val TestScript = Script(
-    (if (isWindows) s"@echo off\necho $TestName=%$TestName%" else s"echo $TestName=$$$TestName") +
-      "\n" +
-      s"echo $TestString\n" +
-      s"exit $ExitCode")
 
-  private def newShellProcessTask(spoolerLog: SpoolerLog) =
+  private case class Setting(exitCode: Int, preTask: Boolean, preStep: Boolean, postStep: Boolean ⇒ Boolean)
+
+  private def newShellProcessTask(spoolerLog: SpoolerLog, setting: Setting) =
     new ShellProcessTask(
-      ShellModule(TestScript),
+      ShellModule(testScript(setting.exitCode)),
       namedInvocables = NamedInvocables(List(
         SpoolerLogName → spoolerLog,
         SpoolerTaskName → TestSpoolerTask,
         SpoolerJobName → DummyInvocable,
         SpoolerName → DummyInvocable)),
       monitors = List(
-        Monitor(JavaModule(() ⇒ new AMonitor), name="Monitor A"),
-        Monitor(JavaModule(() ⇒ new BMonitor), name="Monitor B")),
+        Monitor(JavaModule(() ⇒ new TestMonitor("A", setting)), name="Monitor A"),
+        Monitor(JavaModule(() ⇒ new TestMonitor("B", setting)), name="Monitor B")),
       jobName = "TEST-JOB",
       hasOrder = false,
       environment = Map(TestName → TestValue))
+
+  private def testScript(exitCode: Int) = Script(
+    (if (isWindows) s"@echo off\necho $TestName=%$TestName%" else s"echo $TestName=$$$TestName") +
+      "\n" +
+      s"echo $TestString\n" +
+      s"exit $exitCode")
 
   private object DummyInvocable extends Invocable
 
@@ -94,53 +124,33 @@ private object ShellProcessTaskTest {
     }
   }
 
-  private val APreTaskMessage = "1 A pre-task"
-  private val BPreTaskMessage = "2 B pre-task"
-  private val APreStepMessage = "3 A pre-step"
-  private val BPreStepMessage = "4 B pre-step"
-  private val BPostStepMessage = "5 B post-step"
-  private val APostStepMessage = "6 A post-step"
-  private val BPostTaskMessage = "7 B post-task"
-  private val APostTaskMessage = "8 A post-task"
-  private val ExpectedMonitorMessages = List(APreTaskMessage, BPreTaskMessage, APreStepMessage, BPreStepMessage, BPostStepMessage, APostStepMessage, BPostTaskMessage, APostTaskMessage)
+  private val PreTaskMessage = "pre-task"
+  private val PreStepMessage = "pre-step"
+  private val PostStepMessage = "post-step"
+  private val PostTaskMessage = "post-task"
+  private val ExpectedMonitorMessages = List(
+    s"A $PreTaskMessage", s"B $PreTaskMessage",
+    s"A $PreStepMessage", s"B $PreStepMessage",
+    s"B $PostStepMessage", s"A $PostStepMessage",
+    s"B $PostTaskMessage", s"A $PostTaskMessage")
 
-  private class AMonitor extends sos.spooler.Monitor_impl {
+  private class TestMonitor(name: String, setting: Setting) extends sos.spooler.Monitor_impl {
     override def spooler_task_before: Boolean = {
-      spooler_log.info(APreTaskMessage)
-      true
+      spooler_log.info(s"$name $PreTaskMessage")
+      setting.preTask
     }
 
     override def spooler_task_after(): Unit =
-      spooler_log.info(APostTaskMessage)
+      spooler_log.info(s"$name $PostTaskMessage")
 
     override def spooler_process_before = {
-      spooler_log.info(APreStepMessage)
-      true
+      spooler_log.info(s"$name $PreStepMessage")
+      setting.preStep
     }
 
     override def spooler_process_after(returnCode: Boolean): Boolean = {
-      spooler_log.info(APostStepMessage)
-      returnCode
-    }
-  }
-
-  private class BMonitor extends sos.spooler.Monitor_impl {
-    override def spooler_task_before: Boolean = {
-      spooler_log.info(BPreTaskMessage)
-      true
-    }
-
-    override def spooler_task_after(): Unit =
-      spooler_log.info(BPostTaskMessage)
-
-    override def spooler_process_before = {
-      spooler_log.info(BPreStepMessage)
-      true
-    }
-
-    override def spooler_process_after(returnCode: Boolean): Boolean = {
-      spooler_log.info(BPostStepMessage)
-      returnCode
+      spooler_log.info(s"$name $PostStepMessage")
+      setting.postStep(returnCode)
     }
   }
 }
