@@ -541,36 +541,6 @@
                 <version>3.0</version>
             </dependency>
             <dependency>
-                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
-                <artifactId>engine-cppjava-generator</artifactId>
-                <version>1.9-SNAPSHOT</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
-                <artifactId>engine-cppjava-common</artifactId>
-                <version>1.9-SNAPSHOT</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
-                <artifactId>engine-cppjava-runtime</artifactId>
-                <version>1.9-SNAPSHOT</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
-                <artifactId>engine-common</artifactId>
-                <version>1.9-SNAPSHOT</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
-                <artifactId>engine-data</artifactId>
-                <version>1.9-SNAPSHOT</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sos-berlin.jobscheduler.engine</groupId>
-                <artifactId>engine-web</artifactId>
-                <version>1.9-SNAPSHOT</version>
-            </dependency>
-            <dependency>
                 <groupId>com.h2database</groupId>
                 <artifactId>h2</artifactId>
                 <version>1.4.182</version>

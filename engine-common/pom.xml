@@ -2,13 +2,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <artifactId>engine-common</artifactId>
     <parent>
         <groupId>com.sos-berlin.jobscheduler.engine</groupId>
         <artifactId>engine</artifactId>
         <version>1.9-SNAPSHOT</version>
     </parent>
-    
-    <artifactId>engine-common</artifactId>
 
     <name>${project.artifactId}</name>
     <inceptionYear>2012</inceptionYear>
@@ -27,6 +26,7 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>engine-cppjava-runtime</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
