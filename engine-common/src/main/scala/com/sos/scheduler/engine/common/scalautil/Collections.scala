@@ -62,7 +62,7 @@ object Collections {
       }
 
       def toSeqMultiMap: Map[A, immutable.Seq[B]] =
-        delegate groupBy { _._1 } map { case (k, v) ⇒ k → (v map { _._2 }).toImmutableSeq }
+        delegate groupBy { _._1 } map { case (key, seq) ⇒ key → (seq map { _._2 }).toImmutableSeq }
     }
 
     implicit class ConvertingPF[K, V](val delegate: PartialFunction[K, V]) extends AnyVal {
