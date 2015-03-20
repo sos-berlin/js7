@@ -1,28 +1,76 @@
 package com.sos.scheduler.engine.data.filebased;
 
 import com.sos.scheduler.engine.data.base.JavaEnumJsonFormat;
+import com.sos.scheduler.engine.data.folder.FolderPath;
+import com.sos.scheduler.engine.data.job.JobPath;
+import com.sos.scheduler.engine.data.jobchain.JobChainPath;
+import com.sos.scheduler.engine.data.lock.LockPath;
+import com.sos.scheduler.engine.data.order.OrderKey;
+import com.sos.scheduler.engine.data.processclass.ProcessClassPath;
+import com.sos.scheduler.engine.data.schedule.SchedulePath;
 import spray.json.JsonFormat;
 
 public enum FileBasedType {
-    folder("folder", "Folder"),
-    job("job", "Job"),
-    jobChain("job_chain", "JobChain"),
-    lock("lock", "Lock"),
-    order("order", "Order"),
-    processClass("process_class", "ProcessClass"),
-    schedule("schedule", "Schedule");
-    //scheduler_script("scheduler_script");
+    folder("Folder", "folder", "Folder") {
+        public FolderPath toPath(String o) {
+            return new FolderPath(o);
+        }
+    },
+    
+    job("Job", "job", "Job") {
+        public JobPath toPath(String o) {
+            return new JobPath(o);
+        }
+    },
 
+    jobChain("Job_chain", "job_chain", "JobChain") {
+        public JobChainPath toPath(String o) {
+            return new JobChainPath(o);
+        }
+    },
+    
+    lock("Lock", "lock", "Lock") {
+        public LockPath toPath(String o) {
+            return new LockPath(o);
+        }
+    },
+    
+    order("Standing_order", "order", "Order") {
+        public OrderKey toPath(String o) {
+            return OrderKey.apply(o);
+        }
+    },
+    
+    processClass("Process_class", "process_class", "ProcessClass") {
+        public ProcessClassPath toPath(String o) {
+            return new ProcessClassPath(o);
+        }
+    },
+    
+    schedule("Schedule", "schedule", "Schedule") {
+        public SchedulePath toPath(String o) {
+            return new SchedulePath(o);
+        }
+    };
+
+    private final String internalCppName;
     private final String cppName;
     private final String printName;
 
-    FileBasedType(String cppName, String printName) {
+    FileBasedType(String internalCppName, String cppName, String printName) {
+        this.internalCppName = internalCppName;
         this.cppName = cppName;
         this.printName = printName;
     }
+    
+    public abstract TypedPath toPath(String path);
 
     public String cppName() {
         return cppName;
+    }
+
+    public String internalCppName() {
+        return internalCppName;
     }
 
     @Override public String toString() {
@@ -32,6 +80,13 @@ public enum FileBasedType {
     public static FileBasedType fromCppName(String name) {
         for (FileBasedType o: values())
             if (o.cppName.equals(name))
+                return o;
+        throw new RuntimeException("Unknown file based type '"+name+"'");
+    }
+
+    public static FileBasedType fromInternalCppName(String name) {
+        for (FileBasedType o: values())
+            if (o.internalCppName.equals(name))
                 return o;
         throw new RuntimeException("Unknown file based type '"+name+"'");
     }
