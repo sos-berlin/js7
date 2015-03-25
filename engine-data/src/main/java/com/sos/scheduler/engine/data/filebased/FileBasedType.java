@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.data.folder.FolderPath;
 import com.sos.scheduler.engine.data.job.JobPath;
 import com.sos.scheduler.engine.data.jobchain.JobChainPath;
 import com.sos.scheduler.engine.data.lock.LockPath;
+import com.sos.scheduler.engine.data.monitor.MonitorPath;
 import com.sos.scheduler.engine.data.order.OrderKey;
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath;
 import com.sos.scheduler.engine.data.schedule.SchedulePath;
@@ -35,6 +36,12 @@ public enum FileBasedType {
         }
     },
     
+    monitor("Monitor", "monitor", "Monitor") {
+        public MonitorPath toPath(String o) {
+            return new MonitorPath(o);
+        }
+    },
+
     order("Standing_order", "order", "Order") {
         public OrderKey toPath(String o) {
             return OrderKey.apply(o);
