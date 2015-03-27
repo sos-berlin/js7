@@ -179,6 +179,8 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
 
 object ScalaXMLEventReader {
 
+  implicit def scalaXMLEventReaderToXMLEventReader(o: ScalaXMLEventReader): XMLEventReader = o.xmlEventReader
+
   def parseString[A](xml: String, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parse: ScalaXMLEventReader ⇒ A): A =
     parseDocument(StringSource(xml), inputFactory)(parse)
 
