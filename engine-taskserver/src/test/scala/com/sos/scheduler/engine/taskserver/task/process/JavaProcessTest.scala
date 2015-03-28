@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.data.job.ResultCode
@@ -9,7 +10,6 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
-import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -33,7 +33,7 @@ final class JavaProcessTest extends FreeSpec {
       assert(lines contains s"STDERR $TestValue")
     }
     finally process.close()
-    Await.result(process.closed, 10.seconds)
+    awaitResult(process.closed, 10.seconds)
     logger.info(s"$stopwatch for Java process")
   }
 }

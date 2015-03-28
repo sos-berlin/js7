@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.agent.main.Main
 import com.sos.scheduler.engine.agenttest.AgentIT._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
+import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
@@ -27,8 +28,8 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import scala.collection.immutable
+import scala.concurrent.Promise
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Promise}
 
 /**
  * @author Joacim Zschimmer
@@ -49,7 +50,7 @@ final class AgentIT extends FreeSpec with ScalaSchedulerTest {
     val started = agentApp.start()
     scheduler executeXml TestJobElem
     scheduler executeXml <process_class name="test-agent" remote_scheduler={s"http://127.0.0.1:$agentTcpPort"}/>
-    Await.result(started, 10.seconds)
+    awaitResult(started, 10.seconds)
   }
 
   "Run shell job via order" in {

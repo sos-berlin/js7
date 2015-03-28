@@ -1,8 +1,9 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{Command, StartSeparateProcess, StartProcessResponse, StartThread}
+import com.sos.scheduler.engine.agent.commands.{Command, StartProcessResponse, StartSeparateProcess, StartThread}
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor.throwableToString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutorTest._
+import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.data.agent.AgentProcessId
 import java.net.InetAddress
 import org.junit.runner.RunWith
@@ -46,8 +47,7 @@ private object CommandXmlExecutorTest {
 
   private def executeCommand(command: String): xml.Elem = {
     val executed = new CommandXmlExecutor(execute).execute(InetAddress.getByName(IP), command)
-    val x = Await.result(executed, 1.seconds).toString()
-    Await.result(executed, 1.seconds) match {
+    awaitResult(executed, 1.seconds) match {
       case <spooler><answer>{elem: xml.Elem}</answer></spooler> if elem.label == "ERROR" ⇒ throw new CommandException
       case o ⇒ o
     }

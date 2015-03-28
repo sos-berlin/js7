@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
+import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.test.scalatest.HasCloserBeforeAndAfterAll
 import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket, SocketException}
 import java.nio.ByteBuffer
@@ -10,8 +11,8 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 import scala.util.Random
 
 /**
@@ -61,16 +62,16 @@ final class TcpConnectionTest extends FreeSpec with HasCloserBeforeAndAfterAll {
     val myTcpConnection = new TcpConnection(new InetSocketAddress(localhost, port))
     connect(myTcpConnection)
     val future = Future { myTcpConnection.receiveMessage() }
-    intercept[TimeoutException] { Await.result(future, 500.millis) }
+    intercept[TimeoutException] { awaitResult(future, 500.millis) }
     myTcpConnection.close()
-    intercept[SocketException] { Await.result(future, 1.seconds) }.getMessage should include ("closed")  // Message is JVM specific
+    intercept[SocketException] { awaitResult(future, 1.seconds) }.getMessage should include ("closed")  // Message is JVM specific
   }
 
   private def connect(tcpConnection: TcpConnection): Unit = {
     val connected = Future { tcpConnection.connect() }
     listenSocket.setSoTimeout(10*1000)
     testSocket = listenSocket.accept().closeWithCloser
-    Await.result(connected, 1.seconds)
+    awaitResult(connected, 1.seconds)
   }
 
   private def smallIntToBytes(i: Int) = Array[Byte](0.toByte, 0.toByte, (i >> 8).toByte, (i & 0xFF).toByte)

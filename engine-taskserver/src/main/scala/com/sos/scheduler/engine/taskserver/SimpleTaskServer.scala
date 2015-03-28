@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
+import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.minicom.remoting.Remoting
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
@@ -52,6 +53,6 @@ object SimpleTaskServer {
   def run(conf: TaskStartArguments): Unit =
     autoClosing(new SimpleTaskServer(conf)) { taskServer ⇒
       taskServer.start()
-      Await.result(taskServer.terminated, Duration.Inf)
+      awaitResult(taskServer.terminated, Duration.Inf)
     }
 }

@@ -1,11 +1,11 @@
 package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
+import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder
 import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
 import java.net.{InetAddress, ServerSocket}
 import org.scalatest.FreeSpec
-import scala.concurrent.Await
 import scala.concurrent.duration._
 
 /**
@@ -21,7 +21,7 @@ final class SimpleTaskServerTest extends FreeSpec {
         server.start()
         listener.setSoTimeout(10*1000)
         listener.accept().close()   // The immediate close lets the task process abort, but we don't care.
-        Await.result(server.terminated, 1.seconds)
+        awaitResult(server.terminated, 1.seconds)
       }
     }
   }

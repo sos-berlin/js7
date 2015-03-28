@@ -1,9 +1,10 @@
 package com.sos.scheduler.engine.agent.process
 
 import com.google.inject.{AbstractModule, Guice, Provides}
-import com.sos.scheduler.engine.agent.commands.{CloseProcess, CloseProcessResponse, StartSeparateProcess, StartProcess, StartProcessResponse}
+import com.sos.scheduler.engine.agent.commands.{CloseProcess, CloseProcessResponse, StartProcess, StartProcessResponse, StartSeparateProcess}
 import com.sos.scheduler.engine.agent.process.ProcessCommandExecutorTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
+import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.data.agent.AgentProcessId
 import com.sos.scheduler.engine.taskserver.TaskServer
 import javax.inject.Singleton
@@ -17,7 +18,7 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
 import org.scalatest.time.SpanSugar._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.util.{Failure, Try}
 
 /**
@@ -32,7 +33,7 @@ final class ProcessCommandExecutorTest extends FreeSpec {
   "StartProcess" in {
     val command = StartSeparateProcess(controllerAddress = "127.0.0.1:9999", javaOptions = JavaOptions, javaClasspath = JavaClasspath)
     for (nextProcessId ← AgentProcessIds) {
-      val response = Await.result(commandExecutor.executeCommand(command), 1.seconds)
+      val response = awaitResult(commandExecutor.executeCommand(command), 1.seconds)
       inside(response) { case StartProcessResponse(id) ⇒ id shouldEqual nextProcessId }
     }
     for (taskServer ← taskServers) {
@@ -47,7 +48,7 @@ final class ProcessCommandExecutorTest extends FreeSpec {
       CloseProcess(processes(0).id, kill = false),
       CloseProcess(processes(1).id, kill = true))
     for (command ← commands) {
-      val response = Await.result(commandExecutor.executeCommand(command), 3.seconds)
+      val response = awaitResult(commandExecutor.executeCommand(command), 3.seconds)
       inside(response) { case CloseProcessResponse ⇒ }
     }
     verify(taskServers(0), times(1)).start()
