@@ -14,6 +14,7 @@ import org.scalactic.Requirements._
 import scala.PartialFunction._
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
+import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable {

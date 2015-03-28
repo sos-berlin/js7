@@ -130,7 +130,6 @@ public final class Files {
         try (InputStream in = source.openStream()) {
             try (OutputStream out = new FileOutputStream(destination)) {
                 ByteStreams.copy(in, out);
-                out.close();
             }
         } catch (IOException x) {
             throw new RuntimeException("copyURLToFile(): "+x+", from="+source+" to="+destination, x);
