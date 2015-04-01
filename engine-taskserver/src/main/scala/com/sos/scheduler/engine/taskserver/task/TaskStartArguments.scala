@@ -3,12 +3,16 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
 import com.sos.scheduler.engine.taskserver.task.TaskStartArguments._
 import java.net.InetSocketAddress
+import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._
 
 /**
  * @author Joacim Zschimmer
  */
-final case class TaskStartArguments(controllerAddress: String) {
+final case class TaskStartArguments(
+  controllerAddress: String,
+  environment: immutable.Iterable[(String, String)] = Nil)
+{
   def controllerInetSocketAddress = toInetSocketAddress(controllerAddress)
 }
 
@@ -21,5 +25,5 @@ object TaskStartArguments {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }
 
-  implicit val MyJsonFormat = jsonFormat1(apply)
+  implicit val MyJsonFormat = jsonFormat2(apply)
 }

@@ -23,7 +23,7 @@ final class ShellProcessTask(
   monitors: immutable.Seq[Monitor],
   jobName: String,
   hasOrder: Boolean,
-  environment: Map[String, String]) 
+  environment: immutable.Iterable[(String, String)])
 extends Task with HasCloser {
   
   import namedInvocables.{spoolerLog, spoolerTask}
@@ -47,7 +47,7 @@ extends Task with HasCloser {
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
       val paramEnv = params map { case (k, v) ⇒ s"$EnvironmentParameterPrefix$k" → v }
-      environment + (ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
+      environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
     RichProcess.startShellScript(name = jobName, additionalEnvironment = env, scriptString = module.script.string.trim).closeWithCloser
   }

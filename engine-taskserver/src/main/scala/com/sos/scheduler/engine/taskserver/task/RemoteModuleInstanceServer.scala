@@ -10,13 +10,14 @@ import com.sos.scheduler.engine.taskserver.module.Module._
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.module.{NamedInvocables, ShellModuleLanguage}
 import java.util.UUID
+import javax.inject.Inject
 import org.scalactic.Requirements._
 
 /**
  * @author Joacim Zschimmer
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
-final class RemoteModuleInstanceServer extends Invocable with HasCloser {
+final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskStartArguments) extends Invocable with HasCloser {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
 
   private var taskArguments: TaskArguments = null
@@ -37,7 +38,7 @@ final class RemoteModuleInstanceServer extends Invocable with HasCloser {
           taskArguments.monitors,
           jobName = taskArguments.jobName,
           hasOrder = taskArguments.hasOrder,
-          environment = taskArguments.environment)
+          environment = taskStartArguments.environment ++ taskArguments.environment)
         .closeWithCloser
     }
     task.start()

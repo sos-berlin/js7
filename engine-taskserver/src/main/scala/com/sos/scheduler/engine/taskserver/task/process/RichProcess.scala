@@ -79,7 +79,7 @@ object RichProcess {
   private val LoggingPausePeriod = 1.s
   private val logger = Logger(getClass)
 
-  def startShellScript(name: String, additionalEnvironment: Map[String, String], scriptString: String): RichProcess = {
+  def startShellScript(name: String, additionalEnvironment: immutable.Iterable[(String, String)], scriptString: String): RichProcess = {
     val shellFile = OS.newTemporaryShellFile(name)
     try {
       shellFile.toFile.write(scriptString, OS.fileEncoding)
