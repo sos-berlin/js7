@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.taskserver
 
+import com.google.inject.{AbstractModule, Guice}
+import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
@@ -20,7 +22,10 @@ import scala.concurrent.duration.Duration
 final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskServer with HasCloser {
 
   private val controllingScheduler = new TcpConnection(startArguments.controllerInetSocketAddress).closeWithCloser
-  private val remoting = new Remoting(controllingScheduler, IDispatchFactories, ProxyIDispatchFactories)
+  private val injector = Guice.createInjector(new ScalaAbstractModule {
+    def configure() = bindInstance[TaskStartArguments](startArguments)
+  })
+  private val remoting = new Remoting(injector, controllingScheduler, IDispatchFactories, ProxyIDispatchFactories)
 
   private val terminatedPromise = Promise[Unit]()
   def terminated = terminatedPromise.future

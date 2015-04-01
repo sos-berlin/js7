@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.minicom.remoting
 
+import com.google.inject.Injector
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch.implicits._
@@ -22,6 +23,7 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 final class Remoting(
+  injector: Injector,
   connection: MessageConnection,
   invocableFactories: Iterable[InvocableFactory],
   proxyIDispatchFactories: Iterable[ProxyIDispatchFactory])
@@ -104,19 +106,19 @@ extends ServerRemoting with ClientRemoting {
     val byteBuffer = connection.receiveMessage().get
     new ResultDeserializer(this, byteBuffer)
   }
-}
-
-object Remoting {
-  private type CreateInvocableByCLSID = (CLSID, IID) ⇒ Invocable
-  private val logger = Logger(getClass)
 
   private def toCreateInvocableByCLSID(invocableFactories: Iterable[InvocableFactory]): CreateInvocableByCLSID = {
     val clsidToFactoryMap = invocableFactories toKeyedMap { _.clsid }
     def createInvocable(clsId: CLSID, iid: IID): Invocable = {
       val factory = clsidToFactoryMap(clsId)
       require(factory.iid == iid, s"IID $iid is not supported by $factory")
-      factory()
+      injector.getInstance(factory.invocableClass)
     }
     createInvocable  // Return the function itself
   }
+}
+
+object Remoting {
+  private type CreateInvocableByCLSID = (CLSID, IID) ⇒ Invocable
+  private val logger = Logger(getClass)
 }

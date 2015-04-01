@@ -8,5 +8,5 @@ import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
 trait InvocableFactory {
   def clsid: CLSID
   def iid: IID
-  def apply(): Invocable
+  def invocableClass: Class[_ <: Invocable]
 }

@@ -84,7 +84,7 @@ object RemoteModuleInstanceServer extends InvocableFactory {
   val iid   = IID  (UUID fromString "feee47a2-6c1b-11d8-8103-000476ee8afb")
   private val logger = Logger(getClass)
 
-  def apply() = new RemoteModuleInstanceServer
+  def invocableClass = classOf[RemoteModuleInstanceServer]
 
   private def toNamedObjectMap(names: VariantArray, anys: VariantArray): NamedInvocables = {
     val nameStrings = names.as[String]
@@ -98,5 +98,5 @@ object RemoteModuleInstanceServer extends InvocableFactory {
    * @return IUnknown, interpreted as Invocable
    * @throws NullPointerException when an IUnknown is null.
    */
-  private def variantArrayToInvocable(a: VariantArray) = a.indexedSeq map { case o ⇒ cast[Invocable](o) }
+  private def variantArrayToInvocable(a: VariantArray) = a.indexedSeq map cast[Invocable]
 }
