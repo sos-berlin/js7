@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.guice
 
 import com.google.inject.Scopes.SINGLETON
-import com.google.inject.{TypeLiteral, Key, AbstractModule, Provider}
+import com.google.inject.{AbstractModule, Provider}
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 
@@ -18,6 +18,6 @@ abstract class ScalaAbstractModule extends AbstractModule {
   final def provideSingleton[A <: AnyRef : ClassTag](provider: ⇒ A) =
     provide[A](provider) in SINGLETON
 
-  final def provide[A <: AnyRef : ClassTag](provider: ⇒ A) =
+  private def provide[A <: AnyRef : ClassTag](provider: ⇒ A) =
     myBinder bind implicitClass[A] toProvider new Provider[A] { def get = provider }
 }
