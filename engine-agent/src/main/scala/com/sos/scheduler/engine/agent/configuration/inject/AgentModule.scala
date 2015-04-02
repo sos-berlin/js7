@@ -16,6 +16,6 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
   protected def configure() = {
     bindInstance[Closer](closer)
     bindInstance[AgentConfiguration](agentConfiguration)
-    provide[ActorSystem] { newActorSystem("JobScheduler-Agent")(closer) }
+    provideSingleton[ActorSystem] { newActorSystem("JobScheduler-Agent")(closer) }
   }
 }
