@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.RichAny
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import java.io.File
+import scala.collection.immutable
 
 /**
  * @author Joacim Zschimmer
@@ -12,8 +13,15 @@ object JavaProcess {
   lazy val OwnClasspath = systemProperty("java.class.path")
   private lazy val JavaHome = new File(systemProperty("java.home"))
 
-  def startJava(options: Seq[String], classpath: Option[String], mainClass: String, arguments: Seq[String]) =
+  def startJava(
+      options: Seq[String],
+      classpath: Option[String],
+      mainClass: String,
+      arguments: Seq[String],
+      environment: immutable.Iterable[(String, String)] = Nil) =
+
     RichProcess.start(
+      additionalEnvironment = environment,
       arguments = Vector(JavaExecutable.getPath) ++
         options ++
         (classpath.toVector flatMap { o ⇒ Vector("-classpath", o.substitute("" → File.pathSeparator)) }) ++    // java does not like empty classpath

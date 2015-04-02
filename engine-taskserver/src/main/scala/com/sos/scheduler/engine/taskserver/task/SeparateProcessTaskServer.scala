@@ -16,6 +16,7 @@ extends TaskServer {
 
   def start() = {
     process = JavaProcess.startJava(
+      environment = arguments.environment,
       options = javaOptions,
       classpath = Some(javaClasspath + File.pathSeparator + JavaProcess.OwnClasspath),
       mainClass = com.sos.scheduler.engine.taskserver.Main.getClass.getName stripSuffix "$",  // Strip Scala object class suffix
