@@ -20,6 +20,7 @@ private[task] final class TaskArguments private(arguments: List[(String, String)
   lazy val jobName = apply(JobKey)
   lazy val taskId = TaskId(apply(TaskIdKey).toInt)
   lazy val environment = VariableSets.parseXml(apply(EnvironmentKey))
+  lazy val javaClassName = apply(JavaClassKey)
 
   lazy val hasOrder = get(HasOrderKey) match {
     case Some("1") ⇒ true
@@ -45,7 +46,7 @@ private[task] object TaskArguments {
   private val LanguageKey = "language"
   //"com_class",
   //JS-1295 @deprecated private val FilenameKey = "filename"
-  //TODO private val Java_classKey = "java_class"
+  private val JavaClassKey = "java_class"
   private val ScriptKey = "script"
   private val JobKey = "job"
   private val TaskIdKey = "task_id"
@@ -64,7 +65,7 @@ private[task] object TaskArguments {
   //JS-1295 @deprecated private val MonitorFilenameKey = "monitor.filename"
   private val MonitorJavaClassKey = "monitor.java_class"
   private val MonitorScriptKey = "monitor.script"
-  private val KeySet = Set(LanguageKey, ScriptKey, JobKey, TaskIdKey, EnvironmentKey, HasOrderKey,
+  private val KeySet = Set(LanguageKey, ScriptKey, JobKey, TaskIdKey, EnvironmentKey, HasOrderKey, JavaClassKey,
     MonitorLanguageKey, MonitorNameKey, MonitorOrderingKey, MonitorJavaClassKey, MonitorScriptKey)
 
   private val KeyValueRegex = "(?s)([[a-z_.]]+)=(.*)".r  //  "(?s)" dot matches \n too, "key=value"

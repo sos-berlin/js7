@@ -9,7 +9,7 @@ trait Task extends AutoCloseable {
 
   def end(): Unit
 
-  def step(): String
+  def step(): Any
 
-  def callIfExists(s: String): Any
+  def callIfExists(methodWithSignature: String): Any
 }

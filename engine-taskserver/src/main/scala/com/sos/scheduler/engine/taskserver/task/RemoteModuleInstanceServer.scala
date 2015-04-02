@@ -7,8 +7,9 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.module.Module._
+import com.sos.scheduler.engine.taskserver.module.java.JavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{NamedInvocables, ShellModuleLanguage}
+import com.sos.scheduler.engine.taskserver.module.{JavaModuleLanguage, NamedInvocables, ShellModuleLanguage}
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
@@ -40,6 +41,15 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
           hasOrder = taskArguments.hasOrder,
           environment = taskStartArguments.environment ++ taskArguments.environment)
         .closeWithCloser
+      case JavaModuleLanguage ⇒
+        def newClassInstance() = Class.forName(taskArguments.javaClassName).newInstance()
+        new JavaProcessTask(
+          JavaModule(newClassInstance),
+          toNamedObjectMap(names = objectNamesAnys, anys = objectAnys),
+          taskArguments.monitors,
+          jobName = taskArguments.jobName,
+          hasOrder = taskArguments.hasOrder,
+          environment = taskStartArguments.environment ++ taskArguments.environment)
     }
     task.start()
   }
@@ -51,7 +61,7 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
   }
 
   @invocable
-  def step(): String = task.step()
+  def step(): Any = task.step()
 
   @invocable
   def call(javaSignature: String): Any =
@@ -66,6 +76,7 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
       javaSignature match {
         case SpoolerOpenSignature ⇒ openCalled = true
         case SpoolerExitSignature ⇒ exitCalled = true
+        case _ ⇒
       }
       task.callIfExists(javaSignature)
     }

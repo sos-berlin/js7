@@ -50,7 +50,7 @@ final class ShellProcessTaskTest extends FreeSpec {
       (r, task.files)
     }
     stepResultOption match {
-      case Some(stepResult) ⇒
+      case Some(stepResult: String) ⇒
         SafeXML.loadString(stepResult) shouldEqual <process.result
           state_text={s"$TestName=$TestValue"}
           spooler_process_result={expectedSpoolerProcessResult.get.toString}
