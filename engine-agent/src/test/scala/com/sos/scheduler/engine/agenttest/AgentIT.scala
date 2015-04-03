@@ -10,7 +10,7 @@ import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.data.event.Event
-import com.sos.scheduler.engine.data.job.{JobPath, ResultCode, TaskEndedEvent}
+import com.sos.scheduler.engine.data.job.{JobPath, ReturnCode, TaskEndedEvent}
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.log.InfoLogEvent
 import com.sos.scheduler.engine.data.message.MessageCode
@@ -69,8 +69,8 @@ final class AgentIT extends FreeSpec with ScalaSchedulerTest {
   }
 
   "Shell script exit code" in {
-    assertResult(List(TestResultCode)) {
-      eventsPromise.successValue collect { case TaskEndedEvent(_, TestJobPath, resultCode) ⇒ resultCode }
+    assertResult(List(TestReturnCode)) {
+      eventsPromise.successValue collect { case TaskEndedEvent(_, TestJobPath, returnCode) ⇒ returnCode }
     }
     eventBus.dispatchEvents()
   }
@@ -136,7 +136,7 @@ final class AgentIT extends FreeSpec with ScalaSchedulerTest {
 object AgentIT {
   private val TestJobchainPath = JobChainPath("/test")
   private val TestJobPath = JobPath("/test")
-  private val TestResultCode = ResultCode(42)
+  private val TestReturnCode = ReturnCode(42)
   private val FirstStdoutLine = "FIRST STDOUT LINE"
   private val OrderVariable = Variable("ORDERPARAM", "ORDERVALUE")
   private val OrderParamOverridesJobParam = Variable("ORDEROVERRIDESJOBPARAM", "ORDEROVERRIDESJOBVALUE")
@@ -188,7 +188,7 @@ object AgentIT {
         (SchedulerVariables map variableToEcho).mkString + s"""
           |echo !STDOUT AGENT ECHO
           |echo !STDERR AGENT ECHO 1>&2
-          |exit ${TestResultCode.value}
+          |exit ${TestReturnCode.toInt}
           |""".stripMargin
       }</script>
     </job>

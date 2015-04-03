@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.data.order
 
+import com.sos.scheduler.engine.data.job.ReturnCode
+
 /**
  * @author Joacim Zschimmer
  */
@@ -12,7 +14,7 @@ object OrderStateTransition {
       KeepOrderStateTransition
     case i ⇒
       assert(i.toInt == i, s"OrderStateTransition($i)")
-      ProceedingOrderStateTransition(i.toInt)
+      ProceedingOrderStateTransition(ReturnCode(i.toInt))
   }
 }
 
@@ -20,13 +22,13 @@ object OrderStateTransition {
  * Order proceeds to another jobchain node.
  */
 trait ProceedingOrderStateTransition extends OrderStateTransition {
-  def returnCode: Int
+  def returnCode: ReturnCode
 }
 
 object ProceedingOrderStateTransition {
-  def apply(resultCode: Int) = resultCode match {
-    case 0 ⇒ SuccessOrderStateTransition
-    case i ⇒ ErrorOrderStateTransition(i)
+  def apply(returnCode: ReturnCode) = returnCode match {
+    case ReturnCode.Success ⇒ SuccessOrderStateTransition
+    case rc ⇒ ErrorOrderStateTransition(rc)
   }
 
   def unapply(o: ProceedingOrderStateTransition) = Some(o.returnCode)
@@ -36,16 +38,16 @@ object ProceedingOrderStateTransition {
  * Order proceeds to another jobchain node, used by attribute "next_state".
  */
 case object SuccessOrderStateTransition extends ProceedingOrderStateTransition {
-  def returnCode = 0
+  def returnCode = ReturnCode.Success
 }
 
 /**
  * Order proceeds to another jobchain node, used by attribute "error_state".
  */
-final case class ErrorOrderStateTransition(returnCode: Int) extends ProceedingOrderStateTransition
+final case class ErrorOrderStateTransition(returnCode: ReturnCode) extends ProceedingOrderStateTransition
 
 object ErrorOrderStateTransition {
-  def Standard = ErrorOrderStateTransition(1)
+  def Standard = ErrorOrderStateTransition(ReturnCode.StandardFailure)
 }
 
 /**

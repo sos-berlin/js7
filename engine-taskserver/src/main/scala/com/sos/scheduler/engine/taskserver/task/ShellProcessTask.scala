@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.{Logger, HasCloser}
+import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
@@ -65,7 +65,7 @@ extends Task with HasCloser {
       val rc = richProcess.waitForTermination(logOutputLine = spoolerLog.info)
       val success = monitorProcessor.postStep(rc.isSuccess)
       transferReturnValuesToMaster()
-      <process.result spooler_process_result={success.toString} exit_code={rc.value.toString} state_text={richProcess.firstStdoutLine}/>.toString()
+      <process.result spooler_process_result={success.toString} exit_code={rc.toInt.toString} state_text={richProcess.firstStdoutLine}/>.toString()
     }
   }
 

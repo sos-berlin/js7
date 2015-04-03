@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
-import com.sos.scheduler.engine.data.job.ResultCode
+import com.sos.scheduler.engine.data.job.ReturnCode
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -19,8 +19,8 @@ final class RichProcessTest extends FreeSpec {
     val shellProcess = RichProcess.startShellScript(name = "TEST", Map(envName → envValue), s"echo $firstLine\nexit $exitCode")
     assert(shellProcess.files.size == 3)
     val outputLines = mutable.Buffer[String]()
-    val resultCode = shellProcess.waitForTermination { line ⇒ outputLines += line }
-    assert(resultCode == ResultCode(exitCode))
+    val returnCode = shellProcess.waitForTermination { line ⇒ outputLines += line }
+    assert(returnCode == ReturnCode(exitCode))
     assert(shellProcess.firstStdoutLine contains firstLine)
     assert(!shellProcess.closed.isCompleted)
     shellProcess.close()

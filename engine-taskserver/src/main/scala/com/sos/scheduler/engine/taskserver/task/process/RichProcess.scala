@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaJoda._
-import com.sos.scheduler.engine.data.job.ResultCode
+import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import java.nio.charset.Charset
@@ -40,7 +40,7 @@ extends HasCloser {
 
   def kill() = process.destroyForcibly()
 
-  def waitForTermination(logOutputLine: String ⇒ Unit): ResultCode = {
+  def waitForTermination(logOutputLine: String ⇒ Unit): ReturnCode = {
     autoClosing(new FilesLineCollector(Nil ++ stdFiles.values, fileEncoding)) { fileLogger ⇒
       def logOutputLines() = fileLogger.nextLinesIterator foreach { case (file, line) ⇒
         logOutputLine(line)
@@ -52,7 +52,7 @@ extends HasCloser {
       logger.debug(s"Terminated with exit code ${process.exitValue}")
       logOutputLines()
     }
-    ResultCode(process.exitValue)
+    ReturnCode(process.exitValue)
   }
 
   override def toString = s"$process $infoProgramFile"

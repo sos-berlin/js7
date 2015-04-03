@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.order
 
+import com.sos.scheduler.engine.data.job.ReturnCode
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -17,7 +18,7 @@ final class OrderStateTransitionTest extends FreeSpec {
 
   "other is error" in {
     for (i ← -300 to 300; if i != 0)
-      OrderStateTransition.ofCppInternalValue(i) shouldEqual ErrorOrderStateTransition(i)
+      OrderStateTransition.ofCppInternalValue(i) shouldEqual ErrorOrderStateTransition(ReturnCode(i))
   }
 
   "keep state" in {

@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.taskserver.task.process
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.data.job.ResultCode
+import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.JavaProcessTest._
 import java.lang.System.{err, exit, out}
 import org.junit.runner.RunWith
@@ -28,7 +28,7 @@ final class JavaProcessTest extends FreeSpec {
     try {
       val returnCode = process.waitForTermination(lines += _)
       logger.error(lines mkString "\n")
-      assert(returnCode == ResultCode(77))
+      assert(returnCode == ReturnCode(77))
       assert(lines contains s"STDOUT $TestValue")
       assert(lines contains s"STDERR $TestValue")
     }
