@@ -1,5 +1,5 @@
-package com.sos.scheduler.engine.agenttest
-import com.sos.scheduler.engine.agenttest.AgentIT.SignalName
+package com.sos.scheduler.engine.agent.tests
+import com.sos.scheduler.engine.agent.tests.AgentIT.SignalName
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import java.io.File
 

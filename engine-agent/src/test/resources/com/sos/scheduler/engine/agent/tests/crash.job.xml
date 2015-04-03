@@ -4,6 +4,6 @@
 
     <script language="shell">exit 0</script>
     <monitor>
-        <script java_class="com.sos.scheduler.engine.agenttest.CrashingMonitor"/>
+        <script java_class="com.sos.scheduler.engine.agent.tests.CrashingMonitor"/>
     </monitor>
 </job>
