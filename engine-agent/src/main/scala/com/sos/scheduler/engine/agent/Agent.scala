@@ -14,8 +14,8 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 final class Agent(configuration: AgentConfiguration) extends AutoCloseable {
 
   private val injector = Guice.createInjector(new AgentModule(configuration))
-  private val server = injector.apply[AgentWebServer]
-  private val closer = injector.apply[Closer]
+  private val server = injector.instance[AgentWebServer]
+  private val closer = injector.instance[Closer]
 
   def start() = server.start()
 

@@ -28,7 +28,7 @@ import scala.util.{Failure, Try}
 final class ProcessCommandExecutorTest extends FreeSpec {
   private lazy val taskServers = List.fill(2) { mock[TaskServer] }
   private lazy val processes = AgentProcessIds zip taskServers map { case (id, taskServer) ⇒ new AgentProcess(id, taskServer) }
-  private lazy val commandExecutor = Guice.createInjector(new TestModule(processes)).apply[ProcessCommandExecutor]
+  private lazy val commandExecutor = Guice.createInjector(new TestModule(processes)).instance[ProcessCommandExecutor]
 
   "StartProcess" in {
     val command = StartSeparateProcess(controllerAddress = "127.0.0.1:9999", javaOptions = JavaOptions, javaClasspath = JavaClasspath)

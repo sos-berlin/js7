@@ -20,7 +20,7 @@ import org.scalatest.mock.MockitoSugar.mock
 @RunWith(classOf[JUnitRunner])
 final class ProxyRegisterTest extends FreeSpec {
 
-  private val proxyRegister = Guice.createInjector().apply[ProxyRegister]
+  private val proxyRegister = Guice.createInjector().instance[ProxyRegister]
   private val externalProxyId = ProxyId(0x123456789abcdefL)
 
   "External ProxyId" in {

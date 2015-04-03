@@ -51,7 +51,7 @@ private object AgentWebServerTest {
         bindInstance[ActorSystem](ActorSystem("TEST"))
       }
     })
-    val agentStarter = injector.apply[AgentWebServer]
+    val agentStarter = injector.instance[AgentWebServer]
     val started = agentStarter.start()
     awaitResult(started, 10.seconds)
     intercept[BindException] { new ServerSocket(httpPort) }
