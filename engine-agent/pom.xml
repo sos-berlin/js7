@@ -83,7 +83,7 @@
                         </goals>
                         <configuration>
                             <descriptors>
-                                <descriptor>src/main/resources/com/sos/scheduler/engine/agent/main/maven-assembly.xml</descriptor>
+                                <descriptor>src/main/resources/com/sos/scheduler/engine/agent/maven-assembly.xml</descriptor>
                             </descriptors>
                             <archive>
                                 <manifest>

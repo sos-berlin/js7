@@ -16,7 +16,7 @@
     </files>
     <fileSets>
         <fileSet>
-            <directory>${basedir}/src/main/resources/com/sos/scheduler/engine/agent/main</directory>
+            <directory>${basedir}/src/main/resources/com/sos/scheduler/engine/agent</directory>
             <outputDirectory>agent/bin</outputDirectory>
             <fileMode>0755</fileMode>
             <includes>

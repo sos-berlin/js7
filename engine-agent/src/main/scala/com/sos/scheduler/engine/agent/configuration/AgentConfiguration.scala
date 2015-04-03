@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent
+package com.sos.scheduler.engine.agent.configuration
 
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import scala.collection.immutable

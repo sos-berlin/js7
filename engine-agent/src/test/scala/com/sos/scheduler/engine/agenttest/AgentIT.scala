@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agenttest
 
-import com.sos.scheduler.engine.agent.AgentConfiguration
-import com.sos.scheduler.engine.agent.main.Main
+import com.sos.scheduler.engine.agent.Agent
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agenttest.AgentIT._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
@@ -40,14 +40,14 @@ final class AgentIT extends FreeSpec with ScalaSchedulerTest {
   import controller.{newEventPipe, toleratingErrorCodes, toleratingErrorLogEvent}
 
   private lazy val agentTcpPort = findRandomFreeTcpPort()
-  private lazy val agentApp = new Main(AgentConfiguration(httpPort = agentTcpPort, httpInterfaceRestriction = Some("127.0.0.1"))).closeWithCloser
+  private lazy val agent = new Agent(AgentConfiguration(httpPort = agentTcpPort, httpInterfaceRestriction = Some("127.0.0.1"))).closeWithCloser
   private val eventsPromise = Promise[immutable.Seq[Event]]()
   private lazy val shellOutput: immutable.Seq[String] = taskLogLines collect { case ScriptOutputRegex(o) ⇒ o.trim }
   private lazy val taskLogLines = eventsPromise.successValue collect { case e: InfoLogEvent ⇒ e.message }
   private val finishedOrderParametersPromise = Promise[Map[String, String]]()
 
   protected override def onSchedulerActivated() = {
-    val started = agentApp.start()
+    val started = agent.start()
     scheduler executeXml TestJobElem
     scheduler executeXml <process_class name="test-agent" remote_scheduler={s"http://127.0.0.1:$agentTcpPort"}/>
     awaitResult(started, 10.seconds)

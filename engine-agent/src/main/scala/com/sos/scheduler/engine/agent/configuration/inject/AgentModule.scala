@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.agent.configuration.inject
 
 import akka.actor.ActorSystem
 import com.google.common.io.Closer
-import com.sos.scheduler.engine.agent.AgentConfiguration
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 

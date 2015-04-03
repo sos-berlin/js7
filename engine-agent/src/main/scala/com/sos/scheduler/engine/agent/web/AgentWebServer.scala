@@ -4,8 +4,9 @@ import akka.actor.{ActorSystem, Props}
 import akka.io.{IO, Tcp}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.sos.scheduler.engine.agent.commandexecutor.CommandExecutor
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor
-import com.sos.scheduler.engine.agent.{AgentConfiguration, CommandExecutor}
 import java.net.InetAddress
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global

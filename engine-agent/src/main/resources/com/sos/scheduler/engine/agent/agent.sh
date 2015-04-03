@@ -15,4 +15,4 @@ fi
 java=java
 [ -n "$javaHome" ] && java="$javaHome/bin/java"
 
-"$java" -classpath "$jarDir/*" com.sos.scheduler.engine.agent.main.Main "$@"
+"$java" -classpath "$jarDir/*" com.sos.scheduler.engine.agent.Agent "$@"

@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.agent.process
 
 import com.google.common.base.Splitter
-import com.sos.scheduler.engine.agent.AgentConfiguration
 import com.sos.scheduler.engine.agent.commands.{StartSeparateProcess, StartProcess, StartThread}
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.data.agent.AgentProcessId
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer
