@@ -862,7 +862,7 @@
         </repository>
         <snapshotRepository>
             <id>snapshots</id>
-            <url>${repositoryBase}/sos-os-${osArch}/</url>
+            <url>${repositoryBase}/snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
 
