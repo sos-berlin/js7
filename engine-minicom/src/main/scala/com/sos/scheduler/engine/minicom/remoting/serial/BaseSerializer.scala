@@ -42,7 +42,9 @@ private[serial] class BaseSerializer {
   final def need(n: Int): Unit = {
     val neededSize = byteBuffer.position + n
     if (neededSize > byteBuffer.limit) {
-      byteBuffer = ByteBuffer allocate increased(byteBuffer.limit, neededSize)
+      val b = ByteBuffer.allocate(increased(byteBuffer.limit, neededSize))
+      b.put(byteBuffer.array, byteBuffer.arrayOffset, byteBuffer.position)
+      byteBuffer = b
     }
   }
 

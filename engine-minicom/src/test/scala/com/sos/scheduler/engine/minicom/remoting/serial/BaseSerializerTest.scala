@@ -81,16 +81,33 @@ final class BaseSerializerTest extends FreeSpec {
   }
 
   "Big string" in {
-    val bigString = "x" * 1000 * 1000
+    val bigString = Vector.fill(1000 * 1000) { Random.nextPrintableChar() } .mkString
+    assert(bigString.length == 1000*1000)
     val lengthBytes = Vector(0, bigString.length >> 16, (bigString.length >> 8) & 0xff, bigString.length & 0xff) map { _.toByte }
     new Tester[String](_.writeString, _.readString()) {
       testSeq(bigString, lengthBytes ++ bigString.getBytes(US_ASCII))
     }
   }
 
-  "Buffer resizing" in {
+  "increased" in {
     for (neededSize ← Iterator.fill(1000000) { BaseSerializer.InitialSize + Random.nextInt % 10000000 })
       BaseSerializer.increased(currentSize = BaseSerializer.InitialSize, neededSize = neededSize) should be >= neededSize
+  }
+
+  "Increased buffer" in {
+    val bigString = Vector.fill(1000 * 1000) { Random.nextPrintableChar() } .mkString
+    assert(bigString.length > BaseSerializer.InitialSize)
+    val serializer = new BaseSerializer
+    val int = 1234567
+    serializer.writeInt32(int)
+    // Buffer is resized now
+    serializer.writeString(bigString)
+    val (array, length) = serializer.byteArrayAndLength
+    val deserializer = new BaseDeserializer {
+      protected val buffer = ByteBuffer.wrap(array, 0, length)
+    }
+    deserializer.readInt32() shouldEqual int
+    deserializer.readString() shouldEqual bigString
   }
 }
 
