@@ -7,6 +7,7 @@ import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
+import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
@@ -17,9 +18,9 @@ final class Agent(configuration: AgentConfiguration) extends AutoCloseable {
   private val server = injector.instance[AgentWebServer]
   private val closer = injector.instance[Closer]
 
-  def start() = server.start()
+  def start(): Future[Unit] = server.start()
 
-  def close() = closer.close()
+  def close(): Unit = closer.close()
 }
 
 object Agent {
