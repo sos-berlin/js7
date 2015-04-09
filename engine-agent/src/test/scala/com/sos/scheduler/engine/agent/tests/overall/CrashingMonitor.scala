@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.tests
+package com.sos.scheduler.engine.agent.tests.overall
 
-import com.sos.scheduler.engine.agent.tests.AgentIT._
+import com.sos.scheduler.engine.agent.tests.overall.AgentIT._
 import java.io.File
 import java.lang.Thread.sleep
 
