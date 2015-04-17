@@ -3,6 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>engine-minicom</artifactId>
+  <version>1.9.0-RC1</version>
     <parent>
         <groupId>com.sos-berlin.jobscheduler.engine</groupId>
         <artifactId>engine</artifactId>
@@ -87,4 +88,8 @@
             <artifactId>jsr305</artifactId>
         </dependency>
     </dependencies>
+
+  <scm>
+    <tag>v1.9.0-RC1</tag>
+  </scm>
 </project>

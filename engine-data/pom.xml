@@ -3,6 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>engine-data</artifactId>
+  <version>1.9.0-RC1</version>
 
     <parent>
         <groupId>com.sos-berlin.jobscheduler.engine</groupId>
@@ -130,4 +131,8 @@
             <artifactId>spray-json_${scala.binaryVersion}</artifactId>
         </dependency>
     </dependencies>
+
+  <scm>
+    <tag>v1.9.0-RC1</tag>
+  </scm>
 </project>
