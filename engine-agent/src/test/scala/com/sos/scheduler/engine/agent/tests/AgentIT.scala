@@ -138,9 +138,9 @@ object AgentIT {
   private val TestJobPath = JobPath("/test")
   private val TestReturnCode = ReturnCode(42)
   private val FirstStdoutLine = "FIRST STDOUT LINE"
-  private val OrderVariable = Variable("ORDERPARAM", "ORDERVALUE")
+  private val OrderVariable = Variable("orderparam", "ORDERVALUE")
   private val OrderParamOverridesJobParam = Variable("ORDEROVERRIDESJOBPARAM", "ORDEROVERRIDESJOBVALUE")
-  private val JobParam = Variable("TESTPARAM", "PARAM-VALUE")
+  private val JobParam = Variable("testparam", "PARAM-VALUE")
   private val EnvironmentVariable = Variable("TESTENV", "ENV-VALUE")
   private val SchedulerVariables = List(OrderVariable, OrderParamOverridesJobParam, JobParam)
   private val ScriptOutputRegex = "[^!]*!(.*)".r  // Our test script output start with '!'
@@ -193,5 +193,6 @@ object AgentIT {
       }</script>
     </job>
 
-  private def paramToEnvName(name: String) = s"SCHEDULER_PARAM_$name"
+  // use upper case here. Even if scheduler variable is lower case, it must be converted to upper case by the agent.
+  private def paramToEnvName(name: String) = s"SCHEDULER_PARAM_${name.toUpperCase}"
 }

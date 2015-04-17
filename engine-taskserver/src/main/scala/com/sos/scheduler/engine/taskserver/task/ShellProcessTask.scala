@@ -46,7 +46,7 @@ extends Task with HasCloser {
   private def startProcess(): RichProcess = {
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
-      val paramEnv = params map { case (k, v) ⇒ s"$EnvironmentParameterPrefix$k" → v }
+      val paramEnv = params map { case (k, v) ⇒ s"$EnvironmentParameterPrefix${k.toUpperCase()}" → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
     RichProcess.startShellScript(name = jobName, additionalEnvironment = env, scriptString = module.script.string.trim).closeWithCloser
