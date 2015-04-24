@@ -5,6 +5,6 @@
     <settings>
         <log_level>debug9</log_level>
     </settings>
-    <script language="java" java_class="com.sos.scheduler.engine.agent.tests.api.ApiJob"/>
+    <script language="java" java_class="com.sos.scheduler.engine.agent.tests.api.LogJob"/>
 
 </job>
