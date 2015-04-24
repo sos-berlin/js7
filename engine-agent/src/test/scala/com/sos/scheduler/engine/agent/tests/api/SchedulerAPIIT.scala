@@ -71,17 +71,21 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
         for(line <- Source.fromFile(TestTextFile).getLines()) {
           taskResult.logString should include(line)
         }
-        //taskResult.logString should include (LogJob.SpoolerCloseMessage)
+        taskResult.logString should include (LogJob.SpoolerCloseMessage)
         taskResult.logString should include (LogJob.SpoolerExitMessage)
-        //taskResult.logString should include (LogJob.SpoolerInitMessage)
+        taskResult.logString should include (LogJob.SpoolerInitMessage)
         taskResult.logString should include (LogJob.SpoolerOpenMessage)
       }
     }
   }
 
   "test job obect" in {
-      val run = runJobFuture(JobPath("/job_object"))
-      val taskResult: TaskResult = awaitSuccess(run.result)
+    val run = runJobFuture(JobPath("/job_object"))
+    val taskResult: TaskResult = awaitSuccess(run.result)
+
+    for (mes <- JobObjectJob.EUnwantedMessages.values()) {
+      taskResult.logString should not include (mes.toString())
+    }
   }
 
  "Run variables job via order" in {
