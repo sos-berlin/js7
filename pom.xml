@@ -358,7 +358,7 @@
                         <version>2.4</version>
                         <executions>
                             <execution>
-								<phase>install</phase>
+                                <phase>install</phase>
                                 <id>aggregate-sources</id>
                                 <goals>
                                     <goal>aggregate</goal>
