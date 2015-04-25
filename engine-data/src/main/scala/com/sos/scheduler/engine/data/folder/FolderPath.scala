@@ -7,3 +7,5 @@ final case class FolderPath(string: String) extends TypedPath {
 
   def fileBasedType = FileBasedType.folder
 }
+
+object FolderPath extends TypedPath.Companion[FolderPath]

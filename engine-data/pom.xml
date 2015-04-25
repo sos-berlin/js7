@@ -130,6 +130,10 @@
             <groupId>io.spray</groupId>
             <artifactId>spray-json_${scala.binaryVersion}</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.intellij</groupId>
+            <artifactId>annotations</artifactId>
+        </dependency>
     </dependencies>
 
   <scm>

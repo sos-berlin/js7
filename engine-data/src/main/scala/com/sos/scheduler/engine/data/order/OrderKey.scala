@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.data.order
 
-import OrderKey._
-import com.fasterxml.jackson.annotation.{JsonProperty, JsonCreator}
+import com.fasterxml.jackson.annotation.{JsonCreator, JsonProperty}
 import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 
@@ -9,18 +8,20 @@ import com.sos.scheduler.engine.data.jobchain.JobChainPath
 final case class OrderKey(jobChainPath: JobChainPath, id: OrderId)
 extends SerializableOrderKey
 with TypedPath {
+  import com.sos.scheduler.engine.data.order.OrderKey._
+
   requireIsAbsolute()
 
   def fileBasedType = FileBasedType.order
 
-  def string = jobChainPath.string + separator + id
+  def string = jobChainPath.string + Separator + id
 
   override def toString = s"${jobChainPath.string}:$id"
 }
 
 
-object OrderKey {
-  private val separator = ','
+object OrderKey extends TypedPath.Companion[OrderKey] {
+  private val Separator = ','
 
   def apply(o: String): OrderKey = {
     val i = o indexOf ','
