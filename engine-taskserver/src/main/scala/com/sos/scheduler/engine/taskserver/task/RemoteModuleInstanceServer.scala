@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import sos.spooler.jobs.ScriptAdapterJob
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
@@ -9,8 +10,8 @@ import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.module.Module._
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{JavaModuleLanguage, NamedInvocables, ShellModuleLanguage}
-import java.util.UUID
+import com.sos.scheduler.engine.taskserver.module._
+import _root_.java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
 
@@ -31,6 +32,15 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
 
   @invocable
   def begin(objectAnys: VariantArray, objectNamesAnys: VariantArray): Boolean = {
+    def newJavaProcessTask(newClassInstance: () ⇒ Any) =
+      new JavaProcessTask(
+        JavaModule(newClassInstance),
+        toNamedObjectMap(names = objectNamesAnys, anys = objectAnys),
+        taskArguments.monitors,
+        jobName = taskArguments.jobName,
+        hasOrder = taskArguments.hasOrder,
+        environment = taskStartArguments.environment ++ taskArguments.environment)
+
     task = taskArguments.moduleLanguage match {
       case ShellModuleLanguage ⇒
         new ShellProcessTask(
@@ -42,14 +52,9 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
           environment = taskStartArguments.environment ++ taskArguments.environment)
         .closeWithCloser
       case JavaModuleLanguage ⇒
-        def newClassInstance() = Class.forName(taskArguments.javaClassName).newInstance()
-        new JavaProcessTask(
-          JavaModule(newClassInstance),
-          toNamedObjectMap(names = objectNamesAnys, anys = objectAnys),
-          taskArguments.monitors,
-          jobName = taskArguments.jobName,
-          hasOrder = taskArguments.hasOrder,
-          environment = taskStartArguments.environment ++ taskArguments.environment)
+        newJavaProcessTask(() ⇒ Class.forName(taskArguments.javaClassName).newInstance())
+      case JavaScriptModuleLanguage(language) ⇒
+        newJavaProcessTask(() ⇒ new ScriptAdapterJob(language, taskArguments.script.string))
     }
     task.start()
   }
