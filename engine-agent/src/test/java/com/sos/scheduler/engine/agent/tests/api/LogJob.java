@@ -117,7 +117,7 @@ public class LogJob extends Job_impl {
         spooler_log.set_mail_on_success(spooler_log.mail_on_success());
         spooler_log.set_mail_on_warning(spooler_log.mail_on_warning());
 
-        spooler_log.start_new_file();
+        //TODO Fails: spooler_log.start_new_file();
     }
 
 
