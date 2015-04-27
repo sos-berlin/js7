@@ -26,6 +26,15 @@ private[serial] class BaseSerializer {
     byteBuffer.putLong(o)
   }
 
+  final def writeDouble(o: Double): Unit = {
+    val string = o.toString
+    need(2)
+    byteBuffer.put('s'.toByte)
+    byteBuffer.put(string.length.toByte)
+    need(string.length)
+    for (o ← string) byteBuffer.put(o.toByte)
+  }
+
   final def writeBoolean(o: Boolean): Unit = {
     need(1)
     byteBuffer.put(if (o) 1.toByte else 0.toByte)

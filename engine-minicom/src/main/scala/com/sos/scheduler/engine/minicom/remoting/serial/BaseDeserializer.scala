@@ -19,6 +19,14 @@ private[serial] trait BaseDeserializer {
 
   def readInt64(): Long = buffer.getLong
 
+  def readDouble(): Double = {
+    require(readByte() == 's')
+    val length = readByte()
+    require(length > 0)
+    val string = (for (_ ← 1 to length) yield readByte().toChar) mkString ""
+    string.toDouble
+  }
+
   def readByte(): Byte = buffer.get
 
   def readBoolean(): Boolean = buffer.get != 0

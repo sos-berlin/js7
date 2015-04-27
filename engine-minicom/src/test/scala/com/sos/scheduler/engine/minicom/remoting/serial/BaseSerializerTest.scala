@@ -43,6 +43,14 @@ final class BaseSerializerTest extends FreeSpec {
     }
   }
 
+  "writeDouble" in {
+    new Tester[Double](_.writeDouble, _.readDouble()) {
+      test(12345678.9013, 's', 15, '1', '.', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '3', 'E', '7')
+      test(Double.MaxValue, 's', 22,      '1', '.', '7', '9', '7', '6', '9', '3', '1', '3', '4', '8', '6', '2', '3', '1', '5', '7', 'E', '3', '0', '8')
+      test(Double.MinValue, 's', 23, '-', '1', '.', '7', '9', '7', '6', '9', '3', '1', '3', '4', '8', '6', '2', '3', '1', '5', '7', 'E', '3', '0', '8')
+    }
+  }
+
   "writeBoolean" in {
     new Tester[Boolean](_.writeBoolean, _.readBoolean()) {
       test(false, 0x00)

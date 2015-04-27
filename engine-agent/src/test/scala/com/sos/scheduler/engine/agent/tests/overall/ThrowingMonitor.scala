@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.tests
+package com.sos.scheduler.engine.agent.tests.overall
 
 final class ThrowingMonitor extends sos.spooler.Monitor_impl {
 

@@ -18,6 +18,9 @@ private[remoting] abstract class VariantSerializer extends BaseSerializer {
       case o: Long ⇒
         writeInt32(VT_I8)
         writeInt64(o)
+      case o: Double ⇒
+        writeInt32(VT_R8)
+        writeDouble(o)
       case o: Boolean ⇒
         writeInt32(VT_BOOL)
         writeBoolean(o)
