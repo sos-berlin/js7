@@ -2,74 +2,73 @@ package com.sos.scheduler.engine.agent.tests.api;
 
 import com.google.common.base.Strings;
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import sos.spooler.Job_impl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import static com.sos.scheduler.engine.agent.tests.api.SchedulerAPIIT.TestTextFilename;
 
 /**
- * Created by Andreas Liebert on 10.04.2015.
+ * @author Andreas Liebert
  */
-public class LogJob extends Job_impl {
+public final class LogJob extends Job_impl {
 
     public static final String LogTestPrefix = "##THIS IS ";
     public static final String LogTestSuffix = "##";
-    public static final String SpoolerInitMessage = LogTestPrefix+"spooler_init"+LogTestSuffix;
-    public static final String SpoolerOpenMessage = LogTestPrefix+"spooler_open"+LogTestSuffix;
-    public static final String SpoolerCloseMessage = LogTestPrefix+"spooler_close"+LogTestSuffix;
-    public static final String SpoolerExitMessage = LogTestPrefix+"spooler_exit"+LogTestSuffix;
+    public static final String SpoolerInitMessage = LogTestPrefix + "spooler_init" + LogTestSuffix;
+    public static final String SpoolerOpenMessage = LogTestPrefix + "spooler_open" + LogTestSuffix;
+    public static final String SpoolerCloseMessage = LogTestPrefix + "spooler_close" + LogTestSuffix;
+    public static final String SpoolerExitMessage = LogTestPrefix + "spooler_exit" + LogTestSuffix;
 
-    public static final HashMap<String,String> LogMessages = new HashMap<String,String>(){
+    public static final Map<String,String> LogMessages = new HashMap<String,String>() {
         {
             add("info");
             add("warn");
             add("debug");
 
-            for (int i=2; i<=9; i++){
-                add("debug"+i);
+            for (int i = 2; i <= 9; i++) {
+                add("debug" + i);
             }
 
             //add("error");
         }
 
         private void add(String logLevel){
-            put (logLevel, LogTestPrefix+logLevel+LogTestSuffix);
+            put(logLevel, LogTestPrefix + logLevel + LogTestSuffix);
         }
     };
 
 
     @Override
-    public boolean spooler_init() throws Exception {
+    public boolean spooler_init() {
         spooler_log.info(SpoolerInitMessage);
         return true;
     }
 
     @Override
-    public boolean spooler_open() throws Exception {
+    public boolean spooler_open() {
         spooler_log.info(SpoolerOpenMessage);
         return true;
     }
 
     @Override
-    public void spooler_close() throws Exception {
+    public void spooler_close() {
         spooler_log.info(SpoolerCloseMessage);
     }
 
     @Override
-    public void spooler_exit() throws Exception {
+    public void spooler_exit() {
         spooler_log.info(SpoolerExitMessage);
     }
 
     @Override
-    public boolean spooler_process() throws Exception {
+    public boolean spooler_process() {
         String logLevel = spooler_task.params().value("log_level");
-        if (Strings.isNullOrEmpty(logLevel)){
+        if (Strings.isNullOrEmpty(logLevel)) {
             logLevel="info";
         }
         String message = LogMessages.get(logLevel);
-        switch (logLevel){
+        switch (logLevel) {
             case "info": spooler_log.info(message);
                 testOtherLogFunctions();
                 break;
@@ -100,15 +99,15 @@ public class LogJob extends Job_impl {
         return (spooler_task.order() != null);
     }
 
-    private void testOtherLogFunctions() throws Exception {
+    private void testOtherLogFunctions() {
         if (Strings.isNullOrEmpty(spooler_log.filename())){
-            throw new Exception("spooler_log.filename() is empty");
+            throw new RuntimeException("spooler_log.filename() is empty");
         }
         String testString = "034uffr348";
         spooler_log.info(testString);
         String last = spooler_log.last("info");
-        if (!testString.equals(last)){
-            throw new Exception("spooler_log.last returns unexpected result");
+        if (!testString.equals(last)) {
+            throw new RuntimeException("spooler_log.last returns unexpected result");
         }
         spooler_log.set_level(spooler_log.level());
         spooler_log.log_file(new File(spooler_job.configuration_directory(), TestTextFilename()));
@@ -116,9 +115,6 @@ public class LogJob extends Job_impl {
         spooler_log.set_mail_on_process(spooler_log.mail_on_process());
         spooler_log.set_mail_on_success(spooler_log.mail_on_success());
         spooler_log.set_mail_on_warning(spooler_log.mail_on_warning());
-
         //TODO Fails: spooler_log.start_new_file();
     }
-
-
 }

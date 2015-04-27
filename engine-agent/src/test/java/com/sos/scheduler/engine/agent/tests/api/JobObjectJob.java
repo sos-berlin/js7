@@ -3,12 +3,10 @@ package com.sos.scheduler.engine.agent.tests.api;
 import com.google.common.base.Strings;
 import sos.spooler.Job_impl;
 
-import java.util.HashMap;
-
 /**
- * Created by Andreas Liebert on 23.04.2015.
+ * @author Andreas Liebert
  */
-public class JobObjectJob extends Job_impl{
+public class JobObjectJob extends Job_impl {
 
     public enum EUnwantedMessages  {
         CONFIG_DIR ("spooler_job.configuration_directory is empty"),

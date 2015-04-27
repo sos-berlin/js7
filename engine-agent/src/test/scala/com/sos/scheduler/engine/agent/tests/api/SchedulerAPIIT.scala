@@ -2,8 +2,6 @@ package com.sos.scheduler.engine.agent.tests.api
 
 import com.sos.scheduler.engine.agent.Agent
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.tests.api
-import com.sos.scheduler.engine.agent.tests.api.{LogJob, VariablesJob}
 import com.sos.scheduler.engine.agent.tests.api.SchedulerAPIIT._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
@@ -12,22 +10,20 @@ import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
 import com.sos.scheduler.engine.data.event.Event
-import com.sos.scheduler.engine.data.job.{ReturnCode, TaskEndedEvent, JobPath}
+import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.log.InfoLogEvent
-import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.data.order.{SuccessOrderStateTransition, OrderFinishedEvent, OrderStepEndedEvent}
+import com.sos.scheduler.engine.data.order.{OrderFinishedEvent, OrderStepEndedEvent, SuccessOrderStateTransition}
 import com.sos.scheduler.engine.data.xmlcommands.OrderCommand
 import com.sos.scheduler.engine.eventbus.EventSourceEvent
 import com.sos.scheduler.engine.kernel.order.Order
-
-import com.sos.scheduler.engine.test.SchedulerTestUtils._
 import com.sos.scheduler.engine.test.EventBusTestFutures.implicits._
+import com.sos.scheduler.engine.test.SchedulerTestUtils._
 import com.sos.scheduler.engine.test.scalatest.ScalaSchedulerTest
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.Matchers._
+import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.concurrent.Promise
@@ -40,7 +36,7 @@ import scala.io.Source
 @RunWith(classOf[JUnitRunner])
 final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
 
-  import controller.{newEventPipe, toleratingErrorCodes, toleratingErrorLogEvent}
+  import controller.newEventPipe
 
   private lazy val agentTcpPort = findRandomFreeTcpPort()
   private lazy val agent = new Agent(AgentConfiguration(httpPort = agentTcpPort, httpInterfaceRestriction = Some("127.0.0.1"))).closeWithCloser
@@ -56,9 +52,8 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
     awaitResult(started, 10.seconds)
   }
 
-  "test logger" in {
-
-    for(level <- LogJob.LogMessages.keySet()){
+  "spooler_log methods" in {
+    for (level <- LogJob.LogMessages.keySet) {
       val run = runJobFuture(JobPath("/log"), variables = Map("log_level" → level))
 
       val taskResult: TaskResult = level match {
@@ -66,10 +61,9 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
         case _ => awaitSuccess(run.result)
       }
 
-
-      val regularExpr = s"(?i)\\[$level\\]\\s+"+LogJob.LogMessages.get(level);
+      val regularExpr = s"(?i)\\[$level\\]\\s+" + LogJob.LogMessages.get(level)
       taskResult.logString should include regex regularExpr
-      if(level=="info"){
+      if (level == "info") {
         for (line <- Source.fromFile(testTextFile).getLines()) {
           taskResult.logString should include(line)
         }
@@ -92,17 +86,14 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
 
  "Run variables job via order" in {
     autoClosing(newEventPipe()) { eventPipe ⇒
-
       eventBus.onHotEventSourceEvent[OrderStepEndedEvent] {
         case EventSourceEvent(event, order: Order) ⇒ finishedOrderParametersPromise.success(order.parameters.toMap)
       }
       eventBus.awaitingKeyedEvent[OrderFinishedEvent](VariablesOrderKey) {
         scheduler executeXml OrderCommand(VariablesOrderKey, parameters = Map(OrderVariable.pair, OrderParamOverridesJobParam.pair))
       }
-
       eventsPromise.success(eventPipe.queued[Event])
     }
-
   }
 
   "Variables job exit code" in {
@@ -142,7 +133,7 @@ object SchedulerAPIIT {
   val VariableSubstitutionString = "aaaa $"+JobParam.name+" aaaa"
   val TestTextFilename = "logText.txt"
 
-  case class Variable(name: String, value: String) {
+  final case class Variable(name: String, value: String) {
     override def toString = name
     def expectedString = s"$name=$value"
     def pair = name → value
