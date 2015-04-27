@@ -7,6 +7,7 @@ import com.sos.scheduler.engine.agent.tests.api.{LogJob, VariablesJob}
 import com.sos.scheduler.engine.agent.tests.api.SchedulerAPIIT._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
+import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
@@ -45,6 +46,7 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
   private lazy val agent = new Agent(AgentConfiguration(httpPort = agentTcpPort, httpInterfaceRestriction = Some("127.0.0.1"))).closeWithCloser
   private val finishedOrderParametersPromise = Promise[Map[String, String]]()
   private val eventsPromise = Promise[immutable.Seq[Event]]()
+  private lazy val testTextFile = testEnvironment.configDirectory / TestTextFilename
   private lazy val taskLogLines = eventsPromise.successValue collect { case e: InfoLogEvent ⇒ e.message }
 
   protected override def onSchedulerActivated() = {
@@ -68,7 +70,7 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
       val regularExpr = s"(?i)\\[$level\\]\\s+"+LogJob.LogMessages.get(level);
       taskResult.logString should include regex regularExpr
       if(level=="info"){
-        for(line <- Source.fromFile(TestTextFile).getLines()) {
+        for (line <- Source.fromFile(testTextFile).getLines()) {
           taskResult.logString should include(line)
         }
         taskResult.logString should include (LogJob.SpoolerCloseMessage)
@@ -138,8 +140,7 @@ object SchedulerAPIIT {
   val TaskParamsCountPrefix="Taskparamscount:"
   private val JobParam = Variable("testparam", "PARAM-VALUE")
   val VariableSubstitutionString = "aaaa $"+JobParam.name+" aaaa"
-  var TestTextFile = "target\\test-classes\\com\\sos\\scheduler\\engine\\agent\\tests\\api\\logText.txt"
-
+  val TestTextFilename = "logText.txt"
 
   case class Variable(name: String, value: String) {
     override def toString = name

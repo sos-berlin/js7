@@ -1,11 +1,13 @@
 package com.sos.scheduler.engine.agent.tests.api;
 
 import com.google.common.base.Strings;
+import java.io.File;
 import sos.spooler.Job_impl;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import static com.sos.scheduler.engine.agent.tests.api.SchedulerAPIIT.TestTextFilename;
 
 /**
  * Created by Andreas Liebert on 10.04.2015.
@@ -109,7 +111,7 @@ public class LogJob extends Job_impl {
             throw new Exception("spooler_log.last returns unexpected result");
         }
         spooler_log.set_level(spooler_log.level());
-        spooler_log.log_file(SchedulerAPIIT.TestTextFile());
+        spooler_log.log_file(new File(spooler_job.configuration_directory(), TestTextFilename()));
         spooler_log.set_mail_on_error(spooler_log.mail_on_error());
         spooler_log.set_mail_on_process(spooler_log.mail_on_process());
         spooler_log.set_mail_on_success(spooler_log.mail_on_success());
