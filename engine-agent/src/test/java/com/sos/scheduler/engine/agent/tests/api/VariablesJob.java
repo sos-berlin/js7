@@ -10,14 +10,16 @@ import sos.spooler.Variable_set;
 public class VariablesJob extends Job_impl {
     @Override
     public boolean spooler_process() throws Exception {
+
         spooler_log.info("Creating variables set");
         Variable_set variableSet = spooler.create_variable_set();
 
         spooler_log.info("Merging task params");
 
-        Variable_set taskParams=spooler_task.params();
+        Variable_set taskParams =spooler_task.params();
         spooler_log.info(SchedulerAPIIT.TaskParamsCountPrefix() + taskParams.count());
         String substituedString = taskParams.substitute(SchedulerAPIIT.VariableSubstitutionString());
+
         spooler_log.info(substituedString);
         spooler_log.info("Merging task params 2");
         variableSet.merge(taskParams);

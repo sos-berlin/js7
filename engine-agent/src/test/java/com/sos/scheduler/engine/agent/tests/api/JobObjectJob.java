@@ -36,22 +36,24 @@ public class JobObjectJob extends Job_impl {
 
         spooler_job.set_delay_order_after_setback(1, 70.5);
         spooler_job.set_delay_order_after_setback(2,"00:03");
-        spooler_job.set_delay_order_after_setback(3,"00:03:33");
-
+        spooler_job.set_delay_order_after_setback(3, "00:03:33");
+        int maxOrderSetbacks = 5;
+        spooler_job.set_max_order_setbacks(5);
+        if (spooler_job.max_order_setbacks() != maxOrderSetbacks) {
+            spooler_log.warn(UnwantedMessage.MAX_ORDER_SETBACKS.toString());
+        }
 
         checkNotEmpty(spooler_job.configuration_directory(), UnwantedMessage.CONFIG_DIR);
         checkNotEmpty(spooler_job.folder_path(), UnwantedMessage.FOLDER_PATH);
         spooler_log.info("include_path=" + spooler_job.include_path());
 
-        int maxOrderSetbacks = 5;
-        spooler_job.set_max_order_setbacks(5);
-        if (spooler_job.max_order_setbacks()!=maxOrderSetbacks){
-            spooler_log.warn(UnwantedMessage.MAX_ORDER_SETBACKS.toString());
-        }
-
         if(!SchedulerAPIIT.JobObjectsJobPath().string().equals("/"+spooler_job.name())){
             spooler_log.warn(UnwantedMessage.JOB_PATH.toString());
         }
+
+        spooler_log.info("process_class name="+spooler_job.process_class().name());
+        spooler_log.info("process_class max_processes="+spooler_job.process_class().max_processes());
+        spooler_log.info("process_class remote_scheduler="+spooler_job.process_class().remote_scheduler());
 
         return (spooler_task.order() != null);
     }

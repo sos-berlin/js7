@@ -44,6 +44,7 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
   import controller.newEventPipe
 
   private lazy val agentTcpPort = findRandomFreeTcpPort()
+  private lazy val remoteSchedulerAddress = s"http://127.0.0.1:$agentTcpPort"
   private lazy val agent = new Agent(AgentConfiguration(httpPort = agentTcpPort, httpInterfaceRestriction = Some("127.0.0.1"))).closeWithCloser
   private val finishedOrderParametersPromise = Promise[Map[String, String]]()
   private val eventsPromise = Promise[immutable.Seq[Event]]()
@@ -53,7 +54,9 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
   protected override def onSchedulerActivated() = {
     val started = agent.start()
     scheduler executeXml VariablesJobElem
-    scheduler executeXml <process_class name="test-agent" remote_scheduler={s"http://127.0.0.1:$agentTcpPort"}/>
+    scheduler executeXml <process_class name={s"$ProcessClassName"}
+                                        remote_scheduler={s"$remoteSchedulerAddress"}
+                                        max_processes={s"$MaxProcesses"}/>
     awaitResult(started, 10.seconds)
   }
 
@@ -84,6 +87,9 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
       taskResult.logString should not include (mes.toString())
     }
     taskResult.logString should include (s"include_path=$IncludePath")
+    taskResult.logString should include (s"process_class name=$ProcessClassName")
+    taskResult.logString should include (s"process_class remote_scheduler=$remoteSchedulerAddress")
+    taskResult.logString should include (s"process_class max_processes=$MaxProcesses")
   }
 
  "Run variables job via order" in {
@@ -136,6 +142,9 @@ object SchedulerAPIIT {
   val TestTextFilename = "logText.txt"
   val IncludePath = "fooo"
   val JobObjectsJobPath = JobPath("/job_object")
+  val ProcessClassName = "test-agent"
+  private val MaxProcesses = 23
+
 
   final case class Variable(name: String, value: String) {
     override def toString = name
