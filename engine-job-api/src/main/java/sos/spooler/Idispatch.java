@@ -50,6 +50,10 @@ public class Idispatch {
         }
     }
 
+    public Invoker com_invoker() {
+        return invoker;
+    }
+
     /** Not implemented in a pure Java context. JVM links this only when called. */
     private static native Object com_call(long idispatch, String name, Object[] params);
 }
