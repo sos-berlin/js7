@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
 import com.sos.scheduler.engine.minicom.idispatch.Invocable
+import com.sos.scheduler.engine.minicom.remoting.IDispatchInvoker
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.serial.variantTypes._
 import scala.runtime.BoxedUnit.UNIT
@@ -27,9 +28,9 @@ private[remoting] abstract class VariantSerializer extends BaseSerializer {
       case o: String ⇒
         writeInt32(VT_BSTR)
         writeString(o)
-      case o: Invocable ⇒
+      case o: sos.spooler.Idispatch ⇒
         writeInt32(VT_DISPATCH)
-        writeInvocable(o)
+        writeInvocable(o.com_invoker.asInstanceOf[IDispatchInvoker].iDispatch)
       case null ⇒
         writeNull()
       case Unit | UNIT ⇒ writeInt32(VT_EMPTY)
