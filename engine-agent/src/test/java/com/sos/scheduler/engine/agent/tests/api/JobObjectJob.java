@@ -8,13 +8,14 @@ import sos.spooler.Job_impl;
  */
 public class JobObjectJob extends Job_impl {
 
-    public enum UnwantedMessages {
+    public enum UnwantedMessage {
         CONFIG_DIR ("spooler_job.configuration_directory is empty"),
         FOLDER_PATH("spooler_job.folder_path is empty"),
-        INCLUDE_PATH("spooler_job.include_path is empty");
+        MAX_ORDER_SETBACKS("unexpected value for spooler_job.max_order_setbacks"),
+        JOB_PATH("spooler_job.name() returns incorrect value");
 
         private String message;
-        UnwantedMessages(String mes){
+        UnwantedMessage(String mes){
             message="##"+mes+"##";
         }
 
@@ -33,14 +34,33 @@ public class JobObjectJob extends Job_impl {
         spooler_job.set_delay_after_error(4, "STOP");
         spooler_job.clear_delay_after_error();
 
-        checkNotEmpty(spooler_job.configuration_directory(), UnwantedMessages.CONFIG_DIR);
-        checkNotEmpty(spooler_job.folder_path(), UnwantedMessages.FOLDER_PATH);
-        checkNotEmpty(spooler_job.include_path(), UnwantedMessages.INCLUDE_PATH);
+        spooler_job.set_delay_order_after_setback(1, 70.5);
+        spooler_job.set_delay_order_after_setback(2,"00:03");
+        spooler_job.set_delay_order_after_setback(3,"00:03:33");
+
+
+        checkNotEmpty(spooler_job.configuration_directory(), UnwantedMessage.CONFIG_DIR);
+        checkNotEmpty(spooler_job.folder_path(), UnwantedMessage.FOLDER_PATH);
+        spooler_log.info("include_path=" + spooler_job.include_path());
+
+        int maxOrderSetbacks = 5;
+        spooler_job.set_max_order_setbacks(5);
+        if (spooler_job.max_order_setbacks()!=maxOrderSetbacks){
+            spooler_log.warn(UnwantedMessage.MAX_ORDER_SETBACKS.toString());
+        }
+
+        if(!SchedulerAPIIT.JobObjectsJobPath().string().equals("/"+spooler_job.name())){
+            spooler_log.warn(UnwantedMessage.JOB_PATH.toString());
+        }
 
         return (spooler_task.order() != null);
     }
 
-    private void checkNotEmpty(String text, UnwantedMessages message){
+    private void checkEquals(String text, String expected, UnwantedMessage message){
+
+    }
+
+    private void checkNotEmpty(String text, UnwantedMessage message){
         if (Strings.isNullOrEmpty(text)){
             spooler_log.warn(message.toString());
         }

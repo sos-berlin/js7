@@ -25,12 +25,11 @@ public final class LogJob extends Job_impl {
             add("info");
             add("warn");
             add("debug");
-
+            //add("error");
             for (int i = 2; i <= 9; i++) {
                 add("debug" + i);
             }
 
-            //add("error");
         }
 
         private void add(String logLevel){
@@ -65,8 +64,17 @@ public final class LogJob extends Job_impl {
     public boolean spooler_process() {
         String logLevel = spooler_task.params().value("log_level");
         if (Strings.isNullOrEmpty(logLevel)) {
-            logLevel="info";
+            for(String level : LogMessages.keySet()){
+                printLogMessage(level);
+            }
         }
+        else{
+            printLogMessage(logLevel);
+        }
+        return (spooler_task.order() != null);
+    }
+
+    private void printLogMessage(String logLevel){
         String message = LogMessages.get(logLevel);
         switch (logLevel) {
             case "info": spooler_log.info(message);
@@ -95,8 +103,6 @@ public final class LogJob extends Job_impl {
             case "debug9": spooler_log.debug9(message);
                 break;
         }
-
-        return (spooler_task.order() != null);
     }
 
     private void testOtherLogFunctions() {

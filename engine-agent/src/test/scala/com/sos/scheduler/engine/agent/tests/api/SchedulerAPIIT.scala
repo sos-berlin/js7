@@ -39,7 +39,7 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
 
   protected override lazy val testConfiguration = TestConfiguration(
     testClass = getClass,
-    mainArguments = List(s"-include-path=foo"))
+    mainArguments = List(s"-include-path=$IncludePath"))
 
   import controller.newEventPipe
 
@@ -58,35 +58,32 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
   }
 
   "spooler_log methods" in {
-    for (level <- LogJob.LogMessages.keySet) {
-      val run = runJobFuture(JobPath("/log"), variables = Map("log_level" → level))
 
-      val taskResult: TaskResult = level match {
-        case "error" => awaitCompletion(run.result).get
-        case _ => awaitSuccess(run.result)
+      val run = runJobFuture(JobPath("/log"))
+      val taskResult: TaskResult = awaitSuccess(run.result)
+      for (level <- LogJob.LogMessages.keySet) {
+        val regularExpr = s"(?i)\\[$level\\]\\s+" + LogJob.LogMessages.get(level)
+        taskResult.logString should include regex regularExpr
       }
 
-      val regularExpr = s"(?i)\\[$level\\]\\s+" + LogJob.LogMessages.get(level)
-      taskResult.logString should include regex regularExpr
-      if (level == "info") {
-        for (line <- Source.fromFile(testTextFile).getLines()) {
-          taskResult.logString should include(line)
-        }
-        //taskResult.logString should include (LogJob.SpoolerCloseMessage)
-        taskResult.logString should include (LogJob.SpoolerExitMessage)
-        //taskResult.logString should include (LogJob.SpoolerInitMessage)
-        taskResult.logString should include (LogJob.SpoolerOpenMessage)
+      for (line <- Source.fromFile(testTextFile).getLines()) {
+        taskResult.logString should include(line)
       }
-    }
+      //taskResult.logString should include (LogJob.SpoolerCloseMessage)
+      taskResult.logString should include (LogJob.SpoolerExitMessage)
+      //taskResult.logString should include (LogJob.SpoolerInitMessage)
+      taskResult.logString should include (LogJob.SpoolerOpenMessage)
+
   }
 
-  "test job obect" in {
-    val run = runJobFuture(JobPath("/job_object"))
+  "test job object" in {
+    val run = runJobFuture(JobObjectsJobPath)
     val taskResult: TaskResult = awaitSuccess(run.result)
 
-    for (mes <- JobObjectJob.UnwantedMessages.values()) {
+    for (mes <- JobObjectJob.UnwantedMessage.values()) {
       taskResult.logString should not include (mes.toString())
     }
+    taskResult.logString should include (s"include_path=$IncludePath")
   }
 
  "Run variables job via order" in {
@@ -137,6 +134,8 @@ object SchedulerAPIIT {
   private val JobParam = Variable("testparam", "PARAM-VALUE")
   val VariableSubstitutionString = "aaaa $"+JobParam.name+" aaaa"
   val TestTextFilename = "logText.txt"
+  val IncludePath = "fooo"
+  val JobObjectsJobPath = JobPath("/job_object")
 
   final case class Variable(name: String, value: String) {
     override def toString = name
