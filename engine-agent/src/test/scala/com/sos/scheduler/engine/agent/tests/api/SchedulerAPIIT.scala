@@ -19,6 +19,7 @@ import com.sos.scheduler.engine.eventbus.EventSourceEvent
 import com.sos.scheduler.engine.kernel.order.Order
 import com.sos.scheduler.engine.test.EventBusTestFutures.implicits._
 import com.sos.scheduler.engine.test.SchedulerTestUtils._
+import com.sos.scheduler.engine.test.configuration.TestConfiguration
 import com.sos.scheduler.engine.test.scalatest.ScalaSchedulerTest
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -35,6 +36,10 @@ import scala.io.Source
  */
 @RunWith(classOf[JUnitRunner])
 final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
+
+  protected override lazy val testConfiguration = TestConfiguration(
+    testClass = getClass,
+    mainArguments = List(s"-include-path=foo"))
 
   import controller.newEventPipe
 
@@ -67,9 +72,9 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
         for (line <- Source.fromFile(testTextFile).getLines()) {
           taskResult.logString should include(line)
         }
-        taskResult.logString should include (LogJob.SpoolerCloseMessage)
+        //taskResult.logString should include (LogJob.SpoolerCloseMessage)
         taskResult.logString should include (LogJob.SpoolerExitMessage)
-        taskResult.logString should include (LogJob.SpoolerInitMessage)
+        //taskResult.logString should include (LogJob.SpoolerInitMessage)
         taskResult.logString should include (LogJob.SpoolerOpenMessage)
       }
     }
@@ -79,7 +84,7 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
     val run = runJobFuture(JobPath("/job_object"))
     val taskResult: TaskResult = awaitSuccess(run.result)
 
-    for (mes <- JobObjectJob.EUnwantedMessages.values()) {
+    for (mes <- JobObjectJob.UnwantedMessages.values()) {
       taskResult.logString should not include (mes.toString())
     }
   }
