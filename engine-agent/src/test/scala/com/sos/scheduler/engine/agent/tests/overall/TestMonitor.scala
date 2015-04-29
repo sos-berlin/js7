@@ -16,4 +16,13 @@ final class TestMonitor extends sos.spooler.Monitor_impl {
     spooler_log.info("SPOOLER_PROCESS_AFTER")
     returnCode
   }
+
+  override def spooler_task_before(): Boolean = {
+    spooler_log.info("SPOOLER_TASK_BEFORE")
+    true
+  }
+
+  override def spooler_task_after(): Unit = {
+    spooler_log.info("SPOOLER_TASK_AFTER")
+  }
 }
