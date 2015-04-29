@@ -29,7 +29,7 @@ import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.concurrent.Promise
 import scala.concurrent.duration._
-import scala.io.Source
+import scala.io.{Codec, Source}
 
 /**
  * @author Andreas Liebert
@@ -69,12 +69,12 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
         taskResult.logString should include regex regularExpr
       }
 
-      for (line <- Source.fromFile(testTextFile).getLines()) {
+      for (line <- Source.fromFile(testTextFile)(Codec.UTF8).getLines()) {
         taskResult.logString should include(line)
       }
       //taskResult.logString should include (LogJob.SpoolerCloseMessage)
       taskResult.logString should include (LogJob.SpoolerExitMessage)
-      //taskResult.logString should include (LogJob.SpoolerInitMessage)
+      taskResult.logString should include (LogJob.SpoolerInitMessage)
       taskResult.logString should include (LogJob.SpoolerOpenMessage)
 
   }
