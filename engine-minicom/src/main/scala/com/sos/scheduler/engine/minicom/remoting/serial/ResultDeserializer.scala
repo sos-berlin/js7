@@ -31,15 +31,25 @@ extends IUnknownDeserializer {
   }
 
   def readInvokeResult(): InvokeResult = {
-    readAnswerHeader()
+    val hr = readAnswerHeaderHRESULT()
+    if (hr.isError) {
+      readInt32()  // argErr
+      val message = readExcepInfo().toString
+      throw new COMException(hr, message)
+    }
     InvokeResult(readVariant())
   }
 
   private def readAnswerHeader(): Unit = {
+    val hr = readAnswerHeaderHRESULT()
+    if (hr.isError) throw new COMException(hr)
+  }
+
+  private def readAnswerHeaderHRESULT(): HRESULT = {
     readByte() match {
       case MessageClass.Answer ⇒
-        val hr = HRESULT(readInt32())
-        if (hr.isError) throw new COMException(hr)
+        HRESULT(readInt32())
+
       case MessageClass.Error ⇒
         val strings = mutable.Buffer[String]()
         for (_ ← 1 to 3) readString() match {
@@ -55,5 +65,4 @@ extends IUnknownDeserializer {
 
 object ResultDeserializer {
   private val KeyValueRegex = "([a-z]+)=(.*)".r
-  private val ComErrorRegex = "COM-[0-9a-fA-F]{8}".r
 }
