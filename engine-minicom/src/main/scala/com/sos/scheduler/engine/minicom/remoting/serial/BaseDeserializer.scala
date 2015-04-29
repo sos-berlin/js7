@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.minicom.remoting.serial
 
 import com.sos.scheduler.engine.minicom.remoting.serial.BaseDeserializer._
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets.US_ASCII
 import java.util.UUID
 
 /**
@@ -23,8 +24,9 @@ private[serial] trait BaseDeserializer {
     require(readByte() == 's')
     val length = readByte()
     require(length > 0)
-    val string = (for (_ ← 1 to length) yield readByte().toChar) mkString ""
-    string.toDouble
+    val array = new Array[Byte](length)
+    buffer.get(array)
+    new String(array, US_ASCII).toDouble
   }
 
   final def readByte(): Byte = buffer.get
@@ -33,7 +35,7 @@ private[serial] trait BaseDeserializer {
 
   final def readString(): String = {
     val length = buffer.getInt
-    val b = new StringBuffer(length)
+    val b = new StringBuilder(length)
     for (i ← 1 to length) b.append(iso88591ByteToChar(buffer.get))
     b.toString
   }
