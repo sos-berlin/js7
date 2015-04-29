@@ -11,15 +11,15 @@ private[serial] trait BaseDeserializer {
 
   protected val buffer: ByteBuffer
 
-  def hasData = buffer.remaining > 0
+  final def hasData = buffer.remaining > 0
 
-  def readInt16(): Short = buffer.getShort
+  final def readInt16(): Short = buffer.getShort
 
-  def readInt32(): Int = buffer.getInt
+  final def readInt32(): Int = buffer.getInt
 
-  def readInt64(): Long = buffer.getLong
+  final def readInt64(): Long = buffer.getLong
 
-  def readDouble(): Double = {
+  final def readDouble(): Double = {
     require(readByte() == 's')
     val length = readByte()
     require(length > 0)
@@ -27,18 +27,18 @@ private[serial] trait BaseDeserializer {
     string.toDouble
   }
 
-  def readByte(): Byte = buffer.get
+  final def readByte(): Byte = buffer.get
 
-  def readBoolean(): Boolean = buffer.get != 0
+  final def readBoolean(): Boolean = buffer.get != 0
 
-  def readString(): String = {
+  final def readString(): String = {
     val length = buffer.getInt
     val b = new StringBuffer(length)
     for (i ← 1 to length) b.append(iso88591ByteToChar(buffer.get))
     b.toString
   }
 
-  def readUUID(): UUID = {
+  final def readUUID(): UUID = {
     val high = buffer.getLong
     val low = buffer.getLong
     new UUID(high, low)
