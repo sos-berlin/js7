@@ -142,6 +142,7 @@ object SchedulerAPIIT {
   val TestTextFilename = "logText.txt"
   val IncludePath = "fooo"
   val JobObjectsJobPath = JobPath("/job_object")
+  val RemoveMeJobPath = JobPath("/remove_me")
   val ProcessClassName = "test-agent"
   private val MaxProcesses = 23
 

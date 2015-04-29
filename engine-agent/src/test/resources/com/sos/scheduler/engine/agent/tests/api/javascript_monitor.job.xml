@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<job xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.sos-berlin.com/repository/scheduler/1.7/scheduler.xsd"
+     process_class="test-agent">
+
+    <settings>
+        <log_level>debug9</log_level>
+    </settings>
+    <script  language="shell">
+        <![CDATA[
+echo Hello world!
+        ]]>
+    </script>
+
+    <monitor >
+        <script  language="java:javascript">
+            <![CDATA[
+function spooler_process_before(){
+	spooler_log.info("##this is spooler_process_before##");
+	return true;
+}
+            ]]>
+        </script>
+    </monitor>
+
+    <run_time />
+
+</job>

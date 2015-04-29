@@ -35,8 +35,6 @@ public class VariablesJob extends Job_impl {
             order.params().set_xml(orderVarXml);
         }
 
-        //variableSet = spooler_task.order().params();
-
         spooler_log.info("Reading params");
         String orderVal = variableSet.var(SchedulerAPIIT.OrderVariable().name());
         String overriddenVal = variableSet.var(SchedulerAPIIT.OrderParamOverridesJobParam().name());

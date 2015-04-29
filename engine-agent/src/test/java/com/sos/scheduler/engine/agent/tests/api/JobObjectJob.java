@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.agent.tests.api;
 
 import com.google.common.base.Strings;
+import sos.spooler.Job;
 import sos.spooler.Job_impl;
 
 /**
@@ -12,7 +13,8 @@ public class JobObjectJob extends Job_impl {
         CONFIG_DIR ("spooler_job.configuration_directory is empty"),
         FOLDER_PATH("spooler_job.folder_path is empty"),
         MAX_ORDER_SETBACKS("unexpected value for spooler_job.max_order_setbacks"),
-        JOB_PATH("spooler_job.name() returns incorrect value");
+        JOB_PATH("spooler_job.name() returns incorrect value"),
+        REMOVE(SchedulerAPIIT.RemoveMeJobPath().string()+" still exists");
 
         private String message;
         UnwantedMessage(String mes){
@@ -55,6 +57,15 @@ public class JobObjectJob extends Job_impl {
         spooler_log.info("process_class max_processes="+spooler_job.process_class().max_processes());
         spooler_log.info("process_class remote_scheduler="+spooler_job.process_class().remote_scheduler());
 
+        Job removeableJob = spooler.job(SchedulerAPIIT.RemoveMeJobPath().string());
+        removeableJob.remove();
+        try {
+            spooler.job(SchedulerAPIIT.RemoveMeJobPath().string());
+            spooler_log.warn(UnwantedMessage.REMOVE.toString());
+        }
+        catch (RuntimeException ex){
+            spooler_log.info("job "+SchedulerAPIIT.RemoveMeJobPath().string()+" has been removed");
+        }
         return (spooler_task.order() != null);
     }
 
