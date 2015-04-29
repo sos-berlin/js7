@@ -24,13 +24,16 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
     val taskStartArguments = TaskStartArguments(
       controllerAddress = command.controllerAddress,
       environment = agentConfiguration.environment)
-    command match {
-      case _: StartThread ⇒ new SimpleTaskServer(taskStartArguments)
-      case o: StartSeparateProcess ⇒ new SeparateProcessTaskServer(
-        taskStartArguments,
-        javaOptions = splitJavaOptions(o.javaOptions),
-        javaClasspath = o.javaClasspath)
-    }
+    if (sys.props contains "jobscheduler.agent.useThread")   // For debugging
+      new SimpleTaskServer(taskStartArguments)
+    else
+      command match {
+        case _: StartThread ⇒ new SimpleTaskServer(taskStartArguments)
+        case o: StartSeparateProcess ⇒ new SeparateProcessTaskServer(
+          taskStartArguments,
+          javaOptions = splitJavaOptions(o.javaOptions),
+          javaClasspath = o.javaClasspath)
+      }
   }
 
   private def splitJavaOptions(options: String) =
