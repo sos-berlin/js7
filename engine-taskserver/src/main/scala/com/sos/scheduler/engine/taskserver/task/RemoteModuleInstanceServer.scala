@@ -73,7 +73,7 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
     if (((javaSignature == SpoolerOnSuccessSignature || javaSignature == SpoolerOnErrorSignature) && !openCalled) ||
       (javaSignature == SpoolerExitSignature && (task == null || exitCalled))) {
       // C++ spooler_task.cxx behaves differently under Windows and Unix.
-      // Also, some (superfluous) calls are made after an error occured.
+      // Also, some (superfluous) calls are made after an error occurred.
       logger.debug(s"Call ignored: $javaSignature")
       ()
     } else {

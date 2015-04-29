@@ -26,8 +26,7 @@ extends Task with HasCloser {
 
   def start() = {
     //??? monitorProcessor.preTask()
-    //??? instance.spooler_init()
-    true
+    instance.spooler_init() && instance.spooler_open()
   }
 
   def callIfExists(methodWithSignature: String) = {
