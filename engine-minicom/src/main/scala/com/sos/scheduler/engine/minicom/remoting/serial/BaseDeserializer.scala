@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
 import com.sos.scheduler.engine.minicom.remoting.serial.BaseDeserializer._
+import com.sos.scheduler.engine.minicom.types.{EXCEPINFO, HRESULT}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.util.UUID
@@ -13,6 +14,17 @@ private[serial] trait BaseDeserializer {
   protected val buffer: ByteBuffer
 
   final def hasData = buffer.remaining > 0
+
+  final def readExcepInfo(): EXCEPINFO = {
+    /*val code =*/ readInt16()
+    /*val reserved =*/ readInt16()
+    val source = readString()
+    val description = readString()
+    /*val helpFile =*/ readString()
+    /*val helpContext =*/ readInt32()
+    /*val sCode =*/ HRESULT(readInt32())
+    EXCEPINFO(source = source, description = description)
+  }
 
   final def readInt16(): Short = buffer.getShort
 
