@@ -1,13 +1,13 @@
 package sos.spooler.jobs
 
-import ScriptAdapterJob._
+import ScriptAdapterHelper._
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
-final class ScriptAdapterJobTest extends FunSuite {
+final class ScriptAdapterHelperTest extends FunSuite {
 
   test("ScriptAdapterJob.parseLanguageParameter") {
     intercept[RuntimeException] { parseLanguageParameter("INVALID-PREFIX:language") }
