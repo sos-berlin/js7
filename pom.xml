@@ -7,7 +7,7 @@
 
     <groupId>com.sos-berlin.jobscheduler.engine</groupId>
     <artifactId>engine</artifactId>
-    <version>1.9.0-SNAPSHOT</version>
+    <version>1.9.0</version>
 
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>
@@ -60,9 +60,9 @@
         <sos.subversion.url>http://subversion.sos/svn/sos/scheduler/engine</sos.subversion.url>
         <osArch>osArch-UNKNOWN-OPERATING-SYSTEM-OR-CPU</osArch>
         <test.forkCount>1</test.forkCount>
-        <test.logback.configurationFile/>
+        <test.logback.configurationFile />
         <enginedoc.version>${project.version}</enginedoc.version>
-        <argLine/>
+        <argLine />
         <LC_ALL>C</LC_ALL>    <!-- Neutrales Locale für H2Database -->
     </properties>
 
@@ -871,6 +871,6 @@
         <connection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</connection>
         <developerConnection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</developerConnection>
         <url>https://github.com/sos-berlin/scheduler-engine</url>
-        <tag>HEAD</tag>
+        <tag>v1.9.0</tag>
     </scm>
 </project>
