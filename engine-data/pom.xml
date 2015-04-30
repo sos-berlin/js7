@@ -3,12 +3,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>engine-data</artifactId>
-  <version>1.9.1-SNAPSHOT</version>
 
     <parent>
         <groupId>com.sos-berlin.jobscheduler.engine</groupId>
         <artifactId>engine</artifactId>
-        <version>1.9.1-SNAPSHOT</version>
+        <version>1.10-SNAPSHOT</version>
     </parent>
     
     <name>${project.artifactId}</name>
@@ -135,8 +134,4 @@
             <artifactId>annotations</artifactId>
         </dependency>
     </dependencies>
-
-  <scm>
-    <tag>v1.9.0-RC1</tag>
-  </scm>
 </project>
