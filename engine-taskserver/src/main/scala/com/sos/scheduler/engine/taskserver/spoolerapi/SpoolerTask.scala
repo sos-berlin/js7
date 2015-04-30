@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
 import com.sos.scheduler.engine.common.xml.VariableSets
+import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.Invocable
 import com.sos.scheduler.engine.taskserver.spoolerapi.SpoolerTask._
 
@@ -9,7 +10,7 @@ import com.sos.scheduler.engine.taskserver.spoolerapi.SpoolerTask._
  */
 trait SpoolerTask extends Invocable {
 
-  def setErrorCodeAndText(code: String, text: String): Unit
+  def setErrorCodeAndText(code: MessageCode, text: String): Unit
 
   final def parameterMap: Map[String, String] = xmlToParameterMap(paramsXml)
 
