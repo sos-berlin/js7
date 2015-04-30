@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.taskserver.module
 
-import com.sos.scheduler.engine.taskserver.module.java.JavaModule
+import com.sos.scheduler.engine.taskserver.module.java.{JavaScriptModule, JavaModule}
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
+import sos.spooler.jobs.ScriptAdapterJob
 
 /**
  * @author Joacim Zschimmer
@@ -31,6 +32,7 @@ object Module {
             case Some(o) ⇒ () ⇒ Class.forName(o).newInstance()
             case None ⇒ throw new NoSuchElementException(s"Language '$moduleLanguage' requires a class name")
           })
+      case JavaScriptModuleLanguage(language) ⇒ new JavaScriptModule(language,script)
       case _ ⇒ throw new IllegalArgumentException(s"Unsupported language $moduleLanguage")
     }
 }

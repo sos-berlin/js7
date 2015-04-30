@@ -50,7 +50,7 @@ final class SchedulerAPIJavascriptIT extends FreeSpec with ScalaSchedulerTest{
   "shell job with javascript monitor" in {
     val run = runJobFuture(JavascriptMonitorJobPath)
     val taskResult: TaskResult = awaitSuccess(run.result)
-    taskResult.logString should include ("Hello World")
+    taskResult.logString should include ("Hello world")
     taskResult.logString should include ("##this is spooler_process_before##")
     taskResult.logString should include ("##this is spooler_process_after##")
   }
