@@ -69,7 +69,7 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
         taskResult.logString should include regex regularExpr
       }
 
-      //taskResult.logString should include (LogJob.SpoolerCloseMessage)
+      taskResult.logString should include (LogJob.SpoolerCloseMessage)
       taskResult.logString should include (LogJob.SpoolerExitMessage)
       taskResult.logString should include (LogJob.SpoolerInitMessage)
       taskResult.logString should include (LogJob.SpoolerOpenMessage)
