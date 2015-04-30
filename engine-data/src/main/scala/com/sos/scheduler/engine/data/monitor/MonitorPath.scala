@@ -10,3 +10,5 @@ final case class MonitorPath(string: String) extends TypedPath {
 
   def fileBasedType = FileBasedType.monitor
 }
+
+object MonitorPath extends TypedPath.Companion[MonitorPath]

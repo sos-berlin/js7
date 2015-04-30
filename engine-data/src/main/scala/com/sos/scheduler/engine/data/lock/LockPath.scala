@@ -7,3 +7,5 @@ final case class LockPath(string: String) extends TypedPath {
 
   def fileBasedType = FileBasedType.lock
 }
+
+object LockPath extends TypedPath.Companion[LockPath]

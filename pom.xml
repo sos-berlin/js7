@@ -61,9 +61,9 @@
         <sos.subversion.url>http://subversion.sos/svn/sos/scheduler/engine</sos.subversion.url>
         <osArch>osArch-UNKNOWN-OPERATING-SYSTEM-OR-CPU</osArch>
         <test.forkCount>1</test.forkCount>
-        <test.logback.configurationFile/>
+        <test.logback.configurationFile />
         <enginedoc.version>${project.version}</enginedoc.version>
-        <argLine/>
+        <argLine />
         <LC_ALL>C</LC_ALL>    <!-- Neutrales Locale für H2Database -->
     </properties>
 
@@ -359,7 +359,7 @@
                         <version>2.4</version>
                         <executions>
                             <execution>
-								<phase>install</phase>
+                                <phase>install</phase>
                                 <id>aggregate-sources</id>
                                 <goals>
                                     <goal>aggregate</goal>

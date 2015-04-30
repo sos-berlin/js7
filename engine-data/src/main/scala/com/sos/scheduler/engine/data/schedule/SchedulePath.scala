@@ -7,3 +7,5 @@ final case class SchedulePath(string: String) extends TypedPath {
 
   def fileBasedType = FileBasedType.schedule
 }
+
+object SchedulePath extends TypedPath.Companion[SchedulePath]
