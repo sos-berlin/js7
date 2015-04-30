@@ -116,7 +116,6 @@ public final class LogJob extends Job_impl {
             throw new RuntimeException("spooler_log.last returns unexpected result");
         }
         spooler_log.set_level(spooler_log.level());
-        spooler_log.log_file(new File(spooler_job.configuration_directory(), TestTextFilename()));
         spooler_log.set_mail_on_error(spooler_log.mail_on_error());
         spooler_log.set_mail_on_process(spooler_log.mail_on_process());
         spooler_log.set_mail_on_success(spooler_log.mail_on_success());

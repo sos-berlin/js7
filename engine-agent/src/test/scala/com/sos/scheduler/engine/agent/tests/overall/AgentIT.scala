@@ -93,7 +93,7 @@ final class AgentIT extends FreeSpec with ScalaSchedulerTest {
 
   "Other environment variables are unchanged" in {
     val path = (sys.env collectFirst { case ("PATH" | "Path", v) ⇒ v }).head
-    assert(shellOutput contains s"PATH=$path")
+    assert(shellOutput contains s"""PATH="$path"""")
   }
 
   "stdout in task log" in {
@@ -173,7 +173,7 @@ object AgentIT {
             |@echo off
             |echo !$FirstStdoutLine
             |echo !$EnvironmentVariable=%$EnvironmentVariable%
-            |echo !PATH=%Path%
+            |echo !PATH="%Path%"
             |if "%SCHEDULER_RETURN_VALUES%" == "" goto :noReturnValues
             |    echo ${ChangedVariable.name}=${ChangedVariable.value} >> %SCHEDULER_RETURN_VALUES%
             |:noReturnValues
@@ -181,7 +181,7 @@ object AgentIT {
           else s"""
             |echo !$FirstStdoutLine
             |echo !$EnvironmentVariable=$$$EnvironmentVariable
-            |echo !PATH=$$PATH
+            |echo !PATH="$$PATH"
             |[ -n "$$SCHEDULER_RETURN_VALUES" ] && echo ${ChangedVariable.name}=${ChangedVariable.value} >> $$SCHEDULER_RETURN_VALUES
             |""".stripMargin
         ) +
