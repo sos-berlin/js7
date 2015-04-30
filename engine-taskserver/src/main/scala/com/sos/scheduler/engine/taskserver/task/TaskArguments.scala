@@ -99,8 +99,8 @@ private[task] object TaskArguments {
     def ordering = argMap.getConverted(MonitorOrderingKey) { _.toInt } getOrElse Monitor.DefaultOrdering
     def javaClassNameOption = argMap.get(MonitorJavaClassKey)
     def script =  javaClassNameOption match {
+      case None | Some("") ⇒ Script.parseXmlString(argMap(MonitorScriptKey))
       case Some(o) ⇒ new Script("")
-      case None ⇒ Script.parseXmlString(argMap(MonitorScriptKey))
     }
 
   }
