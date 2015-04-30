@@ -15,6 +15,7 @@
 
     <modules>
         <module>engine-agent</module>
+        <module>engine-agent-test</module>
         <module>engine-cppjava</module>
         <module>engine-data</module>
         <module>engine-filewatcher</module>
