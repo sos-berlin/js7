@@ -7,3 +7,5 @@ final case class ProcessClassPath(string: String) extends TypedPath {
 
   def fileBasedType = FileBasedType.processClass
 }
+
+object ProcessClassPath extends TypedPath.Companion[ProcessClassPath]

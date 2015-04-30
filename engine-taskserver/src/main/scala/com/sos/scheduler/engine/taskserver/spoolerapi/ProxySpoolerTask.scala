@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.DISPID
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
@@ -14,7 +15,8 @@ import java.util.UUID
 final class ProxySpoolerTask private(protected val remoting: ClientRemoting, val id: ProxyId, val name: String)
 extends SpoolerTask with SpecializedProxyIDispatch {
 
-  def setErrorCodeAndText(code: String, text: String): Unit = this.invokeMethod(DISPID(26), List(code, text))
+  def setErrorCodeAndText(code: MessageCode, text: String): Unit =
+    this.invokeMethod(DISPID(26), List(code.string, text))
 
   def paramsXml = this.invokeGet(DISPID(35)).asInstanceOf[String]
 

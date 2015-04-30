@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaJoda._
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
+import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, PublicMethodsAreInvocable}
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables.{SpoolerJobName, SpoolerLogName, SpoolerName, SpoolerTaskName}
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
@@ -108,7 +109,7 @@ private object ShellProcessTaskTest {
   private object DummyInvocable extends Invocable
 
   private object TestSpoolerTask extends SpoolerTask {
-    def setErrorCodeAndText(code: String, text: String) = throw new NotImplementedError
+    def setErrorCodeAndText(code: MessageCode, text: String) = throw new NotImplementedError
     def paramsXml = ""
     def paramsXml_=(o: String) = throw new NotImplementedError
     def orderParamsXml = ""

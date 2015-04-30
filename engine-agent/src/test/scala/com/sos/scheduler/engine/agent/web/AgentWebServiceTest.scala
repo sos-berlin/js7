@@ -39,6 +39,6 @@ final class AgentWebServiceTest extends FreeSpec with ScalatestRouteTest with Ag
   protected def executeCommand(clientIP: InetAddress, command: String) = Future.successful[xml.Elem](
     command match {
       case "test" ⇒ <ok/>
-      case _ ⇒ throw new Exception
+      case _ ⇒ throw new Exception("TEST EXCEPTION")
     })
 }
