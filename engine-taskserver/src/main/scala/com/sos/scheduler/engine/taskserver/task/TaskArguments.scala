@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.minicom.types.{VariantArray, variant}
-import com.sos.scheduler.engine.taskserver.module.{Module, ModuleLanguage, Script}
+import com.sos.scheduler.engine.taskserver.module._
 import com.sos.scheduler.engine.taskserver.task.TaskArguments._
 import scala.collection.{immutable, mutable}
 import scala.util.Sorting.stableSort
@@ -15,18 +15,21 @@ import scala.util.Sorting.stableSort
  * @author Joacim Zschimmer
  */
 private[task] final class TaskArguments private(arguments: List[(String, String)]) {
-  lazy val moduleLanguage = ModuleLanguage(apply(LanguageKey))
-  lazy val script = Script.parseXmlString(apply(ScriptKey))
-  lazy val jobName = apply(JobKey)
-  lazy val taskId = TaskId(apply(TaskIdKey).toInt)
-  lazy val environment = VariableSets.parseXml(apply(EnvironmentKey))
-  lazy val javaClassName = apply(JavaClassKey)
+
+  lazy val moduleLanguage: ModuleLanguage = ModuleLanguage(apply(LanguageKey))
+  lazy val script: Script = Script.parseXmlString(apply(ScriptKey))
+  lazy val jobName: String = apply(JobKey)
+  lazy val taskId: TaskId = TaskId(apply(TaskIdKey).toInt)
+  lazy val environment: Map[String, String] = VariableSets.parseXml(apply(EnvironmentKey))
+  lazy val javaClassNameOption: Option[String] = get(JavaClassKey) filter { _.nonEmpty }
 
   lazy val hasOrder = get(HasOrderKey) match {
     case Some("1") ⇒ true
     case Some(o) ⇒ throw new IllegalArgumentException(s"Invalid agent argument: $HasOrderKey=$o")
     case None ⇒ false
   }
+
+  lazy val module = Module(moduleLanguage, script, javaClassNameOption)
 
   lazy val monitors: immutable.Seq[Monitor] = {
     val unordered =
@@ -44,30 +47,20 @@ private[task] final class TaskArguments private(arguments: List[(String, String)
 
 private[task] object TaskArguments {
   private val LanguageKey = "language"
-  //"com_class",
-  //JS-1295 @deprecated private val FilenameKey = "filename"
   private val JavaClassKey = "java_class"
   private val ScriptKey = "script"
   private val JobKey = "job"
   private val TaskIdKey = "task_id"
   private val EnvironmentKey = "environment"
   private val HasOrderKey = "has_order"
-  //JS-1295 @deprecated private val ProcessFilenameKey = "process.filename"
-  //JS-1295 private val ProcessParam_rawKey = "process.param_raw"
-  //JS-1295 private val ProcessLog_filenameKey = "process.log_filename"
-  //JS-1295 private val ProcessIgnore_errorKey = "process.ignore_error"
-  //JS-1295 private val ProcessIgnore_signalKey = "process.ignore_signal"
   //TODO private val ProcessShellVariablePrefixKey = "process.shell_variable_prefix"
   private val MonitorLanguageKey = "monitor.language"
   private val MonitorNameKey = "monitor.name"
   private val MonitorOrderingKey = "monitor.ordering"
-  //private val MonitorComClassKey = "monitor.com_class"
-  //JS-1295 @deprecated private val MonitorFilenameKey = "monitor.filename"
   private val MonitorJavaClassKey = "monitor.java_class"
   private val MonitorScriptKey = "monitor.script"
   private val KeySet = Set(LanguageKey, ScriptKey, JobKey, TaskIdKey, EnvironmentKey, HasOrderKey, JavaClassKey,
     MonitorLanguageKey, MonitorNameKey, MonitorOrderingKey, MonitorJavaClassKey, MonitorScriptKey)
-
   private val KeyValueRegex = "(?s)([[a-z_.]]+)=(.*)".r  //  "(?s)" dot matches \n too, "key=value"
   private val logger = Logger(getClass)
 
@@ -98,10 +91,9 @@ private[task] object TaskArguments {
     def name = argMap.getOrElse(MonitorNameKey, "")
     def ordering = argMap.getConverted(MonitorOrderingKey) { _.toInt } getOrElse Monitor.DefaultOrdering
     def javaClassNameOption = argMap.get(MonitorJavaClassKey)
-    def script =  javaClassNameOption match {
+    def script = javaClassNameOption match {
       case None | Some("") ⇒ Script.parseXmlString(argMap(MonitorScriptKey))
       case Some(o) ⇒ new Script("")
     }
-
   }
 }

@@ -1,8 +1,7 @@
 package com.sos.scheduler.engine.taskserver.module
 
-import com.sos.scheduler.engine.taskserver.module.java.{JavaScriptModule, JavaModule}
+import com.sos.scheduler.engine.taskserver.module.java.{JavaScriptModule, StandardJavaModule}
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import sos.spooler.jobs.ScriptAdapterJob
 
 /**
  * @author Joacim Zschimmer
@@ -12,27 +11,15 @@ trait Module {
 }
 
 object Module {
-
-  //val SpoolerInitSignature = "spooler_open()Z"  // Z: returns Boolean
-  val SpoolerExitSignature = "spooler_exit()V"  // V: returns Unit
-  val SpoolerOpenSignature = "spooler_open()Z"
-  //val SpoolerCloseSignature = "spooler_open()V"
-  //val SpoolerProcessSignature = "spooler_open()Z"
-  val SpoolerOnSuccessSignature = "spooler_on_success()V"
-  val SpoolerOnErrorSignature = "spooler_on_error()V"
-
   def apply(moduleLanguage: ModuleLanguage, script: Script, javaClassNameOption: Option[String]) =
     moduleLanguage match {
       case ShellModuleLanguage ⇒
         for (name ← javaClassNameOption) throw new IllegalArgumentException(s"language '$moduleLanguage' conflicts with parameter javaClass='$name'")
         new ShellModule(script)
       case JavaModuleLanguage ⇒
-        JavaModule(
-          newClassInstance = javaClassNameOption match {
-            case Some(o) ⇒ () ⇒ Class.forName(o).newInstance()
-            case None ⇒ throw new NoSuchElementException(s"Language '$moduleLanguage' requires a class name")
-          })
-      case JavaScriptModuleLanguage(language) ⇒ new JavaScriptModule(language,script)
+        val className = javaClassNameOption getOrElse { throw new NoSuchElementException(s"Language '$moduleLanguage' requires a class name") }
+        StandardJavaModule(className)
+      case JavaScriptModuleLanguage(language) ⇒ new JavaScriptModule(language, script)
       case _ ⇒ throw new IllegalArgumentException(s"Unsupported language $moduleLanguage")
     }
 }

@@ -11,7 +11,7 @@ import com.sos.scheduler.engine.minicom.idispatch.{Invocable, PublicMethodsAreIn
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables.{SpoolerJobName, SpoolerLogName, SpoolerName, SpoolerTaskName}
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{NamedInvocables, Script}
+import com.sos.scheduler.engine.taskserver.module.{JavaModuleLanguage, NamedInvocables, Script}
 import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTaskTest._
 import com.sos.scheduler.engine.test.util.time.WaitForCondition.waitForCondition
@@ -58,12 +58,7 @@ final class ShellProcessTaskTest extends FreeSpec {
           exit_code={setting.exitCode.toString}/>
         assert(spoolerLog.infoMessages contains TestString)
         assert(spoolerLog.infoMessages contains s"$TestName=$TestValue")
-        val expectedMonitorMessages = List(
-          s"A $PreTaskMessage", s"B $PreTaskMessage",
-          s"A $PreStepMessage", s"B $PreStepMessage",
-          s"B $PostStepMessage", s"A $PostStepMessage",
-          s"B $PostTaskMessage", s"A $PostTaskMessage")
-        assert((spoolerLog.infoMessages filter expectedMonitorMessages.toSet) == expectedMonitorMessages)
+        assert((spoolerLog.infoMessages filter ExpectedMonitorMessages.toSet) == ExpectedMonitorMessages)
       case None ⇒
         val expectedMonitorMessages = List(
           s"A $PreTaskMessage",
@@ -94,8 +89,8 @@ private object ShellProcessTaskTest {
         SpoolerJobName → DummyInvocable,
         SpoolerName → DummyInvocable)),
       monitors = List(
-        Monitor(JavaModule(() ⇒ new TestMonitor("A", setting)), name="Monitor A"),
-        Monitor(JavaModule(() ⇒ new TestMonitor("B", setting)), name="Monitor B")),
+        Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("A", setting) }, name="Monitor A"),
+        Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("B", setting) }, name="Monitor B")),
       jobName = "TEST-JOB",
       hasOrder = false,
       environment = Map(TestName → TestValue))
@@ -134,6 +129,11 @@ private object ShellProcessTaskTest {
     s"A $PreStepMessage", s"B $PreStepMessage",
     s"B $PostStepMessage", s"A $PostStepMessage",
     s"B $PostTaskMessage", s"A $PostTaskMessage")
+
+  private trait TestModule extends JavaModule {
+    def moduleLanguage = JavaModuleLanguage
+    def newJobInstance() = throw new NotImplementedError
+  }
 
   private class TestMonitor(name: String, setting: Setting) extends sos.spooler.Monitor_impl {
     override def spooler_task_before: Boolean = {

@@ -1,16 +1,17 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import sos.spooler.jobs.ScriptAdapterJob
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import _root_.java.util.UUID
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
-import com.sos.scheduler.engine.taskserver.module.java.JavaModule
-import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.module._
-import _root_.java.util.UUID
+import com.sos.scheduler.engine.taskserver.module.java.JavaModule
+import com.sos.scheduler.engine.taskserver.module.java.JavaModule.{SpoolerExitSignature, SpoolerOnErrorSignature}
+import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import javax.inject.Inject
 import org.scalactic.Requirements._
 
@@ -29,30 +30,26 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
 
   @invocable
   def begin(objectAnys: VariantArray, objectNamesAnys: VariantArray): Boolean = {
-    def newJavaProcessTask(newClassInstance: () ⇒ Any) =
-      new JavaProcessTask(
-        JavaModule(newClassInstance),
-        toNamedObjectMap(names = objectNamesAnys, anys = objectAnys),
-        taskArguments.monitors,
-        jobName = taskArguments.jobName,
-        hasOrder = taskArguments.hasOrder,
-        environment = taskStartArguments.environment ++ taskArguments.environment)
-
-    task = taskArguments.moduleLanguage match {
-      case ShellModuleLanguage ⇒
+    val namedInvocables = toNamedObjectMap(names = objectNamesAnys, anys = objectAnys)
+    task = taskArguments.module match {
+      case module: ShellModule ⇒
         new ShellProcessTask(
-          ShellModule(taskArguments.script),
-          toNamedObjectMap(names = objectNamesAnys, anys = objectAnys),
+          module,
+          namedInvocables,
           taskArguments.monitors,
           jobName = taskArguments.jobName,
           hasOrder = taskArguments.hasOrder,
-          environment = taskStartArguments.environment ++ taskArguments.environment)
-        .closeWithCloser
-      case JavaModuleLanguage ⇒
-        newJavaProcessTask(() ⇒ Class.forName(taskArguments.javaClassName).newInstance())
-      case JavaScriptModuleLanguage(language) ⇒
-        newJavaProcessTask(() ⇒ new ScriptAdapterJob(language, taskArguments.script.string))
+          environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment)
+      case module: JavaModule ⇒
+        new JavaProcessTask(
+          module,
+          namedInvocables,
+          taskArguments.monitors,
+          jobName = taskArguments.jobName,
+          hasOrder = taskArguments.hasOrder,
+          environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment)
     }
+    closer.registerAutoCloseable(task)
     task.start()
   }
 
@@ -67,8 +64,12 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
 
   @invocable
   def call(javaSignature: String): Any = {
-    requireNonNull(task)
-    task.callIfExists(javaSignature)
+    if (task == null && Set(SpoolerOnErrorSignature, SpoolerExitSignature)(javaSignature))
+      ()
+    else {
+      require(task != null, s"No task when calling $javaSignature")
+      task.callIfExists(javaSignature)
+    }
   }
 
   @invocable

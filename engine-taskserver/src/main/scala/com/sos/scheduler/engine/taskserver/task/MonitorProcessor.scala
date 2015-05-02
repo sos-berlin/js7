@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
-import com.sos.scheduler.engine.taskserver.module.java.{JavaScriptModule, JavaModule}
+import com.sos.scheduler.engine.taskserver.module.java.JavaModule
 import scala.collection.immutable
 import scala.util.control.NonFatal
 
@@ -14,7 +14,7 @@ extends HasCloser {
 
   private val classInstances = (for (monitor ← monitors) yield monitor.module match {
     case module: JavaModule ⇒ module.newMonitorInstance(namedInvocables)
-    case module: JavaScriptModule ⇒ module.newMonitorInstance(namedInvocables)
+    case module ⇒ throw new IllegalArgumentException(s"Unsupported language '${module.moduleLanguage}' for a monitor ($module)")
   }).toVector
 
   def preTask(): Boolean = classInstances forall { _.spooler_task_before() }

@@ -1,11 +1,12 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import scala.collection.mutable
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.taskserver.module.Module._
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
+import com.sos.scheduler.engine.taskserver.module.java.JavaModule.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.taskserver.task.JavaProcessTask._
 import scala.collection.immutable
 import scala.util.control.NonFatal
@@ -27,9 +28,8 @@ extends Task with HasCloser {
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private val instance: sos.spooler.Job_impl = module.newJobInstance(namedInvocables)
-  private var openCalled = false
+  private val methodIsCalled = mutable.Set[String]()
   private var closeCalled = false
-  private var exitCalled = false
 
   def start() = monitorProcessor.preTask() && instance.spooler_init()
 
@@ -42,11 +42,7 @@ extends Task with HasCloser {
       logger.debug(s"Call ignored: $methodWithSignature")
       ()
     } else {
-      methodWithSignature match {
-        case SpoolerOpenSignature ⇒ openCalled = true
-        case SpoolerExitSignature ⇒ exitCalled = true
-        case _ ⇒
-      }
+      methodIsCalled += methodWithSignature
       val NameAndSignature(name, "", _) = methodWithSignature
       instance.getClass.getMethod(name).invoke(instance)
     }
@@ -54,9 +50,9 @@ extends Task with HasCloser {
   /** Behaves as C++ Module_instance::call&#95;&#95;end. */
   private def ignoreCall(methodWithSignature: String): Boolean =
     methodWithSignature match {
-      case SpoolerOnSuccessSignature if !openCalled ⇒ true
-      case SpoolerOnErrorSignature if !openCalled ⇒ true
-      case SpoolerExitSignature if exitCalled ⇒ true
+      case SpoolerOnSuccessSignature if !methodIsCalled(SpoolerOpenSignature) ⇒ true
+      case SpoolerOnErrorSignature if !methodIsCalled(SpoolerOpenSignature) ⇒ true
+      case SpoolerExitSignature if methodIsCalled(SpoolerExitSignature) ⇒ true
       case _ ⇒ false
     }
 
@@ -77,7 +73,7 @@ extends Task with HasCloser {
 
   /** Behaves as C++ Module_instance::end&#95;&#95;end. */
   def end() = {
-    if (openCalled && !closeCalled) {
+    if (methodIsCalled(SpoolerOpenSignature) && !closeCalled) {
       closeCalled = true
       instance.spooler_close()
     }
