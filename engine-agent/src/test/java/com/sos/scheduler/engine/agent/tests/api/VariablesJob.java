@@ -5,9 +5,9 @@ import sos.spooler.Order;
 import sos.spooler.Variable_set;
 
 /**
- * Created by Andreas Liebert on 22.04.2015.
+ * @author Andreas Liebert
  */
-public class VariablesJob extends Job_impl {
+public final class VariablesJob extends Job_impl {
     @Override
     public boolean spooler_process() throws Exception {
 
@@ -16,15 +16,15 @@ public class VariablesJob extends Job_impl {
 
         spooler_log.info("Merging task params");
 
-        Variable_set taskParams =spooler_task.params();
+        Variable_set taskParams = spooler_task.params();
         spooler_log.info(SchedulerAPIIT.TaskParamsCountPrefix() + taskParams.count());
-        String substituedString = taskParams.substitute(SchedulerAPIIT.VariableSubstitutionString());
+        String substitutedString = taskParams.substitute(SchedulerAPIIT.VariableSubstitutionString());
 
-        spooler_log.info(substituedString);
+        spooler_log.info(substitutedString);
         spooler_log.info("Merging task params 2");
         variableSet.merge(taskParams);
 
-        if (spooler_task.order()!=null) {
+        if (spooler_task.order() != null) {
             Order order = spooler_task.order();
             spooler_log.info("Merging order params");
             variableSet.merge(order.params());
@@ -41,7 +41,6 @@ public class VariablesJob extends Job_impl {
         spooler_log.info(SchedulerAPIIT.OrderVariable().name()+"="+orderVal);
         spooler_log.info(SchedulerAPIIT.OrderParamOverridesJobParam().name()+"="+overriddenVal);
 
-
-        return (spooler_task.order() != null);
+        return spooler_task.order() != null;
     }
 }

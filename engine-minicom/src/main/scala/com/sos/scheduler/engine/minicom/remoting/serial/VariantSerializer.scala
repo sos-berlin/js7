@@ -33,7 +33,8 @@ private[remoting] abstract class VariantSerializer extends BaseSerializer {
         writeInvocable(o.com_invoker.asInstanceOf[IDispatchInvoker].iDispatch)
       case null ⇒
         writeNull()
-      case Unit | UNIT ⇒ writeInt32(VT_EMPTY)
+      case Unit | UNIT ⇒
+        writeInt32(VT_EMPTY)
     }
 
   def writeNull(): Unit = {
