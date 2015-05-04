@@ -29,7 +29,6 @@ import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.concurrent.Promise
 import scala.concurrent.duration._
-import scala.io.{Codec, Source}
 
 /**
  * @author Andreas Liebert
@@ -60,36 +59,29 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
     awaitResult(started, 10.seconds)
   }
 
-  "spooler_log methods" in {
-
-      val run = runJobFuture(JobPath("/log"))
-      val taskResult: TaskResult = awaitSuccess(run.result)
+  "sos.spooler.Log methods" in {
+      val taskResult: TaskResult = runJobAndWaitForEnd(JobPath("/log"))
       for (level <- LogJob.LogMessages.keySet) {
-        val regularExpr = s"(?i)\\[$level\\]\\s+" + LogJob.LogMessages.get(level)
-        taskResult.logString should include regex regularExpr
+        taskResult.logString should include regex s"(?i)\\[$level\\]\\s+" + LogJob.LogMessages.get(level)
       }
-
-      taskResult.logString should include (LogJob.SpoolerCloseMessage)
-      taskResult.logString should include (LogJob.SpoolerExitMessage)
       taskResult.logString should include (LogJob.SpoolerInitMessage)
+      taskResult.logString should include (LogJob.SpoolerExitMessage)
       taskResult.logString should include (LogJob.SpoolerOpenMessage)
-
+      taskResult.logString should include (LogJob.SpoolerCloseMessage)
   }
 
-  "test job object" in {
-    val run = runJobFuture(JobObjectsJobPath)
-    val taskResult: TaskResult = awaitSuccess(run.result)
-
-    for (mes <- JobObjectJob.UnwantedMessage.values()) {
-      taskResult.logString should not include (mes.toString())
+  "sos.spooler.Job methods" in {
+    val taskLog = runJobAndWaitForEnd(JobObjectsJobPath).logString
+    for (mes <- JobObjectJob.UnwantedMessage.values) {
+      taskLog should not include mes.toString
     }
-    taskResult.logString should include (s"include_path=$IncludePath")
-    taskResult.logString should include (s"process_class name=$ProcessClassName")
-    taskResult.logString should include (s"process_class remote_scheduler=$remoteSchedulerAddress")
-    taskResult.logString should include (s"process_class max_processes=$MaxProcesses")
+    taskLog should include (s"include_path=$IncludePath")
+    taskLog should include (s"process_class name=$ProcessClassName")
+    taskLog should include (s"process_class remote_scheduler=$remoteSchedulerAddress")
+    taskLog should include (s"process_class max_processes=$MaxProcesses")
   }
 
- "Run variables job via order" in {
+  "Run variables job via order" in {
     autoClosing(newEventPipe()) { eventPipe ⇒
       eventBus.onHotEventSourceEvent[OrderStepEndedEvent] {
         case EventSourceEvent(event, order: Order) ⇒ finishedOrderParametersPromise.success(order.parameters.toMap)
@@ -105,7 +97,6 @@ final class SchedulerAPIIT extends FreeSpec with ScalaSchedulerTest{
     assertResult(List(SuccessOrderStateTransition)) {
       eventsPromise.successValue collect { case OrderStepEndedEvent(VariablesOrderKey, stateTransition) ⇒ stateTransition }
     }
-    eventBus.dispatchEvents()
   }
 
   "Order variable" in {
@@ -133,16 +124,15 @@ object SchedulerAPIIT {
   val OrderVariable = Variable("orderparam", "ORDERVALUE")
   val OrderVariableSetInJob = Variable("orderparaminjob", "qwertzui")
   val OrderParamOverridesJobParam = Variable("ORDEROVERRIDESJOBPARAM", "ORDEROVERRIDESJOBVALUE")
-  val TaskParamsCountPrefix="Taskparamscount:"
+  val TaskParamsCountPrefix = "Taskparamscount:"
   private val JobParam = Variable("testparam", "PARAM-VALUE")
   val VariableSubstitutionString = "aaaa $"+JobParam.name+" aaaa"
   val TestTextFilename = "logText.txt"
-  val IncludePath = "fooo"
+  private val IncludePath = "fooo"
   val JobObjectsJobPath = JobPath("/job_object")
   val RemoveMeJobPath = JobPath("/remove_me")
-  val ProcessClassName = "test-agent"
+  private val ProcessClassName = "test-agent"
   private val MaxProcesses = 23
-
 
   final case class Variable(name: String, value: String) {
     override def toString = name

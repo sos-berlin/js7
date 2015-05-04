@@ -9,16 +9,17 @@ import sos.spooler.Job_impl;
  */
 public class JobObjectJob extends Job_impl {
 
-    public enum UnwantedMessage {
-        CONFIG_DIR ("spooler_job.configuration_directory is empty"),
+    enum UnwantedMessage {
+        CONFIG_DIR("spooler_job.configuration_directory is empty"),
         FOLDER_PATH("spooler_job.folder_path is empty"),
         MAX_ORDER_SETBACKS("unexpected value for spooler_job.max_order_setbacks"),
         JOB_PATH("spooler_job.name() returns incorrect value"),
         REMOVE(SchedulerAPIIT.RemoveMeJobPath().string()+" still exists");
 
-        private String message;
-        UnwantedMessage(String mes){
-            message="##"+mes+"##";
+        private final String message;
+
+        UnwantedMessage(String message){
+            this.message = "##"+message+"##";
         }
 
         @Override
@@ -29,7 +30,6 @@ public class JobObjectJob extends Job_impl {
 
     @Override
     public boolean spooler_process() throws Exception {
-
         spooler_job.set_delay_after_error(1, 60);
         spooler_job.set_delay_after_error(2, "00:02");
         spooler_job.set_delay_after_error(3, "00:02:22");
@@ -37,10 +37,11 @@ public class JobObjectJob extends Job_impl {
         spooler_job.clear_delay_after_error();
 
         spooler_job.set_delay_order_after_setback(1, 70.5);
-        spooler_job.set_delay_order_after_setback(2,"00:03");
+        spooler_job.set_delay_order_after_setback(2, "00:03");
         spooler_job.set_delay_order_after_setback(3, "00:03:33");
+
         int maxOrderSetbacks = 5;
-        spooler_job.set_max_order_setbacks(5);
+        spooler_job.set_max_order_setbacks(maxOrderSetbacks);
         if (spooler_job.max_order_setbacks() != maxOrderSetbacks) {
             spooler_log.warn(UnwantedMessage.MAX_ORDER_SETBACKS.toString());
         }
@@ -63,18 +64,14 @@ public class JobObjectJob extends Job_impl {
             spooler.job(SchedulerAPIIT.RemoveMeJobPath().string());
             spooler_log.warn(UnwantedMessage.REMOVE.toString());
         }
-        catch (RuntimeException ex){
-            spooler_log.info("job "+SchedulerAPIIT.RemoveMeJobPath().string()+" has been removed");
+        catch (RuntimeException e){
+            spooler_log.info("job "+SchedulerAPIIT.RemoveMeJobPath().string()+" has been removed ("+ e +")");
         }
-        return (spooler_task.order() != null);
+        return spooler_task.order() != null;
     }
 
-    private void checkEquals(String text, String expected, UnwantedMessage message){
-
-    }
-
-    private void checkNotEmpty(String text, UnwantedMessage message){
-        if (Strings.isNullOrEmpty(text)){
+    private void checkNotEmpty(String text, UnwantedMessage message) {
+        if (Strings.isNullOrEmpty(text)) {
             spooler_log.warn(message.toString());
         }
     }

@@ -1,12 +1,9 @@
 package com.sos.scheduler.engine.agent.tests.api;
 
 import com.google.common.base.Strings;
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import sos.spooler.Job_impl;
-
-import static com.sos.scheduler.engine.agent.tests.api.SchedulerAPIIT.TestTextFilename;
 
 /**
  * @author Andreas Liebert
@@ -71,7 +68,7 @@ public final class LogJob extends Job_impl {
         else{
             printLogMessage(logLevel);
         }
-        return (spooler_task.order() != null);
+        return spooler_task.order() != null;
     }
 
     private void printLogMessage(String logLevel){
