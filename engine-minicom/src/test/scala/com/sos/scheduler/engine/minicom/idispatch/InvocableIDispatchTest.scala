@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.minicom.idispatch
 
+import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits.RichIDispatch
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatchTest._
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
@@ -9,6 +10,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
+import scala.annotation.meta.{getter, setter}
 
 /**
  * @author Joacim Zschimmer
@@ -16,7 +18,8 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class InvocableIDispatchTest extends FreeSpec {
 
-  private val iDispatch = InvocableIDispatch(A)
+  private val a = new A
+  private val iDispatch = InvocableIDispatch(a)
 
   "call" in {
     iDispatch.call("int", List(7)) shouldEqual 8
@@ -53,7 +56,7 @@ final class InvocableIDispatchTest extends FreeSpec {
   }
 
   "Invocable.call" in {
-    A.call("int", List(7)) shouldEqual 8
+    a.call("int", List(7)) shouldEqual 8
   }
 
   "PublicMethodsAreInvocable" in {
@@ -64,12 +67,19 @@ final class InvocableIDispatchTest extends FreeSpec {
     InvocableIDispatch(C).call("overridden") shouldEqual "OVERRIDDEN"
     InvocableIDispatch(C).call("notOverridden") shouldEqual "NOT OVERRIDDEN"
   }
+  
+  "Property" in {
+    assert(iDispatch.invokeGet("property") == 0)
+    iDispatch.invokePut("property", 7)
+    assert(a.property == 7)
+    assert(iDispatch.invokeGet("property") == 7)
+  }
 }
 
 private object InvocableIDispatchTest {
   private val ALong = 111222333444555666L
 
-  private object A extends Invocable {
+  private class A extends Invocable {
     @invocable def int(o: Int) = o + 1
     @invocable def boxedInteger(o: java.lang.Integer): java.lang.Integer = o + 1
     @invocable def long(o: Long) = o + 1
@@ -80,6 +90,7 @@ private object InvocableIDispatchTest {
     @invocable def boxedBoolean(o: Boolean): java.lang.Boolean = !o
     @invocable def string(i: Int, l: Long, d: Double, b: Boolean, o: String) = s"$i $l $d $b $o"
     @invocable def array(a: VariantArray) = a.indexedSeq(0).asInstanceOf[Long] + a.indexedSeq(1).asInstanceOf[Double]
+    @(invocable @getter @setter) var property = 0
     def noCom(): Unit = {}
   }
 
