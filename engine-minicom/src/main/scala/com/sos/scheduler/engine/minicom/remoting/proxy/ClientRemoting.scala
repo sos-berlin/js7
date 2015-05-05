@@ -10,7 +10,7 @@ trait ClientRemoting {
 
   private[remoting] def getIdOfName(proxyId: ProxyId, name: String): DISPID
 
-  private[remoting] def invoke(
+  def invoke(
     proxyId: ProxyId,
     dispId: DISPID,
     dispatchTypes: Set[DispatchType],
