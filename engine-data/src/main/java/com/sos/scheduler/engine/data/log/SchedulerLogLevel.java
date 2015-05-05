@@ -15,6 +15,8 @@ public enum SchedulerLogLevel {
     warning(1, "warn"),
     error(2, "error");
 
+    public static final SchedulerLogLevel Min = debug9;
+    public static final SchedulerLogLevel Max = error;
     private final int cppNumber;
     private final String cppName;
 
@@ -33,6 +35,14 @@ public enum SchedulerLogLevel {
 
     public int cppNumber() {
         return cppNumber;
+    }
+
+    /**
+     * When `SchedulerLogLevel` is used as minimum level.
+     * @return true, when minimumLevel contains level
+     */
+    public boolean contains(SchedulerLogLevel level) {
+        return level.cppNumber >= cppNumber;
     }
 
     public static SchedulerLogLevel ofCpp(int cppLogLevel) {
