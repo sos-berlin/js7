@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver.module.java
 
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
-import com.sos.scheduler.engine.minicom.idispatch.{DISPATCH_PROPERTYGET, DISPATCH_PROPERTYPUT, DISPID, IDispatch, Invocable, InvocableIDispatch}
+import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable, InvocableIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.IDispatchInvoker
 import com.sos.scheduler.engine.taskserver.module.java.JavaInvoker._
 import scala.runtime.BoxedUnit.UNIT
@@ -15,12 +15,11 @@ private[java] class JavaInvoker(val iDispatch: IDispatch) extends IDispatchInvok
     (richName.head match {
       case '<' ⇒
         val dispId = iDispatch.getIdOfName(richName.tail)
-        iDispatch.invoke(dispId, Set(DISPATCH_PROPERTYGET), arguments)
+        iDispatch.invokeGet(dispId, arguments)
       case '>' ⇒
         require(arguments.nonEmpty, s"Missing arguments to set property $richName")
         val dispId = iDispatch.getIdOfName(richName.tail)
-        val (subnames, values) = arguments splitAt arguments.size - 1
-        iDispatch.invoke(dispId, Set(DISPATCH_PROPERTYPUT), arguments = subnames, namedArguments = values map { DISPID.PROPERTYPUT → _ })
+        iDispatch.invokePut(dispId, arguments = arguments take arguments.size - 1, value = arguments.last)
       case _ ⇒
         val dispId = iDispatch.getIdOfName(richName)
         iDispatch.invokeMethod(dispId, arguments)
