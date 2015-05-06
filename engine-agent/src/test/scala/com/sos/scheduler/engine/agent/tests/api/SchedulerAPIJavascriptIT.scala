@@ -41,19 +41,27 @@ final class SchedulerAPIJavascriptIT extends FreeSpec with ScalaSchedulerTest{
     awaitResult(started, 10.seconds)
   }
 
-  "javascript job" in {
-      val run = runJobFuture(JavascriptJobPath)
-      val taskResult: TaskResult = awaitSuccess(run.result)
-      taskResult.logString should include ("Hello world")
+  "javascript job" - {
+    for ((name, jobPath) ← List("Without Agent" → JavascriptJobPath, "With Agent" -> JavascriptJobPath.asAgent)) {
+      name in {
+        val run = runJobFuture(jobPath)
+        val taskResult: TaskResult = awaitSuccess(run.result)
+        taskResult.logString should include("Hello world")
+      }
+    }
   }
 
-  "shell job with javascript monitor" in {
-    val run = runJobFuture(JavascriptMonitorJobPath)
-    val taskResult: TaskResult = awaitSuccess(run.result)
-    taskResult.logString should include ("Hello world")
-    taskResult.logString should include ("##this is spooler_task_before##")
-    taskResult.logString should include ("##this is spooler_process_before##")
-    taskResult.logString should include ("##this is spooler_process_after##")
+  "shell job with javascript monitor" - {
+    for ((name, jobPath) ← List("Without Agent" → JavascriptMonitorJobPath, "With Agent" -> JavascriptMonitorJobPath.asAgent)) {
+      name in {
+        val run = runJobFuture(jobPath)
+        val taskResult: TaskResult = awaitSuccess(run.result)
+        taskResult.logString should include("Hello world")
+        taskResult.logString should include("##this is spooler_task_before##")
+        taskResult.logString should include("##this is spooler_process_before##")
+        taskResult.logString should include("##this is spooler_process_after##")
+      }
+    }
   }
 
 }
@@ -62,7 +70,12 @@ object SchedulerAPIJavascriptIT {
   private val JavascriptJobPath = JobPath("/javascript")
   private val JavascriptMonitorJobPath = JobPath("/javascript_monitor")
   private val ProcessClassName = "test-agent"
+
+  implicit class AgentJobPath(val s: JobPath){
+    def asAgent = JobPath(s.string.concat("-agent"))
+  }
 }
+
 
 
 
