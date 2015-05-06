@@ -181,7 +181,7 @@ object AgentIT {
           else s"""
             |echo !$FirstStdoutLine
             |echo !$EnvironmentVariable=$$$EnvironmentVariable
-            |echo !PATH="$$PATH"
+            |echo !PATH=\\""$$PATH"\\"
             |[ -n "$$SCHEDULER_RETURN_VALUES" ] && echo ${ChangedVariable.name}=${ChangedVariable.value} >> $$SCHEDULER_RETURN_VALUES
             |""".stripMargin
         ) +
