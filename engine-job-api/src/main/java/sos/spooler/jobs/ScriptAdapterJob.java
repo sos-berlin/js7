@@ -57,21 +57,5 @@ public class ScriptAdapterJob extends Job_impl {
         adapter.callOnSuccess();
     }
 
-    public final boolean spooler_task_before() throws Exception {
-        return adapter.callTaskBefore();
-    }
-
-    public final void spooler_task_after() throws Exception {
-        adapter.callTaskAfter();
-    }
-
-    public final boolean spooler_process_before() throws Exception {
-        return adapter.callProcessBefore();
-    }
-
-    public final boolean spooler_process_after(boolean spoolerProcessResult) throws Exception {
-        return adapter.callProcessAfter(spoolerProcessResult);
-    }
-
 
 }
