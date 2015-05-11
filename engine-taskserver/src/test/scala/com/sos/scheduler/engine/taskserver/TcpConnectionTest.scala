@@ -2,12 +2,12 @@ package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.test.scalatest.HasCloserBeforeAndAfterAll
+import com.sos.scheduler.engine.common.scalautil.HasCloser
 import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket, SocketException}
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeoutException
 import org.junit.runner.RunWith
-import org.scalatest.FreeSpec
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -19,7 +19,7 @@ import scala.util.Random
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TcpConnectionTest extends FreeSpec with HasCloserBeforeAndAfterAll {
+final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private val localhost = InetAddress.getByName("127.0.0.1")
   private lazy val listenSocket = new ServerSocket(0, 1, localhost).closeWithCloser
@@ -28,6 +28,10 @@ final class TcpConnectionTest extends FreeSpec with HasCloserBeforeAndAfterAll {
   private var testSocket: Socket = null
   private def out = testSocket.getOutputStream
   private def in = testSocket.getInputStream
+
+  override protected def afterAll() =
+    try closer.close()
+    finally super.afterAll()
 
   "connect" in {
     connect(tcpConnection)
