@@ -46,11 +46,11 @@ private[agent] trait AgentWebService extends HttpService {
               parameter(('directory, 'order ! "latest-access-first")) { directoryString ⇒
                 complete {
                   val directory = Paths.get(directoryString)
-                  FileOrderSourceContent(Files.list(directory).toVector flatMap {
-                    case f ⇒
-                      try Some(FileOrderSourceContent.Entry(f.toString, Files.getLastModifiedTime(f).toMillis))
-                      catch { case _: NoSuchFileException ⇒ None }
-                  } sortBy { _.lastModifiedTime })
+                  val entries = Files.list(directory).toVector flatMap { file ⇒
+                    try Some(FileOrderSourceContent.Entry(file.toString, Files.getLastModifiedTime(file).toMillis))
+                    catch { case _: NoSuchFileException ⇒ None }
+                  }
+                  FileOrderSourceContent(entries sortBy { _.lastModifiedTime })
                 }
               }
             }
