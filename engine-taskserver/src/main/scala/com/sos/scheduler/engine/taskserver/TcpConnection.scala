@@ -2,10 +2,10 @@ package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.remoting.MessageConnection
+import com.sos.scheduler.engine.taskserver.TcpConnection._
 import java.net.{InetSocketAddress, Socket}
 import java.nio.ByteBuffer
 import scala.concurrent.blocking
-import TcpConnection._
 
 final class TcpConnection(peerAddress: InetSocketAddress) extends MessageConnection with AutoCloseable {
 
@@ -53,11 +53,12 @@ final class TcpConnection(peerAddress: InetSocketAddress) extends MessageConnect
   }
 
   def sendMessage(data: Array[Byte], length: Int): Unit = {
-    val b = ByteBuffer.allocate(4)
+    // Send as one TCP packet, with one write
+    val b = ByteBuffer.allocate(4 + length)
     b.putInt(length)
+    b.put(data, 0, length)
     blocking {
-      out.write(b.array())
-      out.write(data, 0, length)
+      out.write(b.array)
     }
   }
 }
