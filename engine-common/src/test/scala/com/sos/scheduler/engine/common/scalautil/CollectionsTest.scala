@@ -106,6 +106,14 @@ final class CollectionsTest extends FreeSpec {
       assert(a == b)
   }
 
+  "java.util.stream.Stream.toIterable" in {
+    assert(java.util.stream.Stream.of(1, 2, 3).toIterable == Iterable(1, 2, 3))
+  }
+
+  "java.util.stream.Stream.toStream" in {
+    assert(java.util.stream.Stream.of(1, 2, 3).toStream == Stream(1, 2, 3))
+  }
+
   "uniqueToMap" in {
     val list = List(1 → "eins", 2 → "zwei", 3 → "drei")
     list.uniqueToMap shouldEqual list.toMap

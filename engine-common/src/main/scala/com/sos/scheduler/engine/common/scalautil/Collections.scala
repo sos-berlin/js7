@@ -93,6 +93,8 @@ object Collections {
       def toVector: Vector[A] = Vector() ++ delegate.iterator
       def toSet: Set[A] = Set() ++ delegate.iterator
       def toIterator: Iterator[A] = delegate.iterator
+      def toIterable: immutable.Iterable[A] = toStream
+      def toStream: Stream[A] = delegate.iterator.toStream
     }
   }
 
