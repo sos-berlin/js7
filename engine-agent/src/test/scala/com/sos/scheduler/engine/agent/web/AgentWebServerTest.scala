@@ -11,7 +11,6 @@ import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
-import com.sos.scheduler.engine.test.scalatest.HasCloserBeforeAndAfterAll
 import java.net.{BindException, ServerSocket}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -23,7 +22,7 @@ import scala.concurrent.duration._
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class AgentWebServerTest extends FreeSpec with HasCloserBeforeAndAfterAll {
+final class AgentWebServerTest extends FreeSpec {
 
   "AgentStarter fails when HTTP port is not available" in {
     val port = findRandomFreeTcpPort()
