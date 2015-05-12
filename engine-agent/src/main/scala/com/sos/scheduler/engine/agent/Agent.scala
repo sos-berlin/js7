@@ -11,6 +11,10 @@ import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
 import scala.concurrent.Future
 
 /**
+ * JobScheduler Agent.
+ *
+ * Integration test in engine-tests, for example com.sos.scheduler.engine.tests.jira.js1291.JS1291AgentIT.
+ *
  * @author Joacim Zschimmer
  */
 final class Agent(configuration: AgentConfiguration) extends AutoCloseable {
