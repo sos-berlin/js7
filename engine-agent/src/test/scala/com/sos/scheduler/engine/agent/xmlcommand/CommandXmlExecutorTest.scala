@@ -34,7 +34,7 @@ final class CommandXmlExecutorTest extends FreeSpec {
 
   "throwableToString repairs Scala 2.11.5 'Boxed Error' message" in {
     throwableToString(new Exception("TEXT")) shouldEqual "java.lang.Exception: TEXT"
-    val throwable = Await.ready(Future { throw new Error("TEXT") }, 1.seconds).value.get.failed.get
+    val throwable = Await.ready(Future { throw new Error("TEXT") }, 10.seconds).value.get.failed.get
     throwable.toString shouldEqual "java.util.concurrent.ExecutionException: Boxed Error"  // "TEXT" is lost
     throwableToString(throwable) shouldEqual "java.lang.Error: TEXT"
   }
