@@ -47,7 +47,7 @@ private object CommandXmlExecutorTest {
 
   private def executeCommand(command: String): xml.Elem = {
     val executed = new CommandXmlExecutor(execute).execute(InetAddress.getByName(IP), command)
-    awaitResult(executed, 1.seconds) match {
+    awaitResult(executed, 10.seconds) match {
       case <spooler><answer>{elem: xml.Elem}</answer></spooler> if elem.label == "ERROR" ⇒ throw new CommandException
       case o ⇒ o
     }
