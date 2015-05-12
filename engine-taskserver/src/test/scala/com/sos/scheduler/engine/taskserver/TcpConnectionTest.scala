@@ -68,7 +68,7 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
     val future = Future { myTcpConnection.receiveMessage() }
     intercept[TimeoutException] { awaitResult(future, 500.millis) }
     myTcpConnection.close()
-    intercept[SocketException] { awaitResult(future, 1.seconds) }.getMessage should include ("closed")  // Message is JVM specific
+    intercept[java.nio.channels.AsynchronousCloseException] { awaitResult(future, 1.seconds) }
   }
 
   private def connect(tcpConnection: TcpConnection): Unit = {
