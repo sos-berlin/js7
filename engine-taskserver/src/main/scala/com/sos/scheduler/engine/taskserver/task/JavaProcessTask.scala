@@ -44,7 +44,10 @@ extends Task with HasCloser {
     } else {
       methodIsCalled += methodWithSignature
       val NameAndSignature(name, "", _) = methodWithSignature
-      instance.getClass.getMethod(name).invoke(instance)
+      try instance.getClass.getMethod(name).invoke(instance)
+      finally if (methodWithSignature == SpoolerExitSignature) {
+        monitorProcessor.postTask()
+      }
     }
 
   /** Behaves as C++ Module_instance::call&#95;&#95;end. */
@@ -77,7 +80,6 @@ extends Task with HasCloser {
       closeCalled = true
       instance.spooler_close()
     }
-    monitorProcessor.postTask()
   }
 }
 
