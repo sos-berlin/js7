@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaJoda._
@@ -28,15 +29,15 @@ import scala.collection.mutable
 final class ShellProcessTaskTest extends FreeSpec {
 
   "ShellProcessTask exit 0" in {
-    runTask(Setting(exitCode = 0, preTask = true, preStep = true, postStep = identity), expectedSpoolerProcessResult = Some(true))
+    runTask(Setting(preTask = true, preStep = true, exitCode = 0, postStep = identity), expectedSpoolerProcessResult = Some(true))
   }
 
   "ShellProcessTask exit 0 pretask false" in {
-    runTask(Setting(exitCode = 0, preTask = false, preStep = true, postStep = identity), expectedStartResult = false)
+    runTask(Setting(preTask = false, preStep = true, exitCode = 0, postStep = identity), expectedStartResult = false)
   }
 
   "ShellProcessTask exit 7" in {
-    runTask(Setting(exitCode = 7, preTask = true, preStep = true, postStep = identity), expectedSpoolerProcessResult = Some(false))
+    runTask(Setting(preTask = true, preStep = true, exitCode = 7, postStep = identity), expectedSpoolerProcessResult = Some(false))
   }
 
   private def runTask(setting: Setting, expectedStartResult: Boolean = true, expectedSpoolerProcessResult: Option[Boolean] = None): Unit = {
@@ -44,14 +45,12 @@ final class ShellProcessTaskTest extends FreeSpec {
     val (stepResultOption, files) = autoClosing(newShellProcessTask(spoolerLog, setting)) { task ⇒
       val taskResult = task.start()
       assert(taskResult == expectedStartResult)
-      val r =
-        if (taskResult) Some(task.step())
-        else None
-      task.end()
+      val r = taskResult.option(task.step())
+      // Is not called by C++ Scheduler: task.end()
       (r, task.files)
     }
-    stepResultOption match {
-      case Some(stepResult: String) ⇒
+    (setting.preTask, stepResultOption) match {
+      case (true, Some(stepResult: String)) ⇒
         SafeXML.loadString(stepResult) shouldEqual <process.result
           state_text={s"$TestName=$TestValue"}
           spooler_process_result={expectedSpoolerProcessResult.get.toString}
@@ -59,16 +58,15 @@ final class ShellProcessTaskTest extends FreeSpec {
         assert(spoolerLog.infoMessages contains TestString)
         assert(spoolerLog.infoMessages contains s"$TestName=$TestValue")
         assert((spoolerLog.infoMessages filter ExpectedMonitorMessages.toSet) == ExpectedMonitorMessages)
-      case None ⇒
-        val expectedMonitorMessages = List(
-          s"A $PreTaskMessage",
-          s"B $PostTaskMessage", s"A $PostTaskMessage")
-        assert((spoolerLog.infoMessages filter expectedMonitorMessages.toSet) == expectedMonitorMessages)
+      case (false, None) ⇒
+        val expectedMonitorMessages = List(s"A $PreTaskMessage")
+        assert(spoolerLog.infoMessages == expectedMonitorMessages)
+      case _ ⇒ fail()
     }
-    waitForCondition(timeout = 3.s, step = 10.ms) { files forall { !_.exists }}  // Waiting for Future
+    waitForCondition(timeout = 3.s, step = 100.ms) { files forall { !_.exists }}  // Waiting until the Future in RichProcess.startShellScript has deleted the files
     files filter { _.exists } match {
       case Nil ⇒
-      case undeletedFiles ⇒ fail(s"Files not deleted:\n" + undeletedFiles.mkString("\n"))
+      case undeletedFiles ⇒ fail("Files not deleted:\n" + undeletedFiles.mkString("\n"))
     }
   }
 }
@@ -78,7 +76,7 @@ private object ShellProcessTaskTest {
   private val TestValue = "TESTENV-VALUE"
   private val TestString = "TEST-SCRIPT"
 
-  private case class Setting(exitCode: Int, preTask: Boolean, preStep: Boolean, postStep: Boolean ⇒ Boolean)
+  private case class Setting(preTask: Boolean, preStep: Boolean, exitCode: Int, postStep: Boolean ⇒ Boolean)
 
   private def newShellProcessTask(spoolerLog: SpoolerLog, setting: Setting) =
     new ShellProcessTask(
