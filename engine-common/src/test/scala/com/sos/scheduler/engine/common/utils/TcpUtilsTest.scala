@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.common.utils
 
-import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
-import com.sos.scheduler.engine.common.utils.TcpUtils.requireTcpPort
+import com.sos.scheduler.engine.common.utils.TcpUtils.{parseTcpPort, requireTcpPortNumber}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -23,12 +22,12 @@ final class TcpUtilsTest extends FreeSpec {
     intercept[IllegalArgumentException] { parseTcpPort("3000 ") }
   }
 
-  "requireTcpPort" in {
-    assert(requireTcpPort(1) == 1)
-    assert(requireTcpPort(65535) == 65535)
-    intercept[IllegalArgumentException] { requireTcpPort(0) }
-    intercept[IllegalArgumentException] { requireTcpPort(-1) }
-    intercept[IllegalArgumentException] { requireTcpPort(65536) }
-    intercept[IllegalArgumentException] { requireTcpPort(99999) }
+  "requireTcpPortNumber" in {
+    assert(requireTcpPortNumber(1) == 1)
+    assert(requireTcpPortNumber(65535) == 65535)
+    intercept[IllegalArgumentException] { requireTcpPortNumber(0) }
+    intercept[IllegalArgumentException] { requireTcpPortNumber(-1) }
+    intercept[IllegalArgumentException] { requireTcpPortNumber(65536) }
+    intercept[IllegalArgumentException] { requireTcpPortNumber(99999) }
   }
 }

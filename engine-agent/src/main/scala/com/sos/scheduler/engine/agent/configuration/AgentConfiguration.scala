@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.configuration
 
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
-import com.sos.scheduler.engine.common.utils.TcpUtils.{parseTcpPort, requireTcpPort}
+import com.sos.scheduler.engine.common.utils.TcpUtils.{parseTcpPort, requireTcpPortNumber}
 import scala.collection.immutable
 
 /**
@@ -16,7 +16,7 @@ final case class AgentConfiguration(
   httpInterfaceRestriction: Option[String] = None,
   environment: immutable.Iterable[(String, String)] = Nil)
 {
-  requireTcpPort(httpPort)
+  requireTcpPortNumber(httpPort)
 }
 
 object AgentConfiguration {
