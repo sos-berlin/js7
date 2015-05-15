@@ -16,6 +16,8 @@ import scala.collection.immutable
 
 /**
  * @author Joacim Zschimmer
+ *
+ * @see spooler_module_process.cxx, C++ class Process_module_instance
  */
 final class ShellProcessTask(
   module: ShellModule,
@@ -46,16 +48,13 @@ extends Task with HasCloser {
   private def startProcess(): RichProcess = {
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
-      val paramEnv = params map { case (k, v) ⇒ s"$EnvironmentParameterPrefix${k.toUpperCase()}" → v }
+      val paramEnv = params map { case (k, v) ⇒ s"$EnvironmentParameterPrefix${k.toUpperCase}" → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
     RichProcess.startShellScript(name = jobName, additionalEnvironment = env, scriptString = module.script.string.trim).closeWithCloser
   }
 
-  def end() =
-    if (startCalled) {
-      monitorProcessor.postTask()
-    }
+  def end() = {}  // Not called
 
   def step() = {
     requireState(startCalled)
@@ -63,8 +62,10 @@ extends Task with HasCloser {
       <process.result spooler_process_result="false"/>.toString()
     else {
       val rc = richProcess.waitForTermination(logOutputLine = spoolerLog.info)
-      val success = monitorProcessor.postStep(rc.isSuccess)
       transferReturnValuesToMaster()
+      val success =
+        try monitorProcessor.postStep(rc.isSuccess)
+        finally monitorProcessor.postTask()
       <process.result spooler_process_result={success.toString} exit_code={rc.toInt.toString} state_text={richProcess.firstStdoutLine}/>.toString()
     }
   }
@@ -103,7 +104,7 @@ extends Task with HasCloser {
 object ShellProcessTask {
   private val EnvironmentParameterPrefix = "SCHEDULER_PARAM_"
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
-  private val ReturnValuesFileEncoding = ISO_8859_1  // For v1.9 (and later ???)
+  private val ReturnValuesFileEncoding = ISO_8859_1
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
   private val logger = Logger(getClass)
 
