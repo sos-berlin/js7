@@ -1,11 +1,14 @@
 package com.sos.scheduler.engine.common.scalautil
 
+import com.google.common.io.Closer
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import scala.concurrent.Promise
 
 /**
  * Provides a Future `closed`, which succeeds with `close`.
  * <p>
- * <b>Should be one of the first mixins</b> after `HasCloser`, for `closed` to succeed when `Closer` has anything closed.
+ * <b>Should be one of the first mixins</b>, so that `closed` succeeds not before `Closer` has anything closed.
+ * For example:
  * <pre>
  *    class X extends HasCloser with ClosedFuture with ...
  * </pre>
@@ -13,11 +16,12 @@ import scala.concurrent.Promise
  * @author Joacim Zschimmer
  */
 trait ClosedFuture {
-  this: HasCloser ⇒
+
+  protected def closer: Closer
 
   private val closedPromise = Promise[Unit]()
 
-  onClose { closedPromise.success(()) }
+  closer.onClose { closedPromise.success(()) }
 
   final def closed = closedPromise.future
 }
