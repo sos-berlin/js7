@@ -4,11 +4,11 @@ package com.sos.scheduler.engine.taskserver.task.process
  * @author Joacim Zschimmer
  */
 object StdoutStderr {
-  val StdoutStderrTypes = List[StdoutStderrType](Stdout, Stderr)
+  val Stdout = new StdoutStderrType("stdout")
+  val Stderr = new StdoutStderrType("stderr")
+  val StdoutStderrTypes = List(Stdout, Stderr)
   
-  sealed abstract class StdoutStderrType(val name: String) {
+  final case class StdoutStderrType private[process](name: String) {
     override def toString = name
   }
-  case object Stdout extends StdoutStderrType("stdout")
-  case object Stderr extends StdoutStderrType("stderr")
 }
