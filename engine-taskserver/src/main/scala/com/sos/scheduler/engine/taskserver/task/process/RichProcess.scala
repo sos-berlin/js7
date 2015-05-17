@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logge
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.job.ReturnCode
+import com.sos.scheduler.engine.taskserver.task.common.MultipleFilesLineCollector
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import java.nio.charset.Charset
@@ -32,7 +33,7 @@ extends HasCloser with ClosedFuture {
   def kill() = process.destroyForcibly()
 
   def waitForTermination(processOutputLine: String ⇒ Unit): ReturnCode =
-    autoClosing(new FilesLineCollector(Nil ++ stdFileMap.values, fileEncoding)) { fileLogger ⇒
+    autoClosing(new MultipleFilesLineCollector(Nil ++ stdFileMap.values, fileEncoding)) { fileLogger ⇒
       def processOutputLines() = for ((file, line) ← fileLogger.nextLinesIterator) processOutputLine(line)
       val result = waitForTermination2(StdoutPollingPeriod) { processOutputLines() }
       processOutputLines()

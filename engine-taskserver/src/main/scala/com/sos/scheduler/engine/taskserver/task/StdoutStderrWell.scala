@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAu
 import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.taskserver.task.process.FilesLineCollector
+import com.sos.scheduler.engine.taskserver.task.common.MultipleFilesLineCollector
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stdout, StdoutStderrType}
 import java.nio.charset.Charset
 import java.nio.file.Path
@@ -19,7 +19,7 @@ import scala.concurrent.Future
 final class StdoutStderrWell(stdFiles: Map[StdoutStderrType, Path], fileEncoding: Charset, output: String ⇒ Unit)
 extends HasCloser {
 
-  private val lineCollector = new FilesLineCollector(Nil ++ stdFiles.values, fileEncoding).closeWithCloser
+  private val lineCollector = new MultipleFilesLineCollector(Nil ++ stdFiles.values, fileEncoding).closeWithCloser
   private val firstLineCollector = new FirstStdoutLineCollector
   def firstStdoutLine = firstLineCollector.firstStdoutLine
 
