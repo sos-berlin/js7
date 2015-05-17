@@ -39,7 +39,7 @@ extends Task with HasCloser {
   private var richProcess: RichProcess = null
 
   private lazy val concurrentStdoutStderrWell =
-    new StdoutStderrWell.Concurrent(s"Job $jobName: stdout/stderr collector", stdFileMap, StdoutStderrEncoding, output = spoolerLog.info)
+    new ConcurrentStdoutAndStderrWell(s"Job $jobName: stdout/stderr collector", stdFileMap, StdoutStderrEncoding, output = spoolerLog.info)
     .closeWithCloser
 
   def start() = {
