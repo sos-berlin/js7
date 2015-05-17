@@ -2,9 +2,9 @@ package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
+import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logger}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.common.time.ScalaJoda._
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
@@ -14,50 +14,45 @@ import java.nio.file.Files.createTempFile
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.attribute.PosixFilePermissions._
 import java.nio.file.{Files, Path}
+import java.time.Duration
 import java.util.concurrent.TimeUnit
+import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Promise
 import scala.util.control.NonFatal
 
 /**
  * @param infoProgramFile only for information
  * @author Joacim Zschimmer
  */
-final class RichProcess private(process: Process, infoProgramFile: Path, stdFiles: Map[StdoutStderrType, Path], fileEncoding: Charset)
-extends HasCloser {
-
-  private val promise = Promise[Unit]()
-  def closed = promise.future
-
-  private val firstLineCollector = new FirstLineCollector
-  def firstStdoutLine = firstLineCollector.firstStdoutLine
-
-  onClose {
-    promise.success(())
-  }
+final class RichProcess private(process: Process, infoProgramFile: Path, stdFileMap: Map[StdoutStderrType, Path], fileEncoding: Charset)
+extends HasCloser with ClosedFuture {
 
   def kill() = process.destroyForcibly()
 
-  def waitForTermination(logOutputLine: String ⇒ Unit): ReturnCode = {
-    autoClosing(new FilesLineCollector(Nil ++ stdFiles.values, fileEncoding)) { fileLogger ⇒
-      def logOutputLines() = fileLogger.nextLinesIterator foreach { case (file, line) ⇒
-        logOutputLine(line)
-        firstLineCollector.apply(file, line)
-      }
-      while (!process.waitFor(LoggingPausePeriod.getMillis, TimeUnit.MILLISECONDS)) {     // Die waitFor-Implementierung fragt millisekündlich ab
-        logOutputLines()
-      }
-      logger.debug(s"Terminated with exit code ${process.exitValue}")
-      logOutputLines()
+  def waitForTermination(processOutputLine: String ⇒ Unit): ReturnCode =
+    autoClosing(new FilesLineCollector(Nil ++ stdFileMap.values, fileEncoding)) { fileLogger ⇒
+      def processOutputLines() = for ((file, line) ← fileLogger.nextLinesIterator) processOutputLine(line)
+      val result = waitForTermination2(StdoutPollingPeriod) { processOutputLines() }
+      processOutputLines()
+      result
     }
+
+  def waitForTermination(): ReturnCode = waitForTermination2(WaitForProcessPeriod) {}
+
+  private def waitForTermination2(pause: Duration)(pauseCallback: ⇒ Unit): ReturnCode = {
+    while (!process.waitFor(pause.toMillis, TimeUnit.MILLISECONDS)) {   // Die waitFor-Implementierung fragt millisekündlich ab
+      pauseCallback
+    }
+    logger.debug(s"Terminated with exit code ${process.exitValue}")
     ReturnCode(process.exitValue)
   }
 
   override def toString = s"$process $infoProgramFile"
 
-  def files: immutable.Seq[Path] = List(infoProgramFile) ++ stdFiles.values
+  @TestOnly
+  def files: immutable.Seq[Path] = List(infoProgramFile) ++ stdFileMap.values
 
   private class FirstLineCollector {
     private val maxLineNr = if (isWindows) 2 else 1  // Windows stdout may start with an empty first line
@@ -66,7 +61,7 @@ extends HasCloser {
 
     def apply(file: Path, line: String) =
       if (firstStdoutLine.isEmpty) {
-        if (file == stdFiles(Stdout)) {
+        if (file == stdFileMap(Stdout)) {
           stdoutLineNr += 1
           if (stdoutLineNr <= maxLineNr)
             firstStdoutLine = line
@@ -76,14 +71,15 @@ extends HasCloser {
 }
 
 object RichProcess {
-  private val LoggingPausePeriod = 1.s
+  private val StdoutPollingPeriod = 100.ms
+  private val WaitForProcessPeriod = 100.ms
   private val logger = Logger(getClass)
 
-  def startShellScript(name: String, additionalEnvironment: immutable.Iterable[(String, String)], scriptString: String): RichProcess = {
+  def startShellScript(name: String, additionalEnvironment: immutable.Iterable[(String, String)], scriptString: String, stdFileMap: Map[StdoutStderrType, Path]): RichProcess = {
     val shellFile = OS.newTemporaryShellFile(name)
     try {
       shellFile.toFile.write(scriptString, OS.fileEncoding)
-      val process = RichProcess.start(OS.toShellCommandArguments(shellFile), additionalEnvironment, infoProgramFile = shellFile)
+      val process = RichProcess.start(OS.toShellCommandArguments(shellFile), additionalEnvironment, stdFileMap, infoProgramFile = shellFile)
       process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
       process
     }
@@ -93,8 +89,7 @@ object RichProcess {
     }
   }
 
-  def start(arguments: Seq[String], additionalEnvironment: Iterable[(String, String)] = Nil, infoProgramFile: Path): RichProcess = {
-    val stdFileMap = (StdoutStderrTypes map { o ⇒ o → OS.newTemporaryOutputFile("sos", o) }).toMap
+  def start(arguments: Seq[String], additionalEnvironment: Iterable[(String, String)], stdFileMap: Map[StdoutStderrType, Path], infoProgramFile: Path): RichProcess = {
     val processBuilder = new ProcessBuilder(arguments)
     processBuilder.redirectOutput(stdFileMap(Stdout))
     processBuilder.redirectError(stdFileMap(Stderr))
@@ -102,10 +97,10 @@ object RichProcess {
     logger.debug("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     val process = processBuilder.start()
     process.getOutputStream.close() // Empty stdin
-    val shellProcess = new RichProcess(process, infoProgramFile, stdFileMap, OS.fileEncoding)
-    shellProcess.closed.onComplete { case _ ⇒ tryDeleteFiles(stdFileMap.values) }
-    shellProcess
+    new RichProcess(process, infoProgramFile, stdFileMap, OS.fileEncoding)
   }
+
+  def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → OS.newTemporaryOutputFile("sos", o) }).toMap
 
   private val OS = if (isWindows) WindowsSpecific else UnixSpecific
 
@@ -133,7 +128,7 @@ object RichProcess {
     def toShellCommandArguments(file: Path) = Vector("""C:\Windows\System32\cmd.exe""", "/C", file.toString)
   }
 
-  private def tryDeleteFiles(files: Iterable[Path]): Unit =
+  def tryDeleteFiles(files: Iterable[Path]): Unit =
     for (file ← files) {
       try {
         logger.debug(s"Delete file '$file'")

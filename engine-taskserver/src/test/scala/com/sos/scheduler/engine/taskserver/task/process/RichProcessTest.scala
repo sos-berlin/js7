@@ -1,29 +1,36 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
+import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.data.job.ReturnCode
+import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.Stdout
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import scala.collection.mutable
 
 /**
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
 final class RichProcessTest extends FreeSpec {
-  "ShellProcessStarter and ShellProcess" in {
+
+  "RichProcess" in {
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
-    val firstLine = "FIRSTLINE"
+    val echo = "FIRSTLINE"
     val exitCode = 42
-    val shellProcess = RichProcess.startShellScript(name = "TEST", Map(envName → envValue), s"echo $firstLine\nexit $exitCode")
-    assert(shellProcess.files.size == 3)
-    val outputLines = mutable.Buffer[String]()
-    val returnCode = shellProcess.waitForTermination { line ⇒ outputLines += line }
-    assert(returnCode == ReturnCode(exitCode))
-    assert(shellProcess.firstStdoutLine contains firstLine)
-    assert(!shellProcess.closed.isCompleted)
-    shellProcess.close()
-    assert(shellProcess.closed.isCompleted)
+    withCloser { closer ⇒
+      val stdFileMap = RichProcess.createTemporaryStdFiles()
+      closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
+      val shellProcess = RichProcess.startShellScript(name = "TEST", Map(envName → envValue), s"echo $echo\nexit $exitCode", stdFileMap)
+      assert(shellProcess.files.size == 3)
+      val returnCode = shellProcess.waitForTermination()
+      assert(returnCode == ReturnCode(exitCode))
+      assert(!shellProcess.closed.isCompleted)
+      shellProcess.close()
+      assert(shellProcess.closed.isCompleted)
+      assert(stdFileMap(Stdout).contentString contains echo)
+    }
   }
 }
