@@ -1,12 +1,12 @@
 package com.sos.scheduler.engine.taskserver
 
-import com.google.inject.{AbstractModule, Guice}
+import com.google.inject.Guice
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.minicom.remoting.Remoting
+import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpoolerLog, ProxySpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskStartArguments}
@@ -25,7 +25,7 @@ final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskSer
   private val injector = Guice.createInjector(new ScalaAbstractModule {
     def configure() = bindInstance[TaskStartArguments](startArguments)
   })
-  private val remoting = new Remoting(injector, controllingScheduler, IDispatchFactories, ProxyIDispatchFactories)
+  private val remoting = new Remoting(injector, new DialogConnection(controllingScheduler), IDispatchFactories, ProxyIDispatchFactories)
 
   private val terminatedPromise = Promise[Unit]()
   def terminated = terminatedPromise.future

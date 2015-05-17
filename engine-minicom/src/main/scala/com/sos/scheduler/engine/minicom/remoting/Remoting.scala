@@ -16,6 +16,7 @@ import com.sos.scheduler.engine.minicom.remoting.serial.{ResultDeserializer, Ser
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
 import java.nio.ByteBuffer
 import org.scalactic.Requirements._
+import scala.annotation.tailrec
 import scala.collection.breakOut
 import scala.util.control.NonFatal
 
@@ -24,7 +25,7 @@ import scala.util.control.NonFatal
  */
 final class Remoting(
   injector: Injector,
-  connection: MessageConnection,
+  dialogConnection: DialogConnection,
   invocableFactories: Iterable[InvocableFactory],
   proxyIDispatchFactories: Iterable[ProxyIDispatchFactory])
 extends ServerRemoting with ClientRemoting {
@@ -34,16 +35,16 @@ extends ServerRemoting with ClientRemoting {
   private val proxyClsidMap: Map[CLSID, ProxyIDispatchFactory.Fun] =
     (List(SimpleProxyIDispatch) ++ proxyIDispatchFactories).map { o ⇒ o.clsid → o.apply _ } (breakOut)
 
-  def run() = while (processNextMessage()) {}
+  def run(): Unit = continue(dialogConnection.receiveFirstMessage())
 
-  private def processNextMessage(): Boolean =
-    connection.receiveMessage() match {
-      case Some(callBytes) ⇒
-        val (resultBytes, n) = executeMessage(callBytes)
-        connection.sendMessage(resultBytes, n)
-        true
+  @tailrec
+  private def continue(messageOption: Option[ByteBuffer]): Unit =
+    messageOption match {
+      case Some(message) ⇒
+        val (resultBytes, n) = executeMessage(message)
+        val nextMessageOption = dialogConnection.sendAndReceive(resultBytes, n)
+        continue(nextMessageOption)
       case None ⇒
-        false
     }
 
   private def executeMessage(callBuffer: ByteBuffer): (Array[Byte], Int) =
@@ -102,8 +103,7 @@ extends ServerRemoting with ClientRemoting {
 
   private def sendReceive(call: Call): ResultDeserializer = {
     val (byteArray, length) = serializeCall(proxyRegister, call)
-    connection.sendMessage(byteArray, length)
-    val byteBuffer = connection.receiveMessage().get
+    val byteBuffer = dialogConnection.sendAndReceive(byteArray, length).get
     new ResultDeserializer(this, byteBuffer)
   }
 
