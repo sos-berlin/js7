@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.common.MultipleFilesLineCollector
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
+import java.io.{BufferedOutputStream, OutputStreamWriter}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets._
 import java.nio.file.Files.createTempFile
@@ -30,6 +31,8 @@ import scala.util.control.NonFatal
 final class RichProcess private(process: Process, infoProgramFile: Path, stdFileMap: Map[StdoutStderrType, Path], fileEncoding: Charset)
 extends HasCloser with ClosedFuture {
 
+  lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
+
   def kill() = process.destroyForcibly()
 
   def waitForTermination(processOutputLine: String ⇒ Unit): ReturnCode =
@@ -50,25 +53,12 @@ extends HasCloser with ClosedFuture {
     ReturnCode(process.exitValue)
   }
 
+  def stdin = process.getOutputStream
+
   override def toString = s"$process $infoProgramFile"
 
   @TestOnly
   def files: immutable.Seq[Path] = List(infoProgramFile) ++ stdFileMap.values
-
-  private class FirstLineCollector {
-    private val maxLineNr = if (isWindows) 2 else 1  // Windows stdout may start with an empty first line
-    private var stdoutLineNr = 0
-    var firstStdoutLine = ""
-
-    def apply(file: Path, line: String) =
-      if (firstStdoutLine.isEmpty) {
-        if (file == stdFileMap(Stdout)) {
-          stdoutLineNr += 1
-          if (stdoutLineNr <= maxLineNr)
-            firstStdoutLine = line
-        }
-      }
-  }
 }
 
 object RichProcess {
@@ -82,6 +72,7 @@ object RichProcess {
       shellFile.toFile.write(scriptString, OS.fileEncoding)
       val process = RichProcess.start(OS.toShellCommandArguments(shellFile), additionalEnvironment, stdFileMap, infoProgramFile = shellFile)
       process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
+      process.stdin.close() // Empty stdin
       process
     }
     catch { case NonFatal(t) ⇒
@@ -97,7 +88,6 @@ object RichProcess {
     processBuilder.environment ++= additionalEnvironment
     logger.debug("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     val process = processBuilder.start()
-    process.getOutputStream.close() // Empty stdin
     new RichProcess(process, infoProgramFile, stdFileMap, OS.fileEncoding)
   }
 

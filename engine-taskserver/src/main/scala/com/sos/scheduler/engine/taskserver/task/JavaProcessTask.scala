@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import scala.collection.mutable
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.message.MessageCode
@@ -8,7 +7,10 @@ import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.taskserver.task.JavaProcessTask._
-import scala.collection.immutable
+import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
+import java.nio.charset.StandardCharsets._
+import java.nio.file.Path
+import scala.collection.{immutable, mutable}
 import scala.util.control.NonFatal
 
 /**
@@ -23,15 +25,24 @@ final class JavaProcessTask(
   monitors: immutable.Seq[Monitor],
   jobName: String,
   hasOrder: Boolean,
-  environment: immutable.Iterable[(String, String)])
+  environment: immutable.Iterable[(String, String)],
+  stdFileMap: Map[StdoutStderrType, Path],
+  logStdoutAndStderr: Boolean)
 extends Task with HasCloser {
+
+  import namedInvocables.spoolerLog
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private val instance: sos.spooler.Job_impl = module.newJobInstance(namedInvocables)
   private val methodIsCalled = mutable.Set[String]()
+  private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(
+    s"Job $jobName", stdFileMap, StdoutStderrEncoding, output = spoolerLog.info).closeWithCloser
   private var closeCalled = false
 
-  def start() = monitorProcessor.preTask() && instance.spooler_init()
+  def start() = {
+    if (logStdoutAndStderr) concurrentStdoutStderrWell.start()
+    monitorProcessor.preTask() && instance.spooler_init()
+  }
 
   /**
    * Behaves as Module_instance::call&#95;&#95;end.
@@ -45,10 +56,15 @@ extends Task with HasCloser {
       methodIsCalled += methodWithSignature
       val NameAndSignature(name, "", _) = methodWithSignature
       try instance.getClass.getMethod(name).invoke(instance)
-      finally if (methodWithSignature == SpoolerExitSignature) {
-        monitorProcessor.postTask()
-      }
+      finally
+        if (methodWithSignature == SpoolerExitSignature) {
+          afterSpoolerExit()
+        }
     }
+
+  private def afterSpoolerExit(): Unit =
+    try monitorProcessor.postTask()
+    finally if (logStdoutAndStderr) concurrentStdoutStderrWell.finish()
 
   /** Behaves as C++ Module_instance::call&#95;&#95;end. */
   private def ignoreCall(methodWithSignature: String): Boolean =
@@ -86,5 +102,6 @@ extends Task with HasCloser {
 object JavaProcessTask {
   private val NameAndSignature = """(.*)\((.*)\)(.+)""".r
   private val StandardJavaErrorCode = MessageCode("Z-JAVA-105")
+  private val StdoutStderrEncoding = ISO_8859_1
   private val logger = Logger(getClass)
 }

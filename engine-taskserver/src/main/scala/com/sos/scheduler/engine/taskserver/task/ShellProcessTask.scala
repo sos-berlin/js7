@@ -35,12 +35,10 @@ extends Task with HasCloser {
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
   private lazy val stdFileMap = RichProcess.createTemporaryStdFiles()
+  private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(
+    s"Job $jobName", stdFileMap, StdoutStderrEncoding, output = spoolerLog.info).closeWithCloser
   private var startCalled = false
   private var richProcess: RichProcess = null
-
-  private lazy val concurrentStdoutStderrWell =
-    new ConcurrentStdoutAndStderrWell(s"Job $jobName: stdout/stderr collector", stdFileMap, StdoutStderrEncoding, output = spoolerLog.info)
-    .closeWithCloser
 
   def start() = {
     requireState(!startCalled)
@@ -121,8 +119,8 @@ extends Task with HasCloser {
 object ShellProcessTask {
   private val EnvironmentParameterPrefix = "SCHEDULER_PARAM_"
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
-  private val StdoutStderrEncoding = ISO_8859_1
   private val ReturnValuesFileEncoding = ISO_8859_1
+  private val StdoutStderrEncoding = ISO_8859_1
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
   private val logger = Logger(getClass)
 

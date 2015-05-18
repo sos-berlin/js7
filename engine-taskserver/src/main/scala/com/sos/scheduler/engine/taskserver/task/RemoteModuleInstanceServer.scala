@@ -12,6 +12,7 @@ import com.sos.scheduler.engine.taskserver.module._
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout}
 import javax.inject.Inject
 import org.scalactic.Requirements._
 
@@ -47,7 +48,9 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
           taskArguments.monitors,
           jobName = taskArguments.jobName,
           hasOrder = taskArguments.hasOrder,
-          environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment)
+          environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
+          stdFileMap = Map(Stdout → taskStartArguments.stdoutFile, Stderr → taskStartArguments.stderrFile),
+          logStdoutAndStderr = taskStartArguments.logStdoutAndStderr)
     }
     closer.registerAutoCloseable(task)
     task.start()

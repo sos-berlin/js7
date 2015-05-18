@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.Stopwatch
@@ -17,24 +19,31 @@ import scala.concurrent.duration.DurationInt
  */
 @RunWith(classOf[JUnitRunner])
 final class JavaProcessTest extends FreeSpec {
+
   "JavaProcess" in {
-    val lines = mutable.Buffer[String]()
-    val stopwatch = new Stopwatch
-    val process = JavaProcess.startJava(
-      options = List("-Xmx10m", s"-Dtest=$TestValue"),
-      classpath = Some(JavaProcess.OwnClasspath),
-      mainClass = JavaProcessTest.getClass.getName stripSuffix "$",   // Scala object class name ends with '$'
-      arguments = Arguments)
-    try {
-      val returnCode = process.waitForTermination(lines += _)
-      logger.error(lines mkString "\n")
-      assert(returnCode == ReturnCode(77))
-      assert(lines contains s"STDOUT $TestValue")
-      assert(lines contains s"STDERR $TestValue")
+    withCloser { closer ⇒
+      val lines = mutable.Buffer[String]()
+      val stdFileMap = RichProcess.createTemporaryStdFiles()
+      closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
+      val stopwatch = new Stopwatch
+      val process = JavaProcess.startJava(
+        options = List("-Xmx10m", s"-Dtest=$TestValue"),
+        classpath = Some(JavaProcess.OwnClasspath),
+        mainClass = JavaProcessTest.getClass.getName stripSuffix "$", // Scala object class name ends with '$'
+        arguments = Arguments,
+        environment = Nil,
+        stdFileMap = stdFileMap)
+      try {
+        val returnCode = process.waitForTermination(lines += _)
+        logger.error(lines mkString "\n")
+        assert(returnCode == ReturnCode(77))
+        assert(lines contains s"STDOUT $TestValue")
+        assert(lines contains s"STDERR $TestValue")
+      }
+      finally process.close()
+      awaitResult(process.closed, 10.seconds)
+      logger.info(s"$stopwatch for Java process")
     }
-    finally process.close()
-    awaitResult(process.closed, 10.seconds)
-    logger.info(s"$stopwatch for Java process")
   }
 }
 

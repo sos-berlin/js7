@@ -1,14 +1,12 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
-import com.google.common.io.Closer
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.closeOnError
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.RichAny
 import com.sos.scheduler.engine.common.system.OperatingSystem._
+import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import java.io.File
+import java.nio.file.Path
 import scala.collection.immutable
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Joacim Zschimmer
@@ -22,24 +20,18 @@ object JavaProcess {
       classpath: Option[String],
       mainClass: String,
       arguments: Seq[String],
-      environment: immutable.Iterable[(String, String)] = Nil) =
+      environment: immutable.Iterable[(String, String)],
+      stdFileMap: Map[StdoutStderrType, Path]) =
   {
-    val closer = Closer.create()
-    closeOnError(closer) {
-      val stdFileMap = RichProcess.createTemporaryStdFiles()
-      closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
-      val richProcess = RichProcess.start(
-        additionalEnvironment = environment,
-        arguments = Vector(JavaExecutable.getPath) ++
-          options ++
-          (classpath.toVector flatMap { o ⇒ Vector("-classpath", o.substitute("" → File.pathSeparator)) }) ++ // Java does not like empty classpath
-          Vector(mainClass) ++
-          arguments,
-        stdFileMap = stdFileMap,
-        infoProgramFile = JavaExecutable)
-      richProcess.closed.onComplete { _ ⇒ closer.close() }
-      richProcess
-    }
+    RichProcess.start(
+      additionalEnvironment = environment,
+      arguments = Vector(JavaExecutable.getPath) ++
+        options ++
+        (classpath.toVector flatMap { o ⇒ Vector("-classpath", o.substitute("" → File.pathSeparator)) }) ++ // Java does not like empty classpath
+        Vector(mainClass) ++
+        arguments,
+      stdFileMap = stdFileMap,
+      infoProgramFile = JavaExecutable)
   }
 
   private lazy val JavaExecutable: File = {

@@ -17,7 +17,11 @@ final class ConcurrentStdoutAndStderrWell(name: String, stdFiles: Map[StdoutStde
 extends HasCloser with ClosedFuture {
 
   private val well = new StdoutStderrWell(stdFiles, fileEncoding, output).closeWithCloser
-  private val concurrentCaller = new ConcurrentCaller(Iterator continually PollPeriod, well.apply, name).closeWithCloser
+  private val concurrentCaller = new ConcurrentCaller(
+    pauses = Iterator continually PollPeriod,
+    function = well.apply,
+    name = List("stdout/stderr collector", name) filter { _.nonEmpty } mkString " - ")
+  .closeWithCloser
 
   def start() = concurrentCaller.start()
 
