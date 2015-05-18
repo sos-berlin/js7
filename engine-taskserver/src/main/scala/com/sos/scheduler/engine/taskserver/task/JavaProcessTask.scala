@@ -24,7 +24,6 @@ final class JavaProcessTask(
   namedInvocables: NamedInvocables,
   monitors: immutable.Seq[Monitor],
   jobName: String,
-  hasOrder: Boolean,
   environment: immutable.Iterable[(String, String)],
   stdFileMap: Map[StdoutStderrType, Path],
   logStdoutAndStderr: Boolean)

@@ -47,7 +47,6 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
           namedInvocables,
           taskArguments.monitors,
           jobName = taskArguments.jobName,
-          hasOrder = taskArguments.hasOrder,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
           stdFileMap = Map(Stdout → taskStartArguments.stdoutFile, Stderr → taskStartArguments.stderrFile),
           logStdoutAndStderr = taskStartArguments.logStdoutAndStderr)

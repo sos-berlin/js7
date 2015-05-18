@@ -20,7 +20,7 @@ extends HasCloser with ClosedFuture {
   private val concurrentCaller = new ConcurrentCaller(
     pauses = Iterator continually PollPeriod,
     function = well.apply,
-    name = List("stdout/stderr collector", name) filter { _.nonEmpty } mkString " - ")
+    name = List("JobScheduler stdout/stderr well", name) filter { _.nonEmpty } mkString " - ")
   .closeWithCloser
 
   def start() = concurrentCaller.start()
