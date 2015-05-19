@@ -1,11 +1,14 @@
 package com.sos.scheduler.engine.agent.web
 
-import com.sos.scheduler.engine.agent.data.FileOrderSourceContent
+import com.sos.scheduler.engine.agent.data.{FileOrderSourceContent, RequestFileOrderSourceContent}
+import com.sos.scheduler.engine.agent.web.AgentWebService._
+import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichJavaStream
 import java.net.InetAddress
-import java.nio.file.{Files, NoSuchFileException, Paths}
+import java.nio.file.Files.getLastModifiedTime
+import java.nio.file.{Files, NoSuchFileException, Path, Paths}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Future, blocking}
 import spray.http.HttpEntity
 import spray.http.MediaTypes._
 import spray.http.StatusCodes.BadRequest
@@ -33,35 +36,54 @@ private[agent] trait AgentWebService extends HttpService {
                   case None ⇒ complete(BadRequest, "Client's IP address is unknown")
                   case Some(clientIPAddress) ⇒
                     val future = executeCommand(clientIPAddress = InetAddress.getByName(clientIPAddress), command = httpEntity.asString)
-                    onSuccess(future) {
-                      response ⇒ complete(response)
-                    }
+                    onSuccess(future) { response ⇒ complete(response) }
                 }
             }
           }
         } ~
         pathPrefix("agent") {
-          get {
-            path("fileOrderSource" / "files") {
-              parameter(('directory, 'order ! "latest-access-first")) { directoryString ⇒
-                complete {
-                  val directory = Paths.get(directoryString)
-                  val entries = Files.list(directory).toVector flatMap { file ⇒
-                    try Some(FileOrderSourceContent.Entry(file.toString, Files.getLastModifiedTime(file).toMillis))
-                    catch { case _: NoSuchFileException ⇒ None }
+          post {
+            path("fileOrderSource" / "newFiles") {
+              entity(as[RequestFileOrderSourceContent]) { request ⇒
+                val future = Future {
+                  getFileOrderSourceContent(request) match {
+                    case o if o.files.nonEmpty ⇒ o
+                    case _ ⇒
+                      blocking {
+                        Thread.sleep(request.durationMillis)  // Blocks a thread!!!
+                      }
+                      getFileOrderSourceContent(request)
                   }
-                  FileOrderSourceContent(entries sortBy { _.lastModifiedTime })
                 }
+                onSuccess(future) { response ⇒ complete(response) }
               }
             }
           }
         }
       }
     }
+
+  private def getFileOrderSourceContent(request: RequestFileOrderSourceContent): FileOrderSourceContent = {
+    val regex = request.regex match {
+      case "" ⇒ ".*".r
+      case o ⇒ o.r
+    }
+    val entries = autoClosing(Files.list(Paths.get(request.directory))) { javaStream ⇒
+      (javaStream.toIterator
+        filter { f ⇒ regex.findFirstIn(f.getFileName.toString).isDefined && !request.knownFiles(f.toString) }
+        flatMap toEntryOption
+      ).toVector
+    }
+    FileOrderSourceContent(entries sortBy { _.lastModifiedTime })
+  }
 }
 
 object AgentWebService {
   trait AsActor extends HttpServiceActor with AgentWebService {
     final def receive = runRoute(route)
   }
+
+  private def toEntryOption(file: Path): Option[FileOrderSourceContent.Entry] =
+    try Some(FileOrderSourceContent.Entry(file.toString, getLastModifiedTime(file).toMillis))
+    catch { case _: NoSuchFileException ⇒ None }
 }
