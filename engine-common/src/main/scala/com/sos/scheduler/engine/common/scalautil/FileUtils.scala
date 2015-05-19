@@ -15,7 +15,7 @@ object FileUtils {
 
     implicit class RichPath(val delegate: Path) extends AnyVal {
 
-      def /(filename: String): Path = new File(delegate, filename).toFile
+      def /(filename: String): Path = delegate resolve filename
 
       def contentBytes: Array[Byte] = file.contentBytes
 
