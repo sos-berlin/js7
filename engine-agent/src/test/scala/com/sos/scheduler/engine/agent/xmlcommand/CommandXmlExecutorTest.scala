@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor.throwableToS
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutorTest._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.data.agent.AgentProcessId
-import java.net.InetAddress
 import org.junit.runner.RunWith
 import org.scalatest.Assertions.fail
 import org.scalatest.FreeSpec
@@ -24,11 +23,11 @@ final class CommandXmlExecutorTest extends FreeSpec {
   "CommandXmlExecutor" in {
     intercept[CommandException] { executeCommand("INVALID XML") }
     intercept[CommandException] { executeCommand("<WRONG/>") }
-    intercept[CommandException] { executeCommand("<remote_scheduler.start_remote_task tcp_port='WRONG' kind='process'/>") }
-    intercept[CommandException] { executeCommand("<remote_scheduler.start_remote_task tcp_port='999' kind='process'/>") }
-    executeCommand("<remote_scheduler.start_remote_task tcp_port='1111' kind='process'/>") shouldEqual
+    intercept[CommandException] { executeCommand(s"<remote_scheduler.start_remote_task ip_address='$IP' tcp_port='WRONG' kind='process'/>") }
+    intercept[CommandException] { executeCommand(s"<remote_scheduler.start_remote_task ip_address='$IP' tcp_port='999' kind='process'/>") }
+    executeCommand(s"<remote_scheduler.start_remote_task ip_address='$IP' tcp_port='1111' kind='process'/>") shouldEqual
       <spooler><answer><process process_id="111"/></answer></spooler>
-    executeCommand("<remote_scheduler.start_remote_task tcp_port='1111' java_options='OPTIONS' java_classpath='CLASSPATH'/>") shouldEqual
+    executeCommand(s"<remote_scheduler.start_remote_task ip_address='$IP' tcp_port='1111' java_options='OPTIONS' java_classpath='CLASSPATH'/>") shouldEqual
       <spooler><answer><process process_id="222"/></answer></spooler>
   }
 
@@ -46,7 +45,7 @@ private object CommandXmlExecutorTest {
   private val BSocketAddress = s"$IP:1111"
 
   private def executeCommand(command: String): xml.Elem = {
-    val executed = new CommandXmlExecutor(execute).execute(InetAddress.getByName(IP), command)
+    val executed = new CommandXmlExecutor(execute).execute(command)
     awaitResult(executed, 10.seconds) match {
       case <spooler><answer>{elem: xml.Elem}</answer></spooler> if elem.label == "ERROR" ⇒ throw new CommandException
       case o ⇒ o

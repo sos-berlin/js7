@@ -2,7 +2,6 @@ package com.sos.scheduler.engine.agent.xmlcommand
 
 import com.sos.scheduler.engine.agent.commands.{CloseProcess, StartSeparateProcess, StartThread}
 import com.sos.scheduler.engine.data.agent.AgentProcessId
-import java.net.InetAddress
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -13,18 +12,18 @@ import org.scalatest.junit.JUnitRunner
  */
 @RunWith(classOf[JUnitRunner])
 final class CommandXmlTest extends FreeSpec {
-  private val IP = "127.0.0.1"
+  private val ipAddress = "127.0.0.1"
 
   "StartRemoteTask" in {
     intercept[Exception] { parse(<remote_scheduler.start_remote_task/>) }
-    parse(<remote_scheduler.start_remote_task tcp_port="999" java_options="OPTIONS" java_classpath="CLASSPATH"/>) shouldEqual
-      StartSeparateProcess(controllerAddress = s"$IP:999", javaOptions = "OPTIONS", javaClasspath = "CLASSPATH")
-    parse(<remote_scheduler.start_remote_task tcp_port="999" kind="process"/>) shouldEqual
-      StartThread(controllerAddress = s"$IP:999")
-    intercept[Exception] { parse(<remote_scheduler.start_remote_task tcp_port="-1"/>) }
-    intercept[Exception] { parse(<remote_scheduler.start_remote_task tcp_port="0"/>) }
-    intercept[Exception] { parse(<remote_scheduler.start_remote_task tcp_port="65536"/>) }
-    parse(<remote_scheduler.start_remote_task tcp_port="65535"/>)
+    parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="999" java_options="OPTIONS" java_classpath="CLASSPATH"/>) shouldEqual
+      StartSeparateProcess(controllerAddress = s"$ipAddress:999", javaOptions = "OPTIONS", javaClasspath = "CLASSPATH")
+    parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="999" kind="process"/>) shouldEqual
+      StartThread(controllerAddress = s"$ipAddress:999")
+    intercept[Exception] { parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="-1"/>) }
+    intercept[Exception] { parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="0"/>) }
+    intercept[Exception] { parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="65536"/>) }
+    parse(<remote_scheduler.start_remote_task ip_address={ipAddress}  tcp_port="65535"/>)
   }
 
   "CloseRemoteTask" in {
@@ -35,5 +34,5 @@ final class CommandXmlTest extends FreeSpec {
       CloseProcess(AgentProcessId(111222333444555666L), kill = true)
   }
 
-  private def parse(elem: xml.Elem) = CommandXml.parseString(InetAddress.getByName(IP), elem.toString())
+  private def parse(elem: xml.Elem) = CommandXml.parseString(elem.toString())
 }

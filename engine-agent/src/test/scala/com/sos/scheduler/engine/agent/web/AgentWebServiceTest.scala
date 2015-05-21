@@ -3,12 +3,11 @@ package com.sos.scheduler.engine.agent.web
 import com.google.common.io.Files.touch
 import com.sos.scheduler.engine.agent.configuration.Akkas._
 import com.sos.scheduler.engine.agent.data.FileOrderSourceContent
+import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers.marshaller
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.JsonUtils.jsonQuote
-import com.sos.scheduler.engine.data.base.IsString
-import java.net.InetAddress
 import java.nio.file.Files.{createTempDirectory, setLastModifiedTime}
 import java.nio.file.attribute.FileTime
 import java.nio.file.{Files, Paths}
@@ -19,11 +18,9 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.Future
 import spray.http.HttpHeaders.Accept
-import spray.http.MediaTypes._
 import spray.http.StatusCodes.InternalServerError
 import spray.http._
 import spray.httpx.SprayJsonSupport._
-import spray.httpx.marshalling._
 import spray.json._
 import spray.testkit.ScalatestRouteTest
 
@@ -40,28 +37,30 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     super.afterAll()
   }
 
-  "Command" in {
-    postCommand("test") ~> check {
+  "jobscheduler/engine/command" in {
+    postCommand(<remote_scheduler.start_remote_task tcp_port='999'/>) ~> check {
       responseAs[String] shouldEqual "<ok/>"
     }
   }
 
   "Command throwing Exception" in {
-    postCommand("error") ~> check {
+    postCommand(<ERROR/>) ~> check {
       assert(status == InternalServerError)
     }
   }
 
-  private def postCommand(command: String): RouteResult =
+  private def postCommand(command: xml.Elem): RouteResult =
     Post("/jobscheduler/engine/command", command) ~>
       addHeader("Remote-Address", "0.0.0.0") ~>   // For this IP-less test only. Client's IP is normally set by configuration spray.can.remote-address-header
       route
 
-  protected def executeCommand(clientIP: InetAddress, command: String) = Future.successful[xml.Elem](
-    command match {
-      case "test" ⇒ <ok/>
-      case _ ⇒ throw new Exception("TEST EXCEPTION")
-    })
+  protected def executeCommand(command: String) =
+    Future.successful[xml.Elem](
+      if (xml.XML.loadString(command) == <remote_scheduler.start_remote_task ip_address='0.0.0.0' tcp_port='999'/>)
+        <ok/>
+      else
+        throw new Exception(s"TEST EXCEPTION: $command")
+    )
 
   "agent/fileOrderSource/newFiles" in {
     val dir = createTempDirectory("agent-")
@@ -84,10 +83,6 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     touch(knownFile)
     onClose { Files.delete(knownFile) }
 
-    implicit val JsObjectMarshaller: Marshaller[JsObject] = Marshaller.of[JsObject](`application/json`) { (value, contentType, ctx) ⇒
-      ctx.marshalTo(HttpEntity(contentType, value.compactPrint))
-    }
-
     Post(Uri("/jobscheduler/agent/fileOrderSource/newFiles"), JsObject(
         "directory" → JsString(dir.toString),
         "regex" → JsString(".*"),
@@ -107,8 +102,4 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
         }""".parseJson)
     }
   }
-}
-
-private object AgentWebServiceTest {
-  final case class Json(string: String) extends IsString
 }

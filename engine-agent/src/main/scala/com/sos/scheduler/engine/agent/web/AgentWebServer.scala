@@ -7,7 +7,6 @@ import akka.util.Timeout
 import com.sos.scheduler.engine.agent.commandexecutor.CommandExecutor
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor
-import java.net.InetAddress
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -29,7 +28,7 @@ extends AutoCloseable {
   private val webServiceActorRef = {
     val props = Props {
       new AgentWebService.AsActor {
-        def executeCommand(clientIPAddress: InetAddress, command: String) = xmlCommandExecutor.execute(clientIPAddress, command)
+        def executeCommand(command: String) = xmlCommandExecutor.execute(command)
       }
     }
     actorSystem.actorOf(props, name = "AgentWebService")

@@ -2,42 +2,37 @@ package com.sos.scheduler.engine.agent.web
 
 import com.sos.scheduler.engine.agent.data.{FileOrderSourceContent, RequestFileOrderSourceContent}
 import com.sos.scheduler.engine.agent.web.AgentWebService._
+import com.sos.scheduler.engine.agent.web.marshal.XmlString
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichJavaStream
-import java.net.InetAddress
+import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
 import java.nio.file.Files.getLastModifiedTime
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
-import spray.http.HttpEntity
-import spray.http.MediaTypes._
 import spray.http.StatusCodes.BadRequest
 import spray.httpx.SprayJsonSupport._
-import spray.routing.{HttpService, HttpServiceActor, RequestEntityExpectedRejection, UnsupportedRequestContentTypeRejection}
+import spray.routing.{HttpService, HttpServiceActor}
 
 /**
  * @author Joacim Zschimmer
  */
 private[agent] trait AgentWebService extends HttpService {
 
-  protected def executeCommand(clientIPAddress: InetAddress, command: String): Future[xml.Elem]
+  protected def executeCommand(command: String): Future[xml.Elem]
 
   private[agent] def route =
     (decompressRequest() | compressResponseIfRequested(())) {
       pathPrefix("jobscheduler") {
         path("engine" / "command") {
           post {
-            entity(as[HttpEntity]) {
-              case HttpEntity.Empty ⇒ reject(RequestEntityExpectedRejection)
-              case httpEntity: HttpEntity.NonEmpty ⇒
-                if (!(Set(`application/xml`, `text/xml`) contains httpEntity.contentType.mediaType)) reject(UnsupportedRequestContentTypeRejection("application/xml expected"))
-                optionalHeaderValueByName("Remote-Address") {
-                  // Requires Spray configuration spray.can.remote-address-header = on
-                  case None ⇒ complete(BadRequest, "Client's IP address is unknown")
-                  case Some(clientIPAddress) ⇒
-                    val future = executeCommand(clientIPAddress = InetAddress.getByName(clientIPAddress), command = httpEntity.asString)
-                    onSuccess(future) { response ⇒ complete(response) }
-                }
+            entity(as[XmlString]) { case XmlString(command) ⇒
+              optionalHeaderValueByName("Remote-Address") {   // Access to Remote-Address requires Spray configuration spray.can.remote-address-header = on
+                case None ⇒ complete(BadRequest, "Client's IP address is unknown")
+                case Some(clientIPAddress) ⇒
+                  val future = executeCommand(modifyLegacySchedulerCommand(command = command, clientIPAddress = clientIPAddress))
+                  onSuccess(future) { response ⇒ complete(response) }
+              }
             }
           }
         } ~
@@ -82,6 +77,15 @@ object AgentWebService {
   trait AsActor extends HttpServiceActor with AgentWebService {
     final def receive = runRoute(route)
   }
+
+  private def modifyLegacySchedulerCommand(command: String, clientIPAddress: String): String =
+    SafeXML.loadString(command) match {
+      case elem if elem.label == "remote_scheduler.start_remote_task" ⇒
+        elem.copy(attributes = elem.attributes.append(new xml.UnprefixedAttribute("ip_address", clientIPAddress, xml.Null))).toString()
+      case elem if elem.label == "remote_scheduler.remote_task.close" ⇒
+        command
+      case label ⇒ sys.error(s"Unexpected XML command: $label")
+    }
 
   private def toEntryOption(file: Path): Option[FileOrderSourceContent.Entry] =
     try Some(FileOrderSourceContent.Entry(file.toString, getLastModifiedTime(file).toMillis))
