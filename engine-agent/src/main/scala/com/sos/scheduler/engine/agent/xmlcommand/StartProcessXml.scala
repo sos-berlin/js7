@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{StartProcess, StartProcessResponse, StartSeparateProcess, StartThread}
+import com.sos.scheduler.engine.agent.data.commands.{StartProcess, StartProcessResponse, StartSeparateProcess, StartThread}
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort

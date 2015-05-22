@@ -1,11 +1,11 @@
 package com.sos.scheduler.engine.agent.process
 
 import com.google.inject.{AbstractModule, Guice, Provides}
-import com.sos.scheduler.engine.agent.commands.{CloseProcess, CloseProcessResponse, StartProcess, StartProcessResponse, StartSeparateProcess}
+import com.sos.scheduler.engine.agent.data.AgentProcessId
+import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.process.ProcessCommandExecutorTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.data.agent.AgentProcessId
 import com.sos.scheduler.engine.taskserver.TaskServer
 import javax.inject.Singleton
 import org.junit.runner.RunWith

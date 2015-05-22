@@ -1,10 +1,10 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{Command, StartProcessResponse, StartSeparateProcess, StartThread}
+import com.sos.scheduler.engine.agent.data.AgentProcessId
+import com.sos.scheduler.engine.agent.data.commands.{Command, StartProcessResponse, StartSeparateProcess, StartThread}
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor.throwableToString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutorTest._
 import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.data.agent.AgentProcessId
 import org.junit.runner.RunWith
 import org.scalatest.Assertions.fail
 import org.scalatest.FreeSpec

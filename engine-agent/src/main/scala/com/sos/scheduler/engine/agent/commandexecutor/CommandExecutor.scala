@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.commandexecutor
 
 import com.google.inject.ImplementedBy
-import com.sos.scheduler.engine.agent.commands.{Command, Response}
+import com.sos.scheduler.engine.agent.data.commands.{Command, Response}
 import scala.concurrent.Future
 
 /**

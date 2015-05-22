@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.web
 
-import com.sos.scheduler.engine.agent.data.{FileOrderSourceContent, RequestFileOrderSourceContent}
+import com.sos.scheduler.engine.agent.data.commands.{FileOrderSourceContent, RequestFileOrderSourceContent}
 import com.sos.scheduler.engine.agent.web.AgentWebService._
 import com.sos.scheduler.engine.agent.web.marshal.XmlString
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing

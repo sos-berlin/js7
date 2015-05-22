@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{CloseProcessResponse, Command, Response, StartProcessResponse}
+import com.sos.scheduler.engine.agent.data.commands.{CloseProcessResponse, Command, Response, StartProcessResponse}
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

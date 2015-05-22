@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.agent.web
 
 import com.google.common.io.Files.touch
 import com.sos.scheduler.engine.agent.configuration.Akkas._
-import com.sos.scheduler.engine.agent.data.FileOrderSourceContent
+import com.sos.scheduler.engine.agent.data.commands.FileOrderSourceContent
 import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers.marshaller
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.HasCloser

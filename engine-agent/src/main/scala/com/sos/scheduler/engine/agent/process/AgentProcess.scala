@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.process
 
-import com.sos.scheduler.engine.data.agent.AgentProcessId
+import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.taskserver.TaskServer
 
 /**

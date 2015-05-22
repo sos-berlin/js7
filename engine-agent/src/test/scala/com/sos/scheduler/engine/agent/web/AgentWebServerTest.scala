@@ -3,8 +3,8 @@ package com.sos.scheduler.engine.agent.web
 import akka.actor.ActorSystem
 import com.google.inject.Guice
 import com.sos.scheduler.engine.agent.commandexecutor.CommandExecutor
-import com.sos.scheduler.engine.agent.commands.Command
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
+import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.web.AgentWebServerTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule

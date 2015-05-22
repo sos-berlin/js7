@@ -1,10 +1,10 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.CloseProcess
+import com.sos.scheduler.engine.agent.data.AgentProcessId
+import com.sos.scheduler.engine.agent.data.commands.CloseProcess
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.scheduler.engine.common.xml.XmlUtils.xmlStringToBoolean
-import com.sos.scheduler.engine.data.agent.AgentProcessId
 
 /**
  * @author Joacim Zschimmer

@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.agent.process
 
-import com.sos.scheduler.engine.agent.commands.{CloseProcess, CloseProcessResponse, ProcessCommand, Response, StartProcess, StartProcessResponse}
+import com.sos.scheduler.engine.agent.data.AgentProcessId
+import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.process.ProcessCommandExecutor._
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
-import com.sos.scheduler.engine.data.agent.AgentProcessId
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

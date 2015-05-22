@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.process
 
 import com.google.inject.ImplementedBy
-import com.sos.scheduler.engine.agent.commands.StartProcess
+import com.sos.scheduler.engine.agent.data.commands.StartProcess
 
 /**
  * @author Joacim Zschimmer

@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.commands.{CloseProcess, StartSeparateProcess, StartThread}
-import com.sos.scheduler.engine.data.agent.AgentProcessId
+import com.sos.scheduler.engine.agent.data.AgentProcessId
+import com.sos.scheduler.engine.agent.data.commands.{CloseProcess, StartSeparateProcess, StartThread}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
