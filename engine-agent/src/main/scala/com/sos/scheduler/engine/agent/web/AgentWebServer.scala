@@ -6,7 +6,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.scheduler.engine.agent.commandexecutor.CommandExecutor
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor
+import com.sos.scheduler.engine.agent.data.commands.Command
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -23,12 +23,10 @@ final class AgentWebServer @Inject private(
   private implicit val actorSystem: ActorSystem)
 extends AutoCloseable {
 
-  private val xmlCommandExecutor = new CommandXmlExecutor(commandExecutor.executeCommand)
-
   private val webServiceActorRef = {
     val props = Props {
       new AgentWebService.AsActor {
-        def executeCommand(command: String) = xmlCommandExecutor.execute(command)
+        def executeCommand(command: Command) = commandExecutor.executeCommand(command)
       }
     }
     actorSystem.actorOf(props, name = "AgentWebService")

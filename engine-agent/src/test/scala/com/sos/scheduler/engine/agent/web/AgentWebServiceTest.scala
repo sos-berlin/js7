@@ -1,26 +1,20 @@
 package com.sos.scheduler.engine.agent.web
 
-import com.google.common.io.Files.touch
 import com.sos.scheduler.engine.agent.configuration.Akkas._
-import com.sos.scheduler.engine.agent.data.commands.FileOrderSourceContent
-import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers.marshaller
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.scheduler.engine.agent.data.AgentProcessId
+import com.sos.scheduler.engine.agent.data.commands._
+import com.sos.scheduler.engine.agent.web.AgentWebServiceTest._
 import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.JsonUtils.jsonQuote
-import java.nio.file.Files.{createTempDirectory, setLastModifiedTime}
-import java.nio.file.attribute.FileTime
-import java.nio.file.{Files, Paths}
-import java.time.{ZoneId, ZonedDateTime}
 import org.junit.runner.RunWith
-import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.Future
+import scala.xml.XML
 import spray.http.HttpHeaders.Accept
+import spray.http.MediaTypes.`application/json`
 import spray.http.StatusCodes.InternalServerError
-import spray.http._
 import spray.httpx.SprayJsonSupport._
+import spray.httpx.marshalling.BasicMarshallers.stringMarshaller
 import spray.json._
 import spray.testkit.ScalatestRouteTest
 
@@ -37,69 +31,79 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     super.afterAll()
   }
 
-  "jobscheduler/engine/command" in {
-    postCommand(<remote_scheduler.start_remote_task tcp_port='999'/>) ~> check {
-      responseAs[String] shouldEqual "<ok/>"
+  "jobscheduler/engine/command XML commands" - {
+    "remote_scheduler.start_remote_task" in {
+      postXmlCommand(<remote_scheduler.start_remote_task tcp_port='999'/>) ~> check {
+        assert(XML.loadString(responseAs[String]) == <spooler><answer><process process_id="123"/></answer></spooler>)
+      }
+    }
+
+    "Unknown XML command" in {
+      postXmlCommand(<ERROR/>) ~> check {
+        assert(status == InternalServerError)
+      }
     }
   }
 
-  "Command throwing Exception" in {
-    postCommand(<ERROR/>) ~> check {
-      assert(status == InternalServerError)
-    }
-  }
-
-  private def postCommand(command: xml.Elem): RouteResult =
+  private def postXmlCommand(command: xml.Elem): RouteResult =
     Post("/jobscheduler/engine/command", command) ~>
       addHeader("Remote-Address", "0.0.0.0") ~>   // For this IP-less test only. Client's IP is normally set by configuration spray.can.remote-address-header
       route
 
-  protected def executeCommand(command: String) =
-    Future.successful[xml.Elem](
-      if (xml.XML.loadString(command) == <remote_scheduler.start_remote_task ip_address='0.0.0.0' tcp_port='999'/>)
-        <ok/>
-      else
-        throw new Exception(s"TEST EXCEPTION: $command")
-    )
-
-  "agent/fileOrderSource/newFiles" in {
-    val dir = createTempDirectory("agent-")
-
-    val aTime = ZonedDateTime.of(2015, 5, 1, 12, 0, 0, 0, ZoneId.of("UTC")).toInstant
-    val xTime = aTime + 2.s
-    val cTime = aTime + 4.s
-    onClose { Files.delete(dir) }
-    val expectedResult = FileOrderSourceContent(List(
-      FileOrderSourceContent.Entry((dir / "a").toString, aTime.toEpochMilli),
-      FileOrderSourceContent.Entry((dir / "x").toString, xTime.toEpochMilli),
-      FileOrderSourceContent.Entry((dir / "c").toString, cTime.toEpochMilli)))
-    for (entry ← expectedResult.files) {
-      val path = Paths.get(entry.path)
-      touch(path)
-      setLastModifiedTime(path, FileTime.fromMillis(entry.lastModifiedTime))
-      onClose { Files.delete(path) }
-    }
-    val knownFile = dir / "known"
-    touch(knownFile)
-    onClose { Files.delete(knownFile) }
-
-    Post(Uri("/jobscheduler/agent/fileOrderSource/newFiles"), JsObject(
-        "directory" → JsString(dir.toString),
-        "regex" → JsString(".*"),
-        "durationMillis" → JsNumber(Long.MaxValue),
-        "knownFiles" → JsArray(JsString(knownFile.toString)))) ~>
-      Accept(MediaTypes.`application/json`) ~>
-      route ~> check
-    {
-      assert(responseAs[FileOrderSourceContent] == expectedResult)
-      assert(responseAs[String].parseJson ==
-        s"""{
+  "/jobscheduler/agent/command" - {
+    "RequestFileOrderSourceContent" in {
+      val json = """{
+          "$TYPE": "RequestFileOrderSourceContent",
+          "directory": "/DIRECTORY",
+          "regex": ".*",
+          "durationMillis": 111222333444555666,
+          "knownFiles": [ "/DIRECTORY/known" ]
+        }"""
+      postJsonCommand(json) ~> check {
+        assert(responseAs[FileOrderSourceContent] == TestFileOrderSourceContent)
+        assert(responseAs[String].parseJson ==
+          s"""{
           "files": [
-            { "path": ${jsonQuote(dir / "a")}, "lastModifiedTime": ${aTime.toEpochMilli} },
-            { "path": ${jsonQuote(dir / "x")}, "lastModifiedTime": ${xTime.toEpochMilli} },
-            { "path": ${jsonQuote(dir / "c")}, "lastModifiedTime": ${cTime.toEpochMilli} }
+            { "path": "/DIRECTORY/a", "lastModifiedTime": 111222333444555666 }
           ]
         }""".parseJson)
+      }
+    }
+
+    "Exception" in {
+      val json = """{
+          "$TYPE": "RequestFileOrderSourceContent",
+          "directory": "ERROR",
+          "regex": "",
+          "durationMillis": 0,
+          "knownFiles": []
+        }"""
+      postJsonCommand(json) ~> check {
+        assert(status == InternalServerError)
+      }
     }
   }
+
+  private def postJsonCommand(json: String): RouteResult = {
+    Post("/jobscheduler/agent/command", json)(stringMarshaller(`application/json`)) ~>
+      Accept(`application/json`) ~>
+      route
+  }
+
+  protected def executeCommand(command: Command): Future[Response] =
+    Future.successful[Response] {
+      command match {
+        case StartSeparateProcess("0.0.0.0:999", "", "") ⇒ StartProcessResponse(AgentProcessId(123))
+        case TestRequestFileOrderSourceContent ⇒ TestFileOrderSourceContent
+        case FailingRequestFileOrderSourceContent ⇒ throw new Exception(s"TEST EXCEPTION: $command")
+      }
+    }
+}
+
+private object AgentWebServiceTest {
+  private val KnownFile = "/DIRECTORY/known"
+  private val TestRequestFileOrderSourceContent = RequestFileOrderSourceContent("/DIRECTORY", ".*", 111222333444555666L, Set(KnownFile))
+  private val FailingRequestFileOrderSourceContent = RequestFileOrderSourceContent("ERROR", "", 0, Set())
+  private val TestFileOrderSourceContent = FileOrderSourceContent(List(
+    FileOrderSourceContent.Entry("/DIRECTORY/a", 111222333444555666L)))
 }

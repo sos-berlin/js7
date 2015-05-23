@@ -19,7 +19,7 @@ final class ProcessCommandExecutor @Inject private(newAgentProcess: AgentProcess
     override def default(id: AgentProcessId) = throwUnknownProcess(id)
   }
 
-  def executeCommand(command: ProcessCommand) = Future[Response] {
+  def apply(command: ProcessCommand) = Future[Response] {
     command match {
       case command: StartProcess ⇒
         val process = newAgentProcess(command)

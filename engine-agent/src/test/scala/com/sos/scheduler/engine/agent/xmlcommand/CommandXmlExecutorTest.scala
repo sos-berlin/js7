@@ -45,14 +45,14 @@ private object CommandXmlExecutorTest {
   private val BSocketAddress = s"$IP:1111"
 
   private def executeCommand(command: String): xml.Elem = {
-    val executed = new CommandXmlExecutor(execute).execute(command)
+    val executed = CommandXmlExecutor.execute(command)(executeCommand)
     awaitResult(executed, 10.seconds) match {
       case <spooler><answer>{elem: xml.Elem}</answer></spooler> if elem.label == "ERROR" ⇒ throw new CommandException
       case o ⇒ o
     }
   }
 
-  private def execute(command: Command) = command match {
+  private def executeCommand(command: Command) = command match {
     case StartThread(ASocketAddress) ⇒ Future { throw new Exception }
     case StartThread(BSocketAddress) ⇒ Future { StartProcessResponse(AgentProcessId(111)) }
     case StartSeparateProcess(BSocketAddress, "OPTIONS", "CLASSPATH") ⇒ Future { StartProcessResponse(AgentProcessId(222)) }

@@ -33,7 +33,7 @@ final class ProcessCommandExecutorTest extends FreeSpec {
   "StartProcess" in {
     val command = StartSeparateProcess(controllerAddress = "127.0.0.1:9999", javaOptions = JavaOptions, javaClasspath = JavaClasspath)
     for (nextProcessId ← AgentProcessIds) {
-      val response = awaitResult(commandExecutor.executeCommand(command), 1.seconds)
+      val response = awaitResult(commandExecutor.apply(command), 1.seconds)
       inside(response) { case StartProcessResponse(id) ⇒ id shouldEqual nextProcessId }
     }
     for (taskServer ← taskServers) {
@@ -48,7 +48,7 @@ final class ProcessCommandExecutorTest extends FreeSpec {
       CloseProcess(processes(0).id, kill = false),
       CloseProcess(processes(1).id, kill = true))
     for (command ← commands) {
-      val response = awaitResult(commandExecutor.executeCommand(command), 3.seconds)
+      val response = awaitResult(commandExecutor.apply(command), 3.seconds)
       inside(response) { case CloseProcessResponse ⇒ }
     }
     verify(taskServers(0), times(1)).start()
