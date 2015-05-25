@@ -1,17 +1,18 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
+import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.JavaProcessTest._
+import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr._
 import java.lang.System.{err, exit, out}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import scala.collection.mutable
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -22,7 +23,6 @@ final class JavaProcessTest extends FreeSpec {
 
   "JavaProcess" in {
     withCloser { closer ⇒
-      val lines = mutable.Buffer[String]()
       val stdFileMap = RichProcess.createTemporaryStdFiles()
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
       val stopwatch = new Stopwatch
@@ -34,11 +34,10 @@ final class JavaProcessTest extends FreeSpec {
         environment = Nil,
         stdFileMap = stdFileMap)
       try {
-        val returnCode = process.waitForTermination(lines += _)
-        logger.error(lines mkString "\n")
+        val returnCode = process.waitForTermination()
         assert(returnCode == ReturnCode(77))
-        assert(lines contains s"STDOUT $TestValue")
-        assert(lines contains s"STDERR $TestValue")
+        assert(stdFileMap(Stdout).contentString contains s"STDOUT $TestValue")
+        assert(stdFileMap(Stderr).contentString contains s"STDERR $TestValue")
       }
       finally process.close()
       awaitResult(process.closed, 10.seconds)

@@ -1,12 +1,10 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logger}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.job.ReturnCode
-import com.sos.scheduler.engine.taskserver.task.common.MultipleFilesLineCollector
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import java.io.{BufferedOutputStream, OutputStreamWriter}
@@ -16,7 +14,6 @@ import java.nio.file.Files.createTempFile
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.attribute.PosixFilePermissions._
 import java.nio.file.{Files, Path}
-import java.time.Duration
 import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
@@ -35,20 +32,8 @@ extends HasCloser with ClosedFuture {
 
   def kill() = process.destroyForcibly()
 
-  def waitForTermination(processOutputLine: String ⇒ Unit): ReturnCode =
-    autoClosing(new MultipleFilesLineCollector(Nil ++ stdFileMap.values, fileEncoding)) { fileLogger ⇒
-      def processOutputLines() = for ((file, line) ← fileLogger.nextLinesIterator) processOutputLine(line)
-      val result = waitForTermination2(StdoutPollingPeriod) { processOutputLines() }
-      processOutputLines()
-      result
-    }
-
-  def waitForTermination(): ReturnCode = waitForTermination2(WaitForProcessPeriod) {}
-
-  private def waitForTermination2(pause: Duration)(pauseCallback: ⇒ Unit): ReturnCode = {
-    while (!process.waitFor(pause.toMillis, TimeUnit.MILLISECONDS)) {   // Die waitFor-Implementierung fragt millisekündlich ab
-      pauseCallback
-    }
+  def waitForTermination(): ReturnCode = {
+    while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
     logger.debug(s"Terminated with exit code ${process.exitValue}")
     ReturnCode(process.exitValue)
   }
@@ -62,7 +47,6 @@ extends HasCloser with ClosedFuture {
 }
 
 object RichProcess {
-  private val StdoutPollingPeriod = 100.ms
   private val WaitForProcessPeriod = 100.ms
   private val logger = Logger(getClass)
 
