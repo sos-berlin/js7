@@ -190,6 +190,10 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
     intercept[XmlException] { parseString(testXmlString)(parseA) }
       .toString shouldEqual """XmlException: Unexpected XML element <Y> - In <A> (:1:4) <AA> (:1:8)"""
   }
+
+  "xmlElemToStaxSource" in {
+    parseElem(<A/>) { eventReader ⇒ eventReader.parseElement("A") {} }
+  }
 }
 
 private object ScalaXMLEventReaderTest {

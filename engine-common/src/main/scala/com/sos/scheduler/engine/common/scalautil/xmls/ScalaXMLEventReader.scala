@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.{cast, implicitClass}
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
+import com.sos.scheduler.engine.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory, xmlElemToStaxSource}
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import java.util.NoSuchElementException
 import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
@@ -184,6 +184,9 @@ object ScalaXMLEventReader {
 
   def parseString[A](xml: String, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parse: ScalaXMLEventReader ⇒ A): A =
     parseDocument(StringSource(xml), inputFactory)(parse)
+
+  def parseElem[A](elem: xml.Elem, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parseEvents: ScalaXMLEventReader ⇒ A): A =
+    parseDocument(xmlElemToStaxSource(elem), inputFactory)(parseEvents)
 
   def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parse: ScalaXMLEventReader ⇒ A): A =
     autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source))) { reader ⇒
