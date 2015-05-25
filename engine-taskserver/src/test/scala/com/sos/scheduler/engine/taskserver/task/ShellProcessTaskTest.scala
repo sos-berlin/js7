@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaJoda._
+import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, PublicMethodsAreInvocable}
@@ -15,7 +16,6 @@ import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.module.{JavaModuleLanguage, NamedInvocables, Script}
 import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTaskTest._
-import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

@@ -3,13 +3,13 @@ package com.sos.scheduler.engine.taskserver
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.HasCloser
-import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket, SocketException}
+import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeoutException
 import org.junit.runner.RunWith
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._

@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.data.commands.{CloseProcess, StartProcess, ProcessCommand}
+import com.sos.scheduler.engine.agent.data.commands.{CloseProcess, ProcessCommand}
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
 
 /**
