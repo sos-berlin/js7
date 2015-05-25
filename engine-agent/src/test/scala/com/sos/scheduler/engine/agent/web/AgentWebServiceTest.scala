@@ -31,7 +31,7 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     super.afterAll()
   }
 
-  "jobscheduler/engine/command XML commands" - {
+  "jobscheduler/engine/command for legacy XML commands" - {
     "remote_scheduler.start_remote_task" in {
       postXmlCommand(<remote_scheduler.start_remote_task tcp_port='999'/>) ~> check {
         assert(XML.loadString(responseAs[String]) == <spooler><answer><process process_id="123"/></answer></spooler>)
@@ -50,7 +50,7 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
       addHeader("Remote-Address", "0.0.0.0") ~>   // For this IP-less test only. Client's IP is normally set by configuration spray.can.remote-address-header
       route
 
-  "/jobscheduler/agent/command" - {
+  "jobscheduler/agent/command" - {
     "RequestFileOrderSourceContent" in {
       val json = """{
           "$TYPE": "RequestFileOrderSourceContent",

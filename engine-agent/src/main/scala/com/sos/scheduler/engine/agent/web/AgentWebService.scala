@@ -23,10 +23,10 @@ private[agent] trait AgentWebService extends HttpService {
       pathPrefix("jobscheduler") {
         path("engine" / "command") {
           post {
-            entity(as[XmlString]) { case XmlString(commandXml) ⇒
-              optionalHeaderValueByName("Remote-Address") {   // Access to Remote-Address requires Spray configuration spray.can.remote-address-header = on
-                case None ⇒ complete(BadRequest, "Client's IP address is unknown")
-                case Some(clientIPAddress) ⇒
+            optionalHeaderValueByName("Remote-Address") {   // Access to Remote-Address requires Spray configuration spray.can.remote-address-header = on
+              case None ⇒ complete(BadRequest, "Client's IP address is unknown")
+              case Some(clientIPAddress) ⇒
+                entity(as[XmlString]) { case XmlString(commandXml) ⇒
                   val command = addIPAddressToLegacySchedulerCommand(commandXml = commandXml, clientIPAddress = clientIPAddress)
                   val future = CommandXmlExecutor.execute(command) { cmd ⇒ executeCommand(cmd) }
                   onSuccess(future) { response ⇒ complete(response) }
@@ -39,7 +39,7 @@ private[agent] trait AgentWebService extends HttpService {
             post {
               entity(as[Command]) { command ⇒
                 val future = executeCommand(command)
-                onSuccess(future) { response ⇒ complete(response) }
+                onSuccess(future) { response: Response ⇒ complete(response) }
               }
             }
           }
@@ -54,12 +54,14 @@ object AgentWebService {
     final def receive = runRoute(route)
   }
 
-  private def addIPAddressToLegacySchedulerCommand(commandXml: String, clientIPAddress: String): String =
-    SafeXML.loadString(commandXml) match {
-      case elem if elem.label == "remote_scheduler.start_remote_task" ⇒
+  private def addIPAddressToLegacySchedulerCommand(commandXml: String, clientIPAddress: String): String = {
+    val elem = SafeXML.loadString(commandXml)
+    elem.label match {
+      case StartProcess.XmlElementName ⇒
         elem.copy(attributes = elem.attributes.append(new xml.UnprefixedAttribute("ip_address", clientIPAddress, xml.Null))).toString()
-      case elem if elem.label == "remote_scheduler.remote_task.close" ⇒
+      case CloseProcess.XmlElementName ⇒
         commandXml
       case label ⇒ sys.error(s"Unexpected XML command: $label")
     }
+  }
 }

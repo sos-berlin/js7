@@ -10,7 +10,8 @@ import com.sos.scheduler.engine.common.xml.XmlUtils.xmlStringToBoolean
  * @author Joacim Zschimmer
  */
 object CloseProcessXml {
-  def parseCommandXml(eventReader: ScalaXMLEventReader): CloseProcess = {
+
+  def parseXml(eventReader: ScalaXMLEventReader): CloseProcess = {
     import eventReader._
     parseElement() {
       CloseProcess(
