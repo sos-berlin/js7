@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.common.scalautil.xmls
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalaThreadLocal._
 import com.sos.scheduler.engine.common.xml.XmlUtils.toXmlBytes
-import java.io.ByteArrayInputStream
+import java.io.{StringReader, ByteArrayInputStream}
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{Attribute, StartElement}
 import javax.xml.transform.Source
@@ -20,6 +20,8 @@ object ScalaStax {
     def attributes: Iterator[Attribute] =
       delegate.getAttributes.asInstanceOf[java.util.Iterator[Attribute]]
   }
+
+  def xmlElemToStaxSource(elem: xml.Elem): Source = new StreamSource(new StringReader(elem.toString()))
 
   def domElementToStaxSource(e: org.w3c.dom.Element): Source = DomElementToStaxSource(e)
 

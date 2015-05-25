@@ -13,7 +13,7 @@ object CloseProcessXml {
 
   def parseXml(eventReader: ScalaXMLEventReader): CloseProcess = {
     import eventReader._
-    parseElement() {
+    parseElement(CloseProcess.XmlElementName) {
       CloseProcess(
         processId = attributeMap.convert("process_id") { o ⇒ AgentProcessId(o.toLong) },
         kill = attributeMap.getConverted("kill")(xmlStringToBoolean) getOrElse false

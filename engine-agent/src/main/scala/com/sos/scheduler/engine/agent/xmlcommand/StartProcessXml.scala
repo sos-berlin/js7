@@ -12,24 +12,22 @@ object StartProcessXml {
 
   def parseXml(eventReader: ScalaXMLEventReader): StartProcess = {
     import eventReader._
-    parseElement() {
-      val port = attributeMap.convert("tcp_port")(parseTcpPort)
+    parseElement(StartProcess.XmlElementName) {
       val ipAddress = attributeMap("ip_address")
+      val port = attributeMap.convert("tcp_port")(parseTcpPort)
       val controller = s"$ipAddress:$port"
-      val kindProcess = attributeMap.get("kind") match {
-        case Some("process") ⇒ true
-        case None ⇒ false
+      attributeMap.get("kind") match {
+        case Some("process") ⇒
+          attributeMap.ignore("java_options")
+          attributeMap.ignore("java_classpath")
+          StartThread(controllerAddress = controller)
+        case None ⇒
+          StartSeparateProcess(
+            controllerAddress = controller,
+            javaOptions = attributeMap.getOrElse("java_options", ""),
+            javaClasspath = attributeMap.getOrElse("java_classpath", ""))
         case x ⇒ throw new IllegalArgumentException(s"kind=$x")
       }
-      if (kindProcess) {
-        attributeMap.ignore("java_options")
-        attributeMap.ignore("java_classpath")
-        StartThread(controllerAddress = controller)
-      } else
-        StartSeparateProcess(
-          controllerAddress = controller,
-          javaOptions = attributeMap.getOrElse("java_options", ""),
-          javaClasspath = attributeMap.getOrElse("java_classpath", ""))
     }
   }
 

@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.web.marshal
 
-import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers.unmarshaller
+import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers.{marshaller, unmarshaller}
 import java.nio.charset.StandardCharsets._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
