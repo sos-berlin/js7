@@ -24,6 +24,18 @@ final class ScalaUtilsTest extends FreeSpec {
     g.toString() shouldEqual "My function"
   }
 
+  "withToString" in {
+    val f = withToString("TEST") { 7 }
+    assert(f() == 7)
+    assert(f.toString == "TEST")
+  }
+
+  "withToString1" in {
+    val f = withToString1("TEST") { i: Int ⇒ 2 * i }
+    assert(f(3) == 6)
+    assert(f.toString == "TEST")
+  }
+
   "Throwable.rootCause" in {
     new Exception("A", new Exception("B", new Exception("ROOT"))).rootCause.getMessage shouldEqual "ROOT"
   }
@@ -32,7 +44,7 @@ final class ScalaUtilsTest extends FreeSpec {
     val s: Any = "Hej!"
     val string = cast[String](s)
     (string: String) shouldEqual "Hej!"
-    val msg = intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "'123': java.lang.Integer is not a java.lang.String"
+    intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "'123': java.lang.Integer is not a java.lang.String"
   }
 
   "someUnless" in {

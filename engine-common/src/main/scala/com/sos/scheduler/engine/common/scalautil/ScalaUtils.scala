@@ -7,9 +7,21 @@ object ScalaUtils {
 
   def implicitClass[A : ClassTag]: Class[A] = implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
 
+  /**
+   * Returns 'body' as a argumentless function with replaced toString.
+   */
   def withToString[R](lazyString: ⇒ String)(body: ⇒ R): () ⇒ R =
     new (() ⇒ R) {
       def apply() = body
+      override def toString() = lazyString
+    }
+
+  /**
+   * Replaces toString of the monadic function.
+   */
+  def withToString1[A, R](lazyString: ⇒ String)(function: A ⇒ R): A ⇒ R =
+    new (A ⇒ R) {
+      def apply(a: A) = function(a)
       override def toString() = lazyString
     }
 
