@@ -5,9 +5,10 @@ import com.sos.scheduler.engine.agent.web.AgentWebService._
 import com.sos.scheduler.engine.agent.web.marshal.XmlString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor
 import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
+import java.nio.file.{Files, Paths}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import spray.http.StatusCodes.BadRequest
+import spray.http.StatusCodes.{BadRequest, NotFound, OK}
 import spray.httpx.SprayJsonSupport._
 import spray.routing.{HttpService, HttpServiceActor}
 
@@ -40,6 +41,16 @@ private[agent] trait AgentWebService extends HttpService {
               entity(as[Command]) { command ⇒
                 val future = executeCommand(command)
                 onSuccess(future) { response: Response ⇒ complete(response) }
+              }
+            }
+          } ~
+          get {
+            path("fileStatus") {
+              parameter("file") { path ⇒
+                complete {
+                  val file = Paths.get(path)
+                  if (Files.exists(file)) OK else NotFound
+                }
               }
             }
           }

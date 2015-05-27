@@ -5,6 +5,8 @@ import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.web.AgentWebServiceTest._
 import com.sos.scheduler.engine.common.scalautil.HasCloser
+import java.nio.file.Files
+import java.nio.file.Files.createTempFile
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -12,7 +14,8 @@ import scala.concurrent.Future
 import scala.xml.XML
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.`application/json`
-import spray.http.StatusCodes.InternalServerError
+import spray.http.StatusCodes.{InternalServerError, NotFound, OK}
+import spray.http.Uri
 import spray.httpx.SprayJsonSupport._
 import spray.httpx.marshalling.BasicMarshallers.stringMarshaller
 import spray.json._
@@ -98,6 +101,17 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
         case FailingRequestFileOrderSourceContent ⇒ throw new Exception(s"TEST EXCEPTION: $command")
       }
     }
+
+  "fileStatus" in {
+    val file = createTempFile("sos", ".tmp")
+    onClose { Files.delete(file) }
+    Get(Uri("/jobscheduler/agent/fileStatus").withQuery("file" → file.toString)) ~> Accept(`application/json`) ~> route ~> check {
+      assert(status == OK)
+    }
+    Get(Uri("/jobscheduler/agent/fileStatus").withQuery("file" → "--UNKNOWN--")) ~> Accept(`application/json`) ~> route ~> check {
+      assert(status == NotFound)
+    }
+  }
 }
 
 private object AgentWebServiceTest {
