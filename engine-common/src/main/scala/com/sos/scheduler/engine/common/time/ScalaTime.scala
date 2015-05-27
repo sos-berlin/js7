@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.time
 
 import java.time._
+import java.time.temporal.ChronoUnit._
 import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
@@ -14,23 +15,31 @@ object ScalaTime {
   implicit class DurationRichInt(val delegate: Int) extends AnyVal {
     final def ms = Duration.ofMillis(delegate)
     final def s = Duration.ofSeconds(delegate)
-    final def hours = Duration.ofHours(delegate)
-    final def days = Duration.ofDays(delegate)
-    final def *(o: Duration) = Duration.ofMillis(delegate * o.toMillis)
+    final def h = Duration.ofHours(delegate)
+    final def *(o: Duration) =  o multipliedBy delegate
   }
 
   implicit class DurationRichLong(val delegate: Long) extends AnyVal {
     final def ms = Duration.ofMillis(delegate)
     final def s = Duration.ofSeconds(delegate)
-    final def hours = Duration.ofHours(delegate)
-    final def days = Duration.ofDays(delegate)
-    final def *(o: Duration) = Duration.ofMillis(delegate * o.toMillis)
+    final def h = Duration.ofHours(delegate)
+    final def *(o: Duration) = o multipliedBy delegate
+  }
+
+  implicit class DurationRichBigDecimal(val delegate: BigDecimal) extends AnyVal {
+    final def s: Duration = bigDecimalToDuration(delegate)
+  }
+
+  def bigDecimalToDuration(o: BigDecimal) = {
+    val (seconds, nanos) = o /% 1
+    Duration.ofSeconds(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
   }
 
   implicit class RichDuration(val delegate: Duration) extends AnyVal {
     def +(o: Duration) = delegate plus o
     def -(o: Duration) = delegate minus o
-    def toScalaDuration = scala.concurrent.duration.Duration(delegate.toMillis, scala.concurrent.duration.MILLISECONDS)
+    def toBigDecimal = BigDecimal(delegate.getSeconds) + BigDecimal(delegate.getNano) / (1000*1000*1000)
+    def toConcurrentDuration: scala.concurrent.duration.Duration = javaToConcurrentDuration(delegate)
     def pretty = millisToPretty(delegate.toMillis)
   }
 
@@ -59,23 +68,20 @@ object ScalaTime {
   //  }
 
   implicit object DurationOrdering extends Ordering[Duration] {
-    def compare(x: Duration, y: Duration) =
-      x.toMillis compare y.toMillis
+    def compare(x: Duration, y: Duration) = x compareTo y
   }
 
   implicit object InstantOrdering extends Ordering[Instant]{
-    override def compare(a: Instant, b: Instant) = a.toEpochMilli compare b.toEpochMilli
+    def compare(a: Instant, b: Instant) = a compareTo b
   }
 
-  implicit def jodaToConcurrentDuration(o: Duration): FiniteDuration =
-    new FiniteDuration(o.toMillis, TimeUnit.MILLISECONDS)
+  implicit def javaToConcurrentDuration(o: Duration): FiniteDuration =
+    new FiniteDuration(o.get(SECONDS), TimeUnit.SECONDS) + new FiniteDuration(o.get(NANOS), TimeUnit.NANOSECONDS)
 
-  def sleep(d: Duration): Unit = {
-    sleep(d.toMillis)
-  }
+  def sleep(d: Duration): Unit = sleep(d.toMillis)
 
   def sleep(millis: Long) = {
-    val m = 1000000
+    val m = 1000*1000
     val until = System.nanoTime() + millis * m
     Thread.sleep(millis)
     @tailrec def extraSleep(): Unit = {
@@ -92,14 +98,14 @@ object ScalaTime {
   def millisToPretty(t: Long) = {
     val result = new StringBuilder(30)
     val a = abs(t)
-    if (t < 0) result append '-'
-    result append a / 1000
+    if (t < 0) result += '-'
+    result.append(a / 1000)
     val tailString = s"000${a % 1000}" takeRight 3
     lengthWithoutTrailingZeros(tailString, tailString.length) match {
       case 0 ⇒
-      case n ⇒ result append '.' append tailString.substring(0, n)
+      case n ⇒ result.append('.').append(tailString.substring(0, n))
     }
-    result append 's'
+    result += 's'
     result.toString()
   }
 

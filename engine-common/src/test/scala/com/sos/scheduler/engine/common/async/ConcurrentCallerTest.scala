@@ -20,7 +20,7 @@ final class ConcurrentCallerTest extends FreeSpec {
 
   "ConcurrentCaller" in {
     val instants = mutable.Buffer[Instant]()
-    autoClosing(new ConcurrentCaller(List(10.ms, 30.ms, 100.ms, 1.hours), { () ⇒ instants += now() }, "TEST")) { backgroundCaller ⇒
+    autoClosing(new ConcurrentCaller(List(10.ms, 30.ms, 100.ms, 3600.s), { () ⇒ instants += now() }, "TEST")) { backgroundCaller ⇒
       backgroundCaller.start()
       waitForCondition(timeout = 10.s, step = 10.ms) { instants.size == 4 }
     }
