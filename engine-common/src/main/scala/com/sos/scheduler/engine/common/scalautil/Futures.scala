@@ -1,7 +1,9 @@
 package com.sos.scheduler.engine.common.scalautil
 
+import com.sos.scheduler.engine.common.scalautil.Tries.extendStackTraceWith
+import com.sos.scheduler.engine.common.scalautil.Tries.newStackTrace
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
 /**
@@ -26,9 +28,21 @@ object Futures {
       def successValue: A = delegate.value match {
         case Some(Success(o)) ⇒ o
         case Some(Failure(t)) ⇒
-          t.setStackTrace(t.getStackTrace ++ (new Exception).getStackTrace)
+          extendStackTraceWith(t, newStackTrace())
           throw t
         case None ⇒ throw new FutureNotSucceededException
+      }
+
+      /**
+       * Returns a new Future with the own stack trace added in case of failure of the original Future.
+       */
+      def withThisStackTrace(implicit ec: ExecutionContext): Future[A] = {
+        val callersStackTrace = newStackTrace()
+        delegate recoverWith {
+          case t ⇒
+            extendStackTraceWith(t, callersStackTrace)
+            Future.failed[A](t)
+        }
       }
     }
 
