@@ -7,6 +7,7 @@ import java.nio.file.Files._
 import java.nio.file.{Files, NoSuchFileException, Path, Paths}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
+import scala.util.matching.Regex
 
 /**
  * @author Joacim Zschimmer
@@ -26,10 +27,7 @@ object RequestFileOrderSourceContentExecutor {
     }
 
   private def getFileOrderSourceContent(request: RequestFileOrderSourceContent): FileOrderSourceContent = {
-    val regex = request.regex match {
-      case "" ⇒ ".*".r
-      case o ⇒ o.r
-    }
+    val regex = new Regex(request.regex)
     val entries = autoClosing(Files.list(Paths.get(request.directory))) { javaStream ⇒
       (javaStream.toIterator
         filter { f ⇒ regex.findFirstIn(f.getFileName.toString).isDefined && !request.knownFiles(f.toString) }
