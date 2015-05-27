@@ -53,6 +53,9 @@ final class ScalaJodaTest extends FreeSpec {
     "Long * Duration" in {
       (3L * 7.s: Duration).getMillis shouldEqual (3 * 7*1000)
     }
+    "toJava" in {
+      Duration.millis(1234567).toJava shouldEqual java.time.Duration.ofMillis(1234567)
+    }
     "pretty" in {
       0.s.pretty shouldEqual "0s"
       1.s.pretty shouldEqual "1s"
@@ -91,6 +94,9 @@ final class ScalaJodaTest extends FreeSpec {
     }
     "Instant - Instant" in {
       (new Instant(7) - new Instant(2): Duration) shouldEqual new Duration(7 - 2)
+    }
+    "toJava" in {
+      new Instant(1234567).toJava shouldEqual java.time.Instant.ofEpochMilli(1234567)
     }
   }
   "DateTime" - {

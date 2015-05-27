@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.time
 
 import java.util.concurrent.TimeUnit
-import org.joda.time.Duration.{millis, standardSeconds, standardHours, standardDays}
+import org.joda.time.Duration.{millis, standardDays, standardHours, standardSeconds}
 import org.joda.time._
 import org.joda.time.base.AbstractInstant
 import scala.annotation.tailrec
@@ -35,6 +35,7 @@ object ScalaJoda {
 
   implicit class RichReadableDuration(val delegate: ReadableDuration) extends AnyVal {
     def toScalaDuration = scala.concurrent.duration.Duration(delegate.getMillis, scala.concurrent.duration.MILLISECONDS)
+    def toJava = java.time.Duration.ofMillis(delegate.getMillis)
     def pretty = millisToPretty(delegate.getMillis)
   }
 
@@ -55,6 +56,7 @@ object ScalaJoda {
     def <=(o: AbstractInstant) = !(delegate isAfter o)
     def >(o: AbstractInstant) = delegate isAfter o
     def >=(o: AbstractInstant) = !(delegate isBefore o)
+    def toJava = java.time.Instant.ofEpochMilli(delegate.getMillis)
   }
 
   implicit class RichLocalTime(val delegate: LocalTime) extends AnyVal {
