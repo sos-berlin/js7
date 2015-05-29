@@ -40,15 +40,6 @@ final class ClosersTest extends FreeSpec {
     verify(c).close()
   }
 
-  "closeWithCloser with some close" in {
-    implicit val closer = Closer.create()
-    trait A { def close(): Unit }
-    val c = mock[A].closeWithCloser
-    verify(c, never).close()
-    closer.close()
-    verify(c).close()
-  }
-
   "AnyRef.withCloser" in {
     implicit val closer = Closer.create()
     trait A

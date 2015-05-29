@@ -42,13 +42,6 @@ object Closers {
       }
     }
 
-    implicit class RichClosersHasClose[A <: HasClose](val delegate: A) extends AnyVal {
-      final def closeWithCloser(implicit closer: Closer): A = {
-        closer.register(toGuavaCloseable(delegate))
-        delegate
-      }
-    }
-
     implicit class RichClosersAny[A <: AnyRef](val delegate: A) extends AnyVal {
       final def withCloser(onClose: A ⇒ Unit)(implicit closer: Closer): A = {
         closer.register(guavaCloseable { onClose(delegate) })
