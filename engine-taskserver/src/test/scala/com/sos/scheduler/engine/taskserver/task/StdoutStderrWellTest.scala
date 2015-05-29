@@ -1,12 +1,13 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAutoCloseable, RichClosersCloser}
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout}
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.{createTempFile, delete}
+import java.nio.file.Files
+import java.nio.file.Files.createTempFile
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -21,8 +22,7 @@ final class StdoutStderrWellTest extends FreeSpec {
   "StdoutStderrWell" in {
     withCloser { implicit closer ⇒
       val lines = mutable.Buffer[String]()
-      val stdFiles = Map(Stdout → createTempFile("test", ".tmp"), Stderr → createTempFile("test", ".tmp"))
-      closer.onClose { stdFiles.values foreach delete }
+      val stdFiles = Map(Stdout → createTempFile("test", ".tmp"), Stderr → createTempFile("test", ".tmp").withCloser(Files.delete))
       val List(out, err) = List(Stdout, Stderr) map { o ⇒ new OutputStreamWriter(new FileOutputStream(stdFiles(o)).closeWithCloser) }
       val well = new StdoutStderrWell(stdFiles, UTF_8, lines += _).closeWithCloser
 

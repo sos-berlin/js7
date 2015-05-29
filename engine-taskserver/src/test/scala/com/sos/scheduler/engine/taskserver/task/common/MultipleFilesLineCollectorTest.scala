@@ -5,8 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files
-import java.nio.file.Files.createTempFile
+import java.nio.file.Files.{createTempFile, delete}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -21,8 +20,7 @@ final class MultipleFilesLineCollectorTest extends FreeSpec  {
 
   "FileLogger" in {
     withCloser { implicit closer ⇒
-      val files = List.fill(2) { createTempFile("test-", ".tmp") }
-      for (f ← files) closer.onClose { Files.delete(f) }
+      val files = List.fill(2) { createTempFile("test-", ".tmp") withCloser delete }
       val writers = files map { f ⇒ new OutputStreamWriter(new FileOutputStream(f), UTF_8).closeWithCloser }
       val fileLogger = new MultipleFilesLineCollector(files, UTF_8).closeWithCloser
 

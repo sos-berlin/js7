@@ -1,13 +1,25 @@
 package com.sos.scheduler.engine.common.scalautil
 
 import com.google.common.base.Charsets.UTF_8
-import com.google.common.io.{Files ⇒ GuavaFiles}
+import com.google.common.io.{Closer, Files ⇒ GuavaFiles}
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import java.io.File
 import java.nio.charset.Charset
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import scala.language.implicitConversions
 
 object FileUtils {
+
+  /**
+   * Touchs the file and deletes it when closer is closed.
+   * Used mainly by tests.
+   */
+  def touchAndDeleteWithCloser[A <: Path](path: A)(implicit closer: Closer): path.type = {
+    GuavaFiles.touch(path.toFile)
+    path withCloser Files.delete
+    path
+  }
+
   object implicits {
     implicit def pathToFile(path: Path): File = path.toFile
 

@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.agent.configuration.Akkas._
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.web.AgentWebServiceTest._
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import java.nio.file.Files
 import java.nio.file.Files.createTempFile
@@ -103,8 +104,7 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     }
 
   "fileStatus" in {
-    val file = createTempFile("sos", ".tmp")
-    onClose { Files.delete(file) }
+    val file = createTempFile("test-", ".tmp") withCloser Files.delete
     Get(Uri("/jobscheduler/agent/fileStatus").withQuery("file" → file.toString)) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
     }
