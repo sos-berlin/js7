@@ -13,16 +13,40 @@ object ScalaTime {
   @TestOnly @volatile var extraSleepCount = 0L
 
   implicit class DurationRichInt(val delegate: Int) extends AnyVal {
+    /**
+     * Duration, counted in milliseconds.
+     */
     final def ms = Duration.ofMillis(delegate)
+
+    /**
+     * Duration, counted in seconds.
+     */
     final def s = Duration.ofSeconds(delegate)
+
+    /**
+     * Duration, counted in hours.
+     */
     final def h = Duration.ofHours(delegate)
+
     final def *(o: Duration) =  o multipliedBy delegate
   }
 
   implicit class DurationRichLong(val delegate: Long) extends AnyVal {
+    /**
+     * Duration, counted in milliseconds.
+     */
     final def ms = Duration.ofMillis(delegate)
+
+    /**
+     * Duration, counted in seconds.
+     */
     final def s = Duration.ofSeconds(delegate)
+
+    /**
+     * Duration, counted in hours.
+     */
     final def h = Duration.ofHours(delegate)
+
     final def *(o: Duration) = o multipliedBy delegate
   }
 
