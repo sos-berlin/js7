@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
 import com.sos.scheduler.engine.agent.data.AgentProcessId
-import com.sos.scheduler.engine.agent.data.commands.{Command, StartProcessResponse, StartSeparateProcess, StartThread}
+import com.sos.scheduler.engine.agent.data.commands.{Command, StartSeparateProcess, StartThread}
+import com.sos.scheduler.engine.agent.data.responses.StartProcessResponse
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor.throwableToString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutorTest._
 import com.sos.scheduler.engine.common.scalautil.Futures._

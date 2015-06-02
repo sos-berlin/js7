@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.process
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
+import com.sos.scheduler.engine.agent.data.responses.{CloseProcessResponse, StartProcessResponse}
 import com.sos.scheduler.engine.agent.process.ProcessCommandExecutorTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._

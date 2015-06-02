@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.agent.process
 
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
+import com.sos.scheduler.engine.agent.data.responses.{CloseProcessResponse, Response, StartProcessResponse}
 import com.sos.scheduler.engine.agent.process.ProcessCommandExecutor._
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import javax.inject.{Inject, Singleton}
