@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.filebased;
 
-import com.sos.scheduler.engine.data.base.JavaEnumJsonFormat;
+import com.sos.scheduler.engine.base.sprayjson.JavaEnumJsonFormat;
 import com.sos.scheduler.engine.data.folder.FolderPath;
 import com.sos.scheduler.engine.data.job.JobPath;
 import com.sos.scheduler.engine.data.jobchain.JobChainPath;

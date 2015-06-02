@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.data.base
+package com.sos.scheduler.engine.base.sprayjson
 
 import scala.collection.breakOut
 import scala.reflect.ClassTag
-import spray.json.{JsonFormat, JsValue, JsString}
+import spray.json.{JsString, JsValue, JsonFormat}
 
 /**
  * @author Joacim Zschimmer

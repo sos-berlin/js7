@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.jobchain;
 
-import com.sos.scheduler.engine.data.base.JavaEnumJsonFormat;
+import com.sos.scheduler.engine.base.sprayjson.JavaEnumJsonFormat;
 import spray.json.JsonFormat;
 
 public enum JobChainNodeAction {
