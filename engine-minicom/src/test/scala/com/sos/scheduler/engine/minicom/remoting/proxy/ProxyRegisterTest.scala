@@ -70,5 +70,13 @@ final class ProxyRegisterTest extends FreeSpec {
     verify(a).close()
   }
 
+  "invocables returns Invocables of a type" in {
+    class X extends Invocable
+    assert(proxyRegister.invocables[X].isEmpty)
+    val xs = Iterator.fill(3) { new X } .toSet
+    xs foreach proxyRegister.invocableToProxyId
+    assert((proxyRegister.invocables[X].toSet: Set[X]) == xs)
+  }
+
   private def newProxy(proxyId: ProxyId, name: String = "") = new SimpleProxyIDispatch(mock[ClientRemoting], proxyId, name)
 }

@@ -17,7 +17,8 @@ import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
 import java.nio.ByteBuffer
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
-import scala.collection.breakOut
+import scala.collection.{breakOut, immutable}
+import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
 /**
@@ -116,6 +117,11 @@ extends ServerRemoting with ClientRemoting {
     }
     createInvocable  // Return the function itself
   }
+
+  /**
+   * Returns all registered invocables implementing the erased type A.
+   */
+  def invocables[A : ClassTag]: immutable.Iterable[A] = proxyRegister.invocables[A]
 }
 
 object Remoting {

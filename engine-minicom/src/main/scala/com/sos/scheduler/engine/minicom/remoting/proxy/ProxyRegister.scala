@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting.proxy
 
 import com.google.common.collect.HashBiMap
+import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.idispatch.Invocable
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
@@ -9,6 +10,8 @@ import com.sos.scheduler.engine.minicom.types.COMException
 import com.sos.scheduler.engine.minicom.types.HRESULT.E_POINTER
 import org.scalactic.Requirements._
 import scala.collection.JavaConversions._
+import scala.collection.immutable
+import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
 /**
@@ -57,6 +60,14 @@ private[remoting] final class ProxyRegister {
   }
 
   override def toString = s"${getClass.getSimpleName}($size proxies)"
+
+  /**
+   * Returns all invocables implementing the erased type A.
+   */
+  def invocables[A : ClassTag]: immutable.Iterable[A] =
+    synchronized {
+      (proxyIdToInvocable.valuesIterator collect assignableFrom[A]).toVector
+    }
 
   def size = proxyIdToInvocable.size
 }
