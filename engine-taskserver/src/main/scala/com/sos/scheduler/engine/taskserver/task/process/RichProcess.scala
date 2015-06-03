@@ -84,7 +84,7 @@ object RichProcess {
     def newTemporaryShellFile(name: String): Path
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path
     def toShellCommandArguments(file: Path): immutable.Seq[String]
-    protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name"
+    protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name-"
   }
 
   private object UnixSpecific extends OperatingSystemSpecific {
@@ -98,7 +98,7 @@ object RichProcess {
 
   private object WindowsSpecific extends OperatingSystemSpecific {
     val fileEncoding = ISO_8859_1
-    def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name) + "-", ".cmd")
+    def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}-$outerr-", ".log")
     def toShellCommandArguments(file: Path) = Vector("""C:\Windows\System32\cmd.exe""", "/C", file.toString)
   }
