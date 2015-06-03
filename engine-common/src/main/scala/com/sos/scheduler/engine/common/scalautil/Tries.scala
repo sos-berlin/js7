@@ -9,9 +9,11 @@ import scala.util.{Failure, Try}
 object Tries {
   implicit class ModifiedStackTraceTry[A](val delegate: Try[A]) extends AnyVal {
 
-    def withThisStackTrace(implicit ec: ExecutionContext): Try[A] = {
+    def withThisStackTrace(implicit ec: ExecutionContext): Try[A] = withStackTrace(newStackTrace())
+
+    def withStackTrace(stackTrace: Array[StackTraceElement])(implicit ec: ExecutionContext): Try[A] = {
       delegate match {
-        case Failure(t) ⇒ extendStackTraceWith(t, newStackTrace())
+        case Failure(t) ⇒ extendStackTraceWith(t, stackTrace)
         case o ⇒ o
       }
       delegate
