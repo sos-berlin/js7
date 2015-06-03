@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import org.slf4j.{LoggerFactory, Marker, Logger => Slf4jLogger}
+import org.slf4j.{Logger ⇒ Slf4jLogger, LoggerFactory, Marker}
 
 final class Logger(val delegate: Slf4jLogger) extends AnyVal {
 
@@ -86,6 +86,16 @@ final class Logger(val delegate: Slf4jLogger) extends AnyVal {
     if (delegate.isTraceEnabled)
       delegate.trace(line, t)
   }
+
+  def isErrorEnabled = delegate.isErrorEnabled
+
+  def isWarnEnabled = delegate.isWarnEnabled
+
+  def isInfoEnabled = delegate.isInfoEnabled
+
+  def isDebugEnabled = delegate.isDebugEnabled
+
+  def isTraceEnabled = delegate.isTraceEnabled
 }
 
 
