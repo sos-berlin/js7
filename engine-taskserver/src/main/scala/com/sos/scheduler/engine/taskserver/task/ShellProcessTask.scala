@@ -1,10 +1,12 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.xml.VariableSets
+import com.sos.scheduler.engine.taskserver.HasSendProcessSignal
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
@@ -28,7 +30,7 @@ final class ShellProcessTask(
   jobName: String,
   hasOrder: Boolean,
   environment: immutable.Iterable[(String, String)])
-extends Task with HasCloser {
+extends HasCloser with Task with HasSendProcessSignal {
   
   import namedInvocables.{spoolerLog, spoolerTask}
 
@@ -105,6 +107,11 @@ extends Task with HasCloser {
     autoClosing(io.Source.fromFile(orderParamsFile)(ReturnValuesFileEncoding)) { source ⇒
       (source.getLines map lineToKeyValue).toMap
     }
+
+  def sendProcessSignal(signal: ProcessSignal) = {
+    logger.trace(s"sendProcessSignal $signal")
+    for (p ← Option(richProcess)) richProcess.sendProcessSignal(signal)
+  }
 
   @TestOnly
   def files = {

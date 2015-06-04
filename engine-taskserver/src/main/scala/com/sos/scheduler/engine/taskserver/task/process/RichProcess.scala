@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.base.process.ProcessSignal
+import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logger}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
@@ -32,6 +34,20 @@ extends HasCloser with ClosedFuture {
 
   def kill() = process.destroyForcibly()
 
+  def sendProcessSignal(signal: ProcessSignal): Unit =
+    signal match {
+      case SIGTERM ⇒
+        if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
+        logger.debug(s"$toString destroy")
+        process.destroy()
+      case SIGKILL ⇒
+        logger.debug(s"$toString destroyForcibly")
+        process.destroyForcibly()
+    }
+
+  @TestOnly
+  private[task] def isAlive = process.isAlive
+
   def waitForTermination(): ReturnCode = {
     while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
     logger.debug(s"Terminated with exit code ${process.exitValue}")
@@ -50,7 +66,12 @@ object RichProcess {
   private val WaitForProcessPeriod = 100.ms
   private val logger = Logger(getClass)
 
-  def startShellScript(name: String, additionalEnvironment: immutable.Iterable[(String, String)], scriptString: String, stdFileMap: Map[StdoutStderrType, Path]): RichProcess = {
+  def startShellScript(
+    name: String = "shell-script",
+    additionalEnvironment: immutable.Iterable[(String, String)] = Map(),
+    scriptString: String,
+    stdFileMap: Map[StdoutStderrType, Path] = Map()): RichProcess =
+  {
     val shellFile = OS.newTemporaryShellFile(name)
     try {
       shellFile.toFile.write(scriptString, OS.fileEncoding)
@@ -67,8 +88,8 @@ object RichProcess {
 
   def start(arguments: Seq[String], additionalEnvironment: Iterable[(String, String)], stdFileMap: Map[StdoutStderrType, Path], infoProgramFile: Path): RichProcess = {
     val processBuilder = new ProcessBuilder(arguments)
-    processBuilder.redirectOutput(stdFileMap(Stdout))
-    processBuilder.redirectError(stdFileMap(Stderr))
+    for (file ← stdFileMap.get(Stdout)) processBuilder.redirectOutput(file)
+    for (file ← stdFileMap.get(Stderr)) processBuilder.redirectError(file)
     processBuilder.environment ++= additionalEnvironment
     logger.debug("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     val process = processBuilder.start()

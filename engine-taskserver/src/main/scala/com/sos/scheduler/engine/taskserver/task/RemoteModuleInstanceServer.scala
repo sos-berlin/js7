@@ -1,13 +1,15 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import _root_.java.util.UUID
+import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
-import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
+import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
+import com.sos.scheduler.engine.taskserver.HasSendProcessSignal
 import com.sos.scheduler.engine.taskserver.module._
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule.{SpoolerExitSignature, SpoolerOnErrorSignature}
@@ -20,7 +22,8 @@ import org.scalactic.Requirements._
  * @author Joacim Zschimmer
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
-final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskStartArguments) extends Invocable with HasCloser {
+final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskStartArguments)
+extends HasCloser with Invocable with HasSendProcessSignal {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
 
   private var taskArguments: TaskArguments = null
@@ -76,6 +79,13 @@ final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskS
 
   @invocable
   def waitForSubprocesses(): Unit = {}
+
+  def sendProcessSignal(signal: ProcessSignal) = {
+    Logger(getClass).trace(s"sendProcessSignal $signal")
+    task match {
+      case o: HasSendProcessSignal ⇒ o.sendProcessSignal(signal)
+    }
+  }
 
   override def toString =
     List(

@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.responses.{CloseProcessResponse, Response, StartProcessResponse}
+import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, Response, StartProcessResponse}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -11,7 +11,7 @@ import scala.concurrent.Future
  */
 object CommandXmlExecutor {
   def execute(commandString: String)(executeCommand: ProcessCommand ⇒ Future[Response]): Future[xml.Elem] =
-    (Future { CommandXml.parseString(commandString) }
+    (Future.successful(CommandXml.parseString(commandString))
       flatMap executeCommand
       map responseToXml
       recover { case throwable ⇒ <ERROR text={throwableToString(throwable)}/> }
@@ -19,7 +19,7 @@ object CommandXmlExecutor {
 
   private def responseToXml(response: Response): xml.Elem = response match {
     case o: StartProcessResponse ⇒ StartProcessXml.responseToXmlElem(o)
-    case CloseProcessResponse ⇒ CloseProcessXml.responseXmlElem
+    case EmptyResponse ⇒ EmptyResponse.toXmlElem
   }
 
   private[xmlcommand] def throwableToString(throwable: Throwable): String = throwable match {

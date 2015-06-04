@@ -96,10 +96,11 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
     new ConvertedElementMap(results.toVector)
   }
 
-  def parseStartElementAlternative[A](f: PartialFunction[String, A]): A = {
-    val name = peek.asStartElement.getName.toString
-    f.applyOrElse(name, { name: String ⇒ sys.error(s"Unexpected XML element <$name>") })
-  }
+  def parseStartElementAlternative[A](f: PartialFunction[String, A]): A =
+    wrapException {
+      val name = peek.asStartElement.getName.toString
+      f.applyOrElse(name, { name: String ⇒ sys.error(s"Unexpected XML element <$name>") })
+    }
 
   private def wrapException[A](f: ⇒ A): A = {
     val element = peek.asStartElement()

@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.taskserver
 
 import com.google.inject.Guice
+import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
@@ -21,11 +22,11 @@ import scala.concurrent.duration.Duration
  */
 final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskServer with HasCloser {
 
-  private val controllingScheduler = new TcpConnection(startArguments.controllerInetSocketAddress).closeWithCloser
+  private val controllingSchedulerConnection = new TcpConnection(startArguments.controllerInetSocketAddress).closeWithCloser
   private val injector = Guice.createInjector(new ScalaAbstractModule {
     def configure() = bindInstance[TaskStartArguments](startArguments)
   })
-  private val remoting = new Remoting(injector, new DialogConnection(controllingScheduler), IDispatchFactories, ProxyIDispatchFactories)
+  private val remoting = new Remoting(injector, new DialogConnection(controllingSchedulerConnection), IDispatchFactories, ProxyIDispatchFactories)
 
   private val terminatedPromise = Promise[Unit]()
   def terminated = terminatedPromise.future
@@ -33,7 +34,7 @@ final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskSer
   def start(): Unit =
     Future {
       blocking {
-        controllingScheduler.connect()
+        controllingSchedulerConnection.connect()
         try remoting.run()
         catch {
           case t: Throwable ⇒
@@ -45,7 +46,10 @@ final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskSer
       terminatedPromise.complete(o)
     }
 
-  def kill(): Unit = controllingScheduler.close()
+  def sendProcessSignal(signal: ProcessSignal) = {
+    logger.trace(s"sendProcessSignal $signal")
+    remoting.invocables[HasSendProcessSignal] foreach { _.sendProcessSignal(signal) }
+  }
 
   override def toString = s"TaskServer(controller=${startArguments.controllerAddress})"
 }

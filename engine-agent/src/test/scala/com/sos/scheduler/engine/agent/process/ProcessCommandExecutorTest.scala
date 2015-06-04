@@ -3,8 +3,9 @@ package com.sos.scheduler.engine.agent.process
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.responses.{CloseProcessResponse, StartProcessResponse}
+import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, StartProcessResponse}
 import com.sos.scheduler.engine.agent.process.ProcessCommandExecutorTest._
+import com.sos.scheduler.engine.base.process.ProcessSignal.SIGKILL
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.taskserver.TaskServer
@@ -39,7 +40,7 @@ final class ProcessCommandExecutorTest extends FreeSpec {
     }
     for (taskServer ← taskServers) {
       verify(taskServer, times(1)).start()
-      verify(taskServer, never).kill()
+      verify(taskServer, never).sendProcessSignal(SIGKILL)
       verify(taskServer, never).close()
     }
   }
@@ -50,14 +51,14 @@ final class ProcessCommandExecutorTest extends FreeSpec {
       CloseProcess(processes(1).id, kill = true))
     for (command ← commands) {
       val response = awaitResult(commandExecutor.apply(command), 3.seconds)
-      inside(response) { case CloseProcessResponse ⇒ }
+      inside(response) { case EmptyResponse ⇒ }
     }
     verify(taskServers(0), times(1)).start()
-    verify(taskServers(0), never).kill()
+    verify(taskServers(0), never).sendProcessSignal(SIGKILL)
     verify(taskServers(0), times(1)).close()
 
     verify(taskServers(1), times(1)).start()
-    verify(taskServers(1), times(1)).kill()
+    verify(taskServers(1), times(1)).sendProcessSignal(SIGKILL)
     verify(taskServers(1), times(1)).close()
   }
 }

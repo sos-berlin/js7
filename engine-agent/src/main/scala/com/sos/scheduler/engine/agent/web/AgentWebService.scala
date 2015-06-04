@@ -68,11 +68,9 @@ object AgentWebService {
 
   private def addIPAddressToLegacySchedulerCommand(commandXml: String, clientIPAddress: String): String = {
     val elem = SafeXML.loadString(commandXml)
-    elem.label match {
-      case StartProcess.XmlElementName ⇒
-        elem.copy(attributes = elem.attributes.append(new xml.UnprefixedAttribute("ip_address", clientIPAddress, xml.Null))).toString()
-      case CloseProcess.XmlElementName ⇒ commandXml
-      case label ⇒ sys.error(s"Unexpected XML command: $label")
-    }
+    if (elem.label == StartProcess.XmlElementName)
+      elem.copy(attributes = elem.attributes.append(new xml.UnprefixedAttribute("ip_address", clientIPAddress, xml.Null))).toString()
+    else
+      commandXml
   }
 }

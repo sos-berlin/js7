@@ -79,7 +79,7 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
     parseString(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "DEFAULT", List(D(), D())))
   }
 
-  "asConverted" in {
+  "converted and getConverted" in {
     parseString(<X int="1" empty="" wrong="xx"/>.toString()) { eventReader ⇒
       import eventReader._
       parseElement("X") {
@@ -188,7 +188,7 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
   "Exception with XML element path" in {
     val testXmlString = <A><AA><Y/></AA></A>.toString()
     intercept[XmlException] { parseString(testXmlString)(parseA) }
-      .toString shouldEqual """XmlException: Unexpected XML element <Y> - In <A> (:1:4) <AA> (:1:8)"""
+      .toString should include ("""XmlException: Unexpected XML element <Y> - In <A> (:1:4) <AA> (:1:8)""")
   }
 
   "xmlElemToStaxSource" in {

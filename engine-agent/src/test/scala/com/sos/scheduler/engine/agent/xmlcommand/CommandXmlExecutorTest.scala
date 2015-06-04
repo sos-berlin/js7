@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.agent.data.responses.StartProcessResponse
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor.throwableToString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutorTest._
 import com.sos.scheduler.engine.common.scalautil.Futures._
+import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader.XmlException
 import org.junit.runner.RunWith
 import org.scalatest.Assertions.fail
 import org.scalatest.FreeSpec
@@ -22,9 +23,9 @@ import scala.concurrent.{Await, Future}
 final class CommandXmlExecutorTest extends FreeSpec {
 
   "CommandXmlExecutor" in {
-    intercept[CommandException] { executeCommand("INVALID XML") }
-    intercept[CommandException] { executeCommand("<WRONG/>") }
-    intercept[CommandException] { executeCommand(s"<remote_scheduler.start_remote_task ip_address='$IP' tcp_port='WRONG' kind='process'/>") }
+    intercept[javax.xml.stream.XMLStreamException] { executeCommand("INVALID XML") }
+    intercept[XmlException] { executeCommand("<WRONG/>") }
+    intercept[XmlException] { executeCommand(s"<remote_scheduler.start_remote_task ip_address='$IP' tcp_port='WRONG' kind='process'/>") }
     intercept[CommandException] { executeCommand(s"<remote_scheduler.start_remote_task ip_address='$IP' tcp_port='999' kind='process'/>") }
     executeCommand(s"<remote_scheduler.start_remote_task ip_address='$IP' tcp_port='1111' kind='process'/>") shouldEqual
       <spooler><answer><process process_id="111"/></answer></spooler>

@@ -20,6 +20,4 @@ object CloseProcessXml {
       )
     }
   }
-
-  def responseXmlElem: xml.Elem = <ok/>
 }

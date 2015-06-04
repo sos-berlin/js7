@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.google.common.io.Closer
+import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.taskserver.TaskServer
@@ -38,19 +39,14 @@ extends TaskServer {
   }
 
   override def close(): Unit =
-    process match {
-      case null ⇒
-      case p ⇒
-        try process.waitForTermination()
-        finally {
-          process.close()
-          process = null
-        }
+    for (p ← Option(process)) {
+      try p.waitForTermination()
+      finally {
+        p.close()
+        process = null
+      }
     }
 
-  def kill() = {
-    if (process != null) {
-      process.kill()
-    }
-  }
+  def sendProcessSignal(signal: ProcessSignal) =
+    for (p ← Option(process)) p.sendProcessSignal(signal)
 }
