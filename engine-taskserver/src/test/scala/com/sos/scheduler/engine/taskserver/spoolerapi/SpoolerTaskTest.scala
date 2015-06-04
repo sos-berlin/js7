@@ -1,10 +1,9 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
+import com.sos.scheduler.engine.data.message.MessageCode
 import org.junit.runner.RunWith
-import org.mockito.Mockito._
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.mock.MockitoSugar.mock
 
 /**
  * @author Joacim Zschimmer
@@ -12,17 +11,20 @@ import org.scalatest.mock.MockitoSugar.mock
 @RunWith(classOf[JUnitRunner])
 final class SpoolerTaskTest extends FreeSpec {
 
-  private abstract class AbstractSpoolerTask extends SpoolerTask  // Mockito doesn't like traits
+  private object TestSpoolerTask extends SpoolerTask {
+    // Mockito cannot handle IUnknown's final hashCode or final equals()
+    def setErrorCodeAndText(code: MessageCode, text: String) = throw new UnsupportedOperationException
+    def paramsXml = <sos.spooler.variable_set><variable name="T" value="t"/></sos.spooler.variable_set>.toString()
+    def paramsXml_=(o: String) = throw new UnsupportedOperationException
+    def orderParamsXml = <sos.spooler.variable_set><variable name="O" value="o"/></sos.spooler.variable_set>.toString()
+    def orderParamsXml_=(o: String) = throw new UnsupportedOperationException
+  }
 
   "parameterMap" in {
-    val spoolerTask = mock[AbstractSpoolerTask]
-    when(spoolerTask.paramsXml) thenReturn <sos.spooler.variable_set><variable name="T" value="t"/></sos.spooler.variable_set>.toString()
-    assert(spoolerTask.parameterMap == Map("T" → "t"))
+    assert(TestSpoolerTask.parameterMap == Map("T" → "t"))
   }
 
   "orderParameterMap" in {
-    val spoolerTask = mock[AbstractSpoolerTask]
-    when(spoolerTask.orderParamsXml) thenReturn <sos.spooler.variable_set><variable name="O" value="o"/></sos.spooler.variable_set>.toString()
-    assert(spoolerTask.orderParameterMap == Map("O" → "o"))
+    assert(TestSpoolerTask.orderParameterMap == Map("O" → "o"))
   }
 }
