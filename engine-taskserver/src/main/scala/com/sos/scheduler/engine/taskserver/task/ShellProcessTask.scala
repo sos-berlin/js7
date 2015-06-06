@@ -58,7 +58,7 @@ extends HasCloser with Task with HasSendProcessSignal {
   private def startProcess(): RichProcess = {
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
-      val paramEnv = params map { case (k, v) ⇒ s"$EnvironmentParameterPrefix${k.toUpperCase}" → v }
+      val paramEnv = params map { case (k, v) ⇒ paramNameToEnv(k) → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
     val richProcess = RichProcess.startShellScript(
@@ -129,12 +129,13 @@ extends HasCloser with Task with HasSendProcessSignal {
 }
 
 object ShellProcessTask {
-  private val EnvironmentParameterPrefix = "SCHEDULER_PARAM_"
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesFileEncoding = ISO_8859_1
   private val StdoutStderrEncoding = ISO_8859_1
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
   private val logger = Logger(getClass)
+
+  private def paramNameToEnv(name: String) = s"SCHEDULER_PARAM_${name.toUpperCase}"
 
   private def lineToKeyValue(line: String): (String, String) = line match {
     case ReturnValuesRegex(name, value) ⇒ name.trim → value.trim
