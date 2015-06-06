@@ -10,6 +10,8 @@ import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import java.io.{BufferedOutputStream, OutputStreamWriter}
+import java.lang.ProcessBuilder.Redirect
+import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets._
 import java.nio.file.Files.createTempFile
@@ -88,13 +90,15 @@ object RichProcess {
 
   def start(arguments: Seq[String], additionalEnvironment: Iterable[(String, String)], stdFileMap: Map[StdoutStderrType, Path], infoProgramFile: Path): RichProcess = {
     val processBuilder = new ProcessBuilder(arguments)
-    for (file ← stdFileMap.get(Stdout)) processBuilder.redirectOutput(file)
-    for (file ← stdFileMap.get(Stderr)) processBuilder.redirectError(file)
+    processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
+    processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
     logger.debug("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     val process = processBuilder.start()
     new RichProcess(process, infoProgramFile, stdFileMap, OS.fileEncoding)
   }
+
+  private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
 
   def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → OS.newTemporaryOutputFile("sos", o) }).toMap
 
