@@ -51,7 +51,7 @@ extends HasCloser with Invocable with HasSendProcessSignal {
           taskArguments.monitors,
           jobName = taskArguments.jobName,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
-          stdFileMap = Map(Stdout → taskStartArguments.stdoutFile, Stderr → taskStartArguments.stderrFile),
+          stdFileMap = taskStartArguments.stdFileMap,
           logStdoutAndStderr = taskStartArguments.logStdoutAndStderr)
     }
     closer.registerAutoCloseable(task)

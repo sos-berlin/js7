@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.taskserver.TaskServer
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr._
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, RichProcess}
 import java.io.File
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -32,7 +31,7 @@ extends TaskServer {
         arguments = Nil,
         stdFileMap = stdFileMap)
       process.closed.onComplete { _ ⇒ closer.close() }
-      val a = arguments.copy(stdoutFile = stdFileMap(Stdout), stderrFile = stdFileMap(Stderr), logStdoutAndStderr = true)
+      val a = arguments.copy(stdFileMap = stdFileMap, logStdoutAndStderr = true)
       process.stdinWriter.write(a.toJson.compactPrint)
       process.stdinWriter.close()
     }

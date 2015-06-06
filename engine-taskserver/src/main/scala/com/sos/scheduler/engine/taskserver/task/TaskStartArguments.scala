@@ -1,10 +1,11 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits.PathJsonFormat
+import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
 import com.sos.scheduler.engine.taskserver.task.TaskStartArguments._
+import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import java.net.InetSocketAddress
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._
 
@@ -14,8 +15,7 @@ import spray.json.DefaultJsonProtocol._
 final case class TaskStartArguments(
   controllerAddress: String,
   environment: immutable.Iterable[(String, String)] = Nil,
-  stdoutFile: Path = Paths.get(""),
-  stderrFile: Path = Paths.get(""),
+  stdFileMap: Map[StdoutStderrType, Path] = Map(),
   logStdoutAndStderr: Boolean = false)
 {
   def controllerInetSocketAddress = toInetSocketAddress(controllerAddress)
@@ -30,5 +30,5 @@ object TaskStartArguments {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }
 
-  implicit val MyJsonFormat = jsonFormat5(apply)
+  implicit val MyJsonFormat = jsonFormat4(apply)
 }

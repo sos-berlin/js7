@@ -59,8 +59,8 @@ object SimpleTaskServer {
   private val ProxyIDispatchFactories = List(ProxySpoolerLog, ProxySpoolerTask)
   private val logger = Logger(getClass)
 
-  def run(conf: TaskStartArguments): Unit =
-    autoClosing(new SimpleTaskServer(conf)) { taskServer ⇒
+  def run(startArguments: TaskStartArguments): Unit =
+    autoClosing(new SimpleTaskServer(startArguments)) { taskServer ⇒
       taskServer.start()
       awaitResult(taskServer.terminated, Duration.Inf)
     }

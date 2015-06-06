@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.data.base.IsString
+
 /**
  * @author Joacim Zschimmer
  */
@@ -8,7 +10,9 @@ object StdoutStderr {
   val Stderr = new StdoutStderrType("stderr")
   val StdoutStderrTypes = List(Stdout, Stderr)
   
-  final case class StdoutStderrType private[process](name: String) {
-    override def toString = name
+  final case class StdoutStderrType private[process](string: String) extends IsString {
+    override def toString = string
   }
+
+  object StdoutStderrType extends IsString.HasJsonFormat[StdoutStderrType]
 }
