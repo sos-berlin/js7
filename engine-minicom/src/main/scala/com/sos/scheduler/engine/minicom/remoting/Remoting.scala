@@ -81,7 +81,7 @@ extends ServerRemoting with ClientRemoting {
 
   private[remoting] def newProxy(proxyId: ProxyId, name: String, proxyClsid: CLSID, properties: Iterable[(String, Any)]) = {
     val newProxy = proxyClsidMap.getOrElse(proxyClsid, proxyClsidMap(CLSID.Null))   // TODO getOrElse solange nicht alle Proxys implementiert sind
-    val result = newProxy(this, proxyId, name, properties)
+    val result = newProxy(injector, this, proxyId, name, properties)
     proxyRegister.registerProxy(result)
     result
   }
