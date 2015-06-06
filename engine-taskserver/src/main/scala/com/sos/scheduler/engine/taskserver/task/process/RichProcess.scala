@@ -12,7 +12,6 @@ import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, St
 import java.io.{BufferedOutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets._
 import java.nio.file.Files.createTempFile
 import java.nio.file.attribute.PosixFilePermissions
@@ -29,7 +28,7 @@ import scala.util.control.NonFatal
  * @param infoProgramFile only for information
  * @author Joacim Zschimmer
  */
-final class RichProcess private(process: Process, infoProgramFile: Path, stdFileMap: Map[StdoutStderrType, Path], fileEncoding: Charset)
+final class RichProcess private(process: Process, infoProgramFile: Path, stdFileMap: Map[StdoutStderrType, Path])
 extends HasCloser with ClosedFuture {
 
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
@@ -76,7 +75,7 @@ object RichProcess {
   {
     val shellFile = OS.newTemporaryShellFile(name)
     try {
-      shellFile.toFile.write(scriptString, OS.fileEncoding)
+      shellFile.toFile.write(scriptString, ISO_8859_1)
       val process = RichProcess.start(OS.toShellCommandArguments(shellFile), additionalEnvironment, stdFileMap, infoProgramFile = shellFile)
       process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
       process.stdin.close() // Empty stdin
@@ -95,7 +94,7 @@ object RichProcess {
     processBuilder.environment ++= additionalEnvironment
     logger.debug("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     val process = processBuilder.start()
-    new RichProcess(process, infoProgramFile, stdFileMap, OS.fileEncoding)
+    new RichProcess(process, infoProgramFile, stdFileMap)
   }
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
@@ -105,7 +104,6 @@ object RichProcess {
   private val OS = if (isWindows) WindowsSpecific else UnixSpecific
 
   private trait OperatingSystemSpecific {
-    val fileEncoding: Charset
     def newTemporaryShellFile(name: String): Path
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path
     def toShellCommandArguments(file: Path): immutable.Seq[String]
@@ -115,14 +113,12 @@ object RichProcess {
   private object UnixSpecific extends OperatingSystemSpecific {
     private val shellFileAttribute = asFileAttribute(PosixFilePermissions fromString "rwx------")
     private val outputFileAttribute = asFileAttribute(PosixFilePermissions fromString "rw-------")
-    val fileEncoding = UTF_8  // Unix-Umgebungsvariable beachten??? LANG=de_DE.UTF_8
     def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttribute)
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}-", s".$outerr", outputFileAttribute)
     def toShellCommandArguments(file: Path) = Vector("/bin/sh", file.toString)
   }
 
   private object WindowsSpecific extends OperatingSystemSpecific {
-    val fileEncoding = ISO_8859_1
     def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}-$outerr-", ".log")
     def toShellCommandArguments(file: Path) = Vector("""C:\Windows\System32\cmd.exe""", "/C", file.toString)
