@@ -37,14 +37,14 @@ final class ProxyRegisterTest extends FreeSpec {
     proxyRegister.size shouldEqual 1
     val iDispatch = mock[Invocable]
     val (proxyId, true) = proxyRegister.invocableToProxyId(iDispatch)
-    proxyId.index shouldEqual 1
+    proxyId.index shouldEqual 0x40000001
     proxyRegister.invocableToProxyId(iDispatch) shouldEqual (proxyId, false)
     proxyRegister.invocable(proxyId) shouldEqual iDispatch
     intercept[DuplicateKeyException] { proxyRegister.registerProxy(newProxy(proxyId)) }
 
     proxyRegister.size shouldEqual 2
     val (otherProxyId, true) = proxyRegister.invocableToProxyId(mock[Invocable])
-    otherProxyId.index shouldEqual 2
+    otherProxyId.index shouldEqual 0x40000002
     proxyRegister.size shouldEqual 3
   }
 
