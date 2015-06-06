@@ -91,6 +91,7 @@ private object ShellProcessTaskTest {
         Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("B", setting) }, name="Monitor B")),
       jobName = "TEST-JOB",
       hasOrder = false,
+      stdFileMap = Map(),
       environment = Map(TestName → TestValue))
 
   private def testScript(exitCode: Int) = Script(

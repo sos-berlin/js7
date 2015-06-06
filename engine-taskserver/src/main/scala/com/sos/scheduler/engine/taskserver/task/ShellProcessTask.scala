@@ -11,8 +11,10 @@ import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess
+import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import java.nio.charset.StandardCharsets._
 import java.nio.file.Files._
+import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
 import scala.collection.immutable
@@ -29,6 +31,7 @@ final class ShellProcessTask(
   monitors: immutable.Seq[Monitor],
   jobName: String,
   hasOrder: Boolean,
+  stdFileMap: Map[StdoutStderrType, Path],
   environment: immutable.Iterable[(String, String)])
 extends HasCloser with Task with HasSendProcessSignal {
   
@@ -36,9 +39,9 @@ extends HasCloser with Task with HasSendProcessSignal {
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
-  private lazy val stdFileMap = RichProcess.createTemporaryStdFiles()
-  private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(
-    s"Job $jobName", stdFileMap, StdoutStderrEncoding, output = spoolerLog.info).closeWithCloser
+  private lazy val processStdFileMap = if (stdFileMap.isEmpty) RichProcess.createTemporaryStdFiles() else Map[StdoutStderrType, Path]()
+  private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",
+    processStdFileMap ++ stdFileMap, StdoutStderrEncoding, output = spoolerLog.info).closeWithCloser
   private var startCalled = false
   private var richProcess: RichProcess = null
 
@@ -62,9 +65,11 @@ extends HasCloser with Task with HasSendProcessSignal {
       name = jobName,
       additionalEnvironment = env,
       scriptString = module.script.string.trim,
-      stdFileMap = stdFileMap)
+      stdFileMap = processStdFileMap)
     .closeWithCloser
-    for (_ ← richProcess.closed; _ ← concurrentStdoutStderrWell.closed) RichProcess.tryDeleteFiles(stdFileMap.values)
+    if (processStdFileMap.nonEmpty) {
+      for (_ ← richProcess.closed; _ ← concurrentStdoutStderrWell.closed) RichProcess.tryDeleteFiles(processStdFileMap.values)
+    }
     concurrentStdoutStderrWell.start()
     richProcess
   }

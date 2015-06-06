@@ -14,7 +14,6 @@ import com.sos.scheduler.engine.taskserver.module._
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout}
 import javax.inject.Inject
 import org.scalactic.Requirements._
 
@@ -43,6 +42,7 @@ extends HasCloser with Invocable with HasSendProcessSignal {
           taskArguments.monitors,
           jobName = taskArguments.jobName,
           hasOrder = taskArguments.hasOrder,
+          stdFileMap = taskStartArguments.stdFileMap,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment)
       case module: JavaModule ⇒
         new JavaProcessTask(
