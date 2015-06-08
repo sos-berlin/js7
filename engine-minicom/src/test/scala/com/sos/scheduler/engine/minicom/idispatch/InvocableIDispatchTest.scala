@@ -44,6 +44,9 @@ final class InvocableIDispatchTest extends FreeSpec {
     iDispatch.call("boxedBoolean", List(Boolean box false)) shouldEqual true
     iDispatch.call("string", List(1, ALong, 1.2, true, "x")) shouldEqual s"1 $ALong 1.2 true x"
     iDispatch.call("array", List(VariantArray(Vector[Any](1L, 1.2)))) shouldEqual 2.2
+    iDispatch.call("optional", List(Int box 1, Double box 2.3)) shouldEqual 3.3
+    iDispatch.call("optional", List(1)) shouldEqual 1.0
+    iDispatch.call("optional", List()) shouldEqual 0.0
   }
 
   "GetIDsOfNames and Invoke" in {
@@ -90,6 +93,12 @@ private object InvocableIDispatchTest {
     @invocable def boxedBoolean(o: Boolean): java.lang.Boolean = !o
     @invocable def string(i: Int, l: Long, d: Double, b: Boolean, o: String) = s"$i $l $d $b $o"
     @invocable def array(a: VariantArray) = a.indexedSeq(0).asInstanceOf[Long] + a.indexedSeq(1).asInstanceOf[Double]
+    @invocable def optional(a: Option[java.lang.Integer], b: Option[java.lang.Double]) = {
+      // As long as InvocableIDispatch uses Java reflection is used, only Option[_ <: AnyRef] can be used as parameter type.
+      val aa = a map { o => o: Int }
+      val bb = b map { o => o: Double }
+      (aa getOrElse 0) + (bb getOrElse 0.0)
+    }
     @(invocable @getter @setter) var property = 0
     def noCom(): Unit = {}
   }

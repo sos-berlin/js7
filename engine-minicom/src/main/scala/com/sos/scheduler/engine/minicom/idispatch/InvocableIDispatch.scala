@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits.RichIDispa
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch._
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, VariantArray}
-import java.lang.reflect.{InvocationTargetException, Method}
+import java.lang.reflect.{InvocationTargetException, Method, ParameterizedType, Type}
 import scala.collection.immutable
 
 /**
@@ -77,8 +77,10 @@ final case class InvocableIDispatch(invocable: Invocable) extends IDispatch {
   }
 
   private def invokeMethod(method: Method, arguments: Seq[Any]): Any = {
-    if (arguments.size != method.getParameterCount) throw new COMException(DISP_E_BADPARAMCOUNT, s"Number of arguments (${arguments.size}) does not match method $method")
-    val javaParameters = for ((t, v) ← method.getParameterTypes zip arguments) yield convert(t.asInstanceOf[Class[_ <: AnyRef]], v)
+    val optionalCount = method.getParameterTypes.reverse prefixLength { _ == classOf[Option[_]] }
+    val n = method.getParameterCount
+    if (arguments.size < n - optionalCount || arguments.size > n) throw new COMException(DISP_E_BADPARAMCOUNT, s"Number of arguments (${arguments.size}) does not match method $method")
+    val javaParameters = for ((t, v) ← method.getGenericParameterTypes.zipAll(arguments, classOf[Nothing], MissingArgument)) yield convert(t, v)
     val result =
       try method.invoke(invocable, javaParameters: _*)
       catch { case e: InvocationTargetException ⇒ throw e.getTargetException }
@@ -117,26 +119,37 @@ object InvocableIDispatch {
   private val BooleanClass = classOf[Boolean]
   private val BoxedBooleanClass = classOf[java.lang.Boolean]
   private val StringClass = classOf[String]
+  private val AnyRefClass = classOf[AnyRef]
   private val VariantArraySerializableClass = classOf[VariantArray]
 
-  private def convert[A <: AnyRef](c: Class[A], v: Any): A =
-    (c match {
-      case IntClass | BoxedIntegerClass ⇒ v match {
+  private def convert(typ: Type, value: Any): AnyRef =
+    typ match {
+      case IntClass | BoxedIntegerClass ⇒ value match {
         case o: Int ⇒ Int box o
       }
-      case LongClass | BoxedLongClass ⇒ v match {
+      case LongClass | BoxedLongClass ⇒ value match {
         case o: Int ⇒ Long box o
         case o: Long ⇒ Long box o
       }
-      case DoubleClass | BoxedDoubleClass ⇒ v match {
+      case DoubleClass | BoxedDoubleClass ⇒ value match {
         case o: Double ⇒ Double box o
       }
-      case BooleanClass | BoxedBooleanClass ⇒ v match {
+      case BooleanClass | BoxedBooleanClass ⇒ value match {
         case o: Boolean ⇒ Boolean box o
       }
-      case StringClass ⇒ v.toString
-      case VariantArraySerializableClass ⇒ v.asInstanceOf[VariantArray]
-    }).asInstanceOf[A]
+      case StringClass ⇒ value.toString
+      case AnyRefClass ⇒ value.asInstanceOf[AnyRef]
+      case VariantArraySerializableClass ⇒ value.asInstanceOf[VariantArray]
+      case typ: ParameterizedType if typ.getRawType == classOf[Option[_]] ⇒
+        val Array(t) = typ.getActualTypeArguments   // A Scala simple type (like Int) is returned as classOf[AnyRef] by Java reflection. Use Option[_ <: AnyRef] instead !!!
+        value match {
+          case MissingArgument ⇒ None
+          case _ ⇒ Some(convert(t, value))
+        }
+      case _ ⇒ throw new IllegalArgumentException(s"Unsuported type for dynamic method invocation: $typ")
+    }
 
   private case class MethodMeta(typ: DispatchType, name: String, method: Method)
+
+  private object MissingArgument
 }
