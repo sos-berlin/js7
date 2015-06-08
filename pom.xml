@@ -169,6 +169,7 @@
                 <configuration>
                     <additionalparam>-Xdoclint:none</additionalparam>
                     <quiet>true</quiet>
+                    <additionalparam>-Xdoclint:-missing</additionalparam>
                 </configuration>
                 <executions>
                     <execution>
