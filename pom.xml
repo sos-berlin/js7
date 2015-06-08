@@ -401,6 +401,7 @@
                 </plugins>           
             </build>
         </profile>
+        <profile>
             <id>windows-x86</id>
             <activation>
                 <os>
