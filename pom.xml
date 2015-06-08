@@ -64,6 +64,8 @@
         <enginedoc.version>${project.version}</enginedoc.version>
         <argLine />
         <LC_ALL>C</LC_ALL>    <!-- Neutrales Locale für H2Database -->
+		<!-- disable strict javadoc validation of Java 8 -->
+		<additionalparam>-Xdoclint:none</additionalparam>
     </properties>
 
     <build>
