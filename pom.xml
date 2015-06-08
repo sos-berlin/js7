@@ -182,6 +182,7 @@
                 <version>2.8</version>
                 <configuration>
                     <quiet>true</quiet>
+                    <additionalparam>-Xdoclint:-missing</additionalparam>
                 </configuration>
             </plugin>
             <plugin>
