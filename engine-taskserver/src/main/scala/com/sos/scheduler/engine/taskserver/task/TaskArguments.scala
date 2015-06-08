@@ -70,8 +70,11 @@ private[task] object TaskArguments {
       val KeyValueRegex(key, value) = keyValueString
       if (KeySet contains key) {
         buffer += key → value
-      } else {
+      } else
+      if (value.nonEmpty) {
         logger.debug(s"Ignoring unsupported key: $key=$value")
+      } else {
+        logger.trace(s"Ignoring unsupported key: $key=$value")
       }
     }
     new TaskArguments(buffer.toList)
