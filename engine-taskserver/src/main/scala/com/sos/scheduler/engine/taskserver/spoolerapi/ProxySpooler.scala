@@ -27,6 +27,9 @@ extends SpecializedProxyIDispatch {
 
   @invocable
   def log_dir: String = throw new UnsupportedApiException("sos.spooler.Spooler.log_dir")
+
+  @invocable
+  def create_xslt_stylesheet(file: Option[String]) = throw new UnsupportedApiException("sos.spooler.Spooler.create_xslt_stylesheet")
 }
 
 object ProxySpooler extends ProxyIDispatchFactory {

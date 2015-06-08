@@ -40,4 +40,9 @@ final class ProxySpoolerTest extends FreeSpec with BeforeAndAfterAll {
         .getMessage shouldEqual s"Java Agent does not support method 'sos.spooler.Spooler.$unsupportedGetter'"
     }
   }
+
+  "create_xslt_stylesheet is not supported" in {
+    intercept[UnsupportedOperationException] { spooler.call("create_xslt_stylesheet") }
+    intercept[UnsupportedOperationException] { spooler.call("create_xslt_stylesheet", List("file")) }
+  }
 }
