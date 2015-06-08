@@ -34,10 +34,10 @@ final class ProxySpoolerTest extends FreeSpec with BeforeAndAfterAll {
     assert(spooler.invokeGet("directory") == s"$testDirectory${File.separator}")
   }
 
-  for (unsupportedMethod ← List("include_path", "ini_path", "log_dir")) {
-    s"$unsupportedMethod is not supported" in {
-      intercept[UnsupportedOperationException] {spooler.invokeGet(unsupportedMethod)}
-        .getMessage shouldEqual s"Java Agent does not support method 'sos.spooler.Spooler.$unsupportedMethod'"
+  for (unsupportedGetter ← List("include_path", "ini_path", "log_dir")) {
+    s"$unsupportedGetter is not supported" in {
+      intercept[UnsupportedOperationException] {spooler.invokeGet(unsupportedGetter)}
+        .getMessage shouldEqual s"Java Agent does not support method 'sos.spooler.Spooler.$unsupportedGetter'"
     }
   }
 }

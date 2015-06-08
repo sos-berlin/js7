@@ -23,6 +23,8 @@ import java.util.UUID
 final class ProxySpoolerTask private(taskStartArguments: TaskStartArguments, protected val remoting: ClientRemoting, val id: ProxyId, val name: String)
 extends SpoolerTask with SpecializedProxyIDispatch {
 
+  import ProxySpoolerTask._
+
   def setErrorCodeAndText(code: MessageCode, text: String): Unit =
     this.invokeMethod(DISPID(26), List(code.string, text))
 
@@ -49,6 +51,21 @@ extends SpoolerTask with SpecializedProxyIDispatch {
   private def fileText(s: StdoutStderrType) = taskStartArguments.stdFileMap.get(s) map { _.contentString(ISO_8859_1) } getOrElse ""
 
   private def filePath(s: StdoutStderrType) = taskStartArguments.stdFileMap.get(s) map { _.toString } getOrElse ""
+
+  @invocable
+  def create_subprocess(program_and_parameters: Option[AnyRef]) = throw new UnsupportedApiException("sos.spooler.Task.create_subprocess")
+
+  @invocable
+  def priority_class: String = throw new UnsupportedApiException("sos.spooler.Task.priority_class")
+
+  @invocable
+  def priority_class_=(o: String): Unit = logger.warn(s"Ignoring sos.spooler.Task.priority_class='$o'")
+
+  @invocable
+  def priority: Int = throw new UnsupportedApiException("sos.spooler.Task.priority")
+
+  @invocable
+  def priority_=(o: Int): Unit = logger.warn(s"Ignoring sos.spooler.Task.priority=$o")
 }
 
 object ProxySpoolerTask extends ProxyIDispatchFactory {

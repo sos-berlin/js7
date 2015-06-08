@@ -14,6 +14,7 @@ import com.sos.scheduler.engine.taskserver.task.process.RichProcess
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout}
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import org.junit.runner.RunWith
+import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -58,5 +59,12 @@ final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with Ha
     val string = "STDERR ÄÖÜ"
     stdFileMap(Stderr).write(string, ISO_8859_1)
     assert(spoolerTask.invokeGet("stderr_text") == string)
+  }
+
+  for (unsupportedGetter ← List("create_subprocess", "priority", "priority_class")) {
+    s"$unsupportedGetter is not supported" in {
+      intercept[UnsupportedOperationException] { spoolerTask.invokeGet(unsupportedGetter) }
+        .getMessage shouldEqual s"Java Agent does not support method 'sos.spooler.Task.$unsupportedGetter'"
+    }
   }
 }
