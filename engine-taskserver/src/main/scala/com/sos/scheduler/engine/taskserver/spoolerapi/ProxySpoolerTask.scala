@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.minicom.idispatch.DISPID
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
+import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch._
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
 import com.sos.scheduler.engine.minicom.types.CLSID
 import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
@@ -55,7 +56,9 @@ object ProxySpoolerTask extends ProxyIDispatchFactory {
   private val logger = Logger(getClass)
 
   def apply(injector: Injector, remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
-    if (properties.nonEmpty) logger.warn(s"IGNORED: $properties")  // TODO Weitere lokale Properties
+    forEachProperty(properties, "sos.spooler.Task") {
+      case ("subprocess_own_process_group_default", v: Boolean) ⇒ if (v) logger.trace(s"Java Agent does not support subprocess.own_process_group=true")
+    }
     new ProxySpoolerTask(injector.instance[TaskStartArguments], remoting, id, name)
   }
 }
