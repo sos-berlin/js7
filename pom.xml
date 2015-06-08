@@ -61,7 +61,7 @@
         <osArch>osArch-UNKNOWN-OPERATING-SYSTEM-OR-CPU</osArch>
         <test.forkCount>1</test.forkCount>
         <test.logback.configurationFile />
-        <enginedoc.version>1.9.1</enginedoc.version>
+        <enginedoc.version>1.9.2-SNAPSHOT</enginedoc.version>
         <argLine />
         <LC_ALL>C</LC_ALL>    <!-- Neutrales Locale für H2Database -->
 		<!-- disable strict javadoc validation of Java 8 -->
@@ -78,7 +78,7 @@
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <tagBase>scm:git:git@github.com:sos-berlin/scheduler-engine.git</tagBase>
                     <!--tagNameFormat>{1}</tagNameFormat--><!-- {0} ist ${project.artifactId}, {1} ist ${project.version} -->
-                    <tag>v${releaseVersion}</tag>
+                    <tagNameFormat>v@{project.version}</tagNameFormat>
                     <allowTimestampedSnapshots>true</allowTimestampedSnapshots>
                 </configuration>
             </plugin>
