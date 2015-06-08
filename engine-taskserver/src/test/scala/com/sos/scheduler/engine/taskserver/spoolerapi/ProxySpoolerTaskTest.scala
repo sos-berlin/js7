@@ -32,7 +32,7 @@ final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with Ha
   }
 
   private lazy val injector = Guice.createInjector(new ScalaAbstractModule {
-    def configure() = bindInstance[TaskStartArguments](TaskStartArguments(controllerAddress = "XX", stdFileMap = stdFileMap))
+    def configure() = bindInstance[TaskStartArguments](TaskStartArguments.forTest(stdFileMap = stdFileMap))
   })
 
   private lazy val spoolerTask = InvocableIDispatch(

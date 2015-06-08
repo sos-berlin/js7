@@ -86,7 +86,7 @@ object ProxySpoolerLog extends ProxyIDispatchFactory {
 
   def apply(injector: Injector, remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
     var level = SchedulerLogLevel.Min
-    forEachProperty(properties) {
+    forEachProperty(properties, "sos.spooler.Log") {
       case ("level", v) ⇒ level = SchedulerLogLevel.ofCpp(v.asInstanceOf[Int])
     }
     new ProxySpoolerLog(remoting, id, name, initialMinimumLevel = level)

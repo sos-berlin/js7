@@ -22,8 +22,7 @@ import scala.util.Random
 final class ProxySpoolerLogTest extends FreeSpec {
 
   private lazy val injector = Guice.createInjector(new ScalaAbstractModule {
-    def configure() = bindInstance[TaskStartArguments](TaskStartArguments(
-      controllerAddress = "CONTROLLER_ADDRESS"))
+    def configure() = bindInstance[TaskStartArguments](TaskStartArguments.forTest())
   })
 
   for (minimumLevel ← List(SchedulerLogLevel.debug9, SchedulerLogLevel.error)) {

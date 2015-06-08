@@ -26,6 +26,7 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
   private def newTaskServer(command: StartProcess) = {
     val taskStartArguments = TaskStartArguments(
       controllerAddress = command.controllerAddress,
+      directory = agentConfiguration.directory,
       environment = agentConfiguration.environment)
     if (sys.props contains UseThreadPropertyName) { // For debugging
       logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")

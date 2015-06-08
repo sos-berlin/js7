@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
-import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpoolerLog, ProxySpoolerTask}
+import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskStartArguments}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -56,7 +56,7 @@ final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskSer
 
 object SimpleTaskServer {
   private val IDispatchFactories = List(RemoteModuleInstanceServer)
-  private val ProxyIDispatchFactories = List(ProxySpoolerLog, ProxySpoolerTask)
+  private val ProxyIDispatchFactories = List(ProxySpooler, ProxySpoolerLog, ProxySpoolerTask)
   private val logger = Logger(getClass)
 
   def run(startArguments: TaskStartArguments): Unit =

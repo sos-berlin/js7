@@ -16,7 +16,7 @@ final class SeparateProcessTaskServerTest extends FreeSpec {
   "SeperateTaskServerProcess" in {
     val tcpPort = findRandomFreeTcpPort()
     autoClosing(new ServerSocket(tcpPort, 1)) { listener ⇒
-      val taskArguments = TaskStartArguments(controllerAddress = s"127.0.0.1:$tcpPort")
+      val taskArguments = TaskStartArguments.forTest(tcpPort = tcpPort)
       autoClosing(new SeparateProcessTaskServer(taskArguments, javaOptions = Nil, javaClasspath = "")) { process ⇒
         process.start()
         listener.setSoTimeout(10*1000)
