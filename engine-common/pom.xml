@@ -3,11 +3,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>engine-common</artifactId>
-  <version>1.9.1-SNAPSHOT</version>
+  <version>1.9.1</version>
     <parent>
         <groupId>com.sos-berlin.jobscheduler.engine</groupId>
         <artifactId>engine</artifactId>
-        <version>1.9.1-SNAPSHOT</version>
+        <version>1.9.1</version>
     </parent>
 
     <name>${project.artifactId}</name>
@@ -127,6 +127,6 @@
     </dependencies>
 
   <scm>
-    <tag>v1.9.0-RC1</tag>
+    <tag>v${releaseVersion}</tag>
   </scm>
 </project>
