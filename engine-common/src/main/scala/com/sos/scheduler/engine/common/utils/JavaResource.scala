@@ -21,7 +21,12 @@ final case class JavaResource(path: String) {
 
   def simpleName = new File(path).getName
 
+  /**
+   * @throws RuntimeException, if the resource does not exists.
+   */
   lazy val url: URL = getResource(path)
+
+  override def toString = path
 }
 
 object JavaResource {

@@ -25,6 +25,11 @@ final class JavaResourceTest extends FreeSpec {
     JavaResource(nonExistentPath).path shouldEqual nonExistentPath
   }
 
+  "toString" in {
+    JavaResource(path).toString shouldEqual path
+    JavaResource(nonExistentPath).toString shouldEqual nonExistentPath
+  }
+
   "url" in {
     JavaResource(path).url shouldEqual getResource(path)
   }
