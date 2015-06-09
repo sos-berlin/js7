@@ -20,7 +20,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.Future
 import scala.xml.XML
 import spray.http.HttpHeaders.Accept
-import spray.http.MediaTypes.`application/json`
+import spray.http.MediaTypes.{`application/json`, `text/plain`}
 import spray.http.StatusCodes.{InternalServerError, NotFound, OK}
 import spray.http.Uri
 import spray.httpx.SprayJsonSupport._
@@ -119,13 +119,21 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     }
   }
 
-  "overview" in {
-    Get(Uri("/jobscheduler/agent/overview")) ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[JsObject] == JsObject(
-        "startedAt" → JsString("2015-06-01T12:00:00Z"),
-        "version" → JsString("TEST-VERSION"),
-        "processCount" → JsNumber(777)
-      ))
+  "overview" - {
+    "Accept: application/json returns compact JSON" in {
+      Get(Uri("/jobscheduler/agent/overview")) ~> Accept(`application/json`) ~> route ~> check {
+        assert(responseAs[JsObject] == expectedOverviewJsObject)
+        assert(!(responseAs[String] contains " ")) // Compact JSON
+      }
+    }
+
+    "Accept: text/plain returns pretty JSON" in {
+      // curl http://.../jobscheduler/agent/overview shows user readable json
+      Get(Uri("/jobscheduler/agent/overview")) ~> Accept(`text/plain`) ~> route ~> check {
+        val string = responseAs[String]
+        assert(JsonParser(string) == expectedOverviewJsObject)
+        assert(responseAs[String] contains " ") // PrettyJSON
+      }
     }
   }
 
@@ -151,6 +159,11 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     version = "TEST-VERSION",
     processCount = processHandlerView.processCount)
 
+  private def expectedOverviewJsObject = JsObject(
+    "startedAt" → JsString("2015-06-01T12:00:00Z"),
+    "version" → JsString("TEST-VERSION"),
+    "processCount" → JsNumber(777)
+  )
 }
 
 private object AgentWebServiceTest {
