@@ -38,8 +38,10 @@ object Agent {
       Thread.sleep(Int.MaxValue)  // ??? Warten, bis Agent per Kommando beendet wird
     }
 
-  def forTest(): Agent =
+  def forTest(): Agent = forTest(httpPort = findRandomFreeTcpPort())
+
+  def forTest(httpPort: Int): Agent =
     new Agent(AgentConfiguration(
-      httpPort = findRandomFreeTcpPort(),
+      httpPort = httpPort,
       httpInterfaceRestriction = Some("127.0.0.1")))
 }
