@@ -7,7 +7,9 @@ import akka.util.Timeout
 import com.sos.scheduler.engine.agent.commandexecutor.CommandExecutor
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commands.Command
-import javax.inject.{Inject, Singleton}
+import com.sos.scheduler.engine.agent.process.ProcessHandlerView
+import com.sos.scheduler.engine.agent.views.AgentOverview
+import javax.inject.{Inject, Provider, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -20,6 +22,8 @@ import spray.can.Http
 final class AgentWebServer @Inject private(
   conf: AgentConfiguration,
   commandExecutor: CommandExecutor,
+  processHandlerView: ProcessHandlerView,
+  agentOverviewProvider: Provider[AgentOverview],
   private implicit val actorSystem: ActorSystem)
 extends AutoCloseable {
 
@@ -27,6 +31,8 @@ extends AutoCloseable {
     val props = Props {
       new AgentWebService.AsActor {
         def executeCommand(command: Command) = commandExecutor.executeCommand(command)
+        def agentOverview = AgentWebServer.this.agentOverviewProvider.get()
+        def processHandlerView = AgentWebServer.this.processHandlerView
       }
     }
     actorSystem.actorOf(props, name = "AgentWebService")

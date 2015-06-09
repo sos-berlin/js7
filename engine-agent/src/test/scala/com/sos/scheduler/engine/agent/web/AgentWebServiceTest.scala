@@ -4,11 +4,16 @@ import com.sos.scheduler.engine.agent.configuration.Akkas._
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.responses.{FileOrderSourceContent, Response, StartProcessResponse}
+import com.sos.scheduler.engine.agent.data.views.ProcessOverview
+import com.sos.scheduler.engine.agent.process.ProcessHandlerView
+import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.AgentWebServiceTest._
+import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import java.nio.file.Files
 import java.nio.file.Files.createTempFile
+import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -67,7 +72,7 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
       postJsonCommand(json) ~> check {
         assert(responseAs[FileOrderSourceContent] == TestFileOrderSourceContent)
         assert(responseAs[String].parseJson ==
-          s"""{
+          """{
           "files": [
             { "path": "/DIRECTORY/a", "lastModifiedTime": 111222333444555666 }
           ]
@@ -113,6 +118,39 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
       assert(status == NotFound)
     }
   }
+
+  "overview" in {
+    Get(Uri("/jobscheduler/agent/overview")) ~> Accept(`application/json`) ~> route ~> check {
+      assert(responseAs[JsObject] == JsObject(
+        "startedAt" → JsString("2015-06-01T12:00:00Z"),
+        "version" → JsString("TEST-VERSION"),
+        "processCount" → JsNumber(777)
+      ))
+    }
+  }
+
+  "processHandler" in {
+    Get(Uri("/jobscheduler/agent/processHandler")) ~> Accept(`application/json`) ~> route ~> check {
+      assert(responseAs[JsObject] == JsObject(
+        "processes" → JsArray(
+          JsObject(
+            "id" → JsNumber(123),
+            "controllerAddress" → JsString("127.0.0.1:999999999"),
+            "startedAt" → JsString("2015-06-10T12:00:00Z"))
+        )))
+    }
+  }
+
+  protected def processHandlerView = new ProcessHandlerView {
+    def processCount = 777
+    def processes = List(ProcessOverview(AgentProcessId(123), controllerAddress = "127.0.0.1:999999999", Instant.parse("2015-06-10T12:00:00Z")))
+  }
+
+  protected def agentOverview = AgentOverview(
+    startedAt = Instant.parse("2015-06-01T12:00:00Z"),
+    version = "TEST-VERSION",
+    processCount = processHandlerView.processCount)
+
 }
 
 private object AgentWebServiceTest {

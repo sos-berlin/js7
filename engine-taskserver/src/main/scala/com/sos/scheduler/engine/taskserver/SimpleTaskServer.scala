@@ -20,11 +20,11 @@ import scala.concurrent.duration.Duration
  *
  * @author Joacim Zschimmer
  */
-final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskServer with HasCloser {
+final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends TaskServer with HasCloser {
 
-  private val controllingSchedulerConnection = new TcpConnection(startArguments.controllerInetSocketAddress).closeWithCloser
+  private val controllingSchedulerConnection = new TcpConnection(taskStartArguments.controllerInetSocketAddress).closeWithCloser
   private val injector = Guice.createInjector(new ScalaAbstractModule {
-    def configure() = bindInstance[TaskStartArguments](startArguments)
+    def configure() = bindInstance[TaskStartArguments](taskStartArguments)
   })
   private val remoting = new Remoting(injector, new DialogConnection(controllingSchedulerConnection), IDispatchFactories, ProxyIDispatchFactories)
 
@@ -51,7 +51,7 @@ final class SimpleTaskServer(startArguments: TaskStartArguments) extends TaskSer
     remoting.invocables[HasSendProcessSignal] foreach { _.sendProcessSignal(signal) }
   }
 
-  override def toString = s"TaskServer(controller=${startArguments.controllerAddress})"
+  override def toString = s"TaskServer(controller=${taskStartArguments.controllerAddress})"
 }
 
 object SimpleTaskServer {

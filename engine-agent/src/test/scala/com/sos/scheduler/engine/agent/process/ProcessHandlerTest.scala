@@ -4,38 +4,38 @@ import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, StartProcessResponse}
-import com.sos.scheduler.engine.agent.process.ProcessCommandExecutorTest._
+import com.sos.scheduler.engine.agent.process.ProcessHandlerTest._
 import com.sos.scheduler.engine.base.process.ProcessSignal.SIGKILL
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.common.scalautil.Futures._
+import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.scheduler.engine.taskserver.TaskServer
+import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
+import java.nio.file.Paths
 import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec
 import org.scalatest.Inside.inside
 import org.scalatest.Matchers._
-import org.scalatest.concurrent.AsyncAssertions.Waiter
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
 import org.scalatest.time.SpanSugar._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.util.{Failure, Try}
 
 /**
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class ProcessCommandExecutorTest extends FreeSpec {
-  private lazy val taskServers = List.fill(2) { mock[TaskServer] }
+final class ProcessHandlerTest extends FreeSpec {
+  private lazy val taskServers = List.fill(2) { mockTaskServer() }
   private lazy val processes = AgentProcessIds zip taskServers map { case (id, taskServer) ⇒ new AgentProcess(id, taskServer) }
-  private lazy val commandExecutor = Guice.createInjector(new TestModule(processes)).instance[ProcessCommandExecutor]
+  private lazy val processHandler = Guice.createInjector(new TestModule(processes)).instance[ProcessHandler]
 
   "StartProcess" in {
-    val command = StartSeparateProcess(controllerAddress = "127.0.0.1:9999", javaOptions = JavaOptions, javaClasspath = JavaClasspath)
+    val command = StartSeparateProcess(controllerAddress = TestControllerAddress, javaOptions = JavaOptions, javaClasspath = JavaClasspath)
     for (nextProcessId ← AgentProcessIds) {
-      val response = awaitResult(commandExecutor.apply(command), 1.seconds)
+      val response = awaitResult(processHandler.apply(command), 1.seconds)
       inside(response) { case StartProcessResponse(id) ⇒ id shouldEqual nextProcessId }
     }
     for (taskServer ← taskServers) {
@@ -45,12 +45,27 @@ final class ProcessCommandExecutorTest extends FreeSpec {
     }
   }
 
+  "ProcessHandlerView" - {
+    def view: ProcessHandlerView = processHandler
+
+    "processCount" in {
+      assert(view.processCount == taskServers.size)
+    }
+
+    "processes" in {
+      val processMap = view.processes toKeyedMap {_.id}
+      assert(processMap.size == taskServers.size)
+      for (id ← AgentProcessIds) assert(processMap contains id)
+      for (o ← processMap.values) assert(o.controllerAddress == TestControllerAddress)
+    }
+  }
+
   "CloseProcess" in {
     val commands = List(
       CloseProcess(processes(0).id, kill = false),
       CloseProcess(processes(1).id, kill = true))
     for (command ← commands) {
-      val response = awaitResult(commandExecutor.apply(command), 3.seconds)
+      val response = awaitResult(processHandler.apply(command), 3.seconds)
       inside(response) { case EmptyResponse ⇒ }
     }
     verify(taskServers(0), times(1)).start()
@@ -63,10 +78,16 @@ final class ProcessCommandExecutorTest extends FreeSpec {
   }
 }
 
-private object ProcessCommandExecutorTest {
+private object ProcessHandlerTest {
   private val AgentProcessIds = List(111111111111111111L, 222222222222222222L) map AgentProcessId.apply
   private val JavaOptions = "JAVA-OPTIONS"
   private val JavaClasspath = "JAVA-CLASSPATH"
+  private val TestControllerAddress = "127.0.0.1:9999"
+
+  private def mockTaskServer() = mock[TaskServer] sideEffect { o ⇒
+    // For ProcessHandler.overview
+    when(o.taskStartArguments) thenReturn TaskStartArguments(controllerAddress = TestControllerAddress, directory = Paths.get(""))
+  }
 
   private class TestModule(processes: List[AgentProcess]) extends AbstractModule {
     private val processIterator = processes.iterator
@@ -74,7 +95,7 @@ private object ProcessCommandExecutorTest {
     def configure() = {}
 
     @Provides @Singleton
-    private def newAgentProcess: AgentProcessFactory = new AgentProcessFactory {
+    private def agentProcessFactory: AgentProcessFactory = new AgentProcessFactory {
       def apply(command: StartProcess) = {
         inside(command) {
           case command: StartSeparateProcess ⇒
@@ -86,12 +107,7 @@ private object ProcessCommandExecutorTest {
     }
 
     @Provides @Singleton
-    private def newAgentProcessId: () ⇒ AgentProcessId = AgentProcessIds.synchronized { AgentProcessIds.iterator.next }
+    private def newAgentProcessId: () ⇒ AgentProcessId =
+      AgentProcessIds.synchronized { AgentProcessIds.iterator.next }
   }
-
-  def waiterOnComplete[A](w: Waiter, future: Future[A])(pf: PartialFunction[Try[A], Unit]): Unit =
-    future.onComplete(pf orElse {
-      case Failure(t) ⇒ w { fail(t.toString, t) }
-      case o ⇒ w { fail(s"Unexpected: $o") }
-    })
 }

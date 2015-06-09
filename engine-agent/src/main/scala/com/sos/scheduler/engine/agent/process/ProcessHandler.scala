@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.process
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, Response, StartProcessResponse}
-import com.sos.scheduler.engine.agent.process.ProcessCommandExecutor._
+import com.sos.scheduler.engine.agent.process.ProcessHandler._
 import com.sos.scheduler.engine.base.process.ProcessSignal.SIGKILL
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import javax.inject.{Inject, Singleton}
@@ -15,7 +15,7 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 @Singleton
-final class ProcessCommandExecutor @Inject private(newAgentProcess: AgentProcessFactory) {
+final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory) extends ProcessHandlerView {
 
   private val idToAgentProcess = new ScalaConcurrentHashMap[AgentProcessId, AgentProcess] {
     override def default(id: AgentProcessId) = throwUnknownProcess(id)
@@ -44,9 +44,13 @@ final class ProcessCommandExecutor @Inject private(newAgentProcess: AgentProcess
         idToAgentProcess(id).sendProcessSignal(signal)
         EmptyResponse
     }
+
+  def processCount = idToAgentProcess.size
+
+  def processes = (idToAgentProcess.values map { _.overview }).toVector
 }
 
-private object ProcessCommandExecutor {
+private object ProcessHandler {
   private val logger = Logger(getClass)
 
   private def throwUnknownProcess(id: AgentProcessId) = throw new NoSuchElementException(s"Unknown agent process '$id'")

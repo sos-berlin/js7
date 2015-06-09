@@ -2,6 +2,9 @@ package com.sos.scheduler.engine.agent.web
 
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.responses.Response
+import com.sos.scheduler.engine.agent.process.ProcessHandlerView
+import com.sos.scheduler.engine.agent.views.AgentOverview
+import com.sos.scheduler.engine.agent.views.AgentOverview._
 import com.sos.scheduler.engine.agent.web.AgentWebService._
 import com.sos.scheduler.engine.agent.web.marshal.XmlString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor
@@ -11,7 +14,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import spray.http.StatusCodes.{BadRequest, NotFound, OK}
 import spray.httpx.SprayJsonSupport._
-import spray.routing.{HttpService, HttpServiceActor}
+import spray.routing._
 
 /**
  * @author Joacim Zschimmer
@@ -19,6 +22,8 @@ import spray.routing.{HttpService, HttpServiceActor}
 private[agent] trait AgentWebService extends HttpService {
 
   protected def executeCommand(command: Command): Future[Response]
+  protected def processHandlerView: ProcessHandlerView
+  protected def agentOverview: AgentOverview
 
   private[agent] def route =
     (decompressRequest() | compressResponseIfRequested(())) {
@@ -53,6 +58,16 @@ private[agent] trait AgentWebService extends HttpService {
                   if (Files.exists(file)) OK else NotFound
                 }
               }
+            } ~
+            path("overview") {
+              complete {
+                agentOverview
+              }
+            } ~
+            path("processHandler") {
+              complete {
+                processHandlerView
+              }
             }
           }
         }
@@ -61,7 +76,6 @@ private[agent] trait AgentWebService extends HttpService {
 }
 
 object AgentWebService {
-
   trait AsActor extends HttpServiceActor with AgentWebService {
     final def receive = runRoute(route)
   }
