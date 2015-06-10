@@ -1,15 +1,16 @@
 package com.sos.scheduler.engine.common.time
 
-import org.joda.time.{Duration, ReadableInstant}
+import com.sos.scheduler.engine.common.time.TimeoutWithSteps._
+import java.time.{Duration, Instant}
 
 /** Eine in Schritte unterteilte Frist.
   */
 final case class TimeoutWithSteps(timeout: Duration, step: Duration) {
-  import TimeoutWithSteps._
+
   /** Liefert einen Iterator mit den Zeitpunkten startInstant, startInstant + step, ..., startInstant + timeout.
     */
-  def toMillisInstantIterator(startInstant: ReadableInstant) =
-    millisInstantIterator(startInstant.getMillis, timeout.getMillis, step.getMillis)
+  def toMillisInstantIterator(startInstant: Instant) =
+    millisInstantIterator(startInstant.toEpochMilli, timeout.toMillis, step.toMillis)
 }
 
 object TimeoutWithSteps {

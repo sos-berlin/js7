@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.sync;
 
 import com.google.common.base.Joiner;
-import org.joda.time.Duration;
+import java.time.Duration;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -41,7 +41,7 @@ public class Gate<T> {
     }
 
     @Nullable private T tryPoll(Duration t) throws InterruptedException {
-        return queue.poll(t.getMillis(), TimeUnit.MILLISECONDS);
+        return queue.poll(t.toMillis(), TimeUnit.MILLISECONDS);
     }
 
     @Override public String toString() {

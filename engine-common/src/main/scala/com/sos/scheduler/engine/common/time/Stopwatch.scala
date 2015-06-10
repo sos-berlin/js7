@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.time
 
 import java.lang.System.currentTimeMillis
-import org.joda.time.Duration
+import java.time.Duration
 
 /**
  * @author Joacim Zschimmer
@@ -11,7 +11,7 @@ final class Stopwatch {
 
   def elapsedMs = currentTimeMillis - start
 
-  def duration = new Duration(elapsedMs)
+  def duration = Duration.ofMillis(elapsedMs)
 
   override def toString = s"${elapsedMs / 1000.0}s"
 }
