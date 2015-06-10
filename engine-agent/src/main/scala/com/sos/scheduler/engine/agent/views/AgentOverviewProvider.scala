@@ -17,7 +17,8 @@ final class AgentOverviewProvider @Inject private(processHandlerView: ProcessHan
   def get() = AgentOverview(
     version = AgentMavenProperties.buildVersion,
     startedAt = Instant.now(),
-    processCount = processHandlerView.processCount)
+    currentProcessCount = processHandlerView.currentProcessCount,
+    totalProcessCount = processHandlerView.totalProcessCount)
 }
 
 object AgentOverviewProvider {

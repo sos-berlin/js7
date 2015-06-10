@@ -12,8 +12,9 @@ import spray.json.DefaultJsonProtocol._
 final case class AgentOverview(
   version: String,
   startedAt: Instant,
-  processCount: Int)
+  currentProcessCount: Int,
+  totalProcessCount: Int)
 
 object AgentOverview {
-  implicit val MyJsonFormat = jsonFormat3(apply)
+  implicit val MyJsonFormat = jsonFormat4(apply)
 }

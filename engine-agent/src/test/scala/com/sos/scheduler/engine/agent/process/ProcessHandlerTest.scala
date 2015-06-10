@@ -48,12 +48,16 @@ final class ProcessHandlerTest extends FreeSpec {
   "ProcessHandlerView" - {
     def view: ProcessHandlerView = processHandler
 
-    "processCount" in {
-      assert(view.processCount == taskServers.size)
+    "currentProcessCount" in {
+      assert(view.currentProcessCount == taskServers.size)
+    }
+
+    "totalProcessCount" in {
+      assert(view.totalProcessCount == taskServers.size)
     }
 
     "processes" in {
-      val processMap = view.processes toKeyedMap {_.id}
+      val processMap = view.processes toKeyedMap { _.id }
       assert(processMap.size == taskServers.size)
       for (id ← AgentProcessIds) assert(processMap contains id)
       for (o ← processMap.values) assert(o.controllerAddress == TestControllerAddress)
@@ -75,6 +79,22 @@ final class ProcessHandlerTest extends FreeSpec {
     verify(taskServers(1), times(1)).start()
     verify(taskServers(1), times(1)).sendProcessSignal(SIGKILL)
     verify(taskServers(1), times(1)).close()
+  }
+
+  "ProcessHandlerView, after processes are closed" - {
+    def view: ProcessHandlerView = processHandler
+
+    "currentProcessCount" in {
+      assert(view.currentProcessCount == 0)
+    }
+
+    "totalProcessCount" in {
+      assert(view.totalProcessCount == taskServers.size)
+    }
+
+    "processes" in {
+      assert(view.processes.isEmpty)
+    }
   }
 }
 

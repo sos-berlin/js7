@@ -12,7 +12,9 @@ import spray.json._
 @ImplementedBy(classOf[ProcessHandler])
 trait ProcessHandlerView {
 
-  def processCount: Int
+  def currentProcessCount: Int
+  
+  def totalProcessCount: Int
 
   def processes: immutable.Iterable[ProcessOverview]
 }
