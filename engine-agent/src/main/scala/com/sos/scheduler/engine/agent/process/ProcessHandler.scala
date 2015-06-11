@@ -4,12 +4,15 @@ import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, Response, StartProcessResponse}
 import com.sos.scheduler.engine.agent.process.ProcessHandler._
-import com.sos.scheduler.engine.base.process.ProcessSignal.SIGKILL
+import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
-import java.util.concurrent.atomic.AtomicInteger
+import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import javax.inject.{Inject, Singleton}
+import org.scalactic.Requirements._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise, blocking}
 import scala.util.control.NonFatal
 
 /**
@@ -19,6 +22,9 @@ import scala.util.control.NonFatal
 final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory) extends ProcessHandlerView {
 
   private val totalProcessCounter = new AtomicInteger(0)
+  private val terminating = new AtomicBoolean
+  private val terminatedPromise = Promise[Unit]()
+  def terminated = terminatedPromise.future
 
   private val idToAgentProcess = new ScalaConcurrentHashMap[AgentProcessId, AgentProcess] {
     override def default(id: AgentProcessId) = throwUnknownProcess(id)
@@ -28,32 +34,67 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
 
   private def execute(command: Command): Response =
     command match {
-      case command: StartProcess ⇒
-        val process = newAgentProcess(command)
-        idToAgentProcess += process.id → process
-        process.start()
-        totalProcessCounter.incrementAndGet()
-        StartProcessResponse(process.id)
-
-      case CloseProcess(id, kill) ⇒
-        val process = idToAgentProcess.remove(id) getOrElse throwUnknownProcess(id)
-        if (kill) {
-          try process.sendProcessSignal(SIGKILL)
-          catch { case NonFatal(t) ⇒ logger.warn(s"Kill $process failed: $t") }
-        }
-        process.close()
-        EmptyResponse
-
+      case o: StartProcess ⇒ startProcess(o)
+      case CloseProcess(id, kill) ⇒ closeProcess(id, kill)
       case SendProcessSignal(id, signal) ⇒
         idToAgentProcess(id).sendProcessSignal(signal)
         EmptyResponse
+      case o: Terminate ⇒ terminate(o)
     }
+
+  private def startProcess(command: StartProcess) = {
+    val process = newAgentProcess(command)
+    process.start()
+    registerProcess(process)
+    totalProcessCounter.incrementAndGet()
+    StartProcessResponse(process.id)
+  }
+
+  private def registerProcess(process: AgentProcess): Unit = {
+    idToAgentProcess.synchronized {
+      require(!(idToAgentProcess contains process.id))
+      idToAgentProcess += process.id → process
+    }
+  }
+
+  private def closeProcess(id: AgentProcessId, kill: Boolean) = {
+    val process = idToAgentProcess.remove(id) getOrElse throwUnknownProcess(id)
+    if (kill) {
+      try process.sendProcessSignal(SIGKILL)
+      catch { case NonFatal(t) ⇒ logger.warn(s"Kill $process failed: $t") }
+    }
+    process.close()
+    EmptyResponse
+  }
+
+  private def terminate(command: Terminate) = {
+    if (terminating.getAndSet(true)) sys.error("Agent is already shutting down")
+    if (command.sigtermProcesses) {
+      if (isWindows) {
+        logger.debug("Terminate: Under Windows, SIGTERM is ignored")
+      } else {
+        for (o ← agentProcesses) o.sendProcessSignal(SIGTERM)
+      }
+    }
+    if (command.sigkillProcessesAfter > 0.s) {
+      Future {
+        blocking {
+          sleep(command.sigkillProcessesAfter)
+        }
+        for (o ← agentProcesses) o.sendProcessSignal(SIGKILL)
+      }
+    }
+    Future.sequence(agentProcesses map { _.terminated }) onComplete { o ⇒ terminatedPromise.complete(o map { _ ⇒ () }) }
+    EmptyResponse
+  }
 
   def currentProcessCount = idToAgentProcess.size
 
   def totalProcessCount = totalProcessCounter.get
 
   def processes = (idToAgentProcess.values map { _.overview }).toVector
+
+  private def agentProcesses = idToAgentProcess.values
 }
 
 private object ProcessHandler {

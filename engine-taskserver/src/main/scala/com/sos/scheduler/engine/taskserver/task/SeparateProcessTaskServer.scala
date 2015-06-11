@@ -4,10 +4,13 @@ import com.google.common.io.Closer
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.TaskServer
+import com.sos.scheduler.engine.taskserver.task.SeparateProcessTaskServer._
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, RichProcess}
 import java.io.File
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Promise
 import spray.json._
 
 /**
@@ -17,6 +20,8 @@ final class SeparateProcessTaskServer(val taskStartArguments: TaskStartArguments
 extends TaskServer {
 
   private var process: RichProcess = null
+  private val terminatedPromise = Promise[Unit]()
+  def terminated = terminatedPromise.future
 
   def start() = {
     val stdFileMap = RichProcess.createTemporaryStdFiles()
@@ -30,7 +35,11 @@ extends TaskServer {
         mainClass = com.sos.scheduler.engine.taskserver.TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix
         arguments = Nil,
         stdFileMap = stdFileMap)
-      process.closed.onComplete { _ ⇒ closer.close() }
+      process.closed.onComplete { tried ⇒
+        for (t ← tried.failed) logger.error(t.toString, t)
+        try closer.close()
+        finally terminatedPromise.complete(tried)
+      }
       val a = taskStartArguments.copy(stdFileMap = stdFileMap, logStdoutAndStderr = true)
       process.stdinWriter.write(a.toJson.compactPrint)
       process.stdinWriter.close()
@@ -48,4 +57,8 @@ extends TaskServer {
 
   def sendProcessSignal(signal: ProcessSignal) =
     for (p ← Option(process)) p.sendProcessSignal(signal)
+}
+
+object SeparateProcessTaskServer {
+  private val logger = Logger(getClass)
 }

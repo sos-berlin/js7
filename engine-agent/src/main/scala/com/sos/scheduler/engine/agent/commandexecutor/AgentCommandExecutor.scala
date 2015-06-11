@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.commandexecutor
 
 import com.sos.scheduler.engine.agent.commandexecutor.AgentCommandExecutor._
-import com.sos.scheduler.engine.agent.data.commands.{Command, ProcessCommand, RequestFileOrderSourceContent}
+import com.sos.scheduler.engine.agent.data.commands.{Command, ProcessCommand, RequestFileOrderSourceContent, Terminate}
 import com.sos.scheduler.engine.agent.fileordersource.RequestFileOrderSourceContentExecutor
 import com.sos.scheduler.engine.agent.process.ProcessHandler
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -27,6 +27,7 @@ extends CommandExecutor {
     val future = command match {
       case command: ProcessCommand ⇒ processHandler.apply(command)
       case command: RequestFileOrderSourceContent ⇒ RequestFileOrderSourceContentExecutor.apply(command)
+      case command: Terminate ⇒ processHandler.apply(command)
     }
     future map { response ⇒
       logger.debug(s"Response to #$number ${command.getClass.getSimpleName}: $response")

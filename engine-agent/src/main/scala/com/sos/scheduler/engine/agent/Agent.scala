@@ -5,11 +5,14 @@ import com.google.inject.Guice
 import com.google.inject.Stage.PRODUCTION
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
+import com.sos.scheduler.engine.agent.process.ProcessHandler
 import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
+import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
 import scala.concurrent.Future
+import scala.concurrent.duration.Duration
 
 /**
  * JobScheduler Agent.
@@ -24,10 +27,13 @@ final class Agent(configuration: AgentConfiguration) extends AutoCloseable {
   private val injector = Guice.createInjector(PRODUCTION, new AgentModule(configuration))
   private val server = injector.instance[AgentWebServer]
   private val closer = injector.instance[Closer]
+  private val processHandler = injector.instance[ProcessHandler]
 
   def start(): Future[Unit] = server.start()
 
   def close(): Unit = closer.close()
+
+  def terminated: Future[Unit] = processHandler.terminated
 }
 
 object Agent {
@@ -36,7 +42,7 @@ object Agent {
   def run(conf: AgentConfiguration): Unit =
     autoClosing(new Agent(conf)) { agent ⇒
       agent.start()
-      Thread.sleep(Int.MaxValue)  // ??? Warten, bis Agent per Kommando beendet wird
+      awaitResult(agent.terminated, Duration.Inf)
     }
 
   def forTest(): Agent = forTest(httpPort = findRandomFreeTcpPort())

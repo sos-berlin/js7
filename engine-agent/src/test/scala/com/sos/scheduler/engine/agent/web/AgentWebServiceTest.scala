@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.web
 import com.sos.scheduler.engine.agent.configuration.Akkas._
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.responses.{FileOrderSourceContent, Response, StartProcessResponse}
+import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, FileOrderSourceContent, Response, StartProcessResponse}
 import com.sos.scheduler.engine.agent.data.views.ProcessOverview
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
@@ -80,6 +80,18 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
       }
     }
 
+    "Terminate" in {
+      val json = """{
+          "$TYPE": "Terminate",
+          "sigtermProcesses": false,
+          "sigkillProcessesAfter": "PT999S"
+        }"""
+      postJsonCommand(json) ~> check {
+        assert(responseAs[EmptyResponse.type] == EmptyResponse)
+        assert(responseAs[String].parseJson == "{}".parseJson)
+      }
+    }
+
     "Exception" in {
       val json = """{
           "$TYPE": "RequestFileOrderSourceContent",
@@ -102,10 +114,14 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
 
   protected def executeCommand(command: Command): Future[Response] =
     Future.successful[Response] {
+      val expectedTerminate = Terminate(sigkillProcessesAfter = 999.s)
       command match {
         case StartSeparateProcess("0.0.0.0:999", "", "") ⇒ StartProcessResponse(AgentProcessId(123))
         case TestRequestFileOrderSourceContent ⇒ TestFileOrderSourceContent
         case FailingRequestFileOrderSourceContent ⇒ throw new Exception(s"TEST EXCEPTION: $command")
+        case `expectedTerminate` ⇒ EmptyResponse
+      }
+    }
       }
     }
 

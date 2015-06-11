@@ -42,8 +42,9 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends
             throw t
         }
       }
-    } onComplete { o ⇒
-      terminatedPromise.complete(o)
+    } onComplete { tried ⇒
+      for (t ← tried.failed) logger.error(t.toString, t)
+      terminatedPromise.complete(tried)
     }
 
   def sendProcessSignal(signal: ProcessSignal) = {
