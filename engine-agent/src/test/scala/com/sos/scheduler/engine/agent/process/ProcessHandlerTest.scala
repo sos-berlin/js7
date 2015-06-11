@@ -10,6 +10,7 @@ import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.common.scalautil.Futures._
+import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
@@ -121,7 +122,7 @@ final class ProcessHandlerTest extends FreeSpec {
       assert(!processHandler.terminated.isCompleted)
       for (o ← taskServers) assert(!o.sigtermed)
       awaitResult(processHandler.apply(Terminate(sigtermProcesses = true, sigkillProcessesAfter = 2.s)), 3.seconds)
-      for (o ← taskServers) assert(o.sigtermed)
+      for (o ← taskServers) assert(o.sigtermed == !isWindows)
       sleep(1.s)
       assert(!processHandler.terminated.isCompleted)
       // Now, (mocked) processes are terminated with SIGKILL
@@ -156,8 +157,8 @@ private object ProcessHandlerTest {
     def taskStartArguments = TaskStartArguments(controllerAddress = TestControllerAddress, directory = Paths.get(""))   // For ProcessHandler.overview
 
     def sendProcessSignal(signal: ProcessSignal) = signal match {
-        case SIGTERM ⇒ sigtermed = true
-        case SIGKILL ⇒ sigkilled = true; terminatedPromise.success(())
+      case SIGTERM ⇒ sigtermed = true
+      case SIGKILL ⇒ sigkilled = true; terminatedPromise.success(())
     }
 
     def start() = {

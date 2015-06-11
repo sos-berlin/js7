@@ -68,7 +68,12 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
   }
 
   private def terminate(command: Terminate) = {
-    if (terminating.getAndSet(true)) sys.error("Agent is already shutting down")
+    val wasTerminating = terminating.getAndSet(true)
+    if (command == Terminate.AbortImmediately) {
+      for (o ← agentProcesses) o.sendProcessSignal(SIGKILL)
+      abortImmediately()
+    }
+    if (wasTerminating) sys.error("Agent is already terminating")
     if (command.sigtermProcesses) {
       if (isWindows) {
         logger.debug("Terminate: Under Windows, SIGTERM is ignored")
@@ -76,7 +81,7 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
         for (o ← agentProcesses) o.sendProcessSignal(SIGTERM)
       }
     }
-    if (command.sigkillProcessesAfter > 0.s) {
+    if (command.sigkillProcessesAfter < Terminate.MaxDuration) {
       Future {
         blocking {
           sleep(command.sigkillProcessesAfter)
@@ -101,4 +106,11 @@ private object ProcessHandler {
   private val logger = Logger(getClass)
 
   private def throwUnknownProcess(id: AgentProcessId) = throw new NoSuchElementException(s"Unknown agent process '$id'")
+
+  private def abortImmediately(): Unit = {
+    val msg = "Due to command AbortImmediatly, Agent is halted now!"
+    logger.warn(msg)
+    System.err.println(msg)
+    Runtime.getRuntime.halt(1)
+  }
 }
