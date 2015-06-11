@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.agent.data.AgentProcessId
-import com.sos.scheduler.engine.agent.data.commands.{CloseProcess, StartSeparateProcess, StartThread}
+import com.sos.scheduler.engine.agent.data.commands.{Terminate, CloseProcess, StartSeparateProcess, StartThread}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -32,6 +33,13 @@ final class CommandXmlTest extends FreeSpec {
       CloseProcess(AgentProcessId(111222333444555666L), kill = false)
     parse(<remote_scheduler.remote_task.close process_id="111222333444555666" kill="true"/>) shouldEqual
       CloseProcess(AgentProcessId(111222333444555666L), kill = true)
+  }
+
+  "Terminate" in {
+    intercept[Exception] { parse(<agent.terminate/>) }
+    parse(<agent.terminate cmd="terminate"/>) shouldEqual Terminate(sigtermProcesses = false)
+    parse(<agent.terminate cmd="terminate" timeout="999"/>) shouldEqual Terminate(sigtermProcesses = false, sigkillProcessesAfter = 999.s)
+    parse(<agent.terminate cmd="abort_immediately"/>) shouldEqual Terminate(sigkillProcessesAfter = 0.s)
   }
 
   private def parse(elem: xml.Elem) = CommandXml.parseString(elem.toString())

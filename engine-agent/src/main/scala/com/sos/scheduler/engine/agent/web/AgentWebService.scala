@@ -36,7 +36,7 @@ private[agent] trait AgentWebService extends HttpService {
                   val command = addIPAddressToLegacySchedulerCommand(commandXml = commandXml, clientIPAddress = clientIPAddress)
                   val future = CommandXmlExecutor.execute(command) { cmd ⇒ executeCommand(cmd) }
                   onSuccess(future) { response ⇒ complete(response) }
-              }
+                }
             }
           }
         } ~
@@ -46,6 +46,10 @@ private[agent] trait AgentWebService extends HttpService {
               entity(as[Command]) { command ⇒
                 val future = executeCommand(command)
                 onSuccess(future) { response: Response ⇒ complete(response) }
+              } ~
+              entity(as[XmlString]) { case XmlString(commandXml) ⇒
+                val future = CommandXmlExecutor.execute(commandXml) { cmd ⇒ executeCommand(cmd) }
+                onSuccess(future) { response ⇒ complete(response) }
               }
             }
           } ~

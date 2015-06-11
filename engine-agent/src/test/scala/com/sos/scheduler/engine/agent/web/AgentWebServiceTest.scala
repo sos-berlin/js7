@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.agent.web.AgentWebServiceTest._
 import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.HasCloser
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.nio.file.Files
 import java.nio.file.Files.createTempFile
 import java.time.Instant
@@ -43,24 +44,24 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
 
   "jobscheduler/engine/command for legacy XML commands" - {
     "remote_scheduler.start_remote_task" in {
-      postXmlCommand(<remote_scheduler.start_remote_task tcp_port='999'/>) ~> check {
+      postLegacyXmlCommand(<remote_scheduler.start_remote_task tcp_port='999'/>) ~> check {
         assert(XML.loadString(responseAs[String]) == <spooler><answer><process process_id="123"/></answer></spooler>)
       }
     }
 
     "Unknown XML command" in {
-      postXmlCommand(<ERROR/>) ~> check {
+      postLegacyXmlCommand(<ERROR/>) ~> check {
         assert(status == InternalServerError)
       }
     }
+
+    def postLegacyXmlCommand(command: xml.Elem): RouteResult =
+      Post("/jobscheduler/engine/command", command) ~>
+        addHeader("Remote-Address", "0.0.0.0") ~>   // For this IP-less test only. Client's IP is normally set by configuration spray.can.remote-address-header
+        route
   }
 
-  private def postXmlCommand(command: xml.Elem): RouteResult =
-    Post("/jobscheduler/engine/command", command) ~>
-      addHeader("Remote-Address", "0.0.0.0") ~>   // For this IP-less test only. Client's IP is normally set by configuration spray.can.remote-address-header
-      route
-
-  "jobscheduler/agent/command" - {
+  "jobscheduler/agent/command for JSON" - {
     "RequestFileOrderSourceContent" in {
       val json = """{
           "$TYPE": "RequestFileOrderSourceContent",
@@ -122,8 +123,20 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
         case `expectedTerminate` ⇒ EmptyResponse
       }
     }
+
+  "jobscheduler/agent/command for XML commands" - {
+    "agent.terminate" in {
+      Post("/jobscheduler/agent/command", <agent.terminate cmd="terminate" timeout="999"/>) ~> route ~> check {
+        assert(XML.loadString(responseAs[String]) == <spooler><answer><ok/></answer></spooler> )
       }
     }
+
+    "Unknown XML command" in {
+      Post("/jobscheduler/agent/command", <ERROR/>) ~> route ~> check {
+        assert(status == InternalServerError)
+      }
+    }
+  }
 
   "fileStatus" in {
     val file = createTempFile("test-", ".tmp") withCloser Files.delete
