@@ -1,15 +1,15 @@
 package com.sos.scheduler.engine.data.job
 
 import com.sos.scheduler.engine.data.scheduler.{SchedulerId, ClusterMemberId}
-import org.joda.time.DateTime
+import java.time.Instant
 
 final case class SimpleTaskHistoryEntry(
   id: Int,
   schedulerId: SchedulerId,
   clusterMemberId: ClusterMemberId,
   jobPath: JobPath,
-  startTime: DateTime,
-  endTimeOption: Option[DateTime],
+  startTime: Instant,
+  endTimeOption: Option[Instant],
   cause: String,
   stepsOption: Option[Int],
   errorCode: String,

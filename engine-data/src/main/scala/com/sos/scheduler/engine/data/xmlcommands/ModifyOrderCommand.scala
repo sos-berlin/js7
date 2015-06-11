@@ -44,11 +44,4 @@ object ModifyOrderCommand {
     def string = "now"
   }
 
-//  case object NowPlus(duration: Duration) extends At {
-//    def string = s"now+" + ???
-//  }
-
-//  case class InstantAt(instant: ReadableInstant) extends At {
-//    def string = yyyymmddhhmmssFormatter print (instant.toInstant toDateTime UTC)
-//  }
 }

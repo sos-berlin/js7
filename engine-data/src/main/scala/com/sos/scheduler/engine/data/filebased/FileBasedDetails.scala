@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.filebased
 
 import java.io.File
-import org.joda.time.Instant
+import java.time.Instant
 
 /**
  * @author Joacim Zschimmer

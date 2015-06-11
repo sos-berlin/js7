@@ -3,8 +3,7 @@ package com.sos.scheduler.engine.common.async
 import TimedCall._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import java.util.concurrent.Callable
-import org.joda.time.Instant
-import org.joda.time.format.ISODateTimeFormat
+import java.time.Instant
 import scala.util.control.NonFatal
 import scala.util.{Success, Try, Failure}
 
@@ -14,7 +13,7 @@ trait TimedCall[A] extends Callable[A] {
 
   def call(): A
 
-  final def instant = new Instant(epochMillis)
+  final def instant = Instant.ofEpochMilli(epochMillis)
 
   private[async] final def onApply(): Unit = {
     logger.trace(s"Calling $toString")
@@ -53,7 +52,7 @@ trait TimedCall[A] extends Callable[A] {
 
   final def atString =
     if (epochMillis == ShortTermMillis) "short-term"
-    else ISODateTimeFormat.dateTime.print(epochMillis)
+    else instant.toString
 
   def toStringPrefix = getClass.getSimpleName
 }
@@ -62,11 +61,11 @@ object TimedCall {
   /** So bald wie möglich. */
   private[async] val ShortTermMillis = 0
   /** So bald wie möglich. */
-  private[async] val ShortTerm = new Instant(0)
+  private[async] val ShortTerm = Instant.ofEpochMilli(0)
   private val logger = Logger(getClass)
 
   def apply[A](at: Instant)(f: => A) = new TimedCall[A] {
-    def epochMillis = at.getMillis
+    def epochMillis = at.toEpochMilli
     def call() = f
   }
 

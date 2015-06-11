@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.common.async
 import com.sos.scheduler.engine.common.async.CallQueue._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import java.util.NoSuchElementException
-import org.joda.time.Instant
+import java.time.Instant
 import scala.concurrent.ExecutionContext
 
 trait CallQueue extends AutoCloseable {

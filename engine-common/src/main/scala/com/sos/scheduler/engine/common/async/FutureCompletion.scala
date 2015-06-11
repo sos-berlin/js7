@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.async
 
-import org.joda.time.Instant
+import java.time.Instant
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
@@ -41,7 +41,7 @@ object FutureCompletion {
 
   def functionToFutureTimedCall[A](at: Instant, function: () ⇒ A): FutureCall[A] =
     new TimedCall[A] with FutureCompletion[A] {
-      def epochMillis = at.getMillis
+      def epochMillis = at.toEpochMilli
 
       def call(): A = function()
 

@@ -2,8 +2,8 @@ package com.sos.scheduler.engine.common.maven
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.utils.JavaResource
-import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter.ISO_DATE_TIME
 import scala.collection.JavaConversions._
 
 final class MavenProperties(resourcePath: JavaResource) {
@@ -15,7 +15,7 @@ final class MavenProperties(resourcePath: JavaResource) {
       p.toMap
     }
 
-  override def toString = s"$groupId:$artifactId-$version $branchAndCommitSuffix"
+  override def toString = s"$groupId:$artifactId-$version $branchAndCommitSuffix".trim
 
   lazy val groupId = asString("project.groupId")
 
@@ -27,23 +27,26 @@ final class MavenProperties(resourcePath: JavaResource) {
     result
   }
 
-  private def branchAndCommitSuffix = "(" +
-    (List("branch", versionBranch, versionCommitHash) filter { _.nonEmpty } mkString " ") +
-    s", built $buildDateTime)"
+  private def branchAndCommitSuffix =
+    List(versionBranch, versionCommitHash, buildDateTime.withNano(0).toString.replace('T', ' ')) filter { _.nonEmpty } mkString ("(", " ", ")")
 
   lazy val version: String = asString("project.version")
 
-  lazy val versionCommitHash = asString("sourceVersion.commitHash") match {
-    case "" ⇒ "(unknown-commit)"
-    case o ⇒ o
-  }
+  lazy val versionCommitHash = asString("sourceVersion.commitHash")
 
   lazy val versionBranch = asString("sourceVersion.branch") match {
-    case o @ "UNKNOWN" ⇒ properties.getOrElse("GIT_BRANCH", o)  // Jenkins Git plugin
+    case "UNKNOWN" ⇒ sys.env.getOrElse("GIT_BRANCH", "")  // Jenkins Git plugin
+    case "${scmBranch}" ⇒ ""
     case o ⇒ o
   }
 
-  lazy val buildDateTime: DateTime = ISODateTimeFormat.dateTime.parseDateTime(asString("maven.build.timestamp"))
+  lazy val buildDateTime: ZonedDateTime = {
+    val repairedDateTime = asString("maven.build.timestamp") match {
+      case o if o.length == 28 && o(23) == '+' ⇒ o.substring(0, 26) + ":" + o.substring(26)  // Insert a colon like "+02:00"
+      case o ⇒ o
+    }
+    ZonedDateTime.from(ISO_DATE_TIME.parse(repairedDateTime))
+  }
 
   private def asString(name: String): String =
     properties.getOrElse(name, throw new NoSuchElementException(s"Unknown property '$name'"))

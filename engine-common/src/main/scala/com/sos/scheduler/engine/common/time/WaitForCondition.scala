@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.time
 
-import com.sos.scheduler.engine.common.time.ScalaJoda._
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.lang.System.currentTimeMillis
 import java.time.Instant.now
 import java.time.Duration

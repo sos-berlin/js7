@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.nio.file.Files.{createTempDirectory, delete, setLastModifiedTime}
 import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
+import java.time.ZoneOffset.UTC
 import java.time.{ZoneId, ZonedDateTime}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -79,6 +80,6 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
 }
 
 private object RequestFileOrderSourceContentExecutorTest{
-  private val Timestamp = ZonedDateTime.of(2015, 5, 1, 12, 0, 0, 0, ZoneId.of("UTC")).toInstant
+  private val Timestamp = ZonedDateTime.of(2015, 5, 1, 12, 0, 0, 0, UTC).toInstant
   private val MatchingString = "MATCHING"
 }

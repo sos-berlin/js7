@@ -5,20 +5,19 @@ import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.order.OrderPersistentState._
 import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
 import java.time.Instant
-import org.joda.time.ReadableInstant
 
 final case class OrderPersistentState(
   jobChainPath: JobChainPath,
   orderId: OrderId,
-  distributedNextTimeOption: Option[ReadableInstant],
+  distributedNextTimeOption: Option[Instant],
   occupyingClusterIdOption: Option[ClusterMemberId],
   priority: Int,
   ordering: Int,
   stateOption: Option[OrderState],
   initialStateOption: Option[OrderState],
   title: String,
-  creationTimestampOption: Option[ReadableInstant],
-  modificationTimestampOption: Option[ReadableInstant],
+  creationTimestampOption: Option[Instant],
+  modificationTimestampOption: Option[Instant],
   payloadXmlOption: Option[String],
   runtimeXmlOption: Option[String],
   xmlOption: Option[String])
@@ -27,7 +26,7 @@ extends HasKey[OrderKey] {
 
   def key = OrderKey(jobChainPath, orderId)
   //Compiles, but is wrongly typed (Joda vs Java Time): def isOnBlacklist = distributedNextTimeOption contains BlacklistDatabaseDistributedNextTime
-  def isOnBlacklist = distributedNextTimeOption map { _.getMillis } contains BlacklistDatabaseDistributedNextTime.toEpochMilli
+  def isOnBlacklist = distributedNextTimeOption map { _.toEpochMilli } contains BlacklistDatabaseDistributedNextTime.toEpochMilli
 }
 
 object OrderPersistentState {

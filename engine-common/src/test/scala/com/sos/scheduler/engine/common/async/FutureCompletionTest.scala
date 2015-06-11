@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.common.async
 
 import com.sos.scheduler.engine.common.async.FutureCompletion.{callFuture, futureCall, futureTimedCall}
-import com.sos.scheduler.engine.common.time.ScalaJoda._
-import org.joda.time.Instant.now
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.time.Instant.now
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner

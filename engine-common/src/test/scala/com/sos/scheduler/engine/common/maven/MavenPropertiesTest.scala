@@ -2,7 +2,8 @@ package com.sos.scheduler.engine.common.maven
 
 import com.sos.scheduler.engine.common.maven.MavenPropertiesTest._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import org.joda.time.Instant.now
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.time.Instant.now
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -13,32 +14,42 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class MavenPropertiesTest extends FreeSpec {
 
-  private val mavenProperties = MavenProperties.EngineCommonMavenProperties
+  private val m = MavenProperties.EngineCommonMavenProperties
 
   "Maven?" in {
     logger.info(s"isMaven=$isMaven")
   }
   
   "groupId" in {
-    assert(mavenProperties.groupId == "com.sos-berlin.jobscheduler.engine")
+    assert(m.groupId == "com.sos-berlin.jobscheduler.engine")
   }
 
   "artifactId" in {
-    assert(mavenProperties.artifactId == "engine-common")
+    assert(m.artifactId == "engine-common")
   }
 
   "version" in {
-    assert(mavenProperties.version contains ".")
+    assert(m.version contains '.')
+    assert(!(m.version contains ' '))
   }
 
   "versionCommitHash" in {
-    if (isMaven) assert(mavenProperties.versionCommitHash forall "0123456789abcdefABCDEF".toSet)
-    else assert(mavenProperties.versionCommitHash == "(unknown-commit)")
+    assert(m.versionCommitHash forall "0123456789abcdefABCDEF".toSet)
+    assert(m.versionCommitHash.nonEmpty == isMaven)
   }
 
   "buildDateTime" in {
-    assert(mavenProperties.buildDateTime isAfter (now() minus 3600000))
-    assert(mavenProperties.buildDateTime isBefore (now() plus 1000))
+    assert(m.buildDateTime.toInstant isAfter (now() - 3.h))   // Could fail, when artifact has not been recently completely compiled
+    assert(m.buildDateTime.toInstant isBefore (now() + 1.s))
+  }
+
+  "buildVersion" in {
+    logger.info(s"buildVersion = ${m.buildVersion}")
+    if (m.version endsWith "-SNAPSHOT") {
+      assert(m.buildVersion startsWith s"${m.version} ")
+    } else {
+      assert(m.buildVersion == m.version)
+    }
   }
 }
 

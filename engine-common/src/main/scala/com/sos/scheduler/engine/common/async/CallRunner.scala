@@ -2,8 +2,8 @@ package com.sos.scheduler.engine.common.async
 
 import CallRunner._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaJoda._
-import org.joda.time.Instant._
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.time.Instant._
 import scala.annotation.tailrec
 
 final class CallRunner(val queue: PoppableCallQueue) extends Runnable {
@@ -12,7 +12,7 @@ final class CallRunner(val queue: PoppableCallQueue) extends Runnable {
 
   def run(): Unit = {
     while (!ended) {
-      sleep(nextTime - now().getMillis)
+      sleep(nextTime - now().toEpochMilli)
       executeMatureCalls()
     }
   }
