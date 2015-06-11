@@ -15,7 +15,7 @@ object CloseProcessXml {
     import eventReader._
     parseElement(CloseProcess.XmlElementName) {
       CloseProcess(
-        processId = attributeMap.convert("process_id") { o ⇒ AgentProcessId(o.toLong) },
+        processId = attributeMap.convert("process_id") { o ⇒ AgentProcessId(o) },
         kill = attributeMap.getConverted("kill")(xmlStringToBoolean) getOrElse false
       )
     }

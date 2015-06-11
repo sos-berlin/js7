@@ -142,7 +142,7 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
       assert(responseAs[JsObject] == JsObject(
         "processes" → JsArray(
           JsObject(
-            "id" → JsNumber(123),
+            "id" → JsString("1-123"),
             "controllerAddress" → JsString("127.0.0.1:999999999"),
             "startedAt" → JsString("2015-06-10T12:00:00Z"))
         )))
@@ -152,7 +152,7 @@ final class AgentWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
   protected def processHandlerView = new ProcessHandlerView {
     def currentProcessCount = 777
     def totalProcessCount = 999
-    def processes = List(ProcessOverview(AgentProcessId(123), controllerAddress = "127.0.0.1:999999999", Instant.parse("2015-06-10T12:00:00Z")))
+    def processes = List(ProcessOverview(AgentProcessId("1-123"), controllerAddress = "127.0.0.1:999999999", Instant.parse("2015-06-10T12:00:00Z")))
   }
 
   protected def agentOverview = AgentOverview(
