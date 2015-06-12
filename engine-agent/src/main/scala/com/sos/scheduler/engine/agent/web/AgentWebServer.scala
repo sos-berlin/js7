@@ -4,12 +4,10 @@ import akka.actor.{ActorSystem, Props}
 import akka.io.{IO, Tcp}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.scheduler.engine.agent.commandexecutor.CommandExecutor
+import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.data.commands.Command
-import com.sos.scheduler.engine.agent.process.ProcessHandlerView
-import com.sos.scheduler.engine.agent.views.AgentOverview
-import javax.inject.{Inject, Provider, Singleton}
+import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -21,22 +19,11 @@ import spray.can.Http
 @Singleton
 final class AgentWebServer @Inject private(
   conf: AgentConfiguration,
-  commandExecutor: CommandExecutor,
-  processHandlerView: ProcessHandlerView,
-  agentOverviewProvider: Provider[AgentOverview],
+  injector: Injector,
   private implicit val actorSystem: ActorSystem)
 extends AutoCloseable {
 
-  private val webServiceActorRef = {
-    val props = Props {
-      new AgentWebService.AsActor {
-        def executeCommand(command: Command) = commandExecutor.executeCommand(command)
-        def agentOverview = AgentWebServer.this.agentOverviewProvider.get()
-        def processHandlerView = AgentWebServer.this.processHandlerView
-      }
-    }
-    actorSystem.actorOf(props, name = "AgentWebService")
-  }
+  private val webServiceActorRef = actorSystem.actorOf(Props { injector.instance[WebServiceActor] }, "AgentWebService")
 
   /**
    * @return Future, completed when Agent has been started and is running.

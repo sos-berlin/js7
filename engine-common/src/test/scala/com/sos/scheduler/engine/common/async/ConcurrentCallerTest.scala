@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.async
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.time.JodaJavaTimeConversions.implicits._
+import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import java.time.Instant
@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
-import scala.concurrent.{Await, Promise}
+import scala.concurrent.Promise
 
 /**
  * @author Joacim Zschimmer
@@ -54,7 +54,7 @@ final class ConcurrentCallerTest extends FreeSpec {
     class TestException extends Exception
     autoClosing(new ConcurrentCaller(Nil, () ⇒ throw new TestException, "TEST")) { backgroundCaller ⇒
       backgroundCaller.start()
-      intercept[TestException] { Await.result(backgroundCaller.terminated, 10.s) }
+      intercept[TestException] { awaitResult(backgroundCaller.terminated, 10.s) }
     }
   }
 
@@ -62,9 +62,9 @@ final class ConcurrentCallerTest extends FreeSpec {
     val promise = Promise[Unit]()
     val backgroundCaller = new ConcurrentCaller(List(60.s), () ⇒ promise.success(()), "TEST")
       backgroundCaller.start()
-      Await.ready(promise.future, 10.s)
+      awaitResult(promise.future, 10.s)
       sleep(100.ms)
       backgroundCaller.close()
-      Await.ready(backgroundCaller.terminated, 10.s)
+      awaitResult(backgroundCaller.terminated, 10.s)
   }
 }
