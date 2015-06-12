@@ -18,6 +18,4 @@ object SendProcessSignalXml {
         signal = attributeMap.convert("signal")(ProcessSignal.valueOf))
     }
   }
-
-  def responseXmlElem: xml.Elem = <ok/>
 }

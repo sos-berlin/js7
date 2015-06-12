@@ -11,7 +11,7 @@ import org.scalatest.junit.JUnitRunner
 import scala.concurrent.Future
 import scala.xml.XML
 import spray.http.HttpHeaders.Accept
-import spray.http.MediaTypes.`application/json`
+import spray.http.MediaTypes.{`application/json`, `application/xml`}
 import spray.http.StatusCodes.InternalServerError
 import spray.httpx.SprayJsonSupport._
 import spray.httpx.marshalling.BasicMarshallers.stringMarshaller
@@ -56,7 +56,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       }
     }
 
-    "Terminate" in {
+    "Terminate (JSON)" in {
       val json = """{
           "$TYPE": "Terminate",
           "sigtermProcesses": false,
@@ -68,7 +68,14 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       }
     }
 
-    "Exception" in {
+    "Terminate (XML)" in {
+      postXmlCommand(<agent.terminate cmd="terminate" timeout="999"/>) ~> check {
+        //assert(responseAs[EmptyResponse.type] == EmptyResponse)
+        assert(XML.loadString(responseAs[String]) == <spooler><answer><ok/></answer></spooler>)
+      }
+    }
+
+    "Exception (JSON)" in {
       val json = """{
           "$TYPE": "RequestFileOrderSourceContent",
           "directory": "ERROR",
@@ -81,11 +88,19 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       }
     }
 
-    def postJsonCommand(json: String): RouteResult = {
+    "Exception (XML)" in {
+      postXmlCommand(<unknown/>) ~> check {
+        assert(status == InternalServerError)
+      }
+    }
+
+    def postJsonCommand(json: String): RouteResult =
       Post("/jobscheduler/agent/command", json)(stringMarshaller(`application/json`)) ~>
         Accept(`application/json`) ~>
         agentCommandRoute
-    }
+
+    def postXmlCommand(elem: xml.Elem): RouteResult =
+      Post("/jobscheduler/agent/command", elem) ~> Accept(`application/xml`) ~> agentCommandRoute
   }
 
   "jobscheduler/agent/command for XML commands" - {
