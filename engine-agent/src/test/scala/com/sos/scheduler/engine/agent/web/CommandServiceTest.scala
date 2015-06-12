@@ -99,7 +99,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
     "Unknown XML command" in {
       postXmlCommand(<ERROR/>) ~> check {
         assert(status == InternalServerError)
-        assert(responseAs[String] startsWith "Error in XML element <ERROR>")
+        assert(responseAs[String] startsWith "Unexpected XML element <ERROR>")
       }
     }
 
