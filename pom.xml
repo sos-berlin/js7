@@ -7,7 +7,7 @@
 
     <groupId>com.sos-berlin.jobscheduler.engine</groupId>
     <artifactId>engine</artifactId>
-    <version>1.9.2</version>
+    <version>1.9.2-SNAPSHOT</version>
 
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>
@@ -78,7 +78,7 @@
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <tagBase>scm:git:git@github.com:sos-berlin/scheduler-engine.git</tagBase>
                     <!--tagNameFormat>{1}</tagNameFormat--><!-- {0} ist ${project.artifactId}, {1} ist ${project.version} -->
-                    <tagNameFormat>v@{releaseVersion}</tagNameFormat>
+                    <tagNameFormat>v@{project.version}</tagNameFormat>
                     <allowTimestampedSnapshots>true</allowTimestampedSnapshots>
                 </configuration>
             </plugin>

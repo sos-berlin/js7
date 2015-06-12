@@ -3,12 +3,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>engine-data</artifactId>
-  <version>1.9.2</version>
+  <version>1.9.2-SNAPSHOT</version>
 
     <parent>
         <groupId>com.sos-berlin.jobscheduler.engine</groupId>
         <artifactId>engine</artifactId>
-        <version>1.9.2</version>
+        <version>1.9.2-SNAPSHOT</version>
     </parent>
     
     <name>${project.artifactId}</name>
