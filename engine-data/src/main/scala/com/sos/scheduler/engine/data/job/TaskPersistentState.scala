@@ -18,6 +18,9 @@ extends HasKey[TaskId] {
   def key =
     taskId
 
-  @ForCpp def startTimeMillis: Long =
-    startTimeOption map { _.getMillis } getOrElse 0
+  @ForCpp
+  def startTimeMillis: Long = startTimeOption map { _.getMillis } getOrElse 0
+
+  @ForCpp
+  def enqueueTimeMillis: Long = enqueueTime.getMillis
 }
