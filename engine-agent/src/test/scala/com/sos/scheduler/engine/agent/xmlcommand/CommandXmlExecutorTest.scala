@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.agent.data.responses.StartProcessResponse
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor.throwableToString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutorTest._
 import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader.XmlException
+import com.sos.scheduler.engine.common.scalautil.xmls.XmlException
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import org.junit.runner.RunWith
 import org.scalatest.Assertions.fail

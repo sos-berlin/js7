@@ -99,7 +99,7 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
   def parseStartElementAlternative[A](f: PartialFunction[String, A]): A =
     wrapException {
       val name = peek.asStartElement.getName.toString
-      f.applyOrElse(name, { name: String ⇒ sys.error(s"Unexpected XML element <$name>") })
+      f.applyOrElse(name, { name: String ⇒ throw new XmlException(name, peek.getLocation, message = "Unexpected XML element") })
     }
 
   private def wrapException[A](f: ⇒ A): A = {
@@ -282,34 +282,6 @@ object ScalaXMLEventReader {
     override def getMessage = s"Unknown XML attributes " + (names map { "'"+ _ +"'" } mkString ", ")
   }
 
-  final class XmlException(elementName: String, location: Location, override val getCause: Exception) extends RuntimeException {
-
-    override def toString = s"XmlException: $getMessage"
-    override def getMessage = s"$nonWrappedCauseString - In $text"
-
-    private def nonWrappedCauseString = nonWrappedCause.toString stripPrefix "java.lang.RuntimeException: "
-
-    @tailrec
-    def nonWrappedCause: Throwable = getCause match {
-      case cause: XmlException ⇒ cause.nonWrappedCause
-      case cause ⇒ cause
-    }
-
-    private def text: String =
-      s"<$elementName> (${locationToString(location)})" + (
-        getCause match {
-          case cause: XmlException ⇒ " " + cause.text
-          case _ ⇒ ""
-        })
-  }
-
-  object XmlException {
-    def unapply(o: XmlException) = o.getCause match {
-      case cause: XmlException ⇒ Some(cause.nonWrappedCause)
-      case cause ⇒ Some(cause)
-    }
-  }
-
-  private def locationToString(o: Location) =
+  private[xmls] def locationToString(o: Location) =
     (Option(o.getSystemId) ++ Option(o.getPublicId)).flatten.mkString(":") + ":" + o.getLineNumber + ":" + o.getColumnNumber
 }
