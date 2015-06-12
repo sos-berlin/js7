@@ -11,7 +11,7 @@ import spray.routing.Directives._
 /**
  * @author Joacim Zschimmer
  */
-trait ViewService extends RouteStandards {
+trait ViewService extends ServiceStandards {
 
   protected def processHandlerView: ProcessHandlerView
   protected def agentOverview: AgentOverview

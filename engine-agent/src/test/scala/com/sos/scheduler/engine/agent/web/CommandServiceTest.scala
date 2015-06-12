@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate, _}
 import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, FileOrderSourceContent}
 import com.sos.scheduler.engine.agent.web.CommandServiceTest._
+import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -31,7 +32,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       val expectedTerminate = Terminate(sigkillProcessesAfter = 999.s)
       command match {
         case TestRequestFileOrderSourceContent ⇒ TestFileOrderSourceContent
-        case FailingRequestFileOrderSourceContent ⇒ throw new Exception(s"TEST EXCEPTION: $command")
+        case FailingRequestFileOrderSourceContent ⇒ throw new StandardPublicException(s"TEST EXCEPTION: $command")
         case `expectedTerminate` ⇒ EmptyResponse
       }
     }
@@ -56,7 +57,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       }
     }
 
-    "Terminate (JSON)" in {
+    "Terminate" in {
       val json = """{
           "$TYPE": "Terminate",
           "sigtermProcesses": false,
@@ -65,13 +66,6 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       postJsonCommand(json) ~> check {
         assert(responseAs[EmptyResponse.type] == EmptyResponse)
         assert(responseAs[String].parseJson == "{}".parseJson)
-      }
-    }
-
-    "Terminate (XML)" in {
-      postXmlCommand(<agent.terminate cmd="terminate" timeout="999"/>) ~> check {
-        //assert(responseAs[EmptyResponse.type] == EmptyResponse)
-        assert(XML.loadString(responseAs[String]) == <spooler><answer><ok/></answer></spooler>)
       }
     }
 
@@ -85,12 +79,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
         }"""
       postJsonCommand(json) ~> check {
         assert(status == InternalServerError)
-      }
-    }
-
-    "Exception (XML)" in {
-      postXmlCommand(<unknown/>) ~> check {
-        assert(status == InternalServerError)
+        assert(responseAs[String] startsWith "TEST EXCEPTION")
       }
     }
 
@@ -98,23 +87,24 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       Post("/jobscheduler/agent/command", json)(stringMarshaller(`application/json`)) ~>
         Accept(`application/json`) ~>
         agentCommandRoute
-
-    def postXmlCommand(elem: xml.Elem): RouteResult =
-      Post("/jobscheduler/agent/command", elem) ~> Accept(`application/xml`) ~> agentCommandRoute
   }
 
   "jobscheduler/agent/command for XML commands" - {
     "agent.terminate" in {
-      Post("/jobscheduler/agent/command", <agent.terminate cmd="terminate" timeout="999"/>) ~> agentCommandRoute ~> check {
+      postXmlCommand(<agent.terminate cmd="terminate" timeout="999"/>) ~> check {
         assert(XML.loadString(responseAs[String]) == <spooler><answer><ok/></answer></spooler> )
       }
     }
 
     "Unknown XML command" in {
-      Post("/jobscheduler/agent/command", <ERROR/>) ~> agentCommandRoute ~> check {
+      postXmlCommand(<ERROR/>) ~> check {
         assert(status == InternalServerError)
+        assert(responseAs[String] startsWith "Error in XML element <ERROR>")
       }
     }
+
+    def postXmlCommand(elem: xml.Elem): RouteResult =
+      Post("/jobscheduler/agent/command", elem) ~> Accept(`application/xml`) ~> agentCommandRoute
   }
 }
 

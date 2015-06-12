@@ -14,7 +14,7 @@ import spray.routing.Directives._
 /**
  * @author Joacim Zschimmer
  */
-trait LegacyCommandService extends RouteStandards {
+trait LegacyCommandService extends ServiceStandards {
 
   protected def executeCommand(command: Command): Future[Response]
 

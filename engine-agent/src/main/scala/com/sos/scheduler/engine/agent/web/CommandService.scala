@@ -13,7 +13,7 @@ import spray.routing.Directives._
 /**
  * @author Joacim Zschimmer
  */
-trait CommandService extends RouteStandards {
+trait CommandService extends ServiceStandards {
 
   protected def executeCommand(command: Command): Future[Response]
 
