@@ -16,7 +16,7 @@ object CommandXml {
       case StartProcess.XmlElementName ⇒ StartProcessXml.parseXml(eventReader)
       case CloseProcess.XmlElementName ⇒ CloseProcessXml.parseXml(eventReader)
       case SendProcessSignal.XmlElementName ⇒ SendProcessSignalXml.parseXml(eventReader)
-      case Terminate.XmlElementName ⇒ TerminateXml.parseXml(eventReader)
+      case Terminate.XmlElementName ⇒ TerminateOrAbortXml.parseXml(eventReader)
     }
   }
 }

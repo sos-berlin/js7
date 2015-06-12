@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.xmlcommand
 
-import com.sos.scheduler.engine.agent.data.commands.Terminate
+import com.sos.scheduler.engine.agent.data.commands.{AbortImmediately, Terminate, TerminateOrAbort}
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
 import java.time.Duration
@@ -9,14 +9,14 @@ import java.time.Duration
 /**
  * @author Joacim Zschimmer
  */
-object TerminateXml {
+object TerminateOrAbortXml {
 
-  def parseXml(eventReader: ScalaXMLEventReader): Terminate = {
+  def parseXml(eventReader: ScalaXMLEventReader): TerminateOrAbort = {
     import eventReader._
     parseElement(Terminate.XmlElementName) {
       attributeMap("cmd") match {
         case "abort_immediately" ⇒
-          Terminate(sigkillProcessesAfter = Duration.ZERO)
+          AbortImmediately
         case "terminate" ⇒
           attributeMap.getConverted("timeout") { o ⇒ Duration.ofSeconds(o.toLong) } match {
             case Some(timeout) ⇒ Terminate(sigkillProcessesAfter = timeout)
