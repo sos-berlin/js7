@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.JavaProcessTest._
@@ -13,7 +14,6 @@ import java.lang.System.{err, exit, out}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import scala.concurrent.duration.DurationInt
 
 /**
  * @author Joacim Zschimmer
@@ -40,7 +40,7 @@ final class JavaProcessTest extends FreeSpec {
         assert(stdFileMap(Stderr).contentString contains s"STDERR $TestValue")
       }
       finally process.close()
-      awaitResult(process.closed, 10.seconds)
+      awaitResult(process.closed, 10.s)
       logger.info(s"$stopwatch for Java process")
     }
   }

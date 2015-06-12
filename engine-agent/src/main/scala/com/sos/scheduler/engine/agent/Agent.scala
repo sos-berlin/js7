@@ -10,9 +10,9 @@ import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
+import com.sos.scheduler.engine.common.time.ScalaTime.MaxDuration
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
 
 /**
  * JobScheduler Agent.
@@ -42,7 +42,7 @@ object Agent {
   def run(conf: AgentConfiguration): Unit =
     autoClosing(new Agent(conf)) { agent ⇒
       agent.start()
-      awaitResult(agent.terminated, Duration.Inf)
+      awaitResult(agent.terminated, MaxDuration)
     }
 
   def forTest(): Agent = forTest(httpPort = findRandomFreeTcpPort())

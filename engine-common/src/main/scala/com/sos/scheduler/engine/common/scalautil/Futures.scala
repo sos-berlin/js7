@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.common.scalautil
 
 import com.sos.scheduler.engine.common.scalautil.Tries.{extendStackTraceWith, newStackTrace}
-import scala.concurrent.duration.Duration
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.time.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
@@ -15,7 +16,7 @@ object Futures {
    */
   def awaitResult[A](future: Future[A], atMost: Duration): A = {
     import implicits.SuccessFuture
-    Await.ready[A](future, atMost.toCoarsest).successValue
+    Await.ready[A](future, atMost.toConcurrent.toCoarsest).successValue
   }
 
   object implicits {

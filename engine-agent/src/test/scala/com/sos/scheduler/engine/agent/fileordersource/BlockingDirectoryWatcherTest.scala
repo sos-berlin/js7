@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersA
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.touchAndDeleteWithCloser
+import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.nio.file.Files
 import java.nio.file.Files.delete
@@ -12,7 +13,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
@@ -35,7 +36,7 @@ final class BlockingDirectoryWatcherTest extends FreeSpec {
         assert(!nonMatchingFuture.isCompleted)
         touchAndDeleteWithCloser(directory / "X")
         sleep(1.s)
-        val matches = Await.result(nonMatchingFuture, beforeUntil - now())
+        val matches = awaitResult(nonMatchingFuture, beforeUntil - now())
         assert(!matches)
       }
 
@@ -44,7 +45,7 @@ final class BlockingDirectoryWatcherTest extends FreeSpec {
         sleep(1.s)
         assert(!matchingFuture.isCompleted)
         touchAndDeleteWithCloser(matchingPath)
-        val matches = Await.result(matchingFuture, beforeUntil - now)
+        val matches = awaitResult(matchingFuture, beforeUntil - now)
         assert(matches)
       }
     }

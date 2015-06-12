@@ -92,10 +92,20 @@ final class ScalaTimeTest extends FreeSpec {
       (-1).s.pretty shouldEqual "-1s"
     }
 
-    "toConcurrentDuration" in {
-      assert(1234.ms.toConcurrentDuration == 1234.millis)
-      assert(Duration.of(111222333444555666L, NANOS).toConcurrentDuration == 111222333444555666L.nanos)
+    "toConcurrent" in {
+      assert(1234.ms.toConcurrent == 1234.millis)
+      assert(Duration.ofNanos(111222333444555666L).toConcurrent == 111222333444555666L.nanos)
+      assert(Duration.ofNanos(Long.MaxValue).toConcurrent == Long.MaxValue.nanos)
+      assert((Duration.ofNanos(Long.MaxValue) + Duration.ofNanos(1)).toConcurrent == scala.concurrent.duration.Duration.Inf)   // Limit exceeded
     }
+
+    "toFiniteDuration" in {
+      assert(1234.ms.toFiniteDuration== 1234.millis)
+      assert(Duration.ofNanos(111222333444555666L).toFiniteDuration == 111222333444555666L.nanos)
+      assert(Duration.ofNanos(Long.MaxValue).toFiniteDuration == Long.MaxValue.nanos)
+      assert((Duration.ofNanos(Long.MaxValue) + Duration.ofNanos(1)).toFiniteDuration == Long.MaxValue.nanos)   // Limit exceeded
+    }
+
 //    "Duration * Int" in {
 //      ((7.s * 3): Duration).toMillis shouldEqual (7*1000 * 3)
 //    }

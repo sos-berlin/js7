@@ -21,7 +21,6 @@ import org.scalatest.FreeSpec
 import org.scalatest.Inside.inside
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.time.SpanSugar._
 import scala.concurrent.Promise
 
 /**
@@ -37,7 +36,7 @@ final class ProcessHandlerTest extends FreeSpec {
     "StartProcess" in {
       assert(!processHandler.terminated.isCompleted)
       for (nextProcessId ← AgentProcessIds) {
-        val response = awaitResult(processHandler.apply(TestStartSeparateProcess), 3.seconds)
+        val response = awaitResult(processHandler.apply(TestStartSeparateProcess), 3.s)
         inside(response) { case StartProcessResponse(id) ⇒ id shouldEqual nextProcessId }
       }
       for (o ← taskServers) {
@@ -72,7 +71,7 @@ final class ProcessHandlerTest extends FreeSpec {
         CloseProcess(processes(0).id, kill = false),
         CloseProcess(processes(1).id, kill = true))
       for (command ← commands) {
-        val response = awaitResult(processHandler.apply(command), 3.seconds)
+        val response = awaitResult(processHandler.apply(command), 3.s)
         inside(response) { case EmptyResponse ⇒ }
       }
       assert(taskServers(0).started)
@@ -109,19 +108,19 @@ final class ProcessHandlerTest extends FreeSpec {
       val testContext = new TestContext
       import testContext.processHandler
       assert(!processHandler.terminated.isCompleted)
-      awaitResult(processHandler.apply(Terminate(sigtermProcesses = false, sigkillProcessesAfter = 1.ms)), 3.seconds)
+      awaitResult(processHandler.apply(Terminate(sigtermProcesses = false, sigkillProcessesAfter = 1.ms)), 3.s)
       awaitResult(processHandler.terminated, 3.s)
     }
 
     "When a process is registered, ProcessHandler terminates after the process has terminated" in {
       val testContext = new TestContext
       import testContext.{processHandler, processes, taskServers}
-      for (_ ← processes) awaitResult(processHandler.apply(TestStartSeparateProcess), 3.seconds)
+      for (_ ← processes) awaitResult(processHandler.apply(TestStartSeparateProcess), 3.s)
       assert(processHandler.totalProcessCount == processes.size)
       assert(processHandler.currentProcessCount == processes.size)
       assert(!processHandler.terminated.isCompleted)
       for (o ← taskServers) assert(!o.sigtermed)
-      awaitResult(processHandler.apply(Terminate(sigtermProcesses = true, sigkillProcessesAfter = 2.s)), 3.seconds)
+      awaitResult(processHandler.apply(Terminate(sigtermProcesses = true, sigkillProcessesAfter = 2.s)), 3.s)
       for (o ← taskServers) assert(o.sigtermed == !isWindows)
       sleep(1.s)
       assert(!processHandler.terminated.isCompleted)

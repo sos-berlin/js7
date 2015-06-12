@@ -1,15 +1,16 @@
 package com.sos.scheduler.engine.common.time
 
 import java.time._
-import java.time.temporal.ChronoUnit._
 import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
-import scala.language.implicitConversions
+//import scala.language.implicitConversions
 import scala.math.abs
 
 object ScalaTime {
+  val MaxDuration = Duration.ofSeconds(Long.MaxValue, 999999999)
+  private val MaxConcurrentDuration = Duration.ofNanos(Long.MaxValue)
   @TestOnly @volatile var extraSleepCount = 0L
 
   implicit class DurationRichInt(val delegate: Int) extends AnyVal {
@@ -59,48 +60,47 @@ object ScalaTime {
     Duration.ofSeconds(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
   }
 
-  implicit class RichDuration(val delegate: Duration) extends AnyVal {
+  implicit class RichDuration(val delegate: Duration) extends AnyVal with Ordered[RichDuration] {
     def +(o: Duration) = delegate plus o
     def -(o: Duration) = delegate minus o
     def toBigDecimal = BigDecimal(delegate.getSeconds) + BigDecimal(delegate.getNano) / (1000*1000*1000)
-    def toConcurrentDuration: scala.concurrent.duration.Duration = javaToConcurrentDuration(delegate)
+    def toConcurrent: scala.concurrent.duration.Duration = javaToConcurrentDuration(delegate)
+    def toFiniteDuration: scala.concurrent.duration.FiniteDuration = javaToConcurrentFiniteDuration(delegate)
     def pretty = millisToPretty(delegate.toMillis)
+    def compare(o: RichDuration) = delegate compareTo o.delegate
   }
 
-  implicit class RichInstant(val delegate: Instant) extends AnyVal {
+  implicit class RichInstant(val delegate: Instant) extends AnyVal with Ordered[RichInstant] {
     def +(o: Duration) = delegate plus o
     def -(o: Duration) = delegate minus o
     def -(o: Instant) = Duration.between(o, delegate)
-    def <(o: Instant) = delegate isBefore o
-    def <=(o: Instant) = !(delegate isAfter o)
-    def >(o: Instant) = delegate isAfter o
-    def >=(o: Instant) = !(delegate isBefore o)
+    def compare(o: RichInstant) = delegate compareTo o.delegate
   }
 
-  implicit class RichLocalTime(val delegate: LocalTime) extends AnyVal {
-    def <(o: LocalTime) = delegate isBefore o
-    def <=(o: LocalTime) = !(delegate isAfter o)
-    def >(o: LocalTime) = delegate isAfter o
-    def >=(o: LocalTime) = !(delegate isBefore o)
+  implicit class RichLocalTime(val delegate: LocalTime) extends AnyVal with Ordered[RichLocalTime] {
+    def compare(o: RichLocalTime) = delegate compareTo o.delegate
   }
 
-  //  implicit class RichDuration(val delegate: Duration) extends AnyVal {
-  //    def <(o: Duration) = delegate isShorterThan o
-  //    def <=(o: Duration) = !(delegate isLongerThan o)
-  //    def >(o: Duration) = delegate isLongerThan o
-  //    def >=(o: Duration) = !(delegate isShorterThan o)
-  //  }
+//  implicit object InstantOrdering extends Ordering[Instant] {
+//    def compare(a: Instant, b: Instant) = a compareTo b
+//  }
+//
+//  implicit object LocalTimeOrdering extends Ordering[LocalTime] {
+//    def compare(a: LocalTime, b: LocalTime) = a compareTo b
+//  }
 
-  implicit object DurationOrdering extends Ordering[Duration] {
-    def compare(x: Duration, y: Duration) = x compareTo y
+  def javaToConcurrentDuration(o: Duration): scala.concurrent.duration.Duration = {
+    if ((o compareTo MaxConcurrentDuration) > 0) scala.concurrent.duration.Duration.Inf
+    else simpleJavaToConcurrentFiniteDuration(o)
   }
 
-  implicit object InstantOrdering extends Ordering[Instant]{
-    def compare(a: Instant, b: Instant) = a compareTo b
+  def javaToConcurrentFiniteDuration(o: Duration): FiniteDuration = {
+    if ((o compareTo Duration.ofNanos(Long.MaxValue)) > 0) FiniteDuration(Long.MaxValue, TimeUnit.NANOSECONDS)
+    else simpleJavaToConcurrentFiniteDuration(o)
   }
 
-  implicit def javaToConcurrentDuration(o: Duration): FiniteDuration =
-    new FiniteDuration(o.get(SECONDS), TimeUnit.SECONDS) + new FiniteDuration(o.get(NANOS), TimeUnit.NANOSECONDS)
+  private def simpleJavaToConcurrentFiniteDuration(o: Duration) =
+    new FiniteDuration(o.toNanos, TimeUnit.NANOSECONDS).toCoarsest.asInstanceOf[FiniteDuration]
 
   def sleep(d: Duration): Unit = sleep(d.toMillis)
 

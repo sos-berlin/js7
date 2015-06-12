@@ -7,6 +7,7 @@ import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor.throwableToS
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutorTest._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader.XmlException
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import org.junit.runner.RunWith
 import org.scalatest.Assertions.fail
 import org.scalatest.FreeSpec
@@ -48,7 +49,7 @@ private object CommandXmlExecutorTest {
 
   private def executeCommand(command: String): xml.Elem = {
     val executed = CommandXmlExecutor.execute(command)(executeCommand)
-    awaitResult(executed, 10.seconds) match {
+    awaitResult(executed, 10.s) match {
       case <spooler><answer>{elem: xml.Elem}</answer></spooler> if elem.label == "ERROR" ⇒ throw new CommandException
       case o ⇒ o
     }
