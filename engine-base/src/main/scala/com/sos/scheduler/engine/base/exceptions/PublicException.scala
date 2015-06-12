@@ -1,0 +1,11 @@
+package com.sos.scheduler.engine.base.exceptions
+
+/**
+ * Exception.getMessage is allowed to be visible by the user (via a web browser).
+ *
+ * @author Joacim Zschimmer
+ */
+trait PublicException {
+  this: Throwable ⇒
+  def publicMessage: String
+}
