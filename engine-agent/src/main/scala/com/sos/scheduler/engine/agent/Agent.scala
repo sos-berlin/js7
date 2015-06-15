@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.agent
 
 import com.google.common.io.Closer
-import com.google.inject.Guice
 import com.google.inject.Stage.PRODUCTION
+import com.google.inject.{Guice, Module}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.process.ProcessHandler
@@ -20,10 +20,15 @@ import scala.concurrent.Future
  *
  * @author Joacim Zschimmer
  */
-final class Agent(configuration: AgentConfiguration) extends AutoCloseable {
+final class Agent(module: Module) extends AutoCloseable {
 
+  def this(configuration: AgentConfiguration) = {
+    this(new AgentModule(configuration))
+  }
+
+  private val injector = Guice.createInjector(PRODUCTION, module)
+  val configuration = injector.instance[AgentConfiguration]
   val localUri = s"http://127.0.0.1:${configuration.httpPort}"
-  private val injector = Guice.createInjector(PRODUCTION, new AgentModule(configuration))
   private val server = injector.instance[AgentWebServer]
   private val closer = injector.instance[Closer]
   private val processHandler = injector.instance[ProcessHandler]
