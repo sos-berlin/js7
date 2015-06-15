@@ -17,6 +17,7 @@
         <module>engine-agent</module>
         <module>engine-agent-client</module>
         <module>engine-agent-data</module>
+        <module>engine-agent-main</module>
         <module>engine-agent-test</module>
         <module>engine-base</module>
         <module>engine-cppjava</module>
