@@ -1,10 +1,13 @@
 package com.sos.scheduler.engine.agent.configuration
 
+import com.sos.scheduler.engine.agent.web.WebService
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
+import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.utils.TcpUtils.{parseTcpPort, requireTcpPortNumber}
 import java.nio.file.{Path, Paths}
 import org.scalactic.Requirements._
 import scala.collection.immutable
+import scala.reflect.ClassTag
 
 /**
  * @author Joacim Zschimmer
@@ -17,10 +20,14 @@ final case class AgentConfiguration(
    */
   httpInterfaceRestriction: Option[String] = None,
   directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
-  environment: immutable.Iterable[(String, String)] = Nil)
+  environment: immutable.Iterable[(String, String)] = Nil,
+  webServiceClasses: immutable.Seq[Class[_ <: WebService]] = Nil)
 {
   requireTcpPortNumber(httpPort)
   require(directory.isAbsolute)
+
+  def withWebServiceProvider[A <: WebService : ClassTag]: AgentConfiguration =
+    copy(webServiceClasses = webServiceClasses :+ implicitClass[A])
 }
 
 object AgentConfiguration {
