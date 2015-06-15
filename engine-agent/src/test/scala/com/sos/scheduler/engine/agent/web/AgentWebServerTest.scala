@@ -1,11 +1,10 @@
 package com.sos.scheduler.engine.agent.web
 
-import akka.actor.ActorSystem
 import com.google.inject.Guice
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
+import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.web.AgentWebServerTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
-import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
@@ -37,12 +36,7 @@ final class AgentWebServerTest extends FreeSpec {
 
 private object AgentWebServerTest {
   private def startAgent(httpPort: Int) = {
-    val injector = Guice.createInjector(new ScalaAbstractModule {
-      def configure() = {
-        bindInstance[AgentConfiguration](AgentConfiguration(httpPort = httpPort))
-        bindInstance[ActorSystem](ActorSystem("TEST"))
-      }
-    })
+    val injector = Guice.createInjector(new AgentModule(AgentConfiguration(httpPort = httpPort)))
     val agentStarter = injector.instance[AgentWebServer]
     val started = agentStarter.start()
     awaitResult(started, 10.s)
