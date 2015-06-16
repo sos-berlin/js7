@@ -373,7 +373,7 @@
             </build>
         </profile>
         <profile>
-            <id>cleanup</id>
+            <id>delete-local-repository</id>
             <build>
                 <plugins>
 	                <!-- clean local repository once before build and log deleted files and folders -->
@@ -382,7 +382,7 @@
 		                <inherited>false</inherited>
 		                <executions>
 		                    <execution>
-		                        <id>clear-repo</id>
+		                        <id>delete-local-repository</id>
 		                        <phase>pre-clean</phase>
 		                        <goals>
 		                            <goal>run</goal>
