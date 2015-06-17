@@ -6,12 +6,16 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
+import com.sos.scheduler.engine.agent.web.AgentWebServer._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
+import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import spray.can.Http
+import spray.can.Http.Unbind
 
 /**
  * @author Joacim Zschimmer
@@ -39,11 +43,18 @@ extends AutoCloseable {
         throw new RuntimeException(s"Binding to TCP port ${conf.httpPort } failed. " +
           "Port is possibly in use and not available. " +
           "Switch on DEBUG-level logging for `akka.io.TcpListener` to log the cause")
-        // (Akka 2.3.7) TODO: replace by actual exception when Akka #3861 is fixed. See https://www.assembla.com/spaces/akka/tickets/3861
+        // (Akka 2.3.7) When Akka #13861 should be fixed, replace by actual exception. See https://github.com/akka/akka/issues/13861
     }
   }
 
   def close() = {
-    //TODO Close HTTP port: IO(Http) ! Unbind in einem Aktor? https://gist.github.com/EECOLOR/8127533
+    implicit val timeout = Timeout(ShutdownTimeout.toFiniteDuration)
+    val future = for (_ ← IO(Http) ? Unbind(ShutdownTimeout.toConcurrent);
+                      _ ← IO(Http) ? Http.CloseAll) yield ()
+    awaitResult(future, ShutdownTimeout)
   }
+}
+
+object AgentWebServer {
+  private val ShutdownTimeout = 5.s
 }
