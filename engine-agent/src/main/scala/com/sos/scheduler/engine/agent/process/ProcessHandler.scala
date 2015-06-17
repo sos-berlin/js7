@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.agent.process
 
+import com.sos.scheduler.engine.base.exceptions.{StandardPublicException, PublicException}
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, Response, StartProcessResponse}
@@ -7,7 +9,8 @@ import com.sos.scheduler.engine.agent.process.ProcessHandler._
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.time.Instant
+import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import javax.inject.{Inject, Singleton}
 import org.scalactic.Requirements._
@@ -69,24 +72,44 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
   }
 
   private def terminate(command: Terminate) = {
-    if (terminating.getAndSet(true)) sys.error("Agent is already terminating")
+    if (terminating.getAndSet(true)) throw new StandardPublicException("Agent is already terminating")
     if (command.sigtermProcesses) {
-      if (isWindows) {
-        logger.debug("Terminate: Under Windows, SIGTERM is ignored")
-      } else {
-        for (o ← agentProcesses) o.sendProcessSignal(SIGTERM)
-      }
+      trySigtermProcesses()
     }
     if (command.sigkillProcessesAfter < Terminate.MaxDuration) {
-      Future {
-        blocking {
-          sleep(command.sigkillProcessesAfter)
-        }
-        for (o ← agentProcesses) o.sendProcessSignal(SIGKILL)
-      }
+      sigkillProcessesAt(now() + command.sigkillProcessesAfter)
     }
-    Future.sequence(agentProcesses map { _.terminated }) onComplete { o ⇒ terminatedPromise.complete(o map { _ ⇒ () }) }
+    terminateWithProcessesNotBefore(now() + ImmediateTerminationDelay)
     EmptyResponse
+  }
+
+  private def trySigtermProcesses(): Unit =
+    if (isWindows) {
+      logger.debug("Terminate: Under Windows, SIGTERM is ignored")
+    } else {
+      for (o ← agentProcesses) o.sendProcessSignal(SIGTERM)
+    }
+
+  private def sigkillProcessesAt(at: Instant): Unit = {
+    logger.info(s"All processes will be terminated with SIGKILL at $at")
+    Future {
+      blocking {
+        sleep(at - now())
+      }
+      for (o ← agentProcesses) o.sendProcessSignal(SIGKILL)
+    }
+  }
+
+  private def terminateWithProcessesNotBefore(notBefore: Instant): Unit = {
+    Future.sequence(agentProcesses map { _.terminated }) onComplete { o ⇒
+      val delay = notBefore - now()
+      if (delay > 0.s) {
+        // Wait until HTTP request with termination command probably has been responded
+        logger.debug(s"Delaying termination for ${delay.pretty}")
+        sleep(delay)
+      }
+      terminatedPromise.complete(o map { _ ⇒ () })
+    }
   }
 
   private def haltImmediately(): Nothing = {
@@ -109,6 +132,7 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
 
 private object ProcessHandler {
   private val logger = Logger(getClass)
+  private val ImmediateTerminationDelay = 1.s  // Allow HTTP with termination command request to be responded
 
   private def throwUnknownProcess(id: AgentProcessId) = throw new NoSuchElementException(s"Unknown agent process '$id'")
 }
