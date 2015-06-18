@@ -13,7 +13,7 @@ import spray.json._
  *
  * @author Joacim Zschimmer
  */
-object PrettyOrCompactSprayJsonSupport {
+object SprayJsonOrTextSupport {
 
   implicit def sprayJsonUnmarshallerConverter[T](reader: RootJsonReader[T]): Unmarshaller[T] =
     SprayJsonSupport.sprayJsonUnmarshallerConverter(reader)
@@ -28,7 +28,7 @@ object PrettyOrCompactSprayJsonSupport {
     Marshaller.delegate[T, String](`text/plain`, `application/json`) { (value, contentType) ⇒
       val json = writer.write(value)
       contentType match {
-        case `text/plain` | `text/plain(UTF-8)` ⇒ PrettyPrinter(json)
+        case `text/plain` | `text/plain(UTF-8)` ⇒ YamlPrinter(json)
         case _ ⇒ CompactPrinter(json)
       }
     }

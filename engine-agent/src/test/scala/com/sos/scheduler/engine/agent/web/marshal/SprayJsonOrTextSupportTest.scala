@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.web.marshal
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.agent.web.marshal.PrettyOrCompactSprayJsonSupport._
+import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrTextSupport._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -17,7 +17,7 @@ import spray.testkit.ScalatestRouteTest
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class PrettyOrCompactSprayJsonSupportTest extends FreeSpec with ScalatestRouteTest with HttpService {
+final class SprayJsonOrTextSupportTest extends FreeSpec with ScalatestRouteTest with HttpService {
 
   implicit lazy val actorRefFactory = ActorSystem()
 
@@ -57,7 +57,7 @@ final class PrettyOrCompactSprayJsonSupportTest extends FreeSpec with ScalatestR
 
     def requirePrettyTextPlain(contentType: ContentType, string: String): Unit = {
       assert(contentType == ContentTypes.`text/plain(UTF-8)`)
-      assert(JsonParser(string) == expectedJsObject)
+      //It's YAML, not JSON: assert(JsonParser(string) == expectedJsObject)
       assert(string contains " ")
     }
   }

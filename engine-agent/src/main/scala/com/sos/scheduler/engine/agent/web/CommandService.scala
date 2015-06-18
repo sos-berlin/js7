@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.agent.web
 
 import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.data.responses.Response
-import com.sos.scheduler.engine.agent.web.marshal.PrettyOrCompactSprayJsonSupport._
+import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrTextSupport._
 import com.sos.scheduler.engine.agent.web.marshal.ResponseXmlSupport._
 import com.sos.scheduler.engine.agent.web.marshal.XmlString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor

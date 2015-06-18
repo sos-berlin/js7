@@ -8,7 +8,6 @@ import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.Logger
 import java.nio.file.Files
 import java.nio.file.Files.createTempFile
 import java.time.Instant
@@ -30,15 +29,15 @@ final class ViewServiceTest extends FreeSpec with ScalatestRouteTest with ViewSe
 
   implicit lazy val actorRefFactory = ActorSystem()
 
-    protected def processHandlerView = new ProcessHandlerView {
-      def currentProcessCount = 777
+  protected def processHandlerView = new ProcessHandlerView {
+    def currentProcessCount = 777
 
-      def totalProcessCount = 999
+    def totalProcessCount = 999
 
-      def processes = List(ProcessOverview(AgentProcessId("1-123"), controllerAddress = "127.0.0.1:999999999", Instant.parse("2015-06-10T12:00:00Z")))
+    def processes = List(ProcessOverview(AgentProcessId("1-123"), controllerAddress = "127.0.0.1:999999999", Instant.parse("2015-06-10T12:00:00Z")))
 
-      def isTerminating = false
-    }
+    def isTerminating = false
+  }
 
   protected def agentOverview = AgentOverview(
     startedAt = Instant.parse("2015-06-01T12:00:00Z"),
@@ -74,12 +73,10 @@ final class ViewServiceTest extends FreeSpec with ScalatestRouteTest with ViewSe
       }
     }
 
-    "Accept: text/plain returns pretty JSON" in {
+    "Accept: text/plain returns pretty YAML" in {
       // curl http://.../jobscheduler/agent/overview shows user readable json
       Get(Uri("/jobscheduler/agent/overview")) ~> Accept(`text/plain`) ~> viewRoute ~> check {
-        val string = responseAs[String]
-        assert(JsonParser(string) == expectedOverviewJsObject)
-        assert(responseAs[String] contains " ") // PrettyJSON
+        assert(responseAs[String] contains " ") // YAML
       }
     }
   }
@@ -91,13 +88,7 @@ final class ViewServiceTest extends FreeSpec with ScalatestRouteTest with ViewSe
           JsObject(
             "id" → JsString("1-123"),
             "controllerAddress" → JsString("127.0.0.1:999999999"),
-            "startedAt" → JsString("2015-06-10T12:00:00Z"))
-        )))
+            "startedAt" → JsString("2015-06-10T12:00:00Z")))))
     }
   }
-
-}
-
-object ViewServiceTest {
-  private val logger = Logger(getClass)
 }

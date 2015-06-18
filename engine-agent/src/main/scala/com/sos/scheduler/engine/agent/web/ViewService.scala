@@ -2,11 +2,10 @@ package com.sos.scheduler.engine.agent.web
 
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
-import com.sos.scheduler.engine.agent.web.marshal.PrettyOrCompactSprayJsonSupport._
+import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrTextSupport._
 import java.nio.file.{Files, Paths}
 import spray.http.StatusCodes.{NotFound, OK}
 import spray.routing.Directives._
-
 
 /**
  * @author Joacim Zschimmer
@@ -28,10 +27,10 @@ trait ViewService extends ServiceStandards {
           }
         } ~
         path("overview") {
-          complete {agentOverview}
+          complete { agentOverview }
         } ~
         path("processHandler") {
-          complete {processHandlerView}
+          complete { processHandlerView }
         }
       }
     }
