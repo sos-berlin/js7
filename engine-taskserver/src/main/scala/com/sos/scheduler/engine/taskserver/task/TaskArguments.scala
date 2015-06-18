@@ -61,6 +61,17 @@ private[task] object TaskArguments {
   private val MonitorScriptKey = "monitor.script"
   private val KeySet = Set(LanguageKey, ScriptKey, JobKey, TaskIdKey, EnvironmentKey, HasOrderKey, JavaClassKey,
     MonitorLanguageKey, MonitorNameKey, MonitorOrderingKey, MonitorJavaClassKey, MonitorScriptKey)
+  private val IsLegacyKeyValue = Set(
+    "com_class" → "",
+    "filename" → "",
+    "java_options" → "",
+    "java_class_path" → "",
+    "process.filename" → "",
+    "process.param_raw" → "",
+    "process.log_filename" → "",
+    "process.ignore_error" → "0",
+    "process.ignore_signal" → "0")
+  assert(((IsLegacyKeyValue map { _._1 }) intersect KeySet).isEmpty)
   private val KeyValueRegex = "(?s)([[a-z_.]]+)=(.*)".r  //  "(?s)" dot matches \n too, "key=value"
   private val logger = Logger(getClass)
 
@@ -71,10 +82,8 @@ private[task] object TaskArguments {
       if (KeySet contains key) {
         buffer += key → value
       } else
-      if (value.nonEmpty) {
-        logger.debug(s"Ignoring unsupported key: $key=$value")
-      } else {
-        logger.trace(s"Ignoring unsupported key: $key=$value")
+      if (!IsLegacyKeyValue(key → value.trim)) {
+        logger.warn(s"Ignoring unsupported key: $key=$value")
       }
     }
     new TaskArguments(buffer.toList)
