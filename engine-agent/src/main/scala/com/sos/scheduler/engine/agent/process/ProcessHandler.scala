@@ -76,8 +76,8 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
     if (command.sigtermProcesses) {
       trySigtermProcesses()
     }
-    if (command.sigkillProcessesAfter < Terminate.MaxDuration) {
-      sigkillProcessesAt(now() + command.sigkillProcessesAfter)
+    for (t ← command.sigkillProcessesAfter if t < Terminate.MaxDuration) {
+      sigkillProcessesAt(now() + t)
     }
     terminateWithProcessesNotBefore(now() + ImmediateTerminationDelay)
     EmptyResponse

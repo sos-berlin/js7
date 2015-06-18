@@ -29,7 +29,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
 
   protected def executeCommand(command: Command) =
     Future.successful {
-      val expectedTerminate = Terminate(sigkillProcessesAfter = 999.s)
+      val expectedTerminate = Terminate(sigkillProcessesAfter = Some(999.s))
       command match {
         case TestRequestFileOrderSourceContent ⇒ TestFileOrderSourceContent
         case FailingRequestFileOrderSourceContent ⇒ throw new StandardPublicException(s"TEST EXCEPTION: $command")

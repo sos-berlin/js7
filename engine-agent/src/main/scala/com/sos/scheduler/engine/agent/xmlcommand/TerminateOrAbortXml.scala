@@ -19,7 +19,7 @@ object TerminateOrAbortXml {
           AbortImmediately
         case "terminate" ⇒
           attributeMap.getConverted("timeout") { o ⇒ Duration.ofSeconds(o.toLong) } match {
-            case Some(timeout) ⇒ Terminate(sigkillProcessesAfter = timeout)
+            case Some(timeout) ⇒ Terminate(sigkillProcessesAfter = Some(timeout))
             case None ⇒ Terminate()
           }
       }

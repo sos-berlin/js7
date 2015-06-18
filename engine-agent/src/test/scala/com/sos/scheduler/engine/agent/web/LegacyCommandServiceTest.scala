@@ -23,7 +23,7 @@ final class LegacyCommandServiceTest extends FreeSpec with ScalatestRouteTest wi
 
   protected def executeCommand(command: Command) =
     Future.successful {
-      val expectedTerminate = Terminate(sigkillProcessesAfter = 999.s)
+      val expectedTerminate = Terminate(sigkillProcessesAfter = Some(999.s))
       command match {
         case StartSeparateProcess("0.0.0.0:999", "", "") ⇒ StartProcessResponse(AgentProcessId(123))
         case `expectedTerminate` ⇒ EmptyResponse

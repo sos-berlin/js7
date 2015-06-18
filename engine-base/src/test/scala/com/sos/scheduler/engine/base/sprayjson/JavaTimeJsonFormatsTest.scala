@@ -1,12 +1,13 @@
 package com.sos.scheduler.engine.base.sprayjson
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol._
-import spray.json.{JsObject, JsString, pimpAny}
+import spray.json._
 
 /**
  * @author Joacim Zschimmer
@@ -83,6 +84,19 @@ final class JavaTimeJsonFormatsTest extends FreeSpec {
       assert(a.duration == Duration.ofSeconds(100 * 3600, 123456789))
       assert(a.toJson == j)
       assert(a == j.convertTo[A])
+    }
+
+    "Invalid syntax" in {
+      intercept[DateTimeParseException] { JsObject("duration" → JsString("1")).convertTo[A] }
+    }
+
+    "Numeric (read only)" in {
+      def check(bigDecimal: BigDecimal, duration: Duration) =
+        assert(JsObject("duration" → JsNumber(bigDecimal)).convertTo[A].duration == duration)
+      check(123, Duration.ofSeconds(123))
+      check(123.987654321, Duration.ofSeconds(123, 987654321))
+      check(BigDecimal("111222333444555666.987654321"), Duration.ofSeconds(111222333444555666L, 987654321))
+      intercept[ArithmeticException] { JsObject("duration" → JsNumber(BigDecimal("0.0000000009"))).convertTo[A] }
     }
   }
 }

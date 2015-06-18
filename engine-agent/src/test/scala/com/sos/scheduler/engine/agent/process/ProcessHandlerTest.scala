@@ -108,7 +108,7 @@ final class ProcessHandlerTest extends FreeSpec {
       val testContext = new TestContext
       import testContext.processHandler
       assert(!processHandler.terminated.isCompleted)
-      awaitResult(processHandler.apply(Terminate(sigtermProcesses = false, sigkillProcessesAfter = 1.ms)), 3.s)
+      awaitResult(processHandler.apply(Terminate(sigtermProcesses = false)), 3.s)
       awaitResult(processHandler.terminated, 3.s)
     }
 
@@ -120,7 +120,7 @@ final class ProcessHandlerTest extends FreeSpec {
       assert(processHandler.currentProcessCount == processes.size)
       assert(!processHandler.terminated.isCompleted)
       for (o ← taskServers) assert(!o.sigtermed)
-      awaitResult(processHandler.apply(Terminate(sigtermProcesses = true, sigkillProcessesAfter = 2.s)), 3.s)
+      awaitResult(processHandler.apply(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(2.s))), 3.s)
       for (o ← taskServers) assert(o.sigtermed == !isWindows)
       sleep(1.s)
       assert(!processHandler.terminated.isCompleted)

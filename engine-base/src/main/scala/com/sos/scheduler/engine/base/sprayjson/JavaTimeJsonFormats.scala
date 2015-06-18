@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.base.sprayjson
 
 import java.time.format.DateTimeFormatter
 import java.time.{Duration, Instant}
-import spray.json.{JsString, JsValue, JsonFormat}
+import spray.json.{JsNumber, JsString, JsValue, JsonFormat}
 
 /**
  * @author Joacim Zschimmer
@@ -27,8 +27,14 @@ object JavaTimeJsonFormats {
 
       def read(jsValue: JsValue) = jsValue match {
         case JsString(string) ⇒ Duration.parse(string)
+        case JsNumber(bigDecimal) ⇒ bigDecimalToDuration(bigDecimal)
         case _ ⇒ sys.error(s"Duration string expected instead of ${jsValue.getClass.getSimpleName}")
       }
     }
+  }
+
+  private def bigDecimalToDuration(o: BigDecimal) = {
+    val (seconds, nanos) = o /% 1
+    Duration.ofSeconds(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
   }
 }

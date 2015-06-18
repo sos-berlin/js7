@@ -38,7 +38,7 @@ final class CommandXmlTest extends FreeSpec {
   "Terminate" in {
     intercept[Exception] { parse(<agent.terminate/>) }
     parse(<agent.terminate cmd="terminate"/>) shouldEqual Terminate(sigtermProcesses = false)
-    parse(<agent.terminate cmd="terminate" timeout="999"/>) shouldEqual Terminate(sigtermProcesses = false, sigkillProcessesAfter = 999.s)
+    parse(<agent.terminate cmd="terminate" timeout="999"/>) shouldEqual Terminate(sigtermProcesses = false, sigkillProcessesAfter = Some(999.s))
   }
 
   "AbortImmediately" in {
