@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, StartProcessResponse}
 import com.sos.scheduler.engine.agent.process.ProcessHandlerTest._
+import com.sos.scheduler.engine.base.exceptions.PublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
@@ -122,6 +123,7 @@ final class ProcessHandlerTest extends FreeSpec {
       assert(!processHandler.terminated.isCompleted)
       for (o ← taskServers) assert(!o.sigtermed)
       awaitResult(processHandler.apply(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(2.s))), 3.s)
+      intercept[PublicException] { awaitResult(processHandler.apply(TestStartSeparateProcess), 3.s) }
       assert(processHandler.isTerminating)
       for (o ← taskServers) assert(o.sigtermed == !isWindows)
       sleep(1.s)

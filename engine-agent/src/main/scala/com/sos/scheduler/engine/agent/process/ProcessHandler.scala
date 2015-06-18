@@ -49,6 +49,7 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
     }
 
   private def startProcess(command: StartProcess) = {
+    if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept process starts")
     val process = newAgentProcess(command)
     process.start()
     registerProcess(process)
