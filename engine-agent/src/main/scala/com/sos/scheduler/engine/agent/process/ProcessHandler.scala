@@ -27,11 +27,13 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
   private val totalProcessCounter = new AtomicInteger(0)
   private val terminating = new AtomicBoolean
   private val terminatedPromise = Promise[Unit]()
-  def terminated = terminatedPromise.future
 
   private val idToAgentProcess = new ScalaConcurrentHashMap[AgentProcessId, AgentProcess] {
     override def default(id: AgentProcessId) = throwUnknownProcess(id)
   }
+
+  def isTerminating = terminating.get
+  def terminated = terminatedPromise.future
 
   def apply(command: Command) = Future[Response] { execute(command) }
 

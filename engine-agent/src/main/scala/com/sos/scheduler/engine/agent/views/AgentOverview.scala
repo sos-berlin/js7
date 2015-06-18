@@ -13,8 +13,9 @@ final case class AgentOverview(
   version: String,
   startedAt: Instant,
   currentProcessCount: Int,
-  totalProcessCount: Int)
+  totalProcessCount: Int,
+  isTerminating: Boolean)
 
 object AgentOverview {
-  implicit val MyJsonFormat = jsonFormat4(apply)
+  implicit val MyJsonFormat = jsonFormat5(apply)
 }

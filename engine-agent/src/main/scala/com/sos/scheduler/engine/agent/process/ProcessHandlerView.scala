@@ -17,6 +17,8 @@ trait ProcessHandlerView {
   def totalProcessCount: Int
 
   def processes: immutable.Iterable[ProcessOverview]
+
+  def isTerminating: Boolean
 }
 
 object ProcessHandlerView {
