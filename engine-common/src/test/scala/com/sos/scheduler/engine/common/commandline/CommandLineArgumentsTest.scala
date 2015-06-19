@@ -12,12 +12,12 @@ import org.scalatest.junit.JUnitRunner
 final class CommandLineArgumentsTest extends FreeSpec {
 
   "CommandLineArguments" in {
-    val a = CommandLineArguments(Array("-option", "-int=1", "-multi-int=11", "-single=SINGLE", "-multi-int=22", "UNNAMED-1", "UNNAMED-2"))
+    val a = CommandLineArguments(Array("-option", "-int=1", "-multi-int=11", "-single=SINGLE", "-multi-int=22", "UNNAMED-1", "UNNAMED-2", "-"))
     assert(a.boolean("-option"))
     assert(a.int("-int=") == 1)
     assert(a.string("-single=") == "SINGLE")
     assert(a.asConvertedList("-multi-int=") { _.toInt } == Vector(11, 22))
-    assert(a.namelessValues == Vector("UNNAMED-1", "UNNAMED-2"))
+    assert(a.namelessValues == Vector("UNNAMED-1", "UNNAMED-2", "-"))
     a.requireNoMoreArguments()
   }
 

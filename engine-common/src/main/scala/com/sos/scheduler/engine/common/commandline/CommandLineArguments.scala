@@ -94,6 +94,7 @@ object CommandLineArguments {
   def toArgument(string: String): Argument =
     string match {
       case OptionWithValueRegex(name, value) ⇒ NameValue(name, value)
+      case "-" ⇒ ValueOnly("-")
       case o if string startsWith "-" ⇒ NameOnly(o)
       case o ⇒ ValueOnly(o)
     }
