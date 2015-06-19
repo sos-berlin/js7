@@ -44,14 +44,18 @@ final class ViewServiceTest extends FreeSpec with ScalatestRouteTest with ViewSe
     version = "TEST-VERSION",
     currentProcessCount = processHandlerView.currentProcessCount,
     totalProcessCount = processHandlerView.totalProcessCount,
-    isTerminating = false)
+    isTerminating = false,
+    java = AgentOverview.JavaInformation(systemProperties = Map("test" → "TEST")))
 
   private def expectedOverviewJsObject = JsObject(
     "startedAt" → JsString("2015-06-01T12:00:00Z"),
     "version" → JsString("TEST-VERSION"),
     "currentProcessCount" → JsNumber(777),
     "totalProcessCount" → JsNumber(999),
-    "isTerminating" → JsBoolean(false))
+    "isTerminating" → JsBoolean(false),
+    "java" → JsObject(
+      "systemProperties" → JsObject(
+        "test" → JsString("TEST"))))
 
   "fileStatus" in {
     withCloser { implicit closer ⇒

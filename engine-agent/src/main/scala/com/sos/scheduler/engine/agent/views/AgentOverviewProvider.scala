@@ -19,7 +19,8 @@ final class AgentOverviewProvider @Inject private(processHandlerView: ProcessHan
     startedAt = Instant.now(),
     currentProcessCount = processHandlerView.currentProcessCount,
     totalProcessCount = processHandlerView.totalProcessCount,
-    isTerminating = processHandlerView.isTerminating)
+    isTerminating = processHandlerView.isTerminating,
+    java = AgentOverview.JavaInformation.Singleton)
 }
 
 object AgentOverviewProvider {
