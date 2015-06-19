@@ -1,9 +1,7 @@
 package com.sos.scheduler.engine.agent.web.marshal
 
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion.toYaml
 import java.lang.StringBuilder
-import org.yaml.snakeyaml.DumperOptions.FlowStyle
-import org.yaml.snakeyaml.{DumperOptions, Yaml}
 import spray.json._
 
 /**
@@ -11,13 +9,5 @@ import spray.json._
  */
 object YamlPrinter extends JsonPrinter {
 
-  private val yaml = {
-    val options = new DumperOptions sideEffect  { o ⇒
-      o.setDefaultFlowStyle(FlowStyle.BLOCK)
-      o.setWidth(160)
-    }
-    new Yaml(options)
-  }
-
-  def print(v: JsValue, sb: StringBuilder) = sb.append(yaml.dump(yaml.load(v.compactPrint)))
+  def print(v: JsValue, sb: StringBuilder) = sb.append(toYaml(v))
 }
