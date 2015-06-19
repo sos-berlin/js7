@@ -13,18 +13,18 @@ import spray.json._
  *
  * @author Joacim Zschimmer
  */
-object SprayJsonOrTextSupport {
+object SprayJsonOrYamlSupport {
 
-  implicit def sprayJsonUnmarshallerConverter[T](reader: RootJsonReader[T]): Unmarshaller[T] =
-    SprayJsonSupport.sprayJsonUnmarshallerConverter(reader)
+  implicit def sprayJsonOrYamlUnmarshallerConverter[T](reader: RootJsonReader[T]): Unmarshaller[T] =
+    sprayJsonOrYamlUnmarshaller(reader)
 
-  implicit def sprayJsonUnmarshaller[T: RootJsonReader] =
+  implicit def sprayJsonOrYamlUnmarshaller[T: RootJsonReader] =
     SprayJsonSupport.sprayJsonUnmarshaller
 
-  implicit def sprayJsonMarshallerConverter[T](writer: RootJsonWriter[T]): Marshaller[T] =
-    sprayJsonMarshaller[T](writer)
+  implicit def sprayJsonOrYamlMarshallerConverter[T](writer: RootJsonWriter[T]): Marshaller[T] =
+    sprayJsonOrYamlMarshaller[T](writer)
 
-  implicit def sprayJsonMarshaller[T](implicit writer: RootJsonWriter[T]) =
+  implicit def sprayJsonOrYamlMarshaller[T](implicit writer: RootJsonWriter[T]) =
     Marshaller.delegate[T, String](`text/plain`, `application/json`) { (value, contentType) ⇒
       val json = writer.write(value)
       contentType match {

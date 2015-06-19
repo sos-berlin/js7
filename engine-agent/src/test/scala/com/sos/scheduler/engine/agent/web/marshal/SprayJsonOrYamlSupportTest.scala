@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.web.marshal
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrTextSupport._
+import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrYamlSupport._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -9,7 +9,7 @@ import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes._
 import spray.http.{ContentType, ContentTypes, Uri}
 import spray.json.DefaultJsonProtocol._
-import spray.json.{JsObject, JsString, _}
+import spray.json.{JsObject, JsString}
 import spray.routing.HttpService
 import spray.testkit.ScalatestRouteTest
 
@@ -17,7 +17,7 @@ import spray.testkit.ScalatestRouteTest
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class SprayJsonOrTextSupportTest extends FreeSpec with ScalatestRouteTest with HttpService {
+final class SprayJsonOrYamlSupportTest extends FreeSpec with ScalatestRouteTest with HttpService {
 
   implicit lazy val actorRefFactory = ActorSystem()
 

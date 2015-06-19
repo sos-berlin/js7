@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.agent.web
 
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
-import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrTextSupport._
+import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrYamlSupport._
 import java.nio.file.{Files, Paths}
 import spray.http.StatusCodes.{NotFound, OK}
 import spray.routing.Directives._
