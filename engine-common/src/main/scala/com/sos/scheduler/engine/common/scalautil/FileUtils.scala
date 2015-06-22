@@ -5,7 +5,9 @@ import com.google.common.io.{Closer, Files ⇒ GuavaFiles}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import java.io.File
 import java.nio.charset.Charset
-import java.nio.file.{Files, Path}
+import java.nio.file.{FileAlreadyExistsException, Files, Path}
+import scala.annotation.tailrec
+import scala.concurrent.forkjoin.ThreadLocalRandom
 import scala.language.implicitConversions
 
 object FileUtils {
@@ -65,4 +67,21 @@ object FileUtils {
       def append(o: String, encoding: Charset = UTF_8): Unit = GuavaFiles.append(o, delegate, encoding)
     }
   }
+
+  import implicits._
+
+  @tailrec
+  def createShortNamedDirectory(directory: Path, prefix: String): Path = {
+    try Files.createDirectory(directory / (prefix + newRandomFilenameString()))
+    catch {
+      case e: FileAlreadyExistsException ⇒ createShortNamedDirectory(directory, prefix)
+    }
+  }
+
+  private val FilenameCharacterSet = "abcdefghijklmnopqrstuvwxyz0123456789"
+  private[scalautil] val ShortNameSize = 6  // Results in 36**6 == 2176782336 permutations
+  private[scalautil] val ShortNamePermutationCount = List.fill(ShortNameSize)(FilenameCharacterSet.toSet.size.toLong).product
+
+  private def newRandomFilenameString() =
+    (Iterator.fill(ShortNameSize) { ThreadLocalRandom.current.nextInt(FilenameCharacterSet.length) } map FilenameCharacterSet).mkString
 }

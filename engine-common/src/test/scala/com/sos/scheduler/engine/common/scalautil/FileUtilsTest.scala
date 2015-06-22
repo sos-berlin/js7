@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.FileUtilTest._
+import com.sos.scheduler.engine.common.scalautil.FileUtilsTest._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import java.io.File
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
@@ -14,7 +14,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class FileUtilTest extends FreeSpec with BeforeAndAfterAll {
+final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
 
   private lazy val file = Files.createTempFile("FileUtilTest-", ".tmp").toFile
   private lazy val path = file.toPath
@@ -84,9 +84,25 @@ final class FileUtilTest extends FreeSpec with BeforeAndAfterAll {
       path.contentString(UTF_16BE) shouldEqual TestString + "X"
     }
   }
+
+  "createShortNamedDirectory" in {
+    assert(FileUtils.ShortNamePermutationCount == 2176782336L)
+    val dir = Files.createTempDirectory("test-")
+    val n = 100
+    val dirs = List.fill(n) {
+      val prefix = "test-"
+      val d = FileUtils.createShortNamedDirectory(dir, prefix)
+      assert(Files.isDirectory(d))
+      assert(d.getFileName.toString.length == prefix.length + 6)
+      d
+    }
+    assert(dirs.toSet.size == n)
+    dirs foreach Files.delete
+    Files.delete(dir)
+  }
 }
 
-private object FileUtilTest {
+private object FileUtilsTest {
   private val TestString = "AÅ"
   private val TestBytes = TestString.getBytes(UTF_8)
   assert(TestBytes.length == 3)
