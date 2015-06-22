@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.commandexecutor
+package com.sos.scheduler.engine.agent.command
 
-import com.sos.scheduler.engine.agent.commandexecutor.AgentCommandExecutor._
+import com.sos.scheduler.engine.agent.command.AgentCommandHandler._
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.fileordersource.RequestFileOrderSourceContentExecutor
 import com.sos.scheduler.engine.agent.process.ProcessHandler
@@ -15,7 +15,7 @@ import scala.concurrent.Future
  * @author Joacim Zschimmer
  */
 @Singleton
-final class AgentCommandExecutor @Inject private(processHandler: ProcessHandler)
+final class AgentCommandHandler @Inject private(processHandler: ProcessHandler)
 extends CommandExecutor {
 
   private val atomicLong = new AtomicLong(0)
@@ -36,6 +36,6 @@ extends CommandExecutor {
   }
 }
 
-object AgentCommandExecutor {
+object AgentCommandHandler {
   private val logger = Logger(getClass)
 }

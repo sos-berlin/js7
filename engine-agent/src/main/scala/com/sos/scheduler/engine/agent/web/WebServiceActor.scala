@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.web
 
 import com.google.inject.Injector
-import com.sos.scheduler.engine.agent.commandexecutor.CommandExecutor
+import com.sos.scheduler.engine.agent.command.CommandExecutor
 import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview

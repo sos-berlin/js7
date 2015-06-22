@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent
 import com.google.common.io.Closer
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Module}
-import com.sos.scheduler.engine.agent.commandexecutor.CommandExecutor
+import com.sos.scheduler.engine.agent.command.CommandExecutor
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.data.commands.Command
