@@ -45,5 +45,5 @@ final class LegacyCommandServiceTest extends FreeSpec with ScalatestRouteTest wi
   private def post(command: xml.Elem): RouteResult =
     Post("/jobscheduler/engine/command", command) ~>
       addHeader("Remote-Address", "0.0.0.0") ~>   // For this IP-less test only. Client's IP is normally set by configuration spray.can.remote-address-header
-      legacyCommandRoute
+      route
 }

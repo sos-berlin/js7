@@ -5,7 +5,7 @@ import com.google.common.io.Closer
 import com.google.inject.{Injector, Provides}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
-import com.sos.scheduler.engine.agent.web.WebService
+import com.sos.scheduler.engine.agent.web.common.WebService
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import scala.collection.immutable
 

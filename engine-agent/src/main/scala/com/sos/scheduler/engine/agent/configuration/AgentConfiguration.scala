@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.configuration
 
-import com.sos.scheduler.engine.agent.web.WebService
+import com.sos.scheduler.engine.agent.web.common.WebService
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.utils.TcpUtils.{parseTcpPort, requireTcpPortNumber}

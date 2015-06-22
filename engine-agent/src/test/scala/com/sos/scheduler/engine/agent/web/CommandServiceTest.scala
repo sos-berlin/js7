@@ -86,7 +86,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
     def postJsonCommand(json: String): RouteResult =
       Post("/jobscheduler/agent/command", json)(stringMarshaller(`application/json`)) ~>
         Accept(`application/json`) ~>
-        agentCommandRoute
+        route
   }
 
   "jobscheduler/agent/command for XML commands" - {
@@ -104,7 +104,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
     }
 
     def postXmlCommand(elem: xml.Elem): RouteResult =
-      Post("/jobscheduler/agent/command", elem) ~> Accept(`application/xml`) ~> agentCommandRoute
+      Post("/jobscheduler/agent/command", elem) ~> Accept(`application/xml`) ~> route
   }
 }
 

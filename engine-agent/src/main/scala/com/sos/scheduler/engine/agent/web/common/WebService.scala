@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.scheduler.engine.agent.web.common
 
 import spray.routing.Route
 
