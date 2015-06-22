@@ -19,8 +19,8 @@ import spray.util.LoggingContext
 trait ServiceStandards {
   implicit def actorRefFactory: ActorRefFactory
 
-  private val agentStandard = decompressRequest() & compressResponseIfRequested(()) & pathPrefix("jobscheduler")
-  private val routeBuffer = mutable.Buffer[(String, Route)]()
+  private val agentStandard = decompressRequest() & compressResponseIfRequested(()) & pathPrefix(ContextName)
+  private val addedRoutes = mutable.Buffer[Entry]()
 
   implicit def exceptionHandler(implicit log: LoggingContext) =
     ExceptionHandler {
@@ -34,22 +34,28 @@ trait ServiceStandards {
   /**
    * All added routes are combined by method `route`.
    */
-  protected def addRoute(route: ⇒ Route): Unit = addRawRoute(agentStandard { route })
+  protected def addRoute(route: ⇒ Route): Unit = add(agentStandard { route })
 
-  protected def addRawRoute(rawRoute: ⇒ Route): Unit = {
-    val callerString = (new Exception).getStackTrace()(2).toString
-    routeBuffer += callerString → rawRoute
+  protected def addRawRoute(rawRoute: ⇒ Route): Unit = add(rawRoute)
+
+  private def add(rawRoute: ⇒ Route) = {
+    val callerString = (new Exception).getStackTrace()(3).toString  // Same nesting depth for addRoute and addRawRoute
+    addedRoutes += Entry(() ⇒ rawRoute, callerString)
   }
 
   /**
    * Returns a route, consisting of all added routes.
    */
   final def route: Route = {
-    for (o ← routeBuffer map { _._1 }) logger.trace(s"Using route of $o")
-    routeBuffer map { _._2 } reduce { _ ~ _ }
+    for (o ← addedRoutes map { _.callerName }) logger.trace(s"Using route of $o")
+    val routes = addedRoutes map { _.routeFactory() }
+    routes reduce { _ ~ _ }
   }
 }
 
 object ServiceStandards {
+  val ContextName = "jobscheduler"
   private val logger = Logger(getClass)
+
+  private case class Entry(routeFactory: () ⇒ Route, callerName: String)
 }

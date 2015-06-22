@@ -32,7 +32,7 @@ with MainViewService
 with ProcessHandlerViewService
 with CommandHandlerViewService
 {
-  for (o ← webServices) {
+  private lazy val addWebServices = for (o ← webServices) {
     logger.debug(s"Adding extra web service $o")
     addRawRoute(o.route)  // The route is already wrapped, so add it raw, not wrapping it again with agentStandard
   }
@@ -40,7 +40,10 @@ with CommandHandlerViewService
   protected def commandHandlerOverview = commandHandler
   protected def commandHandlerDetails = commandHandler
 
-  def receive = runRoute(route)
+  def receive = {
+    addWebServices
+    runRoute(route)
+  }
 
   def executeCommand(command: Command) = commandExecutor.executeCommand(command)
 
