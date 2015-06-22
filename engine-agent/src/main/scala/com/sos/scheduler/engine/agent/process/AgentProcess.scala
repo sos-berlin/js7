@@ -26,4 +26,6 @@ final class AgentProcess(val id: AgentProcessId, val taskServer: TaskServer) ext
     id,
     taskServer.taskStartArguments.controllerAddress,
     startedAt)
+
+  override def toString = s"AgentProcess($id)"
 }

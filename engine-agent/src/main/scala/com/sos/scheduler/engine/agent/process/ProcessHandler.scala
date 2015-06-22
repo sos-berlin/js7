@@ -1,14 +1,15 @@
 package com.sos.scheduler.engine.agent.process
 
-import com.sos.scheduler.engine.base.exceptions.{StandardPublicException, PublicException}
-import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, Response, StartProcessResponse}
 import com.sos.scheduler.engine.agent.process.ProcessHandler._
+import com.sos.scheduler.engine.base.exceptions.StandardPublicException
+import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
@@ -90,7 +91,7 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
     if (isWindows) {
       logger.debug("Terminate: Under Windows, SIGTERM is ignored")
     } else {
-      for (o ← agentProcesses) o.sendProcessSignal(SIGTERM)
+      sendSignalToAllProcesses(SIGTERM)
     }
 
   private def sigkillProcessesAt(at: Instant): Unit = {
@@ -99,9 +100,15 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
       blocking {
         sleep(at - now())
       }
-      for (o ← agentProcesses) o.sendProcessSignal(SIGKILL)
+      sendSignalToAllProcesses(SIGKILL)
     }
   }
+
+  private def sendSignalToAllProcesses(signal: ProcessSignal): Unit =
+    for (p ← agentProcesses) {
+      logger.info(s"$signal $p")
+      p.sendProcessSignal(signal)
+    }
 
   private def terminateWithProcessesNotBefore(notBefore: Instant): Unit = {
     Future.sequence(agentProcesses map { _.terminated }) onComplete { o ⇒
@@ -111,6 +118,7 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
         logger.debug(s"Delaying termination for ${delay.pretty}")
         sleep(delay)
       }
+      logger.info("Agent is terminating now")
       terminatedPromise.complete(o map { _ ⇒ () })
     }
   }
