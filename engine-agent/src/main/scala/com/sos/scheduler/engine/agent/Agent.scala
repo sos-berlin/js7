@@ -3,8 +3,11 @@ package com.sos.scheduler.engine.agent
 import com.google.common.io.Closer
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Module}
+import com.sos.scheduler.engine.agent.commandexecutor.CommandExecutor
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
+import com.sos.scheduler.engine.agent.data.commands.Command
+import com.sos.scheduler.engine.agent.data.responses.Response
 import com.sos.scheduler.engine.agent.process.ProcessHandler
 import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
@@ -32,6 +35,7 @@ final class Agent(module: Module) extends AutoCloseable {
   private val server = injector.instance[AgentWebServer]
   private val closer = injector.instance[Closer]
   private val processHandler = injector.instance[ProcessHandler]
+  private val commandExecutor = injector.instance[CommandExecutor]
 
   def start(): Future[Unit] = server.start()
 
@@ -41,6 +45,8 @@ final class Agent(module: Module) extends AutoCloseable {
     start()
     awaitResult(terminated, MaxDuration)
   }
+
+  def executeCommand(command: Command): Future[Response] = commandExecutor.executeCommand(command)
 
   def terminated: Future[Unit] = processHandler.terminated
 }
