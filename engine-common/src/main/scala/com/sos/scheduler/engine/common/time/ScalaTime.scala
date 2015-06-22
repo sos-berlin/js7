@@ -63,10 +63,25 @@ object ScalaTime {
   implicit class RichDuration(val delegate: Duration) extends AnyVal with Ordered[RichDuration] {
     def +(o: Duration) = delegate plus o
     def -(o: Duration) = delegate minus o
+    def /(o: Int) = delegate dividedBy o
     def toBigDecimal = BigDecimal(delegate.getSeconds) + BigDecimal(delegate.getNano) / (1000*1000*1000)
     def toConcurrent: scala.concurrent.duration.Duration = javaToConcurrentDuration(delegate)
     def toFiniteDuration: scala.concurrent.duration.FiniteDuration = javaToConcurrentFiniteDuration(delegate)
-    def pretty = millisToPretty(delegate.toMillis)
+
+    def pretty =
+      if (delegate == Duration.ZERO) millisToPretty(0)
+      else
+      if (delegate.getSeconds > 1000000) s"${delegate.getSeconds}s"
+      else {
+        val millis = delegate.toMillis
+        if (abs(millis) >= 10) millisToPretty(millis)
+        else {
+          val nanos = delegate.toNanos
+          if (abs(nanos) > 10000) s"${delegate.toNanos / 1000}µs"
+          else s"${delegate.toNanos}ns"
+        }
+      }
+
     def compare(o: RichDuration) = delegate compareTo o.delegate
   }
 

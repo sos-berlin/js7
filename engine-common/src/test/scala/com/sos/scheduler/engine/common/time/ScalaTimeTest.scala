@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.common.time
 
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import java.time.temporal.ChronoUnit._
 import java.time.{Duration, Instant, LocalTime}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -72,6 +71,10 @@ final class ScalaTimeTest extends FreeSpec {
       (7.s - 2.ms: Duration).toMillis shouldEqual (7*1000 - 2)
     }
 
+    "Duration / Int" in {
+      (7.s / 2).toMillis shouldEqual 3500
+    }
+
     "Int * Duration" in {
       (3 * 7.s: Duration).toMillis shouldEqual (3 * 7*1000)
     }
@@ -81,6 +84,7 @@ final class ScalaTimeTest extends FreeSpec {
     }
 
     "pretty" in {
+      Long.MaxValue.s.pretty shouldEqual s"${Long.MaxValue}s"   // No overflow
       0.s.pretty shouldEqual "0s"
       1.s.pretty shouldEqual "1s"
       1200.ms.pretty shouldEqual "1.2s"
@@ -90,6 +94,8 @@ final class ScalaTimeTest extends FreeSpec {
       for (i <- 1 to 10000000) (-10).ms.pretty
       (-10).ms.pretty shouldEqual "-0.01s"
       (-1).s.pretty shouldEqual "-1s"
+      Duration.ofNanos(100000).pretty shouldEqual "100µs"
+      Duration.ofNanos(100).pretty shouldEqual "100ns"
     }
 
     "toConcurrent" in {
