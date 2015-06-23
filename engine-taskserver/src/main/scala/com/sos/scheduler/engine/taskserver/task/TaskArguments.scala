@@ -66,6 +66,8 @@ private[task] object TaskArguments {
     "filename" → "",
     "java_options" → "",
     "java_class_path" → "",
+    "monitor.com_class" → "",
+    "monitor.filename" → "",
     "process.filename" → "",
     "process.param_raw" → "",
     "process.log_filename" → "",
