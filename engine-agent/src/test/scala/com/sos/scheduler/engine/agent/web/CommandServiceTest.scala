@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, FileOrderSo
 import com.sos.scheduler.engine.agent.web.CommandServiceTest._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.time.Duration
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -43,7 +44,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
           "$TYPE": "RequestFileOrderSourceContent",
           "directory": "/DIRECTORY",
           "regex": ".*",
-          "durationMillis": 111222333444555666,
+          "duration": 111222333444555.666,
           "knownFiles": [ "/DIRECTORY/known" ]
         }"""
       postJsonCommand(json) ~> check {
@@ -74,7 +75,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
           "$TYPE": "RequestFileOrderSourceContent",
           "directory": "ERROR",
           "regex": "",
-          "durationMillis": 0,
+          "duration": 0,
           "knownFiles": []
         }"""
       postJsonCommand(json) ~> check {
@@ -110,8 +111,8 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
 
 object CommandServiceTest {
   private val KnownFile = "/DIRECTORY/known"
-  private val TestRequestFileOrderSourceContent = RequestFileOrderSourceContent("/DIRECTORY", ".*", 111222333444555666L, Set(KnownFile))
-  private val FailingRequestFileOrderSourceContent = RequestFileOrderSourceContent("ERROR", "", 0, Set())
+  private val TestRequestFileOrderSourceContent = RequestFileOrderSourceContent("/DIRECTORY", ".*", Duration.ofMillis(111222333444555666L), Set(KnownFile))
+  private val FailingRequestFileOrderSourceContent = RequestFileOrderSourceContent("ERROR", "", Duration.ZERO, Set())
   private val TestFileOrderSourceContent = FileOrderSourceContent(List(
     FileOrderSourceContent.Entry("/DIRECTORY/a", 111222333444555666L)))
 }

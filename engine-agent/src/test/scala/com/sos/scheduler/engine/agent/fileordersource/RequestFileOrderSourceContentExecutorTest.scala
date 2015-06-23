@@ -7,18 +7,17 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.touchAndDeleteWithCloser
+import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.nio.file.Files.{createTempDirectory, delete, setLastModifiedTime}
 import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
 import java.time.ZoneOffset.UTC
-import java.time.{ZoneId, ZonedDateTime}
+import java.time.{Duration, ZonedDateTime}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.Futures
 import org.scalatest.junit.JUnitRunner
-import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.util.matching.Regex
 
 /**
@@ -46,9 +45,9 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       val future = RequestFileOrderSourceContentExecutor.apply(RequestFileOrderSourceContent(
         directory = dir.toString,
         regex = Regex.quote(MatchingString),
-        durationMillis = Long.MaxValue,
+        duration = Duration.ofMillis(Long.MaxValue),
         knownFiles = Set(knownFile.toString)))
-      val response = Await.result(future, 10.seconds)
+      val response = awaitResult(future, 10.s)
       assert(response == expectedResponse)
     }
   }
@@ -62,7 +61,7 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       val future = RequestFileOrderSourceContentExecutor.apply(RequestFileOrderSourceContent(
         directory = dir.toString,
         regex = Regex.quote(MatchingString),
-        durationMillis = Long.MaxValue,
+        duration = Duration.ofMillis(Long.MaxValue),
         knownFiles = Set(knownFile.toString)))
       sleep(2.s)
       assert(!future.isCompleted)
@@ -72,8 +71,8 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       assert(!future.isCompleted)
       touchAndDeleteWithCloser(file)
       setLastModifiedTime(file, FileTime.from(Timestamp))
-      Await.result(future, 5.seconds)
-      val response = Await.result(future, 10.seconds)
+      awaitResult(future, 5.s)
+      val response = awaitResult(future, 10.s)
       assert(response == expectedResponse)
     }
   }

@@ -24,7 +24,7 @@ private final class RequestFileOrderSourceContentExecutor(command: RequestFileOr
   private val regex = new Regex(command.regex)
   private val directory = Paths.get(command.directory)
   private val blockingDirectoryWatcher = new BlockingDirectoryWatcher(Paths.get(command.directory), pathMatches).closeWithCloser
-  private val until = now() + command.durationMillis.ms
+  private val until = now() + command.duration
 
   def apply(): FileOrderSourceContent =
     getFileOrderSourceContent(command) match {

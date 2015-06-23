@@ -23,7 +23,7 @@ object JavaTimeJsonFormats {
     }
 
     implicit object DurationJsonFormat extends JsonFormat[Duration] {
-      def write(o: Duration) = JsString(o.toString)
+      def write(o: Duration) = JsNumber(durationToBigDecimal(o))
 
       def read(jsValue: JsValue) = jsValue match {
         case JsString(string) ⇒ Duration.parse(string)
@@ -37,4 +37,6 @@ object JavaTimeJsonFormats {
     val (seconds, nanos) = o /% 1
     Duration.ofSeconds(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
   }
+
+  private def durationToBigDecimal(o: Duration) = BigDecimal(o.getSeconds) + BigDecimal(o.getNano, scale = 9)
 }

@@ -60,28 +60,15 @@ final class JavaTimeJsonFormatsTest extends FreeSpec {
     implicit val aJsonFormat = jsonFormat1(A.apply)
 
     "Seconds" in {
-      val t = "PT3S"
-      val a = A(Duration.parse(t))
-      val j = JsObject("duration" → JsString(t))
-      assert(a.duration == Duration.ofSeconds(3))
+      val a = A(Duration.ofSeconds(3))
+      val j = JsObject("duration" → JsNumber(3))
       assert(a.toJson == j)
       assert(a == j.convertTo[A])
     }
 
     "Nanoseconds" in {
-      val t = "PT0.123456789S"
-      val a = A(Duration.parse(t))
-      val j = JsObject("duration" → JsString(t))
-      assert(a.duration == Duration.ofNanos(123456789))
-      assert(a.toJson == j)
-      assert(a == j.convertTo[A])
-    }
-
-    "100 hours some nanoseconds" in {
-      val t = "PT100H0.123456789S"
-      val a = A(Duration.parse(t))
-      val j = JsObject("duration" → JsString(t))
-      assert(a.duration == Duration.ofSeconds(100 * 3600, 123456789))
+      val a = A(Duration.ofNanos(123456789))
+      val j = JsObject("duration" → JsNumber(0.123456789))
       assert(a.toJson == j)
       assert(a == j.convertTo[A])
     }
@@ -90,9 +77,12 @@ final class JavaTimeJsonFormatsTest extends FreeSpec {
       intercept[DateTimeParseException] { JsObject("duration" → JsString("1")).convertTo[A] }
     }
 
-    "Numeric (read only)" in {
-      def check(bigDecimal: BigDecimal, duration: Duration) =
-        assert(JsObject("duration" → JsNumber(bigDecimal)).convertTo[A].duration == duration)
+    "Numeric" in {
+      def check(bigDecimal: BigDecimal, duration: Duration) = {
+        val json = JsObject("duration" → JsNumber(bigDecimal))
+        assert(json.convertTo[A].duration == duration)
+        assert(A(duration).toJson == json)
+      }
       check(123, Duration.ofSeconds(123))
       check(123.987654321, Duration.ofSeconds(123, 987654321))
       check(BigDecimal("111222333444555666.987654321"), Duration.ofSeconds(111222333444555666L, 987654321))
