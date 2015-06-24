@@ -8,15 +8,15 @@ import scala.concurrent.{Future, Promise}
 /**
  * @author Joacim Zschimmer
  */
-final class TunnelClient(relaisHandler: ActorRef, val tunnelId: TunnelId) {
+final class TunnelClient(relaisHandler: ActorRef, val id: TunnelId) {
 
   def sendRequest(message: ByteString): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
-    relaisHandler ! DirectedRequest(tunnelId, message, responsePromise)
+    relaisHandler ! DirectedRequest(id, message, responsePromise)
     responsePromise.future
   }
 
   def close(): Unit = {
-    relaisHandler ! RelaisHandler.CloseTunnel(tunnelId)
+    relaisHandler ! RelaisHandler.CloseTunnel(id)
   }
 }

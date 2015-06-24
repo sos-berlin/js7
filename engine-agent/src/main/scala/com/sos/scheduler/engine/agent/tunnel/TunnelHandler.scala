@@ -14,6 +14,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 final class TunnelHandler(actorSystem: ActorSystem) extends AutoCloseable {
 
   private val relaisHandler = actorSystem.actorOf( Props { new RelaisHandler }, name = "RelaisHandler")
+
   val tcpAddress = {
     val future = (relaisHandler ? RelaisHandler.Start)(AskTimeout).mapTo[Bound]
     awaitResult(future, ShortTimeout).localAddress

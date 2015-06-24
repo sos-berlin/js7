@@ -7,73 +7,92 @@ import com.sos.scheduler.engine.agent.tunnel.LengthHeaderMessageCollector._
 import com.sos.scheduler.engine.agent.tunnel.Relais._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import java.net.InetSocketAddress
-import org.scalactic.Requirements._
 import scala.concurrent.Promise
+import scala.util.control.NonFatal
 import spray.json.JsonParser
 
 /**
  * @author Joacim Zschimmer
  */
-final class Relais(tcpConnection: ActorRef, peerAddress: InetSocketAddress) extends Actor with FSM[State, Data] {
+final class Relais(tcpConnection: ActorRef, peerAddress: InetSocketAddress)
+extends Actor with FSM[State, Data] {
 
   private var tunnelId: TunnelId = null
-  private var tunnelEstablished = false
 
   tcpConnection ! Tcp.Register(self)
   startWith(CollectingResponseFromTcp, CollectingResponseFromTcpData(null))  // null !!!
 
   when(ExpectingRequest) {
     case Event(request: DirectedRequest, NoData) ⇒
-      logger.trace(s"WaitingForRequest: Request(${request.message.size} bytes)")
-      handleRequest(request)
-  }
-
-  private def handleRequest(request: DirectedRequest): FSM.State[Relais.State, Data] = {
-    // TODO Große Nachrichten werden nicht auf einmal verschickt.
-    tcpConnection ! Tcp.Write(intToBytesString(request.message.size) ++ request.message)
-    goto(CollectingResponseFromTcp) using CollectingResponseFromTcpData(request.responsePromise)
+      logger.trace(s"ExpectingRequest: Got ${request.message.size} bytes")
+      try {
+        if (request.message.size > MessageSizeMaximum) throw newTooBigException(request.message.size)
+        tcpConnection ! Tcp.Write(intToBytesString(request.message.size) ++ request.message)
+        goto(CollectingResponseFromTcp) using CollectingResponseFromTcpData(request.responsePromise)
+      } catch {
+        case NonFatal(t) ⇒
+          request.responsePromise.failure(t)
+          stay()
+      }
   }
 
   when(CollectingResponseFromTcp) {
     case Event(Tcp.Received(bytes), CollectingResponseFromTcpData(responsePromise, messageBuilder)) ⇒
-      logger.debug(s"CollectingResponseFromTcp: Received(${bytes.size} bytes)")
-      require(sender() == tcpConnection)
-      messageBuilder.apply(bytes) match {
-        case None ⇒ stay()
-        case Some(completeMessage) ⇒
-          logger.trace(s"CollectingResponseFromTCP: Complete message has ${bytes.size} bytes")
-          if (!tunnelEstablished) {
-            logger.trace("Connection message")
-            implicit val xxx = TunnelConnectionMessage.MyJsonFormat
-            val m = JsonParser(completeMessage.toArray[Byte]).convertTo[TunnelConnectionMessage]
-            tunnelId = m.tunnelId
-            tunnelEstablished = true
-            context.parent ! RelaisConnected(m.tunnelId)
-          } else {
-            responsePromise.success(completeMessage)
-            //responsePromise.failure() ???
-          }
-          goto(ExpectingRequest) using NoData
+      try {
+        logger.trace(s"CollectingResponseFromTCP: Received ${bytes.size} bytes)")
+        for (len ← messageBuilder.expectedLength if len > MessageSizeMaximum) throw newTooBigException(len)
+        messageBuilder.apply(bytes) match {
+          case None ⇒ stay()
+          case Some(completeMessage) ⇒
+            logger.trace(s"CollectingResponseFromTCP: Complete message has ${completeMessage.size} bytes")
+            if (tunnelId == null) {
+              establishTunnel(completeMessage)
+            } else {
+              responsePromise.success(completeMessage)
+            }
+            goto(ExpectingRequest) using NoData
+        }
+      } catch {
+        case NonFatal(t) ⇒
+          responsePromise.failure(t)
+          stop(FSM.Failure(t))
       }
   }
 
-  whenUnhandled {
-    case Event(m @ Tcp.PeerClosed, _) ⇒
-      logger.debug("$m")
+  private def establishTunnel(connectionMessage: ByteString): Unit = {
+    logger.trace("Connection message")
+    val m = JsonParser(connectionMessage.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
+    tunnelId = m.tunnelId
+    context.parent ! RelaisConnected(m.tunnelId)
+  }
+
+  when(Closing) {
+    case Event(Closing, _) ⇒
       stop()
-
-    case Event(Close, _) ⇒
-      tcpConnection ! Tcp.Close
-      stay()
-
-    case Event(Tcp.Closed, _) ⇒
+    case Event(closed @ Tcp.Closed, _) ⇒
+      logger.debug(s"$closed")
       stop()
   }
 
-  override def toString = s"Release($tunnelId,$peerAddress)"
+  whenUnhandled {
+    case Event(Close, _) ⇒
+      tcpConnection ! Tcp.Close
+      goto(Closing) using NoData
+    case Event(closed: Tcp.ConnectionClosed, data) ⇒
+      logger.debug(s"$closed")
+      val exception = new RuntimeException(s"Connection with $peerAddress has unexpectedly been closed: $closed")
+      data match {
+        case CollectingResponseFromTcpData(responsePromise, _) ⇒ responsePromise.failure(exception)
+        case _ ⇒
+      }
+      stop(FSM.Failure(exception))
+  }
+
+  override def toString = s"Relais(${Option(tunnelId) getOrElse "tunnel not yet established"},$peerAddress)"
 }
 
 private[tunnel] object Relais {
+  private[tunnel] val MessageSizeMaximum = 100*1000*1000
   private val logger = Logger(getClass)
 
   private[tunnel] sealed trait State
@@ -93,4 +112,7 @@ private[tunnel] object Relais {
   private[tunnel] final case class RelaisConnected(tunnelId: TunnelId)
 
   private[tunnel] case object Close
+
+  private def newTooBigException(size: Int) =
+    new IllegalArgumentException(s"Message ($size bytes) is bigger than the possible maximum of $MessageSizeMaximum bytes")
 }

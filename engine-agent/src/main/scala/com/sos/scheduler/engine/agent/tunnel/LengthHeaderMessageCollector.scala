@@ -59,6 +59,8 @@ final class LengthHeaderMessageCollector {
       else if (contentBuffer == null) s"expecting ${lengthBuffer.remaining()} length bytes"
       else s"received ${contentBuffer.length} of expected $length content bytes"
     ) concat ")"
+
+  def expectedLength: Option[Int] = if (length == -1) None else Some(length)
 }
 
 object LengthHeaderMessageCollector {
