@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.agent.tunnel
+package com.sos.scheduler.engine.tunnel
 
 import akka.actor.{ActorSystem, Props}
 import akka.io.Tcp.Bound
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.scheduler.engine.agent.tunnel.TunnelHandler._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.tunnel.TunnelHandler._
 import scala.util.Try
 
 /**

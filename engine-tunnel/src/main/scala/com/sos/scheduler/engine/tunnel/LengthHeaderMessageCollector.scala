@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.tunnel
+package com.sos.scheduler.engine.tunnel
 
 import akka.util.{ByteString, ByteStringBuilder}
 import java.nio.ByteBuffer

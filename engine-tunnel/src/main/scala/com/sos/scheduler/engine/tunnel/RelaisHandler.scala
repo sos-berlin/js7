@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.agent.tunnel
+package com.sos.scheduler.engine.tunnel
 
 import akka.actor.SupervisorStrategy.stoppingStrategy
 import akka.actor.{Actor, ActorRef, Props}
 import akka.io.{IO, Tcp}
-import com.sos.scheduler.engine.agent.tunnel.RelaisHandler._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.tunnel.RelaisHandler._
 import java.net.InetSocketAddress
 import scala.collection.mutable
 import scala.concurrent.Promise

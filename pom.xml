@@ -31,6 +31,7 @@
         <module>engine-test</module>
         <module>engine-tests</module>
         <module>engine-testwar</module>
+        <module>engine-tunnel</module>
         <module>engine-kernel</module>
         <module>engine-kernelcpp-generated</module>
         <module>engine-kernelcpp</module>

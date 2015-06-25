@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.tunnel
+package com.sos.scheduler.engine.tunnel
 
 import com.sos.scheduler.engine.data.base.IsString
 import java.util.Base64
