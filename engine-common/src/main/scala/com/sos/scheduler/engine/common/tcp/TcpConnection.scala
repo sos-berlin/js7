@@ -1,10 +1,9 @@
-package com.sos.scheduler.engine.taskserver
+package com.sos.scheduler.engine.common.tcp
 
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.minicom.remoting.MessageConnection
-import com.sos.scheduler.engine.taskserver.TcpConnection._
+import com.sos.scheduler.engine.common.tcp.TcpConnection._
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousCloseException, SocketChannel}

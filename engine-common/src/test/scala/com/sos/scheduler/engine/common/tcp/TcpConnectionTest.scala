@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver
+package com.sos.scheduler.engine.common.tcp
 
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._

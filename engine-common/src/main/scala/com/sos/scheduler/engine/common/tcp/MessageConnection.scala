@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.remoting
+package com.sos.scheduler.engine.common.tcp
 
 import java.nio.ByteBuffer
 

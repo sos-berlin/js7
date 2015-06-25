@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting
 
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.tcp.MessageConnection
 import com.sos.scheduler.engine.minicom.remoting.DialogConnection._
 import java.nio.ByteBuffer
 import java.util.concurrent.locks.ReentrantLock

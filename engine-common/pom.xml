@@ -170,5 +170,9 @@
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-actor_${scala.binaryVersion}</artifactId>
+        </dependency>
     </dependencies>
 </project>
