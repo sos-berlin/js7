@@ -83,6 +83,11 @@
         </dependency>
         <dependency>
             <groupId>com.sos-berlin.jobscheduler.engine</groupId>
+            <artifactId>engine-tunnel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sos-berlin.jobscheduler.engine</groupId>
             <artifactId>engine-taskserver</artifactId>
             <version>${project.version}</version>
         </dependency>

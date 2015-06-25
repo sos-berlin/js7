@@ -22,6 +22,7 @@ private[tunnel] final class RelaisHandler extends Actor {
   override def supervisorStrategy = stoppingStrategy
   TunnelId.newPassword()  // Check random generator
 
+  // TODO Entry entfernen, nur wenn Relais sich beendet hat
   // TODO Auskunft
   private val relaisRegister = mutable.Map[TunnelId, Entry]()
 

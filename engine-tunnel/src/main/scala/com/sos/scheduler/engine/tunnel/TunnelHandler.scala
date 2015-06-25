@@ -3,10 +3,11 @@ package com.sos.scheduler.engine.tunnel
 import akka.actor.{ActorSystem, Props}
 import akka.io.Tcp.Bound
 import akka.pattern.ask
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.tunnel.TunnelHandler._
+import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 /**
@@ -27,6 +28,12 @@ final class TunnelHandler(actorSystem: ActorSystem) extends AutoCloseable {
     awaitResult(
       (relaisHandler ? RelaisHandler.NewTunnel(tunnelId))(AskTimeout).mapTo[Try[TunnelClient]],
       ShortTimeout).get
+  }
+
+  def request(tunnelIdWithPassword: TunnelId.WithPassword, requestMessage: ByteString): Future[ByteString] = {
+    val responsePromise = Promise[ByteString]()
+    relaisHandler ! DirectedRequest(tunnelIdWithPassword, requestMessage, responsePromise)
+    responsePromise.future
   }
 
   override def toString = s"TunnelHandler($localAddress)"

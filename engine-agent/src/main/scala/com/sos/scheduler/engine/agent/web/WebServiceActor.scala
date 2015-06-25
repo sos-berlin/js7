@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.agent.web.views.{CommandHandlerViewService, Main
 import com.sos.scheduler.engine.common.scalautil.Logger
 import javax.inject.{Inject, Provider}
 import scala.collection.immutable
+import scala.concurrent.ExecutionContext
 import spray.routing.HttpServiceActor
 
 /**
@@ -39,6 +40,7 @@ with CommandHandlerViewService
 
   protected def commandHandlerOverview = commandHandler
   protected def commandHandlerDetails = commandHandler
+  protected def executionContext: ExecutionContext = context.dispatcher
 
   def receive = {
     addWebServices
