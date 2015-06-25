@@ -16,11 +16,11 @@ final class CommandXmlTest extends FreeSpec {
   private val ipAddress = "127.0.0.1"
 
   "StartRemoteTask" in {
-    intercept[Exception] { parse(<remote_scheduler.start_remote_task/>) }
+    intercept[Exception] { parse(<remote_scheduler.start_remote_task ip_address={ipAddress}/>) }
     parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="999" java_options="OPTIONS" java_classpath="CLASSPATH"/>) shouldEqual
-      StartSeparateProcess(controllerAddress = s"$ipAddress:999", javaOptions = "OPTIONS", javaClasspath = "CLASSPATH")
+      StartSeparateProcess(controllerAddressOption = Some(s"$ipAddress:999"), javaOptions = "OPTIONS", javaClasspath = "CLASSPATH")
     parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="999" kind="process"/>) shouldEqual
-      StartThread(controllerAddress = s"$ipAddress:999")
+      StartThread(controllerAddressOption = Some(s"$ipAddress:999"))
     intercept[Exception] { parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="-1"/>) }
     intercept[Exception] { parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="0"/>) }
     intercept[Exception] { parse(<remote_scheduler.start_remote_task ip_address={ipAddress} tcp_port="65536"/>) }

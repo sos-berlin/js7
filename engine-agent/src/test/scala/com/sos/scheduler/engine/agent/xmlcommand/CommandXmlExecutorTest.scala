@@ -56,9 +56,9 @@ private object CommandXmlExecutorTest {
   }
 
   private def executeCommand(command: Command) = command match {
-    case StartThread(ASocketAddress) ⇒ Future { throw new Exception }
-    case StartThread(BSocketAddress) ⇒ Future { StartProcessResponse(AgentProcessId("111")) }
-    case StartSeparateProcess(BSocketAddress, "OPTIONS", "CLASSPATH") ⇒ Future { StartProcessResponse(AgentProcessId("222")) }
+    case StartThread(Some(ASocketAddress)) ⇒ Future { throw new Exception }
+    case StartThread(BSocketAddress) ⇒ Future { StartProcessResponse(AgentProcessId.fromLong(111)) }
+    case StartSeparateProcess(BSocketAddress, "OPTIONS", "CLASSPATH") ⇒ Future { StartProcessResponse(AgentProcessId.fromLong(222)) }
     case o ⇒ fail(o.toString)
   }
 

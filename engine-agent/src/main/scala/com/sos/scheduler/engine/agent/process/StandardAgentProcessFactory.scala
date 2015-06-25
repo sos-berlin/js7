@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer
 import com.sos.scheduler.engine.taskserver.task.{SeparateProcessTaskServer, TaskStartArguments}
+import com.sos.scheduler.engine.tunnel.{TunnelHandler, TunnelId}
 import java.util.concurrent.ThreadLocalRandom
 import java.util.regex.Pattern
 import javax.inject.{Inject, Singleton}
@@ -17,15 +18,28 @@ import javax.inject.{Inject, Singleton}
  * @author Joacim Zschimmer
  */
 @Singleton
-final class StandardAgentProcessFactory @Inject private(agentConfiguration: AgentConfiguration) extends AgentProcessFactory {
+final class StandardAgentProcessFactory @Inject private(agentConfiguration: AgentConfiguration, tunnelHandler: TunnelHandler) extends AgentProcessFactory {
 
   private val agentProcessIdGenerator = newAgentProcessIdGenerator()
 
-  def apply(command: StartProcess) = new AgentProcess(agentProcessIdGenerator.next(), newTaskServer(command))
+  def apply(command: StartProcess) = {
+    val id = agentProcessIdGenerator.next()
+    new AgentProcess(id, newTaskServer(id, command))
+  }
 
-  private def newTaskServer(command: StartProcess) = {
+  private def newTaskServer(id: AgentProcessId, command: StartProcess) = {
+
+    val (controllerAddress, tunnelClientOption) = command.controllerAddressOption match {
+      case Some(o) ⇒ (o, None)
+      case None ⇒
+        val address = tunnelHandler.localAddress.getAddress.getHostAddress +":"+ tunnelHandler.localAddress.getPort
+        val client = tunnelHandler.newTunnel(TunnelId(id.string))
+        (address, Some(client))
+    }
+
     val taskStartArguments = TaskStartArguments(
-      controllerAddress = command.controllerAddress,
+      controllerAddress = controllerAddress,
+      tunnelIdAndPasswordOption = tunnelClientOption map { _.idWithPassword },
       directory = agentConfiguration.directory,
       environment = agentConfiguration.environment)
     if (sys.props contains UseThreadPropertyName) { // For debugging

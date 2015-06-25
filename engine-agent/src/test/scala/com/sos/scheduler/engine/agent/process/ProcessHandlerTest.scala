@@ -140,7 +140,7 @@ private object ProcessHandlerTest {
   private val JavaOptions = "JAVA-OPTIONS"
   private val JavaClasspath = "JAVA-CLASSPATH"
   private val TestControllerAddress = "127.0.0.1:9999"
-  private val TestStartSeparateProcess = StartSeparateProcess(controllerAddress = TestControllerAddress, javaOptions = JavaOptions, javaClasspath = JavaClasspath)
+  private val TestStartSeparateProcess = StartSeparateProcess(controllerAddressOption = Some(TestControllerAddress), javaOptions = JavaOptions, javaClasspath = JavaClasspath)
 
   private class TestContext {
     val taskServers = List.fill(2) { new MockTaskServer }

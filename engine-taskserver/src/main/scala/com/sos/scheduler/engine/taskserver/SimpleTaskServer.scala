@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver
 
+import akka.util.ByteString
 import com.google.inject.Guice
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
@@ -13,8 +14,10 @@ import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskStartArguments}
+import com.sos.scheduler.engine.tunnel.TunnelConnectionMessage
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
+import spray.json.pimpAny
 
 /**
  * A blocking [[TaskServer]], running in a own thread.
@@ -23,11 +26,11 @@ import scala.concurrent._
  */
 final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends TaskServer with HasCloser {
 
-  private val controllingSchedulerConnection = new TcpConnection(taskStartArguments.controllerInetSocketAddress).closeWithCloser
+  private val master = new TcpConnection(taskStartArguments.controllerInetSocketAddress).closeWithCloser
   private val injector = Guice.createInjector(new ScalaAbstractModule {
     def configure() = bindInstance[TaskStartArguments](taskStartArguments)
   })
-  private val remoting = new Remoting(injector, new DialogConnection(controllingSchedulerConnection), IDispatchFactories, ProxyIDispatchFactories)
+  private val remoting = new Remoting(injector, new DialogConnection(master), IDispatchFactories, ProxyIDispatchFactories)
 
   private val terminatedPromise = Promise[Unit]()
   def terminated = terminatedPromise.future
@@ -35,8 +38,15 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends
   def start(): Unit =
     Future {
       blocking {
-        controllingSchedulerConnection.connect()
-        try remoting.run()
+        try {
+          master.connect()
+          for (tunnelIdAndPassword ← taskStartArguments.tunnelIdAndPasswordOption) {
+            val connectionMessage = TunnelConnectionMessage(tunnelIdAndPassword)
+            master.sendMessage(ByteString.fromString(connectionMessage.toJson.compactPrint))
+          }
+          remoting.run()
+          master.close()
+        }
         catch {
           case t: Throwable ⇒
             logger.error(t.toString, t)
