@@ -37,6 +37,7 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
     currentProcessCount = processHandlerView.currentProcessCount,
     totalProcessCount = processHandlerView.totalProcessCount,
     isTerminating = false,
+    system = AgentOverview.SystemInformation(hostname = "TEST-HOSTNAME"),
     java = AgentOverview.JavaInformation(systemProperties = Map("test" → "TEST")))
 
   private def expectedOverviewJsObject = JsObject(
@@ -45,6 +46,8 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
     "currentProcessCount" → JsNumber(777),
     "totalProcessCount" → JsNumber(999),
     "isTerminating" → JsBoolean(false),
+    "system" → JsObject(
+      "hostname" → JsString("TEST-HOSTNAME")),
     "java" → JsObject(
       "systemProperties" → JsObject(
         "test" → JsString("TEST"))))

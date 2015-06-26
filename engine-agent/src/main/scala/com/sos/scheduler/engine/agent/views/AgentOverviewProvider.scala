@@ -20,6 +20,7 @@ final class AgentOverviewProvider @Inject private(processHandlerView: ProcessHan
     currentProcessCount = processHandlerView.currentProcessCount,
     totalProcessCount = processHandlerView.totalProcessCount,
     isTerminating = processHandlerView.isTerminating,
+    system = AgentOverview.SystemInformation.Singleton,
     java = AgentOverview.JavaInformation.Singleton)
 }
 
