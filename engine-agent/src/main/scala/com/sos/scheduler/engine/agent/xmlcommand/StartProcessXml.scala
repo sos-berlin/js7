@@ -34,5 +34,9 @@ object StartProcessXml {
     }
   }
 
-  def responseToXmlElem(response: StartProcessResponse): xml.Elem = <process process_id={response.processId.value.toString}/>
+  def responseToXmlElem(response: StartProcessResponse): xml.Elem =
+    <process
+      process_id={response.processId.value.toString}>{
+      response.tunnelIdWithPasswordOption.toList map { o ⇒ <tunnel_id id={o.id.string} password={o.password.string}/> }
+    }</process>
 }

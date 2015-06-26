@@ -55,7 +55,7 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
     process.start()
     registerProcess(process)
     totalProcessCounter.incrementAndGet()
-    StartProcessResponse(process.id)
+    StartProcessResponse(process.id, process.tunnelIdWithPasswordOption)
   }
 
   private def registerProcess(process: AgentProcess): Unit = {

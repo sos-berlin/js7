@@ -38,7 +38,7 @@ final class ProcessHandlerTest extends FreeSpec {
       assert(!processHandler.terminated.isCompleted)
       for (nextProcessId ← AgentProcessIds) {
         val response = awaitResult(processHandler.apply(TestStartSeparateProcess), 3.s)
-        inside(response) { case StartProcessResponse(id) ⇒ id shouldEqual nextProcessId }
+        inside(response) { case StartProcessResponse(id, None) ⇒ id shouldEqual nextProcessId }
       }
       for (o ← taskServers) {
         assert(o.started)
