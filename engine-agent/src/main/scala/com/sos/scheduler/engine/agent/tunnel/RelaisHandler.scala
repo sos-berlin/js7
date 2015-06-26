@@ -50,12 +50,18 @@ private[tunnel] final class RelaisHandler extends Actor {
       val peerPort = connected.remoteAddress.getPort
       context.actorOf(Props { new Relais(tcp, connected.remoteAddress) }, name = s"Relais-TCP-$peerInterface:$peerPort")
 
-    case m @ NewTunnel(id, connectedPromise) ⇒
+    case m @ NewTunnel(id) ⇒
       logger.trace(s"$m")
-      sender() ! Try[TunnelId.Password] {
+      sender() ! Try[TunnelClient] {
         val password = TunnelId.newPassword()
-        relaisRegister.insert(id → Entry(password, connectedPromise, Uninitialized))
-        password
+        val connectedPromise = Promise[InetSocketAddress]()
+        val client = new TunnelClient(
+          self,
+          TunnelId.WithPassword(id, password),
+          connectedPromise.future,
+          peerAddress = () ⇒ connectedPromise.future.value map { _.get })
+        relaisRegister.insert(id → Entry(password, client, connectedPromise, Uninitialized))
+        client
       }
 
     case m @ Relais.RelaisAssociatedWithTunnelId(TunnelId.WithPassword(id, callersPassword), peerAddress) ⇒
@@ -65,7 +71,7 @@ private[tunnel] final class RelaisHandler extends Actor {
         case None ⇒
           logger.error(s"Unknown TunnelId '$id' received from $relais")
           stop(relais)
-        case Some(Entry(pass, connectedPromise, tunnelState)) ⇒
+        case Some(Entry(pass, _, connectedPromise, tunnelState)) ⇒
           if (callersPassword != pass) {
             logger.error(s"Invalid tunnel password from $relais")
             stop(relais)
@@ -125,11 +131,12 @@ private[tunnel] object RelaisHandler {
   private val logger = Logger(getClass)
 
   private[tunnel] case object Start
-  private[tunnel] case class NewTunnel(tunnelId: TunnelId, connectedPromise: Promise[InetSocketAddress])
+  private[tunnel] case class NewTunnel(tunnelId: TunnelId)
   private[tunnel] final case class CloseTunnel(tunnelIdWithPassword: TunnelId.WithPassword)
 
   private case class Entry(
     password: TunnelId.Password,
+    client: TunnelClient,
     connectedPromise: Promise[InetSocketAddress],
     var tunnelState: TunnelState)
 

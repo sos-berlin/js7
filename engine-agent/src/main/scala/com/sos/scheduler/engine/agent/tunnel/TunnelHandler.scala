@@ -7,8 +7,6 @@ import akka.util.Timeout
 import com.sos.scheduler.engine.agent.tunnel.TunnelHandler._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import java.net.InetSocketAddress
-import scala.concurrent.Promise
 import scala.util.Try
 
 /**
@@ -26,15 +24,9 @@ final class TunnelHandler(actorSystem: ActorSystem) extends AutoCloseable {
   def close(): Unit = actorSystem.stop(relaisHandler)
 
   def newTunnel(tunnelId: TunnelId) = {
-    val connectedPromise = Promise[InetSocketAddress]()
-    val password = awaitResult(
-      (relaisHandler ? RelaisHandler.NewTunnel(tunnelId, connectedPromise))(AskTimeout).mapTo[Try[TunnelId.Password]],
+    awaitResult(
+      (relaisHandler ? RelaisHandler.NewTunnel(tunnelId))(AskTimeout).mapTo[Try[TunnelClient]],
       ShortTimeout).get
-    new TunnelClient(
-      relaisHandler,
-      TunnelId.WithPassword(tunnelId, password),
-      connectedPromise.future,
-      peerAddress = () ⇒ connectedPromise.future.value map { _.get })
   }
 
   override def toString = s"TunnelHandler($localAddress)"
