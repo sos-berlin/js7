@@ -121,9 +121,6 @@ private[tunnel] object Relais {
 
   private case object NoData extends Data
 
-  private[tunnel] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
-    override def toString = s"Request(${message.size} bytes)"
-  }
 
   private[tunnel] final case class RelaisAssociatedWithTunnelId(tunnelIdWithPassword: TunnelId.WithPassword, peerAddress: InetSocketAddress)
 

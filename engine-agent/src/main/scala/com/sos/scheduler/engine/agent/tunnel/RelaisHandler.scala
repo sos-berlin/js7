@@ -123,7 +123,6 @@ private[tunnel] final class RelaisHandler extends Actor {
 private[tunnel] object RelaisHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
-  private[tunnel] case class DirectedRequest(tunnelIdWithPassword: TunnelId.WithPassword, request: Relais.Request)
 
   private[tunnel] case object Start
   private[tunnel] case class NewTunnel(tunnelId: TunnelId, connectedPromise: Promise[InetSocketAddress])
@@ -136,6 +135,6 @@ private[tunnel] object RelaisHandler {
 
   private sealed trait TunnelState
   private case object Uninitialized extends TunnelState
-  private case class RequestBeforeConnected(request: Relais.Request) extends TunnelState
+  private case class RequestBeforeConnected(request: Request) extends TunnelState
   private case class ConnectedRelais(relais: ActorRef) extends TunnelState
 }
