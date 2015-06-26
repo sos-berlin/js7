@@ -3,92 +3,121 @@ package com.sos.scheduler.engine.agent.tunnel
 import akka.actor.SupervisorStrategy.stoppingStrategy
 import akka.actor.{Actor, ActorRef, Props}
 import akka.io.{IO, Tcp}
-import com.sos.scheduler.engine.agent.tunnel.Relais.{DirectedRequest, RelaisConnected}
 import com.sos.scheduler.engine.agent.tunnel.RelaisHandler._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import java.net.InetSocketAddress
 import scala.collection.mutable
+import scala.concurrent.Promise
 import scala.util.control.NonFatal
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author Joacim Zschimmer
  */
-final class RelaisHandler extends Actor {
+private[tunnel] final class RelaisHandler extends Actor {
 
-  import context.{become, system}
+  import context.{become, stop, system}
 
   override def supervisorStrategy = stoppingStrategy
+  TunnelId.newPassword()  // Check random generator
 
-  private val relaisRegister = mutable.Map[TunnelId, RelaisState]()
+  // TODO Auskunft
+  private val relaisRegister = mutable.Map[TunnelId, Entry]()
 
   def receive = {
     case Start ⇒
-      IO(Tcp) ! Tcp.Bind(self, new InetSocketAddress("127.0.0.1", 0))
-      context.become(starting(sender()))
+      IO(Tcp) ! Tcp.Bind(self, new InetSocketAddress(LocalInterface, 0))
+      become(starting(sender()))
   }
 
   def starting(respondTo: ActorRef): Receive = {
     case bound: Tcp.Bound ⇒
       logger.debug(s"$bound")
-      respondTo ! bound
+      respondTo ! Success(bound)
       become(ready)
 
-    case Tcp.CommandFailed(_: Tcp.Bind) ⇒
-      context.parent ! Failure(new RuntimeException("A TCP port could not be bound"))
-      context.stop(self)
+    case m @ Tcp.CommandFailed(_: Tcp.Bind) ⇒
+      respondTo ! Failure(new RuntimeException(s"A TCP port could not be bound: $m"))
+      stop(self)
   }
 
   private def ready: Receive = {
     case connected: Tcp.Connected ⇒
       logger.debug(s"$connected")
-      val tcpConnection = sender()
-      context.actorOf(Props { new Relais(tcpConnection, connected.remoteAddress) },
-        name = s"Relais-TCP-${connected.remoteAddress.getAddress.getHostAddress}:${connected.remoteAddress.getPort}")
+      val tcp = sender()
+      val peerInterface = connected.remoteAddress.getAddress.getHostAddress
+      val peerPort = connected.remoteAddress.getPort
+      context.actorOf(Props { new Relais(tcp, connected.remoteAddress) }, name = s"Relais-TCP-$peerInterface:$peerPort")
 
-    case m @ NewTunnel(id) ⇒
-      logger.debug(s"$m")
-      sender() ! Try[Unit] { relaisRegister.insert(id → New) }
-
-    case m @ RelaisConnected(id) ⇒
-      logger.debug(s"$m")
-      val relais = sender()
-      relaisRegister(id) match {
-        case New ⇒
-        case RequestBeforeConnected(request) ⇒ relais ! request
-        case o: ConnectedRelais ⇒ sys.error(o.toString)
+    case m @ NewTunnel(id, connectedPromise) ⇒
+      logger.trace(s"$m")
+      sender() ! Try[TunnelId.Password] {
+        val password = TunnelId.newPassword()
+        relaisRegister.insert(id → Entry(password, connectedPromise, Uninitialized))
+        password
       }
-      relaisRegister(id) = ConnectedRelais(relais)
 
-    case directedRequest @ DirectedRequest(id, request, _) ⇒
-      logger.trace(s"Request($id, ${request.size} bytes})")
-      relaisRegister(id) match {
-        case New ⇒ relaisRegister(id) = RequestBeforeConnected(directedRequest)
+    case m @ Relais.RelaisAssociatedWithTunnelId(TunnelId.WithPassword(id, callersPassword), peerAddress) ⇒
+      logger.trace(s"$m")
+      val relais = sender()
+      relaisRegister.get(id) match {
+        case None ⇒
+          logger.error(s"Unknown TunnelId '$id' received from $relais")
+          stop(relais)
+        case Some(Entry(pass, connectedPromise, tunnelState)) ⇒
+          if (callersPassword != pass) {
+            logger.error(s"Invalid tunnel password from $relais")
+            stop(relais)
+          } else
+            tunnelState match {
+              case o: ConnectedRelais ⇒
+                logger.error(s"$tunnelState connects twice?")
+                stop(relais)
+              case Uninitialized ⇒
+              case RequestBeforeConnected(request) ⇒ relais ! request
+            }
+          connectedPromise.success(peerAddress)
+          relaisRegister(id).tunnelState = ConnectedRelais(relais)
+      }
+
+    case m @ DirectedRequest(id, request) ⇒
+      logger.trace(s"$m")
+      relaisRegister(id).tunnelState match {
+        case Uninitialized ⇒ relaisRegister(id).tunnelState = RequestBeforeConnected(request)
         case o: RequestBeforeConnected ⇒ sys.error(o.toString)
-        case ConnectedRelais(relais) ⇒ relaisRegister(id).asInstanceOf[ConnectedRelais].relais ! directedRequest
+        case ConnectedRelais(relais) ⇒ relais ! request
       }
 
     case m @ CloseTunnel(id) ⇒
-      try for (ConnectedRelais(relais) ← relaisRegister.get(id)) relais ! Relais.Close
+      try {
+        val entryOption = relaisRegister.remove(id)
+        for (Entry(_, _, ConnectedRelais(relais)) ← entryOption) {
+          relais ! Relais.Close
+        }
+      }
       catch {
         case NonFatal(t) ⇒ logger.error(s"$m: $t", t)
       }
-
-    case Close ⇒  // TODO In jedem Zustand zulassen, nicht nur ready
-      context.stop(self)
   }
 }
 
-object RelaisHandler {
+private[tunnel] object RelaisHandler {
+  private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
+  private[tunnel] case class DirectedRequest(tunnelId: TunnelId, request: Relais.Request)
+
   private[tunnel] case object Start
-  private[tunnel] case object Close
-  private[tunnel] case class NewTunnel(tunnelId: TunnelId)
+  private[tunnel] case class NewTunnel(tunnelId: TunnelId, connectedPromise: Promise[InetSocketAddress])
   private[tunnel] final case class CloseTunnel(tunnelId: TunnelId)
 
-  private sealed trait RelaisState
-  private case object New extends RelaisState
-  private case class RequestBeforeConnected(request: DirectedRequest) extends RelaisState
-  private case class ConnectedRelais(relais: ActorRef) extends RelaisState
+  private case class Entry(
+    password: TunnelId.Password,
+    connectedPromise: Promise[InetSocketAddress],
+    var tunnelState: TunnelState)
+
+  private sealed trait TunnelState
+  private case object Uninitialized extends TunnelState
+  private case class RequestBeforeConnected(request: Relais.Request) extends TunnelState
+  private case class ConnectedRelais(relais: ActorRef) extends TunnelState
 }

@@ -7,7 +7,7 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-final case class TunnelConnectionMessage(tunnelId: TunnelId) {
+final case class TunnelConnectionMessage(tunnelIdWithPassword: TunnelId.WithPassword) {
 
   /**
    * Binary representation for TCP connection.

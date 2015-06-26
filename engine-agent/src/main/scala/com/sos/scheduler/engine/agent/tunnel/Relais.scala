@@ -14,56 +14,60 @@ import spray.json.JsonParser
 /**
  * @author Joacim Zschimmer
  */
-final class Relais(tcpConnection: ActorRef, peerAddress: InetSocketAddress)
+private[tunnel] final class Relais(tcpConnection: ActorRef, peerAddress: InetSocketAddress)
 extends Actor with FSM[State, Data] {
 
   private var tunnelId: TunnelId = null
 
   tcpConnection ! Tcp.Register(self)
-  startWith(CollectingResponseFromTcp, CollectingResponseFromTcpData(null))  // null !!!
+  startWith(CollectingResponseFromTcp, CollectingResponseFromTcp.ForConnectionMessage())
 
   when(ExpectingRequest) {
-    case Event(request: DirectedRequest, NoData) ⇒
-      logger.trace(s"ExpectingRequest: Got ${request.message.size} bytes")
+    case Event(m @ Request(message, responsePromise), NoData) ⇒
+      logger.trace(s"ExpectingRequest: Got $m")
       try {
-        if (request.message.size > MessageSizeMaximum) throw newTooBigException(request.message.size)
-        tcpConnection ! Tcp.Write(intToBytesString(request.message.size) ++ request.message)
-        goto(CollectingResponseFromTcp) using CollectingResponseFromTcpData(request.responsePromise)
+        if (message.size > MessageSizeMaximum) throw newTooBigException(message.size)
+        tcpConnection ! Tcp.Write(intToBytesString(message.size) ++ message)
+        goto(CollectingResponseFromTcp) using CollectingResponseFromTcp.ForResponse(responsePromise)
       } catch {
         case NonFatal(t) ⇒
-          request.responsePromise.failure(t)
+          responsePromise.failure(t)
           stay()
       }
   }
 
   when(CollectingResponseFromTcp) {
-    case Event(Tcp.Received(bytes), CollectingResponseFromTcpData(responsePromise, messageBuilder)) ⇒
-      try {
-        logger.trace(s"CollectingResponseFromTCP: Received ${bytes.size} bytes)")
-        for (len ← messageBuilder.expectedLength if len > MessageSizeMaximum) throw newTooBigException(len)
-        messageBuilder.apply(bytes) match {
-          case None ⇒ stay()
-          case Some(completeMessage) ⇒
-            logger.trace(s"CollectingResponseFromTCP: Complete message has ${completeMessage.size} bytes")
-            if (tunnelId == null) {
-              establishTunnel(completeMessage)
-            } else {
-              responsePromise.success(completeMessage)
-            }
-            goto(ExpectingRequest) using NoData
+    case Event(Tcp.Received(bytes), CollectingResponseFromTcp.ForConnectionMessage(messageBuilder)) ⇒
+      collect(bytes, messageBuilder) { completeMessage ⇒
+        val connectionMessage = JsonParser(completeMessage.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
+        logger.trace(s"Connection message: $connectionMessage")
+        tunnelId = connectionMessage.tunnelIdWithPassword.id
+        context.parent ! RelaisAssociatedWithTunnelId(connectionMessage.tunnelIdWithPassword, peerAddress)
+          goto(ExpectingRequest) using NoData
+      }
+
+    case Event(Tcp.Received(bytes), CollectingResponseFromTcp.ForResponse(responsePromise, messageBuilder)) ⇒
+      try
+        collect(bytes, messageBuilder) { completeMessage ⇒
+          responsePromise.success(completeMessage)
+          goto(ExpectingRequest) using NoData
         }
-      } catch {
+      catch {
         case NonFatal(t) ⇒
           responsePromise.failure(t)
           stop(FSM.Failure(t))
       }
   }
 
-  private def establishTunnel(connectionMessage: ByteString): Unit = {
-    logger.trace("Connection message")
-    val m = JsonParser(connectionMessage.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
-    tunnelId = m.tunnelId
-    context.parent ! RelaisConnected(m.tunnelId)
+  private def collect(bytes: ByteString, messageBuilder: LengthHeaderMessageCollector)(onComplete: ByteString => State): State = {
+    logger.trace(s"CollectingResponseFromTCP: Received ${ bytes.size } bytes)")
+    for (len ← messageBuilder.expectedLength if len > MessageSizeMaximum) throw newTooBigException(len)
+    messageBuilder.apply(bytes) match {
+      case None ⇒ stay()
+      case Some(completeMessage) ⇒
+        logger.trace(s"CollectingResponseFromTCP: Complete message has ${completeMessage.size} bytes")
+        onComplete(completeMessage)
+    }
   }
 
   when(Closing) {
@@ -82,13 +86,15 @@ extends Actor with FSM[State, Data] {
       logger.debug(s"$closed")
       val exception = new RuntimeException(s"Connection with $peerAddress has unexpectedly been closed: $closed")
       data match {
-        case CollectingResponseFromTcpData(responsePromise, _) ⇒ responsePromise.failure(exception)
+        case CollectingResponseFromTcp.ForResponse(responsePromise, _) ⇒ responsePromise.failure(exception)
         case _ ⇒
       }
       stop(FSM.Failure(exception))
   }
 
-  override def toString = s"Relais(${Option(tunnelId) getOrElse "tunnel not yet established"},$peerAddress)"
+  override def toString = s"Relais($tunnelIdString)"
+
+  private def tunnelIdString = if (tunnelId == null) "tunnel is not yet established" else tunnelId.string
 }
 
 private[tunnel] object Relais {
@@ -96,20 +102,30 @@ private[tunnel] object Relais {
   private val logger = Logger(getClass)
 
   private[tunnel] sealed trait State
-  private[tunnel] case object ExpectingRequest extends State
-  private[tunnel] case object CollectingResponseFromTcp extends State
-  private[tunnel] case object Closing extends State
-
   private[tunnel] sealed trait Data
+
+  private case object ExpectingRequest extends State {}
+
+  private case object CollectingResponseFromTcp extends State {
+    final case class ForResponse(
+      responsePromise: Promise[ByteString],
+      messageBuilder: LengthHeaderMessageCollector = new LengthHeaderMessageCollector)
+    extends Data
+
+    case class ForConnectionMessage(
+      messageBuilder: LengthHeaderMessageCollector = new LengthHeaderMessageCollector)
+    extends Data
+  }
+
+  private case object Closing extends State
+
   private case object NoData extends Data
-  private[tunnel] case class CollectingResponseFromTcpData(
-    responsePromise: Promise[ByteString],
-    messageBuilder: LengthHeaderMessageCollector = new LengthHeaderMessageCollector)
-  extends Data
 
-  private[tunnel] case class DirectedRequest(tunnelId: TunnelId, message: ByteString, responsePromise: Promise[ByteString])
+  private[tunnel] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
+    override def toString = s"Request(${message.size} bytes)"
+  }
 
-  private[tunnel] final case class RelaisConnected(tunnelId: TunnelId)
+  private[tunnel] final case class RelaisAssociatedWithTunnelId(tunnelIdWithPassword: TunnelId.WithPassword, peerAddress: InetSocketAddress)
 
   private[tunnel] case object Close
 

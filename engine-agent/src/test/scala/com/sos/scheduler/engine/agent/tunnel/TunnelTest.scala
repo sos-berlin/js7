@@ -19,13 +19,11 @@ import scala.util.Random
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
+//FIXME Increase heap  @RunWith(classOf[JUnitRunner])
 final class TunnelTest extends FreeSpec {
 
-  // TODO Sehr lange Nachrichten
   // TODO TunnelId extra salzen (mit base64)
-  // TODO Fehlerbehandlung: TunnelHandler stabil; HTTP-Request in allen Fehlerfällen beantworten (es gibt kein Timeout)
-  private val sizeGenerator = Iterator(MessageSizeMaximum, 0, 1) ++ Iterator.continually { nextRandomSize(MessageSizeMaximum) }
+  private val messageSizes = Iterator(MessageSizeMaximum, 0, 1) ++ Iterator.continually { nextRandomSize(10*1000*1000) }
 
   "Tunnel" in {
     val actorSystem = ActorSystem()
@@ -33,14 +31,19 @@ final class TunnelTest extends FreeSpec {
     val tunnelHandler = new TunnelHandler(actorSystem)
     val tunnelsAndServers = for (i ← 1 to TunnelCount) yield {
       val id = TunnelId(i.toString)
-      tunnelHandler.newTunnel(id) → new TcpServer(id, tunnelHandler.tcpAddress)
+      val tunnel = tunnelHandler.newTunnel(id)
+      val tcpServer = new TcpServer(tunnel.idWithPassword, tunnelHandler.localAddress)
+      tcpServer.start()
+      tunnel.connected onSuccess { case peerAddress: InetSocketAddress ⇒
+        logger.info(s"$tunnel $peerAddress")
+      }
+      tunnel → tcpServer
     }
-    for ((_, tcpServer) ← tunnelsAndServers) tcpServer.start()
-    for (_ ← 1 to 3) {
+    for (_ ← 1 to 100) {
       val responseFutures = for ((tunnel, _) ← Random.shuffle(tunnelsAndServers)) yield {
-        val request = ByteString.fromArray(new Array[Byte](sizeGenerator.next()))
+        val request = ByteString.fromArray(new Array[Byte](messageSizes.next()))
         tunnel.sendRequest(request) map { response ⇒
-          if (!byteStringsFastEqual(response, requestToResponse(request, tunnel.id))) fail ("Response is not as expected")
+          if (!byteStringsFastEqual(response, requestToResponse(request, tunnel.id))) fail("Response is not as expected")
         }
       }
       awaitResult(Future.sequence(responseFutures), 600.s)
@@ -54,7 +57,7 @@ final class TunnelTest extends FreeSpec {
 }
 
 object TunnelTest {
-  private val TunnelCount = 1
+  private val TunnelCount = 8
   private val MessageSizeMaximum = Relais.MessageSizeMaximum - 100 // requestToResponse adds some bytes
   private val logger = Logger(getClass)
 
@@ -64,7 +67,8 @@ object TunnelTest {
   private def requestToResponse(request: ByteString, id: TunnelId): ByteString =
     request ++ ByteString.fromString(s" RESPONSE FROM $id")
 
-  private class TcpServer(tunnelId: TunnelId, masterAddress: InetSocketAddress) extends Thread {
+  private class TcpServer(tunnelIdWithPassword: TunnelId.WithPassword, masterAddress: InetSocketAddress) extends Thread {
+    val tunnelId = tunnelIdWithPassword.id
     setName(s"TCP Server $tunnelId")
     val terminatedPromise = Promise[Unit]()
 
@@ -72,7 +76,7 @@ object TunnelTest {
       try {
         val connection = new TcpConnection(masterAddress)
         connection.connect()
-        connection.sendMessage(TunnelConnectionMessage(tunnelId).toByteString)
+        connection.sendMessage(TunnelConnectionMessage(tunnelIdWithPassword).toByteString)
         for (request ← (Iterator.continually { connection.receiveMessage() } takeWhile { _.nonEmpty }).flatten) {
           val response = requestToResponse(ByteString.fromByteBuffer(request), tunnelId)
           logger.debug(s"$tunnelId")
