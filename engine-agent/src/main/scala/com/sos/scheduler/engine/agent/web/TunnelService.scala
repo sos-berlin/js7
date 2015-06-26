@@ -2,8 +2,9 @@ package com.sos.scheduler.engine.agent.web
 
 import akka.util.ByteString
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards
-import com.sos.scheduler.engine.tunnel.Http.PasswordHeaderName
-import com.sos.scheduler.engine.tunnel.{TunnelHandler, TunnelId}
+import com.sos.scheduler.engine.tunnel.TunnelHandler
+import com.sos.scheduler.engine.tunnel.data.Http.PasswordHeaderName
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import scala.concurrent.ExecutionContext
 import spray.http.HttpEntity
 import spray.http.MediaTypes._

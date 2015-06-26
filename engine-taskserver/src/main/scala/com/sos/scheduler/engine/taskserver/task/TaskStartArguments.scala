@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
 import com.sos.scheduler.engine.taskserver.task.TaskStartArguments._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
-import com.sos.scheduler.engine.tunnel.TunnelId
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}
 import scala.collection.immutable

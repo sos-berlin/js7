@@ -6,6 +6,7 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.LengthHeaderMessageCollector._
 import com.sos.scheduler.engine.tunnel.Relais._
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetSocketAddress
 import scala.concurrent.Promise
 import scala.util.control.NonFatal

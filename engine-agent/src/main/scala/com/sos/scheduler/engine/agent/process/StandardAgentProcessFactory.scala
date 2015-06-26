@@ -9,7 +9,8 @@ import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer
 import com.sos.scheduler.engine.taskserver.task.{SeparateProcessTaskServer, TaskStartArguments}
-import com.sos.scheduler.engine.tunnel.{TunnelHandler, TunnelId}
+import com.sos.scheduler.engine.tunnel.TunnelHandler
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.util.concurrent.ThreadLocalRandom
 import java.util.regex.Pattern
 import javax.inject.{Inject, Singleton}

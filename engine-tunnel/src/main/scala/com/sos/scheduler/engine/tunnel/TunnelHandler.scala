@@ -7,6 +7,7 @@ import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.tunnel.TunnelHandler._
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 

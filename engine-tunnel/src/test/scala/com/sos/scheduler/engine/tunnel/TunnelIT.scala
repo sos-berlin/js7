@@ -8,6 +8,7 @@ import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.tunnel.TunnelIT._
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetSocketAddress
 import java.util
 import org.scalatest.FreeSpec

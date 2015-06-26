@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.tunnel
 
 import akka.util.ByteString
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import spray.json.DefaultJsonProtocol.jsonFormat1
 import spray.json._
 

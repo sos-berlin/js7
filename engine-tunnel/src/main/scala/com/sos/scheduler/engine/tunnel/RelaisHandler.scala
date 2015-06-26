@@ -6,6 +6,7 @@ import akka.io.{IO, Tcp}
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.RelaisHandler._
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetSocketAddress
 import scala.collection.mutable
 import scala.concurrent.Promise

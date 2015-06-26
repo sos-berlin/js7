@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.tunnel
 
 import akka.actor.ActorRef
 import akka.util.ByteString
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetSocketAddress
 import scala.concurrent.{Future, Promise}
 
