@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver
 
+import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.minicom.remoting.MessageConnection
@@ -45,15 +46,17 @@ final class TcpConnection(peerAddress: InetSocketAddress) extends MessageConnect
     assert(buffer.position == 0 || buffer.position == buffer.limit)
   }
 
-  def sendMessage(data: Array[Byte], length: Int): Unit = {
+  def sendMessage(data: ByteString): Unit = sendMessage(data.asByteBuffers, data.size)
+
+  def sendMessage(data: Array[Byte], length: Int): Unit = sendMessage(List(ByteBuffer.wrap(data, 0, length)), length)
+
+  private def sendMessage(byteBuffers: Iterable[ByteBuffer], size: Int): Unit = {
     val lengthBuffer = ByteBuffer.allocate(4)
-    lengthBuffer.putInt(length)
-    lengthBuffer.rewind()
+    lengthBuffer.putInt(size)
+    lengthBuffer.flip()
     blocking {
       // Send as one TCP packet, with one write
-      channel.write(Array(
-        lengthBuffer,
-        ByteBuffer.wrap(data, 0, length)))
+      channel.write(Array(lengthBuffer) ++ byteBuffers)
     }
   }
 
