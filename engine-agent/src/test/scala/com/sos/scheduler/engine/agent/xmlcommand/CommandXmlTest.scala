@@ -29,10 +29,10 @@ final class CommandXmlTest extends FreeSpec {
 
   "CloseRemoteTask" in {
     intercept[Exception] { parse(<remote_scheduler.remote_task.close/>) }
-    parse(<remote_scheduler.remote_task.close process_id="111222333444555666"/>) shouldEqual
-      CloseProcess(AgentProcessId(111222333444555666L), kill = false)
-    parse(<remote_scheduler.remote_task.close process_id="111222333444555666" kill="true"/>) shouldEqual
-      CloseProcess(AgentProcessId(111222333444555666L), kill = true)
+    parse(<remote_scheduler.remote_task.close process_id="1-1"/>) shouldEqual
+      CloseProcess(AgentProcessId("1-1"), kill = false)
+    parse(<remote_scheduler.remote_task.close process_id="2-2" kill="true"/>) shouldEqual
+      CloseProcess(AgentProcessId("2-2"), kill = true)
   }
 
   "Terminate" in {

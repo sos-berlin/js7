@@ -15,8 +15,8 @@ import org.scalatest.junit.JUnitRunner
 final class SendProcessSignalXmlTest extends FreeSpec {
 
   "Parse XML for SendProcessSignal" in {
-    val commandElem = <remote_scheduler.remote_task.kill process_id="111222333444555666" signal="SIGTERM"/>
+    val commandElem = <remote_scheduler.remote_task.kill process_id="1-1" signal="SIGTERM"/>
     val command = ScalaXMLEventReader.parseElem(commandElem)(SendProcessSignalXml.parseXml)
-    assert(command == SendProcessSignal(AgentProcessId(111222333444555666L), SIGTERM))
+    assert(command == SendProcessSignal(AgentProcessId("1-1"), SIGTERM))
   }
 }

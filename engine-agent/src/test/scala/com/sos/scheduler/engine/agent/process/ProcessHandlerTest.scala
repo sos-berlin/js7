@@ -136,7 +136,7 @@ final class ProcessHandlerTest extends FreeSpec {
 }
 
 private object ProcessHandlerTest {
-  private val AgentProcessIds = List(111111111111111111L, 222222222222222222L) map AgentProcessId.apply
+  private val AgentProcessIds = List("1-1", "2-2") map AgentProcessId.apply
   private val JavaOptions = "JAVA-OPTIONS"
   private val JavaClasspath = "JAVA-CLASSPATH"
   private val TestControllerAddress = "127.0.0.1:9999"

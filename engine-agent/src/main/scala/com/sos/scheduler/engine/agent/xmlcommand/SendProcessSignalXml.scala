@@ -14,7 +14,7 @@ object SendProcessSignalXml {
     import eventReader._
     parseElement(SendProcessSignal.XmlElementName) {
       SendProcessSignal(
-        processId = attributeMap.convert("process_id") { o ⇒ AgentProcessId(o.toLong) },
+        processId = attributeMap.convert("process_id")(AgentProcessId.apply),
         signal = attributeMap.convert("signal")(ProcessSignal.valueOf))
     }
   }

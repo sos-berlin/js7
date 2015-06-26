@@ -13,6 +13,6 @@ final class CloseProcessXmlTest extends FreeSpec {
   "Parse XML for CloseProcess" in {
     val commandElem = <remote_scheduler.remote_task.close process_id="111222333444555666" kill="true"/>
     val command = ScalaXMLEventReader.parseElem(commandElem)(CloseProcessXml.parseXml)
-    assert(command == CloseProcess(AgentProcessId(111222333444555666L), kill = true))
+    assert(command == CloseProcess(AgentProcessId("111222333444555666"), kill = true))
   }
 }
