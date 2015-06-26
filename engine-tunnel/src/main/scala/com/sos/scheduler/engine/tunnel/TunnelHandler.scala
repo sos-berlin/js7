@@ -8,13 +8,15 @@ import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.tunnel.TunnelHandler._
 import com.sos.scheduler.engine.tunnel.data.TunnelId
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
 /**
  * @author Joacim Zschimmer
  */
-final class TunnelHandler(actorSystem: ActorSystem) extends AutoCloseable {
+@Singleton
+final class TunnelHandler @Inject private[tunnel](actorSystem: ActorSystem) extends AutoCloseable {
 
   private val relaisHandler = actorSystem.actorOf( Props { new RelaisHandler }, name = "TunnelHandler")
 
