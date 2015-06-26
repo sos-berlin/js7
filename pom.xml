@@ -840,6 +840,11 @@
             </dependency>
             <dependency>
                 <groupId>io.spray</groupId>
+                <artifactId>spray-httpx_${scala.binaryVersion}</artifactId>
+                <version>${spray.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.spray</groupId>
                 <artifactId>spray-servlet_${scala.binaryVersion}</artifactId>
                 <version>${spray.version}</version>
             </dependency>
