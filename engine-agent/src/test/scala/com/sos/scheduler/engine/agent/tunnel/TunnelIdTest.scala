@@ -17,7 +17,7 @@ final class TunnelIdTest extends FreeSpec {
   "newPassword" in {
     logger.debug(TunnelId.newPassword().toString)
     val result = measureTime(1000, "newPassword") { TunnelId.newPassword() }
-    assert(result.singleDuration < 5.ms)  // Most time, it is 0.1ms
+    assert(result.singleDuration < 1.ms)
   }
 
   "Password.toString does not show password" in {

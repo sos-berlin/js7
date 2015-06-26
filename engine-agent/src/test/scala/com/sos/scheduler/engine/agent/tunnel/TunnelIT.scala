@@ -2,28 +2,26 @@ package com.sos.scheduler.engine.agent.tunnel
 
 import akka.actor.ActorSystem
 import akka.util.ByteString
-import com.sos.scheduler.engine.agent.tunnel.TunnelTest._
+import com.sos.scheduler.engine.agent.tunnel.TunnelIT._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.taskserver.TcpConnection
 import java.net.InetSocketAddress
 import java.util
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.{Future, Promise}
-import scala.math.{log, pow}
+import scala.math.{log, min, pow}
 import scala.util.Random
 
 /**
  * @author Joacim Zschimmer
  */
 //FIXME Increase heap  @RunWith(classOf[JUnitRunner])
-final class TunnelTest extends FreeSpec {
+final class TunnelIT extends FreeSpec {
 
-  // TODO TunnelId extra salzen (mit base64)
-  private val messageSizes = Iterator(MessageSizeMaximum, 0, 1) ++ Iterator.continually { nextRandomSize(10*1000*1000) }
+  private val messageSizes = Iterator(MessageSizeMaximum, 0, 1) ++ Iterator.continually { nextRandomSize(1000*1000) }
 
   "Tunnel" in {
     val actorSystem = ActorSystem()
@@ -39,15 +37,20 @@ final class TunnelTest extends FreeSpec {
       }
       tunnel → tcpServer
     }
-    for (_ ← 1 to 100) {
-      val responseFutures = for ((tunnel, _) ← Random.shuffle(tunnelsAndServers)) yield {
-        val request = ByteString.fromArray(new Array[Byte](messageSizes.next()))
-        tunnel.sendRequest(request) map { response ⇒
-          if (!byteStringsFastEqual(response, requestToResponse(request, tunnel.id))) fail("Response is not as expected")
+    val tunnelRuns = for ((tunnel, _) ← tunnelsAndServers) yield Future {
+      val stepSize = min(Iterations, 1000)
+      for (i ← 0 until Iterations by stepSize) {
+        val m = Stopwatch.measureTime(stepSize, "request") {
+          val request = ByteString.fromArray(Array.fill[Byte](messageSizes.next())(i.toByte))
+          val responded = tunnel.sendRequest(request) map { response ⇒
+            if (!byteStringsFastEqual(response, requestToResponse(request, tunnel.id))) fail("Response is not as expected")
+          }
+          awaitResult(responded, 10.s)
         }
+        logger.info(s"${tunnel.id}: $i requests, $m")
       }
-      awaitResult(Future.sequence(responseFutures), 600.s)
     }
+    awaitResult(Future.sequence(tunnelRuns), 1.h)
     for ((tunnel, tcpServer) ← tunnelsAndServers) {
       tunnel.close()
       awaitResult(tcpServer.terminatedPromise.future, 10.s)
@@ -56,8 +59,9 @@ final class TunnelTest extends FreeSpec {
   }
 }
 
-object TunnelTest {
-  private val TunnelCount = 8
+object TunnelIT {
+  private val TunnelCount = 4
+  private val Iterations = 100
   private val MessageSizeMaximum = Relais.MessageSizeMaximum - 100 // requestToResponse adds some bytes
   private val logger = Logger(getClass)
 

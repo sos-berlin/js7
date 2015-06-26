@@ -33,6 +33,6 @@ final class TunnelHandler(actorSystem: ActorSystem) extends AutoCloseable {
 }
 
 object TunnelHandler {
-  private val ShortTimeout = 60.s
+  private val ShortTimeout = 30.s
   private val AskTimeout = Timeout(ShortTimeout.toFiniteDuration)
 }
