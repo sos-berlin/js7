@@ -18,13 +18,11 @@ final class TunnelClient(
 
   def sendRequest(message: ByteString): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
-    relaisHandler ! RelaisHandler.DirectedRequest(id, Relais.Request(message, responsePromise))
+    relaisHandler ! RelaisHandler.DirectedRequest(idWithPassword, Relais.Request(message, responsePromise))
     responsePromise.future
   }
 
-  def close(): Unit = {
-    relaisHandler ! RelaisHandler.CloseTunnel(id)
-  }
+  def close(): Unit = relaisHandler ! RelaisHandler.CloseTunnel(idWithPassword)
 
   override def toString = s"TunnelClient($id,${peerAddress() getOrElse "not yet connected"})"
 }

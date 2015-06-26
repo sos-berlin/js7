@@ -81,35 +81,53 @@ private[tunnel] final class RelaisHandler extends Actor {
           relaisRegister(id).tunnelState = ConnectedRelais(relais)
       }
 
-    case m @ DirectedRequest(id, request) ⇒
-      logger.trace(s"$m")
-      relaisRegister(id).tunnelState match {
-        case Uninitialized ⇒ relaisRegister(id).tunnelState = RequestBeforeConnected(request)
-        case o: RequestBeforeConnected ⇒ sys.error(o.toString)
-        case ConnectedRelais(relais) ⇒ relais ! request
+    case m @ DirectedRequest(idWithPassword, request) ⇒
+      try {
+        logger.trace(s"$m")
+        val e = checkedEntry(idWithPassword)
+        e.tunnelState match {
+          case Uninitialized ⇒ e.tunnelState = RequestBeforeConnected(request)
+          case o: RequestBeforeConnected ⇒ sys.error(o.toString)
+          case ConnectedRelais(relais) ⇒ relais ! request
+        }
+      } catch {
+        case NonFatal(t) ⇒
+          logger.debug(s"ERROR: $m: $t", t)
+          request.responsePromise.failure(t)
       }
 
-    case m @ CloseTunnel(id) ⇒
+    case m @ CloseTunnel(idWithPassword) ⇒
       try {
-        val entryOption = relaisRegister.remove(id)
-        for (Entry(_, _, ConnectedRelais(relais)) ← entryOption) {
-          relais ! Relais.Close
+        if (relaisRegister contains idWithPassword.id) {
+          val e = checkedEntry(idWithPassword)
+          relaisRegister.remove(idWithPassword.id)
+          e.tunnelState match {
+            case ConnectedRelais(relais) ⇒ relais ! Relais.Close
+            case _ ⇒
+          }
         }
       }
       catch {
         case NonFatal(t) ⇒ logger.error(s"$m: $t", t)
       }
   }
+
+  private def checkedEntry(idWithPassword: TunnelId.WithPassword) = {
+    val entry = relaisRegister(idWithPassword.id)
+    if (idWithPassword.password != entry.password) throw new IllegalArgumentException(s"Invalid tunnel password")
+    entry
+  }
+
 }
 
 private[tunnel] object RelaisHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
-  private[tunnel] case class DirectedRequest(tunnelId: TunnelId, request: Relais.Request)
+  private[tunnel] case class DirectedRequest(tunnelIdWithPassword: TunnelId.WithPassword, request: Relais.Request)
 
   private[tunnel] case object Start
   private[tunnel] case class NewTunnel(tunnelId: TunnelId, connectedPromise: Promise[InetSocketAddress])
-  private[tunnel] final case class CloseTunnel(tunnelId: TunnelId)
+  private[tunnel] final case class CloseTunnel(tunnelIdWithPassword: TunnelId.WithPassword)
 
   private case class Entry(
     password: TunnelId.Password,
