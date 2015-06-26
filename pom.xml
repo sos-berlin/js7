@@ -140,7 +140,7 @@
                     <environmentVariables>
                         <LC_ALL>${LC_ALL}</LC_ALL>
                     </environmentVariables>
-                    <argLine>-Xms10m -Xmx50m ${argLine}</argLine>  <!-- Sparsame Heap-Zuteilung für die parallelen Prozesse -->
+                    <argLine>-Xms10m -Xmx150m ${argLine}</argLine>  <!-- Sparsame Heap-Zuteilung für die parallelen Prozesse -->
                     <systemPropertyVariables>
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
