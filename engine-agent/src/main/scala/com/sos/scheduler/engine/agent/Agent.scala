@@ -57,5 +57,6 @@ object Agent {
   def forTest(httpPort: Int): Agent =
     new Agent(AgentConfiguration(
       httpPort = httpPort,
-      httpInterfaceRestriction = Some("127.0.0.1")))
+      httpInterfaceRestriction = Some("127.0.0.1"),
+      jobJavaOptions = sys.props.get("agent.job.javaOptions").toList))
 }

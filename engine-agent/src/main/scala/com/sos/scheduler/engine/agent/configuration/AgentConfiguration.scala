@@ -21,7 +21,8 @@ final case class AgentConfiguration(
   httpInterfaceRestriction: Option[String] = None,
   directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
   environment: immutable.Iterable[(String, String)] = Nil,
-  webServiceClasses: immutable.Seq[Class[_ <: WebService]] = Nil)
+  webServiceClasses: immutable.Seq[Class[_ <: WebService]] = Nil,
+  jobJavaOptions: immutable.Seq[String] = Nil)
 {
   requireTcpPortNumber(httpPort)
   require(directory.isAbsolute)

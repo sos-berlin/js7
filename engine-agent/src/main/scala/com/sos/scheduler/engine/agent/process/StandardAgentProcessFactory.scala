@@ -51,7 +51,7 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
         case _: StartThread ⇒ new SimpleTaskServer(taskStartArguments)
         case o: StartSeparateProcess ⇒ new SeparateProcessTaskServer(
           taskStartArguments,
-          javaOptions = splitJavaOptions(o.javaOptions),
+          javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
           javaClasspath = o.javaClasspath)
       }
   }
