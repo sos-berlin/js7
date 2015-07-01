@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.tunnel
 
-import akka.actor.{Actor, ActorRef, FSM, Props}
+import akka.actor.SupervisorStrategy._
+import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -25,13 +26,26 @@ import spray.json.JsonParser
  *
  * @author Joacim Zschimmer
  */
-private[tunnel] final class Connector(tcp: ActorRef, peerAddress: InetSocketAddress)
+private[tunnel] final class Connector(tcp: ActorRef, connected: Tcp.Connected)
 extends Actor with FSM[State, Data] {
 
+  import connected.remoteAddress
+
   private var tunnelId: TunnelId = null
+  private val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, connected)})
+  private var messageTcpBridgeTerminated = false
 
-  val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, peerAddress)})
 
+  override def supervisorStrategy = stoppingStrategy
+
+  override def postStop(): Unit = {
+    if (tunnelId != null) {
+      context.parent ! Closed(tunnelId)
+    }
+    super.postStop()
+  }
+
+  context.watch(messageTcpBridge)
   startWith(ExpectingMessageFromTcp, NoData)
 
   when(ExpectingMessageFromTcp) {
@@ -39,12 +53,17 @@ extends Actor with FSM[State, Data] {
       val connectionMessage = JsonParser(message.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
       logger.trace(s"$connectionMessage")
       tunnelId = connectionMessage.tunnelToken.id
-      context.parent ! ConnectorAssociatedWithTunnelId(connectionMessage.tunnelToken, peerAddress)
+      context.parent ! AssociatedWithTunnelId(connectionMessage.tunnelToken, remoteAddress)
       goto(ExpectingRequest) using NoData
 
     case Event(MessageTcpBridge.MessageReceived(message), Respond(responsePromise)) ⇒
       responsePromise.success(message)
       goto(ExpectingRequest) using NoData
+
+    case Event(MessageTcpBridge.PeerClosed, Respond(responsePromise)) ⇒
+      val e = new RuntimeException(s"Peer $remoteAddress has closed the connection while expecting a response")
+      responsePromise.failure(e)
+      stop(FSM.Failure(e))
 
     case Event(MessageTcpBridge.Failed(throwable), Respond(responsePromise)) ⇒
       responsePromise.failure(throwable)
@@ -55,11 +74,16 @@ extends Actor with FSM[State, Data] {
     case Event(m @ Request(message, responsePromise), NoData) ⇒
       messageTcpBridge ! MessageTcpBridge.SendMessage(message)
       goto(ExpectingMessageFromTcp) using Respond(responsePromise)
+
+    case Event(m @ MessageTcpBridge.PeerClosed, NoData) ⇒
+      logger.trace(s"$m")
+      stop()
   }
 
   when(Closing) {
     case Event(Closing, _) ⇒
       stop()
+
     case Event(closed @ Tcp.Closed, _) ⇒
       logger.debug(s"$closed")
       stop()
@@ -68,19 +92,29 @@ extends Actor with FSM[State, Data] {
   whenUnhandled {
     case Event(m @ MessageTcpBridge.Failed(throwable), _) ⇒
       logger.warn(s"$m", throwable)
-      messageTcpBridge ! MessageTcpBridge.Abort
+      if (!messageTcpBridgeTerminated) {
+        messageTcpBridge ! MessageTcpBridge.Abort
+      }
       goto(Closing) using NoData
+
     case Event(Close, _) ⇒
-      messageTcpBridge ! MessageTcpBridge.Close
+      if (!messageTcpBridgeTerminated) {
+        messageTcpBridge ! MessageTcpBridge.Close
+      }
       goto(Closing) using NoData
+
     case Event(closed: Tcp.ConnectionClosed, data) ⇒
       logger.debug(s"$closed")
-      val exception = new RuntimeException(s"Connection with $peerAddress has unexpectedly been closed: $closed")
+      val exception = new RuntimeException(s"Connection with $remoteAddress has unexpectedly been closed: $closed")
       data match {
         case Respond(responsePromise) ⇒ responsePromise.failure(exception)
         case _ ⇒
       }
       stop(FSM.Failure(exception))
+
+    case Event(Terminated(_), _) ⇒
+      messageTcpBridgeTerminated = true
+      stop()
   }
 
   override def toString = s"Connector($tunnelIdString)"
@@ -103,11 +137,13 @@ private[tunnel] object Connector {
 
   // Event messages from this actor
 
-  private[tunnel] final case class ConnectorAssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
+  private[tunnel] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
 
   private[tunnel] final case class Response(message: ByteString) {
     override def toString = s"Response(${message.size} bytes)"
   }
+
+  private[tunnel] final case class Closed(tunnelId: TunnelId)
 
   private[tunnel] sealed trait State
   private case object ExpectingRequest extends State {}

@@ -23,7 +23,6 @@ private[tunnel] final class ConnectorHandler extends Actor {
 
   override def supervisorStrategy = stoppingStrategy
 
-  // TODO Entry entfernen, nur wenn Connector sich beendet hat
   private val connectorRegister = mutable.Map[TunnelId, Entry]()
 
   TunnelToken.newPassword()  // Check random generator
@@ -51,7 +50,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
       val tcp = sender()
       val peerInterface = connected.remoteAddress.getAddress.getHostAddress
       val peerPort = connected.remoteAddress.getPort
-      context.actorOf(Props { new Connector(tcp, connected.remoteAddress) }, name = s"Connector-TCP-$peerInterface:$peerPort")
+      context.actorOf(Props { new Connector(tcp, connected) }, name = s"Connector-TCP-$peerInterface:$peerPort")
 
     case m @ NewTunnel(id) ⇒
       logger.trace(s"$m")
@@ -67,7 +66,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
         client
       }
 
-    case m @ Connector.ConnectorAssociatedWithTunnelId(TunnelToken(id, callersPassword), peerAddress) ⇒
+    case m @ Connector.AssociatedWithTunnelId(TunnelToken(id, callersPassword), peerAddress) ⇒
       logger.trace(s"$m")
       val connector = sender()
       connectorRegister.get(id) match {
@@ -88,7 +87,12 @@ private[tunnel] final class ConnectorHandler extends Actor {
             }
           connectedPromise.success(peerAddress)
           connectorRegister(id).tunnelState = ConnectedConnector(connector)
+          logger.debug(s"Tunnel $id registered")
       }
+
+    case m @ Connector.Closed(tunnelId) ⇒
+      connectorRegister -= tunnelId
+      logger.debug(s"Tunnel $tunnelId deregistered")
 
     case m @ DirectedRequest(tunnelToken, request) ⇒
       try {
@@ -126,7 +130,6 @@ private[tunnel] final class ConnectorHandler extends Actor {
     if (tunnelToken.password != entry.password) throw new IllegalArgumentException(s"Invalid tunnel password")
     entry
   }
-
 }
 
 private[tunnel] object ConnectorHandler {
