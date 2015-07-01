@@ -79,8 +79,7 @@ object TunnelIT {
 
     override def run(): Unit =
       try {
-        val connection = new TcpConnection(masterAddress)
-        connection.connect()
+        val connection = TcpConnection.connect(masterAddress)
         connection.sendMessage(TunnelConnectionMessage(tunnelToken).toByteString)
         for (request ← (Iterator.continually { connection.receiveMessage() } takeWhile { _.nonEmpty }).flatten) {
           val response = requestToResponse(ByteString.fromByteBuffer(request), tunnelId)

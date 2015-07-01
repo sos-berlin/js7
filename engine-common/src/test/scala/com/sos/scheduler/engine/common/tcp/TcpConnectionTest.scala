@@ -22,9 +22,9 @@ import scala.util.Random
 final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private val localhost = InetAddress.getByName("127.0.0.1")
-  private lazy val listenSocket = new ServerSocket(0, 1, localhost).closeWithCloser
-  private lazy val port = listenSocket.getLocalPort
-  private lazy val tcpConnection = new TcpConnection(new InetSocketAddress(localhost, port))
+  private var listenSocket: ServerSocket = _
+  private var port: Int = _
+  private var tcpConnection: TcpConnection =  _
   private var testSocket: Socket = null
   private def out = testSocket.getOutputStream
   private def in = testSocket.getInputStream
@@ -34,7 +34,9 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
     finally super.afterAll()
 
   "connect" in {
-    connect(tcpConnection)
+    listenSocket = new ServerSocket(0, 1, localhost).closeWithCloser
+    port = listenSocket.getLocalPort
+    tcpConnection = connect()
   }
 
   "receiveMessage" in {
@@ -63,16 +65,15 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
   }
 
   "Close while receiving" in {
-    val myTcpConnection = new TcpConnection(new InetSocketAddress(localhost, port))
-    connect(myTcpConnection)
+    val myTcpConnection = connect()
     val future = Future { myTcpConnection.receiveMessage() }
     intercept[TimeoutException] { awaitResult(future, 500.ms) }
     myTcpConnection.close()
     intercept[java.nio.channels.AsynchronousCloseException] { awaitResult(future, 1.s) }
   }
 
-  private def connect(tcpConnection: TcpConnection): Unit = {
-    val connected = Future { tcpConnection.connect() }
+  private def connect(): TcpConnection = {
+    val connected = Future { TcpConnection.connect(new InetSocketAddress(localhost, port)) }
     listenSocket.setSoTimeout(10*1000)
     testSocket = listenSocket.accept().closeWithCloser
     awaitResult(connected, 1.s)

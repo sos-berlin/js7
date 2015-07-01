@@ -26,7 +26,7 @@ import spray.json.pimpAny
  */
 final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends TaskServer with HasCloser {
 
-  private val master = new TcpConnection(taskStartArguments.controllerInetSocketAddress).closeWithCloser
+  private lazy val master = TcpConnection.connect(taskStartArguments.controllerInetSocketAddress).closeWithCloser
   private val injector = Guice.createInjector(new ScalaAbstractModule {
     def configure() = bindInstance[TaskStartArguments](taskStartArguments)
   })
@@ -39,7 +39,7 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends
     Future {
       blocking {
         try {
-          master.connect()
+          master
           for (tunnelIdAndPassword ← taskStartArguments.tunnelIdAndPasswordOption) {
             val connectionMessage = TunnelConnectionMessage(tunnelIdAndPassword)
             master.sendMessage(ByteString.fromString(connectionMessage.toJson.compactPrint))

@@ -1,26 +1,14 @@
 package com.sos.scheduler.engine.common.tcp
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.tcp.TcpConnection._
+import com.sos.scheduler.engine.common.scalautil.Logger
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousCloseException, SocketChannel}
-import scala.concurrent.blocking
 
-final class TcpConnection(peerAddress: InetSocketAddress) extends MessageConnection with HasCloser {
+final class TcpConnection(channel: SocketChannel) extends AutoCloseable with MessageConnection {
 
-  private val channel = SocketChannel.open().closeWithCloser
-
-  def connect(): Unit = {
-    blocking {
-      logger.debug(s"Connecting with $peerAddress ...")
-      channel.connect(peerAddress)
-      logger.debug(s"Connected with $peerAddress")
-      assert(channel.isBlocking)
-    }
-  }
+  def close(): Unit = channel.close()
 
   /**
    * @return None: Connection has been closed before next message
@@ -41,7 +29,7 @@ final class TcpConnection(peerAddress: InetSocketAddress) extends MessageConnect
   }
 
   private def receiveBuffer(buffer: ByteBuffer) = {
-    do blocking { channel.read(buffer) } while (buffer.position > 0 && buffer.position < buffer.limit)
+    do channel.read(buffer) while (buffer.position > 0 && buffer.position < buffer.limit)
     assert(buffer.position == 0 || buffer.position == buffer.limit)
   }
 
@@ -53,15 +41,26 @@ final class TcpConnection(peerAddress: InetSocketAddress) extends MessageConnect
     val lengthBuffer = ByteBuffer.allocate(4)
     lengthBuffer.putInt(size)
     lengthBuffer.flip()
-    blocking {
-      // Send as one TCP packet, with one write
-      channel.write(Array(lengthBuffer) ++ byteBuffers)
-    }
+    // Send as one TCP packet, with one write
+    channel.write(Array(lengthBuffer) ++ byteBuffers)
   }
 
   override def toString = s"TcpConnection($peerAddress)"
+
+  def ownPort: Int = ownAddress.getPort
+  def ownAddress: InetSocketAddress = channel.getLocalAddress.asInstanceOf[InetSocketAddress]
+  def peerAddress: InetSocketAddress = channel.getRemoteAddress.asInstanceOf[InetSocketAddress]
 }
 
 object TcpConnection{
   private val logger = Logger(getClass)
+
+  def connect(peerAddress: InetSocketAddress): TcpConnection = {
+    logger.debug(s"Connecting with $peerAddress ...")
+    val channel = SocketChannel.open()
+    channel.connect(peerAddress)
+    logger.debug(s"Connected with $peerAddress")
+    assert(channel.isBlocking)
+    new TcpConnection(channel)
+  }
 }
