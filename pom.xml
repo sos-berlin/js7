@@ -33,7 +33,7 @@
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <tagBase>scm:git:git@github.com:sos-berlin/scheduler-engine.git</tagBase>
                     <!--tagNameFormat>{1}</tagNameFormat--><!-- {0} ist ${project.artifactId}, {1} ist ${project.version} -->
-                    <tag>v${releaseVersion}</tag>
+                    <tagNameFormat>v@{project.version}</tagNameFormat>
                     <allowTimestampedSnapshots>true</allowTimestampedSnapshots>
                 </configuration>
             </plugin>
