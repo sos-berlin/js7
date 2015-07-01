@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, FSM, Props}
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.Relais._
+import com.sos.scheduler.engine.tunnel.Connector._
 import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetSocketAddress
 import scala.concurrent.Promise
@@ -25,7 +25,7 @@ import spray.json.JsonParser
  *
  * @author Joacim Zschimmer
  */
-private[tunnel] final class Relais(tcp: ActorRef, peerAddress: InetSocketAddress)
+private[tunnel] final class Connector(tcp: ActorRef, peerAddress: InetSocketAddress)
 extends Actor with FSM[State, Data] {
 
   private var tunnelId: TunnelId = null
@@ -39,7 +39,7 @@ extends Actor with FSM[State, Data] {
       val connectionMessage = JsonParser(message.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
       logger.trace(s"$connectionMessage")
       tunnelId = connectionMessage.tunnelIdWithPassword.id
-      context.parent ! RelaisAssociatedWithTunnelId(connectionMessage.tunnelIdWithPassword, peerAddress)
+      context.parent ! ConnectorAssociatedWithTunnelId(connectionMessage.tunnelIdWithPassword, peerAddress)
       goto(ExpectingRequest) using NoData
 
     case Event(MessageTcpBridge.MessageReceived(message), Respond(responsePromise)) ⇒
@@ -83,12 +83,12 @@ extends Actor with FSM[State, Data] {
       stop(FSM.Failure(exception))
   }
 
-  override def toString = s"Relais3($tunnelIdString)"
+  override def toString = s"Connector($tunnelIdString)"
 
   private def tunnelIdString = if (tunnelId == null) "tunnel is not yet established" else tunnelId.string
 }
 
-private[tunnel] object Relais {
+private[tunnel] object Connector {
   private val logger = Logger(getClass)
 
 
@@ -103,7 +103,7 @@ private[tunnel] object Relais {
 
   // Event messages from this actor
 
-  private[tunnel] final case class RelaisAssociatedWithTunnelId(tunnelIdWithPassword: TunnelId.WithPassword, peerAddress: InetSocketAddress)
+  private[tunnel] final case class ConnectorAssociatedWithTunnelId(tunnelIdWithPassword: TunnelId.WithPassword, peerAddress: InetSocketAddress)
 
   private[tunnel] final case class Response(message: ByteString) {
     override def toString = s"Response(${message.size} bytes)"

@@ -74,7 +74,7 @@ extends Actor {
       stop(self)
   }
 
-  override def toString = s"Relais2($peerAddress)"
+  override def toString = s"MessageTcpBridge($peerAddress)"
 }
 
 private[tunnel] object MessageTcpBridge {

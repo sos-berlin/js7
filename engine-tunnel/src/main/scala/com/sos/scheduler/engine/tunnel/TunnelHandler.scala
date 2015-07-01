@@ -18,24 +18,24 @@ import scala.util.Try
 @Singleton
 final class TunnelHandler @Inject private[tunnel](actorSystem: ActorSystem) extends AutoCloseable {
 
-  private val relaisHandler = actorSystem.actorOf( Props { new RelaisHandler }, name = "TunnelHandler")
+  private val connectorHandler = actorSystem.actorOf( Props { new ConnectorHandler }, name = "ConnectorHandler")
 
   val localAddress = {
-    val future = (relaisHandler ? RelaisHandler.Start)(AskTimeout).mapTo[Try[Bound]]
+    val future = (connectorHandler ? ConnectorHandler.Start)(AskTimeout).mapTo[Try[Bound]]
     awaitResult(future, ShortTimeout).get.localAddress
   }
 
-  def close(): Unit = actorSystem.stop(relaisHandler)
+  def close(): Unit = actorSystem.stop(connectorHandler)
 
   def newTunnel(tunnelId: TunnelId) = {
     awaitResult(
-      (relaisHandler ? RelaisHandler.NewTunnel(tunnelId))(AskTimeout).mapTo[Try[TunnelClient]],
+      (connectorHandler ? ConnectorHandler.NewTunnel(tunnelId))(AskTimeout).mapTo[Try[TunnelClient]],
       ShortTimeout).get
   }
 
   def request(tunnelIdWithPassword: TunnelId.WithPassword, requestMessage: ByteString): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
-    relaisHandler ! DirectedRequest(tunnelIdWithPassword, requestMessage, responsePromise)
+    connectorHandler ! ConnectorHandler.DirectedRequest(tunnelIdWithPassword, requestMessage, responsePromise)
     responsePromise.future
   }
 

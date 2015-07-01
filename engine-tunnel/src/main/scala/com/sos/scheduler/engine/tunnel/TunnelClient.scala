@@ -10,7 +10,7 @@ import scala.concurrent.{Future, Promise}
  * @author Joacim Zschimmer
  */
 final class TunnelClient(
-  relaisHandler: ActorRef,
+  connectorHandler: ActorRef,
   val idWithPassword: TunnelId.WithPassword,
   val connected: Future[InetSocketAddress],
   peerAddress: () ⇒ Option[InetSocketAddress]) {
@@ -19,11 +19,11 @@ final class TunnelClient(
 
   def sendRequest(message: ByteString): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
-    relaisHandler ! DirectedRequest(idWithPassword, message, responsePromise)
+    connectorHandler ! ConnectorHandler.DirectedRequest(idWithPassword, message, responsePromise)
     responsePromise.future
   }
 
-  def close(): Unit = relaisHandler ! RelaisHandler.CloseTunnel(idWithPassword)
+  def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(idWithPassword)
 
   override def toString = s"TunnelClient($id,${peerAddress() getOrElse "not yet connected"})"
 }
