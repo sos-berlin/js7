@@ -7,7 +7,7 @@ import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.tunnel.TunnelHandler._
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
@@ -33,9 +33,9 @@ final class TunnelHandler @Inject private[tunnel](actorSystem: ActorSystem) exte
       ShortTimeout).get
   }
 
-  def request(tunnelIdWithPassword: TunnelId.WithPassword, requestMessage: ByteString): Future[ByteString] = {
+  def request(tunnelToken: TunnelToken, requestMessage: ByteString): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
-    connectorHandler ! ConnectorHandler.DirectedRequest(tunnelIdWithPassword, requestMessage, responsePromise)
+    connectorHandler ! ConnectorHandler.DirectedRequest(tunnelToken, requestMessage, responsePromise)
     responsePromise.future
   }
 

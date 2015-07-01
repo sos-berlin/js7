@@ -40,7 +40,7 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
 
     val taskStartArguments = TaskStartArguments(
       controllerAddress = controllerAddress,
-      tunnelIdAndPasswordOption = tunnelClientOption map { _.idWithPassword },
+      tunnelIdAndPasswordOption = tunnelClientOption map { _.tunnelToken },
       directory = agentConfiguration.directory,
       environment = agentConfiguration.environment)
     if (sys.props contains UseThreadPropertyName) { // For debugging

@@ -1,14 +1,14 @@
 package com.sos.scheduler.engine.tunnel
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import spray.json.DefaultJsonProtocol.jsonFormat1
 import spray.json._
 
 /**
  * @author Joacim Zschimmer
  */
-final case class TunnelConnectionMessage(tunnelIdWithPassword: TunnelId.WithPassword) {
+final case class TunnelConnectionMessage(tunnelToken: TunnelToken) {
 
   /**
    * Binary representation for TCP connection.

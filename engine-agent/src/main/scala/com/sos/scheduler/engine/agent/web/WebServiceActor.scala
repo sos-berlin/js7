@@ -11,7 +11,7 @@ import com.sos.scheduler.engine.agent.web.common.WebService
 import com.sos.scheduler.engine.agent.web.views.{CommandHandlerViewService, MainViewService, ProcessHandlerViewService}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.TunnelHandler
-import com.sos.scheduler.engine.tunnel.data.TunnelId.WithPassword
+import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import javax.inject.{Inject, Provider}
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext
@@ -53,7 +53,7 @@ with CommandHandlerViewService
   protected def executionContext: ExecutionContext = context.dispatcher
   protected def executeCommand(command: Command) = commandExecutor.executeCommand(command)
   protected def agentOverview = agentOverviewProvider.get()
-  protected def tunnelRequest(tunnelIdWithPassword: WithPassword, requestMessage: ByteString) = tunnelHandler.request(tunnelIdWithPassword, requestMessage)
+  protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = tunnelHandler.request(tunnelToken, requestMessage)
 }
 
 object WebServiceActor {

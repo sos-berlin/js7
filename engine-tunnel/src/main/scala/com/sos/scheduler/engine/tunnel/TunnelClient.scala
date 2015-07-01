@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.tunnel
 
 import akka.actor.ActorRef
 import akka.util.ByteString
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import java.net.InetSocketAddress
 import scala.concurrent.{Future, Promise}
 
@@ -11,19 +11,19 @@ import scala.concurrent.{Future, Promise}
  */
 final class TunnelClient(
   connectorHandler: ActorRef,
-  val idWithPassword: TunnelId.WithPassword,
+  val tunnelToken: TunnelToken,
   val connected: Future[InetSocketAddress],
   peerAddress: () ⇒ Option[InetSocketAddress]) {
 
-  def id = idWithPassword.id
+  def id = tunnelToken.id
 
   def sendRequest(message: ByteString): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
-    connectorHandler ! ConnectorHandler.DirectedRequest(idWithPassword, message, responsePromise)
+    connectorHandler ! ConnectorHandler.DirectedRequest(tunnelToken, message, responsePromise)
     responsePromise.future
   }
 
-  def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(idWithPassword)
+  def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(tunnelToken)
 
   override def toString = s"TunnelClient($id,${peerAddress() getOrElse "not yet connected"})"
 }

@@ -5,7 +5,7 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.agent.web.TunnelServiceTest._
 import com.sos.scheduler.engine.common.sprayutils.ByteStreamMarshallers._
 import com.sos.scheduler.engine.tunnel.data.Http._
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -27,8 +27,8 @@ final class TunnelServiceTest extends FreeSpec with ScalatestRouteTest with Tunn
   implicit lazy val actorRefFactory = ActorSystem()
   //import actorRefFactory.dispatcher
 
-  protected def tunnelRequest(tunnelIdWithPassword: TunnelId.WithPassword, requestMessage: ByteString) = {
-    assert(tunnelIdWithPassword == TunnelId.WithPassword(TestTunnelId, TestPassword))
+  protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = {
+    assert(tunnelToken == TunnelToken(TestTunnelId, TestPassword))
     Future.successful(requestToResponse(requestMessage))
   }
 
@@ -51,5 +51,5 @@ private object TunnelServiceTest {
   private val TunnelPath = Path("/jobscheduler/agent/tunnel")
   private val CrazyString = """,.-;:_!"§$%&/()=#'+*´`<>"""
   private val TestTunnelId = TunnelId(CrazyString * 2)  // In practice (2015), the TunnelId is simpler
-  private val TestPassword = TunnelId.Password(CrazyString.reverse * 100)  // In practice (2015), the password is simpler. See TunnelId.newPassword
+  private val TestPassword = TunnelToken.Password(CrazyString.reverse * 100)  // In practice (2015), the password is simpler. See TunnelId.newPassword
 }

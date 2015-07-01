@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.tunnel.TunnelIT._
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import java.util
 import org.scalatest.FreeSpec
@@ -31,7 +31,7 @@ final class TunnelIT extends FreeSpec {
     val tunnelsAndServers = for (i ← 1 to TunnelCount) yield {
       val id = TunnelId(i.toString)
       val tunnel = tunnelHandler.newTunnel(id)
-      val tcpServer = new TcpServer(tunnel.idWithPassword, tunnelHandler.localAddress)
+      val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelHandler.localAddress)
       tcpServer.start()
       tunnel.connected onSuccess { case peerAddress: InetSocketAddress ⇒
         logger.info(s"$tunnel $peerAddress")
@@ -72,8 +72,8 @@ object TunnelIT {
   private def requestToResponse(request: ByteString, id: TunnelId): ByteString =
     request ++ ByteString.fromString(s" RESPONSE FROM $id")
 
-  private class TcpServer(tunnelIdWithPassword: TunnelId.WithPassword, masterAddress: InetSocketAddress) extends Thread {
-    val tunnelId = tunnelIdWithPassword.id
+  private class TcpServer(tunnelToken: TunnelToken, masterAddress: InetSocketAddress) extends Thread {
+    val tunnelId = tunnelToken.id
     setName(s"TCP Server $tunnelId")
     val terminatedPromise = Promise[Unit]()
 
@@ -81,7 +81,7 @@ object TunnelIT {
       try {
         val connection = new TcpConnection(masterAddress)
         connection.connect()
-        connection.sendMessage(TunnelConnectionMessage(tunnelIdWithPassword).toByteString)
+        connection.sendMessage(TunnelConnectionMessage(tunnelToken).toByteString)
         for (request ← (Iterator.continually { connection.receiveMessage() } takeWhile { _.nonEmpty }).flatten) {
           val response = requestToResponse(ByteString.fromByteBuffer(request), tunnelId)
           logger.debug(s"$tunnelId")

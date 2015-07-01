@@ -5,7 +5,7 @@ import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.Connector._
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import scala.concurrent.Promise
 import spray.json.JsonParser
@@ -38,8 +38,8 @@ extends Actor with FSM[State, Data] {
     case Event(MessageTcpBridge.MessageReceived(message), NoData) ⇒
       val connectionMessage = JsonParser(message.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
       logger.trace(s"$connectionMessage")
-      tunnelId = connectionMessage.tunnelIdWithPassword.id
-      context.parent ! ConnectorAssociatedWithTunnelId(connectionMessage.tunnelIdWithPassword, peerAddress)
+      tunnelId = connectionMessage.tunnelToken.id
+      context.parent ! ConnectorAssociatedWithTunnelId(connectionMessage.tunnelToken, peerAddress)
       goto(ExpectingRequest) using NoData
 
     case Event(MessageTcpBridge.MessageReceived(message), Respond(responsePromise)) ⇒
@@ -103,7 +103,7 @@ private[tunnel] object Connector {
 
   // Event messages from this actor
 
-  private[tunnel] final case class ConnectorAssociatedWithTunnelId(tunnelIdWithPassword: TunnelId.WithPassword, peerAddress: InetSocketAddress)
+  private[tunnel] final case class ConnectorAssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
 
   private[tunnel] final case class Response(message: ByteString) {
     override def toString = s"Response(${message.size} bytes)"

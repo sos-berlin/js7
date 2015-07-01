@@ -7,7 +7,7 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.ConnectorHandler._
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -22,10 +22,11 @@ private[tunnel] final class ConnectorHandler extends Actor {
   import context.{become, stop, system}
 
   override def supervisorStrategy = stoppingStrategy
-  TunnelId.newPassword()  // Check random generator
 
   // TODO Entry entfernen, nur wenn Connector sich beendet hat
   private val connectorRegister = mutable.Map[TunnelId, Entry]()
+
+  TunnelToken.newPassword()  // Check random generator
 
   def receive = {
     case Start ⇒
@@ -55,18 +56,18 @@ private[tunnel] final class ConnectorHandler extends Actor {
     case m @ NewTunnel(id) ⇒
       logger.trace(s"$m")
       sender() ! Try[TunnelClient] {
-        val password = TunnelId.newPassword()
+        val password = TunnelToken.newPassword()
         val connectedPromise = Promise[InetSocketAddress]()
         val client = new TunnelClient(
           self,
-          TunnelId.WithPassword(id, password),
+          TunnelToken(id, password),
           connectedPromise.future,
           peerAddress = () ⇒ connectedPromise.future.value map { _.get })
         connectorRegister.insert(id → Entry(password, client, connectedPromise, Uninitialized))
         client
       }
 
-    case m @ Connector.ConnectorAssociatedWithTunnelId(TunnelId.WithPassword(id, callersPassword), peerAddress) ⇒
+    case m @ Connector.ConnectorAssociatedWithTunnelId(TunnelToken(id, callersPassword), peerAddress) ⇒
       logger.trace(s"$m")
       val connector = sender()
       connectorRegister.get(id) match {
@@ -89,10 +90,10 @@ private[tunnel] final class ConnectorHandler extends Actor {
           connectorRegister(id).tunnelState = ConnectedConnector(connector)
       }
 
-    case m @ DirectedRequest(idWithPassword, request) ⇒
+    case m @ DirectedRequest(tunnelToken, request) ⇒
       try {
         logger.trace(s"$m")
-        val e = checkedEntry(idWithPassword)
+        val e = checkedEntry(tunnelToken)
         e.tunnelState match {
           case Uninitialized ⇒ e.tunnelState = RequestBeforeConnected(request)
           case o: RequestBeforeConnected ⇒ sys.error(o.toString)
@@ -104,11 +105,11 @@ private[tunnel] final class ConnectorHandler extends Actor {
           request.responsePromise.failure(t)
       }
 
-    case m @ CloseTunnel(idWithPassword) ⇒
+    case m @ CloseTunnel(tunnelToken) ⇒
       try {
-        if (connectorRegister contains idWithPassword.id) {
-          val e = checkedEntry(idWithPassword)
-          connectorRegister.remove(idWithPassword.id)
+        if (connectorRegister contains tunnelToken.id) {
+          val e = checkedEntry(tunnelToken)
+          connectorRegister.remove(tunnelToken.id)
           e.tunnelState match {
             case ConnectedConnector(relais) ⇒ relais ! Connector.Close
             case _ ⇒
@@ -120,9 +121,9 @@ private[tunnel] final class ConnectorHandler extends Actor {
       }
   }
 
-  private def checkedEntry(idWithPassword: TunnelId.WithPassword) = {
-    val entry = connectorRegister(idWithPassword.id)
-    if (idWithPassword.password != entry.password) throw new IllegalArgumentException(s"Invalid tunnel password")
+  private def checkedEntry(tunnelToken: TunnelToken) = {
+    val entry = connectorRegister(tunnelToken.id)
+    if (tunnelToken.password != entry.password) throw new IllegalArgumentException(s"Invalid tunnel password")
     entry
   }
 
@@ -134,17 +135,17 @@ private[tunnel] object ConnectorHandler {
 
   private[tunnel] case object Start
   private[tunnel] case class NewTunnel(tunnelId: TunnelId)
-  private[tunnel] final case class CloseTunnel(tunnelIdWithPassword: TunnelId.WithPassword)
+  private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken)
 
-  private[tunnel] final case class DirectedRequest private[tunnel](tunnelIdWithPassword: TunnelId.WithPassword, request: Connector.Request)
+  private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request)
 
   private[tunnel] object DirectedRequest {
-    def apply(tunnelIdWithPassword: TunnelId.WithPassword, message: ByteString, responsePromise: Promise[ByteString]): DirectedRequest =
-      DirectedRequest(tunnelIdWithPassword, Connector.Request(message, responsePromise))
+    def apply(tunnelToken: TunnelToken, message: ByteString, responsePromise: Promise[ByteString]): DirectedRequest =
+      DirectedRequest(tunnelToken, Connector.Request(message, responsePromise))
   }
 
   private case class Entry(
-    password: TunnelId.Password,
+    password: TunnelToken.Password,
     client: TunnelClient,
     connectedPromise: Promise[InetSocketAddress],
     var tunnelState: TunnelState)
