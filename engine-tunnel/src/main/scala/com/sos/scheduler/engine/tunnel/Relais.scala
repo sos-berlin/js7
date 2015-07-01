@@ -1,74 +1,60 @@
 package com.sos.scheduler.engine.tunnel
 
-import akka.actor.{Actor, ActorRef, FSM}
+import akka.actor.{Actor, ActorRef, FSM, Props}
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.LengthHeaderMessageCollector._
 import com.sos.scheduler.engine.tunnel.Relais._
 import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetSocketAddress
 import scala.concurrent.Promise
-import scala.util.control.NonFatal
 import spray.json.JsonParser
 
 /**
+ * Establish and handles a tunnel connection between a request/response site and TCP site.
+ * <p>
+ * In the JobScheduler Agent, the request/response client is a HTTP web service,
+ * and the TCP site is the TaskServer.
+ * <p>
+ * The Agent creates this actor when a task is started.
+ * The actor then waits for the first message from the TCP site, a [[TunnelConnectionMessage]].
+ * This messages denotes the TunnelId of the tunnel, the process wishes to connect to.
+ * <p>
+ * After the TunnelId is known, the actor expeteds a `Request` and forwards it the TCP site (length-prefix framed),
+ * Then, the actor awaits a framed TCP message and forwards it as a `Response` to the orignal requestor.
+ *
  * @author Joacim Zschimmer
  */
-private[tunnel] final class Relais(tcpConnection: ActorRef, peerAddress: InetSocketAddress)
+private[tunnel] final class Relais(tcp: ActorRef, peerAddress: InetSocketAddress)
 extends Actor with FSM[State, Data] {
 
   private var tunnelId: TunnelId = null
 
-  tcpConnection ! Tcp.Register(self)
-  startWith(CollectingResponseFromTcp, CollectingResponseFromTcp.ForConnectionMessage())
+  val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, peerAddress)})
+
+  startWith(ExpectingMessageFromTcp, NoData)
+
+  when(ExpectingMessageFromTcp) {
+    case Event(MessageTcpBridge.MessageReceived(message), NoData) ⇒
+      val connectionMessage = JsonParser(message.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
+      logger.trace(s"$connectionMessage")
+      tunnelId = connectionMessage.tunnelIdWithPassword.id
+      context.parent ! RelaisAssociatedWithTunnelId(connectionMessage.tunnelIdWithPassword, peerAddress)
+      goto(ExpectingRequest) using NoData
+
+    case Event(MessageTcpBridge.MessageReceived(message), Respond(responsePromise)) ⇒
+      responsePromise.success(message)
+      goto(ExpectingRequest) using NoData
+
+    case Event(MessageTcpBridge.Failed(throwable), Respond(responsePromise)) ⇒
+      responsePromise.failure(throwable)
+      goto(ExpectingRequest) using NoData
+  }
 
   when(ExpectingRequest) {
     case Event(m @ Request(message, responsePromise), NoData) ⇒
-      logger.trace(s"ExpectingRequest: Got $m")
-      try {
-        if (message.size > MessageSizeMaximum) throw newTooBigException(message.size)
-        tcpConnection ! Tcp.Write(intToBytesString(message.size) ++ message)
-        goto(CollectingResponseFromTcp) using CollectingResponseFromTcp.ForResponse(responsePromise)
-      } catch {
-        case NonFatal(t) ⇒
-          responsePromise.failure(t)
-          stay()
-      }
-  }
-
-  when(CollectingResponseFromTcp) {
-    case Event(Tcp.Received(bytes), CollectingResponseFromTcp.ForConnectionMessage(messageBuilder)) ⇒
-      collect(bytes, messageBuilder) { completeMessage ⇒
-        val connectionMessage = JsonParser(completeMessage.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
-        logger.trace(s"Connection message: $connectionMessage")
-        tunnelId = connectionMessage.tunnelIdWithPassword.id
-        context.parent ! RelaisAssociatedWithTunnelId(connectionMessage.tunnelIdWithPassword, peerAddress)
-          goto(ExpectingRequest) using NoData
-      }
-
-    case Event(Tcp.Received(bytes), CollectingResponseFromTcp.ForResponse(responsePromise, messageBuilder)) ⇒
-      try
-        collect(bytes, messageBuilder) { completeMessage ⇒
-          responsePromise.success(completeMessage)
-          goto(ExpectingRequest) using NoData
-        }
-      catch {
-        case NonFatal(t) ⇒
-          responsePromise.failure(t)
-          stop(FSM.Failure(t))
-      }
-  }
-
-  private def collect(bytes: ByteString, messageBuilder: LengthHeaderMessageCollector)(onComplete: ByteString => State): State = {
-    logger.trace(s"CollectingResponseFromTCP: Received ${ bytes.size } bytes)")
-    for (len ← messageBuilder.expectedLength if len > MessageSizeMaximum) throw newTooBigException(len)
-    messageBuilder.apply(bytes) match {
-      case None ⇒ stay()
-      case Some(completeMessage) ⇒
-        logger.trace(s"CollectingResponseFromTCP: Complete message has ${completeMessage.size} bytes")
-        onComplete(completeMessage)
-    }
+      messageTcpBridge ! MessageTcpBridge.SendMessage(message)
+      goto(ExpectingMessageFromTcp) using Respond(responsePromise)
   }
 
   when(Closing) {
@@ -80,53 +66,55 @@ extends Actor with FSM[State, Data] {
   }
 
   whenUnhandled {
+    case Event(m @ MessageTcpBridge.Failed(throwable), _) ⇒
+      logger.warn(s"$m", throwable)
+      messageTcpBridge ! MessageTcpBridge.Abort
+      goto(Closing) using NoData
     case Event(Close, _) ⇒
-      tcpConnection ! Tcp.Close
+      messageTcpBridge ! MessageTcpBridge.Close
       goto(Closing) using NoData
     case Event(closed: Tcp.ConnectionClosed, data) ⇒
       logger.debug(s"$closed")
       val exception = new RuntimeException(s"Connection with $peerAddress has unexpectedly been closed: $closed")
       data match {
-        case CollectingResponseFromTcp.ForResponse(responsePromise, _) ⇒ responsePromise.failure(exception)
+        case Respond(responsePromise) ⇒ responsePromise.failure(exception)
         case _ ⇒
       }
       stop(FSM.Failure(exception))
   }
 
-  override def toString = s"Relais($tunnelIdString)"
+  override def toString = s"Relais3($tunnelIdString)"
 
   private def tunnelIdString = if (tunnelId == null) "tunnel is not yet established" else tunnelId.string
 }
 
 private[tunnel] object Relais {
-  private[tunnel] val MessageSizeMaximum = 100*1000*1000
   private val logger = Logger(getClass)
 
-  private[tunnel] sealed trait State
-  private[tunnel] sealed trait Data
 
-  private case object ExpectingRequest extends State {}
+  // Actor messages commanding this actor
 
-  private case object CollectingResponseFromTcp extends State {
-    final case class ForResponse(
-      responsePromise: Promise[ByteString],
-      messageBuilder: LengthHeaderMessageCollector = new LengthHeaderMessageCollector)
-    extends Data
-
-    case class ForConnectionMessage(
-      messageBuilder: LengthHeaderMessageCollector = new LengthHeaderMessageCollector)
-    extends Data
+  private[tunnel] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
+    override def toString = s"Request(${message.size} bytes)"
   }
-
-  private case object Closing extends State
-
-  private case object NoData extends Data
-
-
-  private[tunnel] final case class RelaisAssociatedWithTunnelId(tunnelIdWithPassword: TunnelId.WithPassword, peerAddress: InetSocketAddress)
 
   private[tunnel] case object Close
 
-  private def newTooBigException(size: Int) =
-    new IllegalArgumentException(s"Message ($size bytes) is bigger than the possible maximum of $MessageSizeMaximum bytes")
+
+  // Event messages from this actor
+
+  private[tunnel] final case class RelaisAssociatedWithTunnelId(tunnelIdWithPassword: TunnelId.WithPassword, peerAddress: InetSocketAddress)
+
+  private[tunnel] final case class Response(message: ByteString) {
+    override def toString = s"Response(${message.size} bytes)"
+  }
+
+  private[tunnel] sealed trait State
+  private case object ExpectingRequest extends State {}
+  private case object ExpectingMessageFromTcp extends State
+  private case object Closing extends State
+
+  private[tunnel] sealed trait Data
+  final case class Respond(responsePromise: Promise[ByteString]) extends Data
+  private case object NoData extends Data
 }

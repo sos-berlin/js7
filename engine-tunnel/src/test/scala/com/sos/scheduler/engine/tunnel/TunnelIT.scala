@@ -63,7 +63,7 @@ final class TunnelIT extends FreeSpec {
 object TunnelIT {
   private val TunnelCount = 4
   private val Iterations = 100
-  private val MessageSizeMaximum = Relais.MessageSizeMaximum - 100 // requestToResponse adds some bytes
+  private val MessageSizeMaximum = MessageTcpBridge.MessageSizeMaximum - 100 // requestToResponse adds some bytes
   private val logger = Logger(getClass)
 
   private def nextRandomSize(n: Int) = pow(2, log(n) / log(2) * Random.nextDouble()).toInt

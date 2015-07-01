@@ -19,7 +19,7 @@ final class TunnelClient(
 
   def sendRequest(message: ByteString): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
-    relaisHandler ! DirectedRequest(idWithPassword, Request(message, responsePromise))
+    relaisHandler ! DirectedRequest(idWithPassword, message, responsePromise)
     responsePromise.future
   }
 

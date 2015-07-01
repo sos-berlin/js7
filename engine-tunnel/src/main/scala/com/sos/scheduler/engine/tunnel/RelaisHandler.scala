@@ -144,6 +144,6 @@ private[tunnel] object RelaisHandler {
 
   private sealed trait TunnelState
   private case object Uninitialized extends TunnelState
-  private case class RequestBeforeConnected(request: Request) extends TunnelState
+  private case class RequestBeforeConnected(request: Relais.Request) extends TunnelState
   private case class ConnectedRelais(relais: ActorRef) extends TunnelState
 }
