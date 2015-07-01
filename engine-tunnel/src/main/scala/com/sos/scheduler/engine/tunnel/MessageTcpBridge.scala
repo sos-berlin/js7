@@ -6,7 +6,6 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.LengthHeaderMessageCollector._
 import com.sos.scheduler.engine.tunnel.MessageTcpBridge._
-import java.net.InetSocketAddress
 
 /**
  * Full-duplex bridge between length-prefixed framed messages and a TCP stream.
@@ -17,19 +16,21 @@ import java.net.InetSocketAddress
  *
  * @author Joacim Zschimmer
  */
-private[tunnel] final class MessageTcpBridge(tcp: ActorRef, peerAddress: InetSocketAddress)
+final class MessageTcpBridge(tcp: ActorRef, connected: Tcp.Connected)
 extends Actor {
 
-  import context.{parent, stop}
+  import connected.{localAddress, remoteAddress}
+  import context.{become, parent, stop}
 
+  private val logger = Logger.withPrefix(getClass, s"$localAddress-$remoteAddress")
   private val messageBuilder: LengthHeaderMessageCollector = new LengthHeaderMessageCollector
 
   tcp ! Tcp.Register(self)
 
   def receive = running
 
-  def running: Receive = {
-    case m @ SendMessage(message) ⇒ //if sender() == parent ⇒
+  private def running: Receive = {
+    case m @ SendMessage(message) ⇒
       logger.trace(s"$m")
       if (message.size > MessageSizeMaximum) {
         parent ! Failed(newTooBigException(message.size))
@@ -39,20 +40,19 @@ extends Actor {
 
     case Close ⇒
       tcp ! Tcp.Close
-      context.become(closing)
+      become(closing)
 
     case Abort ⇒
       tcp ! Tcp.Abort
-      context.become(closing)
+      become(closing)
 
-    case Tcp.Received(bytes) if sender() == tcp ⇒
-      logger.trace(s"Received (${bytes.size} bytes)")
+    case Tcp.Received(bytes) ⇒
       val completedMessageOption = messageBuilder.apply(bytes)
       messageBuilder.expectedLength match {
         case Some(len) if len > MessageSizeMaximum ⇒
           parent ! Failed(newTooBigException(len))
           tcp ! Tcp.Abort
-          context.become(closing)
+          become(closing)
         case _ ⇒
           for (completeMessage ← completedMessageOption) {
             val m = MessageReceived(completeMessage)
@@ -61,9 +61,14 @@ extends Actor {
           }
       }
 
+    case m @ Tcp.PeerClosed ⇒
+      logger.debug(s"$m")
+      parent ! PeerClosed
+      stop(self)
+
     case closed: Tcp.ConnectionClosed ⇒
       logger.debug(s"$closed")
-      val exception = new RuntimeException(s"Connection with $peerAddress has unexpectedly been closed: $closed")
+      val exception = new RuntimeException(s"Connection with $remoteAddress has unexpectedly been closed: $closed")
       parent ! Failed(exception)
       stop(self)
   }
@@ -74,25 +79,29 @@ extends Actor {
       stop(self)
   }
 
-  override def toString = s"MessageTcpBridge($peerAddress)"
+  override def toString = s"MessageTcpBridge($localAddress-$remoteAddress)"
 }
 
 private[tunnel] object MessageTcpBridge {
-  private[tunnel] val MessageSizeMaximum = 100*1000*1000
-  private val logger = Logger(getClass)
+  val MessageSizeMaximum = 100*1000*1000
 
-  private[tunnel] case object Close
-  private[tunnel] case object Abort
+  sealed trait Command
 
-  private[tunnel] final case class SendMessage(message: ByteString) {
+  final case class SendMessage(message: ByteString) extends Command {
     override def toString = s"SendMessage(${message.size} bytes)"
   }
 
-  private[tunnel] final case class MessageReceived(message: ByteString) {
+  case object Close extends Command
+  case object Abort extends Command
+
+  sealed trait Event
+  case object PeerClosed extends Event
+
+  final case class MessageReceived(message: ByteString) extends Event {
     override def toString = s"MessageReceived(${message.size} bytes)"
   }
 
-  private[tunnel] final case class Failed(throwable: Throwable)
+  final case class Failed(throwable: Throwable) extends Event
 
   private def newTooBigException(size: Int) =
     new IllegalArgumentException(s"Message ($size bytes) is bigger than the possible maximum of $MessageSizeMaximum bytes")
