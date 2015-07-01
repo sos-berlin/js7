@@ -31,6 +31,7 @@ import scala.util.control.NonFatal
 final class RichProcess private(process: Process, infoProgramFile: Path, stdFileMap: Map[StdoutStderrType, Path])
 extends HasCloser with ClosedFuture {
 
+  private val logger = Logger.withPrefix(getClass, toString)
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
 
   def kill() = process.destroyForcibly()
@@ -39,10 +40,10 @@ extends HasCloser with ClosedFuture {
     signal match {
       case SIGTERM ⇒
         if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
-        logger.debug(s"$toString destroy")
+        logger.debug("destroy")
         process.destroy()
       case SIGKILL ⇒
-        logger.debug(s"$toString destroyForcibly")
+        logger.debug("destroyForcibly")
         process.destroyForcibly()
     }
 
@@ -50,8 +51,9 @@ extends HasCloser with ClosedFuture {
   private[task] def isAlive = process.isAlive
 
   def waitForTermination(): ReturnCode = {
+    logger.debug("waitForTermination")
     while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
-    logger.debug(s"Terminated with exit code ${process.exitValue}")
+    logger.debug(s"waitForTermination: terminated with exit code ${process.exitValue}")
     ReturnCode(process.exitValue)
   }
 

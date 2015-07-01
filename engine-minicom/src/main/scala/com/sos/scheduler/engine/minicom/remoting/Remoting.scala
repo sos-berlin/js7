@@ -8,10 +8,10 @@ import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, Invocab
 import com.sos.scheduler.engine.minicom.remoting.Remoting._
 import com.sos.scheduler.engine.minicom.remoting.calls.{Call, CallCall, CreateInstanceCall, CreateInstanceResult, EmptyResult, GetIDsOfNamesCall, GetIDsOfNamesResult, InvokeCall, InvokeResult, ProxyId, ReleaseCall, Result}
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, ProxyRegister, SimpleProxyIDispatch}
-import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
-import com.sos.scheduler.engine.minicom.remoting.serial.CallSerializer._
-import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer._
-import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer._
+import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer.deserializeCall
+import com.sos.scheduler.engine.minicom.remoting.serial.CallSerializer.serializeCall
+import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializeError
+import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
 import com.sos.scheduler.engine.minicom.remoting.serial.{ResultDeserializer, ServerRemoting}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
 import java.nio.ByteBuffer
@@ -51,7 +51,11 @@ extends ServerRemoting with ClientRemoting {
   private def executeMessage(callBuffer: ByteBuffer): (Array[Byte], Int) =
     try {
       val call = deserializeCall(this, callBuffer)
+      logger.debug(s"${call.getClass.getSimpleName}")
+      logger.trace(s"$call")
       val result = executeCall(call)
+      logger.debug(s"${result.getClass.getSimpleName}")
+      logger.trace(s"$result")
       serializeResult(proxyRegister, result)
     }
     catch {

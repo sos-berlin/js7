@@ -15,6 +15,7 @@ import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskStartArguments}
 import com.sos.scheduler.engine.tunnel.TunnelConnectionMessage
+import java.nio.channels.AsynchronousCloseException
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import spray.json.pimpAny
@@ -38,24 +39,21 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends
   def start(): Unit =
     Future {
       blocking {
-        try {
-          master
-          for (tunnelIdAndPassword ← taskStartArguments.tunnelIdAndPasswordOption) {
-            val connectionMessage = TunnelConnectionMessage(tunnelIdAndPassword)
-            master.sendMessage(ByteString.fromString(connectionMessage.toJson.compactPrint))
-          }
-          remoting.run()
-          master.close()
+        master
+        for (tunnelIdAndPassword ← taskStartArguments.tunnelIdAndPasswordOption) {
+          val connectionMessage = TunnelConnectionMessage(tunnelIdAndPassword)
+          master.sendMessage(ByteString.fromString(connectionMessage.toJson.compactPrint))
         }
-        catch {
-          case t: Throwable ⇒
-            logger.error(t.toString, t)
-            throw t
-        }
+        remoting.run()
+        master.close()
       }
     } onComplete { tried ⇒
-      for (t ← tried.failed) logger.error(t.toString, t)
+      tried.failed foreach {
+        case t: AsynchronousCloseException ⇒ logger.info("Terminating after close()")
+        case t ⇒ logger.error(s"$toString $t", t)
+      }
       terminatedPromise.complete(tried)
+      logger.info("Terminated")
     }
 
   def sendProcessSignal(signal: ProcessSignal) = {
@@ -63,7 +61,7 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends
     remoting.invocables[HasSendProcessSignal] foreach { _.sendProcessSignal(signal) }
   }
 
-  override def toString = s"TaskServer(controller=${taskStartArguments.controllerAddress})"
+  override def toString = s"TaskServer(master=${taskStartArguments.controllerAddress})"
 }
 
 object SimpleTaskServer {

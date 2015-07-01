@@ -2,13 +2,17 @@ package com.sos.scheduler.engine.common.tcp
 
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.tcp.TcpConnection._
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousCloseException, SocketChannel}
 
 final class TcpConnection(channel: SocketChannel) extends AutoCloseable with MessageConnection {
 
-  def close(): Unit = channel.close()
+  def close(): Unit = {
+    logger.debug(s"close $peerAddress")
+    channel.close()
+  }
 
   /**
    * @return None: Connection has been closed before next message
@@ -59,7 +63,7 @@ object TcpConnection{
     logger.debug(s"Connecting with $peerAddress ...")
     val channel = SocketChannel.open()
     channel.connect(peerAddress)
-    logger.debug(s"Connected with $peerAddress")
+    logger.debug(s"Connected own ${channel.getLocalAddress} with remote $peerAddress")
     assert(channel.isBlocking)
     new TcpConnection(channel)
   }
