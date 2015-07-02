@@ -4,8 +4,8 @@ import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.data.responses.Response
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards
 import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.agent.web.marshal.XmlString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor
+import com.sos.scheduler.engine.common.sprayutils.XmlString
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import spray.routing.Directives._
