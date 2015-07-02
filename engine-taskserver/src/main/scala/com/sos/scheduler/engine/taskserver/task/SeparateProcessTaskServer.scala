@@ -8,6 +8,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.task.SeparateProcessTaskServer._
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, RichProcess}
+import com.sos.scheduler.engine.tunnel.TunnelClient
 import java.io.File
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Promise
@@ -16,7 +17,7 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-final class SeparateProcessTaskServer(val taskStartArguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String)
+final class SeparateProcessTaskServer(tunnelOption: Option[TunnelClient], val taskStartArguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String)
 extends TaskServer {
 
   private var process: RichProcess = null
@@ -46,14 +47,14 @@ extends TaskServer {
     }
   }
 
-  override def close(): Unit =
-    for (p ← Option(process)) {
-      try p.waitForTermination()
-      finally {
-        p.close()
-        process = null
-      }
+  override def close(): Unit = {
+    tunnelOption foreach { _.close() }
+    if (process != null) {
+      // Wait for process _after_ Tunnel, registered with registerCloseable, has been closed
+      try process.waitForTermination()
+      finally process.close()
     }
+  }
 
   def sendProcessSignal(signal: ProcessSignal) =
     for (p ← Option(process)) p.sendProcessSignal(signal)

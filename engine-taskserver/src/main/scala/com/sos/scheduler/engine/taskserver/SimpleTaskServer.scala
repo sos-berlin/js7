@@ -14,7 +14,7 @@ import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskStartArguments}
-import com.sos.scheduler.engine.tunnel.TunnelConnectionMessage
+import com.sos.scheduler.engine.tunnel.{TunnelClient, TunnelConnectionMessage}
 import java.nio.channels.AsynchronousCloseException
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -25,7 +25,9 @@ import spray.json.pimpAny
  *
  * @author Joacim Zschimmer
  */
-final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends TaskServer with HasCloser {
+final class SimpleTaskServer(tunnelOption: Option[TunnelClient], val taskStartArguments: TaskStartArguments) extends TaskServer with HasCloser {
+
+  tunnelOption foreach closer.registerAutoCloseable
 
   private lazy val master = TcpConnection.connect(taskStartArguments.controllerInetSocketAddress).closeWithCloser
   private val injector = Guice.createInjector(new ScalaAbstractModule {
@@ -57,8 +59,9 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends
     }
 
   def sendProcessSignal(signal: ProcessSignal) = {
-    logger.trace(s"sendProcessSignal $signal")
-    remoting.invocables[HasSendProcessSignal] foreach { _.sendProcessSignal(signal) }
+    val signalables = remoting.invocables[HasSendProcessSignal]
+    logger.debug(s"sendProcessSignal $signal to $signalables")
+    signalables  foreach { _.sendProcessSignal(signal) }
   }
 
   override def toString = s"TaskServer(master=${taskStartArguments.controllerAddress})"
@@ -70,7 +73,7 @@ object SimpleTaskServer {
   private val logger = Logger(getClass)
 
   def run(startArguments: TaskStartArguments): Unit =
-    autoClosing(new SimpleTaskServer(startArguments)) { taskServer ⇒
+    autoClosing(new SimpleTaskServer(tunnelOption = None, startArguments)) { taskServer ⇒
       taskServer.start()
       awaitResult(taskServer.terminated, MaxDuration)
     }

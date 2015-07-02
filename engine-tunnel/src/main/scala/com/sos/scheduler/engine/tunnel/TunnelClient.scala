@@ -13,7 +13,8 @@ final class TunnelClient(
   connectorHandler: ActorRef,
   val tunnelToken: TunnelToken,
   val connected: Future[InetSocketAddress],
-  peerAddress: () ⇒ Option[InetSocketAddress]) {
+  peerAddress: () ⇒ Option[InetSocketAddress])
+extends AutoCloseable {
 
   def id = tunnelToken.id
 
