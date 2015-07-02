@@ -2,10 +2,9 @@ package com.sos.scheduler.engine.tunnel
 
 import akka.actor.ActorSystem
 import akka.util.ByteString
+import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.tunnel.TcpToRequestResponseTest._
-import java.net.InetSocketAddress
-import java.nio.channels.ServerSocketChannel
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -48,13 +47,12 @@ final class TcpToRequestResponseTest extends FreeSpec {
   }
 
   private def newTcpToRequestResponse() = {
-    val listener = ServerSocketChannel.open()
-    listener.bind(new InetSocketAddress("127.0.0.1", 0))
-    val serverAddress = listener.getLocalAddress.asInstanceOf[InetSocketAddress]
-    val tcpToRequestResponse = new TcpToRequestResponse(actorSystem, remoteAddress = serverAddress, executeRequest)
-    tcpToRequestResponse.start()
-    val tcpConnection = new TcpConnection(listener.accept())
-    (tcpToRequestResponse, tcpConnection)
+    autoClosing(TcpConnection.Listener.forLocalHostPort()) { listener ⇒
+      val tcpToRequestResponse = new TcpToRequestResponse(actorSystem, connectTo = listener.boundAddress, executeRequest)
+      tcpToRequestResponse.start()
+      val tcpConnection = listener.accept()
+      (tcpToRequestResponse, tcpConnection)
+    }
   }
 }
 

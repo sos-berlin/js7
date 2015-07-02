@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
  */
 final class TcpToRequestResponse(
   actorSystem: ActorSystem,
-  remoteAddress: InetSocketAddress,
+  connectTo: InetSocketAddress,
   executeRequest: ByteString ⇒ Future[ByteString]) {
 
   import actorSystem.dispatcher
@@ -52,7 +52,7 @@ final class TcpToRequestResponse(
 
     private def expectingStart: Receive = {
       case Start ⇒
-        IO(Tcp) ! Tcp.Connect(remoteAddress)
+        IO(Tcp) ! Tcp.Connect(connectTo)
         become(connecting)
     }
 
