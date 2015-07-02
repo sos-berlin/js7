@@ -81,7 +81,6 @@
         <dependency>
             <groupId>io.spray</groupId>
             <artifactId>spray-client_${scala.binaryVersion}</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.spray</groupId>
