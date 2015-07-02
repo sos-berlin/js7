@@ -34,7 +34,7 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
       case Some(o) ⇒ (o, None)
       case None ⇒
         val address = tunnelHandler.localAddress.getAddress.getHostAddress +":"+ tunnelHandler.localAddress.getPort
-        val tunnel = tunnelHandler.newTunnel(TunnelId(id.string))
+        val tunnel = tunnelHandler.newTunnel(TunnelId(id.index.toString))
         (address, Some(tunnel))
     }
 
