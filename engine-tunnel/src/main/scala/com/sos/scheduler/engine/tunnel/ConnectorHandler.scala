@@ -88,12 +88,12 @@ private[tunnel] final class ConnectorHandler extends Actor {
           connectedPromise.success(peerAddress)
           val e = connectorRegister(id)
           e.tunnelState = ConnectedConnector(connector)
-          logger.debug(s"Tunnel $id connected with ${e.remoteAddressString} ")
+          logger.debug(s"$id connected with ${e.remoteAddressString} ")
       }
 
     case m @ Connector.Closed(tunnelId) ⇒
       connectorRegister -= tunnelId
-      logger.debug(s"Tunnel $tunnelId deregistered")
+      logger.debug(s"$tunnelId deregistered")
 
     case m @ DirectedRequest(tunnelToken, request) ⇒
       try {
