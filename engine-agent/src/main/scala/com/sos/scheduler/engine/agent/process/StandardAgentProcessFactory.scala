@@ -30,30 +30,33 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
 
   private def newTaskServer(id: AgentProcessId, command: StartProcess) = {
 
-    val (controllerAddress, tunnelClientOption) = command.controllerAddressOption match {
+    val (controllerAddress, tunnelOption) = command.controllerAddressOption match {
       case Some(o) ⇒ (o, None)
       case None ⇒
         val address = tunnelHandler.localAddress.getAddress.getHostAddress +":"+ tunnelHandler.localAddress.getPort
-        val client = tunnelHandler.newTunnel(TunnelId(id.string))
-        (address, Some(client))
+        val tunnel = tunnelHandler.newTunnel(TunnelId(id.string))
+        (address, Some(tunnel))
     }
 
     val taskStartArguments = TaskStartArguments(
       controllerAddress = controllerAddress,
-      tunnelIdAndPasswordOption = tunnelClientOption map { _.tunnelToken },
+      tunnelIdAndPasswordOption = tunnelOption map { _.tunnelToken },
       directory = agentConfiguration.directory,
       environment = agentConfiguration.environment)
-    if (sys.props contains UseThreadPropertyName) { // For debugging
-      logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")
-      new SimpleTaskServer(taskStartArguments)
-    } else
-      command match {
-        case _: StartThread ⇒ new SimpleTaskServer(taskStartArguments)
-        case o: StartSeparateProcess ⇒ new SeparateProcessTaskServer(
-          taskStartArguments,
-          javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
-          javaClasspath = o.javaClasspath)
-      }
+    val taskServer =
+      if (sys.props contains UseThreadPropertyName) { // For debugging
+        logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")
+        new SimpleTaskServer(tunnelOption, taskStartArguments)
+      } else
+        command match {
+          case _: StartThread ⇒ new SimpleTaskServer(tunnelOption, taskStartArguments)
+          case o: StartSeparateProcess ⇒ new SeparateProcessTaskServer(
+            tunnelOption,
+            taskStartArguments,
+            javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
+            javaClasspath = o.javaClasspath)
+        }
+    taskServer
   }
 
   private def splitJavaOptions(options: String) =
