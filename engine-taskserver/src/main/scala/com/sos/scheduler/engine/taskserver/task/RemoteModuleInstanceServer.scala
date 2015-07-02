@@ -87,11 +87,10 @@ extends HasCloser with Invocable with HasSendProcessSignal {
     }
   }
 
-  override def toString =
-    List(
+  override def toString = List(
       s"${getClass.getSimpleName}",
-      Option(taskArguments) map { t ⇒ s"(${t.jobName}:${t.taskId}})" })
-      .mkString("")
+      Option(taskArguments) map { t ⇒ s"(${t.jobName}:${t.taskId})" } getOrElse ""
+    ).mkString("")
 }
 
 object RemoteModuleInstanceServer extends InvocableFactory {

@@ -27,7 +27,7 @@ object Stopwatch {
     for (_ ← 1 to n) body
     val duration = Duration.ofNanos(nanoTime() - start)
     val r = Result(n, itemName, duration)
-    logger.debug(r.toString)
+    logger.info(r.toString)
     r
   }
 

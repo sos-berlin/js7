@@ -23,7 +23,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
 
   override def supervisorStrategy = stoppingStrategy
 
-  private val connectorRegister = mutable.Map[TunnelId, Entry]()
+  private val connectorRegister = mutable.Map[TunnelId, Entry]() withDefault { o ⇒ throw new NoSuchElementException(s"Unknown $o")}
 
   TunnelToken.newPassword()  // Check random generator
 
@@ -86,8 +86,9 @@ private[tunnel] final class ConnectorHandler extends Actor {
               case RequestBeforeConnected(request) ⇒ connector ! request
             }
           connectedPromise.success(peerAddress)
-          connectorRegister(id).tunnelState = ConnectedConnector(connector)
-          logger.debug(s"Tunnel $id registered")
+          val e = connectorRegister(id)
+          e.tunnelState = ConnectedConnector(connector)
+          logger.debug(s"Tunnel $id connected with ${e.remoteAddressString} ")
       }
 
     case m @ Connector.Closed(tunnelId) ⇒
@@ -152,6 +153,9 @@ private[tunnel] object ConnectorHandler {
     client: TunnelClient,
     connectedPromise: Promise[InetSocketAddress],
     var tunnelState: TunnelState)
+  {
+    def remoteAddressString: String = connectedPromise.future.value flatMap { _.toOption } map { _.toString } getOrElse "(not connected via TCP)"
+  }
 
   private sealed trait TunnelState
   private case object Uninitialized extends TunnelState

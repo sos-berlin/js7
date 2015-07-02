@@ -51,7 +51,7 @@ extends HasCloser with ClosedFuture {
   private[task] def isAlive = process.isAlive
 
   def waitForTermination(): ReturnCode = {
-    logger.debug("waitForTermination")
+    logger.debug("waitForTermination ...")
     while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
     logger.debug(s"waitForTermination: terminated with exit code ${process.exitValue}")
     ReturnCode(process.exitValue)
