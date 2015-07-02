@@ -8,7 +8,7 @@
     <parent>
         <groupId>com.sos.scheduler.engine</groupId>
         <artifactId>parent</artifactId>
-        <version>1.8.3-SNAPSHOT</version>
+        <version>1.8.3</version>
         <relativePath>parent</relativePath>
     </parent>
 
@@ -95,7 +95,7 @@
 		                        <configuration>
 		                            <target name="clean-local-repo">                            
 		                                <echo>Purging ${settings.localRepository}/com/sos-berlin...</echo>
-		                                <delete dir="${settings.localRepository}/com/sos-berlin" verbose="true"/>
+		                                <delete dir="${settings.localRepository}/com/sos-berlin" verbose="true" />
 		                            </target>
 		                            <failOnError>false</failOnError>
 		                        </configuration>
@@ -111,6 +111,6 @@
         <connection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</connection>
         <developerConnection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</developerConnection>
         <url>https://github.com/sos-berlin/scheduler-engine</url>
-        <tag>HEAD</tag>
+        <tag>v1.8.3</tag>
     </scm>
 </project>
