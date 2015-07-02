@@ -115,7 +115,7 @@ extends HasCloser with Task with HasSendProcessSignal {
 
   def sendProcessSignal(signal: ProcessSignal) = {
     logger.trace(s"sendProcessSignal $signal")
-    for (p ← Option(richProcess)) richProcess.sendProcessSignal(signal)
+    for (p ← Option(richProcess)) p.sendProcessSignal(signal)
   }
 
   @TestOnly
