@@ -3,11 +3,14 @@ package com.sos.scheduler.engine.agent.xmlcommand
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands.CloseProcess
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
+import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
+@RunWith(classOf[JUnitRunner])
 final class CloseProcessXmlTest extends FreeSpec {
 
   "Parse XML for CloseProcess" in {

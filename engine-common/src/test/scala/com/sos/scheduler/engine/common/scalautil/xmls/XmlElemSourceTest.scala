@@ -4,12 +4,15 @@ import java.util.NoSuchElementException
 import javax.xml.namespace.QName
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{EndDocument, StartDocument}
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
+@RunWith(classOf[JUnitRunner])
 final class XmlElemSourceTest extends FreeSpec {
   "XmlElemSource" in {
     val source = XmlElemSource(<A B='1'/>)

@@ -1,11 +1,14 @@
 package com.sos.scheduler.engine.common.utils
 
 import com.sos.scheduler.engine.common.utils.JsonUtils.jsonQuote
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
+import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
+@RunWith(classOf[JUnitRunner])
 final class JsonUtilsTest extends FreeSpec {
 
   "jsonQuote" in {

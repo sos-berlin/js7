@@ -2,11 +2,14 @@ package com.sos.scheduler.engine.agent.xmlcommand
 
 import com.sos.scheduler.engine.agent.data.commands.{StartSeparateProcess, StartThread}
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
+import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
+@RunWith(classOf[JUnitRunner])
 final class StartProcessXmlTest extends FreeSpec {
 
   "Parse XML as StartThread" in {

@@ -4,12 +4,15 @@ import java.util.NoSuchElementException
 import javax.xml.namespace.QName
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{EndDocument, StartDocument}
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
+@RunWith(classOf[JUnitRunner])
 final class StringSourceTest extends FreeSpec {
   "StringSource" in {
     val source = StringSource("<A B='1'/>")
