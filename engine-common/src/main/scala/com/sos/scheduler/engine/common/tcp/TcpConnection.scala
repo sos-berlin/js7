@@ -5,9 +5,12 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.TcpConnection._
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-import java.nio.channels.{AsynchronousCloseException, SocketChannel}
+import java.nio.channels.{AsynchronousCloseException, ServerSocketChannel, SocketChannel}
 
-final class TcpConnection(channel: SocketChannel) extends AutoCloseable with MessageConnection {
+final class TcpConnection(val channel: SocketChannel) extends AutoCloseable with MessageConnection {
+
+  val ownAddress: InetSocketAddress = channel.getLocalAddress.asInstanceOf[InetSocketAddress]
+  val peerAddress: InetSocketAddress = channel.getRemoteAddress.asInstanceOf[InetSocketAddress]
 
   def close(): Unit = {
     logger.debug(s"close $peerAddress")
@@ -52,8 +55,7 @@ final class TcpConnection(channel: SocketChannel) extends AutoCloseable with Mes
   override def toString = s"TcpConnection($peerAddress)"
 
   def ownPort: Int = ownAddress.getPort
-  def ownAddress: InetSocketAddress = channel.getLocalAddress.asInstanceOf[InetSocketAddress]
-  def peerAddress: InetSocketAddress = channel.getRemoteAddress.asInstanceOf[InetSocketAddress]
+  def isConnected = channel.isConnected
 }
 
 object TcpConnection{
@@ -66,5 +68,18 @@ object TcpConnection{
     logger.debug(s"Connected own ${channel.getLocalAddress} with remote $peerAddress")
     assert(channel.isBlocking)
     new TcpConnection(channel)
+  }
+
+  final class Listener(address: InetSocketAddress) extends AutoCloseable {
+    private val listener = ServerSocketChannel.open().bind(address)
+    val boundAddress = listener.getLocalAddress.asInstanceOf[InetSocketAddress]
+
+    def accept() = new TcpConnection(listener.accept())
+
+    def close() = listener.close()
+  }
+
+  object Listener {
+    def forLocalHostPort(port: Int = 0) = new Listener(new InetSocketAddress("127.0.0.1", port))
   }
 }
