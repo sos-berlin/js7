@@ -15,7 +15,7 @@ import spray.json.DefaultJsonProtocol._
  */
 final case class TaskStartArguments(
   controllerAddress: String,
-  tunnelIdAndPasswordOption: Option[TunnelToken] = None,
+  tunnelTokenOption: Option[TunnelToken] = None,
   environment: immutable.Iterable[(String, String)] = Nil,
   directory: Path,
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
@@ -34,7 +34,7 @@ object TaskStartArguments {
     stdFileMap: Map[StdoutStderrType, Path] = Map())
   = new TaskStartArguments(
       controllerAddress = s"127.0.0.1:$tcpPort",
-      tunnelIdAndPasswordOption = None,
+      tunnelTokenOption = None,
       directory = directory,
       stdFileMap = stdFileMap
     )

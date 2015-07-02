@@ -27,7 +27,7 @@ final class AgentProcess(val id: AgentProcessId, val taskServer: TaskServer) ext
     taskServer.taskStartArguments.controllerAddress,
     startedAt)
 
-  def tunnelTokenOption = taskServer.taskStartArguments.tunnelIdAndPasswordOption
+  def tunnelTokenOption = taskServer.taskStartArguments.tunnelTokenOption
 
   override def toString = s"AgentProcess($id)"
 }

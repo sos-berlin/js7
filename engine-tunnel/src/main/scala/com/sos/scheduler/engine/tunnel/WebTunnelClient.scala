@@ -30,8 +30,8 @@ trait WebTunnelClient {
       unmarshal[ByteString]
 
   final def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString): Future[ByteString] = {
-    val TunnelToken(id, password) = tunnelToken
-    val pipeline = addHeader(PasswordHeaderName, password.string) ~> pipelineTrunk
+    val TunnelToken(id, secret) = tunnelToken
+    val pipeline = addHeader(SecretHeaderName, secret.string) ~> pipelineTrunk
     pipeline(Post(tunnelUri(id), requestMessage))
   }
 }

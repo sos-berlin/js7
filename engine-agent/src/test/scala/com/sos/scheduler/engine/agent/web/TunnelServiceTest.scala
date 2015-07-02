@@ -28,14 +28,14 @@ final class TunnelServiceTest extends FreeSpec with ScalatestRouteTest with Tunn
   //import actorRefFactory.dispatcher
 
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = {
-    assert(tunnelToken == TunnelToken(TestTunnelId, TestPassword))
+    assert(tunnelToken == TunnelToken(TestTunnelId, TestSecret))
     Future.successful(requestToResponse(requestMessage))
   }
 
   TunnelPath.toString in {
     val requestMessage = ByteString.fromString(Random.nextString(10))
       Post(Uri.Empty withPath (TunnelPath / TestTunnelId.string), requestMessage) ~>
-        addHeader(PasswordHeaderName, TestPassword.string) ~>
+        addHeader(SecretHeaderName, TestSecret.string) ~>
         Accept(`application/octet-stream`) ~>
         route ~> check
       {
@@ -51,5 +51,5 @@ private object TunnelServiceTest {
   private val TunnelPath = Path("/jobscheduler/agent/tunnel")
   private val CrazyString = """,.-;:_!"§$%&/()=#'+*´`<>"""
   private val TestTunnelId = TunnelId(CrazyString * 2)  // In practice (2015), the TunnelId is simpler
-  private val TestPassword = TunnelToken.Password(CrazyString.reverse * 100)  // In practice (2015), the password is simpler. See TunnelId.newPassword
+  private val TestSecret = TunnelToken.Secret(CrazyString.reverse * 100)  // In practice (2015), the secret is simpler. See TunnelId.newSecret
 }

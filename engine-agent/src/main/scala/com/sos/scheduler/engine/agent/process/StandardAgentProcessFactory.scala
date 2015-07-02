@@ -40,7 +40,7 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
 
     val taskStartArguments = TaskStartArguments(
       controllerAddress = controllerAddress,
-      tunnelIdAndPasswordOption = tunnelOption map { _.tunnelToken },
+      tunnelTokenOption = tunnelOption map { _.tunnelToken },
       directory = agentConfiguration.directory,
       environment = agentConfiguration.environment)
     val taskServer =

@@ -25,7 +25,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
 
   private val connectorRegister = mutable.Map[TunnelId, Entry]() withDefault { o ⇒ throw new NoSuchElementException(s"Unknown $o")}
 
-  TunnelToken.newPassword()  // Check random generator
+  TunnelToken.newSecret()  // Check random generator
 
   def receive = {
     case Start ⇒
@@ -55,18 +55,18 @@ private[tunnel] final class ConnectorHandler extends Actor {
     case m @ NewTunnel(id) ⇒
       logger.trace(s"$m")
       sender() ! Try[TunnelClient] {
-        val password = TunnelToken.newPassword()
+        val secret = TunnelToken.newSecret()
         val connectedPromise = Promise[InetSocketAddress]()
         val client = new TunnelClient(
           self,
-          TunnelToken(id, password),
+          TunnelToken(id, secret),
           connectedPromise.future,
           peerAddress = () ⇒ connectedPromise.future.value map { _.get })
-        connectorRegister.insert(id → Entry(password, client, connectedPromise, Uninitialized))
+        connectorRegister.insert(id → Entry(secret, client, connectedPromise, Uninitialized))
         client
       }
 
-    case m @ Connector.AssociatedWithTunnelId(TunnelToken(id, callersPassword), peerAddress) ⇒
+    case m @ Connector.AssociatedWithTunnelId(TunnelToken(id, callersSecret), peerAddress) ⇒
       logger.trace(s"$m")
       val connector = sender()
       connectorRegister.get(id) match {
@@ -74,8 +74,8 @@ private[tunnel] final class ConnectorHandler extends Actor {
           logger.error(s"Unknown TunnelId '$id' received from $connector")
           stop(connector)
         case Some(Entry(pass, _, connectedPromise, tunnelState)) ⇒
-          if (callersPassword != pass) {
-            logger.error(s"Invalid tunnel password from $connector")
+          if (callersSecret != pass) {
+            logger.error(s"Invalid tunnel secret from $connector")
             stop(connector)
           } else
             tunnelState match {
@@ -128,7 +128,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
 
   private def checkedEntry(tunnelToken: TunnelToken) = {
     val entry = connectorRegister(tunnelToken.id)
-    if (tunnelToken.password != entry.password) throw new IllegalArgumentException(s"Invalid tunnel password")
+    if (tunnelToken.secret != entry.secret) throw new IllegalArgumentException(s"Wrong tunnel secret")
     entry
   }
 }
@@ -149,7 +149,7 @@ private[tunnel] object ConnectorHandler {
   }
 
   private case class Entry(
-    password: TunnelToken.Password,
+    secret: TunnelToken.Secret,
     client: TunnelClient,
     connectedPromise: Promise[InetSocketAddress],
     var tunnelState: TunnelState)
