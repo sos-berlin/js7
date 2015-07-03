@@ -14,7 +14,7 @@ import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskStartArguments}
-import com.sos.scheduler.engine.tunnel.{TunnelClient, TunnelConnectionMessage}
+import com.sos.scheduler.engine.tunnel.data.TunnelConnectionMessage
 import java.nio.channels.AsynchronousCloseException
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -25,7 +25,7 @@ import spray.json.pimpAny
  *
  * @author Joacim Zschimmer
  */
-final class SimpleTaskServer(tunnelOption: Option[TunnelClient], val taskStartArguments: TaskStartArguments) extends TaskServer with HasCloser {
+final class SimpleTaskServer(tunnelOption: Option[AutoCloseable], val taskStartArguments: TaskStartArguments) extends TaskServer with HasCloser {
 
   tunnelOption foreach closer.registerAutoCloseable
 

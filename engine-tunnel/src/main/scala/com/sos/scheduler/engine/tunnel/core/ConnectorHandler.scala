@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel
+package com.sos.scheduler.engine.tunnel.core
 
 import akka.actor.SupervisorStrategy.stoppingStrategy
 import akka.actor.{Actor, ActorRef, Props}
@@ -6,7 +6,7 @@ import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.ConnectorHandler._
+import com.sos.scheduler.engine.tunnel.core.ConnectorHandler._
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import scala.collection.mutable

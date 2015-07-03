@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel
+package com.sos.scheduler.engine.tunnel.web
 
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.sprayutils.ByteStreamMarshallers._
@@ -13,11 +13,6 @@ import spray.routing.Directives._
  */
 object TunnelWebService {
   type ExecuteTunneledRequest = (TunnelToken, ByteString) ⇒ Future[ByteString]
-
-//  def tunnelRoute(id: TunnelId)(execute: ExecuteTunnelRequest)(implicit ec: ExecutionContext) =
-//    (post & pathPrefix("tunnel" / Segment)) { idString ⇒
-//      handleTunnelRequest(TunnelId(idString))(execute)
-//    }
 
   def tunnelRoute(id: TunnelId)(execute: ExecuteTunneledRequest)(implicit ec: ExecutionContext) =
     post {

@@ -1,7 +1,8 @@
-package com.sos.scheduler.engine.tunnel
+package com.sos.scheduler.engine.tunnel.client
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.tunnel.TcpToHttpBridge._
+import com.sos.scheduler.engine.tunnel.client.TcpToHttpBridge._
+import com.sos.scheduler.engine.tunnel.common.TcpToRequestResponse
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import spray.http.Uri

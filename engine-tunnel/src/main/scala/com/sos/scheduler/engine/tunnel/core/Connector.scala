@@ -1,12 +1,13 @@
-package com.sos.scheduler.engine.tunnel
+package com.sos.scheduler.engine.tunnel.core
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.Connector._
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.common.MessageTcpBridge
+import com.sos.scheduler.engine.tunnel.core.Connector._
+import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import scala.concurrent.Promise
 import spray.json.JsonParser
@@ -26,7 +27,7 @@ import spray.json.JsonParser
  *
  * @author Joacim Zschimmer
  */
-private[tunnel] final class Connector(tcp: ActorRef, connected: Tcp.Connected)
+private[core] final class Connector(tcp: ActorRef, connected: Tcp.Connected)
 extends Actor with FSM[State, Data] {
 
   import connected.remoteAddress
@@ -122,35 +123,35 @@ extends Actor with FSM[State, Data] {
   private def tunnelIdString = if (tunnelId == null) "tunnel is not yet established" else tunnelId.string
 }
 
-private[tunnel] object Connector {
+private[core] object Connector {
   private val logger = Logger(getClass)
 
 
   // Actor messages commanding this actor
 
-  private[tunnel] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
+  private[core] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
     override def toString = s"Request(${message.size} bytes)"
   }
 
-  private[tunnel] case object Close
+  private[core] case object Close
 
 
   // Event messages from this actor
 
-  private[tunnel] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
+  private[core] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
 
-  private[tunnel] final case class Response(message: ByteString) {
+  private[core] final case class Response(message: ByteString) {
     override def toString = s"Response(${message.size} bytes)"
   }
 
-  private[tunnel] final case class Closed(tunnelId: TunnelId)
+  private[core] final case class Closed(tunnelId: TunnelId)
 
-  private[tunnel] sealed trait State
+  private[core] sealed trait State
   private case object ExpectingRequest extends State {}
   private case object ExpectingMessageFromTcp extends State
   private case object Closing extends State
 
-  private[tunnel] sealed trait Data
-  final case class Respond(responsePromise: Promise[ByteString]) extends Data
+  private[core] sealed trait Data
+  private case class Respond(responsePromise: Promise[ByteString]) extends Data
   private case object NoData extends Data
 }

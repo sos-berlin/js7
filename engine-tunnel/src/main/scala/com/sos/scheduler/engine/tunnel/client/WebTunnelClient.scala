@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel
+package com.sos.scheduler.engine.tunnel.client
 
 import akka.actor.ActorRefFactory
 import akka.util.ByteString

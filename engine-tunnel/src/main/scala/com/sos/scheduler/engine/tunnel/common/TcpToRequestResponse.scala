@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.tunnel
+package com.sos.scheduler.engine.tunnel.common
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.TcpToRequestResponse.{Close, _}
+import com.sos.scheduler.engine.tunnel.common.TcpToRequestResponse._
 import java.net.{InetSocketAddress, SocketAddress}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal

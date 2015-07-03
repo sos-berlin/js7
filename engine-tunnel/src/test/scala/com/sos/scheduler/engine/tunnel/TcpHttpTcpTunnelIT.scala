@@ -10,8 +10,9 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
-import com.sos.scheduler.engine.tunnel.TunnelWebService._
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.client.TcpToHttpBridge
+import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.web.TunnelWebService._
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

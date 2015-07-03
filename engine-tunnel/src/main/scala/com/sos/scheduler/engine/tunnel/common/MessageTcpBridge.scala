@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.tunnel
+package com.sos.scheduler.engine.tunnel.common
 
 import akka.actor.{Actor, ActorRef}
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.LengthHeaderMessageCollector._
-import com.sos.scheduler.engine.tunnel.MessageTcpBridge._
+import com.sos.scheduler.engine.tunnel.common.LengthHeaderMessageCollector._
+import com.sos.scheduler.engine.tunnel.common.MessageTcpBridge._
 
 /**
  * Full-duplex bridge between length-prefixed framed messages and a TCP stream.
