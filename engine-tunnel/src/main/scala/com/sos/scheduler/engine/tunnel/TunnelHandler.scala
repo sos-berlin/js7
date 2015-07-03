@@ -8,8 +8,9 @@ import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.tunnel.TunnelHandler._
 import com.sos.scheduler.engine.tunnel.core.{ConnectorHandler, TunnelClient}
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
 import javax.inject.{Inject, Singleton}
+import scala.collection.immutable
 import scala.concurrent.{Future, Promise}
 import scala.util.Try
 
@@ -20,17 +21,17 @@ import scala.util.Try
 final class TunnelHandler @Inject private[tunnel](actorSystem: ActorSystem) extends AutoCloseable {
 
   private val connectorHandler = actorSystem.actorOf( Props { new ConnectorHandler }, name = "ConnectorHandler")
+  private implicit val askTimeout = Timeout(ShortTimeout.toFiniteDuration)
 
   val localAddress = {
-    val future = (connectorHandler ? ConnectorHandler.Start)(AskTimeout).mapTo[Try[Bound]]
+    val future = (connectorHandler ? ConnectorHandler.Start).mapTo[Try[Bound]]
     awaitResult(future, ShortTimeout).get.localAddress
   }
 
   def close(): Unit = actorSystem.stop(connectorHandler)
 
   def newTunnel(tunnelId: TunnelId) = {
-    awaitResult(
-      (connectorHandler ? ConnectorHandler.NewTunnel(tunnelId))(AskTimeout).mapTo[Try[TunnelClient]],
+    awaitResult((connectorHandler ? ConnectorHandler.NewTunnel(tunnelId)).mapTo[Try[TunnelClient]],
       ShortTimeout).get
   }
 
@@ -41,9 +42,14 @@ final class TunnelHandler @Inject private[tunnel](actorSystem: ActorSystem) exte
   }
 
   override def toString = s"TunnelHandler($localAddress)"
+
+  def overview: Future[TunnelHandlerOverview] =
+    (connectorHandler ? ConnectorHandler.GetOverview).mapTo[TunnelHandlerOverview]
+
+  def tunnelOverviews: Future[immutable.Iterable[TunnelOverview]] =
+    (connectorHandler ? ConnectorHandler.GetTunnelOverviews).mapTo[immutable.Iterable[TunnelOverview]]
 }
 
 object TunnelHandler {
   private val ShortTimeout = 30.s
-  private val AskTimeout = Timeout(ShortTimeout.toFiniteDuration)
 }

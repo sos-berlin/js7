@@ -7,8 +7,10 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.core.ConnectorHandler._
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.data._
 import java.net.InetSocketAddress
+import java.time.Instant
+import java.time.Instant.now
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.util.control.NonFatal
@@ -19,11 +21,12 @@ import scala.util.{Failure, Success, Try}
  */
 private[tunnel] final class ConnectorHandler extends Actor {
 
-  import context.{become, stop, system}
+  import context.{become, dispatcher, stop, system}
 
   override def supervisorStrategy = stoppingStrategy
 
   private val connectorRegister = mutable.Map[TunnelId, Entry]() withDefault { o ⇒ throw new NoSuchElementException(s"Unknown $o")}
+  private var tcpAddressOption: Option[InetSocketAddress] = None
 
   TunnelToken.newSecret()  // Check random generator
 
@@ -36,6 +39,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
   def starting(respondTo: ActorRef): Receive = {
     case bound: Tcp.Bound ⇒
       logger.debug(s"$bound")
+      tcpAddressOption = Some(bound.localAddress)
       respondTo ! Success(bound)
       become(ready)
 
@@ -66,29 +70,29 @@ private[tunnel] final class ConnectorHandler extends Actor {
         client
       }
 
-    case m @ Connector.AssociatedWithTunnelId(TunnelToken(id, callersSecret), peerAddress) ⇒
+    case m @ Connector.AssociatedWithTunnelId(TunnelToken(id, secret), peerAddress) ⇒
       logger.trace(s"$m")
       val connector = sender()
       connectorRegister.get(id) match {
         case None ⇒
           logger.error(s"Unknown TunnelId '$id' received from $connector")
           stop(connector)
-        case Some(Entry(pass, _, connectedPromise, tunnelState)) ⇒
-          if (callersSecret != pass) {
-            logger.error(s"Invalid tunnel secret from $connector")
+        case Some(entry: Entry) ⇒
+          if (secret != entry.secret) {
+            logger.error(s"Tunnel secret from $connector does not match with $id")
             stop(connector)
-          } else
-            tunnelState match {
+          } else {
+            entry.tunnelState match {
               case o: ConnectedConnector ⇒
-                logger.error(s"$tunnelState connects twice?")
+                logger.error(s"${entry.tunnelState} has tried to connect twice with $id")
                 stop(connector)
               case Uninitialized ⇒
               case RequestBeforeConnected(request) ⇒ connector ! request
             }
-          connectedPromise.success(peerAddress)
-          val e = connectorRegister(id)
-          e.tunnelState = ConnectedConnector(connector)
-          logger.debug(s"$id connected with ${e.remoteAddressString} ")
+          }
+          entry.connectedPromise.success(peerAddress)
+          entry.tunnelState = ConnectedConnector(connector)
+          logger.debug(s"$id connected with ${entry.remoteAddressString}")
       }
 
     case m @ Connector.Closed(tunnelId) ⇒
@@ -98,16 +102,16 @@ private[tunnel] final class ConnectorHandler extends Actor {
     case m @ DirectedRequest(tunnelToken, request) ⇒
       try {
         logger.trace(s"$m")
-        val e = checkedEntry(tunnelToken)
-        e.tunnelState match {
-          case Uninitialized ⇒ e.tunnelState = RequestBeforeConnected(request)
+        val entry = checkedEntry(tunnelToken)
+        entry.tunnelState match {
+          case ConnectedConnector(relais) ⇒
+            relais ! request
+            updateStatistics(entry, request)
+          case Uninitialized ⇒ entry.tunnelState = RequestBeforeConnected(request)
           case o: RequestBeforeConnected ⇒ sys.error(o.toString)
-          case ConnectedConnector(relais) ⇒ relais ! request
         }
       } catch {
-        case NonFatal(t) ⇒
-          logger.debug(s"ERROR: $m: $t", t)
-          request.responsePromise.failure(t)
+        case NonFatal(t) ⇒ request.responsePromise.failure(t)
       }
 
     case m @ CloseTunnel(tunnelToken) ⇒
@@ -124,6 +128,23 @@ private[tunnel] final class ConnectorHandler extends Actor {
       catch {
         case NonFatal(t) ⇒ logger.error(s"$m: $t", t)
       }
+
+    case GetOverview ⇒
+      sender() ! TunnelHandlerOverview(
+        tcpAddress = tcpAddressOption map { _.toString },
+        tunnelCount = connectorRegister.size)
+
+    case GetTunnelOverviews ⇒
+      sender() ! (connectorRegister map { case (id, entry) ⇒
+        TunnelOverview(
+          id,
+          entry.remoteAddressStringOption,
+          TunnelStatistics(
+            requestCount = entry.statistics.requestCount,
+            messageByteCount = entry.statistics.messageByteCount,
+            currentRequestIssuedAt = entry.statistics.currentRequestIssuedAt,
+            entry.statistics.failure map { _.toString }))
+      }).toVector
   }
 
   private def checkedEntry(tunnelToken: TunnelToken) = {
@@ -131,31 +152,60 @@ private[tunnel] final class ConnectorHandler extends Actor {
     if (tunnelToken.secret != entry.secret) throw new IllegalArgumentException(s"Wrong tunnel secret")
     entry
   }
+
+  private def updateStatistics(entry: Entry, request: Connector.Request): Unit = {
+    entry.statistics.currentRequestIssuedAt = Some(now)
+    entry.statistics.requestCount += 1
+    entry.statistics.messageByteCount += request.message.size
+    request.responsePromise.future.onComplete { tried ⇒
+      // We don't care about synchronization
+      tried match {
+        case Success(message) ⇒
+          entry.statistics.messageByteCount += message.size
+          entry.statistics.failure = None
+        case Failure(t) ⇒
+          entry.statistics.failure = Some(t)
+      }
+      entry.statistics.currentRequestIssuedAt = None
+    }
+  }
 }
 
 private[tunnel] object ConnectorHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
 
-  private[tunnel] case object Start
-  private[tunnel] case class NewTunnel(tunnelId: TunnelId)
-  private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken)
+  sealed trait Command
+  private[tunnel] case object Start extends Command
+  private[tunnel] case class NewTunnel(tunnelId: TunnelId) extends Command
+  private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
 
-  private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request)
+  private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request) extends Command
 
   private[tunnel] object DirectedRequest {
     def apply(tunnelToken: TunnelToken, message: ByteString, responsePromise: Promise[ByteString]): DirectedRequest =
       DirectedRequest(tunnelToken, Connector.Request(message, responsePromise))
   }
 
+  private[tunnel] object GetOverview extends Command
+  private[tunnel] object GetTunnelOverviews extends Command
+
   private case class Entry(
     secret: TunnelToken.Secret,
     client: TunnelClient,
     connectedPromise: Promise[InetSocketAddress],
-    var tunnelState: TunnelState)
+    var tunnelState: TunnelState,
+    statistics: Statistics = Statistics())
   {
-    def remoteAddressString: String = connectedPromise.future.value flatMap { _.toOption } map { _.toString } getOrElse "(not connected via TCP)"
+    def remoteAddressString: String = remoteAddressStringOption getOrElse "(not connected via TCP)"
+    def remoteAddressStringOption: Option[String] = connectedPromise.future.value flatMap { _.toOption } map { _.toString }
   }
+
+  private case class Statistics(  // We don't care about synchronization
+    var requestCount: Int = 0,
+    var messageByteCount: Long = 0,
+    var currentRequestIssuedAt: Option[Instant] = None,
+    var failure: Option[Throwable] = None)
 
   private sealed trait TunnelState
   private case object Uninitialized extends TunnelState

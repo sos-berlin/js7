@@ -153,7 +153,7 @@ object TcpHttpTcpTunnelIT {
     def running: Receive = runRoute {
       (decompressRequest() & compressResponseIfRequested(())) {
         (post & pathPrefix("test" / "tunnel" / Segment)) { idString ⇒
-          tunnelRoute(TunnelId(idString))(execute)
+          tunnelRequestRoute(TunnelId(idString))(execute)
         }
       }
     }

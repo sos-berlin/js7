@@ -54,6 +54,8 @@ with CommandHandlerViewService
   protected def executeCommand(command: Command) = commandExecutor.executeCommand(command)
   protected def agentOverview = agentOverviewProvider.get()
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = tunnelHandler.request(tunnelToken, requestMessage)
+  protected def tunnelHandlerOverview = tunnelHandler.overview
+  protected def tunnelOverviews = tunnelHandler.tunnelOverviews
 }
 
 object WebServiceActor {

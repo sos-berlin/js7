@@ -35,10 +35,3 @@ trait WebTunnelClient {
     pipeline(Post(tunnelUri(id), requestMessage))
   }
 }
-
-object WebTunnelClient {
-  trait OfBaseUri extends WebTunnelClient {
-    protected def baseUri: Uri
-    protected def tunnelUri(tunnelId: TunnelId) = baseUri withPath (baseUri.path / tunnelId.string)
-  }
-}
