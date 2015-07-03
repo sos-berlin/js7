@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.web.marshal
+package com.sos.scheduler.engine.common.sprayutils
 
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

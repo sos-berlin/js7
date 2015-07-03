@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.views.ProcessOverview
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
-import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers._
+import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

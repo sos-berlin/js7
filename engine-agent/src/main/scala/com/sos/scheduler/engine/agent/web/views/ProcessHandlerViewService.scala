@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.agent.web.views
 
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards
-import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrYamlSupport._
+import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import spray.routing.Directives._
 
 /**

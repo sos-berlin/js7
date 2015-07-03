@@ -151,7 +151,17 @@
         </dependency>
         <dependency>
             <groupId>io.spray</groupId>
+            <artifactId>spray-routing_${scala.binaryVersion}</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.spray</groupId>
             <artifactId>spray-json_${scala.binaryVersion}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.spray</groupId>
+            <artifactId>spray-testkit_${scala.binaryVersion}</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

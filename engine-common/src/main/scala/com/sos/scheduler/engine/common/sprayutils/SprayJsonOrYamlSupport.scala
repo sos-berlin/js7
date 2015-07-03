@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.web.marshal
+package com.sos.scheduler.engine.common.sprayutils
 
 import scala.language.implicitConversions
 import spray.http.ContentTypes.{`application/json`, `text/plain(UTF-8)`, `text/plain`}

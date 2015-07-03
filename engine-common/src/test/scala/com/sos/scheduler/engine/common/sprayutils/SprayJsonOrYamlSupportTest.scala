@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.web.marshal
+package com.sos.scheduler.engine.common.sprayutils
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.agent.web.marshal.SprayJsonOrYamlSupport._
+import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
