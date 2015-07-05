@@ -16,7 +16,7 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-final class SeparateProcessTaskServer(tunnelOption: Option[AutoCloseable], val taskStartArguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String)
+final class SeparateProcessTaskServer(val taskStartArguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String)
 extends TaskServer {
 
   private var process: RichProcess = null
@@ -47,7 +47,6 @@ extends TaskServer {
   }
 
   override def close(): Unit = {
-    tunnelOption foreach { _.close() }
     if (process != null) {
       // Wait for process _after_ Tunnel, registered with registerCloseable, has been closed
       try process.waitForTermination()

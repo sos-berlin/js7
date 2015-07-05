@@ -144,7 +144,7 @@ private object ProcessHandlerTest {
 
   private class TestContext {
     val taskServers = List.fill(2) { new MockTaskServer }
-    val processes = AgentProcessIds zip taskServers map { case (id, taskServer) ⇒ new AgentProcess(id, taskServer) }
+    val processes = AgentProcessIds zip taskServers map { case (id, taskServer) ⇒ new AgentProcess(id, tunnelOption = None, taskServer) }
     val processHandler = Guice.createInjector(new TestModule(processes)).instance[ProcessHandler]
   }
 

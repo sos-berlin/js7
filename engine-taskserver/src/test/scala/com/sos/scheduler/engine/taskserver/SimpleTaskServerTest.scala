@@ -20,7 +20,7 @@ final class SimpleTaskServerTest extends FreeSpec {
     val port = FreeTcpPortFinder.findRandomFreeTcpPort()
     val interface = "127.0.0.1"
     autoClosing(new ServerSocket(port, 1, InetAddress.getByName(interface))) { listener ⇒
-      autoClosing(new SimpleTaskServer(tunnelOption = None, TaskStartArguments.forTest(tcpPort = port))) { server ⇒
+      autoClosing(new SimpleTaskServer(TaskStartArguments.forTest(tcpPort = port))) { server ⇒
         server.start()
         listener.setSoTimeout(10*1000)
         listener.accept().close()   // The immediate close lets the task process abort, but we don't care.

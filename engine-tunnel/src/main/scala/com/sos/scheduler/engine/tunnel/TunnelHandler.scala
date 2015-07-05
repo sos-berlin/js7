@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.tunnel.TunnelHandler._
 import com.sos.scheduler.engine.tunnel.core.{ConnectorHandler, TunnelClient}
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
+import java.net.InetSocketAddress
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable
 import scala.concurrent.{Future, Promise}
@@ -23,10 +24,14 @@ final class TunnelHandler @Inject private[tunnel](actorSystem: ActorSystem) exte
   private val connectorHandler = actorSystem.actorOf( Props { new ConnectorHandler }, name = "ConnectorHandler")
   private implicit val askTimeout = Timeout(ShortTimeout.toFiniteDuration)
 
-  val localAddress = {
+  private[tunnel] val proxyAddress: InetSocketAddress = {
     val future = (connectorHandler ? ConnectorHandler.Start).mapTo[Try[Bound]]
     awaitResult(future, ShortTimeout).get.localAddress
   }
+  /**
+   * The TCP address "ipnumber:port" of the proxy, which tunnels the data to the real master.
+   */
+  val proxyAddressString = proxyAddress.getAddress.getHostAddress +":"+ proxyAddress.getPort
 
   def close(): Unit = actorSystem.stop(connectorHandler)
 
@@ -41,7 +46,7 @@ final class TunnelHandler @Inject private[tunnel](actorSystem: ActorSystem) exte
     responsePromise.future
   }
 
-  override def toString = s"TunnelHandler($localAddress)"
+  override def toString = s"TunnelHandler($proxyAddress)"
 
   def overview: Future[TunnelHandlerOverview] =
     (connectorHandler ? ConnectorHandler.GetOverview).mapTo[TunnelHandlerOverview]

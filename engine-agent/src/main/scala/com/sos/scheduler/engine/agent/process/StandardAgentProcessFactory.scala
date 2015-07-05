@@ -10,7 +10,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer
 import com.sos.scheduler.engine.taskserver.task.{SeparateProcessTaskServer, TaskStartArguments}
 import com.sos.scheduler.engine.tunnel.TunnelHandler
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.util.concurrent.ThreadLocalRandom
 import java.util.regex.Pattern
 import javax.inject.{Inject, Singleton}
@@ -25,33 +25,30 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
 
   def apply(command: StartProcess) = {
     val id = agentProcessIdGenerator.next()
-    new AgentProcess(id, newTaskServer(id, command))
-  }
-
-  private def newTaskServer(id: AgentProcessId, command: StartProcess) = {
-
     val (controllerAddress, tunnelOption) = command.controllerAddressOption match {
       case Some(o) ⇒ (o, None)
       case None ⇒
-        val address = tunnelHandler.localAddress.getAddress.getHostAddress +":"+ tunnelHandler.localAddress.getPort
+        val address = tunnelHandler.proxyAddressString
         val tunnel = tunnelHandler.newTunnel(TunnelId(id.index.toString))
         (address, Some(tunnel))
     }
+    new AgentProcess(id, tunnelOption, newTaskServer(id, command, controllerAddress, tunnelOption map { _.tunnelToken }))
+  }
 
+  private def newTaskServer(id: AgentProcessId, command: StartProcess, controllerAddress: String, tunnelTokenOption: Option[TunnelToken]) = {
     val taskStartArguments = TaskStartArguments(
       controllerAddress = controllerAddress,
-      tunnelTokenOption = tunnelOption map { _.tunnelToken },
+      tunnelTokenOption = tunnelTokenOption,
       directory = agentConfiguration.directory,
       environment = agentConfiguration.environment)
     val taskServer =
       if (sys.props contains UseThreadPropertyName) { // For debugging
         logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")
-        new SimpleTaskServer(tunnelOption, taskStartArguments)
+        new SimpleTaskServer(taskStartArguments)
       } else
         command match {
-          case _: StartThread ⇒ new SimpleTaskServer(tunnelOption, taskStartArguments)
+          case _: StartThread ⇒ new SimpleTaskServer(taskStartArguments)
           case o: StartSeparateProcess ⇒ new SeparateProcessTaskServer(
-            tunnelOption,
             taskStartArguments,
             javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
             javaClasspath = o.javaClasspath)

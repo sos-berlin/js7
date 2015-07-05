@@ -28,7 +28,7 @@ final class TunnelIT extends FreeSpec {
 
   "Simple" in {
     val tunnel = tunnelHandler.newTunnel(TunnelId("TEST-TUNNEL"))
-    val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelHandler.localAddress)
+    val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelHandler.proxyAddress)
     tcpServer.start()
     for (i ← 1 to 3) {
       val request = ByteString.fromString(s"TEST-REQUEST #$i")
@@ -47,7 +47,7 @@ final class TunnelIT extends FreeSpec {
     val tunnelsAndServers = for (i ← 1 to TunnelCount) yield {
       val id = TunnelId(i.toString)
       val tunnel = tunnelHandler.newTunnel(id)
-      val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelHandler.localAddress)
+      val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelHandler.proxyAddress)
       tcpServer.start()
       tunnel.connected onSuccess { case peerAddress: InetSocketAddress ⇒
         logger.info(s"$tunnel $peerAddress")

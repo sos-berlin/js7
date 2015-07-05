@@ -25,9 +25,7 @@ import spray.json.pimpAny
  *
  * @author Joacim Zschimmer
  */
-final class SimpleTaskServer(tunnelOption: Option[AutoCloseable], val taskStartArguments: TaskStartArguments) extends TaskServer with HasCloser {
-
-  tunnelOption foreach closer.registerAutoCloseable
+final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends TaskServer with HasCloser {
 
   private lazy val master = TcpConnection.connect(taskStartArguments.controllerInetSocketAddress).closeWithCloser
   private val injector = Guice.createInjector(new ScalaAbstractModule {
@@ -73,7 +71,7 @@ object SimpleTaskServer {
   private val logger = Logger(getClass)
 
   def run(startArguments: TaskStartArguments): Unit =
-    autoClosing(new SimpleTaskServer(tunnelOption = None, startArguments)) { taskServer ⇒
+    autoClosing(new SimpleTaskServer(startArguments)) { taskServer ⇒
       taskServer.start()
       awaitResult(taskServer.terminated, MaxDuration)
     }

@@ -125,7 +125,7 @@ object TcpHttpTcpTunnelIT {
     val uri = startWebServer()
 
     def newTunnel(id: TunnelId) = tunnelHandler.newTunnel(id)
-    def tcpAddress = tunnelHandler.localAddress
+    def tcpAddress = tunnelHandler.proxyAddress
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
