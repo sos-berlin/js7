@@ -198,7 +198,7 @@ private[tunnel] object ConnectorHandler {
     statistics: Statistics = Statistics())
   {
     def remoteAddressString: String = remoteAddressStringOption getOrElse "(not connected via TCP)"
-    def remoteAddressStringOption: Option[String] = connectedPromise.future.value flatMap { _.toOption } map { _.toString }
+    def remoteAddressStringOption: Option[String] = connectedPromise.future.value flatMap { _.toOption } map { _.toString stripPrefix "/" }
   }
 
   private case class Statistics(  // We don't care about synchronization
