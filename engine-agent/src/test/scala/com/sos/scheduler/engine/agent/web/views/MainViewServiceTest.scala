@@ -47,7 +47,8 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
     "totalProcessCount" → JsNumber(999),
     "isTerminating" → JsBoolean(false),
     "system" → JsObject(
-      "hostname" → JsString("TEST-HOSTNAME")),
+      "hostname" → JsString("TEST-HOSTNAME"),
+      "mxBeans" → JsObject()),
     "java" → JsObject(
       "systemProperties" → JsObject(
         "test" → JsString("TEST"))))
