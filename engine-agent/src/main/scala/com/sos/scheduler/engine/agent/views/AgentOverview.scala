@@ -46,7 +46,7 @@ object AgentOverview {
 
     def apply(): SystemInformation = SystemInformation(
       hostname = OperatingSystem.operatingSystem.hostname,
-      mxBeans = Map("operatingSystemMXBean" → operatingSystemMXBeanReader.toMap(getOperatingSystemMXBean)))
+      mxBeans = Map("operatingSystem" → operatingSystemMXBeanReader.toMap(getOperatingSystemMXBean)))
   }
 
   final case class JavaInformation(systemProperties: Map[String, String])
@@ -58,8 +58,7 @@ object AgentOverview {
       "os.arch",
       "os.name",
       "os.version")
-    val Singleton = JavaInformation(
-      systemProperties = (for (k ← JavaSystemPropertyKeys; v ← sys.props.get(k)) yield k → v).toMap)
+    val Singleton = JavaInformation(systemProperties = (for (k ← JavaSystemPropertyKeys; v ← sys.props.get(k)) yield k → v).toMap)
     implicit val MyJsonFormat = jsonFormat1(apply)
   }
 
