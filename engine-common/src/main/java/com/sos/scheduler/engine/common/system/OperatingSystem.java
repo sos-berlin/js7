@@ -27,31 +27,17 @@ public abstract class OperatingSystem {
     
     public abstract String makeExecutableFilename(String name);
     public abstract String getDynamicLibraryEnvironmentVariableName();
-//    protected abstract void removeAbsoluteDirectoryRecursivly(File directory);
-//
-//    public void removeDirectoryRecursivly(File directory) {
+
+    public String hostname() {
 //        try {
-//            File dir = directory.getCanonicalFile();
-//            checkArgument(dir.isDirectory(), "Not a directory: %s", directory);
-//            removeAbsoluteDirectoryRecursivly(dir);
-//            if (directory.exists())  throw new RuntimeException("Removal of directory failed: " + directory);
-//        } catch (IOException x) { throw new RuntimeException(x); }
-//    }
-//
-//    public void executeShell(File program, String... arguments) {
-//        try {
-//            checkArgument(program.isFile(), "Not a file: %s", program);
-//            String[] commandAndArguments = ObjectArrays.concat(new String[]{program.toString()}, arguments, String.class);
-//            if (log.isDebugEnabled()) log.debug("exec " + Joiner.on(' ').join(commandAndArguments));
-//            Process process = Runtime.getRuntime().exec(commandAndArguments);
-//            *** Hier muss vermutlich process.getOutputStream() und .getErrorStream() ausgelesen werden, um Blockade zu vermeiden ***
-//            process.waitFor();
-//            if (process.exitValue() != 0)
-//                throw new RuntimeException("Execution of program failed with exit code " + process.exitValue() + ": " + program);
-//        } catch (IOException x) { throw new RuntimeException(x); }
-//        catch (InterruptedException x) { throw new RuntimeException(x); }
-//    }
-    
+//            return java.net.InetAddress.getLocalHost().getCanonicalHostName();
+//        } catch (Exception e) {
+//            logger.trace(e.toString(), e);
+            return alternativeHostname();
+//        }
+    }
+
+    protected abstract String alternativeHostname();
 
     public static class Windows extends OperatingSystem {
         @Override public final String makeExecutableFilename(String name) {
@@ -60,6 +46,10 @@ public abstract class OperatingSystem {
 
         @Override public final String getDynamicLibraryEnvironmentVariableName() {
             return "PATH";
+        }
+
+        protected final String alternativeHostname() {
+            return nullToEmpty(System.getenv("COMPUTERNAME"));
         }
 
 //        @Override public void removeAbsoluteDirectoryRecursivly(File directory) {
@@ -89,6 +79,9 @@ public abstract class OperatingSystem {
             return "LD_LIBRARY_PATH";
         }
 
+        protected final String alternativeHostname() {
+            return nullToEmpty(System.getenv("HOSTNAME"));
+        }
 //        @Override public void removeAbsoluteDirectoryRecursivly(File directory) {
 //            executeShell(new File("/bin/rm"), "-rf", directory.toString());
 //        }

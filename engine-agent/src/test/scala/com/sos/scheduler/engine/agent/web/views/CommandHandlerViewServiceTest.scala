@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.web.views
 import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.command.{CommandHandlerDetails, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate}
-import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers._
+import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

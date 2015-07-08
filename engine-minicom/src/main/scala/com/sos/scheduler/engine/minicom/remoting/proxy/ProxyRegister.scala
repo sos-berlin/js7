@@ -45,13 +45,12 @@ private[remoting] final class ProxyRegister {
     }
 
   def release(proxyId: ProxyId): Unit =
-    synchronized {
-      proxyIdToInvocable.remove(proxyId) match {
-        case o: AutoCloseable ⇒
-          try o.close()
-          catch { case NonFatal(t) ⇒ logger.error(s"Suppressed: $t", t) }
-        case _ ⇒
-      }
+    synchronized { proxyIdToInvocable.remove(proxyId) }
+    match {
+      case o: AutoCloseable ⇒
+        try o.close()
+        catch { case NonFatal(t) ⇒ logger.error(s"Suppressed: $t", t) }
+      case _ ⇒
     }
 
   def invocable(proxyId: ProxyId): Invocable = {

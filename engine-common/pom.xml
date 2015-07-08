@@ -147,7 +147,21 @@
         </dependency>
         <dependency>
             <groupId>io.spray</groupId>
+            <artifactId>spray-httpx_${scala.binaryVersion}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.spray</groupId>
+            <artifactId>spray-routing_${scala.binaryVersion}</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.spray</groupId>
             <artifactId>spray-json_${scala.binaryVersion}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.spray</groupId>
+            <artifactId>spray-testkit_${scala.binaryVersion}</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
@@ -169,6 +183,10 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-actor_${scala.binaryVersion}</artifactId>
         </dependency>
     </dependencies>
 </project>

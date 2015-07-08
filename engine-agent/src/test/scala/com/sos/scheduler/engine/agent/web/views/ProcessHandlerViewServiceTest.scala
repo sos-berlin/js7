@@ -4,7 +4,8 @@ import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.views.ProcessOverview
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
-import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers._
+import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -26,7 +27,11 @@ final class ProcessHandlerViewServiceTest extends FreeSpec with ScalatestRouteTe
   protected def processHandlerView = new ProcessHandlerView {
     def currentProcessCount = 777
     def totalProcessCount = 999
-    def processes = List(ProcessOverview(AgentProcessId("1-123"), controllerAddress = "127.0.0.1:999999999", Instant.parse("2015-06-10T12:00:00Z")))
+    def processes = List(ProcessOverview(
+      AgentProcessId("1-123"),
+      Some(TunnelId("99")),
+      controllerAddress = "127.0.0.1:999999999",
+      Instant.parse("2015-06-10T12:00:00Z")))
     def isTerminating = false
   }
 
@@ -36,6 +41,7 @@ final class ProcessHandlerViewServiceTest extends FreeSpec with ScalatestRouteTe
         "processes" → JsArray(
           JsObject(
             "id" → JsString("1-123"),
+            "tunnelId" → JsString("99"),
             "controllerAddress" → JsString("127.0.0.1:999999999"),
             "startedAt" → JsString("2015-06-10T12:00:00Z")))))
     }

@@ -1,6 +1,5 @@
-package com.sos.scheduler.engine.agent.web.marshal
+package com.sos.scheduler.engine.common.sprayutils
 
-import com.sos.scheduler.engine.data.base.IsString
 import java.nio.charset.StandardCharsets.UTF_8
 import spray.http.HttpCharsets.`UTF-8`
 import spray.http.HttpEntity
@@ -11,7 +10,7 @@ import spray.httpx.unmarshalling.Unmarshaller
 /**
  * @author Joacim Zschimmer
  */
-final case class XmlString(string: String) extends IsString
+final case class XmlString(string: String)
 
 object XmlString {
   implicit val marshaller = Marshaller.of[XmlString](`application/xml`, `text/xml`) {

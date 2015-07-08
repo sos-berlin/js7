@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.agent.web.common
 
 import akka.actor.ActorRefFactory
+import com.google.common.base.Strings.isNullOrEmpty
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.collection.mutable
@@ -27,7 +28,11 @@ trait ServiceStandards {
       case e ⇒
         requestUri { uri ⇒
           logger.debug(s"Request $uri: $e", e)
-          complete(InternalServerError, e.getMessage stripPrefix "java.lang.RuntimeException: ")
+          val msg = e match {
+            case e: RuntimeException if !isNullOrEmpty(e.getMessage) ⇒ e.getMessage
+            case _ ⇒ e.toString
+          }
+          complete(InternalServerError, msg)
         }
     }
 

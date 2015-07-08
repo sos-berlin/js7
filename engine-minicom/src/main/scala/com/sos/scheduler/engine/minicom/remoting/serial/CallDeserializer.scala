@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
-import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
 import com.sos.scheduler.engine.minicom.remoting.calls.{Call, CallCall, CreateInstanceCall, GetIDsOfNamesCall, InvokeCall, MessageClass, ObjectCall, ProxyId, QueryInterfaceCall, ReleaseCall}
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
@@ -70,7 +69,6 @@ extends IUnknownDeserializer {
         val argumentCount = readInt32()
         val namedArgumentCount = readInt32()
         require(namedArgumentCount == 0)
-        logger.trace(s"Call '$methodName' with $argumentCount arguments")
         val arguments = readArguments(argumentCount)
         CallCall(proxyId, methodName, arguments)
     }
@@ -80,8 +78,6 @@ extends IUnknownDeserializer {
 }
 
 private[remoting] object CallDeserializer {
-  private val logger = Logger(getClass)
-
   private[remoting] object MessageCommand {
     val CreateInstance  = 'C'.toByte
     val Release         = 'R'.toByte

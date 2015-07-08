@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.web.marshal
+package com.sos.scheduler.engine.common.sprayutils
 
 import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion.toYaml
 import java.lang.StringBuilder

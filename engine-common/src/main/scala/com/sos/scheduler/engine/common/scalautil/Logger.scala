@@ -2,89 +2,89 @@ package com.sos.scheduler.engine.common.scalautil
 
 import org.slf4j.{Logger ⇒ Slf4jLogger, LoggerFactory, Marker}
 
-final class Logger(val delegate: Slf4jLogger) extends AnyVal {
+final class Logger private(val delegate: Slf4jLogger, lineToString: String ⇒ String) {
 
   @inline
   def error(line: ⇒ String): Unit = {
     if (delegate.isErrorEnabled) {
-      delegate.error(line)
+      delegate.error(lineToString(line))
     }
   }
 
   @inline
   def error(line: ⇒ String, t: Throwable): Unit = {
     if (delegate.isErrorEnabled) {
-      delegate.error(line, t)
+      delegate.error(lineToString(line), t)
     }
   }
 
   @inline
   def warn(line: ⇒ String): Unit = {
     if (delegate.isWarnEnabled) {
-      delegate.warn(line)
+      delegate.warn(lineToString(line))
     }
   }
 
   @inline
   def warn(line: ⇒ String, t: Throwable): Unit = {
     if (delegate.isWarnEnabled) {
-      delegate.warn(line, t)
+      delegate.warn(lineToString(line), t)
     }
   }
 
   @inline
   def info(line: ⇒ String): Unit = {
     if (delegate.isInfoEnabled) {
-      delegate.info(line)
+      delegate.info(lineToString(line))
     }
   }
 
   @inline
   def info(line: ⇒ String, t: Throwable): Unit = {
     if (delegate.isInfoEnabled) {
-      delegate.info(line, t)
+      delegate.info(lineToString(line), t)
     }
   }
 
   @inline
   def info(m: Marker, line: ⇒ String): Unit = {
     if (delegate.isInfoEnabled(m)) {
-      delegate.info(m, line)
+      delegate.info(m, lineToString(line))
     }
   }
 
   @inline
   def info(m: Marker, line: ⇒ String, t: Throwable): Unit = {
     if (delegate.isInfoEnabled(m)) {
-      delegate.info(m, line, t)
+      delegate.info(m, lineToString(line), t)
     }
   }
 
   @inline
   def debug(line: ⇒ String): Unit = {
     if (delegate.isDebugEnabled) {
-      delegate.debug(line)
+      delegate.debug(lineToString(line))
     }
   }
 
   @inline
   def debug(line: ⇒ String, t: Throwable): Unit = {
     if (delegate.isDebugEnabled) {
-      delegate.debug(line, t)
+      delegate.debug(lineToString(line), t)
     }
   }
 
   @inline
   def trace(line: ⇒ String): Unit = {
     if (delegate.isTraceEnabled) {
-      delegate.trace(line)
+      delegate.trace(lineToString(line))
     }
   }
 
   @inline
   def trace(line: ⇒ String, t: Throwable): Unit = {
     if (delegate.isTraceEnabled)
-      delegate.trace(line, t)
+      delegate.trace(lineToString(line), t)
   }
 
   def isErrorEnabled = delegate.isErrorEnabled
@@ -101,13 +101,12 @@ final class Logger(val delegate: Slf4jLogger) extends AnyVal {
 
 object Logger {
 
-  def apply(c: Class[_]) =
-    new Logger(LoggerFactory.getLogger(normalizeClassName(c)))
+  def apply(c: Class[_]) = new Logger(LoggerFactory.getLogger(normalizeClassName(c)), identity)
 
-  def apply(name: String) =
-    new Logger(LoggerFactory.getLogger(name))
+  def withPrefix(c: Class[_], prefix: String) = new Logger(LoggerFactory.getLogger(normalizeClassName(c)), line ⇒ s"($prefix) $line")
+
+  def apply(name: String) = new Logger(LoggerFactory.getLogger(name), identity)
 
   /** Removes '$' from Scalas companion object class. */
-  private def normalizeClassName(c: Class[_]) =
-    c.getName stripSuffix "$"
+  private def normalizeClassName(c: Class[_]) = c.getName stripSuffix "$"
 }

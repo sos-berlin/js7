@@ -4,9 +4,9 @@ import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.responses.Response
 import com.sos.scheduler.engine.agent.web.LegacyCommandService._
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards
-import com.sos.scheduler.engine.agent.web.marshal.XmlString
 import com.sos.scheduler.engine.agent.xmlcommand.CommandXmlExecutor
 import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
+import com.sos.scheduler.engine.common.sprayutils.XmlString
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import spray.http.StatusCodes.BadRequest

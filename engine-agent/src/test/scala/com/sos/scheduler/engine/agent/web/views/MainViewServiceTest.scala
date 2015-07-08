@@ -5,7 +5,8 @@ import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.views.ProcessOverview
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
-import com.sos.scheduler.engine.agent.web.marshal.JsObjectMarshallers._
+import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
+import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -27,7 +28,11 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
   protected def processHandlerView = new ProcessHandlerView {
     def currentProcessCount = 777
     def totalProcessCount = 999
-    def processes = List(ProcessOverview(AgentProcessId("1-123"), controllerAddress = "127.0.0.1:999999999", Instant.parse("2015-06-10T12:00:00Z")))
+    def processes = List(ProcessOverview(
+      AgentProcessId("1-123"),
+      tunnelId = Some(TunnelId("99")),
+      controllerAddress = "127.0.0.1:999999999",
+      Instant.parse("2015-06-10T12:00:00Z")))
     def isTerminating = false
   }
 
@@ -37,6 +42,7 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
     currentProcessCount = processHandlerView.currentProcessCount,
     totalProcessCount = processHandlerView.totalProcessCount,
     isTerminating = false,
+    system = AgentOverview.SystemInformation(hostname = "TEST-HOSTNAME"),
     java = AgentOverview.JavaInformation(systemProperties = Map("test" → "TEST")))
 
   private def expectedOverviewJsObject = JsObject(
@@ -45,6 +51,9 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
     "currentProcessCount" → JsNumber(777),
     "totalProcessCount" → JsNumber(999),
     "isTerminating" → JsBoolean(false),
+    "system" → JsObject(
+      "hostname" → JsString("TEST-HOSTNAME"),
+      "mxBeans" → JsObject()),
     "java" → JsObject(
       "systemProperties" → JsObject(
         "test" → JsString("TEST"))))

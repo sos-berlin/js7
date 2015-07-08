@@ -1,12 +1,15 @@
 package com.sos.scheduler.engine.agent.process
 
 import com.sos.scheduler.engine.agent.process.StandardAgentProcessFactory.newAgentProcessIdGenerator
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
+@RunWith(classOf[JUnitRunner])
 final class StandardAgentProcessFactoryTest extends FreeSpec {
 
   "newAgentProcessIdGenerator" in {

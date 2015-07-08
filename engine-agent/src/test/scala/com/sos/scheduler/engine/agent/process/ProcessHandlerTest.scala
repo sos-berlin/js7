@@ -38,7 +38,7 @@ final class ProcessHandlerTest extends FreeSpec {
       assert(!processHandler.terminated.isCompleted)
       for (nextProcessId ← AgentProcessIds) {
         val response = awaitResult(processHandler.apply(TestStartSeparateProcess), 3.s)
-        inside(response) { case StartProcessResponse(id) ⇒ id shouldEqual nextProcessId }
+        inside(response) { case StartProcessResponse(id, None) ⇒ id shouldEqual nextProcessId }
       }
       for (o ← taskServers) {
         assert(o.started)
@@ -136,15 +136,15 @@ final class ProcessHandlerTest extends FreeSpec {
 }
 
 private object ProcessHandlerTest {
-  private val AgentProcessIds = List(111111111111111111L, 222222222222222222L) map AgentProcessId.apply
+  private val AgentProcessIds = List("1-1", "2-2") map AgentProcessId.apply
   private val JavaOptions = "JAVA-OPTIONS"
   private val JavaClasspath = "JAVA-CLASSPATH"
   private val TestControllerAddress = "127.0.0.1:9999"
-  private val TestStartSeparateProcess = StartSeparateProcess(controllerAddress = TestControllerAddress, javaOptions = JavaOptions, javaClasspath = JavaClasspath)
+  private val TestStartSeparateProcess = StartSeparateProcess(controllerAddressOption = Some(TestControllerAddress), javaOptions = JavaOptions, javaClasspath = JavaClasspath)
 
   private class TestContext {
     val taskServers = List.fill(2) { new MockTaskServer }
-    val processes = AgentProcessIds zip taskServers map { case (id, taskServer) ⇒ new AgentProcess(id, taskServer) }
+    val processes = AgentProcessIds zip taskServers map { case (id, taskServer) ⇒ new AgentProcess(id, tunnelOption = None, taskServer) }
     val processHandler = Guice.createInjector(new TestModule(processes)).instance[ProcessHandler]
   }
 

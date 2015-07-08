@@ -46,14 +46,13 @@ extends TaskServer {
     }
   }
 
-  override def close(): Unit =
-    for (p ← Option(process)) {
-      try p.waitForTermination()
-      finally {
-        p.close()
-        process = null
-      }
+  override def close(): Unit = {
+    if (process != null) {
+      // Wait for process _after_ Tunnel, registered with registerCloseable, has been closed
+      try process.waitForTermination()
+      finally process.close()
     }
+  }
 
   def sendProcessSignal(signal: ProcessSignal) =
     for (p ← Option(process)) p.sendProcessSignal(signal)
