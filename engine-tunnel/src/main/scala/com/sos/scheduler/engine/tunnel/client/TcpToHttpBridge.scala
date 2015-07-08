@@ -30,8 +30,8 @@ extends AutoCloseable {
 }
 
 object TcpToHttpBridge {
-  private def newWebTunnelClient(actorSystem: ActorSystem, baseUri: Uri) = new WebTunnelClient {
-    protected def actorRefFactory = actorSystem
+  private def newWebTunnelClient(pActorSystem: ActorSystem, baseUri: Uri) = new WebTunnelClient {
+    protected def actorSystem = pActorSystem
     protected def tunnelUri(id: TunnelId) = baseUri withPath (baseUri.path / id.string)
   }
 }

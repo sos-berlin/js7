@@ -76,7 +76,7 @@ final class TcpToRequestResponse(
           case Success(response) ⇒
             bridge ! MessageTcpBridge.SendMessage(response)
           case Failure(t) ⇒
-            logger.error(s"$t")
+            logger.error(s"$t", t)
             bridge ! MessageTcpBridge.Close // 2015-06-29 Tcp.Abort does not close the connection when peer is C++ JobScheduler
         }
 
