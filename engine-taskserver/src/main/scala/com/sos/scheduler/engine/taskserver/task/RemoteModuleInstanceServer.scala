@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import _root_.java.util.UUID
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
@@ -10,6 +9,7 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.HasSendProcessSignal
+import java.util.UUID
 import com.sos.scheduler.engine.taskserver.module._
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule.{SpoolerExitSignature, SpoolerOnErrorSignature}
@@ -37,22 +37,20 @@ extends HasCloser with Invocable with HasSendProcessSignal {
     task = taskArguments.module match {
       case module: ShellModule ⇒
         new ShellProcessTask(
+          jobName = taskArguments.jobName,
           module,
           namedInvocables,
           taskArguments.monitors,
-          jobName = taskArguments.jobName,
           hasOrder = taskArguments.hasOrder,
           stdFileMap = taskStartArguments.stdFileMap,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment)
       case module: JavaModule ⇒
         new JavaProcessTask(
+          jobName = taskArguments.jobName,
           module,
           namedInvocables,
           taskArguments.monitors,
-          jobName = taskArguments.jobName,
-          environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
-          stdFileMap = taskStartArguments.stdFileMap,
-          logStdoutAndStderr = taskStartArguments.logStdoutAndStderr)
+          stdFileMap = taskStartArguments.stdFileMap filter { _ ⇒ taskStartArguments.logStdoutAndStderr })
     }
     closer.registerAutoCloseable(task)
     task.start()

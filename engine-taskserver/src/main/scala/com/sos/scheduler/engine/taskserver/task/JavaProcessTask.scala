@@ -20,13 +20,11 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 final class JavaProcessTask(
+  jobName: String,
   module: JavaModule,
   namedInvocables: NamedInvocables,
-  monitors: immutable.Seq[Monitor],
-  jobName: String,
-  environment: immutable.Iterable[(String, String)],
-  stdFileMap: Map[StdoutStderrType, Path],
-  logStdoutAndStderr: Boolean)
+  monitors: immutable.Seq[Monitor] = Nil,
+  stdFileMap: Map[StdoutStderrType, Path] = Map())
 extends Task with HasCloser {
 
   import namedInvocables.spoolerLog
@@ -39,7 +37,7 @@ extends Task with HasCloser {
   private var closeCalled = false
 
   def start() = {
-    if (logStdoutAndStderr) concurrentStdoutStderrWell.start()
+    if (stdFileMap.nonEmpty) concurrentStdoutStderrWell.start()
     monitorProcessor.preTask() && instance.spooler_init()
   }
 
@@ -63,9 +61,8 @@ extends Task with HasCloser {
 
   private def afterSpoolerExit(): Unit =
     try monitorProcessor.postTask()
-    finally if (logStdoutAndStderr) concurrentStdoutStderrWell.finish()
+    finally if (stdFileMap.nonEmpty) concurrentStdoutStderrWell.finish()
 
-  /** Behaves as C++ Module_instance::call&#95;&#95;end. */
   private def ignoreCall(methodWithSignature: String): Boolean =
     methodWithSignature match {
       case SpoolerOnSuccessSignature if !methodIsCalled(SpoolerOpenSignature) ⇒ true

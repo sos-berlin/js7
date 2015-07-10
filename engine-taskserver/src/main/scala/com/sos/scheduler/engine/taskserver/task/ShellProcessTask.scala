@@ -26,10 +26,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * @see spooler_module_process.cxx, C++ class Process_module_instance
  */
 final class ShellProcessTask(
+  jobName: String,
   module: ShellModule,
   namedInvocables: NamedInvocables,
   monitors: immutable.Seq[Monitor],
-  jobName: String,
   hasOrder: Boolean,
   stdFileMap: Map[StdoutStderrType, Path],
   environment: immutable.Iterable[(String, String)])

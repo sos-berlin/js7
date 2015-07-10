@@ -80,6 +80,7 @@ private object ShellProcessTaskTest {
 
   private def newShellProcessTask(spoolerLog: SpoolerLog, setting: Setting) =
     new ShellProcessTask(
+      jobName = "TEST-JOB",
       ShellModule(testScript(setting.exitCode)),
       namedInvocables = NamedInvocables(List(
         SpoolerLogName → spoolerLog,
@@ -89,7 +90,6 @@ private object ShellProcessTaskTest {
       monitors = List(
         Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("A", setting) }, name="Monitor A"),
         Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("B", setting) }, name="Monitor B")),
-      jobName = "TEST-JOB",
       hasOrder = false,
       stdFileMap = Map(),
       environment = Map(TestName → TestValue))
