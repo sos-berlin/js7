@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.common.scalautil.Tries.{extendStackTraceWith, ne
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 /**
@@ -18,6 +19,15 @@ object Futures {
     import implicits.SuccessFuture
     Await.ready[A](future, atMost.toConcurrent.toCoarsest).successValue
   }
+
+  /**
+   * Maps an exception of body to Future.failed.
+   */
+  def catchInFuture[A](body: ⇒ Future[A]): Future[A] =
+    try body
+    catch {
+      case NonFatal(t) ⇒ Future.failed(t)
+    }
 
   object implicits {
 
