@@ -85,7 +85,7 @@ extends Actor with FSM[State, Data] {
     case Event(Closing, _) ⇒
       stop()
 
-    case Event(closed @ Tcp.Closed, _) ⇒
+    case Event(closed: Tcp.ConnectionClosed, _) ⇒
       logger.debug(s"$closed")
       stop()
   }
