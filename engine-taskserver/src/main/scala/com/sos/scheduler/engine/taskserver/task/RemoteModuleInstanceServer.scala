@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCl
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
+import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
@@ -12,7 +13,6 @@ import com.sos.scheduler.engine.taskserver.HasSendProcessSignal
 import java.util.UUID
 import com.sos.scheduler.engine.taskserver.module._
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
-import com.sos.scheduler.engine.taskserver.module.java.JavaModule.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import javax.inject.Inject
 import org.scalactic.Requirements._

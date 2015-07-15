@@ -2,10 +2,10 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
+import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.java.JavaModule
-import com.sos.scheduler.engine.taskserver.module.java.JavaModule.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.taskserver.task.JavaProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import java.nio.charset.StandardCharsets._

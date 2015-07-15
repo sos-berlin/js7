@@ -31,14 +31,6 @@ trait JavaModule extends Module {
 }
 
 object JavaModule {
-//val SpoolerInitSignature = "spooler_open()Z"  // Z: returns Boolean
-  val SpoolerExitSignature = "spooler_exit()V"  // V: returns Unit
-  val SpoolerOpenSignature = "spooler_open()Z"
-//val SpoolerCloseSignature = "spooler_open()V"
-//val SpoolerProcessSignature = "spooler_open()Z"
-  val SpoolerOnSuccessSignature = "spooler_on_success()V"
-  val SpoolerOnErrorSignature = "spooler_on_error()V"
-
   private def spooler_log(o: NamedInvocables) = new sos.spooler.Log(JavaInvoker(o.spoolerLog))
   private def spooler_task(o: NamedInvocables) = new sos.spooler.Task(JavaInvoker(o.spoolerTask))
   private def spooler_job(o: NamedInvocables) = new sos.spooler.Job(JavaInvoker(o.spoolerJob))
