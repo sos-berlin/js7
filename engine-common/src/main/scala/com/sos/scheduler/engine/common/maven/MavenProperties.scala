@@ -3,8 +3,10 @@ package com.sos.scheduler.engine.common.maven
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.utils.JavaResource
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatter.ISO_DATE_TIME
 import scala.collection.JavaConversions._
+import MavenProperties._
 
 final class MavenProperties(resourcePath: JavaResource) {
 
@@ -28,7 +30,7 @@ final class MavenProperties(resourcePath: JavaResource) {
   }
 
   private def branchAndCommitSuffix =
-    List(versionBranch, versionCommitHash, buildDateTime.withNano(0).toString.replace('T', ' ')) filter { _.nonEmpty } mkString ("(", " ", ")")
+    List(versionBranch, versionCommitHash take 7, BuildDateTimeFormatter.format(buildDateTime)) filter { _.nonEmpty } mkString ("(", " ", ")")
 
   lazy val version: String = asString("project.version")
 
@@ -54,4 +56,5 @@ final class MavenProperties(resourcePath: JavaResource) {
 
 object MavenProperties {
   val EngineCommonMavenProperties = new MavenProperties(JavaResource("com/sos/scheduler/engine/common/maven/maven.properties"))
+  private val BuildDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 }
