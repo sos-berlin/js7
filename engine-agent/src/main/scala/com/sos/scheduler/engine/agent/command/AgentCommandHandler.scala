@@ -2,12 +2,10 @@ package com.sos.scheduler.engine.agent.command
 
 import com.sos.scheduler.engine.agent.command.AgentCommandHandler._
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.responses.EmptyResponse
-import com.sos.scheduler.engine.agent.fileordersource.RequestFileOrderSourceContentExecutor
+import com.sos.scheduler.engine.agent.fileordersource.{FileCommandExecutor, RequestFileOrderSourceContentExecutor}
 import com.sos.scheduler.engine.agent.process.ProcessHandler
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
-import java.nio.file.{Files, Paths}
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
@@ -47,12 +45,7 @@ with CommandHandlerDetails {
 
   private def executeCommand2(id: InternalCommandId, command: Command) =
     (command match {
-      case DeleteFile(path) ⇒
-        Files.delete(Paths.get(path))
-        Future.successful(EmptyResponse)
-      case MoveFile(path, newPath) ⇒
-        Files.move(Paths.get(path), Paths.get(newPath))
-        Future.successful(EmptyResponse)
+      case command: FileCommand ⇒ Future.successful(FileCommandExecutor.executeCommand(command))
       case command: ProcessCommand ⇒ processHandler.apply(command)
       case command: RequestFileOrderSourceContent ⇒ RequestFileOrderSourceContentExecutor.apply(command)
       case command: TerminateOrAbort ⇒ processHandler.apply(command)
