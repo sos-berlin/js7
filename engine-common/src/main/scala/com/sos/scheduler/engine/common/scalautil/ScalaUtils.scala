@@ -10,7 +10,7 @@ object ScalaUtils {
   /**
    * Returns 'body' as a argumentless function with replaced toString.
    */
-  def withToString[R](lazyString: ⇒ String)(body: ⇒ R): () ⇒ R =
+  def functionWithToString[R](lazyString: ⇒ String)(body: ⇒ R): () ⇒ R =
     new (() ⇒ R) {
       def apply() = body
       override def toString() = lazyString
