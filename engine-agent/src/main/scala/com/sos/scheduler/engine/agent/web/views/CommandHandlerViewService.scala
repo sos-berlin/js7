@@ -3,6 +3,8 @@ package com.sos.scheduler.engine.agent.web.views
 import com.sos.scheduler.engine.agent.command.{CommandHandlerDetails, CommandHandlerOverview}
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
+import spray.http.CacheDirectives.`max-age`
+import spray.http.HttpHeaders.`Cache-Control`
 import spray.routing.Directives._
 
 /**
@@ -15,11 +17,13 @@ trait CommandHandlerViewService extends ServiceStandards {
 
    addStandardRoute {
      (get & pathPrefix("agent" / "commandHandler")) {
-       pathEnd {
-         complete { commandHandlerOverview }
-       } ~
-       path("details") {
-         complete { commandHandlerDetails }
+       respondWithHeader(`Cache-Control`(`max-age`(0))) {
+         pathEnd {
+           complete { commandHandlerOverview }
+         } ~
+         path("details") {
+           complete { commandHandlerDetails }
+         }
        }
      }
    }

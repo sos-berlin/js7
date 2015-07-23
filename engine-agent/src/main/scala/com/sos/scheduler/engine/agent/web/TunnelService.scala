@@ -6,6 +6,8 @@ import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, Tu
 import com.sos.scheduler.engine.tunnel.web.TunnelWebService.{tunnelHandlerOverviewRoute, tunnelOverviewsRoute, tunnelRequestRoute}
 import scala.collection.immutable
 import scala.concurrent.Future
+import spray.http.CacheDirectives.`max-age`
+import spray.http.HttpHeaders.`Cache-Control`
 import spray.routing.Directives._
 
 /**
@@ -27,11 +29,13 @@ trait TunnelService extends ServiceStandards {
         }
       } ~
       get {
-        pathEndOrSingleSlash {
-          tunnelHandlerOverviewRoute(tunnelHandlerOverview _)
-        } ~
-        path("details") {
-          tunnelOverviewsRoute(tunnelOverviews _)
+        respondWithHeader(`Cache-Control`(`max-age`(0))) {
+          pathEndOrSingleSlash {
+            tunnelHandlerOverviewRoute(tunnelHandlerOverview _)
+          } ~
+          path("details") {
+            tunnelOverviewsRoute(tunnelOverviews _)
+          }
         }
       }
     }

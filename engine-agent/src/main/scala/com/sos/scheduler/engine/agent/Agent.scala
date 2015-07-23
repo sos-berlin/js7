@@ -38,7 +38,7 @@ final class Agent(module: Module) extends AutoCloseable {
   private val processHandler = injector.instance[ProcessHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
 
-  AgentStartInformation.StartedAt  // Initialize
+  AgentStartInformation.initialize()
 
   def start(): Future[Unit] = server.start()
 

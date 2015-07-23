@@ -11,4 +11,6 @@ object AgentStartInformation {
   private val AgentMavenProperties = new MavenProperties(JavaResource("com/sos/scheduler/engine/agent/maven.properties"))
   val StartedAt = Instant.now()
   val VersionString = AgentMavenProperties.buildVersion
+
+  def initialize() {}
 }
