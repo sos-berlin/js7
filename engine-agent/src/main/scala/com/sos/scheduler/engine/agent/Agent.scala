@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.data.responses.Response
 import com.sos.scheduler.engine.agent.process.ProcessHandler
+import com.sos.scheduler.engine.agent.views.AgentStartInformation
 import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
@@ -36,6 +37,8 @@ final class Agent(module: Module) extends AutoCloseable {
   private val closer = injector.instance[Closer]
   private val processHandler = injector.instance[ProcessHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
+
+  AgentStartInformation.StartedAt  // Initialize
 
   def start(): Future[Unit] = server.start()
 
