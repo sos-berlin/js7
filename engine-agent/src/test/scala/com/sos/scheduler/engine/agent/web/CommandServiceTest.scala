@@ -11,9 +11,8 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import scala.concurrent.Future
-import scala.xml.XML
 import spray.http.HttpHeaders.Accept
-import spray.http.MediaTypes.{`application/json`, `application/xml`}
+import spray.http.MediaTypes.`application/json`
 import spray.http.StatusCodes.InternalServerError
 import spray.httpx.SprayJsonSupport._
 import spray.httpx.marshalling.BasicMarshallers.stringMarshaller
@@ -38,7 +37,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       }
     }
 
-  "jobscheduler/agent/command for JSON" - {
+  "jobscheduler/agent/command" - {
     "RequestFileOrderSourceContent" in {
       val json = """{
           "$TYPE": "RequestFileOrderSourceContent",
@@ -88,24 +87,6 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       Post("/jobscheduler/agent/command", json)(stringMarshaller(`application/json`)) ~>
         Accept(`application/json`) ~>
         route
-  }
-
-  "jobscheduler/agent/command for XML commands" - {
-    "agent.terminate" in {
-      postXmlCommand(<agent.terminate cmd="terminate" timeout="999"/>) ~> check {
-        assert(XML.loadString(responseAs[String]) == <spooler><answer><ok/></answer></spooler> )
-      }
-    }
-
-    "Unknown XML command" in {
-      postXmlCommand(<ERROR/>) ~> check {
-        assert(status == InternalServerError)
-        assert(responseAs[String] startsWith "Unexpected XML element <ERROR>")
-      }
-    }
-
-    def postXmlCommand(elem: xml.Elem): RouteResult =
-      Post("/jobscheduler/agent/command", elem) ~> Accept(`application/xml`) ~> route
   }
 }
 

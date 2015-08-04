@@ -31,7 +31,6 @@ final class WebServiceActor @Inject private(
   injector: Injector)
 extends HttpServiceActor
 with CommandService
-with LegacyCommandService
 with TunnelService
 with FileStatusService
 with MainViewService
