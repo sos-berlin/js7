@@ -97,7 +97,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
 
     case m @ Connector.Closed(tunnelId) ⇒
       connectorRegister -= tunnelId
-      logger.debug(s"$tunnelId deregistered")
+      logger.debug(s"$m, tunnel removed")
 
     case m @ DirectedRequest(tunnelToken, request) ⇒
       try {
