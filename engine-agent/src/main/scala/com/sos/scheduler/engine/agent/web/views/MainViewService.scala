@@ -12,7 +12,7 @@ trait MainViewService extends ServiceStandards {
 
   protected def agentOverview: AgentOverview
 
-  addRoute {
+  addStandardRoute {
     (get & pathPrefix("agent")) {
       path("overview") {
         complete { agentOverview }

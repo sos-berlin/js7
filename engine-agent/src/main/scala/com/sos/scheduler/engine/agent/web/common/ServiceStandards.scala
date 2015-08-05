@@ -22,8 +22,8 @@ trait ServiceStandards {
   /**
    * URI path prefix without prefix or suffix slashes.
    */
-  protected def uriPrefix: String = ""
-  protected final lazy val jobschedulerPath = List(uriPrefix, "jobscheduler") filter { _.nonEmpty } mkString "/"
+  protected def uriPathPrefix: String = ""
+  protected final lazy val jobschedulerPath = List(uriPathPrefix, "jobscheduler") filter { _.nonEmpty } mkString "/"
 
   private lazy val jobschedulerStandard =
     decompressRequest() & compressResponseIfRequested(()) & pathPrefix(separateOnSlashes(jobschedulerPath))
@@ -46,7 +46,7 @@ trait ServiceStandards {
   /**
    * All added routes are combined by method `route`.
    */
-  protected def addRoute(route: ⇒ Route): Unit = add(jobschedulerStandard { route })
+  protected def addStandardRoute(route: ⇒ Route): Unit = add(jobschedulerStandard { route })
 
   protected def addRawRoute(rawRoute: ⇒ Route): Unit = add(rawRoute)
 

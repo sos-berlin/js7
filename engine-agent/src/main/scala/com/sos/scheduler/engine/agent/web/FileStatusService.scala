@@ -10,7 +10,7 @@ import spray.routing.Directives._
  */
 trait FileStatusService extends ServiceStandards {
 
-  addRoute {
+  addStandardRoute {
     (get & pathPrefix("agent" / "fileStatus")) {
       parameter("file") { path ⇒
         complete {

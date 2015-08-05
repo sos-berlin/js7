@@ -58,7 +58,7 @@ with CommandHandlerViewService
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = tunnelHandler.request(tunnelToken, requestMessage)
   protected def tunnelHandlerOverview = tunnelHandler.overview
   protected def tunnelOverviews = tunnelHandler.tunnelOverviews
-  override protected def uriPrefix = agentConfiguration.strippedUriPathPrefix
+  override protected def uriPathPrefix = agentConfiguration.strippedUriPathPrefix
 }
 
 object WebServiceActor {

@@ -27,7 +27,7 @@ import spray.testkit.ScalatestRouteTest
 final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with CommandService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
-  override protected val uriPrefix = "test"
+  override protected val uriPathPrefix = "test"
 
   protected def executeCommand(command: Command, licenseKey: Option[LicenseKey]) =
     Future.successful {

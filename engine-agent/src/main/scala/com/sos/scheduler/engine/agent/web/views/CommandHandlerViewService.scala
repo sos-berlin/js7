@@ -13,7 +13,7 @@ trait CommandHandlerViewService extends ServiceStandards {
    protected def commandHandlerOverview: CommandHandlerOverview
    protected def commandHandlerDetails: CommandHandlerDetails
 
-   addRoute {
+   addStandardRoute {
      (get & pathPrefix("agent" / "commandHandler")) {
        pathEnd {
          complete { commandHandlerOverview }

@@ -19,7 +19,7 @@ trait TunnelService extends ServiceStandards {
 
   private implicit val executionContext = actorRefFactory.dispatcher
 
-  addRoute {
+  addStandardRoute {
     pathPrefix("agent" / "tunnels") {
       path("item" / Segment) { idString ⇒
         post {

@@ -12,7 +12,7 @@ trait ProcessHandlerViewService extends ServiceStandards {
 
   protected def processHandlerView: ProcessHandlerView
 
-  addRoute {
+  addStandardRoute {
     (get & pathPrefix("agent" / "processHandler")) {
       complete { processHandlerView }
     }

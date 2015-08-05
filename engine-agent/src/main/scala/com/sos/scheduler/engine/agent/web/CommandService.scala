@@ -17,7 +17,7 @@ trait CommandService extends ServiceStandards {
 
   protected def executeCommand(command: Command, licenseKey: Option[LicenseKey]): Future[Response]
 
-  addRoute {
+  addStandardRoute {
     (post & path("agent" / "command")) {
       optionalHeaderValueByName(LicenseKeyHeaderName) { licenseKeyString ⇒
         entity(as[Command]) { command ⇒

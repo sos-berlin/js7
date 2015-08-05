@@ -22,7 +22,7 @@ import spray.testkit.ScalatestRouteTest
 final class CommandHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest with CommandHandlerViewService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
-  override protected val uriPrefix = "test"
+  override protected val uriPathPrefix = "test"
 
   protected def commandHandlerOverview = new CommandHandlerOverview {
     def totalCommandCount = 1111
