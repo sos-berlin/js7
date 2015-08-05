@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.agent.fileordersource.{FileCommandExecutor, Requ
 import com.sos.scheduler.engine.agent.process.ProcessHandler
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
+import com.sos.scheduler.engine.common.soslicense.LicenseKey
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
@@ -32,23 +33,23 @@ with CommandHandlerDetails {
   def currentCommandCount = idToCommand.size
   def commandRuns = (idToCommand.values map { _.overview }).toVector
 
-  def executeCommand(command: Command): Future[command.Response] = {
+  def executeCommand(command: Command, licenseKey: Option[LicenseKey]): Future[command.Response] = {
     totalCounter.incrementAndGet()
     val id = InternalCommandId(nextId.incrementAndGet())
     logger.info(s"$id ${command.toShortString}")
     if (command.toStringIsLonger) logger.debug(s"$id $command")  // Complete string
     idToCommand += id → CommandRun(id, now(), command)
-    val future = executeCommand2(id, command)
+    val future = executeCommand2(id, command, licenseKey)
     future onComplete { _ ⇒ idToCommand -= id }
     future
   }
 
-  private def executeCommand2(id: InternalCommandId, command: Command) =
+  private def executeCommand2(id: InternalCommandId, command: Command, licenseKey: Option[LicenseKey]) =
     (command match {
       case command: FileCommand ⇒ Future.successful(FileCommandExecutor.executeCommand(command))
-      case command: ProcessCommand ⇒ processHandler.apply(command)
+      case command: ProcessCommand ⇒ processHandler.execute(command, licenseKey)
+      case command: TerminateOrAbort ⇒ processHandler.execute(command, licenseKey)
       case command: RequestFileOrderSourceContent ⇒ RequestFileOrderSourceContentExecutor.apply(command)
-      case command: TerminateOrAbort ⇒ processHandler.apply(command)
     }) map { response ⇒
       logger.debug(s"Response to $id ${command.getClass.getSimpleName}: $response")
       response.asInstanceOf[command.Response]

@@ -10,6 +10,7 @@ import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.WebService
 import com.sos.scheduler.engine.agent.web.views.{CommandHandlerViewService, MainViewService, ProcessHandlerViewService}
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.soslicense.LicenseKey
 import com.sos.scheduler.engine.tunnel.TunnelHandler
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import javax.inject.{Inject, Provider}
@@ -50,7 +51,7 @@ with CommandHandlerViewService
   protected def commandHandlerOverview = commandHandler
   protected def commandHandlerDetails = commandHandler
   protected def executionContext: ExecutionContext = context.dispatcher
-  protected def executeCommand(command: Command) = commandExecutor.executeCommand(command)
+  protected def executeCommand(command: Command, licenseKey: Option[LicenseKey]) = commandExecutor.executeCommand(command, licenseKey)
   protected def agentOverview = agentOverviewProvider.get()
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = tunnelHandler.request(tunnelToken, requestMessage)
   protected def tunnelHandlerOverview = tunnelHandler.overview

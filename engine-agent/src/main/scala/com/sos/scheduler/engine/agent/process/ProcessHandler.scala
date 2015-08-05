@@ -8,6 +8,8 @@ import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
+import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
+import com.sos.scheduler.engine.common.soslicense.{LicenseKey, LicenseKeyRequiredException}
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Instant
@@ -36,11 +38,11 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
   def isTerminating = terminating.get
   def terminated = terminatedPromise.future
 
-  def apply(command: Command) = Future[Response] { execute(command) }
+  def execute(command: Command, licenseKey: Option[LicenseKey] = None) = Future[Response] { executeDirectly(command, licenseKey) }
 
-  private def execute(command: Command): Response =
+  private def executeDirectly(command: Command, licenseKeyOption: Option[LicenseKey]): Response =
     command match {
-      case o: StartProcess ⇒ startProcess(o)
+      case o: StartProcess ⇒ startProcess(o, licenseKeyOption getOrElse { throw new LicenseKeyRequiredException })
       case CloseProcess(id, kill) ⇒ closeProcess(id, kill)
       case SendProcessSignal(id, signal) ⇒
         idToAgentProcess(id).sendProcessSignal(signal)
@@ -49,7 +51,8 @@ final class ProcessHandler @Inject private(newAgentProcess: AgentProcessFactory)
       case AbortImmediately ⇒ haltImmediately()
     }
 
-  private def startProcess(command: StartProcess) = {
+  private def startProcess(command: StartProcess, licenseKey: LicenseKey) = {
+    licenseKey.require(UniversalAgent)
     if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept process starts")
     val process = newAgentProcess(command)
     process.start()

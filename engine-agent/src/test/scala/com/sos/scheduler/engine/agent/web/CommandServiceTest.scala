@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate, _}
 import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, FileOrderSourceContent}
 import com.sos.scheduler.engine.agent.web.CommandServiceTest._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
+import com.sos.scheduler.engine.common.soslicense.LicenseKey
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
 import org.junit.runner.RunWith
@@ -27,7 +28,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
 
   implicit lazy val actorRefFactory = ActorSystem()
 
-  protected def executeCommand(command: Command) =
+  protected def executeCommand(command: Command, licenseKey: Option[LicenseKey]) =
     Future.successful {
       val expectedTerminate = Terminate(sigkillProcessesAfter = Some(999.s))
       command match {
