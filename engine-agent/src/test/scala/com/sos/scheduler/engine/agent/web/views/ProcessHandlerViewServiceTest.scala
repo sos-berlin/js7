@@ -22,7 +22,7 @@ import spray.testkit.ScalatestRouteTest
 @RunWith(classOf[JUnitRunner])
 final class ProcessHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest with ProcessHandlerViewService {
 
-  implicit lazy val actorRefFactory = ActorSystem()
+  protected implicit lazy val actorRefFactory = ActorSystem()
 
   protected def processHandlerView = new ProcessHandlerView {
     def currentProcessCount = 777

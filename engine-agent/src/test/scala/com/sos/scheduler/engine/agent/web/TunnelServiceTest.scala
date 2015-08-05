@@ -28,8 +28,7 @@ import spray.testkit.ScalatestRouteTest
 @RunWith(classOf[JUnitRunner])
 final class TunnelServiceTest extends FreeSpec with ScalatestRouteTest with TunnelService {
 
-  implicit lazy val actorRefFactory = ActorSystem()
-  //import actorRefFactory.dispatcher
+  protected implicit lazy val actorRefFactory = ActorSystem()
 
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = {
     assert(tunnelToken == TunnelToken(TestTunnelId, TestSecret))

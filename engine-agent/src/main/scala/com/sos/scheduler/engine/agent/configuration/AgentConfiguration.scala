@@ -19,6 +19,8 @@ final case class AgentConfiguration(
    * If empty, the Agent listens to all network interfaces.
    */
   httpInterfaceRestriction: Option[String] = None,
+  /** Prefix slash and suffix slash are striped. **/
+  uriPathPrefix: String = "",
   directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
   environment: immutable.Iterable[(String, String)] = Nil,
   webServiceClasses: immutable.Seq[Class[_ <: WebService]] = Nil,
@@ -27,15 +29,17 @@ final case class AgentConfiguration(
   requireTcpPortNumber(httpPort)
   require(directory.isAbsolute)
 
+  def strippedUriPathPrefix = uriPathPrefix stripPrefix "/" stripSuffix "/"
+
   def withWebServiceProvider[A <: WebService : ClassTag]: AgentConfiguration =
     copy(webServiceClasses = webServiceClasses :+ implicitClass[A])
 }
 
 object AgentConfiguration {
-  def apply(args: Seq[String]) = {
-    val arguments = CommandLineArguments(args)
-    val httpPort = arguments.asConverted("-http-port=")(parseTcpPort)
-    arguments.requireNoMoreArguments()
-    new AgentConfiguration(httpPort = httpPort)
-  }
+  def apply(args: Seq[String]): AgentConfiguration =
+    CommandLineArguments.parse(args) { a ⇒
+      new AgentConfiguration(
+        httpPort = a.asConverted("-http-port=")(parseTcpPort),
+        uriPathPrefix = a.getString("-uri-prefix=") getOrElse "")
+    }
 }

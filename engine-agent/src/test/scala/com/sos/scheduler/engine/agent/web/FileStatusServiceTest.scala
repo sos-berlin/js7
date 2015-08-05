@@ -20,7 +20,7 @@ import spray.testkit.ScalatestRouteTest
 @RunWith(classOf[JUnitRunner])
 final class FileStatusServiceTest extends FreeSpec with ScalatestRouteTest with FileStatusService {
 
-  implicit lazy val actorRefFactory = ActorSystem()
+  protected implicit lazy val actorRefFactory = ActorSystem()
 
   "fileStatus" in {
     withCloser { implicit closer ⇒

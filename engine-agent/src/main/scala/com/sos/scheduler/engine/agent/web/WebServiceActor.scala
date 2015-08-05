@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.web
 import akka.util.ByteString
 import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.command.{AgentCommandHandler, CommandExecutor}
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
@@ -29,6 +30,7 @@ final class WebServiceActor @Inject private(
   protected val processHandlerView: ProcessHandlerView,
   protected val commandHandler: AgentCommandHandler,
   webServices: immutable.Seq[WebService],
+  agentConfiguration: AgentConfiguration,
   injector: Injector)
 extends HttpServiceActor
 with CommandService
@@ -56,6 +58,7 @@ with CommandHandlerViewService
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = tunnelHandler.request(tunnelToken, requestMessage)
   protected def tunnelHandlerOverview = tunnelHandler.overview
   protected def tunnelOverviews = tunnelHandler.tunnelOverviews
+  override protected def uriPrefix = agentConfiguration.strippedUriPathPrefix
 }
 
 object WebServiceActor {

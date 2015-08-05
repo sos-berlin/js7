@@ -23,7 +23,7 @@ import spray.testkit.ScalatestRouteTest
 @RunWith(classOf[JUnitRunner])
 final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with MainViewService {
 
-  implicit lazy val actorRefFactory = ActorSystem()
+  protected implicit lazy val actorRefFactory = ActorSystem()
 
   protected def processHandlerView = new ProcessHandlerView {
     def currentProcessCount = 777

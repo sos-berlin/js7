@@ -19,4 +19,10 @@ final class AgentConfigurationTest extends FreeSpec {
     intercept[IllegalArgumentException] { AgentConfiguration(List("-http-port=65536")) }
     intercept[IllegalArgumentException] { AgentConfiguration(httpPort = 65536) }
   }
+
+  "-uri-prefix=" in {
+    assert(AgentConfiguration(List("-http-port=1")).uriPathPrefix == "")
+    assert(AgentConfiguration(List("-http-port=1", "-uri-prefix=test")).strippedUriPathPrefix == "test")
+    assert(AgentConfiguration(List("-http-port=1", "-uri-prefix=/test/")).strippedUriPathPrefix == "test")
+  }
 }

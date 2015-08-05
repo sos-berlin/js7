@@ -18,9 +18,16 @@ import spray.util.LoggingContext
  * @author Joacim Zschimmer
  */
 trait ServiceStandards {
-  implicit def actorRefFactory: ActorRefFactory
+  protected implicit def actorRefFactory: ActorRefFactory
+  /**
+   * URI path prefix without prefix or suffix slashes.
+   */
+  protected def uriPrefix: String = ""
+  protected final lazy val jobschedulerPath = List(uriPrefix, "jobscheduler") filter { _.nonEmpty } mkString "/"
 
-  private val agentStandard = decompressRequest() & compressResponseIfRequested(()) & pathPrefix(ContextName)
+  private lazy val jobschedulerStandard =
+    decompressRequest() & compressResponseIfRequested(()) & pathPrefix(separateOnSlashes(jobschedulerPath))
+
   private val addedRoutes = mutable.Buffer[Entry]()
 
   implicit def exceptionHandler(implicit log: LoggingContext) =
@@ -39,7 +46,7 @@ trait ServiceStandards {
   /**
    * All added routes are combined by method `route`.
    */
-  protected def addRoute(route: ⇒ Route): Unit = add(agentStandard { route })
+  protected def addRoute(route: ⇒ Route): Unit = add(jobschedulerStandard { route })
 
   protected def addRawRoute(rawRoute: ⇒ Route): Unit = add(rawRoute)
 
@@ -59,7 +66,6 @@ trait ServiceStandards {
 }
 
 object ServiceStandards {
-  val ContextName = "jobscheduler"
   private val logger = Logger(getClass)
 
   private case class Entry(routeFactory: () ⇒ Route, callerName: String)
