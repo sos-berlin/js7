@@ -89,9 +89,9 @@ object CommandLineArguments {
     new CommandLineArguments(m)
   }
 
-  def parseArgs(args: Seq[String]): List[Argument] = (args map toArgument).toList
+  private def parseArgs(args: Seq[String]): List[Argument] = (args map toArgument).toList
 
-  def toArgument(string: String): Argument =
+  private def toArgument(string: String): Argument =
     string match {
       case OptionWithValueRegex(name, value) ⇒ NameValue(name, value)
       case "-" ⇒ ValueOnly("-")
@@ -99,7 +99,14 @@ object CommandLineArguments {
       case o ⇒ ValueOnly(o)
     }
 
-  trait Argument {
+  def parse[A](args: Seq[String])(convert: CommandLineArguments ⇒ A): A = {
+    val arguments = CommandLineArguments(args)
+    val result = convert(arguments)
+    arguments.requireNoMoreArguments()
+    result
+  }
+
+  sealed trait Argument {
     def name: String
     def value: String
   }
@@ -117,7 +124,7 @@ object CommandLineArguments {
     override def toString = s"$name$value"
   }
 
-  case class ValueOnly(value: String) extends Argument {
+  final case class ValueOnly(value: String) extends Argument {
     def name = ""
   }
 }
