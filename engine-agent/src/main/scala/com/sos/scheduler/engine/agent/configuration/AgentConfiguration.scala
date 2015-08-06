@@ -40,6 +40,7 @@ object AgentConfiguration {
     CommandLineArguments.parse(args) { a ⇒
       new AgentConfiguration(
         httpPort = a.asConverted("-http-port=")(parseTcpPort),
+        httpInterfaceRestriction = a.getString("-ip-address="),
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "")
     }
 }
