@@ -8,10 +8,10 @@ import scala.collection.immutable
 /**
  * @author Joacim Zschimmer
  */
-private[remoting] trait Call
+private[remoting] sealed trait Call
 
 
-private[remoting] trait SessionCall extends Call
+private[remoting] sealed trait SessionCall extends Call
 
 
 private[remoting] final case class CreateInstanceCall(
@@ -22,7 +22,7 @@ private[remoting] final case class CreateInstanceCall(
 extends SessionCall
 
 
-private[remoting] trait ObjectCall extends Call {
+private[remoting] sealed trait ObjectCall extends Call {
   def proxyId: ProxyId
 }
 

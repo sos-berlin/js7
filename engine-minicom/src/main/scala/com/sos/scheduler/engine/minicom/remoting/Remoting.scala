@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.remoting.Remoting._
-import com.sos.scheduler.engine.minicom.remoting.calls.{Call, CallCall, CreateInstanceCall, CreateInstanceResult, EmptyResult, GetIDsOfNamesCall, GetIDsOfNamesResult, InvokeCall, InvokeResult, ProxyId, ReleaseCall, Result}
+import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, ProxyRegister, SimpleProxyIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer.deserializeCall
 import com.sos.scheduler.engine.minicom.remoting.serial.CallSerializer.serializeCall
@@ -76,6 +76,9 @@ extends ServerRemoting with ClientRemoting {
     case ReleaseCall(proxyId) ⇒
       proxyRegister.release(proxyId)
       EmptyResult
+
+    case _: QueryInterfaceCall | _: GetIDsOfNamesCall | _: InvokeCall ⇒
+      throw new UnsupportedOperationException(call.getClass.getSimpleName)
 
     case CallCall(proxyId, methodName, arguments) ⇒
       val invocable = proxyRegister.invocable(proxyId)
