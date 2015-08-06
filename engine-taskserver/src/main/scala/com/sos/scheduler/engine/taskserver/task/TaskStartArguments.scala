@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
 import com.sos.scheduler.engine.taskserver.task.TaskStartArguments._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
-import com.sos.scheduler.engine.tunnel.data.TunnelToken
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}
 import scala.collection.immutable
@@ -15,7 +15,7 @@ import spray.json.DefaultJsonProtocol._
  */
 final case class TaskStartArguments(
   controllerAddress: String,
-  tunnelTokenOption: Option[TunnelToken] = None,
+  tunnelToken: TunnelToken,
   environment: immutable.Iterable[(String, String)] = Nil,
   directory: Path,
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
@@ -34,7 +34,7 @@ object TaskStartArguments {
     stdFileMap: Map[StdoutStderrType, Path] = Map())
   = new TaskStartArguments(
       controllerAddress = s"127.0.0.1:$tcpPort",
-      tunnelTokenOption = None,
+      tunnelToken = TunnelToken(TunnelId("TEST-TUNNEL"), TunnelToken.Secret("TUNNEL-SECRET")),
       directory = directory,
       stdFileMap = stdFileMap
     )

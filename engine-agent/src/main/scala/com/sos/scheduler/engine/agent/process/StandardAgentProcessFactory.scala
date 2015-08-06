@@ -25,20 +25,15 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
 
   def apply(command: StartProcess) = {
     val id = agentProcessIdGenerator.next()
-    val (controllerAddress, tunnelOption) = command.controllerAddressOption match {
-      case Some(o) ⇒ (o, None)
-      case None ⇒
-        val address = tunnelHandler.proxyAddressString
-        val tunnel = tunnelHandler.newTunnel(TunnelId(id.index.toString))
-        (address, Some(tunnel))
-    }
-    new AgentProcess(id, tunnelOption, newTaskServer(id, command, controllerAddress, tunnelOption map { _.tunnelToken }))
+    val address = tunnelHandler.proxyAddressString
+    val tunnel = tunnelHandler.newTunnel(TunnelId(id.index.toString))
+    new AgentProcess(id, tunnel, newTaskServer(id, command, address, tunnel.tunnelToken))
   }
 
-  private def newTaskServer(id: AgentProcessId, command: StartProcess, controllerAddress: String, tunnelTokenOption: Option[TunnelToken]) = {
+  private def newTaskServer(id: AgentProcessId, command: StartProcess, controllerAddress: String, tunnelToken: TunnelToken) = {
     val taskStartArguments = TaskStartArguments(
       controllerAddress = controllerAddress,
-      tunnelTokenOption = tunnelTokenOption,
+      tunnelToken = tunnelToken,
       directory = agentConfiguration.directory,
       environment = agentConfiguration.environment)
     val taskServer =
@@ -47,7 +42,7 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
         new SimpleTaskServer(taskStartArguments)
       } else
         command match {
-          case _: StartThread ⇒ new SimpleTaskServer(taskStartArguments)
+          case StartThread ⇒ new SimpleTaskServer(taskStartArguments)
           case o: StartSeparateProcess ⇒ new SeparateProcessTaskServer(
             taskStartArguments,
             javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
