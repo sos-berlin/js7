@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.minicom.remoting
 
+import akka.util.ByteString
 import com.google.inject.Injector
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -14,7 +15,6 @@ import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializ
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
 import com.sos.scheduler.engine.minicom.remoting.serial.{ResultDeserializer, ServerRemoting}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
-import java.nio.ByteBuffer
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
 import scala.collection.{breakOut, immutable}
@@ -39,18 +39,18 @@ extends ServerRemoting with ClientRemoting {
   def run(): Unit = continue(dialogConnection.receiveFirstMessage())
 
   @tailrec
-  private def continue(messageOption: Option[ByteBuffer]): Unit =
+  private def continue(messageOption: Option[ByteString]): Unit =
     messageOption match {
       case Some(message) ⇒
-        val (resultBytes, n) = executeMessage(message)
-        val nextMessageOption = dialogConnection.sendAndReceive(resultBytes, n)
+        val response = executeMessage(message)
+        val nextMessageOption = dialogConnection.sendAndReceive(response)
         continue(nextMessageOption)
       case None ⇒
     }
 
-  private def executeMessage(callBuffer: ByteBuffer): (Array[Byte], Int) =
+  private def executeMessage(callMessage: ByteString): ByteString =
     try {
-      val call = deserializeCall(this, callBuffer)
+      val call = deserializeCall(this, callMessage)
       logger.debug(s"${call.getClass.getSimpleName}")
       logger.trace(s"$call")
       val result = executeCall(call)
@@ -114,9 +114,9 @@ extends ServerRemoting with ClientRemoting {
   def keepAlive(): Unit = sendReceive(KeepAliveCall).readEmptyResult()
 
   private def sendReceive(call: Call): ResultDeserializer = {
-    val (byteArray, length) = serializeCall(proxyRegister, call)
-    val byteBuffer = dialogConnection.sendAndReceive(byteArray, length).get
-    new ResultDeserializer(this, byteBuffer)
+    val callMessage = serializeCall(proxyRegister, call)
+    val byteString = dialogConnection.sendAndReceive(callMessage).get
+    new ResultDeserializer(this, byteString)
   }
 
   private def toCreateInvocableByCLSID(invocableFactories: Iterable[InvocableFactory]): CreateInvocableByCLSID = {

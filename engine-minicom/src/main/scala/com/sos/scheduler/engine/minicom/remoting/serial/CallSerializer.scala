@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
+import akka.util.ByteString
 import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
@@ -70,9 +71,9 @@ private[remoting] object CallSerializer {
   /**
    * @return (Array, length)
    */
-  def serializeCall(proxyRegister: ProxyRegister, call: Call): (Array[Byte], Int) = {
+  def serializeCall(proxyRegister: ProxyRegister, call: Call): ByteString = {
     val serializer = new CallSerializer(proxyRegister)
     serializer.writeCall(call)
-    serializer.byteArrayAndLength
+    serializer.toByteString
   }
 }

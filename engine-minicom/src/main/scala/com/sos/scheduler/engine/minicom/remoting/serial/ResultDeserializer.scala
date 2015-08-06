@@ -1,11 +1,11 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
+import akka.util.ByteString
 import com.sos.scheduler.engine.minicom.idispatch.DISPID
 import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultDeserializer._
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, HRESULT}
-import java.nio.ByteBuffer
 import java.util.Objects.requireNonNull
 import org.scalactic.Requirements._
 import scala.collection.mutable
@@ -15,8 +15,10 @@ import scala.collection.mutable
  */
 private[remoting] final class ResultDeserializer(
   protected val remoting: ServerRemoting,
-  protected val buffer: ByteBuffer)
+  message: ByteString)
 extends IUnknownDeserializer {
+
+  protected val buffer = message.asByteBuffer
 
   def readCreateInstanceResult(): CreateInstanceResult = {
     readAnswerHeader()

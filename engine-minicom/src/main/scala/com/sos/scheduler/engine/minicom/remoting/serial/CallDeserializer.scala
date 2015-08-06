@@ -1,10 +1,10 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
+import akka.util.ByteString
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
 import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
-import java.nio.ByteBuffer
 import scala.collection.immutable
 
 /**
@@ -12,8 +12,10 @@ import scala.collection.immutable
  */
 private[serial] final class CallDeserializer private(
   protected val remoting: ServerRemoting,
-  protected val buffer: ByteBuffer)
+  message: ByteString)
 extends IUnknownDeserializer {
+
+  protected val buffer = message.asByteBuffer
 
   def readCall(): Call =
     readByte() match {
@@ -88,8 +90,8 @@ private[remoting] object CallDeserializer {
     val Call            = 'A'.toByte
   }
 
-  def deserializeCall(remoting: ServerRemoting, buffer: ByteBuffer) = {
-    val d = new CallDeserializer(remoting, buffer)
+  def deserializeCall(remoting: ServerRemoting, message: ByteString) = {
+    val d = new CallDeserializer(remoting, message)
     val result = d.readCall()
     d.requireEndOfMessage()
     result

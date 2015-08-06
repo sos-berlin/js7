@@ -20,7 +20,7 @@ final class TcpConnection(val channel: SocketChannel) extends AutoCloseable with
   /**
    * @return None: Connection has been closed before next message
    */
-  def receiveMessage(): Option[ByteBuffer] = {
+  def receiveMessage(): Option[ByteString] = {
     val lengthBuffer = ByteBuffer.allocate(4)
     receiveBuffer(lengthBuffer)
     if (lengthBuffer.position == 0)
@@ -31,7 +31,7 @@ final class TcpConnection(val channel: SocketChannel) extends AutoCloseable with
       receiveBuffer(buffer)
       if (buffer.position != buffer.limit) throw new AsynchronousCloseException
       buffer.rewind()
-      Some(buffer)
+      Some(ByteString(buffer))
     }
   }
 
@@ -41,8 +41,6 @@ final class TcpConnection(val channel: SocketChannel) extends AutoCloseable with
   }
 
   def sendMessage(data: ByteString): Unit = sendMessage(data.asByteBuffers, data.size)
-
-  def sendMessage(data: Array[Byte], length: Int): Unit = sendMessage(List(ByteBuffer.wrap(data, 0, length)), length)
 
   private def sendMessage(byteBuffers: Iterable[ByteBuffer], size: Int): Unit = {
     val lengthBuffer = ByteBuffer.allocate(4)
