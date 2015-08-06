@@ -18,24 +18,30 @@ final class TcpToRequestResponseTest extends FreeSpec {
 
   private lazy val actorSystem = ActorSystem("TEST")
 
-  "Some requests" in {
-    val (tcpToRequestResponse, tcpConnection) = newTcpToRequestResponse()
-    for (i ← 1 to 3) {
-      val a = ByteString.fromString(s"TEST #$i")
-      tcpConnection.sendMessage(a)
-      assert(ByteString.fromByteBuffer(tcpConnection.receiveMessage().get) == requestToResponse(a))
+  for ((testName, connectionMessageOption) ← List("without connection message" → None, "with connection message" → Some(ByteString("Connection message")))) {
+    s"Some requests, $testName" in {
+      val (tcpToRequestResponse, tcpConnection) = newTcpToRequestResponse(connectionMessageOption)
+      for (m ← connectionMessageOption) {
+        assert(tcpConnection.receiveMessage().get == m)
+      }
+      for (i ← 1 to 3) {
+        val a = ByteString.fromString(s"TEST #$i")
+        tcpConnection.sendMessage(a)
+        assert(tcpConnection.receiveMessage().get == requestToResponse(a))
+      }
+      tcpConnection.close()
+      tcpToRequestResponse.close()
     }
-    tcpConnection.close()
-    tcpToRequestResponse.close()
   }
 
   "On error while executing request the TCP connection is closed" in {
-    val (tcpToRequestResponse, tcpConnection) = newTcpToRequestResponse()
-    tcpConnection.sendMessage(Error)
-    //intercept[IOException] { tcpConnection.receiveMessage() }
-    tcpConnection.receiveMessage() shouldEqual None
-    tcpConnection.close()
-    tcpToRequestResponse.close()
+    for (errorTrigger ← List(Error, ExecutionError)) {
+      val (tcpToRequestResponse, tcpConnection) = newTcpToRequestResponse()
+      tcpConnection.sendMessage(errorTrigger)
+      tcpConnection.receiveMessage() shouldEqual None
+      tcpConnection.close()
+      tcpToRequestResponse.close()
+    }
   }
 
   "TcpToRequestResponse.close closes TCP connection" in {
@@ -45,24 +51,25 @@ final class TcpToRequestResponseTest extends FreeSpec {
     tcpConnection.close()
   }
 
-  private def newTcpToRequestResponse() = {
+  private def newTcpToRequestResponse(connectionMessage: Option[ByteString] = None) =
     autoClosing(TcpConnection.Listener.forLocalHostPort()) { listener ⇒
-      val tcpToRequestResponse = new TcpToRequestResponse(actorSystem, connectTo = listener.boundAddress, executeRequest)
-      tcpToRequestResponse.start()
+      val tcpToRequestResponse = new TcpToRequestResponse(actorSystem, listener.boundAddress, executeRequest)
+      tcpToRequestResponse.start(connectionMessage)
       val tcpConnection = listener.accept()
       (tcpToRequestResponse, tcpConnection)
     }
-  }
 }
 
 private object TcpToRequestResponseTest {
   private val Error = ByteString.fromString("ERROR")
+  private val ExecutionError = ByteString.fromString("EXECUTION ERROR")
 
   private def executeRequest(request: ByteString) =
-    if (request == Error)
-      Future.failed(new RuntimeException("TEST"))
-    else
-      Future.successful(requestToResponse(request))
+    request match {
+      case ExecutionError ⇒ throw new RuntimeException("TEST EXECUTION")
+      case Error ⇒ Future.failed(new RuntimeException("TEST"))
+      case _ ⇒ Future.successful(requestToResponse(request))
+    }
 
   private def requestToResponse(o: ByteString): ByteString = o ++ ByteString(" RESPONSE")
 }
