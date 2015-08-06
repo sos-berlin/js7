@@ -84,6 +84,8 @@ extends ServerRemoting with ClientRemoting {
       val invocable = proxyRegister.invocable(proxyId)
       val result = invocable.call(methodName, arguments)
       InvokeResult(result)
+
+    case KeepAliveCall ⇒ EmptyResult
   }
 
   private[remoting] def newProxy(proxyId: ProxyId, name: String, proxyClsid: CLSID, properties: Iterable[(String, Any)]) = {
@@ -108,6 +110,8 @@ extends ServerRemoting with ClientRemoting {
     val InvokeResult(value) = sendReceive(call).readInvokeResult()
     value
   }
+
+  def keepAlive(): Unit = sendReceive(KeepAliveCall).readEmptyResult()
 
   private def sendReceive(call: Call): ResultDeserializer = {
     val (byteArray, length) = serializeCall(proxyRegister, call)

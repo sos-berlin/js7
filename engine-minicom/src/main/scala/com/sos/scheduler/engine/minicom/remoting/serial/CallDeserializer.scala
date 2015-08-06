@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
-import com.sos.scheduler.engine.minicom.remoting.calls.{Call, CallCall, CreateInstanceCall, GetIDsOfNamesCall, InvokeCall, MessageClass, ObjectCall, ProxyId, QueryInterfaceCall, ReleaseCall}
+import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
 import java.nio.ByteBuffer
@@ -19,6 +19,7 @@ extends IUnknownDeserializer {
     readByte() match {
       case MessageClass.Session ⇒ readSessionCall()
       case MessageClass.Object ⇒ readObjectCall()
+      case MessageClass.KeepAlive ⇒ KeepAliveCall
     }
 
   private def readSessionCall(): Call = {

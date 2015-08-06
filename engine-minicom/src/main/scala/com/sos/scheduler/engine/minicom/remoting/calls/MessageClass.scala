@@ -9,4 +9,5 @@ private[remoting] object MessageClass {
   val Object = 'O'.toByte   // Nachricht bezieht sich auf ein Objekt (bezeichnet durch die folgenden Bytes)
   val Answer = 'A'.toByte   // Nachricht ist eine Antwort
   val Error = 'E'.toByte    // Nachricht ist eine Fehlerantwort
+  val KeepAlive = 'K'.toByte  // Keep-alive message to keep HTTP connection up and to detect master's connection loss
 }

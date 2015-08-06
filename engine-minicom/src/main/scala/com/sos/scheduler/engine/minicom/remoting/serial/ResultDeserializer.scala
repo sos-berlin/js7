@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
 import com.sos.scheduler.engine.minicom.idispatch.DISPID
-import com.sos.scheduler.engine.minicom.remoting.calls.{CreateInstanceResult, GetIDsOfNamesResult, InvokeResult, MessageClass}
+import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultDeserializer._
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, HRESULT}
@@ -44,6 +44,10 @@ extends IUnknownDeserializer {
     requireEndOfMessage()
     InvokeResult(result)
   }
+
+  def readEmptyResult(): EmptyResult.type = {
+    requireEndOfMessage()
+    EmptyResult
   }
 
   private def readAnswerHeader(): Unit = {
