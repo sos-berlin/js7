@@ -1,10 +1,9 @@
-package com.sos.scheduler.engine.tunnel.common
+package com.sos.scheduler.engine.common.tcp
 
 import akka.actor.ActorSystem
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.tcp.TcpConnection
-import com.sos.scheduler.engine.tunnel.common.TcpToRequestResponseTest._
+import com.sos.scheduler.engine.common.tcp.TcpToRequestResponseTest._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

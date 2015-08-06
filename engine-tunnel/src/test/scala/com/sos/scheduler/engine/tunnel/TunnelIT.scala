@@ -4,11 +4,10 @@ import akka.actor.ActorSystem
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.tcp.TcpConnection
+import com.sos.scheduler.engine.common.tcp.{MessageTcpBridge, TcpConnection}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.tunnel.TunnelIT._
-import com.sos.scheduler.engine.tunnel.common.MessageTcpBridge
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import org.scalatest.FreeSpec

@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.tunnel.common
+package com.sos.scheduler.engine.common.tcp
 
 import akka.actor.{Actor, ActorRef}
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.common.LengthHeaderMessageCollector._
-import com.sos.scheduler.engine.tunnel.common.MessageTcpBridge._
+import com.sos.scheduler.engine.common.tcp.LengthHeaderMessageCollector._
+import com.sos.scheduler.engine.common.tcp.MessageTcpBridge._
 
 /**
  * Full-duplex bridge between length-prefixed framed messages and a TCP stream.
@@ -82,7 +82,7 @@ extends Actor {
   override def toString = s"MessageTcpBridge($localAddress-$remoteAddress)"
 }
 
-private[tunnel] object MessageTcpBridge {
+object MessageTcpBridge {
   val MessageSizeMaximum = 100*1000*1000
 
   sealed trait Command

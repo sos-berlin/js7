@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel.common
+package com.sos.scheduler.engine.common.tcp
 
 import akka.util.{ByteString, ByteStringBuilder}
 import java.nio.ByteBuffer
@@ -52,7 +52,7 @@ final class LengthHeaderMessageCollector {
   }
 
   @TestOnly
-  private[tunnel] def isReset = lengthBuffer.position == 0 && lengthBuffer.limit == 4 && length == -1 && contentBuffer == null
+  private[tcp] def isReset = lengthBuffer.position == 0 && lengthBuffer.limit == 4 && length == -1 && contentBuffer == null
 
   override def toString = getClass.getSimpleName concat "(" concat (
       if (isReset) "reset"

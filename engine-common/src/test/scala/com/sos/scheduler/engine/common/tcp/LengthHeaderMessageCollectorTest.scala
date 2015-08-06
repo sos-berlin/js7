@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.tunnel.common
+package com.sos.scheduler.engine.common.tcp
 
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.tcp.LengthHeaderMessageCollector.intToBytesString
+import com.sos.scheduler.engine.common.tcp.LengthHeaderMessageCollectorTest._
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.tunnel.common.LengthHeaderMessageCollector.intToBytesString
-import com.sos.scheduler.engine.tunnel.common.LengthHeaderMessageCollectorTest._
 import java.time.Instant.now
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

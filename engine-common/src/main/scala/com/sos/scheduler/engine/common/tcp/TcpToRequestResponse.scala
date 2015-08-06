@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.tunnel.common
+package com.sos.scheduler.engine.common.tcp
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.common.TcpToRequestResponse._
+import com.sos.scheduler.engine.common.tcp.TcpToRequestResponse.{Close, Start, _}
 import java.net.{InetSocketAddress, SocketAddress}
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
@@ -19,7 +19,8 @@ import scala.util.{Failure, Success}
 final class TcpToRequestResponse(
   actorSystem: ActorSystem,
   connectTo: InetSocketAddress,
-  executeRequest: ByteString ⇒ Future[ByteString]) {
+  executeRequest: ByteString ⇒ Future[ByteString])
+extends AutoCloseable {
 
   import actorSystem.dispatcher
 
