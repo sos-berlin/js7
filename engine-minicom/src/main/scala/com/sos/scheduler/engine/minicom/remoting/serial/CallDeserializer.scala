@@ -87,5 +87,10 @@ private[remoting] object CallDeserializer {
     val Call            = 'A'.toByte
   }
 
-  def deserializeCall(remoting: ServerRemoting, buffer: ByteBuffer) = new CallDeserializer(remoting, buffer).readCall()
+  def deserializeCall(remoting: ServerRemoting, buffer: ByteBuffer) = {
+    val d = new CallDeserializer(remoting, buffer)
+    val result = d.readCall()
+    d.requireEndOfMessage()
+    result
+  }
 }

@@ -21,12 +21,15 @@ extends IUnknownDeserializer {
   def readCreateInstanceResult(): CreateInstanceResult = {
     readAnswerHeader()
     require(HRESULT(readInt32()) == S_OK)
-    CreateInstanceResult(requireNonNull(readInvocableOrNull()))
+    val invocable = requireNonNull(readInvocableOrNull())
+    requireEndOfMessage()
+    CreateInstanceResult(invocable)
   }
 
   def readGetIDsOfNamesResult(n: Int): GetIDsOfNamesResult = {
     readAnswerHeader()
     val dispids = Vector.fill(n) { DISPID(readInt32()) }
+    requireEndOfMessage()
     GetIDsOfNamesResult(dispids)
   }
 
@@ -37,7 +40,10 @@ extends IUnknownDeserializer {
       val message = readExcepInfo().toString
       throw new COMException(hr, message)
     }
-    InvokeResult(readVariant())
+    val result = readVariant()
+    requireEndOfMessage()
+    InvokeResult(result)
+  }
   }
 
   private def readAnswerHeader(): Unit = {
