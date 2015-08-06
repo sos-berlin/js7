@@ -46,7 +46,7 @@ trait ServiceStandards {
   /**
    * All added routes are combined by method `route`.
    */
-  protected def addStandardRoute(route: ⇒ Route): Unit = add(jobschedulerStandard { route })
+  protected def addJobschedulerRoute(route: ⇒ Route): Unit = add(jobschedulerStandard { route })
 
   protected def addRawRoute(rawRoute: ⇒ Route): Unit = add(rawRoute)
 

@@ -14,8 +14,8 @@ trait MainViewService extends ServiceStandards {
 
   protected def agentOverview: AgentOverview
 
-  addStandardRoute {
-    (get & pathPrefix("agent")) {
+  addJobschedulerRoute {
+    (pathPrefix("agent") & get) {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         path("overview") {
           complete { agentOverview }
