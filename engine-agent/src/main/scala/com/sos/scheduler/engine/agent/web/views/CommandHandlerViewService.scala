@@ -15,8 +15,8 @@ trait CommandHandlerViewService extends ServiceStandards {
    protected def commandHandlerOverview: CommandHandlerOverview
    protected def commandHandlerDetails: CommandHandlerDetails
 
-     (get & pathPrefix("agent" / "commandHandler")) {
    addJobschedulerRoute {
+     (pathPrefix("agent" / "commandHandler") & get) {
        respondWithHeader(`Cache-Control`(`max-age`(0))) {
          pathEnd {
            complete { commandHandlerOverview }

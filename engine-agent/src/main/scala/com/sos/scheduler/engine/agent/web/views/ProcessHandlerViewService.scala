@@ -14,8 +14,8 @@ trait ProcessHandlerViewService extends ServiceStandards {
 
   protected def processHandlerView: ProcessHandlerView
 
-    (get & pathPrefix("agent" / "processHandler")) {
   addJobschedulerRoute {
+    (pathPrefix("agent" / "processHandler") & get) {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         complete { processHandlerView }
       }

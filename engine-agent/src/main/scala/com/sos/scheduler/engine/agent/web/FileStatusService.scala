@@ -12,8 +12,8 @@ import spray.routing.Directives._
  */
 trait FileStatusService extends ServiceStandards {
 
-    (get & pathPrefix("agent" / "fileStatus")) {
   addJobschedulerRoute {
+    (pathPrefix("agent" / "fileStatus") & get) {
       parameter("file") { path ⇒
         respondWithHeader(`Cache-Control`(`max-age`(0), `no-store`, `no-cache`)) {
           complete {

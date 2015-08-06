@@ -28,14 +28,12 @@ trait TunnelService extends ServiceStandards {
           tunnelRequestRoute(TunnelId(idString))(tunnelRequest)
         }
       } ~
-      get {
-        respondWithHeader(`Cache-Control`(`max-age`(0))) {
-          pathEndOrSingleSlash {
-            tunnelHandlerOverviewRoute(tunnelHandlerOverview _)
-          } ~
-          path("details") {
-            tunnelOverviewsRoute(tunnelOverviews _)
-          }
+      respondWithHeader(`Cache-Control`(`max-age`(0))) {
+        (pathEndOrSingleSlash & get) {
+          tunnelHandlerOverviewRoute(tunnelHandlerOverview _)
+        } ~
+        (path("details") & get) {
+          tunnelOverviewsRoute(tunnelOverviews _)
         }
       }
     }

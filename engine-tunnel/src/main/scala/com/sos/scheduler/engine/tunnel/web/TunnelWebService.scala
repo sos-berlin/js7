@@ -21,7 +21,7 @@ object TunnelWebService {
   type ExecuteTunneledRequest = (TunnelToken, ByteString) ⇒ Future[ByteString]
 
   def tunnelRequestRoute(id: TunnelId)(execute: ExecuteTunneledRequest)(implicit ec: ExecutionContext) =
-    (post & pathEndOrSingleSlash) {
+    (pathEndOrSingleSlash & post) {
       headerValueByName(SecretHeaderName) { secret ⇒
         val token = TunnelToken(id, TunnelToken.Secret(secret))
         entity(as[ByteString]) { request ⇒
@@ -32,12 +32,12 @@ object TunnelWebService {
     } 
 
   def tunnelHandlerOverviewRoute(f: () ⇒ Future[TunnelHandlerOverview])(implicit ec: ExecutionContext) =
-    (get & pathEndOrSingleSlash) {
+    (pathEndOrSingleSlash & get) {
       onSuccess(f()) { response ⇒ complete(response) }
     }
 
   def tunnelOverviewsRoute(f: () ⇒ Future[immutable.Iterable[TunnelOverview]])(implicit ec: ExecutionContext) =
-    (get & pathEndOrSingleSlash) {
+    (pathEndOrSingleSlash & get) {
       onSuccess(f()) { response ⇒ complete(response) }
     }
 }
