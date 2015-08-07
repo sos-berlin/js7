@@ -48,6 +48,8 @@ extends IUnknownDeserializer {
   }
 
   def readEmptyResult(): EmptyResult.type = {
+    // Response to KeepAlive
+    require(readByte() == MessageClass.Answer)
     requireEndOfMessage()
     EmptyResult
   }

@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.google.inject.Injector
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.remoting.Remoting._
@@ -36,17 +37,26 @@ extends ServerRemoting with ClientRemoting {
   private val proxyClsidMap: Map[CLSID, ProxyIDispatchFactory.Fun] =
     (List(SimpleProxyIDispatch) ++ proxyIDispatchFactories).map { o ⇒ o.clsid → o.apply _ } (breakOut)
 
-  def run(): Unit = continue(dialogConnection.receiveFirstMessage())
-
-  @tailrec
-  private def continue(messageOption: Option[ByteString]): Unit =
-    messageOption match {
-      case Some(message) ⇒
-        val response = executeMessage(message)
-        val nextMessageOption = dialogConnection.sendAndReceive(response)
-        continue(nextMessageOption)
-      case None ⇒
+  def run(): Unit = {
+    val firstRequest = dialogConnection.receiveFirstMessage()
+    val keepAliveThread = new KeepAliveThread
+    keepAliveThread.start()
+    try continue(firstRequest)
+    finally {
+      keepAliveThread.interrupt()
+      keepAliveThread.join()
     }
+
+    @tailrec
+    def continue(messageOption: Option[ByteString]): Unit =
+      messageOption match {
+        case Some(message) ⇒
+          val response = executeMessage(message)
+          val nextMessageOption = dialogConnection.sendAndReceive(response)
+          continue(nextMessageOption)
+        case None ⇒
+      }
+  }
 
   private def executeMessage(callMessage: ByteString): ByteString =
     try {
@@ -133,6 +143,20 @@ extends ServerRemoting with ClientRemoting {
    * Returns all registered invocables implementing the erased type A.
    */
   def invocables[A : ClassTag]: immutable.Iterable[A] = proxyRegister.invocables[A]
+
+  private class KeepAliveThread extends Thread {
+    setName("Remoting.KeepAlive")
+
+    override def run() =
+      try
+        while (true) {
+          sleep(5 * 60.s)
+          keepAlive()
+        }
+      catch {
+        case _: InterruptedException ⇒
+      }
+  }
 }
 
 object Remoting {
