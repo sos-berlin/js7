@@ -57,9 +57,10 @@ final class Agent(module: Module) extends AutoCloseable {
 object Agent {
   def forTest(): Agent = forTest(httpPort = findRandomFreeTcpPort())
 
-  def forTest(httpPort: Int): Agent =
-    new Agent(AgentConfiguration(
-      httpPort = httpPort,
-      httpInterfaceRestriction = Some("127.0.0.1"),
-      jobJavaOptions = sys.props.get("agent.job.javaOptions").toList))
+  def forTest(httpPort: Int): Agent = new Agent(testConfiguration(httpPort))
+
+  def testConfiguration(httpPort: Int) = AgentConfiguration(
+    httpPort = httpPort,
+    httpInterfaceRestriction = Some("127.0.0.1"),
+    jobJavaOptions = sys.props.get("agent.job.javaOptions").toList)
 }
