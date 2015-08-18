@@ -11,13 +11,13 @@ import scala.concurrent.Future
 /**
 * @author Joacim Zschimmer
 */
-private[process] final class AgentProcess(val id: AgentProcessId, tunnelOption: Option[TunnelClient], val taskServer: TaskServer)
+private[process] final class AgentProcess(val id: AgentProcessId, tunnel: TunnelClient, val taskServer: TaskServer)
 extends AutoCloseable {
 
   val startedAt = Instant.now()
 
   def close(): Unit = {
-    try tunnelOption foreach { _.close() }  // Close tunnel first, then task server
+    try tunnel.close()  // Close tunnel first, then task server
     finally taskServer.close()
   }
 
@@ -29,13 +29,11 @@ extends AutoCloseable {
 
   def overview = ProcessOverview(
     id,
-    tunnelIdOption,
+    tunnel.id,
     taskServer.taskStartArguments.controllerAddress,  // With a tunnel, this is the local proxy address (not very usefull) !!!
     startedAt)
 
-  def tunnelIdOption = tunnelOption map { _.id}
-
-  private[process] def tunnelTokenOption = tunnelOption map { _.tunnelToken }
+  private[process] def tunnelToken = tunnel.tunnelToken
 
   override def toString = s"AgentProcess($id)"
 }

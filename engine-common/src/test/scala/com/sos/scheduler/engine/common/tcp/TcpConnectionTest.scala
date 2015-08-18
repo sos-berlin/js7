@@ -1,11 +1,11 @@
 package com.sos.scheduler.engine.common.tcp
 
+import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
-import java.nio.ByteBuffer
 import java.util.concurrent.TimeoutException
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
@@ -40,16 +40,19 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
   }
 
   "receiveMessage" in {
-    val length = 260
+    val length = 0x012233
     val data = Array.fill(length) { Random.nextInt().toByte }
-    out.write(smallIntToBytes(length) ++ data)
-    tcpConnection.receiveMessage() shouldEqual Some(ByteBuffer.wrap(data))
+    val message = smallIntToBytes(length) ++ data
+    for (_ ← 1 to 10) {
+      out.write(message)
+      tcpConnection.receiveMessage() shouldEqual Some(ByteString(data))
+    }
   }
 
   "sendMessage" in {
     val length = 261
     val sentData = Array.fill(length) { Random.nextInt().toByte }
-    tcpConnection.sendMessage(sentData, length)
+    tcpConnection.sendMessage(ByteString.fromArray(sentData))
     val receivedData = new Array[Byte](4 + length)
     val receivedLength = in.read(receivedData)
     receivedLength shouldEqual 4 + length
@@ -79,5 +82,5 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
     awaitResult(connected, 1.s)
   }
 
-  private def smallIntToBytes(i: Int) = Array[Byte](0.toByte, 0.toByte, (i >> 8).toByte, (i & 0xFF).toByte)
+  private def smallIntToBytes(i: Int) = Array[Byte](0.toByte, (i >> 16).toByte, (i >> 8).toByte, (i & 0xFF).toByte)
 }

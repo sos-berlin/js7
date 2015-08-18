@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
+import akka.util.ByteString
 import com.sos.scheduler.engine.minicom.remoting.serial.VariantSerializerTest._
 import com.sos.scheduler.engine.minicom.remoting.serial.variantTypes._
 import com.sos.scheduler.engine.minicom.types.VariantArray
-import java.nio.ByteBuffer
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -65,20 +65,19 @@ private object VariantSerializerTest {
   private def testSerialize(value: Any, variantType: Int, bytes: Seq[Int]): Unit = {
     val serializer = new VariantSerializer.WithoutIUnknown
     serializer.writeVariant(value)
-    val (a, length) = serializer.byteArrayAndLength
-    a.take(length) shouldEqual variantTypeToArray(variantType, bytes)
+    serializer.toByteString shouldEqual variantTypeToByteString(variantType, bytes)
   }
 
   private def testDeserialize(value: Any, variantType: Int, bytes: Seq[Int]): Unit = {
     val deserializer = new VariantDeserializer {
-      protected val buffer = ByteBuffer.wrap(variantTypeToArray(variantType, bytes))
+      protected val buffer = variantTypeToByteString(variantType, bytes).asByteBuffer
     }
     deserializer.readVariant() shouldEqual value
     assert(!deserializer.hasData)
   }
 
-  private def variantTypeToArray(variantType: Int, bytes: Seq[Int]) =
-    intToBytes(variantType) ++ (bytes map { _.toByte })
+  private def variantTypeToByteString(variantType: Int, bytes: Seq[Int]) =
+    ByteString.fromArray(intToBytes(variantType) ++ (bytes map { _.toByte }))
 
   private def intToBytes(i: Int) = Array((i >> 24).toByte, (i >> 16).toByte, (i >> 8).toByte, i.toByte)
 }

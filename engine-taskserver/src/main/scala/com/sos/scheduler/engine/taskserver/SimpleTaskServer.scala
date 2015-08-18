@@ -39,11 +39,8 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments) extends
   def start(): Unit =
     Future {
       blocking {
-        master
-        for (tunnelToken ← taskStartArguments.tunnelTokenOption) {
-          val connectionMessage = TunnelConnectionMessage(tunnelToken)
-          master.sendMessage(ByteString.fromString(connectionMessage.toJson.compactPrint))
-        }
+        val connectionMessage = TunnelConnectionMessage(taskStartArguments.tunnelToken)
+        master.sendMessage(ByteString.fromString(connectionMessage.toJson.compactPrint))
         remoting.run()
         master.close()
       }

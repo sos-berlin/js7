@@ -100,7 +100,7 @@ object TcpHttpTcpTunnelIT {
 
     def sendReceive(request: ByteString): Option[ByteString] = {
       tcp.sendMessage(request)
-      tcp.receiveMessage() map ByteString.fromByteBuffer
+      tcp.receiveMessage()
     }
 
     def requireEOF(): Unit = tcp.receiveMessage() shouldEqual None
@@ -169,7 +169,7 @@ object TcpHttpTcpTunnelIT {
     override def run(): Unit =
       try {
         connection.sendMessage(TunnelConnectionMessage(tunnelToken).toByteString)
-        for (request ← Iterator.continually { ByteString.fromByteBuffer(connection.receiveMessage().get) } takeWhile { _ != TerminateMessage }) {
+        for (request ← Iterator.continually { connection.receiveMessage().get } takeWhile { _ != TerminateMessage }) {
           connection.sendMessage(requestToResponse(tunnelId, request))
         }
         connection.close()

@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.process
 
+import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.data.AgentProcessId
 import com.sos.scheduler.engine.agent.data.commands._
@@ -11,11 +12,13 @@ import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.common.scalautil.Futures._
+import com.sos.scheduler.engine.common.soslicense.LicenseKey
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
-import java.nio.file.Paths
+import com.sos.scheduler.engine.tunnel.core.TunnelClient
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -37,8 +40,8 @@ final class ProcessHandlerTest extends FreeSpec {
     "StartProcess" in {
       assert(!processHandler.terminated.isCompleted)
       for (nextProcessId ← AgentProcessIds) {
-        val response = awaitResult(processHandler.apply(TestStartSeparateProcess), 3.s)
-        inside(response) { case StartProcessResponse(id, None) ⇒ id shouldEqual nextProcessId }
+        val response = awaitResult(processHandler.execute(TestStartSeparateProcess, Some(TestLicenseKey)), 3.s)
+        inside(response) { case StartProcessResponse(id, TestTunnelToken) ⇒ id shouldEqual nextProcessId }
       }
       for (o ← taskServers) {
         assert(o.started)
@@ -72,7 +75,7 @@ final class ProcessHandlerTest extends FreeSpec {
         CloseProcess(processes(0).id, kill = false),
         CloseProcess(processes(1).id, kill = true))
       for (command ← commands) {
-        val response = awaitResult(processHandler.apply(command), 3.s)
+        val response = awaitResult(processHandler.execute(command), 3.s)
         inside(response) { case EmptyResponse ⇒ }
       }
       assert(taskServers(0).started)
@@ -109,21 +112,21 @@ final class ProcessHandlerTest extends FreeSpec {
       val testContext = new TestContext
       import testContext.processHandler
       assert(!processHandler.terminated.isCompleted)
-      awaitResult(processHandler.apply(Terminate(sigtermProcesses = false)), 3.s)
+      awaitResult(processHandler.execute(Terminate(sigtermProcesses = false)), 3.s)
       awaitResult(processHandler.terminated, 3.s)
     }
 
     "When a process is registered, ProcessHandler terminates after the process has terminated" in {
       val testContext = new TestContext
       import testContext.{processHandler, processes, taskServers}
-      for (_ ← processes) awaitResult(processHandler.apply(TestStartSeparateProcess), 3.s)
+      for (_ ← processes) awaitResult(processHandler.execute(TestStartSeparateProcess, Some(TestLicenseKey)), 3.s)
       assert(processHandler.totalProcessCount == processes.size)
       assert(processHandler.currentProcessCount == processes.size)
       assert(!processHandler.isTerminating)
       assert(!processHandler.terminated.isCompleted)
       for (o ← taskServers) assert(!o.sigtermed)
-      awaitResult(processHandler.apply(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(2.s))), 3.s)
-      intercept[PublicException] { awaitResult(processHandler.apply(TestStartSeparateProcess), 3.s) }
+      awaitResult(processHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(2.s))), 3.s)
+      intercept[PublicException] { awaitResult(processHandler.execute(TestStartSeparateProcess, Some(TestLicenseKey)), 3.s) }
       assert(processHandler.isTerminating)
       for (o ← taskServers) assert(o.sigtermed == !isWindows)
       sleep(1.s)
@@ -139,14 +142,23 @@ private object ProcessHandlerTest {
   private val AgentProcessIds = List("1-1", "2-2") map AgentProcessId.apply
   private val JavaOptions = "JAVA-OPTIONS"
   private val JavaClasspath = "JAVA-CLASSPATH"
-  private val TestControllerAddress = "127.0.0.1:9999"
-  private val TestStartSeparateProcess = StartSeparateProcess(controllerAddressOption = Some(TestControllerAddress), javaOptions = JavaOptions, javaClasspath = JavaClasspath)
+  private val TestControllerPort = 9999
+  private val TestControllerAddress = s"127.0.0.1:$TestControllerPort"
+  private val TestStartSeparateProcess = StartSeparateProcess(javaOptions = JavaOptions, javaClasspath = JavaClasspath)
+  private val TestLicenseKey = LicenseKey("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")
+  private val TestTunnelToken = TunnelToken(TunnelId("1"), TunnelToken.Secret("SECRET"))
 
   private class TestContext {
     val taskServers = List.fill(2) { new MockTaskServer }
-    val processes = AgentProcessIds zip taskServers map { case (id, taskServer) ⇒ new AgentProcess(id, tunnelOption = None, taskServer) }
+    val processes = AgentProcessIds zip taskServers map { case (id, taskServer) ⇒ new AgentProcess(id, tunnel = mockTunnelClient(), taskServer) }
     val processHandler = Guice.createInjector(new TestModule(processes)).instance[ProcessHandler]
   }
+
+  private def mockTunnelClient() = new TunnelClient(
+    connectorHandler = ActorSystem().actorOf(Props { new Actor { def receive = { case _ ⇒ }}}),
+    TestTunnelToken,
+    connected = Promise().future,
+    peerAddress = () ⇒ None)
 
   private class MockTaskServer extends TaskServer {
     val terminatedPromise = Promise[Unit]()
@@ -157,7 +169,7 @@ private object ProcessHandlerTest {
 
     def terminated = terminatedPromise.future
 
-    def taskStartArguments = TaskStartArguments(controllerAddress = TestControllerAddress, directory = Paths.get(""))   // For ProcessHandler.overview
+    def taskStartArguments = TaskStartArguments.forTest(tcpPort = TestControllerPort)   // For ProcessHandler.overview
 
     def sendProcessSignal(signal: ProcessSignal) = signal match {
       case SIGTERM ⇒ sigtermed = true

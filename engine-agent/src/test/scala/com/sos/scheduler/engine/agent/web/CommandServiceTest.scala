@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate, _}
 import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, FileOrderSourceContent}
 import com.sos.scheduler.engine.agent.web.CommandServiceTest._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
+import com.sos.scheduler.engine.common.soslicense.LicenseKey
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
 import org.junit.runner.RunWith
@@ -25,9 +26,10 @@ import spray.testkit.ScalatestRouteTest
 @RunWith(classOf[JUnitRunner])
 final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with CommandService {
 
-  implicit lazy val actorRefFactory = ActorSystem()
+  protected implicit lazy val actorRefFactory = ActorSystem()
+  override protected val uriPathPrefix = "test"
 
-  protected def executeCommand(command: Command) =
+  protected def executeCommand(command: Command, licenseKey: Option[LicenseKey]) =
     Future.successful {
       val expectedTerminate = Terminate(sigkillProcessesAfter = Some(999.s))
       command match {
@@ -37,57 +39,55 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       }
     }
 
-  "jobscheduler/agent/command" - {
-    "RequestFileOrderSourceContent" in {
-      val json = """{
-          "$TYPE": "RequestFileOrderSourceContent",
-          "directory": "/DIRECTORY",
-          "regex": ".*",
-          "duration": 111222333444555.666,
-          "knownFiles": [ "/DIRECTORY/known" ]
-        }"""
-      postJsonCommand(json) ~> check {
-        assert(responseAs[FileOrderSourceContent] == TestFileOrderSourceContent)
-        assert(responseAs[String].parseJson ==
-          """{
-          "files": [
-            { "path": "/DIRECTORY/a", "lastModifiedTime": 111222333444555666 }
-          ]
-        }""".parseJson)
-      }
+  "RequestFileOrderSourceContent" in {
+    val json = """{
+        "$TYPE": "RequestFileOrderSourceContent",
+        "directory": "/DIRECTORY",
+        "regex": ".*",
+        "duration": 111222333444555.666,
+        "knownFiles": [ "/DIRECTORY/known" ]
+      }"""
+    postJsonCommand(json) ~> check {
+      assert(responseAs[FileOrderSourceContent] == TestFileOrderSourceContent)
+      assert(responseAs[String].parseJson ==
+        """{
+        "files": [
+          { "path": "/DIRECTORY/a", "lastModifiedTime": 111222333444555666 }
+        ]
+      }""".parseJson)
     }
-
-    "Terminate" in {
-      val json = """{
-          "$TYPE": "Terminate",
-          "sigtermProcesses": false,
-          "sigkillProcessesAfter": "PT999S"
-        }"""
-      postJsonCommand(json) ~> check {
-        assert(responseAs[EmptyResponse.type] == EmptyResponse)
-        assert(responseAs[String].parseJson == "{}".parseJson)
-      }
-    }
-
-    "Exception (JSON)" in {
-      val json = """{
-          "$TYPE": "RequestFileOrderSourceContent",
-          "directory": "ERROR",
-          "regex": "",
-          "duration": 0,
-          "knownFiles": []
-        }"""
-      postJsonCommand(json) ~> check {
-        assert(status == InternalServerError)
-        assert(responseAs[String] startsWith "TEST EXCEPTION")
-      }
-    }
-
-    def postJsonCommand(json: String): RouteResult =
-      Post("/jobscheduler/agent/command", json)(stringMarshaller(`application/json`)) ~>
-        Accept(`application/json`) ~>
-        route
   }
+
+  "Terminate" in {
+    val json = """{
+        "$TYPE": "Terminate",
+        "sigtermProcesses": false,
+        "sigkillProcessesAfter": "PT999S"
+      }"""
+    postJsonCommand(json) ~> check {
+      assert(responseAs[EmptyResponse.type] == EmptyResponse)
+      assert(responseAs[String].parseJson == "{}".parseJson)
+    }
+  }
+
+  "Exception (JSON)" in {
+    val json = """{
+        "$TYPE": "RequestFileOrderSourceContent",
+        "directory": "ERROR",
+        "regex": "",
+        "duration": 0,
+        "knownFiles": []
+      }"""
+    postJsonCommand(json) ~> check {
+      assert(status == InternalServerError)
+      assert(responseAs[String] startsWith "TEST EXCEPTION")
+    }
+  }
+
+  private def postJsonCommand(json: String): RouteResult =
+    Post("/test/jobscheduler/agent/command", json)(stringMarshaller(`application/json`)) ~>
+      Accept(`application/json`) ~>
+      route
 }
 
 object CommandServiceTest {

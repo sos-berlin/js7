@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.remoting.calls.{Call, CreateInstanceCall, GetIDsOfNamesCall, InvokeCall, MessageClass, ObjectCall, QueryInterfaceCall, SessionCall}
+import akka.util.ByteString
+import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
 
@@ -18,6 +19,8 @@ private final class CallSerializer(protected val proxyRegister: ProxyRegister) e
         writeByte(MessageClass.Object)
         writeInt64(call.proxyId.value)
         writeObjectCall(call)
+      case KeepAliveCall ⇒
+        writeByte(MessageClass.KeepAlive)
     }
 
   private def writeSessionCall(call: SessionCall) =
@@ -59,6 +62,8 @@ private final class CallSerializer(protected val proxyRegister: ProxyRegister) e
         writeInt32(localeId)
         writeInt32(names.size)
         names foreach writeString
+
+      case _: ReleaseCall | _: CallCall ⇒ throw new UnsupportedOperationException(call.getClass.getSimpleName)
     }
 }
 
@@ -66,9 +71,9 @@ private[remoting] object CallSerializer {
   /**
    * @return (Array, length)
    */
-  def serializeCall(proxyRegister: ProxyRegister, call: Call): (Array[Byte], Int) = {
+  def serializeCall(proxyRegister: ProxyRegister, call: Call): ByteString = {
     val serializer = new CallSerializer(proxyRegister)
     serializer.writeCall(call)
-    serializer.byteArrayAndLength
+    serializer.toByteString
   }
 }

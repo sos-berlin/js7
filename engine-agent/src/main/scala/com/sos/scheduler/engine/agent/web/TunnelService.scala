@@ -6,6 +6,8 @@ import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, Tu
 import com.sos.scheduler.engine.tunnel.web.TunnelWebService.{tunnelHandlerOverviewRoute, tunnelOverviewsRoute, tunnelRequestRoute}
 import scala.collection.immutable
 import scala.concurrent.Future
+import spray.http.CacheDirectives.`max-age`
+import spray.http.HttpHeaders.`Cache-Control`
 import spray.routing.Directives._
 
 /**
@@ -19,18 +21,18 @@ trait TunnelService extends ServiceStandards {
 
   private implicit val executionContext = actorRefFactory.dispatcher
 
-  addRoute {
+  addJobschedulerRoute {
     pathPrefix("agent" / "tunnels") {
       path("item" / Segment) { idString ⇒
         post {
           tunnelRequestRoute(TunnelId(idString))(tunnelRequest)
         }
       } ~
-      get {
-        pathEndOrSingleSlash {
+      respondWithHeader(`Cache-Control`(`max-age`(0))) {
+        (pathEndOrSingleSlash & get) {
           tunnelHandlerOverviewRoute(tunnelHandlerOverview _)
         } ~
-        path("details") {
+        (path("details") & get) {
           tunnelOverviewsRoute(tunnelOverviews _)
         }
       }

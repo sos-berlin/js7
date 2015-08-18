@@ -21,7 +21,8 @@ import spray.testkit.ScalatestRouteTest
 @RunWith(classOf[JUnitRunner])
 final class CommandHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest with CommandHandlerViewService {
 
-  implicit lazy val actorRefFactory = ActorSystem()
+  protected implicit lazy val actorRefFactory = ActorSystem()
+  override protected val uriPathPrefix = "test"
 
   protected def commandHandlerOverview = new CommandHandlerOverview {
     def totalCommandCount = 1111
@@ -35,7 +36,7 @@ final class CommandHandlerViewServiceTest extends FreeSpec with ScalatestRouteTe
   }
 
   "commandHandler" in {
-    Get(Uri("/jobscheduler/agent/commandHandler")) ~> Accept(`application/json`) ~> route ~> check {
+    Get(Uri("/test/jobscheduler/agent/commandHandler")) ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[JsObject] == JsObject(
         "totalCommandCount" → JsNumber(1111),
         "currentCommandCount" → JsNumber(2222)))
@@ -43,7 +44,7 @@ final class CommandHandlerViewServiceTest extends FreeSpec with ScalatestRouteTe
   }
 
   "commandHandler/details" in {
-    Get(Uri("/jobscheduler/agent/commandHandler/details")) ~> Accept(`application/json`) ~> route ~> check {
+    Get(Uri("/test/jobscheduler/agent/commandHandler/details")) ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[JsObject] == JsObject(
         "commandRuns" → JsArray(
           JsObject(

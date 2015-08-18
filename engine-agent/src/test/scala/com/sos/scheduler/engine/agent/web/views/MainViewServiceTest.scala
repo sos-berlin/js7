@@ -23,14 +23,14 @@ import spray.testkit.ScalatestRouteTest
 @RunWith(classOf[JUnitRunner])
 final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with MainViewService {
 
-  implicit lazy val actorRefFactory = ActorSystem()
+  protected implicit lazy val actorRefFactory = ActorSystem()
 
   protected def processHandlerView = new ProcessHandlerView {
     def currentProcessCount = 777
     def totalProcessCount = 999
     def processes = List(ProcessOverview(
       AgentProcessId("1-123"),
-      tunnelId = Some(TunnelId("99")),
+      tunnelId = TunnelId("99"),
       controllerAddress = "127.0.0.1:999999999",
       Instant.parse("2015-06-10T12:00:00Z")))
     def isTerminating = false

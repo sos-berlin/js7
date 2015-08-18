@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.web
 import akka.util.ByteString
 import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.command.{AgentCommandHandler, CommandExecutor}
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.process.ProcessHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
@@ -10,6 +11,7 @@ import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.WebService
 import com.sos.scheduler.engine.agent.web.views.{CommandHandlerViewService, MainViewService, ProcessHandlerViewService}
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.soslicense.LicenseKey
 import com.sos.scheduler.engine.tunnel.TunnelHandler
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import javax.inject.{Inject, Provider}
@@ -28,6 +30,7 @@ final class WebServiceActor @Inject private(
   protected val processHandlerView: ProcessHandlerView,
   protected val commandHandler: AgentCommandHandler,
   webServices: immutable.Seq[WebService],
+  agentConfiguration: AgentConfiguration,
   injector: Injector)
 extends HttpServiceActor
 with CommandService
@@ -50,11 +53,12 @@ with CommandHandlerViewService
   protected def commandHandlerOverview = commandHandler
   protected def commandHandlerDetails = commandHandler
   protected def executionContext: ExecutionContext = context.dispatcher
-  protected def executeCommand(command: Command) = commandExecutor.executeCommand(command)
+  protected def executeCommand(command: Command, licenseKey: Option[LicenseKey]) = commandExecutor.executeCommand(command, licenseKey)
   protected def agentOverview = agentOverviewProvider.get()
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = tunnelHandler.request(tunnelToken, requestMessage)
   protected def tunnelHandlerOverview = tunnelHandler.overview
   protected def tunnelOverviews = tunnelHandler.tunnelOverviews
+  override protected def uriPathPrefix = agentConfiguration.strippedUriPathPrefix
 }
 
 object WebServiceActor {

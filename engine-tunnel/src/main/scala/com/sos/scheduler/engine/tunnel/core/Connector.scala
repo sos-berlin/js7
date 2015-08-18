@@ -5,7 +5,7 @@ import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.common.MessageTcpBridge
+import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
 import com.sos.scheduler.engine.tunnel.core.Connector._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import java.net.InetSocketAddress

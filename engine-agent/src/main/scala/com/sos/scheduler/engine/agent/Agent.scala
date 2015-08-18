@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.data.responses.Response
 import com.sos.scheduler.engine.agent.process.ProcessHandler
+import com.sos.scheduler.engine.agent.views.AgentStartInformation
 import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
@@ -31,11 +32,13 @@ final class Agent(module: Module) extends AutoCloseable {
 
   private val injector = Guice.createInjector(PRODUCTION, module)
   val configuration = injector.instance[AgentConfiguration]
-  val localUri = s"http://127.0.0.1:${configuration.httpPort}"
+  val localUri = s"http://127.0.0.1:${configuration.httpPort}/${configuration.strippedUriPathPrefix}"
   private val server = injector.instance[AgentWebServer]
   private val closer = injector.instance[Closer]
   private val processHandler = injector.instance[ProcessHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
+
+  AgentStartInformation.initialize()
 
   def start(): Future[Unit] = server.start()
 
@@ -54,9 +57,10 @@ final class Agent(module: Module) extends AutoCloseable {
 object Agent {
   def forTest(): Agent = forTest(httpPort = findRandomFreeTcpPort())
 
-  def forTest(httpPort: Int): Agent =
-    new Agent(AgentConfiguration(
-      httpPort = httpPort,
-      httpInterfaceRestriction = Some("127.0.0.1"),
-      jobJavaOptions = sys.props.get("agent.job.javaOptions").toList))
+  def forTest(httpPort: Int): Agent = new Agent(testConfiguration(httpPort))
+
+  def testConfiguration(httpPort: Int) = AgentConfiguration(
+    httpPort = httpPort,
+    httpInterfaceRestriction = Some("127.0.0.1"),
+    jobJavaOptions = sys.props.get("agent.job.javaOptions").toList)
 }

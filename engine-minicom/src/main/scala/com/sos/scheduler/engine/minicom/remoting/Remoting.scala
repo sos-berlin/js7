@@ -1,12 +1,14 @@
 package com.sos.scheduler.engine.minicom.remoting
 
+import akka.util.ByteString
 import com.google.inject.Injector
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.remoting.Remoting._
-import com.sos.scheduler.engine.minicom.remoting.calls.{Call, CallCall, CreateInstanceCall, CreateInstanceResult, EmptyResult, GetIDsOfNamesCall, GetIDsOfNamesResult, InvokeCall, InvokeResult, ProxyId, ReleaseCall, Result}
+import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, ProxyRegister, SimpleProxyIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer.deserializeCall
 import com.sos.scheduler.engine.minicom.remoting.serial.CallSerializer.serializeCall
@@ -14,7 +16,6 @@ import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializ
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
 import com.sos.scheduler.engine.minicom.remoting.serial.{ResultDeserializer, ServerRemoting}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
-import java.nio.ByteBuffer
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
 import scala.collection.{breakOut, immutable}
@@ -36,21 +37,30 @@ extends ServerRemoting with ClientRemoting {
   private val proxyClsidMap: Map[CLSID, ProxyIDispatchFactory.Fun] =
     (List(SimpleProxyIDispatch) ++ proxyIDispatchFactories).map { o ⇒ o.clsid → o.apply _ } (breakOut)
 
-  def run(): Unit = continue(dialogConnection.receiveFirstMessage())
-
-  @tailrec
-  private def continue(messageOption: Option[ByteBuffer]): Unit =
-    messageOption match {
-      case Some(message) ⇒
-        val (resultBytes, n) = executeMessage(message)
-        val nextMessageOption = dialogConnection.sendAndReceive(resultBytes, n)
-        continue(nextMessageOption)
-      case None ⇒
+  def run(): Unit = {
+    val firstRequest = dialogConnection.receiveFirstMessage()
+    val keepAliveThread = new KeepAliveThread
+    keepAliveThread.start()
+    try continue(firstRequest)
+    finally {
+      keepAliveThread.interrupt()
+      keepAliveThread.join()
     }
 
-  private def executeMessage(callBuffer: ByteBuffer): (Array[Byte], Int) =
+    @tailrec
+    def continue(messageOption: Option[ByteString]): Unit =
+      messageOption match {
+        case Some(message) ⇒
+          val response = executeMessage(message)
+          val nextMessageOption = dialogConnection.sendAndReceive(response)
+          continue(nextMessageOption)
+        case None ⇒
+      }
+  }
+
+  private def executeMessage(callMessage: ByteString): ByteString =
     try {
-      val call = deserializeCall(this, callBuffer)
+      val call = deserializeCall(this, callMessage)
       logger.debug(s"${call.getClass.getSimpleName}")
       logger.trace(s"$call")
       val result = executeCall(call)
@@ -77,10 +87,15 @@ extends ServerRemoting with ClientRemoting {
       proxyRegister.release(proxyId)
       EmptyResult
 
+    case _: QueryInterfaceCall | _: GetIDsOfNamesCall | _: InvokeCall ⇒
+      throw new UnsupportedOperationException(call.getClass.getSimpleName)
+
     case CallCall(proxyId, methodName, arguments) ⇒
       val invocable = proxyRegister.invocable(proxyId)
       val result = invocable.call(methodName, arguments)
       InvokeResult(result)
+
+    case KeepAliveCall ⇒ EmptyResult
   }
 
   private[remoting] def newProxy(proxyId: ProxyId, name: String, proxyClsid: CLSID, properties: Iterable[(String, Any)]) = {
@@ -106,10 +121,12 @@ extends ServerRemoting with ClientRemoting {
     value
   }
 
+  def keepAlive(): Unit = sendReceive(KeepAliveCall).readEmptyResult()
+
   private def sendReceive(call: Call): ResultDeserializer = {
-    val (byteArray, length) = serializeCall(proxyRegister, call)
-    val byteBuffer = dialogConnection.sendAndReceive(byteArray, length).get
-    new ResultDeserializer(this, byteBuffer)
+    val callMessage = serializeCall(proxyRegister, call)
+    val byteString = dialogConnection.sendAndReceive(callMessage).get
+    new ResultDeserializer(this, byteString)
   }
 
   private def toCreateInvocableByCLSID(invocableFactories: Iterable[InvocableFactory]): CreateInvocableByCLSID = {
@@ -126,6 +143,20 @@ extends ServerRemoting with ClientRemoting {
    * Returns all registered invocables implementing the erased type A.
    */
   def invocables[A : ClassTag]: immutable.Iterable[A] = proxyRegister.invocables[A]
+
+  private class KeepAliveThread extends Thread {
+    setName("Remoting.KeepAlive")
+
+    override def run() =
+      try
+        while (true) {
+          sleep(5 * 60.s)
+          keepAlive()
+        }
+      catch {
+        case _: InterruptedException ⇒
+      }
+  }
 }
 
 object Remoting {

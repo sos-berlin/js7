@@ -1,69 +1,44 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
+import akka.util.ByteStringBuilder
 import com.sos.scheduler.engine.minicom.remoting.serial.BaseSerializer._
-import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.ByteOrder.BIG_ENDIAN
 import java.util.UUID
-import scala.math.max
 
 /**
  * @author Joacim Zschimmer
  */
 private[serial] class BaseSerializer {
-  private var byteBuffer = ByteBuffer allocate InitialSize
+  private val builder = new ByteStringBuilder
 
-  final def writeByte(o: Byte): Unit = {
-    need(1)
-    byteBuffer.put(o)
-  }
+  private implicit def byteOrder: ByteOrder = BIG_ENDIAN
 
-  final def writeInt32(o: Int): Unit = {
-    need(4)
-    byteBuffer.putInt(o)
-  }
+  final def writeByte(o: Byte): Unit = builder.putByte(o)
 
-  final def writeInt64(o: Long): Unit = {
-    need(8)
-    byteBuffer.putLong(o)
-  }
+  final def writeInt32(o: Int): Unit = builder.putInt(o)
+
+  final def writeInt64(o: Long): Unit = builder.putLong(o)
 
   final def writeDouble(o: Double): Unit = {
     val string = o.toString
-    need(2)
-    byteBuffer.put('s'.toByte)
-    byteBuffer.put(string.length.toByte)
-    need(string.length)
-    for (o ← string) byteBuffer.put(o.toByte)
+    builder.putByte('s'.toByte)
+    builder.putByte(string.length.toByte)
+    for (o ← string) builder.putByte(o.toByte)
   }
 
-  final def writeBoolean(o: Boolean): Unit = {
-    need(1)
-    byteBuffer.put(if (o) 1.toByte else 0.toByte)
-  }
+  final def writeBoolean(o: Boolean): Unit = builder.putByte(if (o) 1.toByte else 0.toByte)
 
   final def writeString(o: String): Unit = {
-    need(4 + o.length)
-    byteBuffer.putInt(o.length)
-    for (c ← o.iterator) byteBuffer.put(charToIso88591Byte(c))
+    builder.putInt(o.length)
+    for (c ← o.iterator) builder.putByte(charToIso88591Byte(c))
   }
 
-  final def writeUUID(o: UUID): Unit = byteBuffer.putLong(o.getMostSignificantBits).putLong(o.getLeastSignificantBits)
+  final def writeUUID(o: UUID): Unit = builder.putLong(o.getMostSignificantBits).putLong(o.getLeastSignificantBits)
 
-  final def need(n: Int): Unit = {
-    val neededSize = byteBuffer.position + n
-    if (neededSize > byteBuffer.limit) {
-      val b = ByteBuffer.allocate(increased(byteBuffer.limit, neededSize))
-      b.put(byteBuffer.array, byteBuffer.arrayOffset, byteBuffer.position)
-      byteBuffer = b
-    }
-  }
-
-  def byteArrayAndLength = (byteBuffer.array, byteBuffer.position)
+  def toByteString = builder.result()
 }
 
 private object BaseSerializer {
-  private[remoting] val InitialSize = 1000
   private def charToIso88591Byte(o: Char) = o.toByte    // ISO-8859-1
-
-  private[remoting] def increased(currentSize: Int, neededSize: Int) =
-    max(2 * currentSize, neededSize + InitialSize)
 }

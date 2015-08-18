@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.minicom.remoting
 
+import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.MessageConnection
 import com.sos.scheduler.engine.minicom.remoting.DialogConnection._
-import java.nio.ByteBuffer
 import java.util.concurrent.locks.ReentrantLock
 import org.scalactic.Requirements._
 
@@ -19,19 +19,19 @@ final class DialogConnection(connection: MessageConnection) {
   private var firstMessageRead = false
   private val lock = new ReentrantLock
 
-  def receiveFirstMessage(): Option[ByteBuffer] = {
+  def receiveFirstMessage(): Option[ByteString] = {
     requireState(!firstMessageRead)
     val r = connection.receiveMessage()
     firstMessageRead = true
     r
   }
 
-  def sendAndReceive(data: Array[Byte], length: Int): Option[ByteBuffer] = {
+  def sendAndReceive(data: ByteString): Option[ByteString] = {
     requireState(firstMessageRead)
     if (lock.isLocked) logger.trace("Waiting for completion of a concurrent connection dialog")
     lock.lock()
     try {
-      connection.sendMessage(data, length)
+      connection.sendMessage(data)
       connection.receiveMessage()
     }
     finally lock.unlock()

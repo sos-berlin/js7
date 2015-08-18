@@ -1,11 +1,11 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
+import akka.util.ByteString
 import com.sos.scheduler.engine.minicom.idispatch.DISPID
-import com.sos.scheduler.engine.minicom.remoting.calls.{CreateInstanceResult, GetIDsOfNamesResult, InvokeResult, MessageClass}
+import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultDeserializer._
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, HRESULT}
-import java.nio.ByteBuffer
 import java.util.Objects.requireNonNull
 import org.scalactic.Requirements._
 import scala.collection.mutable
@@ -15,18 +15,23 @@ import scala.collection.mutable
  */
 private[remoting] final class ResultDeserializer(
   protected val remoting: ServerRemoting,
-  protected val buffer: ByteBuffer)
+  message: ByteString)
 extends IUnknownDeserializer {
+
+  protected val buffer = message.asByteBuffer
 
   def readCreateInstanceResult(): CreateInstanceResult = {
     readAnswerHeader()
     require(HRESULT(readInt32()) == S_OK)
-    CreateInstanceResult(requireNonNull(readInvocableOrNull()))
+    val invocable = requireNonNull(readInvocableOrNull())
+    requireEndOfMessage()
+    CreateInstanceResult(invocable)
   }
 
   def readGetIDsOfNamesResult(n: Int): GetIDsOfNamesResult = {
     readAnswerHeader()
     val dispids = Vector.fill(n) { DISPID(readInt32()) }
+    requireEndOfMessage()
     GetIDsOfNamesResult(dispids)
   }
 
@@ -37,7 +42,16 @@ extends IUnknownDeserializer {
       val message = readExcepInfo().toString
       throw new COMException(hr, message)
     }
-    InvokeResult(readVariant())
+    val result = readVariant()
+    requireEndOfMessage()
+    InvokeResult(result)
+  }
+
+  def readEmptyResult(): EmptyResult.type = {
+    // Response to KeepAlive
+    require(readByte() == MessageClass.Answer)
+    requireEndOfMessage()
+    EmptyResult
   }
 
   private def readAnswerHeader(): Unit = {

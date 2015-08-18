@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
+import akka.util.ByteString
 import com.google.common.base.Charsets.US_ASCII
 import com.sos.scheduler.engine.minicom.remoting.serial.BaseSerializerTest._
-import java.nio.ByteBuffer
 import java.util.UUID
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -73,19 +73,23 @@ final class BaseSerializerTest extends FreeSpec {
   }
 
   "Sequence" in {
-    val bytes = Array(0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c', 0x11, 0x22, 0x33, 0x44) map { _.toByte }
+    val byteString = ByteString.fromInts(0x01, 0x00, 0x00, 0x00, 0x03, 'a', 'b', 'c', 0x11, 0x22, 0x33, 0x44)
     val serializer = new BaseSerializer
-    serializer.writeBoolean(true)
-    serializer.writeString("abc")
-    serializer.writeInt32(0x11223344)
-    val a: Array[Byte] = serializer.byteArrayAndLength._1 take serializer.byteArrayAndLength._2
-    a shouldEqual bytes
-    val deserializer = new BaseDeserializer {
-      protected val buffer = ByteBuffer.wrap(bytes)
+    val n = 1000
+    for (i ← 1 to n) {
+      serializer.writeBoolean(true)
+      serializer.writeString("abc")
+      serializer.writeInt32(0x11223344)
+      if (i == 1) serializer.toByteString shouldEqual byteString
     }
-    deserializer.readBoolean() shouldEqual true
-    deserializer.readString() shouldEqual "abc"
-    deserializer.readInt32() shouldEqual 0x11223344
+    val deserializer = new BaseDeserializer {
+      protected val buffer = serializer.toByteString.asByteBuffer
+    }
+    for (_ ← 1 to n) {
+      deserializer.readBoolean() shouldEqual true
+      deserializer.readString() shouldEqual "abc"
+      deserializer.readInt32() shouldEqual 0x11223344
+    }
   }
 
   "Big string" in {
@@ -97,22 +101,15 @@ final class BaseSerializerTest extends FreeSpec {
     }
   }
 
-  "increased" in {
-    for (neededSize ← Iterator.fill(1000000) { BaseSerializer.InitialSize + Random.nextInt % 10000000 })
-      BaseSerializer.increased(currentSize = BaseSerializer.InitialSize, neededSize = neededSize) should be >= neededSize
-  }
-
   "Increased buffer" in {
     val bigString = Vector.fill(1000 * 1000) { Random.nextPrintableChar() } .mkString
-    assert(bigString.length > BaseSerializer.InitialSize)
     val serializer = new BaseSerializer
     val int = 1234567
     serializer.writeInt32(int)
     // Buffer is resized now
     serializer.writeString(bigString)
-    val (array, length) = serializer.byteArrayAndLength
     val deserializer = new BaseDeserializer {
-      protected val buffer = ByteBuffer.wrap(array, 0, length)
+      protected val buffer = serializer.toByteString.asByteBuffer
     }
     deserializer.readInt32() shouldEqual int
     deserializer.readString() shouldEqual bigString
@@ -122,23 +119,22 @@ final class BaseSerializerTest extends FreeSpec {
 private object BaseSerializerTest {
   private class Tester[V](serialize: BaseSerializer ⇒ (V ⇒ Unit), deserialize: BaseDeserializer ⇒ V) {
     final def test(value: V, bytes: Int*): Unit =
-      testSeq(value, bytes map { _.toByte})
+      testSeq(value, ByteString.fromInts(bytes: _*))
 
-    final def testSeq(value: V, bytes: Seq[Byte]): Unit = {
-      testSerializeSeq(value, bytes)
-      testDeserializeSeq(value, bytes)
+    final def testSeq(value: V, byteString: ByteString): Unit = {
+      testSerializeSeq(value, byteString)
+      testDeserializeSeq(value, byteString)
     }
 
-    private def testSerializeSeq(value: V, bytes: Seq[Byte]): Unit = {
+    private def testSerializeSeq(value: V, byteString: ByteString): Unit = {
       val serializer = new BaseSerializer
       serialize(serializer)(value)
-      val (a, length) = serializer.byteArrayAndLength
-      a.take(length) shouldEqual bytes
+      serializer.toByteString shouldEqual byteString
     }
 
-    private def testDeserializeSeq(value: V, bytes: Seq[Byte]): Unit = {
+    private def testDeserializeSeq(value: V, byteString: ByteString): Unit = {
       val deserializer = new BaseDeserializer {
-        protected val buffer = ByteBuffer.wrap(bytes.toArray)
+        protected val buffer = byteString.asByteBuffer
       }
       deserialize(deserializer) shouldEqual value
       assert(!deserializer.hasData)
