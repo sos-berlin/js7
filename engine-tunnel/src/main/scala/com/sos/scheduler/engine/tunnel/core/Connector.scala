@@ -20,7 +20,7 @@ import spray.json.JsonParser
  * <p>
  * The Agent creates this actor when a task is started.
  * The actor then waits for the first message from the TCP site, a [[TunnelConnectionMessage]].
- * This messages denotes the TunnelId of the tunnel, the process wishes to connect to.
+ * This messages denotes the TunnelId of the tunnel, the task wishes to connect to.
  * <p>
  * After the TunnelId is known, the actor expeteds a `Request` and forwards it the TCP site (length-prefix framed),
  * Then, the actor awaits a framed TCP message and forwards it as a `Response` to the orignal requestor.

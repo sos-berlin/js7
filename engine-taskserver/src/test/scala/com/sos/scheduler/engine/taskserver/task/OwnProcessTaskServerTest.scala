@@ -11,13 +11,13 @@ import org.scalatest.junit.JUnitRunner
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class SeparateProcessTaskServerTest extends FreeSpec {
+final class OwnProcessTaskServerTest extends FreeSpec {
 
   "SeperateTaskServerProcess" in {
     val tcpPort = findRandomFreeTcpPort()
     autoClosing(new ServerSocket(tcpPort, 1)) { listener ⇒
       val taskArguments = TaskStartArguments.forTest(tcpPort = tcpPort)
-      autoClosing(new SeparateProcessTaskServer(taskArguments, javaOptions = Nil, javaClasspath = "")) { process ⇒
+      autoClosing(new OwnProcessTaskServer(taskArguments, javaOptions = Nil, javaClasspath = "")) { process ⇒
         process.start()
         listener.setSoTimeout(10*1000)
         listener.accept().close()  // The immediate close lets the task process abort, but we don't care.

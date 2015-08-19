@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.agent.web.views
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.agent.data.AgentProcessId
-import com.sos.scheduler.engine.agent.data.views.ProcessOverview
-import com.sos.scheduler.engine.agent.process.ProcessHandlerView
+import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.scheduler.engine.agent.data.views.TaskOverview
+import com.sos.scheduler.engine.agent.task.TaskHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
 import com.sos.scheduler.engine.tunnel.data.TunnelId
@@ -25,11 +25,11 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
 
   protected implicit lazy val actorRefFactory = ActorSystem()
 
-  protected def processHandlerView = new ProcessHandlerView {
-    def currentProcessCount = 777
-    def totalProcessCount = 999
-    def processes = List(ProcessOverview(
-      AgentProcessId("1-123"),
+  protected def taskHandlerView = new TaskHandlerView {
+    def currentTaskCount = 777
+    def totalTaskCount = 999
+    def tasks = List(TaskOverview(
+      AgentTaskId("1-123"),
       tunnelId = TunnelId("99"),
       controllerAddress = "127.0.0.1:999999999",
       Instant.parse("2015-06-10T12:00:00Z")))
@@ -39,8 +39,8 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
   protected def agentOverview = AgentOverview(
     startedAt = Instant.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
-    currentProcessCount = processHandlerView.currentProcessCount,
-    totalProcessCount = processHandlerView.totalProcessCount,
+    currentTaskCount = taskHandlerView.currentTaskCount,
+    totalTaskCount = taskHandlerView.totalTaskCount,
     isTerminating = false,
     system = AgentOverview.SystemInformation(hostname = "TEST-HOSTNAME"),
     java = AgentOverview.JavaInformation(systemProperties = Map("test" → "TEST")))
@@ -48,8 +48,8 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
   private def expectedOverviewJsObject = JsObject(
     "startedAt" → JsString("2015-06-01T12:00:00Z"),
     "version" → JsString("TEST-VERSION"),
-    "currentProcessCount" → JsNumber(777),
-    "totalProcessCount" → JsNumber(999),
+    "currentTaskCount" → JsNumber(777),
+    "totalTaskCount" → JsNumber(999),
     "isTerminating" → JsBoolean(false),
     "system" → JsObject(
       "hostname" → JsString("TEST-HOSTNAME"),

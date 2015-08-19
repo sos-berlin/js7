@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.web.views
 
-import com.sos.scheduler.engine.agent.process.ProcessHandlerView
+import com.sos.scheduler.engine.agent.task.TaskHandlerView
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import spray.http.CacheDirectives.`max-age`
@@ -10,14 +10,14 @@ import spray.routing.Directives._
 /**
  * @author Joacim Zschimmer
  */
-trait ProcessHandlerViewService extends ServiceStandards {
+trait TaskHandlerViewService extends ServiceStandards {
 
-  protected def processHandlerView: ProcessHandlerView
+  protected def taskHandlerView: TaskHandlerView
 
   addApiRoute {
-    (path("process") & get) {
+    (pathPrefix("task") & pathEnd & get) {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
-        complete { processHandlerView }
+        complete { taskHandlerView }
       }
     }
   }

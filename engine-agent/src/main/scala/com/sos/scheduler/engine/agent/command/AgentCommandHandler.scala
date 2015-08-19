@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.command
 import com.sos.scheduler.engine.agent.command.AgentCommandHandler._
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.fileordersource.{FileCommandExecutor, RequestFileOrderSourceContentExecutor}
-import com.sos.scheduler.engine.agent.process.ProcessHandler
+import com.sos.scheduler.engine.agent.task.TaskHandler
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import com.sos.scheduler.engine.common.soslicense.LicenseKey
@@ -20,7 +20,7 @@ import spray.json.DefaultJsonProtocol._
  * @author Joacim Zschimmer
  */
 @Singleton
-final class AgentCommandHandler @Inject private(processHandler: ProcessHandler)
+final class AgentCommandHandler @Inject private(taskHandler: TaskHandler)
 extends CommandExecutor
 with CommandHandlerOverview
 with CommandHandlerDetails {
@@ -47,8 +47,8 @@ with CommandHandlerDetails {
   private def executeCommand2(id: InternalCommandId, command: Command, licenseKey: Option[LicenseKey]) =
     (command match {
       case command: FileCommand ⇒ Future.successful(FileCommandExecutor.executeCommand(command))
-      case command: ProcessCommand ⇒ processHandler.execute(command, licenseKey)
-      case command: TerminateOrAbort ⇒ processHandler.execute(command, licenseKey)
+      case command: TaskCommand ⇒ taskHandler.execute(command, licenseKey)
+      case command: TerminateOrAbort ⇒ taskHandler.execute(command, licenseKey)
       case command: RequestFileOrderSourceContent ⇒ RequestFileOrderSourceContentExecutor.apply(command)
     }) map { response ⇒
       logger.debug(s"Response to $id ${command.getClass.getSimpleName}: $response")

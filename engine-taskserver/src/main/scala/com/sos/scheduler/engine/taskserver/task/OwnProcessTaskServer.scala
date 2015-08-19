@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.TaskServer
-import com.sos.scheduler.engine.taskserver.task.SeparateProcessTaskServer._
+import com.sos.scheduler.engine.taskserver.task.OwnProcessTaskServer._
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, RichProcess}
 import java.io.File
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -16,7 +16,7 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-final class SeparateProcessTaskServer(val taskStartArguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String)
+final class OwnProcessTaskServer(val taskStartArguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String)
 extends TaskServer {
 
   private var process: RichProcess = null
@@ -58,6 +58,6 @@ extends TaskServer {
     for (p ← Option(process)) p.sendProcessSignal(signal)
 }
 
-object SeparateProcessTaskServer {
+object OwnProcessTaskServer {
   private val logger = Logger(getClass)
 }

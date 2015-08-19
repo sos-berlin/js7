@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.agent.process
+package com.sos.scheduler.engine.agent.task
 
 import com.google.common.base.Splitter
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.data.AgentProcessId
-import com.sos.scheduler.engine.agent.data.commands.{StartProcess, StartSeparateProcess, StartThread}
-import com.sos.scheduler.engine.agent.process.StandardAgentProcessFactory._
+import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.scheduler.engine.agent.data.commands.{StartTask, StartApiTask, StartNonApiTask}
+import com.sos.scheduler.engine.agent.task.StandardAgentTaskFactory._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer
-import com.sos.scheduler.engine.taskserver.task.{SeparateProcessTaskServer, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.task.{OwnProcessTaskServer, TaskStartArguments}
 import com.sos.scheduler.engine.tunnel.TunnelHandler
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.util.concurrent.ThreadLocalRandom
@@ -19,18 +19,18 @@ import javax.inject.{Inject, Singleton}
  * @author Joacim Zschimmer
  */
 @Singleton
-final class StandardAgentProcessFactory @Inject private(agentConfiguration: AgentConfiguration, tunnelHandler: TunnelHandler) extends AgentProcessFactory {
+final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentConfiguration, tunnelHandler: TunnelHandler) extends AgentTaskFactory {
 
-  private val agentProcessIdGenerator = newAgentProcessIdGenerator()
+  private val agentTaskIdGenerator = newAgentTaskIdGenerator()
 
-  def apply(command: StartProcess) = {
-    val id = agentProcessIdGenerator.next()
+  def apply(command: StartTask) = {
+    val id = agentTaskIdGenerator.next()
     val address = tunnelHandler.proxyAddressString
     val tunnel = tunnelHandler.newTunnel(TunnelId(id.index.toString))
-    new AgentProcess(id, tunnel, newTaskServer(id, command, address, tunnel.tunnelToken))
+    new AgentTask(id, tunnel, newTaskServer(id, command, address, tunnel.tunnelToken))
   }
 
-  private def newTaskServer(id: AgentProcessId, command: StartProcess, controllerAddress: String, tunnelToken: TunnelToken) = {
+  private def newTaskServer(id: AgentTaskId, command: StartTask, controllerAddress: String, tunnelToken: TunnelToken) = {
     val taskStartArguments = TaskStartArguments(
       controllerAddress = controllerAddress,
       tunnelToken = tunnelToken,
@@ -42,8 +42,8 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
         new SimpleTaskServer(taskStartArguments)
       } else
         command match {
-          case StartThread ⇒ new SimpleTaskServer(taskStartArguments)
-          case o: StartSeparateProcess ⇒ new SeparateProcessTaskServer(
+          case StartNonApiTask ⇒ new SimpleTaskServer(taskStartArguments)
+          case o: StartApiTask ⇒ new OwnProcessTaskServer(
             taskStartArguments,
             javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
             javaClasspath = o.javaClasspath)
@@ -55,17 +55,17 @@ final class StandardAgentProcessFactory @Inject private(agentConfiguration: Agen
     Splitter.on(Pattern.compile("\\s+")).trimResults.omitEmptyStrings.split(options).toImmutableSeq
 }
 
-private object StandardAgentProcessFactory {
+private object StandardAgentTaskFactory {
   private val logger = Logger(getClass)
   private val UseThreadPropertyName = "jobscheduler.agent.useThread"
   private val MaxIndex = Int.MaxValue
 
   /**
-   * Delivers [[AgentProcessId]] with recognizable increasing numbers.
+   * Delivers [[AgentTaskId]] with recognizable increasing numbers.
    * The increasing number is meaningless.
    */
-  private[process] def newAgentProcessIdGenerator(start: Int = 1): Iterator[AgentProcessId] = {
+  private[task] def newAgentTaskIdGenerator(start: Int = 1): Iterator[AgentTaskId] = {
     val numbers = Iterator.range(start, MaxIndex) ++ Iterator.continually { Iterator.range(1, MaxIndex) }.flatten
-    numbers map { i ⇒ AgentProcessId(index = i, salt = ThreadLocalRandom.current.nextLong()) }
+    numbers map { i ⇒ AgentTaskId(index = i, salt = ThreadLocalRandom.current.nextLong()) }
   }
 }

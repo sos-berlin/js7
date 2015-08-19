@@ -5,11 +5,11 @@ import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.command.{AgentCommandHandler, CommandExecutor}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commands.Command
-import com.sos.scheduler.engine.agent.process.ProcessHandlerView
+import com.sos.scheduler.engine.agent.task.TaskHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.WebService
-import com.sos.scheduler.engine.agent.web.views.{CommandHandlerViewService, MainViewService, ProcessHandlerViewService}
+import com.sos.scheduler.engine.agent.web.views.{CommandHandlerViewService, MainViewService, TaskHandlerViewService}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.soslicense.LicenseKey
 import com.sos.scheduler.engine.tunnel.TunnelHandler
@@ -27,7 +27,7 @@ final class WebServiceActor @Inject private(
   commandExecutor: CommandExecutor,
   tunnelHandler: TunnelHandler,
   agentOverviewProvider: Provider[AgentOverview],
-  protected val processHandlerView: ProcessHandlerView,
+  protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
   webServices: immutable.Seq[WebService],
   agentConfiguration: AgentConfiguration,
@@ -37,7 +37,7 @@ with CommandService
 with TunnelService
 with FileStatusService
 with MainViewService
-with ProcessHandlerViewService
+with TaskHandlerViewService
 with CommandHandlerViewService
 {
   private lazy val addWebServices = for (o ← webServices) {

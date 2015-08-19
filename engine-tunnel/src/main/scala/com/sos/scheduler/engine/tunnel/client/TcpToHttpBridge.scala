@@ -8,7 +8,7 @@ import java.net.InetSocketAddress
 import spray.http.Uri
 
 /**
- * A remote process started by [[HttpRemoteProcessStarter]], with API calls tunnelled via HTTP and Agent.
+ * A remote task started by [[com.sos.scheduler.engine.client.agent.HttpRemoteProcessStarter]], with API calls tunnelled via HTTP and Agent.
  *
  * @author Joacim Zschimmer
  */

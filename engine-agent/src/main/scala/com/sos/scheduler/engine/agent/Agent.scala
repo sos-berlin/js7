@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.data.responses.Response
-import com.sos.scheduler.engine.agent.process.ProcessHandler
+import com.sos.scheduler.engine.agent.task.TaskHandler
 import com.sos.scheduler.engine.agent.views.AgentStartInformation
 import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
@@ -35,7 +35,7 @@ final class Agent(module: Module) extends AutoCloseable {
   val localUri = s"http://127.0.0.1:${configuration.httpPort}/${configuration.strippedUriPathPrefix}"
   private val server = injector.instance[AgentWebServer]
   private val closer = injector.instance[Closer]
-  private val processHandler = injector.instance[ProcessHandler]
+  private val taskHandler = injector.instance[TaskHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
 
   AgentStartInformation.initialize()
@@ -51,7 +51,7 @@ final class Agent(module: Module) extends AutoCloseable {
 
   def executeCommand(command: Command): Future[Response] = commandExecutor.executeCommand(command)
 
-  def terminated: Future[Unit] = processHandler.terminated
+  def terminated: Future[Unit] = taskHandler.terminated
 }
 
 object Agent {

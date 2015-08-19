@@ -19,8 +19,8 @@ import spray.json.DefaultJsonProtocol._
 final case class AgentOverview(
   version: String,
   startedAt: Instant,
-  currentProcessCount: Int,
-  totalProcessCount: Int,
+  currentTaskCount: Int,
+  totalTaskCount: Int,
   isTerminating: Boolean,
   system: SystemInformation,
   java: JavaInformation)

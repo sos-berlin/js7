@@ -16,8 +16,8 @@ final class AgentOverviewTest extends FreeSpec {
     val obj = AgentOverview(
       startedAt = Instant.parse("2015-06-01T12:00:00Z"),
       version = "TEST-VERSION",
-      currentProcessCount = 111,
-      totalProcessCount = 222,
+      currentTaskCount = 111,
+      totalTaskCount = 222,
       isTerminating = false,
       system = AgentOverview.SystemInformation(hostname = "TEST-HOSTNAME"),
       java = AgentOverview.JavaInformation(systemProperties = Map("test" → "TEST")))
@@ -25,8 +25,8 @@ final class AgentOverviewTest extends FreeSpec {
       s"""{
         "startedAt": "2015-06-01T12:00:00Z",
         "version": "TEST-VERSION",
-        "currentProcessCount": 111,
-        "totalProcessCount": 222,
+        "currentTaskCount": 111,
+        "totalTaskCount": 222,
         "isTerminating": false,
         "java": {
           "systemProperties": {
