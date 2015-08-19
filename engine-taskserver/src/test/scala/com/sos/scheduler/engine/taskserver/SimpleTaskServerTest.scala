@@ -23,7 +23,7 @@ final class SimpleTaskServerTest extends FreeSpec {
       autoClosing(new SimpleTaskServer(TaskStartArguments.forTest(tcpPort = port))) { server ⇒
         server.start()
         listener.setSoTimeout(10*1000)
-        listener.accept().close()   // The immediate close lets the task process abort, but we don't care.
+        listener.accept().shutdownOutput()   // EOF
         awaitResult(server.terminated, 1.s)
       }
     }
