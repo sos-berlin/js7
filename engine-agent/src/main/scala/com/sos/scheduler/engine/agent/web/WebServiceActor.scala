@@ -51,7 +51,7 @@ with CommandHandlerViewService
   }
 
   protected def commandHandlerOverview = commandHandler
-  protected def commandHandlerDetails = commandHandler
+  protected def commandRunOverviews = commandHandler.commandRuns
   protected def executionContext: ExecutionContext = context.dispatcher
   protected def executeCommand(command: Command, licenseKey: Option[LicenseKey]) = commandExecutor.executeCommand(command, licenseKey)
   protected def agentOverview = agentOverviewProvider.get()

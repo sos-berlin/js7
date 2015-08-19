@@ -25,10 +25,10 @@ final class FileStatusServiceTest extends FreeSpec with ScalatestRouteTest with 
   "fileStatus" in {
     withCloser { implicit closer ⇒
       val file = createTempFile("test-", ".tmp") withCloser Files.delete
-      Get(Uri("/jobscheduler/agent/fileStatus").withQuery("file" → file.toString)) ~> Accept(`application/json`) ~> route ~> check {
+      Get(Uri("/jobscheduler/agent/api/fileStatus").withQuery("file" → file.toString)) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
       }
-      Get(Uri("/jobscheduler/agent/fileStatus").withQuery("file" → "--UNKNOWN--")) ~> Accept(`application/json`) ~> route ~> check {
+      Get(Uri("/jobscheduler/agent/api/fileStatus").withQuery("file" → "--UNKNOWN--")) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == NotFound)
       }
     }

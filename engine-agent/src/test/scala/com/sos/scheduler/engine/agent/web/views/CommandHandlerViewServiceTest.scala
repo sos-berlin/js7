@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.web.views
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.agent.command.{CommandHandlerDetails, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
+import com.sos.scheduler.engine.agent.command.{CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate}
 import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
 import java.time.Instant
@@ -11,9 +11,10 @@ import org.scalatest.junit.JUnitRunner
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.`application/json`
 import spray.http.Uri
+import spray.httpx.SprayJsonSupport._
+import spray.json.DefaultJsonProtocol._
 import spray.json._
 import spray.testkit.ScalatestRouteTest
-
 
 /**
  * @author Joacim Zschimmer
@@ -31,26 +32,23 @@ final class CommandHandlerViewServiceTest extends FreeSpec with ScalatestRouteTe
 
   private val testCommand = Terminate(sigtermProcesses = false)
 
-  protected def commandHandlerDetails = new CommandHandlerDetails {
-    def commandRuns = List(CommandRunOverview(InternalCommandId(3333), Instant.parse("2015-06-22T12:00:00Z"), testCommand))
-  }
+  protected def commandRunOverviews = List(CommandRunOverview(InternalCommandId(3333), Instant.parse("2015-06-22T12:00:00Z"), testCommand))
 
-  "commandHandler" in {
-    Get(Uri("/test/jobscheduler/agent/commandHandler")) ~> Accept(`application/json`) ~> route ~> check {
+  "commandHandler returns overview" in {
+    Get(Uri("/test/jobscheduler/agent/api/command")) ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[JsObject] == JsObject(
         "totalCommandCount" → JsNumber(1111),
         "currentCommandCount" → JsNumber(2222)))
     }
   }
 
-  "commandHandler/details" in {
-    Get(Uri("/test/jobscheduler/agent/commandHandler/details")) ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[JsObject] == JsObject(
-        "commandRuns" → JsArray(
-          JsObject(
-            "internalId" → JsString("3333"),
-            "startedAt" → JsString("2015-06-22T12:00:00Z"),
-            "command" → (testCommand: Command).toJson))))
+  "commandHandler/ returns array of running command" in {
+    Get(Uri("/test/jobscheduler/agent/api/command/")) ~> Accept(`application/json`) ~> route ~> check {
+      assert(responseAs[JsArray] == JsArray(
+        JsObject(
+          "internalId" → JsString("3333"),
+          "startedAt" → JsString("2015-06-22T12:00:00Z"),
+          "command" → (testCommand: Command).toJson)))
     }
   }
 }

@@ -35,8 +35,8 @@ final class ProcessHandlerViewServiceTest extends FreeSpec with ScalatestRouteTe
     def isTerminating = false
   }
 
-  "processHandler" in {
-    Get(Uri("/jobscheduler/agent/processHandler")) ~> Accept(`application/json`) ~> route ~> check {
+  "task" in {
+    Get(Uri("/jobscheduler/agent/api/process")) ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[JsObject] == JsObject(
         "processes" → JsArray(
           JsObject(

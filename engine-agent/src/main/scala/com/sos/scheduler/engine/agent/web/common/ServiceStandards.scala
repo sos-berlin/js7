@@ -24,6 +24,7 @@ trait ServiceStandards {
    */
   protected def uriPathPrefix: String = ""
   protected final lazy val jobschedulerPath = List(uriPathPrefix, "jobscheduler") filter { _.nonEmpty } mkString "/"
+  protected final lazy val agentPath = s"$jobschedulerPath/$AgentPrefix"
 
   private lazy val jobschedulerStandard =
     decompressRequest() & compressResponseIfRequested(()) & pathPrefix(separateOnSlashes(jobschedulerPath))
@@ -43,6 +44,13 @@ trait ServiceStandards {
         }
     }
 
+  protected def addApiRoute(route: ⇒ Route): Unit =
+    addJobschedulerRoute {
+      pathPrefix(AgentPrefix / "api") {
+        route
+      }
+    }
+
   /**
    * All added routes are combined by method `route`.
    */
@@ -50,10 +58,7 @@ trait ServiceStandards {
 
   protected def addRawRoute(rawRoute: ⇒ Route): Unit = add(rawRoute)
 
-  private def add(rawRoute: ⇒ Route) = {
-    val callerString = (new Exception).getStackTrace()(3).toString  // Same nesting depth for addRoute and addRawRoute
-    addedRoutes += Entry(() ⇒ rawRoute, callerString)
-  }
+  private def add(rawRoute: ⇒ Route) = addedRoutes += Entry(() ⇒ rawRoute, callerMethodString)
 
   /**
    * Returns a route, consisting of all added routes.
@@ -66,7 +71,12 @@ trait ServiceStandards {
 }
 
 object ServiceStandards {
+  val AgentPrefix = "agent"
   private val logger = Logger(getClass)
+  private val PackageName = getClass.getPackage.getName
+
+  private def callerMethodString: String =
+    (new Exception).getStackTrace.toIterator map { _.toString } find { o ⇒ !(o contains PackageName) } getOrElse "?"
 
   private case class Entry(routeFactory: () ⇒ Route, callerName: String)
 }

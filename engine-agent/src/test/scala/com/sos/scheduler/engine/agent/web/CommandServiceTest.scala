@@ -85,7 +85,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
   }
 
   private def postJsonCommand(json: String): RouteResult =
-    Post("/test/jobscheduler/agent/command", json)(stringMarshaller(`application/json`)) ~>
+    Post("/test/jobscheduler/agent/api/command", json)(stringMarshaller(`application/json`)) ~>
       Accept(`application/json`) ~>
       route
 }

@@ -17,8 +17,8 @@ trait CommandService extends ServiceStandards {
 
   protected def executeCommand(command: Command, licenseKey: Option[LicenseKey]): Future[Response]
 
-  addJobschedulerRoute {
-    (path("agent" / "command") & post) {
+  addApiRoute {
+    (path("command") & post) {
       optionalHeaderValueByName(LicenseKeyHeaderName) { licenseKeyString ⇒
         entity(as[Command]) { command ⇒
           val future = executeCommand(command, licenseKeyString map LicenseKey.apply)

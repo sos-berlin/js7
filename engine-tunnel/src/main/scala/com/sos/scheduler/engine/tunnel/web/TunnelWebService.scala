@@ -31,13 +31,13 @@ object TunnelWebService {
       }
     } 
 
-  def tunnelHandlerOverviewRoute(f: () ⇒ Future[TunnelHandlerOverview])(implicit ec: ExecutionContext) =
+  def tunnelHandlerOverviewRouteComplete(body: ⇒ Future[TunnelHandlerOverview])(implicit ec: ExecutionContext) =
     (pathEndOrSingleSlash & get) {
-      onSuccess(f()) { response ⇒ complete(response) }
+      onSuccess(body) { response ⇒ complete(response) }
     }
 
-  def tunnelOverviewsRoute(f: () ⇒ Future[immutable.Iterable[TunnelOverview]])(implicit ec: ExecutionContext) =
+  def tunnelOverviewsRouteComplete(body: ⇒ Future[immutable.Iterable[TunnelOverview]])(implicit ec: ExecutionContext) =
     (pathEndOrSingleSlash & get) {
-      onSuccess(f()) { response ⇒ complete(response) }
+      onSuccess(body) { response ⇒ complete(response) }
     }
 }

@@ -38,9 +38,27 @@ final class TunnelServiceTest extends FreeSpec with ScalatestRouteTest with Tunn
   protected def tunnelHandlerOverview = Future.successful(TestTunnelHandlerOverview)
   protected def tunnelOverviews = Future.successful(TestTunnelOverviews)
 
-  s"POST $TunnelPath/item" in {
+  s"GET $TunnelPath" in {
+    Get(s"$TunnelPath") ~>
+      Accept(MediaTypes.`application/json`) ~> route ~> check
+    {
+      assert(status == OK)
+      assert(responseAs[TunnelHandlerOverview] == TestTunnelHandlerOverview)
+    }
+  }
+
+  s"GET $TunnelPath/" in {
+    Get(s"$TunnelPath/") ~>
+      Accept(MediaTypes.`application/json`) ~> route ~> check
+    {
+      assert(status == OK)
+      assert(responseAs[immutable.Seq[TunnelOverview]] == TestTunnelOverviews)
+    }
+  }
+
+  s"POST $TunnelPath/ID" in {
     val requestMessage = ByteString.fromString(Random.nextString(10))
-    Post(Uri.Empty withPath (TunnelPath / "item" / TestTunnelId.string), requestMessage) ~>
+    Post(Uri.Empty withPath (TunnelPath / TestTunnelId.string), requestMessage) ~>
       addHeader(SecretHeaderName, TestSecret.string) ~>
       Accept(`application/octet-stream`) ~>
       route ~> check
@@ -50,29 +68,11 @@ final class TunnelServiceTest extends FreeSpec with ScalatestRouteTest with Tunn
     }
   }
 
-  s"GET $TunnelPath" in {
-    Get(Uri.Empty withPath TunnelPath) ~>
-      Accept(MediaTypes.`application/json`) ~> route ~> check
-    {
-      assert(status == OK)
-      assert(responseAs[TunnelHandlerOverview] == TestTunnelHandlerOverview)
-    }
-  }
-
-  s"GET $TunnelPath/details" in {
-    Get(Uri.Empty withPath TunnelPath / "details") ~>
-      Accept(MediaTypes.`application/json`) ~> route ~> check
-    {
-      assert(status == OK)
-      assert(responseAs[immutable.Seq[TunnelOverview]] == TestTunnelOverviews)
-    }
-  }
-
   private def requestToResponse(request: ByteString) = request ++ ByteString.fromString(" RESPONSE)")
 }
 
 private object TunnelServiceTest {
-  private val TunnelPath = Path("/jobscheduler/agent/tunnels")
+  private val TunnelPath = Path("/jobscheduler/agent/api/tunnel")
   private val CrazyString = """,.-;:_!"§$%&/()=#'+*´`<>"""
   private val TestTunnelId = TunnelId(CrazyString * 2)  // In practice (2015), the TunnelId is simpler
   private val TestSecret = TunnelToken.Secret(CrazyString.reverse * 100)  // In practice (2015), the secret is simpler. See TunnelId.newSecret

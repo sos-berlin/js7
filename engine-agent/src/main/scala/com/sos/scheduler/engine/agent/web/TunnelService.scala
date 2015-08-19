@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.web
 import akka.util.ByteString
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
-import com.sos.scheduler.engine.tunnel.web.TunnelWebService.{tunnelHandlerOverviewRoute, tunnelOverviewsRoute, tunnelRequestRoute}
+import com.sos.scheduler.engine.tunnel.web.TunnelWebService.{tunnelHandlerOverviewRouteComplete, tunnelOverviewsRouteComplete, tunnelRequestRoute}
 import scala.collection.immutable
 import scala.concurrent.Future
 import spray.http.CacheDirectives.`max-age`
@@ -21,19 +21,29 @@ trait TunnelService extends ServiceStandards {
 
   private implicit val executionContext = actorRefFactory.dispatcher
 
-  addJobschedulerRoute {
-    pathPrefix("agent" / "tunnels") {
-      path("item" / Segment) { idString ⇒
+  addApiRoute {
+    pathPrefix("tunnel") {
+      path(Segment) { idString ⇒
         post {
-          tunnelRequestRoute(TunnelId(idString))(tunnelRequest)
+          tunnelRequestRoute(TunnelId(idString)) {
+            tunnelRequest
+          }
         }
       } ~
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
-        (pathEndOrSingleSlash & get) {
-          tunnelHandlerOverviewRoute(tunnelHandlerOverview _)
+        pathEnd {
+          get {
+            tunnelHandlerOverviewRouteComplete {
+              tunnelHandlerOverview
+            }
+          }
         } ~
-        (path("details") & get) {
-          tunnelOverviewsRoute(tunnelOverviews _)
+        pathSingleSlash  {
+          get {
+            tunnelOverviewsRouteComplete {
+              tunnelOverviews
+            }
+          }
         }
       }
     }
