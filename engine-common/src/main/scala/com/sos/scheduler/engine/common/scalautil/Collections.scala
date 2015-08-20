@@ -83,7 +83,7 @@ object Collections {
 
     implicit class InsertableMutableMap[K, V](val delegate: mutable.Map[K, V]) extends AnyVal {
       def insert(kv: (K, V)): Unit = {
-        if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already in ${delegate.stringPrefix}")
+        if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already known in ${delegate.stringPrefix}")
         delegate += kv
       }
     }
