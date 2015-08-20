@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.task
 import com.google.common.base.Splitter
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.agent.data.commands.{StartTask, StartApiTask, StartNonApiTask}
+import com.sos.scheduler.engine.agent.data.commands.{StartApiTask, StartNonApiTask, StartTask}
 import com.sos.scheduler.engine.agent.task.StandardAgentTaskFactory._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -11,7 +11,6 @@ import com.sos.scheduler.engine.taskserver.SimpleTaskServer
 import com.sos.scheduler.engine.taskserver.task.{OwnProcessTaskServer, TaskStartArguments}
 import com.sos.scheduler.engine.tunnel.TunnelHandler
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
-import java.util.concurrent.ThreadLocalRandom
 import java.util.regex.Pattern
 import javax.inject.{Inject, Singleton}
 
@@ -21,7 +20,7 @@ import javax.inject.{Inject, Singleton}
 @Singleton
 final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentConfiguration, tunnelHandler: TunnelHandler) extends AgentTaskFactory {
 
-  private val agentTaskIdGenerator = newAgentTaskIdGenerator()
+  private val agentTaskIdGenerator = AgentTaskId.newGenerator()
 
   def apply(command: StartTask) = {
     val id = agentTaskIdGenerator.next()
@@ -58,14 +57,4 @@ final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentCo
 private object StandardAgentTaskFactory {
   private val logger = Logger(getClass)
   private val UseThreadPropertyName = "jobscheduler.agent.useThread"
-  private val MaxIndex = Int.MaxValue
-
-  /**
-   * Delivers [[AgentTaskId]] with recognizable increasing numbers.
-   * The increasing number is meaningless.
-   */
-  private[task] def newAgentTaskIdGenerator(start: Int = 1): Iterator[AgentTaskId] = {
-    val numbers = Iterator.range(start, MaxIndex) ++ Iterator.continually { Iterator.range(1, MaxIndex) }.flatten
-    numbers map { i ⇒ AgentTaskId(index = i, salt = ThreadLocalRandom.current.nextLong()) }
-  }
 }
