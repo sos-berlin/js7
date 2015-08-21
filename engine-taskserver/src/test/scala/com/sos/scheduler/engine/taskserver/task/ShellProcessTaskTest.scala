@@ -55,8 +55,8 @@ final class ShellProcessTaskTest extends FreeSpec {
           state_text={s"$TestName=$TestValue"}
           spooler_process_result={expectedSpoolerProcessResult.get.toString}
           exit_code={setting.exitCode.toString}/>
-        assert(spoolerLog.infoMessages contains TestString)
-        assert(spoolerLog.infoMessages contains s"$TestName=$TestValue")
+        assert(spoolerLog.infoMessages contains s"[stdout] $TestString")
+        assert(spoolerLog.infoMessages contains s"[stdout] $TestName=$TestValue")
         assert((spoolerLog.infoMessages filter ExpectedMonitorMessages.toSet) == ExpectedMonitorMessages)
       case (false, None) ⇒
         val expectedMonitorMessages = List(s"A $PreTaskMessage")

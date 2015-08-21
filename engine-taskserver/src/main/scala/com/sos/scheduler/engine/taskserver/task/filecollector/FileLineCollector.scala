@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.task.common
+package com.sos.scheduler.engine.taskserver.task.filecollector
 
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -10,7 +10,7 @@ import java.nio.file.Path
 /**
  * @author Joacim Zschimmer
  */
-final class FileLineCollector(val file: Path, encoding: Charset) extends HasCloser {
+final class FileLineCollector(file: Path, encoding: Charset) extends HasCloser {
 
   private val in = new FileInputStream(file).closeWithCloser
   private val collector = new LineCollector(new BufferedReader(new InputStreamReader(in, encoding)))
@@ -19,4 +19,6 @@ final class FileLineCollector(val file: Path, encoding: Charset) extends HasClos
    * @return the next batch of all available lines
    */
   def nextLinesIterator: Iterator[String] = collector.nextLinesIterator()
+
+  override def toString = s"${getClass.getSimpleName}($file)"
 }

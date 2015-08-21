@@ -31,7 +31,7 @@ final class StdoutStderrWellTest extends FreeSpec {
       err.write("ERR\n")
       err.flush()
       well.apply()
-      assert(lines.toSet == Set("OUT", "ERR"))
+      assert(lines.toSet == Set("[stdout] OUT", "[stderr] ERR"))
 
       lines.clear()
       out.write("OUT-2\n")
@@ -39,7 +39,7 @@ final class StdoutStderrWellTest extends FreeSpec {
       err.write("ERR-2\n")
       err.flush()
       well.apply()
-      assert(lines.toSet == Set("OUT-2", "ERR-2"))
+      assert(lines.toSet == Set("[stdout] OUT-2", "[stderr] ERR-2"))
     }
   }
 }

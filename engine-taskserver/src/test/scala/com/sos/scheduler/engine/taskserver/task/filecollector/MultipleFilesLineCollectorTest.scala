@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.task.common
+package com.sos.scheduler.engine.taskserver.task.filecollector
 
 import com.sos.scheduler.engine.common.scalautil.Closers._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
@@ -22,7 +22,7 @@ final class MultipleFilesLineCollectorTest extends FreeSpec  {
     withCloser { implicit closer ⇒
       val files = List.fill(2) { createTempFile("test-", ".tmp") withCloser delete }
       val writers = files map { f ⇒ new OutputStreamWriter(new FileOutputStream(f), UTF_8).closeWithCloser }
-      val fileLogger = new MultipleFilesLineCollector(files, UTF_8).closeWithCloser
+      val fileLogger = new MultipleFilesLineCollector(List("one", "two") zip files, UTF_8).closeWithCloser
 
       for (_ ← 1 to 1000) {
         val testLines = List.fill(10) { randomString(100) }

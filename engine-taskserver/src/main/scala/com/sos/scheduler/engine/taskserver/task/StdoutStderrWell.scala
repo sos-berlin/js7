@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.taskserver.task.common.MultipleFilesLineCollector
+import com.sos.scheduler.engine.taskserver.task.filecollector.MultipleFilesLineCollector
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stdout, StdoutStderrType}
 import java.nio.charset.Charset
 import java.nio.file.Path
@@ -16,13 +16,13 @@ import java.nio.file.Path
 final class StdoutStderrWell(stdFiles: Map[StdoutStderrType, Path], fileEncoding: Charset, output: String ⇒ Unit)
 extends HasCloser {
 
-  private val lineCollector = new MultipleFilesLineCollector(Nil ++ stdFiles.values, fileEncoding).closeWithCloser
+  private val lineCollector = new MultipleFilesLineCollector(Nil ++ stdFiles, fileEncoding).closeWithCloser
   private val firstLineCollector = new FirstStdoutLineCollector
   def firstStdoutLine = firstLineCollector.firstStdoutLine
 
   def apply() = synchronized {
-    lineCollector.nextLinesIterator foreach { case (file, line) ⇒
-      output(line)
+    lineCollector.nextLinesIterator foreach { case ((typ, file), line) ⇒
+      output(s"[${typ.string}] $line")
       firstLineCollector.apply(file, line)
     }
   }
