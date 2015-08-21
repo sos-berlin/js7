@@ -16,20 +16,18 @@ import scala.util.Sorting.stableSort
  */
 private[task] final class TaskArguments private(arguments: List[(String, String)]) {
 
-  lazy val moduleLanguage: ModuleLanguage = ModuleLanguage(apply(LanguageKey))
-  lazy val script: Script = Script.parseXmlString(apply(ScriptKey))
-  lazy val jobName: String = apply(JobKey)
-  lazy val taskId: TaskId = TaskId(apply(TaskIdKey).toInt)
   lazy val environment: Map[String, String] = VariableSets.parseXml(apply(EnvironmentKey))
-  lazy val javaClassNameOption: Option[String] = get(JavaClassKey) filter { _.nonEmpty }
-
   lazy val hasOrder = get(HasOrderKey) match {
     case Some("1") ⇒ true
     case Some(o) ⇒ throw new IllegalArgumentException(s"Invalid agent argument: $HasOrderKey=$o")
     case None ⇒ false
   }
-
+  lazy val javaClassNameOption: Option[String] = get(JavaClassKey) filter { _.nonEmpty }
+  lazy val jobName: String = apply(JobKey)
   lazy val module = Module(moduleLanguage, script, javaClassNameOption)
+  lazy val moduleLanguage: ModuleLanguage = ModuleLanguage(apply(LanguageKey))
+  lazy val script: Script = Script.parseXmlString(apply(ScriptKey))
+  lazy val taskId: TaskId = TaskId(apply(TaskIdKey).toInt)
 
   lazy val monitors: immutable.Seq[Monitor] = {
     val unordered =
@@ -46,33 +44,35 @@ private[task] final class TaskArguments private(arguments: List[(String, String)
 }
 
 private[task] object TaskArguments {
-  private val LanguageKey = "language"
-  private val JavaClassKey = "java_class"
-  private val ScriptKey = "script"
-  private val JobKey = "job"
-  private val TaskIdKey = "task_id"
   private val EnvironmentKey = "environment"
   private val HasOrderKey = "has_order"
-  //TODO private val ProcessShellVariablePrefixKey = "process.shell_variable_prefix"
+  private val JavaClassKey = "java_class"
+  private val JobKey = "job"
+  private val LanguageKey = "language"
+  private val MonitorJavaClassKey = "monitor.java_class"
   private val MonitorLanguageKey = "monitor.language"
   private val MonitorNameKey = "monitor.name"
   private val MonitorOrderingKey = "monitor.ordering"
-  private val MonitorJavaClassKey = "monitor.java_class"
   private val MonitorScriptKey = "monitor.script"
-  private val KeySet = Set(LanguageKey, ScriptKey, JobKey, TaskIdKey, EnvironmentKey, HasOrderKey, JavaClassKey,
-    MonitorLanguageKey, MonitorNameKey, MonitorOrderingKey, MonitorJavaClassKey, MonitorScriptKey)
+  private val ScriptKey = "script"
+  private val TaskIdKey = "task_id"
+  //TODO private val ProcessShellVariablePrefixKey = "process.shell_variable_prefix"
+  private val StderrLogLevelKey = "stderr_log_level"
+  private val KeySet = Set(EnvironmentKey, HasOrderKey, JavaClassKey, JobKey, LanguageKey,
+    MonitorJavaClassKey, MonitorLanguageKey, MonitorNameKey, MonitorOrderingKey, MonitorScriptKey,
+    ScriptKey, TaskIdKey)
   private val IsLegacyKeyValue = Set(
     "com_class" → "",
     "filename" → "",
-    "java_options" → "",
     "java_class_path" → "",
+    "java_options" → "",
     "monitor.com_class" → "",
     "monitor.filename" → "",
     "process.filename" → "",
-    "process.param_raw" → "",
     "process.log_filename" → "",
     "process.ignore_error" → "0",
-    "process.ignore_signal" → "0")
+    "process.ignore_signal" → "0",
+    "process.param_raw" → "")
   assert(((IsLegacyKeyValue map { _._1 }) intersect KeySet).isEmpty)
   private val KeyValueRegex = "(?s)([[a-z_.]]+)=(.*)".r  //  "(?s)" dot matches \n too, "key=value"
   private val logger = Logger(getClass)
@@ -101,10 +101,10 @@ private[task] object TaskArguments {
     }
 
   private class MonitorArguments(argMap: Map[String, String]) {
+    def javaClassNameOption = argMap.get(MonitorJavaClassKey)
     def moduleLanguage = ModuleLanguage(argMap(MonitorLanguageKey))
     def name = argMap.getOrElse(MonitorNameKey, "")
     def ordering = argMap.getConverted(MonitorOrderingKey) { _.toInt } getOrElse Monitor.DefaultOrdering
-    def javaClassNameOption = argMap.get(MonitorJavaClassKey)
     def script = javaClassNameOption match {
       case None | Some("") ⇒ Script.parseXmlString(argMap(MonitorScriptKey))
       case Some(o) ⇒ new Script("")
