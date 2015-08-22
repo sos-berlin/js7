@@ -34,6 +34,11 @@ extends HasCloser with Invocable with HasSendProcessSignal {
   @invocable
   def begin(objectAnys: VariantArray, objectNamesAnys: VariantArray): Boolean = {
     val namedInvocables = toNamedObjectMap(names = objectNamesAnys, anys = objectAnys)
+    val stdFiles = StdFiles(
+      stdFileMap = taskStartArguments.stdFileMap filter { _ ⇒ taskStartArguments.logStdoutAndStderr },
+      stderrLogLevel = taskArguments.stderrLogLevel,
+      log = namedInvocables.spoolerLog.log
+    )
     task = taskArguments.module match {
       case module: ShellModule ⇒
         new ShellProcessTask(
@@ -42,7 +47,7 @@ extends HasCloser with Invocable with HasSendProcessSignal {
           namedInvocables,
           taskArguments.monitors,
           hasOrder = taskArguments.hasOrder,
-          stdFileMap = taskStartArguments.stdFileMap,
+          stdFiles,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment)
       case module: JavaModule ⇒
         new JavaProcessTask(
@@ -50,7 +55,7 @@ extends HasCloser with Invocable with HasSendProcessSignal {
           module,
           namedInvocables,
           taskArguments.monitors,
-          stdFileMap = taskStartArguments.stdFileMap filter { _ ⇒ taskStartArguments.logStdoutAndStderr })
+          stdFiles)
     }
     closer.registerAutoCloseable(task)
     task.start()

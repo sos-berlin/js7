@@ -91,7 +91,7 @@ private object ShellProcessTaskTest {
         Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("A", setting) }, name="Monitor A"),
         Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("B", setting) }, name="Monitor B")),
       hasOrder = false,
-      stdFileMap = Map(),
+      stdFiles = StdFiles(stdFileMap = Map(), stderrLogLevel = SchedulerLogLevel.info, log = (_, lines) ⇒ spoolerLog.info(lines)),
       environment = Map(TestName → TestValue))
 
   private def testScript(exitCode: Int) = Script(

@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.data.job.TaskId
+import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.types.VariantArray
 import com.sos.scheduler.engine.taskserver.module.java.StandardJavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
@@ -8,7 +9,6 @@ import com.sos.scheduler.engine.taskserver.module.{ModuleLanguage, Script}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import scala.collection.immutable
 
 /**
  * @author Joacim Zschimmer
@@ -43,6 +43,11 @@ final class TaskArgumentsTest extends FreeSpec {
 
   "javaClassNameOption" in {
     assert(taskArguments("java_class=com.example.Test").javaClassNameOption == Some("com.example.Test"))
+  }
+
+  "stderr_log_level" in {
+    assert(taskArguments(Nil).stderrLogLevel contains SchedulerLogLevel.info)
+    assert(taskArguments("stderr_log_level=2").stderrLogLevel contains SchedulerLogLevel.error)
   }
 
   "monitors" in {
@@ -85,5 +90,5 @@ final class TaskArgumentsTest extends FreeSpec {
 
   private def taskArguments(argument: String): TaskArguments = taskArguments(Vector(argument))
 
-  private def taskArguments(arguments: immutable.IndexedSeq[String]) = TaskArguments(VariantArray(arguments))
+  private def taskArguments(arguments: Iterable[String]) = TaskArguments(VariantArray(arguments.toIndexedSeq))
 }

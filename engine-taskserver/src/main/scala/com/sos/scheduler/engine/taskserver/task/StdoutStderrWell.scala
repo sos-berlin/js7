@@ -13,7 +13,7 @@ import java.nio.file.Path
  *
  * @author Joacim Zschimmer
  */
-final class StdoutStderrWell(stdFiles: Map[StdoutStderrType, Path], fileEncoding: Charset, output: String ⇒ Unit)
+final class StdoutStderrWell(stdFiles: Map[StdoutStderrType, Path], fileEncoding: Charset, output: (StdoutStderrType, String) ⇒ Unit)
 extends HasCloser {
 
   private val lineCollector = new MultipleFilesLineCollector(Nil ++ stdFiles, fileEncoding).closeWithCloser
@@ -22,7 +22,7 @@ extends HasCloser {
 
   def apply() = synchronized {
     lineCollector.nextLinesIterator foreach { case ((typ, file), line) ⇒
-      output(s"[${typ.string}] $line")
+      output(typ, line)
       firstLineCollector.apply(file, line)
     }
   }

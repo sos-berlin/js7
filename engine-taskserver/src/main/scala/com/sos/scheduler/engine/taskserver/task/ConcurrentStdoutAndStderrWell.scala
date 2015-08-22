@@ -5,18 +5,15 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAu
 import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.task.ConcurrentStdoutAndStderrWell._
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
-import java.nio.charset.Charset
-import java.nio.file.Path
 import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
-final class ConcurrentStdoutAndStderrWell(name: String, stdFiles: Map[StdoutStderrType, Path], fileEncoding: Charset, output: String ⇒ Unit)
+final class ConcurrentStdoutAndStderrWell(name: String, stdFiles: StdFiles)
 extends HasCloser with ClosedFuture {
 
-  private val well = new StdoutStderrWell(stdFiles, fileEncoding, output).closeWithCloser
+  private val well = new StdoutStderrWell(stdFiles.stdFileMap, stdFiles.encoding, stdFiles.output).closeWithCloser
   private val concurrentCaller = new ConcurrentCaller(
     pauses = Iterator continually PollPeriod,
     function = well.apply,

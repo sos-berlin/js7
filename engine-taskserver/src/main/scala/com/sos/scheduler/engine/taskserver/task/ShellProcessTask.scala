@@ -31,17 +31,17 @@ final class ShellProcessTask(
   namedInvocables: NamedInvocables,
   monitors: immutable.Seq[Monitor],
   hasOrder: Boolean,
-  stdFileMap: Map[StdoutStderrType, Path],
+  stdFiles: StdFiles,
   environment: immutable.Iterable[(String, String)])
 extends HasCloser with Task with HasSendProcessSignal {
   
-  import namedInvocables.{spoolerLog, spoolerTask}
+  import namedInvocables.spoolerTask
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
-  private lazy val processStdFileMap = if (stdFileMap.isEmpty) RichProcess.createTemporaryStdFiles() else Map[StdoutStderrType, Path]()
+  private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createTemporaryStdFiles() else Map[StdoutStderrType, Path]()
   private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",
-    processStdFileMap ++ stdFileMap, StdoutStderrEncoding, output = spoolerLog.info).closeWithCloser
+    stdFiles.copy(stdFileMap = processStdFileMap ++ stdFiles.stdFileMap)).closeWithCloser
   private var startCalled = false
   private var richProcess: RichProcess = null
 
@@ -131,7 +131,6 @@ extends HasCloser with Task with HasSendProcessSignal {
 object ShellProcessTask {
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesFileEncoding = ISO_8859_1
-  private val StdoutStderrEncoding = ISO_8859_1
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
   private val logger = Logger(getClass)
 

@@ -21,25 +21,25 @@ final class StdoutStderrWellTest extends FreeSpec {
 
   "StdoutStderrWell" in {
     withCloser { implicit closer ⇒
-      val lines = mutable.Buffer[String]()
-      val stdFiles = Map(Stdout → createTempFile("test", ".tmp"), Stderr → createTempFile("test", ".tmp").withCloser(Files.delete))
+      val collectedLines = Map(Stdout → mutable.Buffer[String](), Stderr → mutable.Buffer[String]())
+      val stdFiles = Map(Stdout → createTempFile("test-", ".tmp"), Stderr → createTempFile("test-", ".tmp").withCloser(Files.delete))
       val List(out, err) = List(Stdout, Stderr) map { o ⇒ new OutputStreamWriter(new FileOutputStream(stdFiles(o)).closeWithCloser) }
-      val well = new StdoutStderrWell(stdFiles, UTF_8, lines += _).closeWithCloser
+      val well = new StdoutStderrWell(stdFiles, UTF_8, (t, lines) ⇒ collectedLines(t) += lines).closeWithCloser
 
       out.write("OUT\n")
       out.flush()
       err.write("ERR\n")
       err.flush()
       well.apply()
-      assert(lines.toSet == Set("[stdout] OUT", "[stderr] ERR"))
+      assert(collectedLines == Map(Stdout → List("[stdout] OUT"), Stderr → List("[stderr] ERR")))
 
-      lines.clear()
+      collectedLines.values foreach { _.clear() }
       out.write("OUT-2\n")
       out.flush()
       err.write("ERR-2\n")
       err.flush()
       well.apply()
-      assert(lines.toSet == Set("[stdout] OUT-2", "[stderr] ERR-2"))
+      assert(collectedLines == Map(Stdout → List("[stdout] OUT-2"), Stderr → List("[stderr] ERR-2")))
     }
   }
 }

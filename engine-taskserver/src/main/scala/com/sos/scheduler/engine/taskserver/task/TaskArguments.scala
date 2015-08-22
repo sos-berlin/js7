@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.data.job.TaskId
+import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.types.{VariantArray, variant}
 import com.sos.scheduler.engine.taskserver.module._
 import com.sos.scheduler.engine.taskserver.task.TaskArguments._
@@ -27,6 +28,7 @@ private[task] final class TaskArguments private(arguments: List[(String, String)
   lazy val module = Module(moduleLanguage, script, javaClassNameOption)
   lazy val moduleLanguage: ModuleLanguage = ModuleLanguage(apply(LanguageKey))
   lazy val script: Script = Script.parseXmlString(apply(ScriptKey))
+  lazy val stderrLogLevel: SchedulerLogLevel = get(StderrLogLevelKey) map { o ⇒ SchedulerLogLevel.ofCpp(o.toInt) } getOrElse SchedulerLogLevel.info
   lazy val taskId: TaskId = TaskId(apply(TaskIdKey).toInt)
 
   lazy val monitors: immutable.Seq[Monitor] = {
@@ -55,12 +57,12 @@ private[task] object TaskArguments {
   private val MonitorOrderingKey = "monitor.ordering"
   private val MonitorScriptKey = "monitor.script"
   private val ScriptKey = "script"
+  private val StderrLogLevelKey = "stderr_log_level"
   private val TaskIdKey = "task_id"
   //TODO private val ProcessShellVariablePrefixKey = "process.shell_variable_prefix"
-  private val StderrLogLevelKey = "stderr_log_level"
   private val KeySet = Set(EnvironmentKey, HasOrderKey, JavaClassKey, JobKey, LanguageKey,
     MonitorJavaClassKey, MonitorLanguageKey, MonitorNameKey, MonitorOrderingKey, MonitorScriptKey,
-    ScriptKey, TaskIdKey)
+    ScriptKey, StderrLogLevelKey, TaskIdKey)
   private val IsLegacyKeyValue = Set(
     "com_class" → "",
     "filename" → "",
