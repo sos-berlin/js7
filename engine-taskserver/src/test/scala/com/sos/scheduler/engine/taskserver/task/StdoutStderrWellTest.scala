@@ -31,7 +31,7 @@ final class StdoutStderrWellTest extends FreeSpec {
       err.write("ERR\n")
       err.flush()
       well.apply()
-      assert(collectedLines == Map(Stdout → List("[stdout] OUT"), Stderr → List("[stderr] ERR")))
+      assert(collectedLines == Map(Stdout → List("OUT"), Stderr → List("ERR")))
 
       collectedLines.values foreach { _.clear() }
       out.write("OUT-2\n")
@@ -39,7 +39,7 @@ final class StdoutStderrWellTest extends FreeSpec {
       err.write("ERR-2\n")
       err.flush()
       well.apply()
-      assert(collectedLines == Map(Stdout → List("[stdout] OUT-2"), Stderr → List("[stderr] ERR-2")))
+      assert(collectedLines == Map(Stdout → List("OUT-2"), Stderr → List("ERR-2")))
     }
   }
 }
