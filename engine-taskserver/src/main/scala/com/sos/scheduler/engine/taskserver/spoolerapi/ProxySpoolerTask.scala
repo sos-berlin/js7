@@ -74,7 +74,7 @@ object ProxySpoolerTask extends ProxyIDispatchFactory {
 
   def apply(injector: Injector, remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
     forEachProperty(properties, "sos.spooler.Task") {
-      case ("subprocess_own_process_group_default", v: Boolean) ⇒ if (v) logger.trace(s"Java Agent does not support subprocess.own_process_group=true")
+      case ("subprocess_own_process_group_default", v: Boolean) ⇒ if (v) logger.trace(s"Universal Agent does not support subprocess.own_process_group=true")
     }
     new ProxySpoolerTask(injector.instance[TaskStartArguments], remoting, id, name)
   }

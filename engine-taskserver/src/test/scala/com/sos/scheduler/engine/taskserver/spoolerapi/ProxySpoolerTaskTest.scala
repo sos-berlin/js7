@@ -64,7 +64,7 @@ final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with Ha
   for (unsupportedGetter ← List("create_subprocess", "priority", "priority_class")) {
     s"$unsupportedGetter is not supported" in {
       intercept[UnsupportedOperationException] { spoolerTask.invokeGet(unsupportedGetter) }
-        .getMessage shouldEqual s"Java Agent does not support method 'sos.spooler.Task.$unsupportedGetter'"
+        .getMessage shouldEqual s"Universal Agent does not support method 'sos.spooler.Task.$unsupportedGetter'"
     }
   }
 }
