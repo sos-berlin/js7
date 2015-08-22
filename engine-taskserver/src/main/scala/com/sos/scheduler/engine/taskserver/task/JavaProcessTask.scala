@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.data.message.MessageCode
@@ -27,11 +28,11 @@ extends Task with HasCloser {
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private val instance: sos.spooler.Job_impl = module.newJobInstance(namedInvocables)
   private val methodIsCalled = mutable.Set[String]()
-  private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName", stdFiles).closeWithCloser
+  private val concurrentStdoutStderrWell = stdFiles.nonEmpty option new ConcurrentStdoutAndStderrWell(s"Job $jobName", stdFiles).closeWithCloser
   private var closeCalled = false
 
   def start() = {
-    if (stdFiles.nonEmpty) concurrentStdoutStderrWell.start()
+    concurrentStdoutStderrWell foreach { _.start() }
     monitorProcessor.preTask() && instance.spooler_init()
   }
 
@@ -55,7 +56,7 @@ extends Task with HasCloser {
 
   private def afterSpoolerExit(): Unit =
     try monitorProcessor.postTask()
-    finally if (stdFiles.nonEmpty) concurrentStdoutStderrWell.finish()
+    finally concurrentStdoutStderrWell foreach { _.finish() }
 
   private def ignoreCall(methodWithSignature: String): Boolean =
     methodWithSignature match {
