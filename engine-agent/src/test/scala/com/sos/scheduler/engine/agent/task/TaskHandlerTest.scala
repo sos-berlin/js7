@@ -12,7 +12,7 @@ import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.soslicense.LicenseKey
+import com.sos.scheduler.engine.common.soslicense.{LicenseKey, LicenseKeyParameterIsMissingException}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.TaskServer
@@ -32,6 +32,16 @@ import scala.concurrent.Promise
  */
 @RunWith(classOf[JUnitRunner])
 final class TaskHandlerTest extends FreeSpec {
+
+  "Second StartApiTask without a license is rejected - JS-1482" in {
+    val testContext = new TestContext
+    import testContext.{taskHandler, tasks}
+    def startTask() = awaitResult(taskHandler.execute(TestStartApiTask, licenseKey = None), 3.s)
+    startTask()
+    intercept[LicenseKeyParameterIsMissingException] { startTask() }
+    awaitResult(taskHandler.execute(CloseTask(tasks(0).id, kill = false)), 3.s)
+    startTask()
+  }
 
   "Start and close task cycle" - {
     lazy val testContext = new TestContext

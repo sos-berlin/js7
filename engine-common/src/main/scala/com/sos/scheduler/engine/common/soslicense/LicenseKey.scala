@@ -29,8 +29,8 @@ case class LicenseKey private(
     v(ValidIn1900) orElse v(ValidIn2000) map { o ⇒ LocalDate from BASIC_ISO_DATE.parse(o) }
   }
 
-  def require(parameter: Parameter): Unit = {
-    if (!contains(parameter)) throw new LicenseKeyParameterIsMissingException(parameter)
+  def require(parameter: Parameter, failureText: String = ""): Unit = {
+    if (!contains(parameter)) throw new LicenseKeyParameterIsMissingException(parameter, failureText = failureText)
   }
 
   def contains(p: Parameter) = isValidToday && ((settings contains p) || isUniversalKey && Parameters.ZZIncludes(p))
@@ -43,6 +43,15 @@ case class LicenseKey private(
 object LicenseKey {
   private val logger = Logger(getClass)
   private val Base = 36
+  val Empty = new LicenseKey(
+    keyString = LicenseKeyString("empty-license"),
+    issuer = "SOS",
+    customer = "EMPTY",
+    serialNumber = 0,
+    issuedAt = LocalDate.of(2015, 8, 24),
+    settings = Map(),
+    securityCode = 0,
+    salt = 0)
 
   def apply(key: String): LicenseKey = apply(LicenseKeyString(key))
   
