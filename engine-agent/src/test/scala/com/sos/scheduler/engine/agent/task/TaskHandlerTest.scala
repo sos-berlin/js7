@@ -35,7 +35,7 @@ final class TaskHandlerTest extends FreeSpec {
 
   "Start and close task cycle" - {
     lazy val testContext = new TestContext
-    import testContext.{taskHandler, tasks, taskServers}
+    import testContext.{taskHandler, taskServers, tasks}
 
     "StartApiTask" in {
       assert(!taskHandler.terminated.isCompleted)
@@ -118,7 +118,7 @@ final class TaskHandlerTest extends FreeSpec {
 
     "When a process is registered, TaskHandler terminates after the task has terminated" in {
       val testContext = new TestContext
-      import testContext.{taskHandler, tasks, taskServers}
+      import testContext.{taskHandler, taskServers, tasks}
       for (_ ← tasks) awaitResult(taskHandler.execute(TestStartApiTask, Some(TestLicenseKey)), 3.s)
       assert(taskHandler.totalTaskCount == tasks.size)
       assert(taskHandler.currentTaskCount == tasks.size)
@@ -149,7 +149,7 @@ private object TaskHandlerTest {
   private val TestTunnelToken = TunnelToken(TunnelId("1"), TunnelToken.Secret("SECRET"))
 
   private class TestContext {
-    val taskServers = List.fill(2) { new MockTaskServer }
+    val taskServers = List.fill(AgentTaskIds.size) { new MockTaskServer }
     val tasks = AgentTaskIds zip taskServers map { case (id, taskServer) ⇒ new AgentTask(id, tunnel = mockTunnelClient(), taskServer) }
     val taskHandler = Guice.createInjector(new TestModule(tasks)).instance[TaskHandler]
   }
@@ -161,7 +161,7 @@ private object TaskHandlerTest {
     peerAddress = () ⇒ None)
 
   private class MockTaskServer extends TaskServer {
-    val terminatedPromise = Promise[Unit]()
+    private val terminatedPromise = Promise[Unit]()
     var sigtermed = false
     var sigkilled = false
     var started = false
