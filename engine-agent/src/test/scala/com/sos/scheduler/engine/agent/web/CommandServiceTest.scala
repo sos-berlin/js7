@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.agent.web
 
 import akka.actor.ActorSystem
+import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate, _}
-import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, FileOrderSourceContent}
 import com.sos.scheduler.engine.agent.web.CommandServiceTest._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.common.soslicense.LicenseKey

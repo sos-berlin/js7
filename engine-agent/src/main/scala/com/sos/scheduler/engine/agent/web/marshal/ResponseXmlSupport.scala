@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.web.marshal
 
-import com.sos.scheduler.engine.agent.data.responses.{Response, XmlResponse}
+import com.sos.scheduler.engine.agent.data.commandresponses.{Response, XmlResponse}
 import spray.http.MediaTypes.{`application/json`, `application/xml`, _}
 import spray.httpx.SprayJsonSupport._
 import spray.httpx.marshalling.ToResponseMarshaller.oneOf

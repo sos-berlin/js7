@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.fileordersource
 
+import com.sos.scheduler.engine.agent.data.commandresponses.FileOrderSourceContent
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.responses.FileOrderSourceContent
 import com.sos.scheduler.engine.agent.fileordersource.RequestFileOrderSourceContentExecutorTest._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser

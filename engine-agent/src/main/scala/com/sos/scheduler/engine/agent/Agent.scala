@@ -6,8 +6,8 @@ import com.google.inject.{Guice, Module}
 import com.sos.scheduler.engine.agent.command.CommandExecutor
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
+import com.sos.scheduler.engine.agent.data.commandresponses.Response
 import com.sos.scheduler.engine.agent.data.commands.Command
-import com.sos.scheduler.engine.agent.data.responses.Response
 import com.sos.scheduler.engine.agent.task.TaskHandler
 import com.sos.scheduler.engine.agent.views.AgentStartInformation
 import com.sos.scheduler.engine.agent.web.AgentWebServer

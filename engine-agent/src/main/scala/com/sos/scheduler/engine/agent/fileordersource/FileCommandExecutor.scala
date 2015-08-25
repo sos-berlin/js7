@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.fileordersource
 
+import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.responses.EmptyResponse
 import java.nio.file.Files._
 import java.nio.file.StandardCopyOption._
 import java.nio.file.{Files, Paths}

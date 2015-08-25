@@ -3,8 +3,8 @@ package com.sos.scheduler.engine.agent.task
 import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, StartTaskResponse}
 import com.sos.scheduler.engine.agent.task.TaskHandlerTest._
 import com.sos.scheduler.engine.base.exceptions.PublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal

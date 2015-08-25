@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.web
 
+import com.sos.scheduler.engine.agent.data.commandresponses.Response
 import com.sos.scheduler.engine.agent.data.commands.Command
-import com.sos.scheduler.engine.agent.data.responses.Response
 import com.sos.scheduler.engine.agent.web.CommandService._
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards
 import com.sos.scheduler.engine.common.soslicense.LicenseKey

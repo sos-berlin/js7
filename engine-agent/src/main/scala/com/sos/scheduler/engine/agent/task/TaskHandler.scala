@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.agent.task
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, Response, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.responses.{EmptyResponse, Response, StartTaskResponse}
 import com.sos.scheduler.engine.agent.task.TaskHandler._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
