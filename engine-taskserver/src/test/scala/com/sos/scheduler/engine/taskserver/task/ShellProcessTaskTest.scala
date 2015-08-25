@@ -11,7 +11,7 @@ import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, PublicMethodsAreInvocable}
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables.{SpoolerJobName, SpoolerLogName, SpoolerName, SpoolerTaskName}
-import com.sos.scheduler.engine.taskserver.module.java.JavaModule
+import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.module.{JavaModuleLanguage, NamedInvocables, Script}
 import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask}

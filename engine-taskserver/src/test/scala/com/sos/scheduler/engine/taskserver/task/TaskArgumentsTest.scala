@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.types.VariantArray
-import com.sos.scheduler.engine.taskserver.module.java.StandardJavaModule
+import com.sos.scheduler.engine.taskserver.module.javamodule.StandardJavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.module.{ModuleLanguage, Script}
 import org.junit.runner.RunWith

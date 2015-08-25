@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
-import com.sos.scheduler.engine.taskserver.module.java.JavaModule
+import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import com.sos.scheduler.engine.taskserver.task.JavaProcessTask._
 import scala.collection.{immutable, mutable}
 import scala.util.control.NonFatal

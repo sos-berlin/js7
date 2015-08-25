@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.module.java
+package com.sos.scheduler.engine.taskserver.module.javamodule
 
-import com.sos.scheduler.engine.taskserver.module.java.JavaModule._
+import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule._
 import com.sos.scheduler.engine.taskserver.module.{Module, NamedInvocables}
 
 /**

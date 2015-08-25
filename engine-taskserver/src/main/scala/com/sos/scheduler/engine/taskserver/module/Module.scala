@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.module
 
-import com.sos.scheduler.engine.taskserver.module.java.{JavaScriptModule, StandardJavaModule}
+import com.sos.scheduler.engine.taskserver.module.javamodule.{JavaScriptModule, StandardJavaModule}
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 
 /**

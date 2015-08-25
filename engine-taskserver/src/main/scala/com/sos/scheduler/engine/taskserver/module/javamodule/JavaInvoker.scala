@@ -1,17 +1,17 @@
-package com.sos.scheduler.engine.taskserver.module.java
+package com.sos.scheduler.engine.taskserver.module.javamodule
 
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable, InvocableIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.IDispatchInvoker
-import com.sos.scheduler.engine.taskserver.module.java.JavaInvoker._
+import com.sos.scheduler.engine.taskserver.module.javamodule.JavaInvoker._
 import scala.runtime.BoxedUnit.UNIT
 
 /**
  * @author Joacim Zschimmer
  */
-private[java] class JavaInvoker(val iDispatch: IDispatch) extends IDispatchInvoker {
+private[javamodule] class JavaInvoker(val iDispatch: IDispatch) extends IDispatchInvoker {
 
-  private[java] def call(richName: String, arguments: Array[AnyRef]) =
+  private[javamodule] def call(richName: String, arguments: Array[AnyRef]) =
     (richName.head match {
       case '<' ⇒
         val dispId = iDispatch.getIdOfName(richName.tail)
@@ -31,8 +31,8 @@ private[java] class JavaInvoker(val iDispatch: IDispatch) extends IDispatchInvok
     }
 }
 
-private[java] object JavaInvoker {
-  private[java] def apply(o: Invocable) = new JavaInvoker(InvocableIDispatch(o))
+private[javamodule] object JavaInvoker {
+  private[javamodule] def apply(o: Invocable) = new JavaInvoker(InvocableIDispatch(o))
 
   private def toSosSpoolerIdispatch(iDispatch: IDispatch): sos.spooler.Idispatch = {
     val className = iDispatch.invokeGet("java_class_name").asInstanceOf[String]

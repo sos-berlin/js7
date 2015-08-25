@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
-import com.sos.scheduler.engine.taskserver.module.java.JavaModule
+import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import scala.collection.immutable
 import scala.util.control.NonFatal
 

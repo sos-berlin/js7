@@ -10,10 +10,10 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.HasSendProcessSignal
-import java.util.UUID
-import com.sos.scheduler.engine.taskserver.module._
-import com.sos.scheduler.engine.taskserver.module.java.JavaModule
+import com.sos.scheduler.engine.taskserver.module.NamedInvocables
+import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
+import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
 

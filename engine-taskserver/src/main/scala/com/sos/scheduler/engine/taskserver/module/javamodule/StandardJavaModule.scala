@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.module.java
+package com.sos.scheduler.engine.taskserver.module.javamodule
 
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.taskserver.module.JavaModuleLanguage
