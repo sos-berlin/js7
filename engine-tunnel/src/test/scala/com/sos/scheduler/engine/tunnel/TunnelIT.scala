@@ -18,6 +18,9 @@ import scala.math.{log, min, pow}
 import scala.util.Random
 
 /**
+ *
+ * JS-1386 HTTP tunnel replaces RPC TCP connections
+ *
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
