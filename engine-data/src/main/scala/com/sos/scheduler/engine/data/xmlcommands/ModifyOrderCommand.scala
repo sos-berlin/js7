@@ -1,18 +1,15 @@
 package com.sos.scheduler.engine.data.xmlcommands
 
-import ModifyOrderCommand._
-import com.sos.scheduler.engine.data.order.OrderKey
-
-//import org.joda.time.DateTimeZone.UTC
-//import org.joda.time.ReadableInstant
-//import org.joda.time.format.DateTimeFormat
+import com.sos.scheduler.engine.data.order.{OrderKey, OrderState}
+import com.sos.scheduler.engine.data.xmlcommands.ModifyOrderCommand._
 
 final case class ModifyOrderCommand(
     orderKey: OrderKey,
     action: Option[Action.Value] = None,
     at: Option[At] = None,
     title: Option[String] = None,
-    suspended: Option[Boolean] = None)
+    suspended: Option[Boolean] = None,
+    state: Option[OrderState] = None)
 extends XmlCommand {
 
   def xmlElem = <modify_order
@@ -22,6 +19,7 @@ extends XmlCommand {
     at={(at map { _.string }).orNull}
     title={title.orNull}
     suspended={(suspended map { _.toString}).orNull}
+    state={(state map { _.string }).orNull}
     />
 }
 
@@ -29,8 +27,7 @@ extends XmlCommand {
 object ModifyOrderCommand {
 //  private val yyyymmddhhmmssFormatter = DateTimeFormat forPattern "yyyy-MM-dd HH:mm:ss'Z'"
 
-  def startNow(o: OrderKey) =
-    new ModifyOrderCommand(o, at = Some(ModifyOrderCommand.NowAt))
+  def startNow(o: OrderKey) = new ModifyOrderCommand(o, at = Some(ModifyOrderCommand.NowAt))
 
   object Action extends Enumeration {
     val reset = Value
@@ -43,12 +40,4 @@ object ModifyOrderCommand {
   case object NowAt extends At {
     def string = "now"
   }
-
-//  case object NowPlus(duration: Duration) extends At {
-//    def string = s"now+" + ???
-//  }
-
-//  case class InstantAt(instant: ReadableInstant) extends At {
-//    def string = yyyymmddhhmmssFormatter print (instant.toInstant toDateTime UTC)
-//  }
 }
