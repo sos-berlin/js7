@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
@@ -80,6 +81,7 @@ private object ShellProcessTaskTest {
 
   private def newShellProcessTask(spoolerLog: SpoolerLog, setting: Setting) =
     new ShellProcessTask(
+      AgentTaskId("1-1"),
       jobName = "TEST-JOB",
       ShellModule(testScript(setting.exitCode)),
       namedInvocables = NamedInvocables(List(
@@ -92,7 +94,8 @@ private object ShellProcessTaskTest {
         Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("B", setting) }, name="Monitor B")),
       hasOrder = false,
       stdFiles = StdFiles(stdFileMap = Map(), stderrLogLevel = SchedulerLogLevel.info, log = (_, lines) ⇒ spoolerLog.info(lines)),
-      environment = Map(TestName → TestValue))
+      environment = Map(TestName → TestValue),
+      killScriptPathOption = None)
 
   private def testScript(exitCode: Int) = Script(
     (if (isWindows) s"@echo off\necho $TestName=%$TestName%" else s"echo $TestName=$$$TestName") +

@@ -42,13 +42,15 @@ extends HasCloser with Invocable with HasSendProcessSignal {
     task = taskArguments.module match {
       case module: ShellModule ⇒
         new ShellProcessTask(
+          taskStartArguments.agentTaskId,
           jobName = taskArguments.jobName,
           module,
           namedInvocables,
           taskArguments.monitors,
           hasOrder = taskArguments.hasOrder,
           stdFiles,
-          environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment)
+          environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
+          killScriptPathOption = taskStartArguments.killScriptFileOption)
       case module: JavaModule ⇒
         new JavaProcessTask(
           jobName = taskArguments.jobName,

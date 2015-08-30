@@ -54,6 +54,12 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <!-- For AgentTaskId -->
+            <groupId>${project.groupId}</groupId>
+            <artifactId>engine-agent-data</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>

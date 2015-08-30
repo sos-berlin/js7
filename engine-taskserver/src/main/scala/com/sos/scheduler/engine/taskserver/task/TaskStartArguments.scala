@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
 import com.sos.scheduler.engine.taskserver.task.TaskStartArguments._
@@ -14,12 +15,14 @@ import spray.json.DefaultJsonProtocol._
  * @author Joacim Zschimmer
  */
 final case class TaskStartArguments(
+  agentTaskId: AgentTaskId,
   controllerAddress: String,
   tunnelToken: TunnelToken,
   environment: immutable.Iterable[(String, String)] = Nil,
   directory: Path,
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
-  logStdoutAndStderr: Boolean = false)
+  logStdoutAndStderr: Boolean = false,
+  killScriptFileOption: Option[Path] = None)
 {
   def controllerInetSocketAddress = toInetSocketAddress(controllerAddress)
 }
@@ -36,7 +39,8 @@ object TaskStartArguments {
       controllerAddress = s"127.0.0.1:$tcpPort",
       tunnelToken = TunnelToken(TunnelId("TEST-TUNNEL"), TunnelToken.Secret("TUNNEL-SECRET")),
       directory = directory,
-      stdFileMap = stdFileMap
+      stdFileMap = stdFileMap,
+      agentTaskId = AgentTaskId("1-1")
     )
 
   private[task] def toInetSocketAddress(string: String): InetSocketAddress =
@@ -44,5 +48,5 @@ object TaskStartArguments {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }
 
-  implicit val MyJsonFormat = jsonFormat6(apply)
+  implicit val MyJsonFormat = jsonFormat8(apply)
 }

@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
@@ -26,13 +27,15 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * @see spooler_module_process.cxx, C++ class Process_module_instance
  */
 final class ShellProcessTask(
+  agentTaskId: AgentTaskId,
   jobName: String,
   module: ShellModule,
   namedInvocables: NamedInvocables,
   monitors: immutable.Seq[Monitor],
   hasOrder: Boolean,
   stdFiles: StdFiles,
-  environment: immutable.Iterable[(String, String)])
+  environment: immutable.Iterable[(String, String)],
+  killScriptPathOption: Option[Path])
 extends HasCloser with Task with HasSendProcessSignal {
   
   import namedInvocables.spoolerTask
@@ -63,8 +66,10 @@ extends HasCloser with Task with HasSendProcessSignal {
     }
     val richProcess = RichProcess.startShellScript(
       ProcessConfiguration(
+        processStdFileMap,
         additionalEnvironment = env,
-        stdFileMap = processStdFileMap),
+        idString = agentTaskId.string,
+        killScriptFileOption = killScriptPathOption),
       name = jobName,
       scriptString = module.script.string.trim)
     .closeWithCloser

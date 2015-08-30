@@ -31,7 +31,9 @@ extends TaskServer {
       process = JavaProcess.startJava(
         ProcessConfiguration(
           stdFileMap,
-          additionalEnvironment = taskStartArguments.environment),
+	        additionalEnvironment = taskStartArguments.environment,
+          idString = taskStartArguments.agentTaskId.string,
+          killScriptFileOption = taskStartArguments.killScriptFileOption),
         options = javaOptions,
         classpath = Some(javaClasspath + File.pathSeparator + JavaProcess.OwnClasspath),
         mainClass = com.sos.scheduler.engine.taskserver.TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix

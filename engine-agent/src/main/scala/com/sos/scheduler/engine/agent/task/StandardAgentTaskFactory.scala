@@ -26,15 +26,17 @@ final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentCo
     val id = agentTaskIdGenerator.next()
     val address = tunnelHandler.proxyAddressString
     val tunnel = tunnelHandler.newTunnel(TunnelId(id.index.toString))
-    new AgentTask(id, tunnel, newTaskServer(command, address, tunnel.tunnelToken))
+    new AgentTask(id, tunnel, newTaskServer(id, command, address, tunnel.tunnelToken))
   }
 
-  private def newTaskServer(command: StartTask, controllerAddress: String, tunnelToken: TunnelToken) = {
+  private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, controllerAddress: String, tunnelToken: TunnelToken) = {
     val taskStartArguments = TaskStartArguments(
+      agentTaskId,
       controllerAddress = controllerAddress,
       tunnelToken = tunnelToken,
       directory = agentConfiguration.directory,
-      environment = agentConfiguration.environment)
+      environment = agentConfiguration.environment,
+      killScriptFileOption = agentConfiguration.killScriptFile)
     val taskServer =
       if (sys.props contains UseThreadPropertyName) { // For debugging
         logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")

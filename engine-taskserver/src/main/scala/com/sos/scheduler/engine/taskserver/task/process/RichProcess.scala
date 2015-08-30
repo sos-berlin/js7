@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -22,6 +23,7 @@ import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, blocking}
 import scala.util.control.NonFatal
 
 /**
@@ -34,7 +36,7 @@ final class RichProcess private(
   infoProgramFile: Path)
 extends HasCloser with ClosedFuture {
 
-  import processConfiguration.stdFileMap
+  import processConfiguration.{idString, killScriptFileOption, stdFileMap}
 
   private val logger = Logger.withPrefix(getClass, toString)
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
@@ -48,23 +50,39 @@ extends HasCloser with ClosedFuture {
         logger.debug("destroy")
         process.destroy()
       case SIGKILL ⇒
-        logger.debug("destroyForcibly")
-        process.destroyForcibly()
+        killScriptFileOption match {
+          case Some(onKillScriptFile) ⇒
+            val args = OS.toShellCommandArguments(onKillScriptFile, List(processConfiguration.killScriptArgument))
+            val onKillProcess = new ProcessBuilder(args).start()
+            Future {
+              blocking {
+                waitForProcessTermination(onKillProcess)
+              }
+              killNow()
+            }
+          case None ⇒
+            killNow()
+        }
     }
+
+  private def killNow(): Unit = {
+    logger.debug("destroyForcibly")
+    process.destroyForcibly()
+  }
 
   @TestOnly
   private[task] def isAlive = process.isAlive
 
   def waitForTermination(): ReturnCode = {
     logger.debug("waitForTermination ...")
-    while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
+    waitForProcessTermination(process)
     logger.debug(s"waitForTermination: terminated with exit code ${process.exitValue}")
     ReturnCode(process.exitValue)
   }
 
   def stdin = process.getOutputStream
 
-  override def toString = s"$process $infoProgramFile"
+  override def toString = s"$process $infoProgramFile $idString".trim
 
   @TestOnly
   def files: immutable.Seq[Path] = List(infoProgramFile) ++ stdFileMap.values
@@ -99,7 +117,7 @@ object RichProcess {
     infoProgramFile: Path): RichProcess =
   {
     import processConfiguration.{additionalEnvironment, stdFileMap}
-    val processBuilder = new ProcessBuilder(arguments)
+    val processBuilder = new ProcessBuilder(arguments ++ processConfiguration.idArgumentOption)
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
@@ -112,12 +130,18 @@ object RichProcess {
 
   def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → OS.newTemporaryOutputFile("sos", o) }).toMap
 
+  private def waitForProcessTermination(process: Process): Unit = {
+    while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
+  }
+
+  final case class KillConfiguration(agentTaskId: AgentTaskId, onKillScriptFile: Path)
+
   val OS = if (isWindows) WindowsSpecific else UnixSpecific
 
   trait OperatingSystemSpecific {
     def newTemporaryShellFile(name: String): Path
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path
-    def toShellCommandArguments(file: Path): immutable.Seq[String]
+    def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String]
     protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name-"
   }
 
@@ -126,14 +150,14 @@ object RichProcess {
     private val outputFileAttribute = asFileAttribute(PosixFilePermissions fromString "rw-------")
     def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttribute)
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}-", s".$outerr", outputFileAttribute)
-    def toShellCommandArguments(file: Path) = Vector("/bin/sh", file.toString)
+    def toShellCommandArguments(file: Path, arguments: Seq[String]) = Vector("/bin/sh", file.toString) ++ arguments
   }
 
   private object WindowsSpecific extends OperatingSystemSpecific {
     private val cmd = sys.env("ComSpec")  // C:\Windows\system32\cmd.exe
     def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}-$outerr-", ".log")
-    def toShellCommandArguments(file: Path) = Vector(cmd, "/C", file.toString)
+    def toShellCommandArguments(file: Path, arguments: Seq[String]) = Vector(cmd, "/C", file.toString) ++ arguments
   }
 
   def tryDeleteFiles(files: Iterable[Path]): Unit =
