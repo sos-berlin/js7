@@ -23,6 +23,8 @@ final class SimpleTaskServerTest extends FreeSpec {
       autoClosing(new SimpleTaskServer(TaskStartArguments.forTest(tcpPort = port))) { server ⇒
         server.start()
         listener.setSoTimeout(10*1000)
+        sleep(100.ms)  // Otherwise, if it starts to fast, read() may throw an IOException "connection lost" instead of returning EOF
+        assert(!server.terminated.isCompleted)
         listener.accept().shutdownOutput()   // EOF
         awaitResult(server.terminated, 1.s)
       }
