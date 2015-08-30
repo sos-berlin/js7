@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCl
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.task.OwnProcessTaskServer._
-import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, RichProcess}
+import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, ProcessConfiguration, RichProcess}
 import java.io.File
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Promise
@@ -29,12 +29,13 @@ extends TaskServer {
     closeOnError(closer) {
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
       process = JavaProcess.startJava(
-        environment = taskStartArguments.environment,
+        ProcessConfiguration(
+          stdFileMap,
+          additionalEnvironment = taskStartArguments.environment),
         options = javaOptions,
         classpath = Some(javaClasspath + File.pathSeparator + JavaProcess.OwnClasspath),
         mainClass = com.sos.scheduler.engine.taskserver.TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix
-        arguments = Nil,
-        stdFileMap = stdFileMap)
+        arguments = Nil)
       process.closed.onComplete { tried ⇒
         for (t ← tried.failed) logger.error(t.toString, t)
         try closer.close()

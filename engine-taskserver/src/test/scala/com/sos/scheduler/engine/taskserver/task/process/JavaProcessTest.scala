@@ -27,12 +27,11 @@ final class JavaProcessTest extends FreeSpec {
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
       val stopwatch = new Stopwatch
       val process = JavaProcess.startJava(
+        ProcessConfiguration(stdFileMap),
         options = List("-Xmx10m", s"-Dtest=$TestValue"),
         classpath = Some(JavaProcess.OwnClasspath),
         mainClass = JavaProcessTest.getClass.getName stripSuffix "$", // Scala object class name ends with '$'
-        arguments = Arguments,
-        environment = Nil,
-        stdFileMap = stdFileMap)
+        arguments = Arguments)
       try {
         val returnCode = process.waitForTermination()
         assert(returnCode == ReturnCode(77))

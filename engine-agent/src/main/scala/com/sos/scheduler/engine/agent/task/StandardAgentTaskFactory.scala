@@ -26,10 +26,10 @@ final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentCo
     val id = agentTaskIdGenerator.next()
     val address = tunnelHandler.proxyAddressString
     val tunnel = tunnelHandler.newTunnel(TunnelId(id.index.toString))
-    new AgentTask(id, tunnel, newTaskServer(id, command, address, tunnel.tunnelToken))
+    new AgentTask(id, tunnel, newTaskServer(command, address, tunnel.tunnelToken))
   }
 
-  private def newTaskServer(id: AgentTaskId, command: StartTask, controllerAddress: String, tunnelToken: TunnelToken) = {
+  private def newTaskServer(command: StartTask, controllerAddress: String, tunnelToken: TunnelToken) = {
     val taskStartArguments = TaskStartArguments(
       controllerAddress = controllerAddress,
       tunnelToken = tunnelToken,

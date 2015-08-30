@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCl
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.time.JodaJavaTimeConversions.implicits._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.job.ReturnCode
@@ -28,7 +27,12 @@ final class RichProcessTest extends FreeSpec {
     withCloser { closer ⇒
       val stdFileMap = RichProcess.createTemporaryStdFiles()
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
-      val shellProcess = RichProcess.startShellScript(name = "TEST", Map(envName → envValue), s"echo $echo\nexit $exitCode", stdFileMap)
+      val shellProcess = RichProcess.startShellScript(
+        ProcessConfiguration(
+          stdFileMap,
+          additionalEnvironment = Map(envName → envValue)),
+        name = "TEST",
+        scriptString = s"echo $echo\nexit $exitCode")
       assert(shellProcess.files.size == 3)
       val returnCode = shellProcess.waitForTermination()
       assert(returnCode == ReturnCode(exitCode))

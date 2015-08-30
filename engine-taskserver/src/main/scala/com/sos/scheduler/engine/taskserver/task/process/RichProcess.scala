@@ -28,8 +28,13 @@ import scala.util.control.NonFatal
  * @param infoProgramFile only for information
  * @author Joacim Zschimmer
  */
-final class RichProcess private(process: Process, infoProgramFile: Path, stdFileMap: Map[StdoutStderrType, Path])
+final class RichProcess private(
+  processConfiguration: ProcessConfiguration,
+  process: Process,
+  infoProgramFile: Path)
 extends HasCloser with ClosedFuture {
+
+  import processConfiguration.stdFileMap
 
   private val logger = Logger.withPrefix(getClass, toString)
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
@@ -70,15 +75,14 @@ object RichProcess {
   private val logger = Logger(getClass)
 
   def startShellScript(
+    processConfiguration: ProcessConfiguration = ProcessConfiguration(),
     name: String = "shell-script",
-    additionalEnvironment: immutable.Iterable[(String, String)] = Map(),
-    scriptString: String,
-    stdFileMap: Map[StdoutStderrType, Path] = Map()): RichProcess =
+    scriptString: String): RichProcess =
   {
     val shellFile = OS.newTemporaryShellFile(name)
     try {
       shellFile.toFile.write(scriptString, ISO_8859_1)
-      val process = RichProcess.start(OS.toShellCommandArguments(shellFile), additionalEnvironment, stdFileMap, infoProgramFile = shellFile)
+      val process = RichProcess.start(processConfiguration, OS.toShellCommandArguments(shellFile), infoProgramFile = shellFile)
       process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
       process.stdin.close() // Empty stdin
       process
@@ -89,23 +93,28 @@ object RichProcess {
     }
   }
 
-  def start(arguments: Seq[String], additionalEnvironment: Iterable[(String, String)], stdFileMap: Map[StdoutStderrType, Path], infoProgramFile: Path): RichProcess = {
+  def start(
+    processConfiguration: ProcessConfiguration,
+    arguments: Seq[String],
+    infoProgramFile: Path): RichProcess =
+  {
+    import processConfiguration.{additionalEnvironment, stdFileMap}
     val processBuilder = new ProcessBuilder(arguments)
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
     logger.debug("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     val process = processBuilder.start()
-    new RichProcess(process, infoProgramFile, stdFileMap)
+    new RichProcess(processConfiguration, process, infoProgramFile)
   }
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
 
   def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → OS.newTemporaryOutputFile("sos", o) }).toMap
 
-  private val OS = if (isWindows) WindowsSpecific else UnixSpecific
+  val OS = if (isWindows) WindowsSpecific else UnixSpecific
 
-  private trait OperatingSystemSpecific {
+  trait OperatingSystemSpecific {
     def newTemporaryShellFile(name: String): Path
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path
     def toShellCommandArguments(file: Path): immutable.Seq[String]

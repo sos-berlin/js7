@@ -10,8 +10,8 @@ import com.sos.scheduler.engine.taskserver.HasSendProcessSignal
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
-import com.sos.scheduler.engine.taskserver.task.process.RichProcess
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
+import com.sos.scheduler.engine.taskserver.task.process.{ProcessConfiguration, RichProcess}
 import java.nio.charset.StandardCharsets._
 import java.nio.file.Files._
 import java.nio.file.Path
@@ -62,10 +62,11 @@ extends HasCloser with Task with HasSendProcessSignal {
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
     val richProcess = RichProcess.startShellScript(
+      ProcessConfiguration(
+        additionalEnvironment = env,
+        stdFileMap = processStdFileMap),
       name = jobName,
-      additionalEnvironment = env,
-      scriptString = module.script.string.trim,
-      stdFileMap = processStdFileMap)
+      scriptString = module.script.string.trim)
     .closeWithCloser
     if (processStdFileMap.nonEmpty) {
       for (_ ← richProcess.closed; _ ← concurrentStdoutStderrWell.closed) RichProcess.tryDeleteFiles(processStdFileMap.values)
