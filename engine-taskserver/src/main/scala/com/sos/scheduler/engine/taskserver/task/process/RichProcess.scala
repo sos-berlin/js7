@@ -121,9 +121,10 @@ object RichProcess {
   }
 
   private object WindowsSpecific extends OperatingSystemSpecific {
+    private val cmd = sys.env("ComSpec")  // C:\Windows\system32\cmd.exe
     def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}-$outerr-", ".log")
-    def toShellCommandArguments(file: Path) = Vector("""C:\Windows\System32\cmd.exe""", "/C", file.toString)
+    def toShellCommandArguments(file: Path) = Vector(cmd, "/C", file.toString)
   }
 
   def tryDeleteFiles(files: Iterable[Path]): Unit =
