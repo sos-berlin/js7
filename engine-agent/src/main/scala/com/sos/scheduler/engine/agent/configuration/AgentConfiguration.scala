@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.configuration
 import com.sos.scheduler.engine.agent.web.common.WebService
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
+import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.common.utils.TcpUtils.{parseTcpPort, requireTcpPortNumber}
 import java.nio.file.{Path, Paths}
 import org.scalactic.Requirements._
@@ -24,7 +25,8 @@ final case class AgentConfiguration(
   directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
   environment: immutable.Iterable[(String, String)] = Nil,
   webServiceClasses: immutable.Seq[Class[_ <: WebService]] = Nil,
-  jobJavaOptions: immutable.Seq[String] = Nil)
+  jobJavaOptions: immutable.Seq[String] = Nil,
+  killScriptFile: Option[Path] = None)
 {
   requireTcpPortNumber(httpPort)
   require(directory.isAbsolute)
@@ -41,6 +43,12 @@ object AgentConfiguration {
       new AgentConfiguration(
         httpPort = a.asConverted("-http-port=")(parseTcpPort),
         httpInterfaceRestriction = a.getString("-ip-address="),
-        uriPathPrefix = a.getString("-uri-prefix=") getOrElse "")
+        uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
+        killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath })
     }
+
+  def forTest(httpPort: Int = findRandomFreeTcpPort()) = AgentConfiguration(
+    httpPort = httpPort,
+    httpInterfaceRestriction = Some("127.0.0.1"),
+    jobJavaOptions = sys.props.get("agent.job.javaOptions").toList)
 }
