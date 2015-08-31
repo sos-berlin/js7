@@ -27,16 +27,10 @@ import scala.concurrent.{Future, blocking}
 import scala.util.control.NonFatal
 
 /**
- * @param infoProgramFile only for information
  * @author Joacim Zschimmer
  */
-final class RichProcess private(
-  processConfiguration: ProcessConfiguration,
-  process: Process,
-  infoProgramFile: Path)
+final class RichProcess private(val processConfiguration: ProcessConfiguration, process: Process)
 extends HasCloser with ClosedFuture {
-
-  import processConfiguration.{idString, killScriptFileOption, stdFileMap}
 
   private val logger = Logger.withPrefix(getClass, toString)
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
@@ -50,7 +44,7 @@ extends HasCloser with ClosedFuture {
         logger.debug("destroy")
         process.destroy()
       case SIGKILL ⇒
-        killScriptFileOption match {
+        processConfiguration.killScriptFileOption match {
           case Some(onKillScriptFile) ⇒
             val args = OS.toShellCommandArguments(onKillScriptFile, List(processConfiguration.killScriptArgument))
             val onKillProcess = new ProcessBuilder(args).start()
@@ -82,10 +76,7 @@ extends HasCloser with ClosedFuture {
 
   def stdin = process.getOutputStream
 
-  override def toString = s"$process $infoProgramFile $idString".trim
-
-  @TestOnly
-  def files: immutable.Seq[Path] = List(infoProgramFile) ++ stdFileMap.values
+  override def toString = (List(process) ++ processConfiguration.fileOption ++ processConfiguration.idStringOption) mkString " "
 }
 
 object RichProcess {
@@ -100,7 +91,7 @@ object RichProcess {
     val shellFile = OS.newTemporaryShellFile(name)
     try {
       shellFile.toFile.write(scriptString, ISO_8859_1)
-      val process = RichProcess.start(processConfiguration, OS.toShellCommandArguments(shellFile), infoProgramFile = shellFile)
+      val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), OS.toShellCommandArguments(shellFile))
       process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
       process.stdin.close() // Empty stdin
       process
@@ -111,11 +102,7 @@ object RichProcess {
     }
   }
 
-  def start(
-    processConfiguration: ProcessConfiguration,
-    arguments: Seq[String],
-    infoProgramFile: Path): RichProcess =
-  {
+  def start(processConfiguration: ProcessConfiguration, arguments: Seq[String]): RichProcess = {
     import processConfiguration.{additionalEnvironment, stdFileMap}
     val processBuilder = new ProcessBuilder(arguments ++ processConfiguration.idArgumentOption)
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
@@ -123,7 +110,7 @@ object RichProcess {
     processBuilder.environment ++= additionalEnvironment
     logger.debug("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     val process = processBuilder.start()
-    new RichProcess(processConfiguration, process, infoProgramFile)
+    new RichProcess(processConfiguration, process)
   }
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT

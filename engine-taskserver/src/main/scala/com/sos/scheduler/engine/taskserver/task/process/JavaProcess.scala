@@ -20,13 +20,12 @@ object JavaProcess {
     arguments: Seq[String]) =
   {
     RichProcess.start(
-      processConfiguration,
+      processConfiguration.copy(fileOption = Some(JavaExecutable)),
       arguments = Vector(JavaExecutable.getPath) ++
         options ++
         (classpath.toVector flatMap { o ⇒ Vector("-classpath", o.substitute("" → File.pathSeparator)) }) ++ // Java does not like empty classpath
         Vector(mainClass) ++
-        arguments,
-      infoProgramFile = JavaExecutable)
+        arguments)
   }
 
   private lazy val JavaExecutable: File = {

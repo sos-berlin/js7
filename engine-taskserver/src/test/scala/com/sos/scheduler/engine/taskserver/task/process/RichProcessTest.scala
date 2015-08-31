@@ -47,9 +47,9 @@ final class RichProcessTest extends FreeSpec {
       }
       val killScriptFile = RichProcess.OS.newTemporaryShellFile("TEST")
       killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$testFile\n" else "echo $* >$testFile\n"
-      val processConfig = ProcessConfiguration(idString = idString, stdFileMap = stdFileMap, killScriptFileOption = Some(killScriptFile))
+      val processConfig = ProcessConfiguration(stdFileMap = stdFileMap, idStringOption = Some(idString), killScriptFileOption = Some(killScriptFile))
       val shellProcess = startShellScript(processConfig, scriptString = script)
-      assert(shellProcess.files.size == 3)
+      assert(shellProcess.processConfiguration.files.size == 3)
       sleep(3.s)
       assert(shellProcess.isAlive)
       shellProcess.sendProcessSignal(SIGKILL)

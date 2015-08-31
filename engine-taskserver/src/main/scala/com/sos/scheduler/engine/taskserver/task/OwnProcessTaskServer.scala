@@ -31,8 +31,8 @@ extends TaskServer {
       process = JavaProcess.startJava(
         ProcessConfiguration(
           stdFileMap,
-	        additionalEnvironment = taskStartArguments.environment,
-          idString = taskStartArguments.agentTaskId.string,
+          additionalEnvironment = taskStartArguments.environment,
+          idStringOption = Some(taskStartArguments.agentTaskId.string),
           killScriptFileOption = taskStartArguments.killScriptFileOption),
         options = javaOptions,
         classpath = Some(javaClasspath + File.pathSeparator + JavaProcess.OwnClasspath),

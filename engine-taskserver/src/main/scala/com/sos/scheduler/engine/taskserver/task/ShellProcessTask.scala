@@ -68,7 +68,7 @@ extends HasCloser with Task with HasSendProcessSignal {
       ProcessConfiguration(
         processStdFileMap,
         additionalEnvironment = env,
-        idString = agentTaskId.string,
+        idStringOption = Some(agentTaskId.string),
         killScriptFileOption = killScriptPathOption),
       name = jobName,
       scriptString = module.script.string.trim)
@@ -129,7 +129,7 @@ extends HasCloser with Task with HasSendProcessSignal {
     requireState(startCalled)
     richProcess match {
       case null ⇒ Nil
-      case o ⇒ o.files
+      case o ⇒ o.processConfiguration.files
     }
   }
 }
