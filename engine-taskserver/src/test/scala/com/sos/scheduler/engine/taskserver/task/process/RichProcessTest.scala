@@ -37,16 +37,17 @@ final class RichProcessTest extends FreeSpec {
 
   "sendProcessSignal SIGKILL" in {
     val idString = "TEST-PROCESS-ID"
-    val stdFileMap = RichProcess.createTemporaryStdFiles()
-    val script = if (isWindows) "echo ARGUMENTS=%*\nping -n 60 127.0.0.1" else "echo $*; sleep 60"
+    val script = if (isWindows) "echo ARGUMENTS=%*\nping -n 60 127.0.0.1" else "echo ARGUMENTS=$*; sleep 60"
     withCloser { closer ⇒
+      val stdFileMap = RichProcess.createTemporaryStdFiles()
       val testFile = Files.createTempFile("test-", ".tmp")
-      closer.onClose {
-        RichProcess.tryDeleteFiles(stdFileMap.values)
-        delete(testFile)
-      }
       val killScriptFile = RichProcess.OS.newTemporaryShellFile("TEST")
-      killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$testFile\n" else "echo $* >$testFile\n"
+      killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$testFile\n" else s"echo KILL-ARGUMENTS=$$* >$testFile\n"
+      closer.onClose {
+        RichProcess.tryDeleteFiles(stdFileMap.values)  // Under Windows the files will not be deleted, because ping.exe will be not killed (and JS-1468 doesn't allow integrated kill scripts) !!!
+        delete(testFile)
+        delete(killScriptFile)
+      }
       val processConfig = ProcessConfiguration(stdFileMap = stdFileMap, idStringOption = Some(idString), killScriptFileOption = Some(killScriptFile))
       val shellProcess = startShellScript(processConfig, scriptString = script)
       assert(shellProcess.processConfiguration.files.size == 3)
