@@ -53,18 +53,18 @@ extends HasCloser with Task with HasSendProcessSignal {
     startCalled = true
     monitorProcessor.preTask() &&
       monitorProcessor.preStep() && {
-        richProcess = startProcess()
+        startProcess()
         true
       }
   }
 
-  private def startProcess(): RichProcess = {
+  private def startProcess() = {
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
       val paramEnv = params map { case (k, v) ⇒ paramNameToEnv(k) → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
-    val richProcess = RichProcess.startShellScript(
+    richProcess = RichProcess.startShellScript(
       ProcessConfiguration(
         processStdFileMap,
         additionalEnvironment = env,
@@ -73,11 +73,14 @@ extends HasCloser with Task with HasSendProcessSignal {
       name = jobName,
       scriptString = module.script.string.trim)
     .closeWithCloser
-    if (processStdFileMap.nonEmpty) {
-      for (_ ← richProcess.closed; _ ← concurrentStdoutStderrWell.closed) RichProcess.tryDeleteFiles(processStdFileMap.values)
-    }
+    deleteFilesWhenProcessClosed(List(orderParamsFile) ++ processStdFileMap.values)
     concurrentStdoutStderrWell.start()
-    richProcess
+  }
+
+  private def deleteFilesWhenProcessClosed(files: Iterable[Path]): Unit = {
+    if (files.nonEmpty) {
+      for (_ ← richProcess.closed; _ ← concurrentStdoutStderrWell.closed) RichProcess.tryDeleteFiles(files)
+    }
   }
 
   def end() = {}  // Not called

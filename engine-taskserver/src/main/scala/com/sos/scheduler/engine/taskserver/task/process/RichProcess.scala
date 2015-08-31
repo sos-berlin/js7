@@ -46,13 +46,19 @@ extends HasCloser with ClosedFuture {
       case SIGKILL ⇒
         processConfiguration.killScriptFileOption match {
           case Some(onKillScriptFile) ⇒
-            val args = OS.toShellCommandArguments(onKillScriptFile, List(processConfiguration.killScriptArgument))
-            val onKillProcess = new ProcessBuilder(args).start()
-            Future {
-              blocking {
-                waitForProcessTermination(onKillProcess)
+            try {
+              val args = OS.toShellCommandArguments(onKillScriptFile, List(processConfiguration.killScriptArgument))
+              val onKillProcess = new ProcessBuilder(args).start()
+              Future {
+                blocking {
+                  waitForProcessTermination(onKillProcess)
+                }
+                killNow()
               }
-              killNow()
+            } catch {
+              case NonFatal(t) ⇒
+                killNow()
+                throw t
             }
           case None ⇒
             killNow()
