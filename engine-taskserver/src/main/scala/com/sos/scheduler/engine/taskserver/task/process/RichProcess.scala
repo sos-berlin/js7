@@ -48,10 +48,15 @@ extends HasCloser with ClosedFuture {
           case Some(onKillScriptFile) ⇒
             try {
               val args = OS.toShellCommandArguments(onKillScriptFile, List(processConfiguration.killScriptArgument))
+              logger.info("Executing kill script: " + (args mkString ", "))
               val onKillProcess = new ProcessBuilder(args).start()
               Future {
                 blocking {
                   waitForProcessTermination(onKillProcess)
+                }
+                onKillProcess.exitValue match {
+                  case 0 ⇒
+                  case o ⇒ logger.warn("Kill script has returned exit code " + o)
                 }
                 killNow()
               }
@@ -82,7 +87,7 @@ extends HasCloser with ClosedFuture {
 
   def stdin = process.getOutputStream
 
-  override def toString = (List(process) ++ processConfiguration.fileOption ++ processConfiguration.idStringOption) mkString " "
+  override def toString = (processConfiguration.idStringOption ++ List(process) ++ processConfiguration.fileOption) mkString " "
 }
 
 object RichProcess {
