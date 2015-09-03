@@ -132,8 +132,6 @@ object RichProcess {
     while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
   }
 
-  final case class KillConfiguration(agentTaskId: AgentTaskId, onKillScriptFile: Path)
-
   val OS = if (isWindows) WindowsSpecific else UnixSpecific
 
   trait OperatingSystemSpecific {
