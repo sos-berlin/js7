@@ -9,6 +9,7 @@ import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
 import java.util.concurrent.TimeoutException
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -19,7 +20,7 @@ import scala.util.Random
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
+final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfterAll with ScalaFutures {
 
   private val localhost = InetAddress.getByName("127.0.0.1")
   private var listenSocket: ServerSocket = _
@@ -44,17 +45,22 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
     val data = Array.fill(length) { Random.nextInt().toByte }
     val message = smallIntToBytes(length) ++ data
     for (_ ← 1 to 10) {
+      val received = Future { tcpConnection.receiveMessage() }
       out.write(message)
-      tcpConnection.receiveMessage() shouldEqual Some(ByteString(data))
+      assert(received.futureValue == Some(ByteString(data)))
     }
   }
 
   "sendMessage" in {
     val length = 261
     val sentData = Array.fill(length) { Random.nextInt().toByte }
+    val received = Future {
+      val receivedData = new Array[Byte](4 + length)
+      val receivedLength = in.read(receivedData)
+      (receivedData, receivedLength)
+    }
     tcpConnection.sendMessage(ByteString.fromArray(sentData))
-    val receivedData = new Array[Byte](4 + length)
-    val receivedLength = in.read(receivedData)
+    val (receivedData, receivedLength) = received.futureValue
     receivedLength shouldEqual 4 + length
     receivedData.toVector shouldEqual smallIntToBytes(length) ++ sentData.toVector
   }
