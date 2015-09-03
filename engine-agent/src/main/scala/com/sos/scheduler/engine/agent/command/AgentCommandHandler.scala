@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.agent.fileordersource.{FileCommandExecutor, Requ
 import com.sos.scheduler.engine.agent.task.TaskHandler
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
-import com.sos.scheduler.engine.common.soslicense.LicenseKey
+import com.sos.scheduler.engine.common.soslicense.LicenseKeyChecker
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
@@ -33,7 +33,7 @@ with CommandHandlerDetails {
   def currentCommandCount = idToCommand.size
   def commandRuns = (idToCommand.values map { _.overview }).toVector
 
-  def executeCommand(command: Command, licenseKey: Option[LicenseKey]): Future[command.Response] = {
+  def executeCommand(command: Command, licenseKey: Option[LicenseKeyChecker]): Future[command.Response] = {
     totalCounter.incrementAndGet()
     val id = InternalCommandId(nextId.incrementAndGet())
     logger.info(s"$id ${command.toShortString}")
@@ -44,7 +44,7 @@ with CommandHandlerDetails {
     future
   }
 
-  private def executeCommand2(id: InternalCommandId, command: Command, licenseKey: Option[LicenseKey]) =
+  private def executeCommand2(id: InternalCommandId, command: Command, licenseKey: Option[LicenseKeyChecker]) =
     (command match {
       case command: FileCommand ⇒ Future.successful(FileCommandExecutor.executeCommand(command))
       case command: TaskCommand ⇒ taskHandler.execute(command, licenseKey)

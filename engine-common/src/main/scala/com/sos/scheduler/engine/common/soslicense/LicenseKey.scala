@@ -22,22 +22,25 @@ case class LicenseKey private(
   final val issuedAt: java.time.LocalDate,
   final val settings: Map[Parameter, String],
   final val securityCode: Int,
-  final val salt: Int) {
+  final val salt: Int)
+extends LicenseKeyChecker {
 
   val validUntilOption: Option[LocalDate] = {
     def v(p: Parameter) = settings.get(p) map { p.string + _ }
     v(ValidIn1900) orElse v(ValidIn2000) map { o ⇒ LocalDate from BASIC_ISO_DATE.parse(o) }
   }
 
-  def require(parameter: Parameter, failureText: String = ""): Unit = {
-    if (!contains(parameter)) throw new LicenseKeyParameterIsMissingException(parameter, failureText = failureText)
-  }
+  def apply(parameter: Parameter): Parameter.Result =
+    if (!contains(parameter)) Parameter.Missing
+    else
+    if (!isValidToday) Parameter.Expired
+    else Parameter.OK
 
-  def contains(p: Parameter) = isValidToday && ((settings contains p) || isUniversalKey && Parameters.ZZIncludes(p))
+  private def contains(p: Parameter) = (settings contains p) || containsUniversally(p)
 
-  def isUniversalKey = isValidToday && (settings contains ZZ)
+  private def containsUniversally(p: Parameter) = (settings contains ZZ) && Parameters.ZZIncludes(p)
 
-  def isValidToday = validUntilOption map { o => !(LocalDate.now() isAfter o) } getOrElse true
+  private[soslicense] final def isValidToday = validUntilOption map { o => !(LocalDate.now() isAfter o) } getOrElse true
 }
 
 object LicenseKey {
@@ -120,6 +123,13 @@ object LicenseKey {
         case 1 ⇒ charToInt(string.head)
         case 2 ⇒ charToInt(string(0)) * Base + charToInt(string(1))
       }
+  }
+
+  object Parameter {
+    sealed trait Result
+    case object OK extends Result
+    case object Missing extends Result
+    case object Expired extends Result
   }
 
   private def stringToUnsignedInt(string: String): UnsignedInt32 = {

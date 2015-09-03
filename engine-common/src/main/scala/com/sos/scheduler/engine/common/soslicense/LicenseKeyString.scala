@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.soslicense
 
+import com.sos.scheduler.engine.common.soslicense.LicenseKeyString._
 import scala.PartialFunction.cond
-import LicenseKeyString._
 
 /**
  * @author Joacim Zschimmer
@@ -19,7 +19,7 @@ final class LicenseKeyString(val string: String) {
 }
 
 object LicenseKeyString {
-  def apply(key: String) = new LicenseKeyString(key)
+  def apply(key: String) = new LicenseKeyString(key.trim)
 
   def normalize(o: String) = o.toUpperCase
 }
