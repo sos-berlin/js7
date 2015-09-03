@@ -16,7 +16,7 @@ final class RandomsTest extends FunSuite {
   test("randomInts") {
     val range = 1 to 10
     for (i <- 1 to 1000) {
-      val o = Randoms.randomInts(range).toSeq
+      val o = Randoms.randomStartInts(range).toSeq
       o should have size range.size
       o.toSet should have size range.size
     }

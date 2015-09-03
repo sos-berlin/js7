@@ -5,7 +5,10 @@ import scala.util.Random
 
 object Randoms {
 
-  def randomInts(range: Iterable[Int]): Iterator[Int] = {
+  /**
+   * Returns a sequence of Int starting at a random value and wrapping around range
+   */
+  def randomStartInts(range: Iterable[Int]): Iterator[Int] = {
     val r = randomInt(range)
     (r to range.last).toIterator ++ (range.head until r).toIterator
   }
