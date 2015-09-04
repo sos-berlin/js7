@@ -56,7 +56,8 @@ final class RichProcessTest extends FreeSpec {
       shellProcess.sendProcessSignal(SIGKILL)
       waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
       assert(!shellProcess.isAlive)
-      shellProcess.waitForTermination()
+      val rc = shellProcess.waitForTermination()
+      assert(rc == (if (isWindows) ReturnCode(1/* This is Java destroy()*/) else ReturnCode(SIGKILL)))
       shellProcess.close()
       assert(stdFileMap(Stdout).contentString contains "ARGUMENTS=")
       assert(stdFileMap(Stdout).contentString contains s"ARGUMENTS=-agent-task-id=$idString")
