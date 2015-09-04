@@ -22,5 +22,6 @@ object ModifyJobCommand {
 
   object Cmd {
     case object Stop extends Cmd("stop")
+    case object Unstop extends Cmd("unstop")
   }
 }
