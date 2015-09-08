@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -8,6 +7,7 @@ import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logge
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.job.ReturnCode
+import com.sos.scheduler.engine.taskserver.task.process.Processes._
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import java.io.{BufferedOutputStream, OutputStreamWriter}
@@ -32,6 +32,7 @@ import scala.util.control.NonFatal
 final class RichProcess private(val processConfiguration: ProcessConfiguration, process: Process)
 extends HasCloser with ClosedFuture {
 
+  private val pidOption = processToPidOption(process)
   private val logger = Logger.withPrefix(getClass, toString)
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
 
@@ -79,15 +80,13 @@ extends HasCloser with ClosedFuture {
   private[task] def isAlive = process.isAlive
 
   def waitForTermination(): ReturnCode = {
-    logger.debug("waitForTermination ...")
     waitForProcessTermination(process)
-    logger.debug(s"waitForTermination: terminated with exit code ${process.exitValue}")
     ReturnCode(process.exitValue)
   }
 
   def stdin = process.getOutputStream
 
-  override def toString = (processConfiguration.idStringOption ++ List(process) ++ processConfiguration.fileOption) mkString " "
+  override def toString = (processConfiguration.idStringOption ++ List(processToString(process, pidOption)) ++ processConfiguration.fileOption) mkString " "
 }
 
 object RichProcess {
@@ -129,7 +128,9 @@ object RichProcess {
   def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → OS.newTemporaryOutputFile("sos", o) }).toMap
 
   private def waitForProcessTermination(process: Process): Unit = {
+    logger.debug(s"waitFor ${processToString(process)} ...")
     while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
+    logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
   }
 
   val OS = if (isWindows) WindowsSpecific else UnixSpecific
