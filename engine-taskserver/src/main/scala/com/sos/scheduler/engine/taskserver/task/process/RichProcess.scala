@@ -55,7 +55,7 @@ extends HasCloser with ClosedFuture {
                 waitForProcessTermination(onKillProcess)
                 onKillProcess.exitValue match {
                   case 0 ⇒
-                  case o ⇒ logger.warn("Kill script has returned exit code " + o)
+                  case o ⇒ logger.warn(s"Kill script '$onKillScriptFile' has returned exit code $o")
                 }
                 killNow()
               }

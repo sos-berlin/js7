@@ -35,7 +35,8 @@ final class ShellProcessTask(
   hasOrder: Boolean,
   stdFiles: StdFiles,
   environment: immutable.Iterable[(String, String)],
-  killScriptPathOption: Option[Path])
+  killScriptPathOption: Option[Path],
+  isOwnProcess: Boolean = false)
 extends HasCloser with Task with HasSendProcessSignal {
   
   import namedInvocables.spoolerTask
@@ -65,12 +66,14 @@ extends HasCloser with Task with HasSendProcessSignal {
       val paramEnv = params map { case (k, v) ⇒ paramNameToEnv(k) → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
+    val (idStringOption, killScriptFileOption) = if (isOwnProcess) (None, None) else (Some(agentTaskId.string), killScriptPathOption)  // No idString if this is an own process (due to a monitor), already started with idString
+    require(richProcess == null)
     richProcess = RichProcess.startShellScript(
       ProcessConfiguration(
         processStdFileMap,
         additionalEnvironment = env,
-        idStringOption = Some(agentTaskId.string),
-        killScriptFileOption = killScriptPathOption),
+        idStringOption = idStringOption,
+        killScriptFileOption = killScriptFileOption),
       name = jobName,
       scriptString = module.script.string.trim)
     .closeWithCloser

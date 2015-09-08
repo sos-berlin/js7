@@ -50,7 +50,8 @@ extends HasCloser with Invocable with HasSendProcessSignal {
           hasOrder = taskArguments.hasOrder,
           stdFiles,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
-          killScriptPathOption = taskStartArguments.killScriptFileOption)
+          killScriptPathOption = taskStartArguments.killScriptFileOption,
+          isOwnProcess = taskStartArguments.isOwnProcess)
       case module: JavaModule ⇒
         new JavaProcessTask(
           taskStartArguments.agentTaskId,
