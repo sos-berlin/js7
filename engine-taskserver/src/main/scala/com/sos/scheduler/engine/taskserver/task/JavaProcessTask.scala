@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
@@ -18,7 +19,8 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 final class JavaProcessTask(
-  jobName: String,
+  protected val agentTaskId: AgentTaskId,
+  protected val jobName: String,
   module: JavaModule,
   namedInvocables: NamedInvocables,
   monitors: immutable.Seq[Monitor] = Nil,
@@ -30,6 +32,7 @@ extends Task with HasCloser {
   private val methodIsCalled = mutable.Set[String]()
   private val concurrentStdoutStderrWell = stdFiles.nonEmpty option new ConcurrentStdoutAndStderrWell(s"Job $jobName", stdFiles).closeWithCloser
   private var closeCalled = false
+  private val logger = Logger.withPrefix(getClass, toString)
 
   def start() = {
     concurrentStdoutStderrWell foreach { _.start() }
@@ -93,5 +96,4 @@ extends Task with HasCloser {
 object JavaProcessTask {
   private val NameAndSignature = """(.*)\((.*)\)(.+)""".r
   private val StandardJavaErrorCode = MessageCode("Z-JAVA-105")
-  private val logger = Logger(getClass)
 }

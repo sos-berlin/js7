@@ -27,8 +27,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * @see spooler_module_process.cxx, C++ class Process_module_instance
  */
 final class ShellProcessTask(
-  agentTaskId: AgentTaskId,
-  jobName: String,
+  protected val agentTaskId: AgentTaskId,
+  protected val jobName: String,
   module: ShellModule,
   namedInvocables: NamedInvocables,
   monitors: immutable.Seq[Monitor],
@@ -47,6 +47,7 @@ extends HasCloser with Task with HasSendProcessSignal {
     stdFiles.copy(stdFileMap = processStdFileMap ++ stdFiles.stdFileMap)).closeWithCloser
   private var startCalled = false
   private var richProcess: RichProcess = null
+  private val logger = Logger.withPrefix(getClass, toString)
 
   def start() = {
     requireState(!startCalled)
@@ -135,13 +136,14 @@ extends HasCloser with Task with HasSendProcessSignal {
       case o ⇒ o.processConfiguration.files
     }
   }
+
+  override def toString = List(super.toString) ++ (Option(richProcess) map { _.toString }) mkString " "
 }
 
 object ShellProcessTask {
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesFileEncoding = ISO_8859_1
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
-  private val logger = Logger(getClass)
 
   private def paramNameToEnv(name: String) = s"SCHEDULER_PARAM_${name.toUpperCase}"
 

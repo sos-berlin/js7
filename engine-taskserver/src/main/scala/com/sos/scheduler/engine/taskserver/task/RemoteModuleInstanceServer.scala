@@ -53,6 +53,7 @@ extends HasCloser with Invocable with HasSendProcessSignal {
           killScriptPathOption = taskStartArguments.killScriptFileOption)
       case module: JavaModule ⇒
         new JavaProcessTask(
+          taskStartArguments.agentTaskId,
           jobName = taskArguments.jobName,
           module,
           namedInvocables,
