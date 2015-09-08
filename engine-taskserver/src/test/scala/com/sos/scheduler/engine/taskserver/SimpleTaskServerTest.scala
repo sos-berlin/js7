@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder
-import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import java.net.{InetAddress, ServerSocket}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignat
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
-import com.sos.scheduler.engine.taskserver.HasSendProcessSignal
+import com.sos.scheduler.engine.taskserver.data.{HasSendProcessSignal, TaskStartArguments}
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule

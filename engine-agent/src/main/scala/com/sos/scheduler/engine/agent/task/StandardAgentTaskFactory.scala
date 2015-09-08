@@ -7,8 +7,8 @@ import com.sos.scheduler.engine.agent.data.commands.{StartApiTask, StartNonApiTa
 import com.sos.scheduler.engine.agent.task.StandardAgentTaskFactory._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.taskserver.SimpleTaskServer
-import com.sos.scheduler.engine.taskserver.task.{OwnProcessTaskServer, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.{OwnProcessTaskServer, SimpleTaskServer}
 import com.sos.scheduler.engine.tunnel.TunnelHandler
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.util.regex.Pattern

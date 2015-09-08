@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.taskserver
 import com.google.common.io.ByteStreams
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import spray.json._
 
 /**

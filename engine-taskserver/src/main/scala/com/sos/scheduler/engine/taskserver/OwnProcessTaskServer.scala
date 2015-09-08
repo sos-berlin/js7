@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver
 
 import com.google.common.io.Closer
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.taskserver.TaskServer
-import com.sos.scheduler.engine.taskserver.task.OwnProcessTaskServer._
+import com.sos.scheduler.engine.taskserver.OwnProcessTaskServer._
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, ProcessConfiguration, RichProcess}
 import java.io.File
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -36,7 +36,7 @@ extends TaskServer {
           killScriptFileOption = taskStartArguments.killScriptFileOption),
         options = javaOptions,
         classpath = Some(javaClasspath + File.pathSeparator + JavaProcess.OwnClasspath),
-        mainClass = com.sos.scheduler.engine.taskserver.TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix
+        mainClass = TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix
         arguments = Nil)
       process.closed.onComplete { tried ⇒
         for (t ← tried.failed) logger.error(t.toString, t)

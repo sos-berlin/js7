@@ -16,7 +16,7 @@ import com.sos.scheduler.engine.common.soslicense.{LicenseKey, LicenseKeyParamet
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.TaskServer
-import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.tunnel.core.TunnelClient
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import javax.inject.Singleton

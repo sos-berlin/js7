@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
-import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import org.junit.runner.RunWith
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec

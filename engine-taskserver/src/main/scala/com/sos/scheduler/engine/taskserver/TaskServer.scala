@@ -1,11 +1,11 @@
 package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import scala.concurrent.Future
 
 /**
- * A COM server, configured with [[com.sos.scheduler.engine.taskserver.task.TaskStartArguments]], connecting to a controller and
+ * A COM server, configured with [[TaskStartArguments]], connecting to a controller and
  * executing the controllers task API calls.
  *
  * @author Joacim Zschimmer

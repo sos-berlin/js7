@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
-import com.sos.scheduler.engine.taskserver.task.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout}
 import java.nio.charset.StandardCharsets.ISO_8859_1

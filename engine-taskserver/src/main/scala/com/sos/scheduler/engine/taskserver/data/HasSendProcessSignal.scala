@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver
+package com.sos.scheduler.engine.taskserver.data
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
 

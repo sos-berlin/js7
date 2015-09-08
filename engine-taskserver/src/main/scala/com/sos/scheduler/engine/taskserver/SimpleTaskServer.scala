@@ -12,8 +12,9 @@ import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
+import com.sos.scheduler.engine.taskserver.data.{HasSendProcessSignal, TaskStartArguments}
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
-import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
 import com.sos.scheduler.engine.tunnel.data.TunnelConnectionMessage
 import java.nio.channels.AsynchronousCloseException
 import scala.concurrent.ExecutionContext.Implicits.global
