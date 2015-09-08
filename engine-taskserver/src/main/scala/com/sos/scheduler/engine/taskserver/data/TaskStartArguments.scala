@@ -22,8 +22,7 @@ final case class TaskStartArguments(
   directory: Path,
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
   logStdoutAndStderr: Boolean = false,
-  killScriptFileOption: Option[Path] = None,
-  isOwnProcess: Boolean = false)
+  killScriptFileOption: Option[Path] = None)
 {
   def controllerInetSocketAddress = toInetSocketAddress(controllerAddress)
 }
@@ -49,5 +48,5 @@ object TaskStartArguments {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }
 
-  implicit val MyJsonFormat = jsonFormat9(apply)
+  implicit val MyJsonFormat = jsonFormat8(apply)
 }

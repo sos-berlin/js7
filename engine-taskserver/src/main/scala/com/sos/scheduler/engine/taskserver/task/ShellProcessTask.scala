@@ -2,10 +2,12 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.process.ProcessSignal
+import com.sos.scheduler.engine.base.process.ProcessSignal._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
+import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.data.HasSendProcessSignal
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
@@ -20,6 +22,8 @@ import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration.Inf
+import scala.concurrent.{Await, Future}
 
 /**
  * @author Joacim Zschimmer
@@ -36,9 +40,9 @@ final class ShellProcessTask(
   stdFiles: StdFiles,
   environment: immutable.Iterable[(String, String)],
   killScriptPathOption: Option[Path],
-  isOwnProcess: Boolean = false)
+  taskServerMainTerminatedOption: Option[Future[Unit]] = None)
 extends HasCloser with Task with HasSendProcessSignal {
-  
+
   import namedInvocables.spoolerTask
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
@@ -49,6 +53,7 @@ extends HasCloser with Task with HasSendProcessSignal {
   private var startCalled = false
   private var richProcess: RichProcess = null
   private val logger = Logger.withPrefix(getClass, toString)
+  private var sigtermForwarder: JavaShutdownHook = null
 
   def start() = {
     requireState(!startCalled)
@@ -61,12 +66,20 @@ extends HasCloser with Task with HasSendProcessSignal {
   }
 
   private def startProcess() = {
+    for (terminated ← taskServerMainTerminatedOption) {
+      sigtermForwarder = JavaShutdownHook.add(ShellProcessTask.getClass.getName) {
+        sendProcessSignal(SIGTERM)
+        Await.ready(terminated, Inf)  // Delay until TaskServer has been terminated
+      }
+    }
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
       val paramEnv = params map { case (k, v) ⇒ paramNameToEnv(k) → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
-    val (idStringOption, killScriptFileOption) = if (isOwnProcess) (None, None) else (Some(agentTaskId.string), killScriptPathOption)  // No idString if this is an own process (due to a monitor), already started with idString
+    val (idStringOption, killScriptFileOption) =
+      if (taskServerMainTerminatedOption.nonEmpty) (None, None)
+      else (Some(agentTaskId.string), killScriptPathOption)  // No idString if this is an own process (due to a monitor), already started with idString
     require(richProcess == null)
     richProcess = RichProcess.startShellScript(
       ProcessConfiguration(
@@ -95,6 +108,7 @@ extends HasCloser with Task with HasSendProcessSignal {
       <process.result spooler_process_result="false"/>.toString()
     else {
       val rc = richProcess.waitForTermination()
+      if (sigtermForwarder != null) sigtermForwarder.close()
       concurrentStdoutStderrWell.finish()
       transferReturnValuesToMaster()
       val success =

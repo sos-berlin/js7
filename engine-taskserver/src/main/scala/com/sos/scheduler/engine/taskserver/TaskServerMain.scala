@@ -17,8 +17,7 @@ object TaskServerMain {
     CommandLineArguments.parse(args) { _.getString("-agent-task-id=") }  // -agent-task-id=.. is only for the kill script and ignored
     try {
       val startArguments = new JsonParser(ByteStreams.toByteArray(System.in)).parseJsValue().asJsObject.convertTo[TaskStartArguments]
-        .copy(isOwnProcess = true)
-      SimpleTaskServer.run(startArguments)
+      SimpleTaskServer.runAsMain(startArguments)
       logger.info("Terminating")
     } catch {
       case t: Throwable ⇒
