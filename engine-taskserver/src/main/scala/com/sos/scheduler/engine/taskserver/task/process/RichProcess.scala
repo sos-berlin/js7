@@ -52,9 +52,7 @@ extends HasCloser with ClosedFuture {
               logger.info("Executing kill script: " + (args mkString ", "))
               val onKillProcess = new ProcessBuilder(args).start()
               Future {
-                blocking {
-                  waitForProcessTermination(onKillProcess)
-                }
+                waitForProcessTermination(onKillProcess)
                 onKillProcess.exitValue match {
                   case 0 ⇒
                   case o ⇒ logger.warn("Kill script has returned exit code " + o)
@@ -127,11 +125,12 @@ object RichProcess {
 
   def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → OS.newTemporaryOutputFile("sos", o) }).toMap
 
-  private def waitForProcessTermination(process: Process): Unit = {
-    logger.debug(s"waitFor ${processToString(process)} ...")
-    while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
-    logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
-  }
+  private def waitForProcessTermination(process: Process): Unit =
+    blocking {
+      logger.debug(s"waitFor ${processToString(process)} ...")
+      while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
+      logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
+    }
 
   val OS = if (isWindows) WindowsSpecific else UnixSpecific
 
