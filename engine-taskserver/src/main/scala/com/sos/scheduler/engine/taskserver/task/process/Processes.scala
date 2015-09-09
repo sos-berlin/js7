@@ -54,7 +54,7 @@ object Processes {
     }
 
     private[Processes] object Windows extends OperatingSystemSpecific {
-      private val cmd: String = sys.env.getOrElse("ComSpec", """C:\Windows\system32\cmd.exe""")
+      private val cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
 
       def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
 
