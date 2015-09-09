@@ -14,14 +14,10 @@ import java.io.{BufferedOutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets._
-import java.nio.file.Files.createTempFile
-import java.nio.file.attribute.PosixFilePermissions
-import java.nio.file.attribute.PosixFilePermissions._
 import java.nio.file.{Files, Path}
 import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
-import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
 import scala.util.control.NonFatal
@@ -48,7 +44,7 @@ extends HasCloser with ClosedFuture {
         processConfiguration.killScriptFileOption match {
           case Some(onKillScriptFile) ⇒
             try {
-              val args = OS.toShellCommandArguments(onKillScriptFile, List(processConfiguration.killScriptArgument))
+              val args = toShellCommandArguments(onKillScriptFile, List(processConfiguration.killScriptArgument))
               logger.info("Executing kill script: " + (args mkString ", "))
               val onKillProcess = new ProcessBuilder(args).start()
               Future {
@@ -96,10 +92,10 @@ object RichProcess {
     name: String = "shell-script",
     scriptString: String): RichProcess =
   {
-    val shellFile = OS.newTemporaryShellFile(name)
+    val shellFile = newTemporaryShellFile(name)
     try {
       shellFile.toFile.write(scriptString, ISO_8859_1)
-      val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), OS.toShellCommandArguments(shellFile))
+      val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), toShellCommandArguments(shellFile))
       process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
       process.stdin.close() // Empty stdin
       process
@@ -123,7 +119,7 @@ object RichProcess {
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
 
-  def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → OS.newTemporaryOutputFile("sos", o) }).toMap
+  def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newTemporaryOutputFile("sos", o) }).toMap
 
   private def waitForProcessTermination(process: Process): Unit =
     blocking {
@@ -131,30 +127,6 @@ object RichProcess {
       while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
       logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
     }
-
-  val OS = if (isWindows) WindowsSpecific else UnixSpecific
-
-  trait OperatingSystemSpecific {
-    def newTemporaryShellFile(name: String): Path
-    def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path
-    def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String]
-    protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name-"
-  }
-
-  private object UnixSpecific extends OperatingSystemSpecific {
-    private val shellFileAttribute = asFileAttribute(PosixFilePermissions fromString "rwx------")
-    private val outputFileAttribute = asFileAttribute(PosixFilePermissions fromString "rw-------")
-    def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttribute)
-    def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}-", s".$outerr", outputFileAttribute)
-    def toShellCommandArguments(file: Path, arguments: Seq[String]) = Vector("/bin/sh", file.toString) ++ arguments
-  }
-
-  private object WindowsSpecific extends OperatingSystemSpecific {
-    private val cmd = sys.env("ComSpec")  // C:\Windows\system32\cmd.exe
-    def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
-    def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}-$outerr-", ".log")
-    def toShellCommandArguments(file: Path, arguments: Seq[String]) = Vector(cmd, "/C", file.toString) ++ arguments
-  }
 
   def tryDeleteFiles(files: Iterable[Path]): Unit =
     for (file ← files) {

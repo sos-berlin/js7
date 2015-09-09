@@ -1,61 +1,68 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import javax.lang.model.SourceVersion
+import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
+import java.nio.file.Files._
+import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.attribute.PosixFilePermissions._
+import scala.collection.immutable
 
-/**
- * Tries to retrieve the PID of a process.
- * With Java 9, these methods become obsolete and can be replaced by Process.getPid.
- *
- * @see https://github.com/flapdoodle-oss/de.flapdoodle.embed.process/blob/master/src/main/java/de/flapdoodle/embed/process/runtime/Processes.java
- */
 object Processes {
 
-  def processToString(process: Process) = processToPidOption(process) map { _.toString } getOrElse process.toString
+  def processToString(process: Process): String = processToString(process, processToPidOption(process))
 
-  def processToString(process: Process, pid: Option[Pid]) = processToPidOption(process) map { _.toString } getOrElse process.toString
+  def processToString(process: Process, pid: Option[Pid]) = pid map { _.toString } getOrElse process.toString
 
-  def processToPidOption(process: Process): Option[Pid] = processToPid(process)
-
-  private val processToPid = SourceVersion.latest.toString match {
-    case "RELEASE_9" ⇒ Jdk9ProcessToPid
-    case _ ⇒ if (isWindows) WindowsBeforeJava9ProcessToPid else UnixBeforeJava9ProcessToPid
-  }
-
-  private object Jdk9ProcessToPid extends (Process ⇒ Option[Pid]) {
-    private val getPid = classOf[Process].getMethod("getPid")
-
-    def apply(process: Process) =
-      try Some(Pid(getPid.invoke(process).asInstanceOf[java.lang.Long]))
-      catch {
-        case t: Throwable ⇒ None
-      }
-  }
-
-  private object UnixBeforeJava9ProcessToPid extends (Process ⇒ Option[Pid]) {
-    def apply(process: Process) = try {
-      val pidField = process.getClass.getDeclaredField("pid")
-      pidField.setAccessible(true)
-      Some(Pid(pidField.get(process).asInstanceOf[java.lang.Integer].longValue))
-    }
-    catch {
-      case t: Throwable ⇒ None
-    }
-  }
-
-  private object WindowsBeforeJava9ProcessToPid extends (Process ⇒ Option[Pid]) {
-    def apply(process: Process) = try {
-      None // May be implemented with JNA https://github.com/java-native-access/jna !!!
-      //val handleField = process.getClass.getDeclaredField("handle")
-      //handleField.setAccessible(true)
-      //val handle = new WinNT.HANDLE
-      //handle.setPointer(Pointer.createConstant(handleField.getLong(process)))
-      //Kernel32.INSTANCE.GetProcessId(handle)
-    }
-    catch {
-      case t: Throwable ⇒ None
-    }
-  }
+  def processToPidOption(process: Process): Option[Pid] = ProcessesJava8pid.processToPid(process)
 
   final case class Pid(value: Long)
+
+
+
+  def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
+
+  def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path = OS.newTemporaryOutputFile(name, outerr)
+
+  def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String] = OS.toShellCommandArguments(file, arguments)
+
+  def toShellCommandArguments(argument: String): immutable.Seq[String] = OS.toShellCommandArguments(argument)
+
+  private val OS: OperatingSystemSpecific = if (isWindows) OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
+
+  private sealed trait OperatingSystemSpecific {
+    def newTemporaryShellFile(name: String): Path
+    def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path
+    def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String]
+    def toShellCommandArguments(argument: String): immutable.Seq[String]
+
+    protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name-"
+  }
+
+  private object OperatingSystemSpecific {
+    private[Processes] object Unix extends OperatingSystemSpecific {
+      private val shellFileAttribute = asFileAttribute(PosixFilePermissions fromString "rwx------")
+      private val outputFileAttribute = asFileAttribute(PosixFilePermissions fromString "rw-------")
+
+      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttribute)
+
+      def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}", s".$outerr", outputFileAttribute)
+
+      def toShellCommandArguments(file: Path, arguments: Seq[String]) = Vector("/bin/sh", file.toString) ++ arguments
+
+      def toShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
+    }
+
+    private[Processes] object Windows extends OperatingSystemSpecific {
+      private val cmd: String = sys.env.getOrElse("ComSpec", """C:\Windows\system32\cmd.exe""")
+
+      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
+
+      def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}$outerr-", ".log")
+
+      def toShellCommandArguments(file: Path, arguments: Seq[String]) = Vector(cmd, "/C", file.toString) ++ arguments
+
+      def toShellCommandArguments(argument: String) = Vector(cmd, "/C", argument)
+    }
+  }
 }
