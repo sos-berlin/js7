@@ -9,19 +9,20 @@ import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignat
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
-import com.sos.scheduler.engine.taskserver.HasSendProcessSignal
+import com.sos.scheduler.engine.taskserver.data.{HasSendProcessSignal, TaskStartArguments}
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
+import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
-final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskStartArguments)
+final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskStartArguments, taskServerMainTerminatedOption: Option[Future[Unit]])
 extends HasCloser with Invocable with HasSendProcessSignal {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
 
@@ -50,9 +51,11 @@ extends HasCloser with Invocable with HasSendProcessSignal {
           hasOrder = taskArguments.hasOrder,
           stdFiles,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
-          killScriptPathOption = taskStartArguments.killScriptFileOption)
+          killScriptPathOption = taskStartArguments.killScriptFileOption,
+          taskServerMainTerminatedOption = taskServerMainTerminatedOption)
       case module: JavaModule ⇒
         new JavaProcessTask(
+          taskStartArguments.agentTaskId,
           jobName = taskArguments.jobName,
           module,
           namedInvocables,

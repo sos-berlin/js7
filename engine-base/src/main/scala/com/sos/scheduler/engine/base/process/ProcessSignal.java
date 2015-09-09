@@ -9,8 +9,18 @@ import spray.json.JsonFormat;
  * @author Joacim Zschimmer
  */
 public enum ProcessSignal {
-    SIGTERM,
-    SIGKILL;
+    SIGTERM(15),
+    SIGKILL(9);
+
+    private final int value;
+
+    ProcessSignal(int value) {
+        this.value = value;
+    }
+
+    public int value() {
+        return value;
+    }
 
     public static final JsonFormat<ProcessSignal> MyJsonFormat = new JavaEnumJsonFormat<>(ProcessSignal.class);
 }

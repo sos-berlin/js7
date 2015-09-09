@@ -12,10 +12,13 @@ object FreeTcpPortFinder {
     findRandomFreeTcpPorts(1, ports).head
 
   def findRandomFreeTcpPorts(n: Int, ports: Iterable[Int] = StandardTcpPortRange): List[Int] = {
-    val result = (randomInts(ports).toIterator filter portIsFree take n).toList
+    val result = (findRandomFreeTcpPortIterator(ports) take n).toList
     if (result.size != n) sys.error(s"Not enough tcp ports available in $ports")
     result
   }
+
+  def findRandomFreeTcpPortIterator(ports: Iterable[Int] = StandardTcpPortRange): Iterator[Int] =
+    randomStartInts(ports) filter portIsFree
 
   private def portIsFree(port: Int) =
     try {
@@ -23,6 +26,6 @@ object FreeTcpPortFinder {
       new ServerSocket(port, backlog).close()
       true
     } catch {
-      case _: BindException => false
+      case _: BindException ⇒ false
     }
 }

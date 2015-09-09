@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.data
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
-import com.sos.scheduler.engine.taskserver.task.TaskStartArguments._
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments.toInetSocketAddress
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
@@ -43,7 +43,7 @@ object TaskStartArguments {
       agentTaskId = AgentTaskId("1-1")
     )
 
-  private[task] def toInetSocketAddress(string: String): InetSocketAddress =
+  private def toInetSocketAddress(string: String): InetSocketAddress =
     string match {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }

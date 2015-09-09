@@ -8,10 +8,10 @@ import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.job.ReturnCode
+import com.sos.scheduler.engine.taskserver.task.process.Processes.newTemporaryShellFile
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess.startShellScript
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.Stdout
-import java.nio.file.Files
-import java.nio.file.Files.delete
+import java.nio.file.Files.{createTempFile, delete}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -40,8 +40,8 @@ final class RichProcessTest extends FreeSpec {
     val script = if (isWindows) "echo ARGUMENTS=%*\nping -n 60 127.0.0.1" else "echo ARGUMENTS=$*; sleep 60"
     withCloser { closer ⇒
       val stdFileMap = RichProcess.createTemporaryStdFiles()
-      val testFile = Files.createTempFile("test-", ".tmp")
-      val killScriptFile = RichProcess.OS.newTemporaryShellFile("TEST")
+      val testFile = createTempFile("test-", ".tmp")
+      val killScriptFile = newTemporaryShellFile("TEST")
       killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$testFile\n" else s"echo KILL-ARGUMENTS=$$* >$testFile\n"
       closer.onClose {
         RichProcess.tryDeleteFiles(stdFileMap.values)  // Under Windows the files will not be deleted, because ping.exe will be not killed (and JS-1468 doesn't allow integrated kill scripts) !!!
@@ -56,7 +56,8 @@ final class RichProcessTest extends FreeSpec {
       shellProcess.sendProcessSignal(SIGKILL)
       waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
       assert(!shellProcess.isAlive)
-      shellProcess.waitForTermination()
+      val rc = shellProcess.waitForTermination()
+      assert(rc == (if (isWindows) ReturnCode(1/* This is Java destroy()*/) else ReturnCode(SIGKILL)))
       shellProcess.close()
       assert(stdFileMap(Stdout).contentString contains "ARGUMENTS=")
       assert(stdFileMap(Stdout).contentString contains s"ARGUMENTS=-agent-task-id=$idString")

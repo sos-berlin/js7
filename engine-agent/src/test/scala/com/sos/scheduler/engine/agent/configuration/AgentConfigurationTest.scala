@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.configuration
 
+import java.nio.file.Paths
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -29,5 +30,11 @@ final class AgentConfigurationTest extends FreeSpec {
     assert(AgentConfiguration(List("-http-port=1")).uriPathPrefix == "")
     assert(AgentConfiguration(List("-http-port=1", "-uri-prefix=test")).strippedUriPathPrefix == "test")
     assert(AgentConfiguration(List("-http-port=1", "-uri-prefix=/test/")).strippedUriPathPrefix == "test")
+  }
+
+  "-kill-script=" in {
+    assert(AgentConfiguration(List("-http-port=1")).killScriptFile == None)
+    val killScript = Paths.get("kill-script")
+    assert(AgentConfiguration(List("-http-port=1", s"-kill-script=$killScript")).killScriptFile == Some(killScript.toAbsolutePath))
   }
 }

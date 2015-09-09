@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.job
 
+import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -30,5 +31,16 @@ final class ReturnCodeTest extends FreeSpec {
 
   "StandardSuccess" in {
     assert(!ReturnCode.StandardFailure.isSuccess)
+  }
+  
+  "Interrupted process" in {
+    assert(ReturnCode(SIGKILL) == ReturnCode(128 + 9))
+    assert(ReturnCode(SIGTERM) == ReturnCode(128 + 15))
+  }
+
+  "normalized C++ ReturnCode" in {
+    assert(ReturnCode(-9).normalized == ReturnCode(128 + 9))
+    assert(ReturnCode(-9).normalized == ReturnCode(SIGKILL))
+    for (i ← List(0, 100, 200, 300)) assert(ReturnCode(i).normalized == ReturnCode(i))
   }
 }

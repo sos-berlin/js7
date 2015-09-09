@@ -8,8 +8,8 @@ import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
-import com.sos.scheduler.engine.common.soslicense.LicenseKey
 import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
+import com.sos.scheduler.engine.common.soslicense.{LicenseKey, LicenseKeyChecker}
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Instant
@@ -38,9 +38,9 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
   def isTerminating = terminating.get
   def terminated = terminatedPromise.future
 
-  def execute(command: Command, licenseKey: Option[LicenseKey] = None) = Future[Response] { executeDirectly(command, licenseKey) }
+  def execute(command: Command, licenseKey: Option[LicenseKeyChecker] = None) = Future[Response] { executeDirectly(command, licenseKey) }
 
-  private def executeDirectly(command: Command, licenseKeyOption: Option[LicenseKey]): Response =
+  private def executeDirectly(command: Command, licenseKeyOption: Option[LicenseKeyChecker]): Response =
     command match {
       case o: StartTask ⇒ startTask(o, licenseKeyOption getOrElse LicenseKey.Empty)
       case CloseTask(id, kill) ⇒ closeTask(id, kill)
@@ -51,9 +51,9 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
       case AbortImmediately ⇒ haltImmediately()
     }
 
-  private def startTask(command: StartTask, licenseKey: LicenseKey) = {
+  private def startTask(command: StartTask, licenseKey: LicenseKeyChecker) = {
     if (idToAgentTask.nonEmpty) {
-      licenseKey.require(UniversalAgent, "Without a license key, a task may only be started if it is the only one")
+      licenseKey.require(UniversalAgent, "No license key provided by master to execute jobs in parallel")
     }
     if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept task starts")
     val task = newAgentTask(command)

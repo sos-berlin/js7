@@ -2,12 +2,14 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.process.ProcessSignal
+import com.sos.scheduler.engine.base.process.ProcessSignal._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
+import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
-import com.sos.scheduler.engine.taskserver.HasSendProcessSignal
+import com.sos.scheduler.engine.taskserver.data.HasSendProcessSignal
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
@@ -20,6 +22,8 @@ import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration.Inf
+import scala.concurrent.{Await, Future}
 
 /**
  * @author Joacim Zschimmer
@@ -27,17 +31,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * @see spooler_module_process.cxx, C++ class Process_module_instance
  */
 final class ShellProcessTask(
-  agentTaskId: AgentTaskId,
-  jobName: String,
+  protected val agentTaskId: AgentTaskId,
+  protected val jobName: String,
   module: ShellModule,
   namedInvocables: NamedInvocables,
   monitors: immutable.Seq[Monitor],
   hasOrder: Boolean,
   stdFiles: StdFiles,
   environment: immutable.Iterable[(String, String)],
-  killScriptPathOption: Option[Path])
+  killScriptPathOption: Option[Path],
+  taskServerMainTerminatedOption: Option[Future[Unit]] = None)
 extends HasCloser with Task with HasSendProcessSignal {
-  
+
   import namedInvocables.spoolerTask
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
@@ -47,6 +52,8 @@ extends HasCloser with Task with HasSendProcessSignal {
     stdFiles.copy(stdFileMap = processStdFileMap ++ stdFiles.stdFileMap)).closeWithCloser
   private var startCalled = false
   private var richProcess: RichProcess = null
+  private val logger = Logger.withPrefix(getClass, toString)
+  private var sigtermForwarder: JavaShutdownHook = null
 
   def start() = {
     requireState(!startCalled)
@@ -59,17 +66,27 @@ extends HasCloser with Task with HasSendProcessSignal {
   }
 
   private def startProcess() = {
+    for (terminated ← taskServerMainTerminatedOption) {
+      sigtermForwarder = JavaShutdownHook.add(ShellProcessTask.getClass.getName) {
+        sendProcessSignal(SIGTERM)
+        Await.ready(terminated, Inf)  // Delay until TaskServer has been terminated
+      }
+    }
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
       val paramEnv = params map { case (k, v) ⇒ paramNameToEnv(k) → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
+    val (idStringOption, killScriptFileOption) =
+      if (taskServerMainTerminatedOption.nonEmpty) (None, None)
+      else (Some(agentTaskId.string), killScriptPathOption)  // No idString if this is an own process (due to a monitor), already started with idString
+    require(richProcess == null)
     richProcess = RichProcess.startShellScript(
       ProcessConfiguration(
         processStdFileMap,
         additionalEnvironment = env,
-        idStringOption = Some(agentTaskId.string),
-        killScriptFileOption = killScriptPathOption),
+        idStringOption = idStringOption,
+        killScriptFileOption = killScriptFileOption),
       name = jobName,
       scriptString = module.script.string.trim)
     .closeWithCloser
@@ -91,6 +108,7 @@ extends HasCloser with Task with HasSendProcessSignal {
       <process.result spooler_process_result="false"/>.toString()
     else {
       val rc = richProcess.waitForTermination()
+      if (sigtermForwarder != null) sigtermForwarder.close()
       concurrentStdoutStderrWell.finish()
       transferReturnValuesToMaster()
       val success =
@@ -135,13 +153,14 @@ extends HasCloser with Task with HasSendProcessSignal {
       case o ⇒ o.processConfiguration.files
     }
   }
+
+  override def toString = List(super.toString) ++ (Option(richProcess) map { _.toString }) mkString " "
 }
 
 object ShellProcessTask {
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesFileEncoding = ISO_8859_1
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
-  private val logger = Logger(getClass)
 
   private def paramNameToEnv(name: String) = s"SCHEDULER_PARAM_${name.toUpperCase}"
 

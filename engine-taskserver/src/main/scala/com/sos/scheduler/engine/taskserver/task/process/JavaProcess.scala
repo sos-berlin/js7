@@ -19,11 +19,13 @@ object JavaProcess {
     mainClass: String,
     arguments: Seq[String]) =
   {
+    val classpathEnv = "CLASSPATH" → (classpath getOrElse "").substitute("" → File.pathSeparator)  // Java does not like empty classpath
     RichProcess.start(
-      processConfiguration.copy(fileOption = Some(JavaExecutable)),
+      processConfiguration.copy(
+        fileOption = Some(JavaExecutable),
+        additionalEnvironment = processConfiguration.additionalEnvironment ++ List(classpathEnv)),
       arguments = Vector(JavaExecutable.getPath) ++
         options ++
-        (classpath.toVector flatMap { o ⇒ Vector("-classpath", o.substitute("" → File.pathSeparator)) }) ++ // Java does not like empty classpath
         Vector(mainClass) ++
         arguments)
   }

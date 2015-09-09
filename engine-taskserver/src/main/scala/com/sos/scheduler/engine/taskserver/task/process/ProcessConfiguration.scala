@@ -14,6 +14,8 @@ final case class ProcessConfiguration(
   idStringOption: Option[String] = None,
   killScriptFileOption: Option[Path] = None)
 {
+  require(killScriptFileOption.isEmpty || idStringOption.nonEmpty, "killScriptFile requires idString")
+
   for (id ← idStringOption) require(id.nonEmpty && id.trim == id, "Invalid ProcessConfiguration.idString")
 
   def files: immutable.Iterable[Path] = fileOption.toList ++ stdFileMap.values

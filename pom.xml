@@ -395,7 +395,7 @@
 		                        <configuration>
 		                            <target name="clean-local-repo">                            
 		                                <echo>Purging ${settings.localRepository}/com/sos-berlin...</echo>
-		                                <delete dir="${settings.localRepository}/com/sos-berlin" verbose="true"/>
+		                                <delete dir="${settings.localRepository}/com/sos-berlin" verbose="true" />
 		                            </target>
 		                            <failOnError>false</failOnError>
 		                        </configuration>
