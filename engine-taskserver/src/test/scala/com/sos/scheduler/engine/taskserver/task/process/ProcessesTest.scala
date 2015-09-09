@@ -23,7 +23,7 @@ final class ProcessesTest extends FreeSpec {
       assert(processToPidOption(process).isEmpty)
       process.waitFor()
     } else {
-      val process = new ProcessBuilder(toShellCommandArguments("echo $BASHPID")).redirectInput(PIPE).start()
+      val process = new ProcessBuilder(toShellCommandArguments("echo $$")).redirectInput(PIPE).start()
       val echoLine = io.Source.fromInputStream(process.getInputStream).getLines.next
       assert(processToPidOption(process) contains Pid(echoLine.toLong))
       process.waitFor()
