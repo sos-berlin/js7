@@ -48,21 +48,35 @@ object Processes {
 
       def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}", s".$outerr", outputFileAttribute)
 
-      def toShellCommandArguments(file: Path, arguments: Seq[String]) = Vector("/bin/sh", file.toString) ++ arguments
+      /** @return /bin/sh, -c, 'FILE' "$@", arg0, arg1, arg2, ... */
+      def toShellCommandArguments(file: Path, arguments: Seq[String]) =
+        Vector("/bin/sh", "-c", s"""${quote(file)} "$$@"""") ++ List(file.toString) ++ arguments  // "-c" respects shebang "#!"
 
       def toShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
+
+      private def quote(path: Path) = {
+        val p = path.toString
+        if (p contains '\'') throw new IllegalArgumentException("Single quote not possible in shell script path")
+        s"'$p'"
+      }
     }
 
     private[Processes] object Windows extends OperatingSystemSpecific {
-      private val cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
+      private val CharacterIsNotAllowed = Set(' ', '"')
+      private val Cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
 
       def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
 
       def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}$outerr-", ".log")
 
-      def toShellCommandArguments(file: Path, arguments: Seq[String]) = Vector(cmd, "/C", file.toString) ++ arguments
+      def toShellCommandArguments(file: Path, arguments: Seq[String]) = {
+        // This does not work properly for all argument strings !!!
+        // See https://stackoverflow.com/questions/4094699
+        if (arguments exists { _ exists CharacterIsNotAllowed }) throw new IllegalArgumentException("Unallowed character in Windows command line arguments")
+        Vector(Cmd, "/C", file.toString) ++ arguments
+      }
 
-      def toShellCommandArguments(argument: String) = Vector(cmd, "/C", argument)
+      def toShellCommandArguments(argument: String) = Vector(Cmd, "/C", argument)
     }
   }
 }
