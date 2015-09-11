@@ -23,11 +23,11 @@ final class ProcessesTest extends FreeSpec {
 
   "processToPidOption, toShellCommandArguments" in {
     if (isWindows) {
-      val process = new ProcessBuilder(toShellCommandArguments("rem")).start()
+      val process = new ProcessBuilder(directShellCommandArguments("rem")).start()
       assert(processToPidOption(process).isEmpty)
       process.waitFor()
     } else {
-      val args = toShellCommandArguments("echo $$")
+      val args = directShellCommandArguments("echo $$")
       assert(args == List("/bin/sh", "-c", "echo $$"))
       val process = new ProcessBuilder(args).redirectInput(PIPE).start()
       val echoLine = io.Source.fromInputStream(process.getInputStream).getLines().next()
@@ -40,11 +40,10 @@ final class ProcessesTest extends FreeSpec {
     val file = Paths.get("FILE")
     val a = toShellCommandArguments(file, args)
     if (isWindows) {
-      assert(a.toList.tail == List("/C", "FILE") ++ args)
-      intercept[IllegalArgumentException] { toShellCommandArguments(file, List(" ")) }
-      intercept[IllegalArgumentException] { toShellCommandArguments(file, List("\"")) }
+      assert(a == List("FILE") ++ args)
     } else {
-      assert(a.toList == List("/bin/sh", "-c", """'FILE' "$@"""") ++ List("FILE") ++ args)
+      assert(a == List("FILE") ++ args)
+      assert(toShellCommandArguments(file) == List("FILE"))  // Without arguments, it is shorter
     }
   }
 

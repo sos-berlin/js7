@@ -95,7 +95,7 @@ object RichProcess {
     val shellFile = newTemporaryShellFile(name)
     try {
       shellFile.toFile.write(scriptString, ISO_8859_1)
-      val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), toShellCommandArguments(shellFile))
+      val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), shellFile)
       process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
       process.stdin.close() // Empty stdin
       process
@@ -106,9 +106,9 @@ object RichProcess {
     }
   }
 
-  def start(processConfiguration: ProcessConfiguration, arguments: Seq[String]): RichProcess = {
+  def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil): RichProcess = {
     import processConfiguration.{additionalEnvironment, stdFileMap}
-    val processBuilder = new ProcessBuilder(arguments ++ processConfiguration.idArgumentOption)
+    val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption))
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
