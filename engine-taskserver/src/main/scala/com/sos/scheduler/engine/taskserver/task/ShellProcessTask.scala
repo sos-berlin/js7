@@ -10,12 +10,12 @@ import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.data.HasSendProcessSignal
+import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.taskserver.task.process.{ProcessConfiguration, RichProcess}
-import java.nio.charset.StandardCharsets._
 import java.nio.file.Files._
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
@@ -136,7 +136,7 @@ extends HasCloser with Task with HasSendProcessSignal {
   }
 
   private def fetchReturnValues() =
-    autoClosing(io.Source.fromFile(orderParamsFile)(ReturnValuesFileEncoding)) { source ⇒
+    autoClosing(io.Source.fromFile(orderParamsFile)(Encoding)) { source ⇒
       (source.getLines map lineToKeyValue).toMap
     }
 
@@ -159,7 +159,6 @@ extends HasCloser with Task with HasSendProcessSignal {
 
 object ShellProcessTask {
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
-  private val ReturnValuesFileEncoding = ISO_8859_1
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
 
   private def paramNameToEnv(name: String) = s"SCHEDULER_PARAM_${name.toUpperCase}"

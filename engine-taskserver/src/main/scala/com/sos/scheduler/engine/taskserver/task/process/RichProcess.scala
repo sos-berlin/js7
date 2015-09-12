@@ -7,13 +7,14 @@ import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logge
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.job.ReturnCode
+import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration.Encoding
 import com.sos.scheduler.engine.taskserver.task.process.Processes._
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import java.io.{BufferedOutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.charset.StandardCharsets._
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
@@ -30,6 +31,9 @@ extends HasCloser with ClosedFuture {
 
   private val pidOption = processToPidOption(process)
   private val logger = Logger.withPrefix(getClass, toString)
+  /**
+   * UTF-8 encoded stdin.
+   */
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
 
   def kill() = process.destroyForcibly()
@@ -94,7 +98,7 @@ object RichProcess {
   {
     val shellFile = newTemporaryShellFile(name)
     try {
-      shellFile.toFile.write(scriptString, ISO_8859_1)
+      shellFile.toFile.write(scriptString, Encoding)
       val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), shellFile)
       process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
       process.stdin.close() // Empty stdin
