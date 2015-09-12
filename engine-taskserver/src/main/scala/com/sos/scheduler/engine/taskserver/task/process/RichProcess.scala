@@ -15,8 +15,9 @@ import java.io.{BufferedOutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.{Files, Path}
-import java.util.concurrent.TimeUnit
+import java.nio.file.Files.delete
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -98,10 +99,10 @@ object RichProcess {
   {
     val shellFile = newTemporaryShellFile(name)
     try {
-      shellFile.toFile.write(scriptString, Encoding)
+      shellFile.write(scriptString, Encoding)
       val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), shellFile)
-      process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
-      process.stdin.close() // Empty stdin
+      process.closed.onComplete { _ ⇒ tryDeleteFiles(List(shellFile)) }
+      process.stdin.close() // Process gets an empty stdin
       process
     }
     catch { case NonFatal(t) ⇒
@@ -128,7 +129,7 @@ object RichProcess {
   private def waitForProcessTermination(process: Process): Unit =
     blocking {
       logger.debug(s"waitFor ${processToString(process)} ...")
-      while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
+      while (!process.waitFor(WaitForProcessPeriod.toMillis, MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
       logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
     }
 
@@ -136,7 +137,7 @@ object RichProcess {
     for (file ← files) {
       try {
         logger.debug(s"Delete file '$file'")
-        Files.delete(file)
+        delete(file)
       }
       catch { case NonFatal(t) ⇒ logger.error(t.toString) }
     }
