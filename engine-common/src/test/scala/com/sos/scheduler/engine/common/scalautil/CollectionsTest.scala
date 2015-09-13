@@ -119,6 +119,18 @@ final class CollectionsTest extends FreeSpec {
     list.uniqueToMap shouldEqual list.toMap
     intercept[DuplicateKeyException] { List(1 → "eins", 2 → "zwei", 1 → "duplicate").uniqueToMap }
   }
+
+  "compareChain" in {
+    assert((Iterator[Int]() compareElementWise Iterator()) == 0)
+    assert((Iterator(1) compareElementWise Iterator()) > 0)
+    assert((Iterator(1) compareElementWise Iterator(1)) == 0)
+    assert((Iterator() compareElementWise Iterator(1)) < 0)
+    assert((Iterator(1, 2, 3) compareElementWise Iterator(1, 2, 3)) == 0)
+    assert((Iterator(1, 2, 3) compareElementWise Iterator(1, 2)) > 0)
+    assert((Iterator(1, 2, 3) compareElementWise Iterator(1, 2, 3, 4)) < 0)
+    assert((Iterator(3, 2, 3) compareElementWise Iterator(1, 2, 3)) > 0)
+    assert((Iterator(0, 2, 3) compareElementWise Iterator(1, 2, 3)) < 0)
+  }
 }
 
 private object CollectionsTest {
