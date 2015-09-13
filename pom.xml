@@ -67,7 +67,7 @@
         <sos.subversion.url>http://subversion.sos/svn/sos/scheduler/engine</sos.subversion.url>
         <osArch>osArch-UNKNOWN-OPERATING-SYSTEM-OR-CPU</osArch>
         <test.forkCount>1</test.forkCount>
-        <test.logback.configurationFile />
+        <test.logback.configurationFile>-</test.logback.configurationFile> <!-- Something for logback.ConfigurationFile, to let logback use its default configuration -->
         <enginedoc.version>${project.version}</enginedoc.version>
         <argLine />
         <LC_ALL>C</LC_ALL>    <!-- Neutrales Locale für H2Database -->
