@@ -1,12 +1,7 @@
 package com.sos.scheduler.engine.common.system
 
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import java.io.File
-import scala.collection.immutable
-import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
@@ -31,7 +26,7 @@ object OperatingSystem {
   lazy val windows = new Windows
   val operatingSystem: OperatingSystem = if (isWindows) windows else unix
   val javaLibraryPathPropertyName = "java.library.path"
-  private val logger = Logger(getClass)
+  lazy val KernelSupportsNestedShebang = { KernelVersion() >= KernelVersion("Linux", List(2, 6, 28)) }  // Exactly 2.6.27.9 - but what means the fouth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
 
   def makeModuleFilename(path: String): String = {
     val file = new File(path)
@@ -65,26 +60,5 @@ object OperatingSystem {
     abs +: (pathChain split File.pathSeparator filter { o ⇒ o.nonEmpty && o != abs }) mkString File.pathSeparatorChar.toString
   }
 
-  private case class KernelVersion(kernelName: String, version: immutable.Seq[Int]) {
-    def >=(o: KernelVersion) = kernelName == o.kernelName && (version compareElementWise  o.version) >= 0
-  }
-
-  private object KernelVersion {
-    val Unknown = KernelVersion("UNKNOWN-KERNEL", Nil)
-
-    private lazy val Singleton = ignoreError { KernelVersion(sys.props("os.name"), parseVersion(sys.props("os.version"))) } sideEffect { o ⇒ logger.info(s"$o") }
-
-    def apply(): KernelVersion = Singleton
-
-    private def parseVersion(string: String) = (string split "[.-]" take 3 map { _.toInt }).toList
-
-    private def ignoreError(body: ⇒ KernelVersion): KernelVersion =
-      try body
-      catch {
-        case NonFatal(t) ⇒
-          logger.warn(s"Ignored: $t", t)
-          Unknown
-      }
-  }
 }
 
