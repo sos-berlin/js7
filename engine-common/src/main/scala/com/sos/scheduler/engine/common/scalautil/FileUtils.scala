@@ -3,8 +3,11 @@ package com.sos.scheduler.engine.common.scalautil
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.{Closer, Files ⇒ GuavaFiles}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
+import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import java.io.File
 import java.nio.charset.Charset
+import java.nio.file.Files.delete
+import java.nio.file.attribute.FileAttribute
 import java.nio.file.{FileAlreadyExistsException, Files, Path}
 import scala.annotation.tailrec
 import scala.concurrent.forkjoin.ThreadLocalRandom
@@ -18,7 +21,7 @@ object FileUtils {
    */
   def touchAndDeleteWithCloser[A <: Path](path: A)(implicit closer: Closer): path.type = {
     GuavaFiles.touch(path.toFile)
-    path withCloser Files.delete
+    path withCloser delete
     path
   }
 
@@ -84,4 +87,17 @@ object FileUtils {
 
   private def newRandomFilenameString() =
     (Iterator.fill(ShortNameSize) { ThreadLocalRandom.current.nextInt(FilenameCharacterSet.length) } map FilenameCharacterSet).mkString
+
+  def withTemporaryFile[A](body: Path ⇒ A): A = withTemporaryFile(prefix = "", suffix = ".tmp")(body)
+  
+  def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[_]*)(body: Path ⇒ A): A =
+    autoDeleting(Files.createTempFile(prefix, suffix, attributes: _*))(body)
+
+  def autoDeleting[A](file: Path)(body: Path ⇒ A): A =
+    withCloser { closer ⇒
+      closer.onClose {
+        delete(file)
+      }
+      body(file)
+  }
 }

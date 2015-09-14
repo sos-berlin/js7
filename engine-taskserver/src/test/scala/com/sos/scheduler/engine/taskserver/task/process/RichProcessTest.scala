@@ -3,8 +3,9 @@ package com.sos.scheduler.engine.taskserver.task.process
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
+import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
-import com.sos.scheduler.engine.common.system.OperatingSystem.{isUnix, isWindows}
+import com.sos.scheduler.engine.common.system.OperatingSystem.{KernelSupportsNestedShebang, isUnix, isWindows}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.job.ReturnCode
@@ -36,21 +37,35 @@ final class RichProcessTest extends FreeSpec {
   }
 
   if (isUnix) {
-    "#! (shebang) is respected" in {
-      val interpreter = newTemporaryShellFile("test-interpreter-")
-      interpreter.contentString =
-        """|#! /bin/sh
-           |echo INTERPRETER-START
-           |sh "$@"
-           |echo INTERPRETER-END
-           |""".stripMargin
-      val stdFileMap = RichProcess.createTemporaryStdFiles()
-      val processConfig = ProcessConfiguration(stdFileMap)
-      val shellProcess = RichProcess.startShellScript(processConfig, name = "TEST", scriptString = s"#! $interpreter\necho TEST-SCRIPT\n")
-      shellProcess.waitForTermination()
-      shellProcess.close()
-      assert(stdFileMap(Stdout).contentString == "INTERPRETER-START\nTEST-SCRIPT\nINTERPRETER-END\n")
-    }
+    if (!KernelSupportsNestedShebang)
+      "#! (shebang) not testable because the kernel likely does not support nested interpreters" in {
+        pending
+      }
+    else
+      "#! (shebang) is respected" in {
+        autoDeleting(newTemporaryShellFile("test-interpreter-")) { interpreter ⇒
+          interpreter.contentString =
+            """#! /bin/sh
+              |echo INTERPRETER-START
+              |sh "$@"
+              |echo INTERPRETER-END
+              |""".stripMargin
+          val scriptString =
+            s"""#! $interpreter
+               |echo TEST-SCRIPT
+               |""".stripMargin
+          val stdFileMap = RichProcess.createTemporaryStdFiles()
+          val processConfig = ProcessConfiguration(stdFileMap)
+          val shellProcess = RichProcess.startShellScript(processConfig, name = "TEST", scriptString = scriptString)
+          shellProcess.waitForTermination()
+          shellProcess.close()
+          assert(stdFileMap(Stdout).contentString ==
+            """INTERPRETER-START
+              |TEST-SCRIPT
+              |INTERPRETER-END
+              |""".stripMargin)
+        }
+      }
   }
 
   "sendProcessSignal SIGKILL" in {

@@ -9,10 +9,10 @@ import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
+import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout}
-import java.nio.charset.StandardCharsets.ISO_8859_1
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
@@ -51,13 +51,13 @@ final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with Ha
 
   "stdout_text" in {
     val string = "STDOUT äöü"
-    stdFileMap(Stdout).write(string, ISO_8859_1)
+    stdFileMap(Stdout).write(string, Encoding)
     assert(spoolerTask.invokeGet("stdout_text") == string)
   }
 
   "stderr_text" in {
     val string = "STDERR ÄÖÜ"
-    stdFileMap(Stderr).write(string, ISO_8859_1)
+    stdFileMap(Stderr).write(string, Encoding)
     assert(spoolerTask.invokeGet("stderr_text") == string)
   }
 

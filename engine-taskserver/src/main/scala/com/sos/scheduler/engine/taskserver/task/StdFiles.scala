@@ -2,10 +2,10 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.google.common.base.Splitter
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
+import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.task.StdFiles._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr._
 import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets._
 import java.nio.file.Path
 import scala.collection.JavaConversions._
 
@@ -16,7 +16,7 @@ import scala.collection.JavaConversions._
  */
 private[task] final case class StdFiles(
   stdFileMap: Map[StdoutStderrType, Path],
-  encoding: Charset = ISO_8859_1,
+  encoding: Charset = Encoding,
   stderrLogLevel: SchedulerLogLevel,
   log: (SchedulerLogLevel, String) ⇒ Unit)
 {

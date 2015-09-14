@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.scalautil
 
 import javax.annotation.Nullable
+import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 import scala.collection.{TraversableLike, immutable, mutable}
 import scala.util.control.NonFatal
@@ -22,6 +23,8 @@ object Collections {
 
       def countEquals: Map[A, Int] =
         delegate.toTraversable groupBy identity map { case (k, v) ⇒ k → v.size }
+  
+      def compareElementWise(other: TraversableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
     }
 
     implicit class RichArray[A](val delegate: Array[A]) extends AnyVal {
@@ -106,6 +109,21 @@ object Collections {
 
   def emptyToNone[A](@Nullable o: Array[A]): Option[Array[A]] =
     if (o == null || o.isEmpty) None else Some(o)
+
+
+  @tailrec
+  private def compareIteratorsElementWise[A](a: Iterator[A], b: Iterator[A])(implicit ordering: Ordering[A]): Int =
+    (a.nonEmpty, b.nonEmpty) match {
+      case (false, false) ⇒ 0
+      case (true, false) ⇒ +1
+      case (false, true) ⇒ -1
+      case (true, true) ⇒
+        ordering.compare(a.next(), b.next()) match {
+          case 0 ⇒ compareIteratorsElementWise(a, b)
+          case o ⇒ o
+        }
+    }
+
 }
 
 

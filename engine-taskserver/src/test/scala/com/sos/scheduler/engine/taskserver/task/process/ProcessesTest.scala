@@ -1,11 +1,12 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.taskserver.task.process.Processes._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.Stdout
 import java.lang.ProcessBuilder.Redirect.PIPE
-import java.nio.file.Files.{delete, exists}
+import java.nio.file.Files.exists
 import java.nio.file.Paths
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -48,25 +49,25 @@ final class ProcessesTest extends FreeSpec {
   }
 
   "newTemporaryShellFile, toShellCommandArguments and script execution" in {
-    val file = newTemporaryShellFile("NAME")
-    assert(exists(file))
-    assert(!(file.toString contains "--"))
-    file.contentString =
-      if (isWindows) "@echo off\n" + (0 to args.size map { i ⇒ s"echo %$i\n" } mkString "")
-      else 0 to args.size map { i ⇒ s"""echo "$$$i"""" + '\n' } mkString ""
-    val process = new ProcessBuilder(toShellCommandArguments(file, args)).redirectOutput(PIPE).start()
-    val echoLines = io.Source.fromInputStream(process.getInputStream).getLines().toList
-    val expectedLines = List(file.toString) ++ args
-    for ((a, b) ← echoLines zip expectedLines) assert(a == b)
-    assert(echoLines.size == expectedLines.size)
-    process.waitFor()
-    delete(file)
+    autoDeleting(newTemporaryShellFile("NAME")) { file ⇒
+      assert(exists(file))
+      assert(!(file.toString contains "--"))
+      file.contentString =
+        if (isWindows) "@echo off\n" + (0 to args.size map { i ⇒ s"echo %$i\n" } mkString "")
+        else 0 to args.size map { i ⇒ s"""echo "$$$i"""" + '\n' } mkString ""
+      val process = new ProcessBuilder(toShellCommandArguments(file, args)).redirectOutput(PIPE).start()
+      val echoLines = io.Source.fromInputStream(process.getInputStream).getLines().toList
+      val expectedLines = List(file.toString) ++ args
+      for ((a, b) ← echoLines zip expectedLines) assert(a == b)
+      assert(echoLines.size == expectedLines.size)
+      process.waitFor()
+    }
   }
 
   "newTemporaryOutputFile" in {
-    val file = newTemporaryOutputFile("NAME", Stdout)
-    assert(exists(file))
-    assert(!(file.toString contains "--"))
-    delete(file)
+    autoDeleting(newTemporaryOutputFile("NAME", Stdout)) { file ⇒
+      assert(exists(file))
+      assert(!(file.toString contains "--"))
+    }
   }
 }

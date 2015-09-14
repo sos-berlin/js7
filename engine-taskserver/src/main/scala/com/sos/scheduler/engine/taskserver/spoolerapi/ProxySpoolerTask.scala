@@ -12,9 +12,9 @@ import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch._
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
 import com.sos.scheduler.engine.minicom.types.CLSID
+import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.util.UUID
 
 /**
@@ -48,7 +48,7 @@ extends SpoolerTask with SpecializedProxyIDispatch {
   @invocable
   def stderr_text: String = fileText(Stderr)
 
-  private def fileText(s: StdoutStderrType) = taskStartArguments.stdFileMap.get(s) map { _.contentString(ISO_8859_1) } getOrElse ""
+  private def fileText(s: StdoutStderrType) = taskStartArguments.stdFileMap.get(s) map { _.contentString(Encoding) } getOrElse ""
 
   private def filePath(s: StdoutStderrType) = taskStartArguments.stdFileMap.get(s) map { _.toString } getOrElse ""
 
