@@ -31,10 +31,11 @@ object ScalaStax {
     def apply(element: Element): Source =
       factory match {
         case Some(f) ⇒ f(element)
-        case None ⇒ determineFactory(element)
+        case None ⇒ workAroundNewDomSource(element)  //determineFactory(element)
       }
 
-    def determineFactory(element: Element) =
+    // Unused. Obviously, there is no direct conversion org.w3c.dom.Element => DOMSource. And if so, we should test it in development.
+    private def determineFactory(element: Element) =
       synchronized {
         factory = Some(newDomSource)
         try {
