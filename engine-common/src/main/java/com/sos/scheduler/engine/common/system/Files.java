@@ -18,6 +18,7 @@ import static com.google.common.io.Files.createParentDirs;
 import static com.google.common.io.Files.createTempDir;
 import static com.sos.scheduler.engine.common.system.Files.DirectoryHandling.dontRemoveDirectory;
 import static com.sos.scheduler.engine.common.system.Files.DirectoryHandling.removeDirectory;
+import static com.sos.scheduler.engine.common.system.OperatingSystemJava.isUnix;
 
 public final class Files {
     public enum DirectoryHandling {removeDirectory, dontRemoveDirectory}
@@ -27,7 +28,7 @@ public final class Files {
     private Files() {}
 
     public static void makeExecutable(File f) {
-        if (OperatingSystem.isUnix) {
+        if (isUnix) {
             boolean ok = f.setExecutable(true);
             if (!ok)  throw new RuntimeException("setExecutable() failed on "+f);
         }

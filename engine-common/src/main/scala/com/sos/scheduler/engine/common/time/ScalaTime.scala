@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.time
 
+import java.time.Instant.now
 import java.time._
 import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
@@ -116,6 +117,15 @@ object ScalaTime {
 
   private def simpleJavaToConcurrentFiniteDuration(o: Duration) =
     new FiniteDuration(o.toNanos, TimeUnit.NANOSECONDS).toCoarsest.asInstanceOf[FiniteDuration]
+
+  @tailrec
+  def sleepUntil(until: Instant): Unit = {
+    val duration = until - now()
+    if (duration > 0.s) {
+      sleep(duration)
+      sleepUntil(until)
+    }
+  }
 
   def sleep(d: Duration): Unit = sleep(d.toMillis)
 

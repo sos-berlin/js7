@@ -24,17 +24,19 @@ object Processes {
 
   def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path = OS.newTemporaryOutputFile(name, outerr)
 
-  def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String] = OS.toShellCommandArguments(file, arguments)
+  /**
+   * Builds an argument list for [[ProcessBuilder]].
+   */
+  def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String] = Vector(file.toString) ++ arguments
 
-  def toShellCommandArguments(argument: String): immutable.Seq[String] = OS.toShellCommandArguments(argument)
+  def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
 
   private val OS: OperatingSystemSpecific = if (isWindows) OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
 
   private sealed trait OperatingSystemSpecific {
     def newTemporaryShellFile(name: String): Path
     def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path
-    def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String]
-    def toShellCommandArguments(argument: String): immutable.Seq[String]
+    def directShellCommandArguments(argument: String): immutable.Seq[String]
 
     protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name-"
   }
@@ -48,35 +50,17 @@ object Processes {
 
       def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}", s".$outerr", outputFileAttribute)
 
-      /** @return /bin/sh, -c, 'FILE' "$@", arg0, arg1, arg2, ... */
-      def toShellCommandArguments(file: Path, arguments: Seq[String]) =
-        Vector("/bin/sh", "-c", s"""${quote(file)} "$$@"""") ++ List(file.toString) ++ arguments  // "-c" respects shebang "#!"
-
-      def toShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
-
-      private def quote(path: Path) = {
-        val p = path.toString
-        if (p contains '\'') throw new IllegalArgumentException("Single quote not possible in shell script path")
-        s"'$p'"
-      }
+      def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
     }
 
     private[Processes] object Windows extends OperatingSystemSpecific {
-      private val CharacterIsNotAllowed = Set(' ', '"')
       private val Cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
 
       def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
 
       def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}$outerr-", ".log")
 
-      def toShellCommandArguments(file: Path, arguments: Seq[String]) = {
-        // This does not work properly for all argument strings !!!
-        // See https://stackoverflow.com/questions/4094699
-        if (arguments exists { _ exists CharacterIsNotAllowed }) throw new IllegalArgumentException("Unallowed character in Windows command line arguments")
-        Vector(Cmd, "/C", file.toString) ++ arguments
-      }
-
-      def toShellCommandArguments(argument: String) = Vector(Cmd, "/C", argument)
+      def directShellCommandArguments(argument: String) = Vector(Cmd, "/C", argument)
     }
   }
 }

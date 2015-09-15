@@ -1,9 +1,11 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.FileUtilsTest._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.scheduler.engine.common.scalautil.FileUtils.{autoDeleting, withTemporaryFile}
+import com.sos.scheduler.engine.common.scalautil.FileUtilsTest._
 import java.io.File
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
+import java.nio.file.Files.{createTempFile, delete, exists}
 import java.nio.file.{Files, Path}
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
@@ -16,10 +18,10 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 @RunWith(classOf[JUnitRunner])
 final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
 
-  private lazy val file = Files.createTempFile("FileUtilTest-", ".tmp").toFile
+  private lazy val file = createTempFile("FileUtilTest-", ".tmp").toFile
   private lazy val path = file.toPath
 
-  override def afterAll() = Files.delete(file)
+  override def afterAll() = delete(file)
 
   "implicit fileToPath" in {
     new File("/a"): Path
@@ -97,8 +99,43 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
       d
     }
     assert(dirs.toSet.size == n)
-    dirs foreach Files.delete
-    Files.delete(dir)
+    dirs foreach delete
+    delete(dir)
+  }
+
+  "withTemporaryFile" in {
+    val f = withTemporaryFile { file ⇒
+      assert(exists(file))
+      file
+    }
+    assert(!exists(f))
+  }
+
+  "withTemporaryFile, named" in {
+    val f = withTemporaryFile("TEST-", ".tmp") { file ⇒
+      assert(exists(file))
+      file
+    }
+    assert(!exists(f))
+  }
+
+  "autoDeleting" in {
+    val file = createTempFile("TEST-", ".tmp")
+    val a = autoDeleting(file) { f ⇒
+      assert(file eq f)
+      assert(exists(f))
+      123
+    }
+    assert(a == 123)
+    assert(!exists(file))
+  }
+
+  "autoDeleting with exception" in {
+    val file = createTempFile("TEST-", ".tmp")
+    intercept[IllegalStateException] {
+      autoDeleting(file) { _ ⇒ throw new IllegalStateException }
+    }
+    assert(!exists(file))
   }
 }
 

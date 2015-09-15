@@ -3,8 +3,9 @@ package com.sos.scheduler.engine.taskserver.task.process
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
+import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
+import com.sos.scheduler.engine.common.system.OperatingSystem.{KernelSupportsNestedShebang, isUnix, isWindows}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.job.ReturnCode
@@ -35,17 +36,49 @@ final class RichProcessTest extends FreeSpec {
     assert(shellProcess.closed.isCompleted)
   }
 
+  if (isUnix) {
+    if (!KernelSupportsNestedShebang)
+      "#! (shebang) not testable because the kernel likely does not support nested interpreters" in {
+        pending
+      }
+    else
+      "#! (shebang) is respected" in {
+        autoDeleting(newTemporaryShellFile("test-interpreter-")) { interpreter ⇒
+          interpreter.contentString =
+            """#! /bin/sh
+              |echo INTERPRETER-START
+              |sh "$@"
+              |echo INTERPRETER-END
+              |""".stripMargin
+          val scriptString =
+            s"""#! $interpreter
+               |echo TEST-SCRIPT
+               |""".stripMargin
+          val stdFileMap = RichProcess.createTemporaryStdFiles()
+          val processConfig = ProcessConfiguration(stdFileMap)
+          val shellProcess = RichProcess.startShellScript(processConfig, name = "TEST", scriptString = scriptString)
+          shellProcess.waitForTermination()
+          shellProcess.close()
+          assert(stdFileMap(Stdout).contentString ==
+            """INTERPRETER-START
+              |TEST-SCRIPT
+              |INTERPRETER-END
+              |""".stripMargin)
+        }
+      }
+  }
+
   "sendProcessSignal SIGKILL" in {
     val idString = "TEST-PROCESS-ID"
-    val script = if (isWindows) "echo ARGUMENTS=%*\nping -n 60 127.0.0.1" else "echo ARGUMENTS=$*; sleep 60"
+    val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 60 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 60"
     withCloser { closer ⇒
       val stdFileMap = RichProcess.createTemporaryStdFiles()
-      val testFile = createTempFile("test-", ".tmp")
-      val killScriptFile = newTemporaryShellFile("TEST")
-      killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$testFile\n" else s"echo KILL-ARGUMENTS=$$* >$testFile\n"
+      val killScriptOutputFile = createTempFile("test-", ".tmp")
+      val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
+      killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n"
       closer.onClose {
         RichProcess.tryDeleteFiles(stdFileMap.values)  // Under Windows the files will not be deleted, because ping.exe will be not killed (and JS-1468 doesn't allow integrated kill scripts) !!!
-        delete(testFile)
+        delete(killScriptOutputFile)
         delete(killScriptFile)
       }
       val processConfig = ProcessConfiguration(stdFileMap = stdFileMap, idStringOption = Some(idString), killScriptFileOption = Some(killScriptFile))
@@ -59,9 +92,10 @@ final class RichProcessTest extends FreeSpec {
       val rc = shellProcess.waitForTermination()
       assert(rc == (if (isWindows) ReturnCode(1/* This is Java destroy()*/) else ReturnCode(SIGKILL)))
       shellProcess.close()
-      assert(stdFileMap(Stdout).contentString contains "ARGUMENTS=")
-      assert(stdFileMap(Stdout).contentString contains s"ARGUMENTS=-agent-task-id=$idString")
-      assert(testFile.contentString contains s"KILL-ARGUMENTS=-kill-agent-task-id=$idString")
+
+      assert(stdFileMap(Stdout).contentString contains "SCRIPT-ARGUMENTS=")
+      assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=-agent-task-id=$idString")
+      assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=-kill-agent-task-id=$idString")
     }
   }
 

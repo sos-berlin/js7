@@ -3,13 +3,15 @@ package com.sos.scheduler.engine.data.base
 import javax.annotation.Nullable
 import scala.language.implicitConversions
 import scala.xml.Text
-import spray.json.{JsonFormat, JsString, JsonWriter, JsValue}
+import spray.json.{JsString, JsValue, JsonFormat, JsonWriter}
 
 //@JsonSerialize(using = classOf[IsStringSerializer])
 trait IsString extends SerializableIsString {
   def string: String
 
   final def isEmpty = string.isEmpty
+
+  final def nonEmpty = string.nonEmpty
 
   override def equals(o: Any) = o match {
     case o: IsString => (getClass eq o.getClass) && string == o.string

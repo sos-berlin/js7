@@ -24,10 +24,8 @@ object JavaProcess {
       processConfiguration.copy(
         fileOption = Some(JavaExecutable),
         additionalEnvironment = processConfiguration.additionalEnvironment ++ List(classpathEnv)),
-      arguments = Vector(JavaExecutable.getPath) ++
-        options ++
-        Vector(mainClass) ++
-        arguments)
+      file = JavaExecutable,
+      arguments = options ++ List(mainClass) ++ arguments)
   }
 
   private lazy val JavaExecutable: File = {

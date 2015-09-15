@@ -7,15 +7,17 @@ import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logge
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.job.ReturnCode
+import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration.Encoding
 import com.sos.scheduler.engine.taskserver.task.process.Processes._
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import java.io.{BufferedOutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.charset.StandardCharsets._
-import java.nio.file.{Files, Path}
-import java.util.concurrent.TimeUnit
+import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files.delete
+import java.nio.file.Path
+import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,6 +32,9 @@ extends HasCloser with ClosedFuture {
 
   private val pidOption = processToPidOption(process)
   private val logger = Logger.withPrefix(getClass, toString)
+  /**
+   * UTF-8 encoded stdin.
+   */
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
 
   def kill() = process.destroyForcibly()
@@ -94,10 +99,10 @@ object RichProcess {
   {
     val shellFile = newTemporaryShellFile(name)
     try {
-      shellFile.toFile.write(scriptString, ISO_8859_1)
-      val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), toShellCommandArguments(shellFile))
-      process.closed.onComplete { case _ ⇒ tryDeleteFiles(List(shellFile)) }
-      process.stdin.close() // Empty stdin
+      shellFile.write(scriptString, Encoding)
+      val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), shellFile)
+      process.closed.onComplete { _ ⇒ tryDeleteFiles(List(shellFile)) }
+      process.stdin.close() // Process gets an empty stdin
       process
     }
     catch { case NonFatal(t) ⇒
@@ -106,9 +111,9 @@ object RichProcess {
     }
   }
 
-  def start(processConfiguration: ProcessConfiguration, arguments: Seq[String]): RichProcess = {
+  def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil): RichProcess = {
     import processConfiguration.{additionalEnvironment, stdFileMap}
-    val processBuilder = new ProcessBuilder(arguments ++ processConfiguration.idArgumentOption)
+    val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption))
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
@@ -124,7 +129,7 @@ object RichProcess {
   private def waitForProcessTermination(process: Process): Unit =
     blocking {
       logger.debug(s"waitFor ${processToString(process)} ...")
-      while (!process.waitFor(WaitForProcessPeriod.toMillis, TimeUnit.MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
+      while (!process.waitFor(WaitForProcessPeriod.toMillis, MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
       logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
     }
 
@@ -132,7 +137,7 @@ object RichProcess {
     for (file ← files) {
       try {
         logger.debug(s"Delete file '$file'")
-        Files.delete(file)
+        delete(file)
       }
       catch { case NonFatal(t) ⇒ logger.error(t.toString) }
     }
