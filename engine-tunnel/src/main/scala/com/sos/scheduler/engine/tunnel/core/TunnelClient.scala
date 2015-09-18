@@ -4,6 +4,7 @@ import akka.actor.ActorRef
 import akka.util.ByteString
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import java.net.InetSocketAddress
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -18,7 +19,8 @@ extends AutoCloseable {
 
   def id = tunnelToken.id
 
-  def sendRequest(message: ByteString): Future[ByteString] = {
+  @TestOnly
+  private[tunnel] def sendRequest(message: ByteString): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
     connectorHandler ! ConnectorHandler.DirectedRequest(tunnelToken, message, responsePromise)
     responsePromise.future

@@ -104,8 +104,8 @@ private[tunnel] final class ConnectorHandler extends Actor {
         logger.trace(s"$m")
         val entry = checkedEntry(tunnelToken)
         entry.tunnelState match {
-          case ConnectedConnector(relais) ⇒
-            relais ! request
+          case ConnectedConnector(connector) ⇒
+            connector ! request
             updateStatistics(entry, request)
           case Uninitialized ⇒ entry.tunnelState = RequestBeforeConnected(request)
           case o: RequestBeforeConnected ⇒ sys.error("Second request before connection has been established")
@@ -120,7 +120,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
           val e = checkedEntry(tunnelToken)
           connectorRegister.remove(tunnelToken.id)
           e.tunnelState match {
-            case ConnectedConnector(relais) ⇒ relais ! Connector.Close
+            case ConnectedConnector(connector) ⇒ connector ! Connector.Close
             case _ ⇒
           }
         }
@@ -210,5 +210,5 @@ private[tunnel] object ConnectorHandler {
   private sealed trait TunnelState
   private case object Uninitialized extends TunnelState
   private case class RequestBeforeConnected(request: Connector.Request) extends TunnelState
-  private case class ConnectedConnector(relais: ActorRef) extends TunnelState
+  private case class ConnectedConnector(connector: ActorRef) extends TunnelState
 }
