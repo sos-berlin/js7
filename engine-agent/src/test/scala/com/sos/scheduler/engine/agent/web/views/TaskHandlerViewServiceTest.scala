@@ -30,7 +30,7 @@ final class TaskHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest 
     def tasks = List(TaskOverview(
       AgentTaskId("1-123"),
       TunnelId("99"),
-      controllerAddress = "127.0.0.1:999999999",
+      masterAddress = "127.0.0.1:999999999",
       Instant.parse("2015-06-10T12:00:00Z")))
     def isTerminating = false
   }
@@ -42,7 +42,7 @@ final class TaskHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest 
           JsObject(
             "id" → JsString("1-123"),
             "tunnelId" → JsString("99"),
-            "controllerAddress" → JsString("127.0.0.1:999999999"),
+            "masterAddress" → JsString("127.0.0.1:999999999"),
             "startedAt" → JsString("2015-06-10T12:00:00Z")))))
     }
   }

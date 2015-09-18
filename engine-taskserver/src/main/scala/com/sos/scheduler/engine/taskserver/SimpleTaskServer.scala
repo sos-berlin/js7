@@ -29,7 +29,7 @@ import spray.json._
  */
 final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain: Boolean = false) extends TaskServer with HasCloser {
 
-  private lazy val master = TcpConnection.connect(taskStartArguments.controllerInetSocketAddress).closeWithCloser
+  private lazy val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val terminatedPromise = Promise[Unit]()
   private val injector = Guice.createInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
   private val remoting = new Remoting(injector, new DialogConnection(master), IDispatchFactories, ProxyIDispatchFactories)
@@ -59,7 +59,7 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
     signalables  foreach { _.sendProcessSignal(signal) }
   }
 
-  override def toString = s"TaskServer(master=${taskStartArguments.controllerAddress})"
+  override def toString = s"TaskServer(master=${taskStartArguments.masterAddress})"
 }
 
 object SimpleTaskServer {

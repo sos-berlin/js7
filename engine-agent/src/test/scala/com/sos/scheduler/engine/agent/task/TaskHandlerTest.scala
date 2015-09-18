@@ -76,7 +76,7 @@ final class TaskHandlerTest extends FreeSpec {
         val taskMap = view.tasks toKeyedMap {_.id}
         assert(taskMap.size == taskServers.size)
         for (id ← AgentTaskIds) assert(taskMap contains id)
-        for (o ← taskMap.values) assert(o.controllerAddress == TestControllerAddress)
+        for (o ← taskMap.values) assert(o.masterAddress == TestMasterAddress)
       }
     }
 
@@ -152,8 +152,8 @@ private object TaskHandlerTest {
   private val AgentTaskIds = List("1-1", "2-2") map AgentTaskId.apply
   private val JavaOptions = "JAVA-OPTIONS"
   private val JavaClasspath = "JAVA-CLASSPATH"
-  private val TestControllerPort = 9999
-  private val TestControllerAddress = s"127.0.0.1:$TestControllerPort"
+  private val TestMasterPort = 9999
+  private val TestMasterAddress = s"127.0.0.1:$TestMasterPort"
   private val TestStartApiTask = StartApiTask(javaOptions = JavaOptions, javaClasspath = JavaClasspath)
   private val TestLicenseKey = LicenseKey("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")
   private val TestTunnelToken = TunnelToken(TunnelId("1"), TunnelToken.Secret("SECRET"))
@@ -179,7 +179,7 @@ private object TaskHandlerTest {
 
     def terminated = terminatedPromise.future
 
-    def taskStartArguments = TaskStartArguments.forTest(tcpPort = TestControllerPort)   // For TaskHandler.overview
+    def taskStartArguments = TaskStartArguments.forTest(tcpPort = TestMasterPort)   // For TaskHandler.overview
 
     def sendProcessSignal(signal: ProcessSignal) = signal match {
       case SIGTERM ⇒ sigtermed = true
