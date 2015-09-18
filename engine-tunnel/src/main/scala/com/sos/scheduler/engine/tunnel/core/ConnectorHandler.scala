@@ -108,7 +108,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
             relais ! request
             updateStatistics(entry, request)
           case Uninitialized ⇒ entry.tunnelState = RequestBeforeConnected(request)
-          case o: RequestBeforeConnected ⇒ sys.error(o.toString)
+          case o: RequestBeforeConnected ⇒ sys.error("Second request before connection has been established")
         }
       } catch {
         case NonFatal(t) ⇒ request.responsePromise.failure(t)
