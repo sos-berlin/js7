@@ -17,8 +17,8 @@ import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
-import com.sos.scheduler.engine.tunnel.core.TunnelClient
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -160,11 +160,11 @@ private object TaskHandlerTest {
 
   private class TestContext {
     val taskServers = List.fill(AgentTaskIds.size) { new MockTaskServer }
-    val tasks = AgentTaskIds zip taskServers map { case (id, taskServer) ⇒ new AgentTask(id, tunnel = mockTunnelClient(), taskServer) }
+    val tasks = AgentTaskIds zip taskServers map { case (id, taskServer) ⇒ new AgentTask(id, tunnel = mockTunnelHandle(), taskServer) }
     val taskHandler = Guice.createInjector(new TestModule(tasks)).instance[TaskHandler]
   }
 
-  private def mockTunnelClient() = new TunnelClient(
+  private def mockTunnelHandle() = new TunnelHandle(
     connectorHandler = ActorSystem().actorOf(Props { new Actor { def receive = { case _ ⇒ }}}),
     TestTunnelToken,
     connected = Promise().future,

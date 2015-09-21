@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel.core
+package com.sos.scheduler.engine.tunnel.server
 
 import akka.actor.SupervisorStrategy.stoppingStrategy
 import akka.actor.{Actor, ActorRef, Terminated}
@@ -6,8 +6,8 @@ import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.tunnel.core.ConnectorHandler._
 import com.sos.scheduler.engine.tunnel.data._
+import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.InetSocketAddress
 import java.time.Instant
 import java.time.Instant.now
@@ -61,16 +61,16 @@ private[tunnel] final class ConnectorHandler extends Actor {
 
     case m @ NewTunnel(id) ⇒
       logger.trace(s"$m")
-      sender() ! Try[TunnelClient] {
+      sender() ! Try[TunnelHandle] {
         val secret = TunnelToken.newSecret()
         val connectedPromise = Promise[InetSocketAddress]()
-        val client = new TunnelClient(
+        val tunnel = new TunnelHandle(
           self,
           TunnelToken(id, secret),
           connectedPromise.future,
           peerAddress = () ⇒ connectedPromise.future.value map { _.get })
-        register.insert(id → Entry(id, secret, client, connectedPromise))
-        client
+        register.insert(id → Entry(id, secret, tunnel, connectedPromise))
+        tunnel
       }
 
     case m @ Connector.AssociatedWithTunnelId(TunnelToken(id, secret), peerAddress) ⇒
@@ -187,7 +187,7 @@ private[tunnel] object ConnectorHandler {
   private case class Entry(
     id: TunnelId,
     secret: TunnelToken.Secret,
-    client: TunnelClient,
+    client: TunnelHandle,
     connectedPromise: Promise[InetSocketAddress],
     var state: Entry.State = Entry.Uninitialized,
     statistics: Statistics = Statistics())

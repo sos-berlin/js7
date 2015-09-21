@@ -4,14 +4,14 @@ import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.views.TaskOverview
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.taskserver.TaskServer
-import com.sos.scheduler.engine.tunnel.core.TunnelClient
+import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.time.Instant
 import scala.concurrent.Future
 
 /**
 * @author Joacim Zschimmer
 */
-private[task] final class AgentTask(val id: AgentTaskId, tunnel: TunnelClient, val taskServer: TaskServer)
+private[task] final class AgentTask(val id: AgentTaskId, tunnel: TunnelHandle, val taskServer: TaskServer)
 extends AutoCloseable {
 
   val startedAt = Instant.now()

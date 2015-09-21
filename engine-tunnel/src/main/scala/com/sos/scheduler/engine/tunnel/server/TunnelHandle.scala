@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel.core
+package com.sos.scheduler.engine.tunnel.server
 
 import akka.actor.ActorRef
 import akka.util.ByteString
@@ -8,9 +8,12 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.{Future, Promise}
 
 /**
+ * A handle for the server side part of a tunnel, provided by the [[TunnelServer]].
+ * This is not a client for the complete tunnel.
+ *
  * @author Joacim Zschimmer
  */
-final class TunnelClient(
+final class TunnelHandle(
   connectorHandler: ActorRef,
   val tunnelToken: TunnelToken,
   val connected: Future[InetSocketAddress],

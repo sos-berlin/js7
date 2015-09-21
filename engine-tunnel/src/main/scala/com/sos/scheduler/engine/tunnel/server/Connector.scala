@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel.core
+package com.sos.scheduler.engine.tunnel.server
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
@@ -6,8 +6,8 @@ import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
-import com.sos.scheduler.engine.tunnel.core.Connector._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.server.Connector._
 import java.net.InetSocketAddress
 import scala.concurrent.Promise
 import spray.json.JsonParser
@@ -28,7 +28,7 @@ import spray.json.JsonParser
  *
  * @author Joacim Zschimmer
  */
-private[core] final class Connector private(tcp: ActorRef, connected: Tcp.Connected)
+private[server] final class Connector private(tcp: ActorRef, connected: Tcp.Connected)
 extends Actor with FSM[State, Data] {
   import connected.remoteAddress
 
@@ -112,7 +112,7 @@ extends Actor with FSM[State, Data] {
   private def tunnelIdString = if (tunnelId == null) "tunnel is not yet established" else tunnelId.string
 }
 
-private[core] object Connector {
+private[server] object Connector {
   private val logger = Logger(getClass)
 
   def props(tcp: ActorRef, connected: Tcp.Connected) = Props { new Connector(tcp, connected) }
@@ -120,29 +120,29 @@ private[core] object Connector {
 
   // Actor messages commanding this actor
 
-  private[core] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
+  private[server] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
     override def toString = s"Request(${message.size} bytes)"
   }
 
-  private[core] case object Close
+  private[server] case object Close
 
 
   // Event messages from this actor
 
-  private[core] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
+  private[server] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
 
-  private[core] final case class Response(message: ByteString) {
+  private[server] final case class Response(message: ByteString) {
     override def toString = s"Response(${message.size} bytes)"
   }
 
-  private[core] final case class Closed(tunnelId: TunnelId)
+  private[server] final case class Closed(tunnelId: TunnelId)
 
-  private[core] sealed trait State
+  private[server] sealed trait State
   private case object ExpectingRequest extends State {}
   private case object ExpectingMessageFromTcp extends State
   private case object Closing extends State
 
-  private[core] sealed trait Data
+  private[server] sealed trait Data
   private case class Respond(responsePromise: Promise[ByteString]) extends Data
   private case object NoData extends Data
 }

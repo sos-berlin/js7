@@ -12,6 +12,7 @@ import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcp
 import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
 import com.sos.scheduler.engine.tunnel.client.TcpToHttpBridge
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.server.TunnelServer
 import com.sos.scheduler.engine.tunnel.web.TunnelWebService._
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
@@ -121,21 +122,21 @@ object TcpHttpTcpTunnelIT {
 
   private class ServerSideTunnelHandler {
     val actorSystem = ActorSystem(getClass.getSimpleName)
-    val tunnelHandler = new TunnelHandler(actorSystem)
+    val tunnelServer = new TunnelServer(actorSystem)
     val uri = startWebServer()
 
-    def newTunnel(id: TunnelId) = tunnelHandler.newTunnel(id)
-    def tcpAddress = tunnelHandler.proxyAddress
+    def newTunnel(id: TunnelId) = tunnelServer.newTunnel(id)
+    def tcpAddress = tunnelServer.proxyAddress
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
-      actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelHandler, tunnelHandler.request) })
+      actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer, tunnelServer.request) })
       val httpAddress = awaitResult(startedPromise.future, 10.s)
       Uri(s"http://${httpAddress.getAddress.getHostAddress}:${httpAddress.getPort}")
     }
   }
 
-  private class TestWebServiceActor(port: Int, startedPromise: Promise[InetSocketAddress], tunnelHandler: TunnelHandler, execute: ExecuteTunneledRequest) extends HttpServiceActor  {
+  private class TestWebServiceActor(port: Int, startedPromise: Promise[InetSocketAddress], tunnelServer: TunnelServer, execute: ExecuteTunneledRequest) extends HttpServiceActor  {
     import context.dispatcher
 
     IO(Http)(context.system) ! Http.Bind(self, interface = "127.0.0.1", port = port)

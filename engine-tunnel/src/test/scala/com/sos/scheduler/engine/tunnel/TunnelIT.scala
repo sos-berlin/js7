@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.tunnel.TunnelIT._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.server.TunnelServer
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -27,12 +28,12 @@ import scala.util.Random
 final class TunnelIT extends FreeSpec {
 
   private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
-  private lazy val tunnelHandler = new TunnelHandler(actorSystem)
+  private lazy val tunnelServer = new TunnelServer(actorSystem)
   import actorSystem.dispatcher
 
   "Simple" in {
-    val tunnel = tunnelHandler.newTunnel(TunnelId("TEST-TUNNEL"))
-    val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelHandler.proxyAddress)
+    val tunnel = tunnelServer.newTunnel(TunnelId("TEST-TUNNEL"))
+    val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelServer.proxyAddress)
     tcpServer.start()
     for (i ← 1 to 3) {
       val request = ByteString.fromString(s"TEST-REQUEST #$i")
@@ -50,8 +51,8 @@ final class TunnelIT extends FreeSpec {
     val messageSizes = /*Iterator(MessageSizeMaximum, 0, 1) ++*/ Iterator.continually { nextRandomSize(1000*1000) }
     val tunnelsAndServers = for (i ← 1 to TunnelCount) yield {
       val id = TunnelId(i.toString)
-      val tunnel = tunnelHandler.newTunnel(id)
-      val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelHandler.proxyAddress)
+      val tunnel = tunnelServer.newTunnel(id)
+      val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelServer.proxyAddress)
       tcpServer.start()
       tunnel.connected onSuccess { case peerAddress: InetSocketAddress ⇒
         logger.info(s"$tunnel $peerAddress")
@@ -78,11 +79,11 @@ final class TunnelIT extends FreeSpec {
       tunnel.close()
       awaitResult(tcpServer.terminatedPromise.future, 10.s)
     }
-    tunnelHandler.close()
+    tunnelServer.close()
   }
 
-  "tunnelHandler.close" in {
-    tunnelHandler.close()
+  "tunnelServer.close" in {
+    tunnelServer.close()
   }
 }
 
