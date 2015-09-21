@@ -29,6 +29,11 @@ object Futures {
       case NonFatal(t) ⇒ Future.failed(t)
     }
 
+  /**
+   * A Future that will never happen.
+   */
+  val NoFuture: Future[Nothing] = Promise().future
+
   object implicits {
 
     implicit class SuccessFuture[A](val delegate: Future[A]) extends AnyVal {

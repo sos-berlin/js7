@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.scalautil
 
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.{FutureNotSucceededException, catchInFuture}
+import com.sos.scheduler.engine.common.scalautil.Futures.{FutureNotSucceededException, NoFuture, catchInFuture}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -50,7 +50,11 @@ final class FuturesTest extends FreeSpec {
     intercept[RuntimeException] { f(true) }
     Await.ready(f(false), 2.seconds).value.get.failed.get
     Await.ready(catchInFuture { f(true) }, 2.seconds).value.get.failed.get
+  }
 
+  "NoFuture" in {
+    val neverHappeningFuture: Future[Int] = NoFuture
+    assert(!neverHappeningFuture.isCompleted)
   }
 
   private def stackTraceContainsCreationsStackTrace(body: ⇒ Int): Boolean =
