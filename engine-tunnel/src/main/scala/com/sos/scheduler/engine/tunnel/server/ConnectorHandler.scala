@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.tunnel.server
 
 import akka.actor.SupervisorStrategy.stoppingStrategy
-import akka.actor.{Actor, ActorRef, Terminated}
+import akka.actor.{Props, Actor, ActorRef, Terminated}
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
@@ -19,7 +19,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * @author Joacim Zschimmer
  */
-private[tunnel] final class ConnectorHandler extends Actor {
+private[tunnel] final class ConnectorHandler private extends Actor {
 
   import context.{actorOf, become, dispatcher, stop, system, watch}
 
@@ -69,7 +69,7 @@ private[tunnel] final class ConnectorHandler extends Actor {
           TunnelToken(id, secret),
           connectedPromise.future,
           peerAddress = () ⇒ connectedPromise.future.value map { _.get })
-        register.insert(id → Entry(id, secret, tunnel, connectedPromise))
+        register.insert(id → Entry(secret, tunnel, connectedPromise))
         tunnel
       }
 
@@ -124,12 +124,11 @@ private[tunnel] final class ConnectorHandler extends Actor {
     case m @ CloseTunnel(tunnelToken) ⇒
       try {
         if (register contains tunnelToken.id) {
-          val entry = checkedEntry(tunnelToken)
-          register.remove(entry.id)
-          entry.state match {
+          checkedEntry(tunnelToken).state match {
             case Entry.ConnectedConnector(connector) ⇒ connector ! Connector.Close
             case _ ⇒
           }
+          register -= tunnelToken.id
         }
       }
       catch {
@@ -161,17 +160,19 @@ private[tunnel] final class ConnectorHandler extends Actor {
   }
 
   private def getTunnelIdByActor(actorRef: ActorRef): Option[TunnelId] =
-    register.valuesIterator collectFirst {
-      case e if PartialFunction.cond(e.state) { case Entry.ConnectedConnector(connector) ⇒ connector == actorRef } ⇒ e.id }
+    register.iterator collectFirst {
+      case (id, entry) if PartialFunction.cond(entry.state) { case Entry.ConnectedConnector(connector) ⇒ connector == actorRef } ⇒ id }
 }
 
 private[tunnel] object ConnectorHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
 
+  private[tunnel] def props = Props { new ConnectorHandler }
+
   sealed trait Command
   private[tunnel] case object Start extends Command
-  private[tunnel] case class NewTunnel(tunnelId: TunnelId) extends Command
+  private[tunnel] case class NewTunnel(tunnelId: TunnelId, listener: TunnelListener) extends Command
   private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
 
   private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request) extends Command
@@ -203,7 +204,7 @@ private[tunnel] object ConnectorHandler {
     case class ConnectedConnector(connector: ActorRef) extends State
   }
 
-  private case class Statistics(  // We don't care about synchronization
+  private case class Statistics(  // We don't care about synchronization ???
     var requestCount: Int = 0,
     var messageByteCount: Long = 0,
     var currentRequestIssuedAt: Option[Instant] = None,

@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.tunnel.server
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.io.Tcp.Bound
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
@@ -22,7 +22,7 @@ import scala.util.Try
 @Singleton
 final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem) extends AutoCloseable {
 
-  private val connectorHandler = actorSystem.actorOf( Props { new ConnectorHandler }, name = "ConnectorHandler")
+  private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props, name = "ConnectorHandler")
   private implicit val askTimeout = Timeout(ShortTimeout.toFiniteDuration)
 
   private[tunnel] val proxyAddress: InetSocketAddress = {
