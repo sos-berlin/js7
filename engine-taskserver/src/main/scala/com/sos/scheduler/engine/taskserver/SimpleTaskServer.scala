@@ -56,7 +56,7 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
   def sendProcessSignal(signal: ProcessSignal) = {
     val signalables = remoting.invocables[HasSendProcessSignal]
     logger.debug(s"sendProcessSignal $signal to $signalables")
-    signalables  foreach { _.sendProcessSignal(signal) }
+    signalables foreach { _.sendProcessSignal(signal) }
   }
 
   override def toString = s"TaskServer(master=${taskStartArguments.masterAddress})"

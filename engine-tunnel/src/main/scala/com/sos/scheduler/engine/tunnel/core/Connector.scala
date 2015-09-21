@@ -13,7 +13,7 @@ import scala.concurrent.Promise
 import spray.json.JsonParser
 
 /**
- * Establish and handles a tunnel connection between a request/response site and TCP site.
+ * Establishes and handles a connection between a request/response site (client) and a TCP site (server).
  * <p>
  * In the JobScheduler Agent, the request/response client is a HTTP web service,
  * and the TCP site is the TaskServer.
@@ -22,29 +22,21 @@ import spray.json.JsonParser
  * The actor then waits for the first message from the TCP site, a [[TunnelConnectionMessage]].
  * This messages denotes the TunnelId of the tunnel, the task wishes to connect to.
  * <p>
- * After the TunnelId is known, the actor expeteds a `Request` and forwards it the TCP site (length-prefix framed),
- * Then, the actor awaits a framed TCP message and forwards it as a `Response` to the orignal requestor.
+ * After the TunnelId is known, the actor expects a `Request` and forwards it the TCP site (length-prefix framed),
+ * Then, the actor awaits a framed TCP message and forwards it as a `Response` to the original requester.
+ * This is repeated for every request.
  *
  * @author Joacim Zschimmer
  */
-private[core] final class Connector(tcp: ActorRef, connected: Tcp.Connected)
+private[core] final class Connector private(tcp: ActorRef, connected: Tcp.Connected)
 extends Actor with FSM[State, Data] {
-
   import connected.remoteAddress
 
   private var tunnelId: TunnelId = null
   private val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, connected)})
   private var messageTcpBridgeTerminated = false
 
-
   override def supervisorStrategy = stoppingStrategy
-
-  override def postStop(): Unit = {
-    if (tunnelId != null) {
-      context.parent ! Closed(tunnelId)
-    }
-    super.postStop()
-  }
 
   context.watch(messageTcpBridge)
   startWith(ExpectingMessageFromTcp, NoData)
@@ -122,6 +114,8 @@ extends Actor with FSM[State, Data] {
 
 private[core] object Connector {
   private val logger = Logger(getClass)
+
+  def props(tcp: ActorRef, connected: Tcp.Connected) = Props { new Connector(tcp, connected) }
 
 
   // Actor messages commanding this actor

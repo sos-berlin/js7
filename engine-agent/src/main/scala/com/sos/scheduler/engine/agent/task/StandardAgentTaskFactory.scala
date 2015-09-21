@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commands.{StartApiTask, StartNonApiTask, StartTask}
 import com.sos.scheduler.engine.agent.task.StandardAgentTaskFactory._
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
@@ -18,7 +19,8 @@ import javax.inject.{Inject, Singleton}
  * @author Joacim Zschimmer
  */
 @Singleton
-final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentConfiguration, tunnelHandler: TunnelHandler) extends AgentTaskFactory {
+final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentConfiguration, tunnelHandler: TunnelHandler)
+extends AgentTaskFactory {
 
   private val agentTaskIdGenerator = AgentTaskId.newGenerator()
 
@@ -27,6 +29,7 @@ final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentCo
     val address = tunnelHandler.proxyAddressString
     val tunnel = tunnelHandler.newTunnel(TunnelId(id.index.toString))
     new AgentTask(id, tunnel, newTaskServer(id, command, address, tunnel.tunnelToken))
+    // AgentTask closes Tunnel and TaskServer
   }
 
   private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, masterAddress: String, tunnelToken: TunnelToken) = {

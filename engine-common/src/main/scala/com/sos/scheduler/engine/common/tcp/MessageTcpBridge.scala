@@ -10,7 +10,7 @@ import com.sos.scheduler.engine.common.tcp.MessageTcpBridge._
 /**
  * Full-duplex bridge between length-prefixed framed messages and a TCP stream.
  * Messages from message side are framed and forwarded to TCP.
- * The bytes stream from TCP is unframed and the messages are forwared to the message side.
+ * The bytes stream from TCP is unframed and the messages are forwarded to the message side.
  *
  * @note The used LengthHeaderMessageCollector is not yet full duplex.
  *
