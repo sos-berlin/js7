@@ -57,7 +57,7 @@ final class TunnelServiceTest extends FreeSpec with ScalatestRouteTest with Tunn
   }
 
   s"POST $TunnelPath/ID" in {
-    val requestMessage = ByteString.fromString(Random.nextString(10))
+    val requestMessage = ByteString(Random.nextString(10))
     Post(Uri.Empty withPath (TunnelPath / TestTunnelId.string), requestMessage) ~>
       addHeader(SecretHeaderName, TestSecret.string) ~>
       Accept(`application/octet-stream`) ~>
@@ -68,7 +68,7 @@ final class TunnelServiceTest extends FreeSpec with ScalatestRouteTest with Tunn
     }
   }
 
-  private def requestToResponse(request: ByteString) = request ++ ByteString.fromString(" RESPONSE)")
+  private def requestToResponse(request: ByteString) = request ++ ByteString(" RESPONSE)")
 }
 
 private object TunnelServiceTest {

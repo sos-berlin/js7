@@ -40,7 +40,7 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
     Future {
       blocking {
         val connectionMessage = TunnelConnectionMessage(taskStartArguments.tunnelToken)
-        master.sendMessage(ByteString.fromString(connectionMessage.toJson.compactPrint))
+        master.sendMessage(ByteString(connectionMessage.toJson.compactPrint))
         remoting.run()
         master.close()
       }

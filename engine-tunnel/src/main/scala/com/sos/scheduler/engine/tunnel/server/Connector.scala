@@ -33,7 +33,7 @@ extends Actor with FSM[State, Data] {
   import connected.remoteAddress
 
   private var tunnelId: TunnelId = null
-  private val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, connected)})
+  private val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, connected) })
   private var messageTcpBridgeTerminated = false
 
   override def supervisorStrategy = stoppingStrategy
