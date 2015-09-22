@@ -13,9 +13,11 @@ private[serial] trait BaseDeserializer {
 
   protected val buffer: ByteBuffer
 
-  final def requireEndOfMessage(): Unit = {
-    if (hasData) throw new IllegalArgumentException("Message contains more data than expected")
-  }
+  final def requireEndOfMessage(): Unit =
+    buffer.remaining match {
+      case 0 ⇒
+      case n ⇒ throw new IllegalArgumentException(s"Message contains $n more bytes than expected")
+    }
 
   final def hasData = buffer.remaining > 0
 
