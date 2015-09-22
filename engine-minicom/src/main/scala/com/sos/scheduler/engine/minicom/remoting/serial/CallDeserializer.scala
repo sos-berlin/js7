@@ -5,19 +5,21 @@ import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
 import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
+import java.nio.ByteBuffer
 import scala.collection.immutable
 
 /**
  * @author Joacim Zschimmer
  */
-private[serial] final class CallDeserializer private(
-  protected val remoting: ServerRemoting,
-  message: ByteString)
-extends IUnknownDeserializer {
+private[serial] trait CallDeserializer extends VariantDeserializer {
 
-  protected val buffer = message.asByteBuffer
+  final def readCallAndEnd(): Call = {
+    val result = readCall()
+    requireEndOfMessage()
+    result
+  }
 
-  def readCall(): Call =
+  final def readCall(): Call =
     readByte() match {
       case MessageClass.Session ⇒ readSessionCall()
       case MessageClass.Object ⇒ readObjectCall()
@@ -80,7 +82,7 @@ extends IUnknownDeserializer {
   private def readArguments(n: Int): immutable.Seq[Any] = Vector.fill(n) { readVariant() } .reverse
 }
 
-private[remoting] object CallDeserializer {
+object CallDeserializer {
   private[remoting] object MessageCommand {
     val CreateInstance  = 'C'.toByte
     val Release         = 'R'.toByte
@@ -90,10 +92,19 @@ private[remoting] object CallDeserializer {
     val Call            = 'A'.toByte
   }
 
+  def messageIsCall(message: ByteString) = MessageClass.isCall(message.head)
+
   def deserializeCall(remoting: ServerRemoting, message: ByteString) = {
-    val d = new CallDeserializer(remoting, message)
-    val result = d.readCall()
-    d.requireEndOfMessage()
-    result
+    val _remoting = remoting
+    new CallDeserializer with RemotingIUnknownDeserializer {
+      val buffer = message.asByteBuffer
+      val remoting = _remoting
+    }.readCallAndEnd()
+  }
+
+  def deserializeCall(message: ByteString) = new SimpleCallDeserializer(message.asByteBuffer).readCallAndEnd()
+
+  private class SimpleCallDeserializer(protected val buffer: ByteBuffer) extends CallDeserializer with RemotingIUnknownDeserializer {
+    val remoting = ServerRemoting.Dummy
   }
 }

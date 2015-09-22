@@ -10,4 +10,7 @@ private[remoting] object MessageClass {
   val Answer = 'A'.toByte   // Nachricht ist eine Antwort
   val Error = 'E'.toByte    // Nachricht ist eine Fehlerantwort
   val KeepAlive = 'K'.toByte  // Keep-alive message to keep HTTP connection up and to detect master's connection loss
+
+  val isCall = Set(Session, Object)  // Ignoring KeepAlive
+  val isResult = Set(Answer, Error)
 }

@@ -8,7 +8,8 @@ import scala.collection.immutable
 /**
  * @author Joacim Zschimmer
  */
-private[remoting] trait IUnknownDeserializer extends VariantDeserializer {
+private[remoting] trait RemotingIUnknownDeserializer {
+  this: VariantDeserializer ⇒
 
   protected val remoting: ServerRemoting
 
