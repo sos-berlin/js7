@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.tunnel.server
 
-import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.actor.ActorSystem
+import akka.agent.Agent
 import akka.io.Tcp.Bound
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
@@ -36,8 +37,8 @@ final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem) exten
 
   def close(): Unit = actorSystem.stop(connectorHandler)
 
-  def newTunnel(tunnelId: TunnelId) =
-    awaitResult((connectorHandler ? ConnectorHandler.NewTunnel(tunnelId)).mapTo[Try[TunnelHandle]],
+  def newTunnel[A <: TunnelListener](tunnelId: TunnelId, tunnelListener: Agent[A]) =
+    awaitResult((connectorHandler ? ConnectorHandler.NewTunnel(tunnelId, tunnelListener)).mapTo[Try[TunnelHandle]],
       ShortTimeout).get
 
   def request(tunnelToken: TunnelToken, requestMessage: ByteString): Future[ByteString] = {

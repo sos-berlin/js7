@@ -160,7 +160,9 @@ private object TaskHandlerTest {
 
   private class TestContext {
     val taskServers = List.fill(AgentTaskIds.size) { new MockTaskServer }
-    val tasks = AgentTaskIds zip taskServers map { case (id, taskServer) ⇒ new AgentTask(id, tunnel = mockTunnelHandle(), taskServer) }
+    val tasks = AgentTaskIds zip taskServers map {
+      case (id, taskServer) ⇒ new AgentTask(id, tunnel = mockTunnelHandle(), taskServer, taskArgumentsFuture = NoFuture)
+    }
     val taskHandler = Guice.createInjector(new TestModule(tasks)).instance[TaskHandler]
   }
 

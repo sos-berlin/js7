@@ -8,13 +8,13 @@ import scala.collection.immutable
 /**
  * @author Joacim Zschimmer
  */
-private[remoting] sealed trait Call
+sealed trait Call
 
 
-private[remoting] sealed trait SessionCall extends Call
+sealed trait SessionCall extends Call
 
 
-private[remoting] final case class CreateInstanceCall(
+final case class CreateInstanceCall(
   clsid: CLSID,
   @Nullable outer: IUnknown,
   context: Int,
@@ -22,24 +22,24 @@ private[remoting] final case class CreateInstanceCall(
 extends SessionCall
 
 
-private[remoting] sealed trait ObjectCall extends Call {
+sealed trait ObjectCall extends Call {
   def proxyId: ProxyId
 }
 
 
-private[remoting] final case class ReleaseCall(proxyId: ProxyId)
+final case class ReleaseCall(proxyId: ProxyId)
 extends ObjectCall
 
 
-private[remoting] final case class QueryInterfaceCall(proxyId: ProxyId, iid: IID)
+final case class QueryInterfaceCall(proxyId: ProxyId, iid: IID)
 extends ObjectCall
 
 
-private[remoting] final case class GetIDsOfNamesCall(proxyId: ProxyId, iid: IID, localeId: Int, names: immutable.Seq[String])
+final case class GetIDsOfNamesCall(proxyId: ProxyId, iid: IID, localeId: Int, names: immutable.Seq[String])
 extends ObjectCall
 
 
-private[remoting] final case class InvokeCall(
+final case class InvokeCall(
   proxyId: ProxyId,
   dispatchId: DISPID,
   iid: IID,
@@ -49,7 +49,7 @@ private[remoting] final case class InvokeCall(
 extends ObjectCall
 
 
-private[remoting] final case class CallCall(proxyId: ProxyId, methodName: String, arguments: immutable.Seq[Any])
+final case class CallCall(proxyId: ProxyId, methodName: String, arguments: immutable.Seq[Any])
 extends ObjectCall
 
-private[remoting] case object KeepAliveCall extends Call
+case object KeepAliveCall extends Call

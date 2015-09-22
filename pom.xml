@@ -879,6 +879,16 @@
             </dependency>
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
+                <artifactId>akka-cluster_${scala.binaryVersion}</artifactId>
+                <version>${akka.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.typesafe.akka</groupId>
+                <artifactId>akka-agent_${scala.binaryVersion}</artifactId>
+                <version>${akka.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.typesafe.akka</groupId>
                 <artifactId>akka-slf4j_${scala.binaryVersion}</artifactId>
                 <version>${akka.version}</version>
             </dependency>

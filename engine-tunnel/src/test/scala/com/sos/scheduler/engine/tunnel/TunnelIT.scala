@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.tunnel
 
 import akka.actor.ActorSystem
+import akka.agent.Agent
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -9,7 +10,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.tunnel.TunnelIT._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.TunnelServer
+import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -32,11 +33,11 @@ final class TunnelIT extends FreeSpec {
   import actorSystem.dispatcher
 
   "Simple" in {
-    val tunnel = tunnelServer.newTunnel(TunnelId("TEST-TUNNEL"))
+    val tunnel = tunnelServer.newTunnel(TunnelId("TEST-TUNNEL"), Agent(TunnelListener.StopListening))
     val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelServer.proxyAddress)
     tcpServer.start()
     for (i ← 1 to 3) {
-      val request = ByteString.fromString(s"TEST-REQUEST #$i")
+      val request = ByteString(s"TEST-REQUEST #$i")
       val responded = tunnel.sendRequest(request) map { response ⇒
         assert(response == requestToResponse(request, tunnel.id))
       }
@@ -51,7 +52,7 @@ final class TunnelIT extends FreeSpec {
     val messageSizes = /*Iterator(MessageSizeMaximum, 0, 1) ++*/ Iterator.continually { nextRandomSize(1000*1000) }
     val tunnelsAndServers = for (i ← 1 to TunnelCount) yield {
       val id = TunnelId(i.toString)
-      val tunnel = tunnelServer.newTunnel(id)
+      val tunnel = tunnelServer.newTunnel(id, Agent(TunnelListener.StopListening))
       val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelServer.proxyAddress)
       tcpServer.start()
       tunnel.connected onSuccess { case peerAddress: InetSocketAddress ⇒
@@ -97,7 +98,7 @@ object TunnelIT {
   private def byteStringsFastEqual(a: ByteString, b: ByteString) = java.util.Arrays.equals(a.toArray[Byte], b.toArray[Byte])
 
   private def requestToResponse(request: ByteString, id: TunnelId): ByteString =
-    request ++ ByteString.fromString(s" RESPONSE FROM $id")
+    request ++ ByteString(s" RESPONSE FROM $id")
 
   private class TcpServer(tunnelToken: TunnelToken, masterAddress: InetSocketAddress) extends Thread {
     // Somewhat unusual, the server connects the client and sends a TunnelConnectionMessage, before acting as a usual server.

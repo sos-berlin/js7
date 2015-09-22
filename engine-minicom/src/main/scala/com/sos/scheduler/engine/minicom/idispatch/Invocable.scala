@@ -13,3 +13,7 @@ import java.lang.reflect.Method
 trait Invocable extends IUnknown {
   def invocableMethods: Seq[Method] = getClass.getMethods filter { _.getAnnotation(classOf[invocable]) != null }
 }
+
+object Invocable {
+  object Empty extends Invocable
+}

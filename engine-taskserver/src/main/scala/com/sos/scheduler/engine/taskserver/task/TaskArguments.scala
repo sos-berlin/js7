@@ -15,7 +15,7 @@ import scala.util.Sorting.stableSort
 /**
  * @author Joacim Zschimmer
  */
-private[task] final class TaskArguments private(arguments: List[(String, String)]) {
+final class TaskArguments private(arguments: List[(String, String)]) {
 
   lazy val environment: Map[String, String] = VariableSets.parseXml(apply(EnvironmentKey))
   lazy val hasOrder = get(HasOrderKey) match {
@@ -45,7 +45,7 @@ private[task] final class TaskArguments private(arguments: List[(String, String)
   private def get(name: String): Option[String] = arguments collectFirst { case (k, v) if k == name ⇒ v }
 }
 
-private[task] object TaskArguments {
+object TaskArguments {
   private val EnvironmentKey = "environment"
   private val HasOrderKey = "has_order"
   private val JavaClassKey = "java_class"

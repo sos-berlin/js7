@@ -32,7 +32,8 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
       AgentTaskId("1-123"),
       tunnelId = TunnelId("99"),
       masterAddress = "127.0.0.1:999999999",
-      Instant.parse("2015-06-10T12:00:00Z")))
+      Instant.parse("2015-06-10T12:00:00Z"),
+      taskArguments = Map()))
     def isTerminating = false
   }
 

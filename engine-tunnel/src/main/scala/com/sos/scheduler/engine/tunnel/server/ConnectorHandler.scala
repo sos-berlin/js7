@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.tunnel.server
 
 import akka.actor.SupervisorStrategy.stoppingStrategy
-import akka.actor.{Props, Actor, ActorRef, Terminated}
+import akka.actor.{Actor, ActorRef, Props, Terminated}
+import akka.agent.Agent
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
@@ -59,7 +60,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
       val connector = actorOf(Connector.props(tcp = sender(), connected), name = name)
       watch(connector)
 
-    case m @ NewTunnel(id) ⇒
+    case m @ NewTunnel(id, listener) ⇒
       logger.trace(s"$m")
       sender() ! Try[TunnelHandle] {
         val secret = TunnelToken.newSecret()
@@ -69,7 +70,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
           TunnelToken(id, secret),
           connectedPromise.future,
           peerAddress = () ⇒ connectedPromise.future.value map { _.get })
-        register.insert(id → Entry(secret, tunnel, connectedPromise))
+        register.insert(id → Entry(secret, tunnel, connectedPromise, listener))
         tunnel
       }
 
@@ -92,7 +93,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
               case Entry.Uninitialized ⇒
               case Entry.RequestBeforeConnected(request) ⇒
                 connector ! request
-                entry.statistics.updateWith(request)
+                entry.onRequestSent(request)
             }
           }
           entry.connectedPromise.success(peerAddress)
@@ -102,7 +103,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
 
     case m @ Terminated(child) ⇒
       for (id ← getTunnelIdByActor(child)) {
-        register -= id
+        removeEntry(id)
         logger.debug(s"$m, tunnel removed after Connector death")  // Should have been removed by CloseTunnel
       }
 
@@ -113,7 +114,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         entry.state match {
           case Entry.ConnectedConnector(connector) ⇒
             connector ! request
-            entry.statistics.updateWith(request)
+            entry.onRequestSent(request)
           case Entry.Uninitialized ⇒ entry.state = Entry.RequestBeforeConnected(request)
           case o: Entry.RequestBeforeConnected ⇒ sys.error("Second request before connection has been established")
         }
@@ -128,7 +129,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
             case Entry.ConnectedConnector(connector) ⇒ connector ! Connector.Close
             case _ ⇒
           }
-          register -= tunnelToken.id
+          removeEntry(tunnelToken.id)
         }
       }
       catch {
@@ -153,6 +154,8 @@ private[tunnel] final class ConnectorHandler private extends Actor {
       }).toVector
   }
 
+  private def removeEntry(id: TunnelId): Unit = register -= id
+
   private def checkedEntry(tunnelToken: TunnelToken) = {
     val entry = register(tunnelToken.id)
     if (tunnelToken.secret != entry.secret) throw new IllegalArgumentException(s"Wrong tunnel secret")
@@ -172,7 +175,7 @@ private[tunnel] object ConnectorHandler {
 
   sealed trait Command
   private[tunnel] case object Start extends Command
-  private[tunnel] case class NewTunnel(tunnelId: TunnelId, listener: TunnelListener) extends Command
+  private[tunnel] case class NewTunnel[A <: TunnelListener](tunnelId: TunnelId, listener: Agent[A]) extends Command
   private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
 
   private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request) extends Command
@@ -186,15 +189,21 @@ private[tunnel] object ConnectorHandler {
   private[tunnel] object GetTunnelOverviews extends Command
 
   private case class Entry(
-    id: TunnelId,
     secret: TunnelToken.Secret,
     client: TunnelHandle,
     connectedPromise: Promise[InetSocketAddress],
+    listener: Agent[TunnelListener],
     var state: Entry.State = Entry.Uninitialized,
     statistics: Statistics = Statistics())
   {
     def remoteAddressString: String = remoteAddressStringOption getOrElse "(not connected via TCP)"
+
     def remoteAddressStringOption: Option[String] = connectedPromise.future.value flatMap { _.toOption } map { _.toString stripPrefix "/" }
+
+    def onRequestSent(request: Connector.Request)(implicit ec:ExecutionContext): Unit = {
+      statistics.updateWith(request)
+      listener send { _.onRequest(request.message) }
+    }
   }
 
   private object Entry {
