@@ -87,7 +87,7 @@ final class TaskHandlerTest extends FreeSpec {
         CloseTask(tasks(1).id, kill = true))
       for (command ← commands) {
         val response = awaitResult(taskHandler.execute(command), 3.s)
-        inside(response) { case EmptyResponse ⇒ }
+        assert(response == EmptyResponse)
       }
       assert(taskServers(0).started)
       assert(!taskServers(0).sigkilled)
@@ -195,8 +195,11 @@ private object TaskHandlerTest {
     }
 
     def close() = {
-      assert(started && !closed)
-      closed = true
+      if (!closed) {
+        assert(started)
+        terminatedPromise.trySuccess(())
+        closed = true
+      }
     }
   }
 

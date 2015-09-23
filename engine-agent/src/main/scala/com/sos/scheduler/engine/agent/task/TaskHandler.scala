@@ -39,20 +39,16 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) {
   def isTerminating = terminating.get
   def terminated = terminatedPromise.future
 
-  def execute(command: Command, licenseKey: Option[LicenseKeyChecker] = None) = Future[Response] { executeDirectly(command, licenseKey) }
-
-  private def executeDirectly(command: Command, licenseKeyOption: Option[LicenseKeyChecker]): Response =
+  def execute(command: Command, licenseKey: Option[LicenseKeyChecker] = None): Future[Response] =
     command match {
-      case o: StartTask ⇒ startTask(o, licenseKeyOption getOrElse LicenseKey.Empty)
-      case CloseTask(id, kill) ⇒ closeTask(id, kill)
-      case SendProcessSignal(id, signal) ⇒
-        idToAgentTask(id).sendProcessSignal(signal)
-        EmptyResponse
-      case o: Terminate ⇒ terminate(o)
-      case AbortImmediately ⇒ haltImmediately()
+      case o: StartTask ⇒ executeStartTask(o, licenseKey getOrElse LicenseKey.Empty)
+      case CloseTask(id, kill) ⇒ executeCloseTask(id, kill)
+      case SendProcessSignal(id, signal) ⇒ executeSendProcessSignal(id, signal)
+      case o: Terminate ⇒ executeTerminate(o)
+      case AbortImmediately ⇒ executeAbortImmediately()
     }
 
-  private def startTask(command: StartTask, licenseKey: LicenseKeyChecker) = {
+  private def executeStartTask(command: StartTask, licenseKey: LicenseKeyChecker) = Future {
     if (idToAgentTask.nonEmpty) {
       licenseKey.require(UniversalAgent, "No license key provided by master to execute jobs in parallel")
     }
@@ -71,17 +67,33 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) {
     }
   }
 
-  private def closeTask(id: AgentTaskId, kill: Boolean) = {
+  private def executeCloseTask(id: AgentTaskId, kill: Boolean) = {
     val task = idToAgentTask.remove(id) getOrElse throwUnknownTask(id)
     if (kill) {
       try task.sendProcessSignal(SIGKILL)
-      catch { case NonFatal(t) ⇒ logger.warn(s"Kill $task failed: $t") }
+      catch { case NonFatal(t) ⇒
+        logger.warn(s"Kill $task failed: $t")
+        // Anyway, close Tunnel and TaskServer
+        task.close()
+      }
+    } else {
+      task.close()
     }
-    task.close()
+    val responsePromise = Promise[EmptyResponse.type]()
+    task.terminated.onComplete { case o ⇒
+      // In case of kill, task has terminated but not yet closed.
+      task.close()
+      responsePromise.complete(o map { _ ⇒ EmptyResponse })
+    }
+    responsePromise.future
+  }
+
+  private def executeSendProcessSignal(id: AgentTaskId, signal: ProcessSignal) = Future {
+    idToAgentTask(id).sendProcessSignal(signal)
     EmptyResponse
   }
 
-  private def terminate(command: Terminate) = {
+  private def executeTerminate(command: Terminate) = Future {
     if (terminating.getAndSet(true)) throw new StandardPublicException("Agent is already terminating")
     if (command.sigtermProcesses) {
       trySigtermProcesses()
@@ -129,7 +141,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) {
     }
   }
 
-  private def haltImmediately(): Nothing = {
+  private def executeAbortImmediately(): Nothing = {
     for (o ← agentTasks) o.sendProcessSignal(SIGKILL)
     val msg = "Due to command AbortImmediately, Agent is halted now!"
     logger.warn(msg)
