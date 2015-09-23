@@ -912,6 +912,11 @@
                 <artifactId>snakeyaml</artifactId>
                 <version>1.15</version>
             </dependency>
+            <dependency>
+            	<groupId>org.scalaz</groupId>
+            	<artifactId>scalaz-core_${scala.binaryVersion}</artifactId>
+            	<version>7.1.4</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

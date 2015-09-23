@@ -33,8 +33,12 @@ final class TaskHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest 
       TunnelId("99"),
       masterAddress = "127.0.0.1:999999999",
       Instant.parse("2015-06-10T12:00:00Z"),
-      taskArguments = Map("testName" → "testValue"))))
-  }
+      arguments = Some(TaskOverview.Arguments(
+        TaskId(123),
+        jobName = "JOB",
+        language = "LANGUAGE",
+        javaClassName = Some("JAVA.CLASS"),
+        monitorCount = 3)))))
 
   "task" in {
     Get(Uri("/jobscheduler/agent/api/task")) ~> Accept(`application/json`) ~> route ~> check {
@@ -48,8 +52,12 @@ final class TaskHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest 
             "tunnelId" → JsString("99"),
             "masterAddress" → JsString("127.0.0.1:999999999"),
             "startedAt" → JsString("2015-06-10T12:00:00Z"),
-            "taskArguments" → JsObject(
-              "testName" → JsString("testValue"))))))
+            "arguments" → JsObject(
+              "taskId" → JsString("123"),
+              "jobName" → JsString("JOB"),
+              "language" → JsString("LANGUAGE"),
+              "javaClassName" → JsString("JAVA.CLASS"),
+              "monitorCount" → JsNumber(3))))))
     }
   }
 }
