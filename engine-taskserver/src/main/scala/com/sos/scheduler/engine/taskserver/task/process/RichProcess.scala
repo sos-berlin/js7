@@ -71,8 +71,10 @@ extends HasCloser with ClosedFuture {
     }
 
   private def killNow(): Unit = {
-    logger.debug("destroyForcibly")
-    process.destroyForcibly()
+    if (process.isAlive) {
+      logger.debug("destroyForcibly")
+      process.destroyForcibly()
+    }
   }
 
   @TestOnly
