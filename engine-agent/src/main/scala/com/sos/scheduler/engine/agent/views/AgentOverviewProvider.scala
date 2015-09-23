@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.views
 
 import com.google.inject.Provider
-import com.sos.scheduler.engine.agent.task.TaskHandlerView
+import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import javax.inject.{Inject, Singleton}
 
 /**

@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.task
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, Response, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
+import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.TaskHandler._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
@@ -25,7 +26,7 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends TaskHandlerView {
+final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) {
 
   private val totalTaskCounter = new AtomicInteger(0)
   private val terminating = new AtomicBoolean
@@ -130,18 +131,18 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
 
   private def haltImmediately(): Nothing = {
     for (o ← agentTasks) o.sendProcessSignal(SIGKILL)
-    val msg = "Due to command AbortImmediatly, Agent is halted now!"
+    val msg = "Due to command AbortImmediately, Agent is halted now!"
     logger.warn(msg)
     System.err.println(msg)
     Runtime.getRuntime.halt(1)
     throw new Error("halt")
   }
 
-  def currentTaskCount = idToAgentTask.size
-
-  def totalTaskCount = totalTaskCounter.get
-
-  def tasks = (idToAgentTask.values map { _.overview }).toVector
+  def view = TaskHandlerView(
+    isTerminating = isTerminating,
+    currentTaskCount = idToAgentTask.size,
+    totalTaskCount = totalTaskCounter.get,
+    tasks = (idToAgentTask.values map { _.overview }).toVector)
 
   private def agentTasks = idToAgentTask.values
 }

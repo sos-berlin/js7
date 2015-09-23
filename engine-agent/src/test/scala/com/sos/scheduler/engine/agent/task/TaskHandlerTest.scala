@@ -5,6 +5,7 @@ import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
+import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.TaskHandlerTest._
 import com.sos.scheduler.engine.base.exceptions.PublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
@@ -62,7 +63,7 @@ final class TaskHandlerTest extends FreeSpec {
     }
 
     "TaskHandlerView" - {
-      def view: TaskHandlerView = taskHandler
+      def view: TaskHandlerView = taskHandler.view
 
       "currentTaskCount" in {
         assert(view.currentTaskCount == taskServers.size)
@@ -101,7 +102,7 @@ final class TaskHandlerTest extends FreeSpec {
     }
 
     "TaskHandlerView, after tasks are closed" - {
-      def view: TaskHandlerView = taskHandler
+      def view: TaskHandlerView = taskHandler.view
 
       "currentTaskCount" in {
         assert(view.currentTaskCount == 0)
@@ -130,8 +131,8 @@ final class TaskHandlerTest extends FreeSpec {
       val testContext = new TestContext
       import testContext.{taskHandler, taskServers, tasks}
       for (_ ← tasks) awaitResult(taskHandler.execute(TestStartApiTask, Some(TestLicenseKey)), 3.s)
-      assert(taskHandler.totalTaskCount == tasks.size)
-      assert(taskHandler.currentTaskCount == tasks.size)
+      assert(taskHandler.view.totalTaskCount == tasks.size)
+      assert(taskHandler.view.currentTaskCount == tasks.size)
       assert(!taskHandler.isTerminating)
       assert(!taskHandler.terminated.isCompleted)
       for (o ← taskServers) assert(!o.sigtermed)
@@ -143,7 +144,7 @@ final class TaskHandlerTest extends FreeSpec {
       assert(!taskHandler.terminated.isCompleted)
       // Now, (mocked) tasks are terminated with SIGKILL
       awaitResult(taskHandler.terminated, 3.s)
-      assert(taskHandler.currentTaskCount == tasks.size)   // Because no CloseTask was issued
+      assert(taskHandler.view.currentTaskCount == tasks.size)   // Because no CloseTask was issued
     }
   }
 }

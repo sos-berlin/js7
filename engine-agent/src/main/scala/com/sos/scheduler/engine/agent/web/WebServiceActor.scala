@@ -5,7 +5,7 @@ import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.command.{AgentCommandHandler, CommandExecutor}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commands.Command
-import com.sos.scheduler.engine.agent.task.TaskHandlerView
+import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.WebService
@@ -29,7 +29,7 @@ final class WebServiceActor @Inject private(
   commandExecutor: CommandExecutor,
   tunnelServer: TunnelServer,
   agentOverviewProvider: Provider[AgentOverview],
-  protected val taskHandlerView: TaskHandlerView,
+  protected val taskHandlerViewProvider: Provider[TaskHandlerView],
   protected val commandHandler: AgentCommandHandler,
   webServices: immutable.Seq[WebService],
   agentConfiguration: AgentConfiguration,
@@ -42,6 +42,8 @@ with MainViewService
 with TaskHandlerViewService
 with CommandHandlerViewService
 {
+  protected def taskHandlerView = taskHandlerViewProvider.get()
+
   private lazy val addWebServices = for (o ← webServices) {
     logger.debug(s"Adding extra web service $o")
     addRawRoute(o.route)  // The route is already wrapped, so add it raw, not wrapping it again with agentStandard
