@@ -45,11 +45,14 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
         master.close()
       }
     } onComplete { tried ⇒
-      tried.failed foreach {
-        case t: AsynchronousCloseException ⇒ logger.info("Terminating after close()")
-        case t ⇒ logger.error(s"$toString $t", t)
-      }
-      terminatedPromise.complete(tried)
+      terminatedPromise.complete(tried recover {
+        case t: AsynchronousCloseException ⇒
+          logger.info("Terminating after close()")
+          // Exception is okay and ignored
+        case t ⇒
+          logger.error(s"$toString $t", t)
+          throw t
+      })
       logger.info("Terminated")
     }
 
