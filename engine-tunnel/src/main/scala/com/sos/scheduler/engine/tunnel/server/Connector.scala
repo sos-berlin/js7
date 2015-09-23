@@ -135,8 +135,6 @@ private[server] object Connector {
     override def toString = s"Response(${message.size} bytes)"
   }
 
-  private[server] final case class Closed(tunnelId: TunnelId)
-
   private[server] sealed trait State
   private case object ExpectingRequest extends State {}
   private case object ExpectingMessageFromTcp extends State
