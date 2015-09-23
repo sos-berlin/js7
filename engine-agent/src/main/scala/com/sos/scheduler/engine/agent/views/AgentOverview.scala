@@ -28,10 +28,11 @@ final case class AgentOverview(
 object AgentOverview {
   final case class SystemInformation(
     hostname: String,
+    distribution: Option[String] = None,
     mxBeans: Map[String, Any] = Map())
 
   object SystemInformation {
-    implicit val MyJsonFormat = jsonFormat2(apply)
+    implicit val MyJsonFormat = jsonFormat3(apply)
 
     private val OnlyNonNegative: ConditionalConverter = { case v: Number if v.doubleValue >= 0 ⇒ v }
 
@@ -46,6 +47,7 @@ object AgentOverview {
 
     def apply(): SystemInformation = SystemInformation(
       hostname = OperatingSystem.operatingSystem.hostname,
+      distribution = OperatingSystem.operatingSystem.distributionNameAndVersionOption,
       mxBeans = Map("operatingSystem" → operatingSystemMXBeanReader.toMap(getOperatingSystemMXBean)))
   }
 

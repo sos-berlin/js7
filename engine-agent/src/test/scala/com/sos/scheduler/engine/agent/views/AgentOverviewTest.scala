@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.agent.views
 
-import com.sos.scheduler.engine.common.scalautil.Logger
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -41,8 +40,4 @@ final class AgentOverviewTest extends FreeSpec {
     assert(obj.toJson == json)
     //assert(obj = json.convertTo[AgentOverview])
   }
-}
-
-object AgentOverviewTest {
-  private val logger = Logger(getClass)
 }
