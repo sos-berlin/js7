@@ -35,6 +35,9 @@ final case class AgentConfiguration(
 
   def withWebServiceProvider[A <: WebService : ClassTag]: AgentConfiguration =
     copy(webServiceClasses = webServiceClasses :+ implicitClass[A])
+
+  def withWebServiceProvider[A <: WebService](clazz: Class[A]): AgentConfiguration =
+    copy(webServiceClasses = webServiceClasses :+ clazz)
 }
 
 object AgentConfiguration {
