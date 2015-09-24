@@ -77,7 +77,6 @@ final class TaskHandlerTest extends FreeSpec {
         val taskMap = view.tasks toKeyedMap {_.id}
         assert(taskMap.size == taskServers.size)
         for (id ← AgentTaskIds) assert(taskMap contains id)
-        for (o ← taskMap.values) assert(o.masterAddress == TestMasterAddress)
       }
     }
 

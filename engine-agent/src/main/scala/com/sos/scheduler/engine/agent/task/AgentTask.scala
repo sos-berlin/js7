@@ -31,7 +31,6 @@ extends AutoCloseable {
   def overview = TaskOverview(
     id,
     tunnel.id,
-    taskServer.taskStartArguments.masterAddress,  // With a tunnel, this is the local proxy address (not very useful) !!!
     startedAt,
     arguments = taskArgumentsFuture.value collect {
       case Success(a) ⇒
