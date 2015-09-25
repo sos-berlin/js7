@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.TaskHandler
-import com.sos.scheduler.engine.agent.web.common.WebService
+import com.sos.scheduler.engine.agent.web.common.ExtraWebService
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import javax.inject.Singleton
 import scala.collection.immutable
@@ -26,8 +26,8 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
   }
 
   @Provides @Singleton
-  private def webServices(injector: Injector): immutable.Seq[WebService] =
-    agentConfiguration.webServiceClasses map { o ⇒ injector.getInstance(o) }
+  private def extraWebServices(injector: Injector): immutable.Seq[ExtraWebService] =
+    agentConfiguration.extraWebServiceClasses map { o ⇒ injector.getInstance(o) }
 
   @Provides @Singleton
   private def actorRefFactory(o: ActorSystem): ActorRefFactory = o
