@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelServer._
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable
 import scala.concurrent.{Future, Promise}
@@ -37,8 +37,11 @@ final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem) exten
 
   def close(): Unit = actorSystem.stop(connectorHandler)
 
-  def newTunnel[A <: TunnelListener](tunnelId: TunnelId, tunnelListener: Agent[A]) =
-    awaitResult((connectorHandler ? ConnectorHandler.NewTunnel(tunnelId, tunnelListener)).mapTo[Try[TunnelHandle]],
+  /**
+   * @param startedByIpOption Only for information
+   */
+  def newTunnel[A <: TunnelListener](tunnelId: TunnelId, tunnelListener: Agent[A], startedByIpOption: Option[InetAddress] = None) =
+    awaitResult((connectorHandler ? ConnectorHandler.NewTunnel(tunnelId, tunnelListener, startedByIpOption)).mapTo[Try[TunnelHandle]],
       ShortTimeout).get
 
   def request(tunnelToken: TunnelToken, requestMessage: ByteString): Future[ByteString] = {

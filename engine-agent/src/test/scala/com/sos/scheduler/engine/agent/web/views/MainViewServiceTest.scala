@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.agent.data.views.{TaskHandlerView, TaskOverview}
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
 import com.sos.scheduler.engine.tunnel.data.TunnelId
+import java.net.InetAddress
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -32,6 +33,7 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
       AgentTaskId("1-123"),
       tunnelId = TunnelId("99"),
       Instant.parse("2015-06-10T12:00:00Z"),
+      startedByIp = Some(InetAddress.getByName("127.1.2.3")),
       arguments = None)))
 
   protected def agentOverview = AgentOverview(

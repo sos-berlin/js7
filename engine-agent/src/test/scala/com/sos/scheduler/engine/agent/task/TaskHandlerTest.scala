@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.agent.task
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.{AbstractModule, Guice, Provides}
+import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
@@ -13,13 +14,14 @@ import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.soslicense.{LicenseKey, LicenseKeyParameterIsMissingException}
+import com.sos.scheduler.engine.common.soslicense.{LicenseKeyBunch, LicenseKeyParameterIsMissingException}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
+import java.net.InetAddress
 import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -37,7 +39,7 @@ final class TaskHandlerTest extends FreeSpec {
   "Second StartApiTask without a license is rejected - JS-1482" in {
     val testContext = new TestContext
     import testContext.{taskHandler, tasks}
-    def startTask() = awaitResult(taskHandler.execute(TestStartApiTask, licenseKey = None), 3.s)
+    def startTask() = awaitResult(taskHandler.execute(TestStartApiTask), 3.s)
     startTask()
     intercept[LicenseKeyParameterIsMissingException] { startTask() }
     awaitResult(taskHandler.execute(CloseTask(tasks(0).id, kill = false)), 3.s)
@@ -51,7 +53,7 @@ final class TaskHandlerTest extends FreeSpec {
     "StartApiTask" in {
       assert(!taskHandler.terminated.isCompleted)
       for (nextAgentTaskId ← AgentTaskIds) {
-        val response = awaitResult(taskHandler.execute(TestStartApiTask, Some(TestLicenseKey)), 3.s)
+        val response = awaitResult(taskHandler.execute(TestStartApiTask, CommandMeta(licenseKeyBunch = TestLicenseKeyBunch)), 3.s)
         inside(response) { case StartTaskResponse(id, TestTunnelToken) ⇒ id shouldEqual nextAgentTaskId }
       }
       for (o ← taskServers) {
@@ -129,14 +131,14 @@ final class TaskHandlerTest extends FreeSpec {
     "When a process is registered, TaskHandler terminates after the task has terminated" in {
       val testContext = new TestContext
       import testContext.{taskHandler, taskServers, tasks}
-      for (_ ← tasks) awaitResult(taskHandler.execute(TestStartApiTask, Some(TestLicenseKey)), 3.s)
+      for (_ ← tasks) awaitResult(taskHandler.execute(TestStartApiTask, CommandMeta(licenseKeyBunch = TestLicenseKeyBunch)), 3.s)
       assert(taskHandler.view.totalTaskCount == tasks.size)
       assert(taskHandler.view.currentTaskCount == tasks.size)
       assert(!taskHandler.isTerminating)
       assert(!taskHandler.terminated.isCompleted)
       for (o ← taskServers) assert(!o.sigtermed)
       awaitResult(taskHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(2.s))), 3.s)
-      intercept[PublicException] { awaitResult(taskHandler.execute(TestStartApiTask, Some(TestLicenseKey)), 3.s) }
+      intercept[PublicException] { awaitResult(taskHandler.execute(TestStartApiTask, CommandMeta(licenseKeyBunch = TestLicenseKeyBunch)), 3.s) }
       assert(taskHandler.isTerminating)
       for (o ← taskServers) assert(o.sigtermed == !isWindows)
       sleep(1.s)
@@ -153,9 +155,8 @@ private object TaskHandlerTest {
   private val JavaOptions = "JAVA-OPTIONS"
   private val JavaClasspath = "JAVA-CLASSPATH"
   private val TestMasterPort = 9999
-  private val TestMasterAddress = s"127.0.0.1:$TestMasterPort"
   private val TestStartApiTask = StartApiTask(javaOptions = JavaOptions, javaClasspath = JavaClasspath)
-  private val TestLicenseKey = LicenseKey("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")
+  private val TestLicenseKeyBunch = LicenseKeyBunch("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")
   private val TestTunnelToken = TunnelToken(TunnelId("1"), TunnelToken.Secret("SECRET"))
 
   private class TestContext {
@@ -169,6 +170,7 @@ private object TaskHandlerTest {
   private def mockTunnelHandle() = new TunnelHandle(
     connectorHandler = ActorSystem().actorOf(Props { new Actor { def receive = { case _ ⇒ }}}),
     TestTunnelToken,
+    startedByIpOption = None,
     connected = Promise().future,
     peerAddress = () ⇒ None)
 
@@ -209,7 +211,7 @@ private object TaskHandlerTest {
 
     @Provides @Singleton
     private def agentTaskFactory: AgentTaskFactory = new AgentTaskFactory {
-      def apply(command: StartTask) = {
+      def apply(command: StartTask, clientIp: Option[InetAddress]) = {
         inside(command) {
           case command: StartApiTask ⇒
             command.javaOptions shouldEqual JavaOptions

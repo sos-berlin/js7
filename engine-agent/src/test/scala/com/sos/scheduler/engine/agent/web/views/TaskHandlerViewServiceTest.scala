@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.agent.data.views.{TaskHandlerView, TaskOverview}
 import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.tunnel.data.TunnelId
+import java.net.InetAddress
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -32,6 +33,7 @@ final class TaskHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest 
       AgentTaskId("1-123"),
       TunnelId("99"),
       Instant.parse("2015-06-10T12:00:00Z"),
+      startedByIp = Some(InetAddress.getByName("127.1.2.3")),
       arguments = Some(TaskOverview.Arguments(
         TaskId(123),
         jobName = "JOB",
@@ -50,6 +52,7 @@ final class TaskHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest 
             "id" → JsString("1-123"),
             "tunnelId" → JsString("99"),
             "startedAt" → JsString("2015-06-10T12:00:00Z"),
+            "startedByIp" → JsString("127.1.2.3"),
             "arguments" → JsObject(
               "taskId" → JsString("123"),
               "jobName" → JsString("JOB"),

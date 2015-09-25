@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.task
 
+import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, Response, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
@@ -10,7 +11,6 @@ import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
-import com.sos.scheduler.engine.common.soslicense.{LicenseKey, LicenseKeyChecker}
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Instant
@@ -39,21 +39,21 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) {
   def isTerminating = terminating.get
   def terminated = terminatedPromise.future
 
-  def execute(command: Command, licenseKey: Option[LicenseKeyChecker] = None): Future[Response] =
+  def execute(command: Command, meta: CommandMeta = CommandMeta()): Future[Response] =
     command match {
-      case o: StartTask ⇒ executeStartTask(o, licenseKey getOrElse LicenseKey.Empty)
+      case o: StartTask ⇒ executeStartTask(o, meta)
       case CloseTask(id, kill) ⇒ executeCloseTask(id, kill)
       case SendProcessSignal(id, signal) ⇒ executeSendProcessSignal(id, signal)
       case o: Terminate ⇒ executeTerminate(o)
       case AbortImmediately ⇒ executeAbortImmediately()
     }
 
-  private def executeStartTask(command: StartTask, licenseKey: LicenseKeyChecker) = Future {
+  private def executeStartTask(command: StartTask, meta: CommandMeta) = Future {
     if (idToAgentTask.nonEmpty) {
-      licenseKey.require(UniversalAgent, "No license key provided by master to execute jobs in parallel")
+      meta.licenseKeyBunch.require(UniversalAgent, "No license key provided by master to execute jobs in parallel")
     }
     if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept task starts")
-    val task = newAgentTask(command)
+    val task = newAgentTask(command, meta.clientIpOption)
     task.start()
     registerTask(task)
     totalTaskCounter.incrementAndGet()

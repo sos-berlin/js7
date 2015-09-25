@@ -32,6 +32,7 @@ extends AutoCloseable {
     id,
     tunnel.id,
     startedAt,
+    startedByIp = tunnel.startedByIpOption,
     arguments = taskArgumentsFuture.value collect {
       case Success(a) ⇒
         TaskOverview.Arguments(

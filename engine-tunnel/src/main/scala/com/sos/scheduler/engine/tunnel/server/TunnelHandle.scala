@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.tunnel.server
 import akka.actor.ActorRef
 import akka.util.ByteString
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.{Future, Promise}
 
@@ -16,6 +16,7 @@ import scala.concurrent.{Future, Promise}
 final class TunnelHandle(
   connectorHandler: ActorRef,
   val tunnelToken: TunnelToken,
+  val startedByIpOption: Option[InetAddress],
   val connected: Future[InetSocketAddress],
   peerAddress: () ⇒ Option[InetSocketAddress])
 extends AutoCloseable {

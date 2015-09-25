@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 import java.time.Instant
 import java.time.Instant.now
 import scala.collection.mutable
@@ -60,7 +60,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
       val connector = actorOf(Connector.props(tcp = sender(), connected), name = name)
       watch(connector)
 
-    case m @ NewTunnel(id, listener) ⇒
+    case m @ NewTunnel(id, listener, startedByIpOption) ⇒
       logger.trace(s"$m")
       sender() ! Try[TunnelHandle] {
         val secret = TunnelToken.newSecret()
@@ -68,6 +68,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         val tunnel = new TunnelHandle(
           self,
           TunnelToken(id, secret),
+          startedByIpOption = startedByIpOption,
           connectedPromise.future,
           peerAddress = () ⇒ connectedPromise.future.value map { _.get })
         register.insert(id → Entry(secret, tunnel, connectedPromise, listener))
@@ -174,8 +175,15 @@ private[tunnel] object ConnectorHandler {
   private[tunnel] def props = Props { new ConnectorHandler }
 
   sealed trait Command
+
   private[tunnel] case object Start extends Command
-  private[tunnel] case class NewTunnel[A <: TunnelListener](tunnelId: TunnelId, listener: Agent[A]) extends Command
+
+  private[tunnel] case class NewTunnel[A <: TunnelListener](
+    tunnelId: TunnelId,
+    listener: Agent[A],
+    startedByIpOption: Option[InetAddress])
+  extends Command
+
   private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
 
   private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request) extends Command
@@ -190,7 +198,7 @@ private[tunnel] object ConnectorHandler {
 
   private case class Entry(
     secret: TunnelToken.Secret,
-    client: TunnelHandle,
+    handle: TunnelHandle,
     connectedPromise: Promise[InetSocketAddress],
     listener: Agent[TunnelListener],
     var state: Entry.State = Entry.Uninitialized,

@@ -20,6 +20,7 @@ import com.sos.scheduler.engine.taskserver.{OwnProcessTaskServer, SimpleTaskServ
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelListener.StopListening
 import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
+import java.net.InetAddress
 import java.util.regex.Pattern
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.Promise
@@ -38,12 +39,12 @@ extends AgentTaskFactory {
 
   private val agentTaskIdGenerator = AgentTaskId.newGenerator()
 
-  def apply(command: StartTask) = {
+  def apply(command: StartTask, clientIpOption: Option[InetAddress]) = {
     val id = agentTaskIdGenerator.next()
     val address = tunnelServer.proxyAddressString
     val taskArgumentsPromise = Promise[TaskArguments]()
     val listener = Agent(new TaskArgumentsListener(taskArgumentsPromise))
-    val tunnel = tunnelServer.newTunnel(TunnelId(id.index.toString), listener)
+    val tunnel = tunnelServer.newTunnel(TunnelId(id.index.toString), listener, clientIpOption)
     val taskServer = newTaskServer(id, command, address, tunnel.tunnelToken)
     new AgentTask(id, tunnel, taskServer, taskArgumentsPromise.future)
     // AgentTask.close will close Tunnel and TaskServer, too
