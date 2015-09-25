@@ -14,6 +14,11 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class LicenseKeyBunchTest extends FreeSpec {
 
+  "Empty" in {
+    assert(LicenseKeyBunch() == LicenseKeyBunch(""))
+    assert(LicenseKeyBunch().keys.isEmpty)
+  }
+
   "Single key" in {
     val keyBunch = LicenseKeyBunch("SOS-DEMO-1-L2O-4-7-22-KL22SL7")
     assert(keyBunch(Parameter("4")) == OK)
