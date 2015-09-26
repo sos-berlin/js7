@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.agent.task
 
 import akka.actor.{Actor, ActorSystem, Props}
+import akka.util.ByteString
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.AgentTaskId
@@ -28,7 +29,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Inside.inside
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 
 /**
  * @author Joacim Zschimmer
@@ -167,12 +168,14 @@ private object TaskHandlerTest {
     val taskHandler = Guice.createInjector(new TestModule(tasks)).instance[TaskHandler]
   }
 
-  private def mockTunnelHandle() = new TunnelHandle(
-    connectorHandler = ActorSystem().actorOf(Props { new Actor { def receive = { case _ ⇒ }}}),
-    TestTunnelToken,
-    startedByIpOption = None,
-    connected = Promise().future,
-    peerAddress = () ⇒ None)
+  private def mockTunnelHandle() = new TunnelHandle {
+    val connectorHandler = ActorSystem().actorOf(Props { new Actor { def receive = { case _ ⇒ }}})
+    def tunnelToken = TestTunnelToken
+    def startedByIpOption = None
+    def connected = Promise().future
+    def peerAddress = () ⇒ None
+    def close() = {}
+  }
 
   private class MockTaskServer extends TaskServer {
     private val terminatedPromise = Promise[Unit]()

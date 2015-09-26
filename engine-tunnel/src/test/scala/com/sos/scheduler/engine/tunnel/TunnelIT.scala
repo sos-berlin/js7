@@ -38,7 +38,7 @@ final class TunnelIT extends FreeSpec {
     tcpServer.start()
     for (i ← 1 to 3) {
       val request = ByteString(s"TEST-REQUEST #$i")
-      val responded = tunnel.sendRequest(request) map { response ⇒
+      val responded = tunnelServer.request(tunnel.tunnelToken, request) map { response ⇒
         assert(response == requestToResponse(request, tunnel.id))
       }
       awaitResult(responded, 10.s)
@@ -66,7 +66,7 @@ final class TunnelIT extends FreeSpec {
         for (i ← 0 until Iterations by stepSize) {
           val m = Stopwatch.measureTime(stepSize, "request") {
             val request = ByteString.fromArray(Array.fill[Byte](messageSizes.next())(i.toByte))
-            val responded = tunnel.sendRequest(request) map { response ⇒
+            val responded = tunnelServer.request(tunnel.tunnelToken, request) map { response ⇒
               if (!byteStringsFastEqual(response, requestToResponse(request, tunnel.id))) fail("Response is not as expected")
             }
             awaitResult(responded, 10.s)

@@ -26,7 +26,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
 
   override def supervisorStrategy = stoppingStrategy
 
-  private val register = mutable.Map[TunnelId, Entry]() withDefault { o ⇒ throw new NoSuchElementException(s"Unknown $o") }
+  private val register = mutable.Map[TunnelId, Handle]() withDefault { id ⇒ throw new NoSuchElementException(s"Unknown $id") }
   private var tcpAddressOption: Option[InetSocketAddress] = None
 
   TunnelToken.newSecret()  // Check random generator
@@ -65,14 +65,14 @@ private[tunnel] final class ConnectorHandler private extends Actor {
       sender() ! Try[TunnelHandle] {
         val secret = TunnelToken.newSecret()
         val connectedPromise = Promise[InetSocketAddress]()
-        val tunnel = new TunnelHandle(
+        val handle = new Handle(
           self,
           TunnelToken(id, secret),
           startedByIpOption = startedByIpOption,
-          connectedPromise.future,
-          peerAddress = () ⇒ connectedPromise.future.value map { _.get })
-        register.insert(id → Entry(secret, tunnel, connectedPromise, listener))
-        tunnel
+          connectedPromise,
+          listener)
+        register.insert(id → handle)
+        handle
       }
 
     case m @ Connector.AssociatedWithTunnelId(TunnelToken(id, secret), peerAddress) ⇒
@@ -82,42 +82,42 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         case None ⇒
           logger.error(s"Unknown TunnelId '$id' received from $connector")
           stop(connector)
-        case Some(entry: Entry) ⇒
-          if (secret != entry.secret) {
+        case Some(handle: Handle) ⇒
+          if (secret != handle.tunnelToken.secret) {
             logger.error(s"Tunnel secret from $connector does not match with $id")
             stop(connector)
           } else {
-            entry.state match {
-              case o: Entry.ConnectedConnector ⇒
-                logger.error(s"${entry.state} has tried to connect twice with $id")
+            handle.state match {
+              case o: Handle.ConnectedConnector ⇒
+                logger.error(s"${handle.state} has tried to connect twice with $id")
                 stop(connector)
-              case Entry.Uninitialized ⇒
-              case Entry.RequestBeforeConnected(request) ⇒
+              case Handle.Uninitialized ⇒
+              case Handle.RequestBeforeConnected(request) ⇒
                 connector ! request
-                entry.onRequestSent(request)
+                handle.onRequestSent(request)
             }
           }
-          entry.connectedPromise.success(peerAddress)
-          entry.state = Entry.ConnectedConnector(connector)
-          logger.debug(s"$id connected with ${entry.remoteAddressString}")
+          handle.connectedPromise.success(peerAddress)
+          handle.state = Handle.ConnectedConnector(connector)
+          logger.debug(s"$id connected with ${handle.remoteAddressString}")
       }
 
     case m @ Terminated(child) ⇒
       for (id ← getTunnelIdByActor(child)) {
-        removeEntry(id)
+        removeHandle(id)
         logger.debug(s"$m, tunnel removed after Connector death")  // Should have been removed by CloseTunnel
       }
 
     case m @ DirectedRequest(tunnelToken, request) ⇒
       try {
         logger.trace(s"$m")
-        val entry = checkedEntry(tunnelToken)
-        entry.state match {
-          case Entry.ConnectedConnector(connector) ⇒
+        val handle = checkedHandle(tunnelToken)
+        handle.state match {
+          case Handle.ConnectedConnector(connector) ⇒
             connector ! request
-            entry.onRequestSent(request)
-          case Entry.Uninitialized ⇒ entry.state = Entry.RequestBeforeConnected(request)
-          case o: Entry.RequestBeforeConnected ⇒ sys.error("Second request before connection has been established")
+            handle.onRequestSent(request)
+          case Handle.Uninitialized ⇒ handle.state = Handle.RequestBeforeConnected(request)
+          case o: Handle.RequestBeforeConnected ⇒ sys.error("Second request before connection has been established")
         }
       } catch {
         case NonFatal(t) ⇒ request.responsePromise.failure(t)
@@ -126,11 +126,11 @@ private[tunnel] final class ConnectorHandler private extends Actor {
     case m @ CloseTunnel(tunnelToken) ⇒
       try {
         if (register contains tunnelToken.id) {
-          checkedEntry(tunnelToken).state match {
-            case Entry.ConnectedConnector(connector) ⇒ connector ! Connector.Close
+          checkedHandle(tunnelToken).state match {
+            case Handle.ConnectedConnector(connector) ⇒ connector ! Connector.Close
             case _ ⇒
           }
-          removeEntry(tunnelToken.id)
+          removeHandle(tunnelToken.id)
         }
       }
       catch {
@@ -143,29 +143,29 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         tunnelCount = register.size)
 
     case GetTunnelOverviews ⇒
-      sender() ! (register map { case (id, entry) ⇒
+      sender() ! (register map { case (id, handle) ⇒
         TunnelOverview(
           id,
-          entry.remoteAddressStringOption,
+          handle.remoteAddressStringOption,
           TunnelStatistics(
-            requestCount = entry.statistics.requestCount,
-            messageByteCount = entry.statistics.messageByteCount,
-            currentRequestIssuedAt = entry.statistics.currentRequestIssuedAt,
-            entry.statistics.failure map { _.toString }))
+            requestCount = handle.statistics.requestCount,
+            messageByteCount = handle.statistics.messageByteCount,
+            currentRequestIssuedAt = handle.statistics.currentRequestIssuedAt,
+            handle.statistics.failure map { _.toString }))
       }).toVector
   }
 
-  private def removeEntry(id: TunnelId): Unit = register -= id
+  private def removeHandle(id: TunnelId): Unit = register -= id
 
-  private def checkedEntry(tunnelToken: TunnelToken) = {
-    val entry = register(tunnelToken.id)
-    if (tunnelToken.secret != entry.secret) throw new IllegalArgumentException(s"Wrong tunnel secret")
-    entry
+  private def checkedHandle(tunnelToken: TunnelToken) = {
+    val handle = register(tunnelToken.id)
+    if (tunnelToken.secret != handle.tunnelToken.secret) throw new IllegalArgumentException(s"Wrong tunnel secret")
+    handle
   }
 
   private def getTunnelIdByActor(actorRef: ActorRef): Option[TunnelId] =
     register.iterator collectFirst {
-      case (id, entry) if PartialFunction.cond(entry.state) { case Entry.ConnectedConnector(connector) ⇒ connector == actorRef } ⇒ id }
+      case (id, handle) if PartialFunction.cond(handle.state) { case Handle.ConnectedConnector(connector) ⇒ connector == actorRef } ⇒ id }
 }
 
 private[tunnel] object ConnectorHandler {
@@ -196,14 +196,24 @@ private[tunnel] object ConnectorHandler {
   private[tunnel] object GetOverview extends Command
   private[tunnel] object GetTunnelOverviews extends Command
 
-  private case class Entry(
-    secret: TunnelToken.Secret,
-    handle: TunnelHandle,
-    connectedPromise: Promise[InetSocketAddress],
-    listener: Agent[TunnelListener],
-    var state: Entry.State = Entry.Uninitialized,
-    statistics: Statistics = Statistics())
-  {
+  private class Handle(
+    connectorHandler: ActorRef,
+    val tunnelToken: TunnelToken,
+    val startedByIpOption: Option[InetAddress],
+    val connectedPromise: Promise[InetSocketAddress],
+    val listener: Agent[TunnelListener],
+    var state: Handle.State = Handle.Uninitialized,
+    val statistics: Statistics = Statistics())
+  extends TunnelHandle {
+
+    def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(tunnelToken)
+
+    override def toString = s"TunnelHandler($id,HTTP client ${startedByIpOption getOrElse "unknown"} -> TCP server ${serverAddressOption getOrElse "not yet connected"})"
+
+    private def serverAddressOption: Option[InetSocketAddress] = connectedPromise.future.value map { _.get }
+
+    def connected = connectedPromise.future
+
     def remoteAddressString: String = remoteAddressStringOption getOrElse "(not connected via TCP)"
 
     def remoteAddressStringOption: Option[String] = connectedPromise.future.value flatMap { _.toOption } map { _.toString stripPrefix "/" }
@@ -214,7 +224,7 @@ private[tunnel] object ConnectorHandler {
     }
   }
 
-  private object Entry {
+  private object Handle {
     sealed trait State
     case object Uninitialized extends State
     case class RequestBeforeConnected(request: Connector.Request) extends State

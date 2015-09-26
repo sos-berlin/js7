@@ -17,6 +17,8 @@ import scala.util.Try
 
 /**
  * Server for all tunnels.
+ * Provides methods for creating tunnels and forwards requests (received via HTTP).
+ * Frontend for [[ConnectorHandler]].
  *
  * @author Joacim Zschimmer
  */
