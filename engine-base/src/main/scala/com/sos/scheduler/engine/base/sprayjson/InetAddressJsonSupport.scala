@@ -1,11 +1,10 @@
 package com.sos.scheduler.engine.base.sprayjson
 
-import java.net.InetAddress
+import java.net.{InetAddress, InetSocketAddress}
 import spray.json.{JsString, JsValue, JsonFormat}
 
 /**
- * Serializes InetAddress as IP number.
- * The host name is discarded.
+ * Serializes InetAddress as host name or IP number.
  *
  * @author Joacim Zschimmer
  */
@@ -19,4 +18,23 @@ object InetAddressJsonSupport {
       case _ ⇒ sys.error(s"String with IP number expected instead of ${jsValue.getClass.getSimpleName}")
     }
   }
+
+  implicit object InetSocketAddressJsonFormat extends JsonFormat[InetSocketAddress] {
+
+    def write(o: InetSocketAddress) = {
+      val inetAddress = o.getAddress
+      if (inetAddress == null) throw new NullPointerException(s"No IP number in '$o'")
+      JsString(s"${inetAddress.getHostAddress}:${o.getPort}")
+    }
+
+    def read(jsValue: JsValue) = jsValue match {
+      case JsString(string) ⇒
+        val List(host, port) = (string split ':').toList
+        if (!isIpNumber(host)) throw new IllegalArgumentException(s"Not an IP number: $string")  // Do not lookup DNS
+        new InetSocketAddress(host, port.toInt)
+      case _ ⇒ sys.error(s"String with 'host:port' expected instead of ${jsValue.getClass.getSimpleName}")
+    }
+  }
+
+  private def isIpNumber(p: String) = p.nonEmpty && (p(0).isDigit || p(0) == '[' || p(0) == ':')
 }
