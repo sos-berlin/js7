@@ -16,3 +16,6 @@
 /.idea/
 /out/
 *.iml
+
+# Branch zschimmer/agent-gui
+/engine-agent-gui/
