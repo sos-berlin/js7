@@ -68,7 +68,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         val handle = new Handle(
           self,
           TunnelToken(id, secret),
-          startedByIpOption = startedByIpOption,
+          startedByHttpIpOption = startedByIpOption,
           connectedPromise,
           listener)
         register.insert(id → handle)
@@ -146,6 +146,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
       sender() ! (register map { case (id, handle) ⇒
         TunnelOverview(
           id,
+          handle.startedByHttpIpOption,
           handle.remoteAddressStringOption,
           TunnelStatistics(
             requestCount = handle.statistics.requestCount,
@@ -199,7 +200,7 @@ private[tunnel] object ConnectorHandler {
   private class Handle(
     connectorHandler: ActorRef,
     val tunnelToken: TunnelToken,
-    val startedByIpOption: Option[InetAddress],
+    val startedByHttpIpOption: Option[InetAddress],
     val connectedPromise: Promise[InetSocketAddress],
     val listener: Agent[TunnelListener],
     var state: Handle.State = Handle.Uninitialized,
@@ -208,7 +209,7 @@ private[tunnel] object ConnectorHandler {
 
     def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(tunnelToken)
 
-    override def toString = s"TunnelHandler($id,HTTP client ${startedByIpOption getOrElse "unknown"} -> TCP server ${serverAddressOption getOrElse "not yet connected"})"
+    override def toString = s"TunnelHandler($id,HTTP client ${startedByHttpIpOption getOrElse "unknown"} -> TCP server ${serverAddressOption getOrElse "not yet connected"})"
 
     private def serverAddressOption: Option[InetSocketAddress] = connectedPromise.future.value map { _.get }
 

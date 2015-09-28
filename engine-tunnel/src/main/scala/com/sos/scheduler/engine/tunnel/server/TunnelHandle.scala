@@ -14,6 +14,6 @@ trait TunnelHandle extends AutoCloseable {
   final def id: TunnelId = tunnelToken.id
 
   def tunnelToken: TunnelToken
-  def startedByIpOption: Option[InetAddress]
+  def startedByHttpIpOption: Option[InetAddress]
   def connected: Future[InetSocketAddress]
 }

@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.agent.web.TunnelServiceTest._
 import com.sos.scheduler.engine.common.sprayutils.ByteStreamMarshallers._
 import com.sos.scheduler.engine.tunnel.data.Http._
 import com.sos.scheduler.engine.tunnel.data._
+import java.net.InetAddress
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -80,6 +81,7 @@ private object TunnelServiceTest {
   private val TestTunnelOverviews = List(
     TunnelOverview(
       TunnelId("TUNNEL-1"),
+      startedByHttpIp = Some(InetAddress.getByName("127.1.2.3")),
       remoteTcpAddress = Some("REMOTE-ADDRESS"),
       TunnelStatistics(10, 1000, Some(Instant.parse("2015-07-03T12:00:00Z")), failure = Some("FAILURE"))))
 }
