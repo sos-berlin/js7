@@ -33,7 +33,7 @@ final class TaskHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest 
       AgentTaskId("1-123"),
       TunnelId("99"),
       Instant.parse("2015-06-10T12:00:00Z"),
-      startedByIp = Some(InetAddress.getByName("127.1.2.3")),
+      startedByHttpIp = Some(InetAddress.getByName("127.1.2.3")),
       arguments = Some(TaskOverview.Arguments(
         TaskId(123),
         jobName = "JOB",
@@ -52,7 +52,7 @@ final class TaskHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest 
             "id" → JsString("1-123"),
             "tunnelId" → JsString("99"),
             "startedAt" → JsString("2015-06-10T12:00:00Z"),
-            "startedByIp" → JsString("127.1.2.3"),
+            "startedByHttpIp" → JsString("127.1.2.3"),
             "arguments" → JsObject(
               "taskId" → JsString("123"),
               "jobName" → JsString("JOB"),
