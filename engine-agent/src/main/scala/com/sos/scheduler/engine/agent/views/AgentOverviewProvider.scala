@@ -8,14 +8,17 @@ import javax.inject.{Inject, Singleton}
  * @author Joacim Zschimmer
  */
 @Singleton
-final class AgentOverviewProvider @Inject private(TaskHandlerView: TaskHandlerView) extends Provider[AgentOverview] {
+final class AgentOverviewProvider @Inject private(taskHandlerViewProvider: Provider[TaskHandlerView]) extends Provider[AgentOverview] {
 
-  def get() = AgentOverview(
-    version = AgentStartInformation.VersionString,
-    startedAt = AgentStartInformation.StartedAt,
-    currentTaskCount = TaskHandlerView.currentTaskCount,
-    totalTaskCount = TaskHandlerView.totalTaskCount,
-    isTerminating = TaskHandlerView.isTerminating,
-    system = AgentOverview.SystemInformation(),
-    java = AgentOverview.JavaInformation.Singleton)
+  def get() = {
+    val taskView = taskHandlerViewProvider.get()
+    AgentOverview(
+      version = AgentStartInformation.VersionString,
+      startedAt = AgentStartInformation.StartedAt,
+      currentTaskCount = taskView.currentTaskCount,
+      totalTaskCount = taskView.totalTaskCount,
+      isTerminating = taskView.isTerminating,
+      system = AgentOverview.SystemInformation(),
+      java = AgentOverview.JavaInformation.Singleton)
+  }
 }
