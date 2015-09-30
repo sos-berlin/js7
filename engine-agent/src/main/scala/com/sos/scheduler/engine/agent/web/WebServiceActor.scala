@@ -40,6 +40,7 @@ with FileStatusService
 with MainViewService
 with TaskHandlerViewService
 with CommandHandlerViewService
+with NoJobSchedulerEngineService
 {
   protected def taskHandlerView = taskHandlerViewProvider.get()
 
