@@ -32,7 +32,7 @@ final class Agent(module: Module) extends AutoCloseable {
 
   private val injector = Guice.createInjector(PRODUCTION, module)
   val configuration = injector.instance[AgentConfiguration]
-  val localUri = s"http://127.0.0.1:${configuration.httpPort}/${configuration.strippedUriPathPrefix}"
+  val localUri = s"http://127.0.0.1:${configuration.httpPort}/${configuration.strippedUriPathPrefix}" stripSuffix "/"
   private val server = injector.instance[AgentWebServer]
   private val closer = injector.instance[Closer]
   private val taskHandler = injector.instance[TaskHandler]
