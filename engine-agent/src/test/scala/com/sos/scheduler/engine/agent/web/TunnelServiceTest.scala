@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.web
 import akka.actor.ActorSystem
 import akka.util.ByteString
 import com.sos.scheduler.engine.agent.web.TunnelServiceTest._
-import com.sos.scheduler.engine.common.sprayutils.ByteStreamMarshallers._
+import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.tunnel.data.Http._
 import com.sos.scheduler.engine.tunnel.data._
 import java.net.InetAddress
