@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.web.views
 import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerOverview
 import com.sos.scheduler.engine.agent.views.AgentOverview
-import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
+import com.sos.scheduler.engine.common.sprayutils.JsArrayMarshallers._
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
