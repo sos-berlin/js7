@@ -1,13 +1,12 @@
 package com.sos.scheduler.engine.agent.task
 
 import akka.actor.{Actor, ActorSystem, Props}
-import akka.util.ByteString
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
+import com.sos.scheduler.engine.agent.data.views.TaskHandlerOverview
 import com.sos.scheduler.engine.agent.task.TaskHandlerTest._
 import com.sos.scheduler.engine.base.exceptions.PublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
@@ -29,7 +28,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Inside.inside
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Promise
 
 /**
  * @author Joacim Zschimmer
@@ -66,7 +65,7 @@ final class TaskHandlerTest extends FreeSpec {
     }
 
     "TaskHandlerView" - {
-      def view: TaskHandlerView = taskHandler.view
+      def view: TaskHandlerOverview = taskHandler.overview
 
       "currentTaskCount" in {
         assert(view.currentTaskCount == taskServers.size)
@@ -75,12 +74,17 @@ final class TaskHandlerTest extends FreeSpec {
       "totalTaskCount" in {
         assert(view.totalTaskCount == taskServers.size)
       }
+    }
 
-      "tasks" in {
-        val taskMap = view.tasks toKeyedMap {_.id}
-        assert(taskMap.size == taskServers.size)
-        for (id ← AgentTaskIds) assert(taskMap contains id)
-      }
+    "tasks" in {
+      val taskMap = taskHandler.taskOverviews toKeyedMap { _.id }
+      assert(taskMap.size == taskServers.size)
+      for (id ← AgentTaskIds) assert(taskMap contains id)
+    }
+
+    "taskOverview" in {
+      assert(taskHandler.taskOverviews.size == AgentTaskIds.size)
+      assert(taskHandler.taskOverviews.toSet == (AgentTaskIds map taskHandler.taskOverview).toSet)
     }
 
     "CloseTask" in {
@@ -104,7 +108,7 @@ final class TaskHandlerTest extends FreeSpec {
     }
 
     "TaskHandlerView, after tasks are closed" - {
-      def view: TaskHandlerView = taskHandler.view
+      def view: TaskHandlerOverview = taskHandler.overview
 
       "currentTaskCount" in {
         assert(view.currentTaskCount == 0)
@@ -115,7 +119,7 @@ final class TaskHandlerTest extends FreeSpec {
       }
 
       "tasks" in {
-        assert(view.tasks.isEmpty)
+        assert(taskHandler.taskOverviews.isEmpty)
       }
     }
   }
@@ -133,8 +137,8 @@ final class TaskHandlerTest extends FreeSpec {
       val testContext = new TestContext
       import testContext.{taskHandler, taskServers, tasks}
       for (_ ← tasks) awaitResult(taskHandler.execute(TestStartApiTask, CommandMeta(licenseKeyBunch = TestLicenseKeyBunch)), 3.s)
-      assert(taskHandler.view.totalTaskCount == tasks.size)
-      assert(taskHandler.view.currentTaskCount == tasks.size)
+      assert(taskHandler.overview.totalTaskCount == tasks.size)
+      assert(taskHandler.overview.currentTaskCount == tasks.size)
       assert(!taskHandler.isTerminating)
       assert(!taskHandler.terminated.isCompleted)
       for (o ← taskServers) assert(!o.sigtermed)
@@ -146,7 +150,7 @@ final class TaskHandlerTest extends FreeSpec {
       assert(!taskHandler.terminated.isCompleted)
       // Now, (mocked) tasks are terminated with SIGKILL
       awaitResult(taskHandler.terminated, 3.s)
-      assert(taskHandler.view.currentTaskCount == tasks.size)   // Because no CloseTask was issued
+      assert(taskHandler.overview.currentTaskCount == tasks.size)   // Because no CloseTask was issued
     }
   }
 }

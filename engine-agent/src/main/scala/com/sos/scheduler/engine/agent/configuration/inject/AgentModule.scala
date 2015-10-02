@@ -33,5 +33,5 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
   private def actorRefFactory(o: ActorSystem): ActorRefFactory = o
 
   @Provides
-  private def taskHandlerView(o: TaskHandler): TaskHandlerView = o.view
+  private def taskHandlerView(o: TaskHandler): TaskHandlerView = o
 }

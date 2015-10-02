@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.ExtraWebService
-import com.sos.scheduler.engine.agent.web.views.{CommandHandlerViewService, MainViewService, TaskHandlerViewService}
+import com.sos.scheduler.engine.agent.web.views.{CommandHandlerViewService, MainViewService, TaskService}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
@@ -28,7 +28,7 @@ final class WebServiceActor @Inject private(
   commandExecutor: CommandExecutor,
   tunnelServer: TunnelServer,
   agentOverviewProvider: Provider[AgentOverview],
-  protected val taskHandlerViewProvider: Provider[TaskHandlerView],
+  protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
   extraWebServices: immutable.Seq[ExtraWebService],
   agentConfiguration: AgentConfiguration,
@@ -38,12 +38,10 @@ with CommandService
 with TunnelService
 with FileStatusService
 with MainViewService
-with TaskHandlerViewService
+with TaskService
 with CommandHandlerViewService
 with NoJobSchedulerEngineService
 {
-  protected def taskHandlerView = taskHandlerViewProvider.get()
-
   private lazy val addWebServices = for (o ← extraWebServices) {
     logger.debug(s"Adding extra web service $o")
     addRawRoute(o.route)  // The route is already wrapped, so add it raw, not wrapping it again with agentStandard

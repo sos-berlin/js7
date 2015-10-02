@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, Response, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
+import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
 import com.sos.scheduler.engine.agent.task.TaskHandler._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
@@ -18,6 +18,7 @@ import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import javax.inject.{Inject, Singleton}
 import org.scalactic.Requirements._
+import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise, blocking}
 import scala.util.control.NonFatal
@@ -26,7 +27,7 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) {
+final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends TaskHandlerView {
 
   private val totalTaskCounter = new AtomicInteger(0)
   private val terminating = new AtomicBoolean
@@ -150,11 +151,14 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) {
     throw new Error("halt")
   }
 
-  def view = TaskHandlerView(
+  def overview = TaskHandlerOverview(
     isTerminating = isTerminating,
     currentTaskCount = idToAgentTask.size,
-    totalTaskCount = totalTaskCounter.get,
-    tasks = (idToAgentTask.values map { _.overview }).toVector)
+    totalTaskCount = totalTaskCounter.get)
+
+  def taskOverviews: immutable.Seq[TaskOverview] = (idToAgentTask.values map { _.overview }).toVector
+
+  def taskOverview(id: AgentTaskId) = idToAgentTask(id).overview
 
   private def agentTasks = idToAgentTask.values
 }

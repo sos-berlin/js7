@@ -26,7 +26,7 @@ final class NoJobSchedulerEngineServiceIT extends FreeSpec {
     import actorSystem.dispatcher
     autoClosing(Agent.forTest()) { agent ⇒
       awaitResult(agent.start(), 5.s)
-      val responseFuture = (sendReceive ~> unmarshal[HttpResponse]).apply(Post(s"${agent.localUri}jobscheduler/engine/command", <TEST/>))
+      val responseFuture = (sendReceive ~> unmarshal[HttpResponse]).apply(Post(s"${agent.localUri}/jobscheduler/engine/command", <TEST/>))
       val e = intercept[UnsuccessfulResponseException] { awaitResult(responseFuture, 5.s) }
       assert(e.response.status == NotFound)
       assert(e.response.entity.asString contains "Classic Agent")
