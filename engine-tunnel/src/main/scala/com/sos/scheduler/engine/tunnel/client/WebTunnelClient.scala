@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.akkautils.Akkas
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.ByteStreamMarshallers._
+import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.tunnel.client.WebTunnelClient._
 import com.sos.scheduler.engine.tunnel.data.Http._
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}

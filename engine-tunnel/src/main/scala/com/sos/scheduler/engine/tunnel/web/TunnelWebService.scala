@@ -1,14 +1,13 @@
 package com.sos.scheduler.engine.tunnel.web
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.sprayutils.ByteStreamMarshallers._
+import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.scheduler.engine.tunnel.data.Http.SecretHeaderName
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
-import spray.httpx.unmarshalling._
 import spray.json.DefaultJsonProtocol._
 import spray.routing.Directives._
 

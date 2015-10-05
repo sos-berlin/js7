@@ -69,7 +69,7 @@ private object VariantSerializerTest {
   }
 
   private def testDeserialize(value: Any, variantType: Int, bytes: Seq[Int]): Unit = {
-    val deserializer = new VariantDeserializer {
+    val deserializer = new VariantDeserializer with NoIUnknownDeserializer {
       protected val buffer = variantTypeToByteString(variantType, bytes).asByteBuffer
     }
     deserializer.readVariant() shouldEqual value

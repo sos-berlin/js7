@@ -1,7 +1,12 @@
 package com.sos.scheduler.engine.common.system
 
+import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import java.io.File
+import com.sos.scheduler.engine.common.scalautil.Logger
+import java.io.{File, FileInputStream}
+import java.nio.file.Files.newDirectoryStream
+import java.nio.file.{Path, Paths}
+import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
@@ -14,10 +19,13 @@ trait OperatingSystem {
 
   def hostname: String = alternativeHostname
 
+  def distributionNameAndVersionOption: Option[String]
+
   protected def alternativeHostname: String
 }
 
 object OperatingSystem {
+  private val logger = Logger(getClass)
   val name: String = sys.props("os.name")
   val cpuArchitecture = CpuArchitecture.cpuArchitecture
   val isWindows = name startsWith "Windows"
@@ -43,6 +51,8 @@ object OperatingSystem {
     def getDynamicLibraryEnvironmentVariableName: String = "PATH"
 
     protected def alternativeHostname: String = sys.env.getOrElse("COMPUTERNAME", "")
+
+    def distributionNameAndVersionOption = None
   }
 
   final class Unix private[system] extends OperatingSystem {
@@ -53,12 +63,22 @@ object OperatingSystem {
     protected def alternativeHostname: String = sys.env.getOrElse("HOSTNAME", "")
 
     lazy val KernelSupportsNestedShebang = { KernelVersion() >= KernelVersion("Linux", List(2, 6, 28)) }  // Exactly 2.6.27.9 - but what means the fouth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
+
+    lazy val distributionNameAndVersionOption: Option[String] = {
+      def readFirstLine(file: Path) = autoClosing(new FileInputStream(file)) { in ⇒ io.Source.fromInputStream(in).getLines().next().trim }
+      try Some(readFirstLine(Paths.get("/etc/system-release")))
+      catch { case NonFatal(_) ⇒
+        try Some(readFirstLine(autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")) { _.iterator().next() }))
+        catch { case NonFatal(t) ⇒
+          logger.debug(s"distributionNameAndVersion: ignoring $t")
+          None
+        }
+      }
+    }
   }
 
   def concatFileAndPathChain(f: File, pathChain: String): String = {
     val abs = f.getAbsolutePath
     abs +: (pathChain split File.pathSeparator filter { o ⇒ o.nonEmpty && o != abs }) mkString File.pathSeparatorChar.toString
   }
-
 }
-

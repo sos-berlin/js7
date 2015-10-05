@@ -16,7 +16,7 @@ import spray.json.DefaultJsonProtocol._
  */
 final case class TaskStartArguments(
   agentTaskId: AgentTaskId,
-  controllerAddress: String,
+  masterAddress: String,
   tunnelToken: TunnelToken,
   environment: immutable.Iterable[(String, String)] = Nil,
   directory: Path,
@@ -24,7 +24,7 @@ final case class TaskStartArguments(
   logStdoutAndStderr: Boolean = false,
   killScriptFileOption: Option[Path] = None)
 {
-  def controllerInetSocketAddress = toInetSocketAddress(controllerAddress)
+  def masterInetSocketAddress = toInetSocketAddress(masterAddress)
 }
 
 object TaskStartArguments {
@@ -36,7 +36,7 @@ object TaskStartArguments {
     directory: Path = Paths.get(""),
     stdFileMap: Map[StdoutStderrType, Path] = Map())
   = new TaskStartArguments(
-      controllerAddress = s"127.0.0.1:$tcpPort",
+      masterAddress = s"127.0.0.1:$tcpPort",
       tunnelToken = TunnelToken(TunnelId("TEST-TUNNEL"), TunnelToken.Secret("TUNNEL-SECRET")),
       directory = directory,
       stdFileMap = stdFileMap,

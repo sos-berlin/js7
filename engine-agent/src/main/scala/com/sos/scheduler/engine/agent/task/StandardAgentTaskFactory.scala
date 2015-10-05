@@ -1,5 +1,8 @@
 package com.sos.scheduler.engine.agent.task
 
+import akka.actor.ActorSystem
+import akka.agent.Agent
+import akka.util.ByteString
 import com.google.common.base.Splitter
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
@@ -7,32 +10,50 @@ import com.sos.scheduler.engine.agent.data.commands.{StartApiTask, StartNonApiTa
 import com.sos.scheduler.engine.agent.task.StandardAgentTaskFactory._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
+import com.sos.scheduler.engine.minicom.remoting.calls.CallCall
+import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer.{deserializeCall, messageIsCall}
+import com.sos.scheduler.engine.minicom.types.VariantArray
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.task.TaskArguments
 import com.sos.scheduler.engine.taskserver.{OwnProcessTaskServer, SimpleTaskServer}
-import com.sos.scheduler.engine.tunnel.TunnelHandler
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.server.TunnelListener.StopListening
+import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
+import java.net.InetAddress
 import java.util.regex.Pattern
 import javax.inject.{Inject, Singleton}
+import scala.concurrent.Promise
 
 /**
  * @author Joacim Zschimmer
  */
 @Singleton
-final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentConfiguration, tunnelHandler: TunnelHandler) extends AgentTaskFactory {
+final class StandardAgentTaskFactory @Inject private(
+  agentConfiguration: AgentConfiguration,
+  tunnelServer: TunnelServer,
+  actorSystem: ActorSystem)
+extends AgentTaskFactory {
+
+  import actorSystem.dispatcher
 
   private val agentTaskIdGenerator = AgentTaskId.newGenerator()
 
-  def apply(command: StartTask) = {
+  def apply(command: StartTask, clientIpOption: Option[InetAddress]) = {
     val id = agentTaskIdGenerator.next()
-    val address = tunnelHandler.proxyAddressString
-    val tunnel = tunnelHandler.newTunnel(TunnelId(id.index.toString))
-    new AgentTask(id, tunnel, newTaskServer(id, command, address, tunnel.tunnelToken))
+    val address = tunnelServer.proxyAddressString
+    val taskArgumentsPromise = Promise[TaskArguments]()
+    val listener = Agent(new TaskArgumentsListener(taskArgumentsPromise))
+    val tunnel = tunnelServer.newTunnel(TunnelId(id.index.toString), listener, clientIpOption)
+    val taskServer = newTaskServer(id, command, address, tunnel.tunnelToken)
+    new AgentTask(id, tunnel, taskServer, taskArgumentsPromise.future)
+    // AgentTask.close will close Tunnel and TaskServer, too
   }
 
-  private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, controllerAddress: String, tunnelToken: TunnelToken) = {
+  private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, masterAddress: String, tunnelToken: TunnelToken) = {
     val taskStartArguments = TaskStartArguments(
       agentTaskId,
-      controllerAddress = controllerAddress,
+      masterAddress = masterAddress,
       tunnelToken = tunnelToken,
       directory = agentConfiguration.directory,
       environment = agentConfiguration.environment,
@@ -59,4 +80,17 @@ final class StandardAgentTaskFactory @Inject private(agentConfiguration: AgentCo
 private object StandardAgentTaskFactory {
   private val logger = Logger(getClass)
   private val UseThreadPropertyName = "jobscheduler.agent.useThread"
+
+  /**
+   * Resembles the behaviour of [[com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer]]#invoke.
+   */
+  private class TaskArgumentsListener(promise: Promise[TaskArguments]) extends TunnelListener {
+    def onRequest(msg: ByteString) =
+      messageIsCall(msg) option deserializeCall(msg) match {
+        case Some(CallCall(_, "construct", args)) ⇒
+          promise.success(TaskArguments(args(0).asInstanceOf[VariantArray]))
+          StopListening
+        case _ ⇒ this
+      }
+  }
 }

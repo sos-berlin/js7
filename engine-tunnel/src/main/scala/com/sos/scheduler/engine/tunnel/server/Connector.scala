@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel.core
+package com.sos.scheduler.engine.tunnel.server
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
@@ -6,14 +6,14 @@ import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
-import com.sos.scheduler.engine.tunnel.core.Connector._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.server.Connector._
 import java.net.InetSocketAddress
 import scala.concurrent.Promise
 import spray.json.JsonParser
 
 /**
- * Establish and handles a tunnel connection between a request/response site and TCP site.
+ * Establishes and handles a connection between a request/response site (client) and a TCP site (server).
  * <p>
  * In the JobScheduler Agent, the request/response client is a HTTP web service,
  * and the TCP site is the TaskServer.
@@ -22,29 +22,21 @@ import spray.json.JsonParser
  * The actor then waits for the first message from the TCP site, a [[TunnelConnectionMessage]].
  * This messages denotes the TunnelId of the tunnel, the task wishes to connect to.
  * <p>
- * After the TunnelId is known, the actor expeteds a `Request` and forwards it the TCP site (length-prefix framed),
- * Then, the actor awaits a framed TCP message and forwards it as a `Response` to the orignal requestor.
+ * After the TunnelId is known, the actor expects a `Request` and forwards it the TCP site (length-prefix framed),
+ * Then, the actor awaits a framed TCP message and forwards it as a `Response` to the original requester.
+ * This is repeated for every request.
  *
  * @author Joacim Zschimmer
  */
-private[core] final class Connector(tcp: ActorRef, connected: Tcp.Connected)
+private[server] final class Connector private(tcp: ActorRef, connected: Tcp.Connected)
 extends Actor with FSM[State, Data] {
-
   import connected.remoteAddress
 
   private var tunnelId: TunnelId = null
-  private val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, connected)})
+  private val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, connected) })
   private var messageTcpBridgeTerminated = false
 
-
   override def supervisorStrategy = stoppingStrategy
-
-  override def postStop(): Unit = {
-    if (tunnelId != null) {
-      context.parent ! Closed(tunnelId)
-    }
-    super.postStop()
-  }
 
   context.watch(messageTcpBridge)
   startWith(ExpectingMessageFromTcp, NoData)
@@ -120,35 +112,35 @@ extends Actor with FSM[State, Data] {
   private def tunnelIdString = if (tunnelId == null) "tunnel is not yet established" else tunnelId.string
 }
 
-private[core] object Connector {
+private[server] object Connector {
   private val logger = Logger(getClass)
+
+  def props(tcp: ActorRef, connected: Tcp.Connected) = Props { new Connector(tcp, connected) }
 
 
   // Actor messages commanding this actor
 
-  private[core] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
+  private[server] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
     override def toString = s"Request(${message.size} bytes)"
   }
 
-  private[core] case object Close
+  private[server] case object Close
 
 
   // Event messages from this actor
 
-  private[core] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
+  private[server] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
 
-  private[core] final case class Response(message: ByteString) {
+  private[server] final case class Response(message: ByteString) {
     override def toString = s"Response(${message.size} bytes)"
   }
 
-  private[core] final case class Closed(tunnelId: TunnelId)
-
-  private[core] sealed trait State
+  private[server] sealed trait State
   private case object ExpectingRequest extends State {}
   private case object ExpectingMessageFromTcp extends State
   private case object Closing extends State
 
-  private[core] sealed trait Data
+  private[server] sealed trait Data
   private case class Respond(responsePromise: Promise[ByteString]) extends Data
   private case object NoData extends Data
 }

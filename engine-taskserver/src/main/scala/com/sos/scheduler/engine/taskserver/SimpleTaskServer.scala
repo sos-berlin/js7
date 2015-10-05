@@ -29,7 +29,7 @@ import spray.json._
  */
 final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain: Boolean = false) extends TaskServer with HasCloser {
 
-  private lazy val master = TcpConnection.connect(taskStartArguments.controllerInetSocketAddress).closeWithCloser
+  private lazy val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val terminatedPromise = Promise[Unit]()
   private val injector = Guice.createInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
   private val remoting = new Remoting(injector, new DialogConnection(master), IDispatchFactories, ProxyIDispatchFactories)
@@ -40,26 +40,29 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
     Future {
       blocking {
         val connectionMessage = TunnelConnectionMessage(taskStartArguments.tunnelToken)
-        master.sendMessage(ByteString.fromString(connectionMessage.toJson.compactPrint))
+        master.sendMessage(ByteString(connectionMessage.toJson.compactPrint))
         remoting.run()
         master.close()
       }
     } onComplete { tried ⇒
-      tried.failed foreach {
-        case t: AsynchronousCloseException ⇒ logger.info("Terminating after close()")
-        case t ⇒ logger.error(s"$toString $t", t)
-      }
-      terminatedPromise.complete(tried)
+      terminatedPromise.complete(tried recover {
+        case t: AsynchronousCloseException ⇒
+          logger.info("Terminating after close()")
+          // Exception is okay and ignored
+        case t ⇒
+          logger.error(s"$toString $t", t)
+          throw t
+      })
       logger.info("Terminated")
     }
 
   def sendProcessSignal(signal: ProcessSignal) = {
     val signalables = remoting.invocables[HasSendProcessSignal]
     logger.debug(s"sendProcessSignal $signal to $signalables")
-    signalables  foreach { _.sendProcessSignal(signal) }
+    signalables foreach { _.sendProcessSignal(signal) }
   }
 
-  override def toString = s"TaskServer(master=${taskStartArguments.controllerAddress})"
+  override def toString = s"TaskServer(master=${taskStartArguments.masterAddress})"
 }
 
 object SimpleTaskServer {

@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.configuration
 
-import com.sos.scheduler.engine.agent.web.common.WebService
+import com.sos.scheduler.engine.agent.web.common.ExtraWebService
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
@@ -24,7 +24,7 @@ final case class AgentConfiguration(
   uriPathPrefix: String = "",
   directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
   environment: immutable.Iterable[(String, String)] = Nil,
-  webServiceClasses: immutable.Seq[Class[_ <: WebService]] = Nil,
+  extraWebServiceClasses: immutable.Seq[Class[_ <: ExtraWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
   killScriptFile: Option[Path] = None)
 {
@@ -33,8 +33,9 @@ final case class AgentConfiguration(
 
   def strippedUriPathPrefix = uriPathPrefix stripPrefix "/" stripSuffix "/"
 
-  def withWebServiceProvider[A <: WebService : ClassTag]: AgentConfiguration =
-    copy(webServiceClasses = webServiceClasses :+ implicitClass[A])
+  def withWebService[A <: ExtraWebService : ClassTag] = withWebServices(List(implicitClass[A]))
+
+  def withWebServices(classes: Iterable[Class[_ <: ExtraWebService]]) = copy(extraWebServiceClasses = extraWebServiceClasses ++ classes)
 }
 
 object AgentConfiguration {

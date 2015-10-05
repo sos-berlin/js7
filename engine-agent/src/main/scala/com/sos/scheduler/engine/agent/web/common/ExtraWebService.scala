@@ -5,6 +5,6 @@ import spray.routing.Route
 /**
  * @author Joacim Zschimmer
  */
-trait WebService {
+trait ExtraWebService {
   def route: Route
 }

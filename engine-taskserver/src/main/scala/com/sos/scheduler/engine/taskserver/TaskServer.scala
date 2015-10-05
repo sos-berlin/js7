@@ -5,8 +5,8 @@ import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import scala.concurrent.Future
 
 /**
- * A COM server, configured with [[TaskStartArguments]], connecting to a controller and
- * executing the controllers task API calls.
+ * A COM server, configured with [[TaskStartArguments]], connecting to a master and
+ * executing the master task API calls.
  *
  * @author Joacim Zschimmer
  */

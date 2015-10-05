@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.agent.web.common.ServiceStandards._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.collection.mutable
 import spray.http.StatusCodes.InternalServerError
+import spray.http.Uri.Path
 import spray.routing.Directives._
 import spray.routing.{ExceptionHandler, Route}
 import spray.util.LoggingContext
@@ -23,11 +24,11 @@ trait ServiceStandards {
    * URI path prefix without prefix or suffix slashes.
    */
   protected def uriPathPrefix: String = ""
-  protected final lazy val jobschedulerPath = List(uriPathPrefix, "jobscheduler") filter { _.nonEmpty } mkString "/"
-  protected final lazy val agentPath = s"$jobschedulerPath/$AgentPrefix"
+  protected final lazy val jobschedulerPath = Path(List(uriPathPrefix, "jobscheduler") filter { _.nonEmpty } mkString "/")
+  protected final lazy val agentPath = Path(s"$jobschedulerPath/$AgentPrefix")
 
   private lazy val jobschedulerStandard =
-    decompressRequest() & compressResponseIfRequested(()) & pathPrefix(separateOnSlashes(jobschedulerPath))
+    decompressRequest() & compressResponseIfRequested(()) & pathPrefix(separateOnSlashes(jobschedulerPath.toString))
 
   private val addedRoutes = mutable.Buffer[Entry]()
 

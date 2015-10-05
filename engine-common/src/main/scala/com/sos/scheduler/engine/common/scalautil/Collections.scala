@@ -5,6 +5,7 @@ import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 import scala.collection.{TraversableLike, immutable, mutable}
 import scala.util.control.NonFatal
+import scala.language.implicitConversions
 
 object Collections {
   object implicits {
@@ -91,13 +92,10 @@ object Collections {
       }
     }
 
+    implicit def javaStreamToIterator[A](stream: java.util.stream.Stream[A]): Iterator[A] = stream.iterator
+
     implicit class RichJavaStream[A](val delegate: java.util.stream.Stream[A]) extends AnyVal {
-      def toImmutableSeq: immutable.Seq[A] = toVector
-      def toVector: Vector[A] = Vector() ++ delegate.iterator
-      def toSet: Set[A] = Set() ++ delegate.iterator
-      def toIterator: Iterator[A] = delegate.iterator
-      def toIterable: immutable.Iterable[A] = toStream
-      def toStream: Stream[A] = delegate.iterator.toStream
+      def toImmutableSeq: immutable.Seq[A] = Vector() ++ delegate.iterator
     }
   }
 
@@ -109,7 +107,6 @@ object Collections {
 
   def emptyToNone[A](@Nullable o: Array[A]): Option[Array[A]] =
     if (o == null || o.isEmpty) None else Some(o)
-
 
   @tailrec
   private def compareIteratorsElementWise[A](a: Iterator[A], b: Iterator[A])(implicit ordering: Ordering[A]): Int =

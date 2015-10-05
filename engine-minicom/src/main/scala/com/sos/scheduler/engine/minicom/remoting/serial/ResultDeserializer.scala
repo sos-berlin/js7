@@ -16,7 +16,7 @@ import scala.collection.mutable
 private[remoting] final class ResultDeserializer(
   protected val remoting: ServerRemoting,
   message: ByteString)
-extends IUnknownDeserializer {
+extends VariantDeserializer with RemotingIUnknownDeserializer {
 
   protected val buffer = message.asByteBuffer
 

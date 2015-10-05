@@ -1,15 +1,16 @@
 package com.sos.scheduler.engine.agent.task
 
+import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, Response, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
+import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
 import com.sos.scheduler.engine.agent.task.TaskHandler._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
-import com.sos.scheduler.engine.common.soslicense.{LicenseKey, LicenseKeyChecker}
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Instant
@@ -17,6 +18,7 @@ import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import javax.inject.{Inject, Singleton}
 import org.scalactic.Requirements._
+import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise, blocking}
 import scala.util.control.NonFatal
@@ -38,25 +40,21 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
   def isTerminating = terminating.get
   def terminated = terminatedPromise.future
 
-  def execute(command: Command, licenseKey: Option[LicenseKeyChecker] = None) = Future[Response] { executeDirectly(command, licenseKey) }
-
-  private def executeDirectly(command: Command, licenseKeyOption: Option[LicenseKeyChecker]): Response =
+  def execute(command: Command, meta: CommandMeta = CommandMeta()): Future[Response] =
     command match {
-      case o: StartTask ⇒ startTask(o, licenseKeyOption getOrElse LicenseKey.Empty)
-      case CloseTask(id, kill) ⇒ closeTask(id, kill)
-      case SendProcessSignal(id, signal) ⇒
-        idToAgentTask(id).sendProcessSignal(signal)
-        EmptyResponse
-      case o: Terminate ⇒ terminate(o)
-      case AbortImmediately ⇒ haltImmediately()
+      case o: StartTask ⇒ executeStartTask(o, meta)
+      case CloseTask(id, kill) ⇒ executeCloseTask(id, kill)
+      case SendProcessSignal(id, signal) ⇒ executeSendProcessSignal(id, signal)
+      case o: Terminate ⇒ executeTerminate(o)
+      case AbortImmediately ⇒ executeAbortImmediately()
     }
 
-  private def startTask(command: StartTask, licenseKey: LicenseKeyChecker) = {
+  private def executeStartTask(command: StartTask, meta: CommandMeta) = Future {
     if (idToAgentTask.nonEmpty) {
-      licenseKey.require(UniversalAgent, "No license key provided by master to execute jobs in parallel")
+      meta.licenseKeyBunch.require(UniversalAgent, "No license key provided by master to execute jobs in parallel")
     }
     if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept task starts")
-    val task = newAgentTask(command)
+    val task = newAgentTask(command, meta.clientIpOption)
     task.start()
     registerTask(task)
     totalTaskCounter.incrementAndGet()
@@ -70,17 +68,33 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
     }
   }
 
-  private def closeTask(id: AgentTaskId, kill: Boolean) = {
+  private def executeCloseTask(id: AgentTaskId, kill: Boolean) = {
     val task = idToAgentTask.remove(id) getOrElse throwUnknownTask(id)
     if (kill) {
       try task.sendProcessSignal(SIGKILL)
-      catch { case NonFatal(t) ⇒ logger.warn(s"Kill $task failed: $t") }
+      catch { case NonFatal(t) ⇒
+        logger.warn(s"Kill $task failed: $t")
+        // Anyway, close Tunnel and TaskServer
+        task.close()
+      }
+    } else {
+      task.close()
     }
-    task.close()
+    val responsePromise = Promise[EmptyResponse.type]()
+    task.terminated.onComplete { case o ⇒
+      // In case of kill, task has terminated but not yet closed.
+      task.close()
+      responsePromise.complete(o map { _ ⇒ EmptyResponse })
+    }
+    responsePromise.future
+  }
+
+  private def executeSendProcessSignal(id: AgentTaskId, signal: ProcessSignal) = Future {
+    idToAgentTask(id).sendProcessSignal(signal)
     EmptyResponse
   }
 
-  private def terminate(command: Terminate) = {
+  private def executeTerminate(command: Terminate) = Future {
     if (terminating.getAndSet(true)) throw new StandardPublicException("Agent is already terminating")
     if (command.sigtermProcesses) {
       trySigtermProcesses()
@@ -128,20 +142,22 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
     }
   }
 
-  private def haltImmediately(): Nothing = {
+  private def executeAbortImmediately(): Nothing = {
     for (o ← agentTasks) o.sendProcessSignal(SIGKILL)
-    val msg = "Due to command AbortImmediatly, Agent is halted now!"
+    val msg = "Due to command AbortImmediately, Agent is halted now!"
     logger.warn(msg)
     System.err.println(msg)
     Runtime.getRuntime.halt(1)
     throw new Error("halt")
   }
 
-  def currentTaskCount = idToAgentTask.size
+  def overview = TaskHandlerOverview(
+    currentTaskCount = idToAgentTask.size,
+    totalTaskCount = totalTaskCounter.get)
 
-  def totalTaskCount = totalTaskCounter.get
+  def taskOverviews: immutable.Seq[TaskOverview] = (idToAgentTask.values map { _.overview }).toVector
 
-  def tasks = (idToAgentTask.values map { _.overview }).toVector
+  def taskOverview(id: AgentTaskId) = idToAgentTask(id).overview
 
   private def agentTasks = idToAgentTask.values
 }

@@ -93,6 +93,10 @@
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-agent_${scala.binaryVersion}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-slf4j_${scala.binaryVersion}</artifactId>
         </dependency>
         <dependency>

@@ -25,7 +25,7 @@ final class TcpToRequestResponseTest extends FreeSpec {
         assert(tcpConnection.receiveMessage().get == m)
       }
       for (i ← 1 to 3) {
-        val a = ByteString.fromString(s"TEST #$i")
+        val a = ByteString(s"TEST #$i")
         tcpConnection.sendMessage(a)
         assert(tcpConnection.receiveMessage().get == requestToResponse(a))
       }
@@ -61,8 +61,8 @@ final class TcpToRequestResponseTest extends FreeSpec {
 }
 
 private object TcpToRequestResponseTest {
-  private val Error = ByteString.fromString("ERROR")
-  private val ExecutionError = ByteString.fromString("EXECUTION ERROR")
+  private val Error = ByteString("ERROR")
+  private val ExecutionError = ByteString("EXECUTION ERROR")
 
   private def executeRequest(request: ByteString) =
     request match {

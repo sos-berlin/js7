@@ -9,7 +9,7 @@ import spray.httpx.unmarshalling.Unmarshaller
 /**
  * @author Joacim Zschimmer
  */
-object ByteStreamMarshallers {
+object ByteStringMarshallers {
   implicit val ByteStringMarshaller = Marshaller.of[ByteString](`application/octet-stream`) {
     (value, contentType, ctx) ⇒ ctx.marshalTo(HttpEntity(contentType, value))
   }

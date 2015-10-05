@@ -1,8 +1,9 @@
 package com.sos.scheduler.engine.tunnel
 
 import akka.actor.{ActorSystem, Props}
+import akka.agent.Agent
 import akka.io.{IO, Tcp}
-import akka.util.ByteString
+import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.TcpConnection
@@ -12,6 +13,7 @@ import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcp
 import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
 import com.sos.scheduler.engine.tunnel.client.TcpToHttpBridge
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
 import com.sos.scheduler.engine.tunnel.web.TunnelWebService._
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
@@ -19,6 +21,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import scala.concurrent._
+import scala.concurrent.duration._
 import scala.util.Random
 import spray.can.Http
 import spray.http.Uri
@@ -33,14 +36,20 @@ import spray.routing.HttpServiceActor
 @RunWith(classOf[JUnitRunner])
 final class TcpHttpTcpTunnelIT extends FreeSpec {
 
+  private implicit val timeout = Timeout(5.seconds)
+
   "Normal application" in {
     val (clientSide, serverSide) = startTunneledSystem()
-    for (i ← 1 to 3) clientSide.checkSendReceive()
+    val n = 3
+    for (i ← 1 to n) clientSide.checkSendReceive()
     clientSide.tcp.sendMessage(TerminateMessage)
     clientSide.requireEOF()
     serverSide.awaitTermination()
     serverSide.closeTunnel()
     clientSide.closeBrigde()
+    val listenedMessages = Await.result(serverSide.listener.future(), 1.second).messages
+    assert(listenedMessages.size == n + 1)
+    assert(listenedMessages(n) == TerminateMessage)
   }
 
   "Server-side tunnel is closed" in {
@@ -48,7 +57,7 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
     clientSide.checkSendReceive()
     serverSide.closeTunnel()  // JobScheduler closes the AgentProcess
     serverSide.awaitTermination()
-    clientSide.tcp.sendMessage(ByteString.fromString("AFTER CLOSED"))
+    clientSide.tcp.sendMessage(ByteString("AFTER CLOSED"))
     clientSide.requireEOF()
     clientSide.closeBrigde()
   }
@@ -58,7 +67,7 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
     clientSide.checkSendReceive()
     serverSide.connection.close()
     serverSide.awaitTermination()
-    clientSide.tcp.sendMessage(ByteString.fromString("AFTER CLOSED"))
+    clientSide.tcp.sendMessage(ByteString("AFTER CLOSED"))
     clientSide.tcp.receiveMessage() shouldEqual None
     serverSide.closeTunnel()
     clientSide.closeBrigde()
@@ -66,7 +75,7 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
 
   "Speed test" in {
     val (clientSide, serverSide) = startTunneledSystem()
-    measureTime(1000, "requests") {
+    measureTime(1000, "request") {
       clientSide.checkSendReceive()
     }
     serverSide.closeTunnel()
@@ -75,7 +84,7 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
 }
 
 object TcpHttpTcpTunnelIT {
-  private val TerminateMessage = ByteString.fromString("TERMINATE")
+  private val TerminateMessage = ByteString("TERMINATE")
   private val logger = Logger(getClass)
 
   private def startTunneledSystem() = {
@@ -93,7 +102,7 @@ object TcpHttpTcpTunnelIT {
     val tcp = clientSideListener.accept()
 
     def checkSendReceive(): Unit = {
-      val request = ByteString.fromString(s"TEST " + Random.nextInt())
+      val request = ByteString(s"TEST " + Random.nextInt())
       val response = sendReceive(request)
       assert(response contains requestToResponse(tunnelToken.id, request))
     }
@@ -111,6 +120,7 @@ object TcpHttpTcpTunnelIT {
   private class TunnelledTcpServer(handler: ServerSideTunnelHandler) {
     private val tunnel = handler.newTunnel(TunnelId("TEST-TUNNEL"))
     private val tcpServer = new TcpServer(tunnel.tunnelToken, handler.tcpAddress)
+    def listener = handler.listener
     tcpServer.start()
 
     def connection = tcpServer.connection
@@ -121,21 +131,23 @@ object TcpHttpTcpTunnelIT {
 
   private class ServerSideTunnelHandler {
     val actorSystem = ActorSystem(getClass.getSimpleName)
-    val tunnelHandler = new TunnelHandler(actorSystem)
+    val tunnelServer = new TunnelServer(actorSystem)
     val uri = startWebServer()
+    import actorSystem.dispatcher
+    val listener = Agent(new TestTunnelListener)
 
-    def newTunnel(id: TunnelId) = tunnelHandler.newTunnel(id)
-    def tcpAddress = tunnelHandler.proxyAddress
+    def newTunnel(id: TunnelId) = tunnelServer.newTunnel(id, listener)
+    def tcpAddress = tunnelServer.proxyAddress
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
-      actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelHandler, tunnelHandler.request) })
+      actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer, tunnelServer.request) })
       val httpAddress = awaitResult(startedPromise.future, 10.s)
       Uri(s"http://${httpAddress.getAddress.getHostAddress}:${httpAddress.getPort}")
     }
   }
 
-  private class TestWebServiceActor(port: Int, startedPromise: Promise[InetSocketAddress], tunnelHandler: TunnelHandler, execute: ExecuteTunneledRequest) extends HttpServiceActor  {
+  private class TestWebServiceActor(port: Int, startedPromise: Promise[InetSocketAddress], tunnelServer: TunnelServer, execute: ExecuteTunneledRequest) extends HttpServiceActor  {
     import context.dispatcher
 
     IO(Http)(context.system) ! Http.Bind(self, interface = "127.0.0.1", port = port)
@@ -159,6 +171,10 @@ object TcpHttpTcpTunnelIT {
     }
   }
 
+  private class TestTunnelListener(val messages: Vector[ByteString] = Vector()) extends TunnelListener {
+    def onRequest(msg: ByteString) = new TestTunnelListener(messages :+ msg)
+  }
+
   private class TcpServer(tunnelToken: TunnelToken, masterAddress: InetSocketAddress) extends Thread {
     // Somewhat unusual, the server connects the client and sends a TunnelConnectionMessage, before acting as a usual server.
     val tunnelId = tunnelToken.id
@@ -180,5 +196,5 @@ object TcpHttpTcpTunnelIT {
       }
   }
 
-  private def requestToResponse(id: TunnelId, request: ByteString): ByteString = request ++ ByteString.fromString(s" RESPONSE FROM $id")
+  private def requestToResponse(id: TunnelId, request: ByteString): ByteString = request ++ ByteString(s" RESPONSE FROM $id")
 }
