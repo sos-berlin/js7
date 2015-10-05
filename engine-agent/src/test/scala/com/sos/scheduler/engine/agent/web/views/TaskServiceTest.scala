@@ -31,7 +31,6 @@ final class TaskServiceTest extends FreeSpec with ScalatestRouteTest with TaskSe
 
   protected val taskHandlerView = new TaskHandlerView {
     def overview = TaskHandlerOverview(
-      isTerminating = false,
       currentTaskCount = 777,
       totalTaskCount = 999)
 
@@ -55,8 +54,7 @@ final class TaskServiceTest extends FreeSpec with ScalatestRouteTest with TaskSe
       assert(responseAs[TaskHandlerOverview] == taskHandlerView.overview)
       assert(responseAs[JsObject] == JsObject(
         "currentTaskCount" → JsNumber(777),
-        "totalTaskCount" -> JsNumber(999),
-        "isTerminating" → JsFalse))
+        "totalTaskCount" -> JsNumber(999)))
     }
   }
 

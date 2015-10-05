@@ -152,7 +152,6 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
   }
 
   def overview = TaskHandlerOverview(
-    isTerminating = isTerminating,
     currentTaskCount = idToAgentTask.size,
     totalTaskCount = totalTaskCounter.get)
 

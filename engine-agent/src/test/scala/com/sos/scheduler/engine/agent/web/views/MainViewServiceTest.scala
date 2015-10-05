@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.agent.web.views
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.agent.data.views.TaskHandlerOverview
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.common.sprayutils.JsArrayMarshallers._
 import java.time.Instant
@@ -22,22 +21,11 @@ final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with Ma
 
   protected implicit lazy val actorRefFactory = ActorSystem()
 
-  protected def taskHandlerView = TaskHandlerOverview(
-    isTerminating = false,
-    currentTaskCount = 777,
-    totalTaskCount = 999)
-//    private def tasks = List(TaskOverview(
-//      AgentTaskId("1-123"),
-//      tunnelId = TunnelId("99"),
-//      Instant.parse("2015-06-10T12:00:00Z"),
-//      startedByHttpIp = Some(InetAddress.getByName("127.1.2.3")),
-//      arguments = None))
-
   protected def agentOverview = AgentOverview(
     startedAt = Instant.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
-    currentTaskCount = taskHandlerView.currentTaskCount,
-    totalTaskCount = taskHandlerView.totalTaskCount,
+    currentTaskCount = 777,
+    totalTaskCount = 999,
     isTerminating = false,
     system = AgentOverview.SystemInformation(hostname = "TEST-HOSTNAME"),
     java = AgentOverview.JavaInformation(systemProperties = Map("test" → "TEST")))
