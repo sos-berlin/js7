@@ -1,15 +1,13 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import com.sos.scheduler.engine.taskserver.task.JavaProcessTask._
-import scala.collection.{immutable, mutable}
+import scala.collection.mutable
 import scala.util.control.NonFatal
 
 /**
@@ -18,14 +16,11 @@ import scala.util.control.NonFatal
  *
  * @author Joacim Zschimmer
  */
-final class JavaProcessTask(
-  protected val agentTaskId: AgentTaskId,
-  protected val jobName: String,
-  module: JavaModule,
-  namedInvocables: NamedInvocables,
-  monitors: immutable.Seq[Monitor] = Nil,
-  stdFiles: StdFiles)
+private[task] final class JavaProcessTask(module: JavaModule, protected val commonArguments: CommonArguments)
 extends Task with HasCloser {
+
+  import commonArguments.{jobName, monitors, namedInvocables, stdFiles}
+  import namedInvocables.spoolerTask
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private val instance: sos.spooler.Job_impl = module.newJobInstance(namedInvocables)
@@ -78,7 +73,7 @@ extends Task with HasCloser {
         val result = try instance.spooler_process()
         catch {
           case NonFatal(t) ⇒
-            namedInvocables.spoolerTask.setErrorCodeAndText(StandardJavaErrorCode, s"$StandardJavaErrorCode  $t")  // Without Z-JAVA-105 description "Java exception $1, method=$2"
+            spoolerTask.setErrorCodeAndText(StandardJavaErrorCode, s"$StandardJavaErrorCode  $t")  // Without Z-JAVA-105 description "Java exception $1, method=$2"
             false
         }
         monitorProcessor.postStep(result)
@@ -93,7 +88,7 @@ extends Task with HasCloser {
   }
 }
 
-object JavaProcessTask {
+private object JavaProcessTask {
   private val NameAndSignature = """(.*)\((.*)\)(.+)""".r
   private val StandardJavaErrorCode = MessageCode("Z-JAVA-105")
 }

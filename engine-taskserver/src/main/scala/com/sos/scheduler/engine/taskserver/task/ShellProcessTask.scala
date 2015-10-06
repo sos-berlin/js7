@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
@@ -11,7 +10,6 @@ import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.data.HasSendProcessSignal
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
@@ -30,19 +28,15 @@ import scala.concurrent.{Await, Future}
  *
  * @see spooler_module_process.cxx, C++ class Process_module_instance
  */
-final class ShellProcessTask(
-  protected val agentTaskId: AgentTaskId,
-  protected val jobName: String,
+private[task] final class ShellProcessTask(
   module: ShellModule,
-  namedInvocables: NamedInvocables,
-  monitors: immutable.Seq[Monitor],
-  hasOrder: Boolean,
-  stdFiles: StdFiles,
+  protected val commonArguments: CommonArguments,
   environment: immutable.Iterable[(String, String)],
   killScriptPathOption: Option[Path],
   taskServerMainTerminatedOption: Option[Future[Unit]] = None)
 extends HasCloser with Task with HasSendProcessSignal {
 
+  import commonArguments.{agentTaskId, hasOrder, jobName, monitors, namedInvocables, stdFiles}
   import namedInvocables.spoolerTask
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
@@ -157,7 +151,7 @@ extends HasCloser with Task with HasSendProcessSignal {
   override def toString = List(super.toString) ++ (Option(richProcess) map { _.toString }) mkString " "
 }
 
-object ShellProcessTask {
+private object ShellProcessTask {
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
 

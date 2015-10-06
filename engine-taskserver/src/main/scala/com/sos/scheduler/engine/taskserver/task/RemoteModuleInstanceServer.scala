@@ -40,27 +40,21 @@ extends HasCloser with Invocable with HasSendProcessSignal {
       stderrLogLevel = taskArguments.stderrLogLevel,
       log = namedInvocables.spoolerLog.log
     )
+    val commonArguments = CommonArguments(
+      taskStartArguments.agentTaskId,
+      jobName = taskArguments.jobName,
+      namedInvocables,
+      taskArguments.monitors,
+      hasOrder = taskArguments.hasOrder,
+      stdFiles)
     task = taskArguments.module match {
       case module: ShellModule ⇒
-        new ShellProcessTask(
-          taskStartArguments.agentTaskId,
-          jobName = taskArguments.jobName,
-          module,
-          namedInvocables,
-          taskArguments.monitors,
-          hasOrder = taskArguments.hasOrder,
-          stdFiles,
+        new ShellProcessTask(module, commonArguments,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
           killScriptPathOption = taskStartArguments.killScriptFileOption,
           taskServerMainTerminatedOption = taskServerMainTerminatedOption)
       case module: JavaModule ⇒
-        new JavaProcessTask(
-          taskStartArguments.agentTaskId,
-          jobName = taskArguments.jobName,
-          module,
-          namedInvocables,
-          taskArguments.monitors,
-          stdFiles)
+        new JavaProcessTask(module, commonArguments)
     }
     closer.registerAutoCloseable(task)
     task.start()
