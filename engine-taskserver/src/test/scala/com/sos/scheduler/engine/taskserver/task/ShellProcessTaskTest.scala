@@ -81,19 +81,20 @@ private object ShellProcessTaskTest {
 
   private def newShellProcessTask(spoolerLog: SpoolerLog, setting: Setting) =
     new ShellProcessTask(
-      AgentTaskId("1-1"),
-      jobName = "TEST-JOB",
       ShellModule(testScript(setting.exitCode)),
-      namedInvocables = NamedInvocables(List(
-        SpoolerLogName → spoolerLog,
-        SpoolerTaskName → TestSpoolerTask,
-        SpoolerJobName → DummyInvocable,
-        SpoolerName → DummyInvocable)),
-      monitors = List(
-        Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("A", setting) }, name="Monitor A"),
-        Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("B", setting) }, name="Monitor B")),
-      hasOrder = false,
-      stdFiles = StdFiles(stdFileMap = Map(), stderrLogLevel = SchedulerLogLevel.info, log = (_, lines) ⇒ spoolerLog.info(lines)),
+      CommonArguments(
+        AgentTaskId("1-1"),
+        jobName = "TEST-JOB",
+        namedInvocables = NamedInvocables(List(
+          SpoolerLogName → spoolerLog,
+          SpoolerTaskName → TestSpoolerTask,
+          SpoolerJobName → DummyInvocable,
+          SpoolerName → DummyInvocable)),
+        monitors = List(
+          Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("A", setting) }, name="Monitor A"),
+          Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("B", setting) }, name="Monitor B")),
+        hasOrder = false,
+        stdFiles = StdFiles(stdFileMap = Map(), stderrLogLevel = SchedulerLogLevel.info, log = (_, lines) ⇒ spoolerLog.info(lines))),
       environment = Map(TestName → TestValue),
       killScriptPathOption = None)
 

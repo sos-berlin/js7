@@ -1,11 +1,9 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-
 /**
  * @author Joacim Zschimmer
  */
-trait Task extends AutoCloseable {
+private[task] trait Task extends AutoCloseable {
 
   def start(): Boolean
 
@@ -15,9 +13,10 @@ trait Task extends AutoCloseable {
 
   def callIfExists(methodWithSignature: String): Any
 
-  protected def agentTaskId: AgentTaskId
+  protected val commonArguments: CommonArguments
 
-  protected def jobName: String
-
-  override def toString = s"${getClass.getSimpleName}($agentTaskId $jobName)"
+  override def toString = {
+    import commonArguments.{agentTaskId, jobName}
+    s"${getClass.getSimpleName}($agentTaskId $jobName)"
+  }
 }
