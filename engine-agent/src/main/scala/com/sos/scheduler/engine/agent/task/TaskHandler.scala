@@ -19,15 +19,15 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import javax.inject.{Inject, Singleton}
 import org.scalactic.Requirements._
 import scala.collection.immutable
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, Promise, blocking}
+import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends TaskHandlerView {
+final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory)(implicit ec: ExecutionContext)
+extends TaskHandlerView {
 
   private val totalTaskCounter = new AtomicInteger(0)
   private val terminating = new AtomicBoolean

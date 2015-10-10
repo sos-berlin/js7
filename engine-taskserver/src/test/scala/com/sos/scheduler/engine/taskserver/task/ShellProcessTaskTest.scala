@@ -22,6 +22,8 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Joacim Zschimmer
@@ -79,7 +81,7 @@ private object ShellProcessTaskTest {
 
   private case class Setting(preTask: Boolean, preStep: Boolean, exitCode: Int, postStep: Boolean ⇒ Boolean)
 
-  private def newShellProcessTask(spoolerLog: SpoolerLog, setting: Setting) =
+  private def newShellProcessTask(spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) =
     new ShellProcessTask(
       ShellModule(testScript(setting.exitCode)),
       CommonArguments(

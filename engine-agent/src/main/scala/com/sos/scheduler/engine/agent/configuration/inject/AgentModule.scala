@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.agent.web.common.ExtraWebService
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import javax.inject.Singleton
 import scala.collection.immutable
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
@@ -22,7 +23,9 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
   protected def configure() = {
     bindInstance[Closer](closer)
     bindInstance[AgentConfiguration](agentConfiguration)
-    provideSingleton[ActorSystem] { newActorSystem("JobScheduler-Agent")(closer) }
+    val actorSystem = newActorSystem("JobScheduler-Agent")(closer)
+    bindInstance[ActorSystem](actorSystem)
+    bindInstance[ExecutionContext](actorSystem.dispatcher)
   }
 
   @Provides @Singleton

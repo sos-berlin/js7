@@ -15,7 +15,6 @@ import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
 import javax.inject.{Inject, Provider}
 import scala.collection.immutable
-import scala.concurrent.ExecutionContext
 import spray.http.StatusCodes._
 import spray.routing.{ExceptionHandler, HttpServiceActor}
 import spray.util.LoggingContext
@@ -63,7 +62,6 @@ with NoJobSchedulerEngineService
 
   protected def commandHandlerOverview = commandHandler
   protected def commandRunOverviews = commandHandler.commandRuns
-  protected def executionContext: ExecutionContext = context.dispatcher
   protected def executeCommand(command: Command, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
   protected def agentOverview = agentOverviewProvider.get()
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = tunnelServer.request(tunnelToken, requestMessage)

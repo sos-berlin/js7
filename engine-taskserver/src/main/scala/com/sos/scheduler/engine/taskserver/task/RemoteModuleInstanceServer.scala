@@ -16,13 +16,14 @@ import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * @author Joacim Zschimmer
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
 final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskStartArguments, taskServerMainTerminatedOption: Option[Future[Unit]])
+(implicit ec: ExecutionContext)
 extends HasCloser with Invocable with HasSendProcessSignal {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
 

@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.RichAny
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import java.io.File
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
@@ -17,7 +18,8 @@ object JavaProcess {
     options: Seq[String],
     classpath: Option[String],
     mainClass: String,
-    arguments: Seq[String]) =
+    arguments: Seq[String])
+    (implicit executionContext: ExecutionContext) =
   {
     val classpathEnv = "CLASSPATH" → (classpath getOrElse "").substitute("" → File.pathSeparator)  // Java does not like empty classpath
     RichProcess.start(

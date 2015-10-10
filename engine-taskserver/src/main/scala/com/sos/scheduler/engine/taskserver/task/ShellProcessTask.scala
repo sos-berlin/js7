@@ -19,9 +19,8 @@ import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
 import scala.collection.immutable
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration.Inf
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
  * @author Joacim Zschimmer
@@ -34,6 +33,7 @@ private[task] final class ShellProcessTask(
   environment: immutable.Iterable[(String, String)],
   killScriptPathOption: Option[Path],
   taskServerMainTerminatedOption: Option[Future[Unit]] = None)
+(implicit executionContext: ExecutionContext)
 extends HasCloser with Task with HasSendProcessSignal {
 
   import commonArguments.{agentTaskId, hasOrder, jobName, monitors, namedInvocables, stdFiles}

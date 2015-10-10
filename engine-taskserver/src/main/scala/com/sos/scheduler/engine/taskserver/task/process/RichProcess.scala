@@ -20,14 +20,14 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, blocking}
+import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
  */
 final class RichProcess private(val processConfiguration: ProcessConfiguration, process: Process)
+(implicit executionContext: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
   private val pidOption = processToPidOption(process)
@@ -97,7 +97,8 @@ object RichProcess {
   def startShellScript(
     processConfiguration: ProcessConfiguration = ProcessConfiguration(),
     name: String = "shell-script",
-    scriptString: String): RichProcess =
+    scriptString: String)
+    (implicit exeuctionContext: ExecutionContext): RichProcess =
   {
     val shellFile = newTemporaryShellFile(name)
     try {
@@ -113,7 +114,12 @@ object RichProcess {
     }
   }
 
-  def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil): RichProcess = {
+  def start(
+    processConfiguration: ProcessConfiguration,
+    file: Path,
+    arguments: Seq[String] = Nil)
+    (implicit exeuctionContext: ExecutionContext): RichProcess =
+  {
     import processConfiguration.{additionalEnvironment, stdFileMap}
     val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption))
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))

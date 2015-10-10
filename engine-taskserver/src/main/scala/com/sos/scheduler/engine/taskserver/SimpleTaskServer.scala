@@ -18,7 +18,6 @@ import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoole
 import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
 import com.sos.scheduler.engine.tunnel.data.TunnelConnectionMessage
 import java.nio.channels.AsynchronousCloseException
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import spray.json._
 
@@ -27,13 +26,13 @@ import spray.json._
  *
  * @author Joacim Zschimmer
  */
-final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain: Boolean = false) extends TaskServer with HasCloser {
+final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain: Boolean = false)(implicit executionContext: ExecutionContext)
+extends TaskServer with HasCloser {
 
   private lazy val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val terminatedPromise = Promise[Unit]()
   private val injector = Guice.createInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
   private val remoting = new Remoting(injector, new DialogConnection(master), IDispatchFactories, ProxyIDispatchFactories)
-
   def terminated = terminatedPromise.future
 
   def start(): Unit =
@@ -66,6 +65,8 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
 }
 
 object SimpleTaskServer {
+  import scala.concurrent.ExecutionContext.Implicits.global
+
   private val IDispatchFactories = List(RemoteModuleInstanceServer)
   private val ProxyIDispatchFactories = List(ProxySpooler, ProxySpoolerLog, ProxySpoolerTask)
   private val logger = Logger(getClass)

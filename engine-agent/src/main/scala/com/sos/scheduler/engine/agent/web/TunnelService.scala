@@ -19,8 +19,6 @@ trait TunnelService extends ServiceStandards {
   protected def tunnelHandlerOverview: Future[TunnelHandlerOverview]
   protected def tunnelOverviews: Future[immutable.Iterable[TunnelOverview]]
 
-  private implicit val executionContext = actorRefFactory.dispatcher
-
   addApiRoute {
     pathPrefix("tunnel") {
       path(Segment) { idString ⇒

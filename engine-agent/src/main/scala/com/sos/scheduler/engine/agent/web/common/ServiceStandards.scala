@@ -32,6 +32,8 @@ trait ServiceStandards {
 
   private val addedRoutes = mutable.Buffer[Entry]()
 
+  protected implicit final def executionContext = actorRefFactory.dispatcher
+
   implicit def exceptionHandler(implicit log: LoggingContext) =
     ExceptionHandler {
       case e ⇒

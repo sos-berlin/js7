@@ -9,14 +9,14 @@ import com.sos.scheduler.engine.taskserver.OwnProcessTaskServer._
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, ProcessConfiguration, RichProcess}
 import java.io.File
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContext, Promise}
 import spray.json._
 
 /**
  * @author Joacim Zschimmer
  */
 final class OwnProcessTaskServer(val taskStartArguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String)
+(implicit executionContext: ExecutionContext)
 extends TaskServer {
 
   private var process: RichProcess = null

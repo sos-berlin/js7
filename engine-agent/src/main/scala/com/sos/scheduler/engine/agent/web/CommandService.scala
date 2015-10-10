@@ -7,7 +7,6 @@ import com.sos.scheduler.engine.agent.data.web.AgentUris.LicenseKeyHeaderName
 import com.sos.scheduler.engine.agent.web.common.ServiceStandards
 import com.sos.scheduler.engine.common.soslicense.LicenseKeyBunch
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import spray.http.RemoteAddress
 import spray.routing.Directives._

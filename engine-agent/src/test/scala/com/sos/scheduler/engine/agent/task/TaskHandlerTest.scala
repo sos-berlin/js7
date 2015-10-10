@@ -12,6 +12,7 @@ import com.sos.scheduler.engine.base.exceptions.PublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
+import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.soslicense.{LicenseKeyBunch, LicenseKeyParameterIsMissingException}
@@ -28,7 +29,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Inside.inside
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContext, Promise}
 
 /**
  * @author Joacim Zschimmer
@@ -211,10 +212,10 @@ private object TaskHandlerTest {
     }
   }
 
-  private class TestModule(tasks: List[AgentTask]) extends AbstractModule {
+  private class TestModule(tasks: List[AgentTask]) extends ScalaAbstractModule {
     private val taskIterator = tasks.iterator
 
-    def configure() = {}
+    def configure() = bindInstance[ExecutionContext](ExecutionContext.global)
 
     @Provides @Singleton
     private def agentTaskFactory: AgentTaskFactory = new AgentTaskFactory {

@@ -10,16 +10,19 @@ import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import spray.json.DefaultJsonProtocol._
 
 /**
  * Executes public Agent commands.
+ *
  * @author Joacim Zschimmer
  */
 @Singleton
-final class AgentCommandHandler @Inject private(taskHandler: TaskHandler)
+final class AgentCommandHandler @Inject private(
+  taskHandler: TaskHandler,
+  executeRequestFileOrderSourceContent: RequestFileOrderSourceContentExecutor)
+  (implicit ec: ExecutionContext)
 extends CommandExecutor
 with CommandHandlerOverview
 with CommandHandlerDetails {
@@ -48,7 +51,7 @@ with CommandHandlerDetails {
       case command: FileCommand ⇒ Future.successful(FileCommandExecutor.executeCommand(command))
       case command: TaskCommand ⇒ taskHandler.execute(command, meta)
       case command: TerminateOrAbort ⇒ taskHandler.execute(command, meta)
-      case command: RequestFileOrderSourceContent ⇒ RequestFileOrderSourceContentExecutor.apply(command)
+      case command: RequestFileOrderSourceContent ⇒ executeRequestFileOrderSourceContent(command)
     }) map { response ⇒
       logger.debug(s"Response to $id ${command.getClass.getSimpleName}: $response")
       response.asInstanceOf[command.Response]

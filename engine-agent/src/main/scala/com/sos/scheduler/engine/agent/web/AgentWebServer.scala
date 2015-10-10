@@ -11,9 +11,8 @@ import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import spray.can.Http
 import spray.can.Http.Unbind
 
@@ -23,8 +22,8 @@ import spray.can.Http.Unbind
 @Singleton
 final class AgentWebServer @Inject private(
   conf: AgentConfiguration,
-  injector: Injector,
-  private implicit val actorSystem: ActorSystem)
+  injector: Injector)(
+  implicit actorSystem: ActorSystem, ec: ExecutionContext)
 extends AutoCloseable {
 
   private val webServiceActorRef = actorSystem.actorOf(Props { injector.instance[WebServiceActor] }, "AgentWebService")
