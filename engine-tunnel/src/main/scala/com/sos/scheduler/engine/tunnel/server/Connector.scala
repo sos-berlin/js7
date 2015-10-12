@@ -4,7 +4,7 @@ import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.scalautil.{SetOnce, Logger}
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.Connector._
@@ -32,7 +32,7 @@ private[server] final class Connector private(tcp: ActorRef, connected: Tcp.Conn
 extends Actor with FSM[State, Data] {
   import connected.remoteAddress
 
-  private var tunnelId: TunnelId = null
+  private val tunnelIdOnce = new SetOnce[TunnelId]
   private val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, connected) })
   private var messageTcpBridgeTerminated = false
 
@@ -45,7 +45,7 @@ extends Actor with FSM[State, Data] {
     case Event(MessageTcpBridge.MessageReceived(message), NoData) ⇒
       val connectionMessage = JsonParser(message.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
       logger.trace(s"$connectionMessage")
-      tunnelId = connectionMessage.tunnelToken.id
+      tunnelIdOnce := connectionMessage.tunnelToken.id
       context.parent ! AssociatedWithTunnelId(connectionMessage.tunnelToken, remoteAddress)
       goto(ExpectingRequest) using NoData
 
@@ -109,7 +109,7 @@ extends Actor with FSM[State, Data] {
 
   override def toString = s"Connector($tunnelIdString)"
 
-  private def tunnelIdString = if (tunnelId == null) "tunnel is not yet established" else tunnelId.string
+  private def tunnelIdString = tunnelIdOnce toStringOr "tunnel server endpoint has not yet connected"
 }
 
 private[server] object Connector {
