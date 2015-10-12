@@ -3,37 +3,51 @@ package com.sos.scheduler.engine.common.scalautil
 import java.util.concurrent.atomic.AtomicReference
 
 /**
+ * Variable which can be set only once. Thread-safe.
+ *
  * @author Joacim Zschimmer
  */
 final class SetOnce[A] {
-  private val value = new AtomicReference[A]
+  private val ref = new AtomicReference[A]
 
+  /**
+   * The value of the set variable.
+   *
+   * @throws IllegalStateException
+   */
   def apply() = getOrElse { throw new IllegalStateException("Value is not yet set") }
 
   override def toString = toStringOr("(not yet set)")
 
   @inline def toStringOr(or: ⇒ String): String =
-    value.get() match {
+    ref.get() match {
       case null ⇒ or
       case o ⇒ o.toString
     }
 
   @inline def getOrElse[B >: A](els: ⇒ B) =
-    value.get() match {
+    ref.get() match {
       case null ⇒ els
       case o ⇒ o
     }
 
-  def get = Option(value.get())
-
-  def isEmpty = value == null
-
-  def nonEmpty = value == null
+  def get = Option(ref.get())
 
   def isDefined = nonEmpty
 
-  def :=(a: A): Unit = {
-    val ok = value.compareAndSet(null.asInstanceOf[A], a)
-    if (!ok) throw new IllegalStateException("Already set")
+  def nonEmpty = ref.get != null
+
+  def isEmpty = ref.get == null
+
+  /**
+   * Sets the variable.
+   * Thread-safe.
+   * May be called only once.
+   *
+   * @throws IllegalStateException
+   */
+  def :=(value: A): Unit = {
+    val ok = ref.compareAndSet(null.asInstanceOf[A], value)
+    if (!ok) throw new IllegalStateException(s"SetOnce[${ref.get.getClass.getName}] has already been set")
   }
 }
