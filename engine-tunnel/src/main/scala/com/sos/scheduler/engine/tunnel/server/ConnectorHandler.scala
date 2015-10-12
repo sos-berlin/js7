@@ -6,13 +6,14 @@ import akka.agent.Agent
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
-import com.sos.scheduler.engine.common.scalautil.{SetOnce, Logger}
+import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.Instant.now
 import java.time.{Duration, Instant}
+import scala.PartialFunction.cond
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Promise}
 import scala.util.control.NonFatal
@@ -28,7 +29,7 @@ private[tunnel] final class ConnectorHandler private(inactivityTimeout: Duration
   override def supervisorStrategy = stoppingStrategy
 
   private val register = mutable.Map[TunnelId, Handle]() withDefault { id ⇒ throw new NoSuchElementException(s"Unknown $id") }
-  private var tcpAddressOption: Option[InetSocketAddress] = None
+  private val tcpAddressOnce = new SetOnce[InetSocketAddress]
 
   TunnelToken.newSecret()  // Check random generator
 
@@ -41,7 +42,7 @@ private[tunnel] final class ConnectorHandler private(inactivityTimeout: Duration
   def starting(respondTo: ActorRef): Receive = {
     case bound: Tcp.Bound ⇒
       logger.debug(s"$bound")
-      tcpAddressOption = Some(bound.localAddress)
+      tcpAddressOnce := bound.localAddress
       respondTo ! Success(bound)
       become(ready)
 
@@ -140,7 +141,7 @@ private[tunnel] final class ConnectorHandler private(inactivityTimeout: Duration
 
     case GetOverview ⇒
       sender() ! TunnelHandlerOverview(
-        tcpAddress = tcpAddressOption map { _.toString },
+        tcpAddress = tcpAddressOnce.get map { _.toString },
         tunnelCount = register.size)
 
     case GetTunnelOverviews ⇒
@@ -174,7 +175,8 @@ private[tunnel] final class ConnectorHandler private(inactivityTimeout: Duration
 
   private def getTunnelIdByActor(actorRef: ActorRef): Option[TunnelId] =
     register.iterator collectFirst {
-      case (id, handle) if PartialFunction.cond(handle.state) { case Handle.ConnectedConnector(connector) ⇒ connector == actorRef } ⇒ id }
+      case (id, handle) if cond(handle.state) { case Handle.ConnectedConnector(connector) ⇒ connector == actorRef } ⇒ id
+    }
 }
 
 private[tunnel] object ConnectorHandler {
