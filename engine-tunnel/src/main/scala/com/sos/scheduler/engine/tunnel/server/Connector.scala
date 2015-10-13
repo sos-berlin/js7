@@ -4,7 +4,7 @@ import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.scalautil.{SetOnce, Logger}
+import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.Connector._
@@ -54,9 +54,8 @@ extends Actor with FSM[State, Data] {
       goto(ExpectingRequest) using NoData
 
     case Event(MessageTcpBridge.PeerClosed, Respond(responsePromise)) ⇒
-      val e = new RuntimeException(s"Peer $remoteAddress has closed the connection while expecting a response")
-      responsePromise.failure(e)
-      stop(FSM.Failure(e))
+      responsePromise.failure(new RuntimeException(s"$toString: Peer has closed the connection while expecting a response"))
+      stop()
 
     case Event(MessageTcpBridge.Failed(throwable), Respond(responsePromise)) ⇒
       responsePromise.failure(throwable)
@@ -95,21 +94,23 @@ extends Actor with FSM[State, Data] {
 
     case Event(closed: Tcp.ConnectionClosed, data) ⇒
       logger.debug(s"$closed")
-      val exception = new RuntimeException(s"Connection with $remoteAddress has unexpectedly been closed: $closed")
+      val exception = new RuntimeException(s"$toString: Connection has unexpectedly been closed: $closed")
       data match {
-        case Respond(responsePromise) ⇒ responsePromise.failure(exception)
-        case _ ⇒
+        case Respond(responsePromise) ⇒
+          responsePromise.failure(exception)
+          stop()
+        case _ ⇒ stop(FSM.Failure(exception))
       }
-      stop(FSM.Failure(exception))
 
     case Event(Terminated(_), _) ⇒
       messageTcpBridgeTerminated = true
       stop()
   }
 
-  override def toString = s"Connector($tunnelIdString)"
-
-  private def tunnelIdString = tunnelIdOnce toStringOr "tunnel server endpoint has not yet connected"
+  override def toString = {
+    val s = tunnelIdOnce toStringOr "tunnel"
+    s"Connector($s server endpoint $remoteAddress)"
+  }
 }
 
 private[server] object Connector {
@@ -136,7 +137,7 @@ private[server] object Connector {
   }
 
   private[server] sealed trait State
-  private case object ExpectingRequest extends State {}
+  private case object ExpectingRequest extends State
   private case object ExpectingMessageFromTcp extends State
   private case object Closing extends State
 
