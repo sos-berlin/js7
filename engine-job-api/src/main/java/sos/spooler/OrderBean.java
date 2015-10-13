@@ -163,6 +163,10 @@ public class OrderBean implements Bean<Order> {
         return delegate.ignore_max_orders();
     }
 
+    public String getHistory_id() {
+        return delegate.history_id();
+    }
+
     @Override public Order getDelegate() {
         return delegate;
     }
