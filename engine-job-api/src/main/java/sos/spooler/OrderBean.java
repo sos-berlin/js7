@@ -167,6 +167,10 @@ public class OrderBean implements Bean<Order> {
         return delegate.history_id();
     }
 
+    public String getLast_error() {
+        return delegate.last_error();
+    }
+
     @Override public Order getDelegate() {
         return delegate;
     }
