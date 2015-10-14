@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.touchAndDeleteWithCloser
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import java.nio.file.Files.{createTempDirectory, delete, setLastModifiedTime}
+import java.nio.file.Files._
 import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
 import java.time.ZoneOffset.UTC
@@ -36,7 +36,11 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       for (entry ← expectedResponse.files) {
         val path = Paths.get(entry.path)
         touchAndDeleteWithCloser(path)
-        setLastModifiedTime(path, FileTime.fromMillis(entry.lastModifiedTime))
+        val t = entry.lastModifiedTime
+        setLastModifiedTime(path, FileTime.fromMillis(t))
+        withClue("Checking setLastModifiedTime's effect with getLastModifiedTime: ") {
+          assert(getLastModifiedTime(path).toMillis == t)  // ??? Sometimes there is a difference and RequestFileOrderSourceContent returns current time
+        }
       }
       val knownFile = dir / s"$MatchingString-known"
       touchAndDeleteWithCloser(knownFile)
