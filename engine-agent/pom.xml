@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.sos-berlin.jobscheduler.engine</groupId>
         <artifactId>engine</artifactId>
-        <version>1.9.7</version>
+        <version>1.9.8-SNAPSHOT</version>
     </parent>
     
     <name>${project.artifactId}</name>
@@ -214,6 +214,6 @@
     </dependencies>
 
   <scm>
-    <tag>v1.9.7</tag>
+    <tag>v@{releaseVersion}</tag>
   </scm>
 </project>
