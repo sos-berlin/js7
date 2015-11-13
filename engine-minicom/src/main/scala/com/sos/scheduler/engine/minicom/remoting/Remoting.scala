@@ -39,12 +39,12 @@ extends ServerRemoting with ClientRemoting {
 
   def run(): Unit = {
     val firstRequest = dialogConnection.receiveFirstMessage()
-    val keepAliveThread = new KeepAliveThread
-    keepAliveThread.start()
+    val keepaliveThread = new KeepaliveThread
+    keepaliveThread.start()
     try continue(firstRequest)
     finally {
-      keepAliveThread.interrupt()
-      keepAliveThread.join()
+      keepaliveThread.interrupt()
+      keepaliveThread.join()
     }
 
     @tailrec
@@ -95,7 +95,7 @@ extends ServerRemoting with ClientRemoting {
       val result = invocable.call(methodName, arguments)
       InvokeResult(result)
 
-    case KeepAliveCall ⇒ EmptyResult
+    case KeepaliveCall ⇒ EmptyResult
   }
 
   private[remoting] def newProxy(proxyId: ProxyId, name: String, proxyClsid: CLSID, properties: Iterable[(String, Any)]) = {
@@ -121,7 +121,7 @@ extends ServerRemoting with ClientRemoting {
     value
   }
 
-  def keepAlive(): Unit = sendReceive(KeepAliveCall).readEmptyResult()
+  def sendReceiveKeepalive(): Unit = sendReceive(KeepaliveCall).readEmptyResult()
 
   private def sendReceive(call: Call): ResultDeserializer = {
     val callMessage = serializeCall(proxyRegister, call)
@@ -144,22 +144,24 @@ extends ServerRemoting with ClientRemoting {
    */
   def invocables[A : ClassTag]: immutable.Iterable[A] = proxyRegister.invocables[A]
 
-  private class KeepAliveThread extends Thread {
-    setName("Remoting.KeepAlive")
+  private class KeepaliveThread extends Thread {
+    setName("Remoting.Keepalive")
 
     override def run() =
       try
         while (true) {
-          sleep(5 * 60.s)
-          keepAlive()
+          sleep(KeepalivePause)
+          sendReceiveKeepalive()
         }
       catch {
         case _: InterruptedException ⇒
+        case NonFatal(t) ⇒ logger.error(t.toString)
       }
   }
 }
 
 object Remoting {
+  private val KeepalivePause = (5 * 60).s
   private type CreateInvocableByCLSID = (CLSID, IID) ⇒ Invocable
   private val logger = Logger(getClass)
 }
