@@ -6,7 +6,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import scala.concurrent.duration._
+import scala.concurrent.duration.{DurationInt, DurationLong}
 
 @RunWith(classOf[JUnitRunner])
 final class ScalaTimeTest extends FreeSpec {
@@ -63,6 +63,10 @@ final class ScalaTimeTest extends FreeSpec {
 //      (7L.days: Duration).toMillis shouldEqual (7*24*3600*1000)
 //    }
 
+    "-Duration" in {
+      assert(-7.s == Duration.ofSeconds(-7))
+    }
+
     "Duration + Duration" in {
       (7.s + 2.ms: Duration).toMillis shouldEqual (7*1000 + 2)
     }
@@ -81,6 +85,16 @@ final class ScalaTimeTest extends FreeSpec {
 
     "Long * Duration" in {
       (3L * 7.s: Duration).toMillis shouldEqual (3 * 7*1000)
+    }
+
+    "min" in {
+      assert((1.s min 2.s) == 1.s)
+      assert((-1.s min -2.s) == -2.s)
+    }
+
+    "max" in {
+      assert((1.s max 2.s) == 2.s)
+      assert((-1.s max -2.s) == -1.s)
     }
 
     "pretty" in {
