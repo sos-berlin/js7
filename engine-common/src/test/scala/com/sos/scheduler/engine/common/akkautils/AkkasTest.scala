@@ -33,4 +33,13 @@ final class AkkasTest extends FreeSpec {
     val config = ConfigFactory.parseString("akka.scheduler.tick-duration = 1s")
     assert(maximumTimeout(ActorSystem("TEST", config).settings) == Timeout.apply(millis, TimeUnit.MILLISECONDS))
   }
+
+  "DummyCancellable" in {
+    val c = new DummyCancellable
+    assert(!c.isCancelled)
+    assert(c.cancel())
+    assert(c.isCancelled)
+    assert(!c.cancel())
+    assert(c.isCancelled)
+  }
 }
