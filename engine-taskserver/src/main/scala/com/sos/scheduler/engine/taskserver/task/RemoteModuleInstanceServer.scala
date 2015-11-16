@@ -91,7 +91,7 @@ extends HasCloser with Invocable with HasSendProcessSignal {
 
   override def toString = List(
       s"${getClass.getSimpleName}",
-      Option(taskArguments) map { t ⇒ s"(${t.jobName}:${t.taskId})" } getOrElse ""
+      Option(taskArguments) map { t ⇒ s"(task ${t.jobName}:${t.taskId.string})" } getOrElse ""
     ).mkString("")
 }
 
