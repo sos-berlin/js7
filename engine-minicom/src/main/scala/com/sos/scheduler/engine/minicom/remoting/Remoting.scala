@@ -16,6 +16,7 @@ import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializ
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
 import com.sos.scheduler.engine.minicom.remoting.serial.{ResultDeserializer, ServerRemoting}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
+import java.time.Duration
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
 import scala.collection.{breakOut, immutable}
@@ -31,7 +32,8 @@ final class Remoting(
   invocableFactories: Iterable[InvocableFactory],
   proxyIDispatchFactories: Iterable[ProxyIDispatchFactory],
   name: String,
-  returnAfterReleaseOf: Invocable ⇒ Boolean = _ ⇒ false)
+  returnAfterReleaseOf: Invocable ⇒ Boolean = _ ⇒ false,
+  inactivityTimeout: Duration)
 extends ServerRemoting with ClientRemoting {
 
   private val logger = Logger.withPrefix(getClass, name)
@@ -161,7 +163,7 @@ extends ServerRemoting with ClientRemoting {
     override def run() =
       try
         while (true) {
-          sleep(KeepalivePause)
+          sleep(1.s max inactivityTimeout)
           sendReceiveKeepalive()
         }
       catch {
@@ -172,6 +174,5 @@ extends ServerRemoting with ClientRemoting {
 }
 
 object Remoting {
-  private val KeepalivePause = (5 * 60).s
   private type CreateInvocableByCLSID = (CLSID, IID) ⇒ Invocable
 }

@@ -64,7 +64,8 @@ extends AgentTaskFactory {
       tunnelToken = tunnelToken,
       directory = agentConfiguration.directory,
       environment = agentConfiguration.environment,
-      killScriptFileOption = agentConfiguration.killScriptFile)
+      killScriptFileOption = agentConfiguration.killScriptFile,
+      tunnelInactivityTimeout = agentConfiguration.tunnelInactivityTimeout)
     val taskServer =
       if (sys.props contains UseThreadPropertyName) { // For debugging
         logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")

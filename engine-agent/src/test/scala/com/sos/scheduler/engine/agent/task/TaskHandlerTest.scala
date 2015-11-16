@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.task
 
 import akka.actor.{Actor, ActorSystem, Props}
-import com.google.inject.{Guice, Provides}
+import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}

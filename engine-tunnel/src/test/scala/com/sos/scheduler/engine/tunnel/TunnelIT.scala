@@ -10,7 +10,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.tunnel.TunnelIT._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
+import com.sos.scheduler.engine.tunnel.server.{TunnelConfiguration, TunnelListener, TunnelServer}
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -29,7 +29,7 @@ import scala.util.Random
 final class TunnelIT extends FreeSpec {
 
   private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
-  private lazy val tunnelServer = new TunnelServer(actorSystem)
+  private lazy val tunnelServer = new TunnelServer(actorSystem, TunnelConfiguration(inactivityTimeout = 60.s))
   import actorSystem.dispatcher
 
   "Simple" in {

@@ -4,11 +4,14 @@ import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
+import com.sos.scheduler.engine.common.akkautils.Akkas.DummyCancellable
 import com.sos.scheduler.engine.common.scalautil.{SetOnce, Logger}
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.Connector._
 import java.net.InetSocketAddress
+import java.time.{Duration, Instant}
 import scala.concurrent.Promise
 import spray.json.JsonParser
 
@@ -28,17 +31,36 @@ import spray.json.JsonParser
  *
  * @author Joacim Zschimmer
  */
-private[server] final class Connector private(tcp: ActorRef, connected: Tcp.Connected)
+private[server] final class Connector private(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, inactivityTimeout: Duration)
 extends Actor with FSM[State, Data] {
   import connected.remoteAddress
+  import context.{dispatcher, parent, system, watch}
 
   private val tunnelIdOnce = new SetOnce[TunnelId]
   private val messageTcpBridge = context.actorOf(MessageTcpBridge.props(tcp, connected))
   private var messageTcpBridgeTerminated = false
 
+  private object inactivityWatchdog {
+    private var timer: Cancellable = new DummyCancellable
+
+    def stop() = timer.cancel()
+
+    def restart(): Unit = {
+      timer.cancel()
+      val since = Instant.now()
+      timer = system.scheduler.scheduleOnce(inactivityTimeout.toFiniteDuration) {
+        val msg = BecameInactive(tunnelIdOnce(), since)
+        logger.debug(s"$msg")
+        connectorHandler ! msg
+      }
+    }
+  }
+
   override def supervisorStrategy = stoppingStrategy
 
-  context.watch(messageTcpBridge)
+  override def postStop() = inactivityWatchdog.stop()
+
+  watch(messageTcpBridge)
   startWith(ExpectingMessageFromTcp, NoData)
 
   when(ExpectingMessageFromTcp) {
@@ -46,7 +68,7 @@ extends Actor with FSM[State, Data] {
       val connectionMessage = JsonParser(message.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
       logger.trace(s"$connectionMessage")
       tunnelIdOnce := connectionMessage.tunnelToken.id
-      context.parent ! AssociatedWithTunnelId(connectionMessage.tunnelToken, remoteAddress)
+      parent ! AssociatedWithTunnelId(connectionMessage.tunnelToken, remoteAddress)
       goto(ExpectingRequest) using NoData
 
     case Event(MessageTcpBridge.MessageReceived(message), Respond(responsePromise)) ⇒
@@ -55,8 +77,7 @@ extends Actor with FSM[State, Data] {
 
     case Event(MessageTcpBridge.PeerClosed, Respond(responsePromise)) ⇒
       responsePromise.failure(new RuntimeException(s"$toString: Peer has closed the connection while expecting a response"))
-      responsePromise.failure(e)
-      stop(FSM.Failure(e))
+      stop()
 
     case Event(MessageTcpBridge.Failed(throwable), Respond(responsePromise)) ⇒
       responsePromise.failure(throwable)
@@ -108,6 +129,11 @@ extends Actor with FSM[State, Data] {
       stop()
   }
 
+  onTransition {
+    case _ -> (ExpectingMessageFromTcp | ExpectingRequest) ⇒ inactivityWatchdog.restart()
+    case _ -> Closing ⇒ inactivityWatchdog.stop()
+  }
+
   override def toString = {
     val s = tunnelIdOnce toStringOr "tunnel"
     s"Connector($s server endpoint $remoteAddress)"
@@ -117,8 +143,8 @@ extends Actor with FSM[State, Data] {
 private[server] object Connector {
   private val logger = Logger(getClass)
 
-  def props(tcp: ActorRef, connected: Tcp.Connected) = Props { new Connector(tcp, connected) }
-
+  private[server] def props(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, inactivityTimeout: Duration) =
+    Props { new Connector(connectorHandler, tcp, connected, inactivityTimeout) }
 
   // Actor messages commanding this actor
 
@@ -136,6 +162,8 @@ private[server] object Connector {
   private[server] final case class Response(message: ByteString) {
     override def toString = s"Response(${message.size} bytes)"
   }
+
+  private[server] final case class BecameInactive(tunnelId: TunnelId, since: Instant)
 
   private[server] sealed trait State
   private case object ExpectingRequest extends State

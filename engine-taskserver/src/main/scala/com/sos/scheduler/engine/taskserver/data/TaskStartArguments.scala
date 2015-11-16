@@ -1,13 +1,16 @@
 package com.sos.scheduler.engine.taskserver.data
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.TcpUtils.parseTcpPort
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments.toInetSocketAddress
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}
+import java.time.Duration
 import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._
 
@@ -22,7 +25,8 @@ final case class TaskStartArguments(
   directory: Path,
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
   logStdoutAndStderr: Boolean = false,
-  killScriptFileOption: Option[Path] = None)
+  killScriptFileOption: Option[Path] = None,
+  tunnelInactivityTimeout: Duration)
 {
   def masterInetSocketAddress = toInetSocketAddress(masterAddress)
 }
@@ -40,13 +44,13 @@ object TaskStartArguments {
       tunnelToken = TunnelToken(TunnelId("TEST-TUNNEL"), TunnelToken.Secret("TUNNEL-SECRET")),
       directory = directory,
       stdFileMap = stdFileMap,
-      agentTaskId = AgentTaskId("1-1")
-    )
+      agentTaskId = AgentTaskId("1-1"),
+      tunnelInactivityTimeout = 60.s)
 
   private def toInetSocketAddress(string: String): InetSocketAddress =
     string match {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }
 
-  implicit val MyJsonFormat = jsonFormat8(apply)
+  implicit val MyJsonFormat = jsonFormat9(apply)
 }

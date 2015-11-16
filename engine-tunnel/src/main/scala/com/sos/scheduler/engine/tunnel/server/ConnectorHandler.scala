@@ -6,12 +6,13 @@ import akka.agent.Agent
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.scalautil.{SetOnce, Logger}
+import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
-import java.time.Instant
 import java.time.Instant.now
+import java.time.{Duration, Instant}
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Promise}
 import scala.util.control.NonFatal
@@ -20,7 +21,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * @author Joacim Zschimmer
  */
-private[tunnel] final class ConnectorHandler private extends Actor {
+private[tunnel] final class ConnectorHandler private(inactivityTimeout: Duration) extends Actor {
 
   import context.{actorOf, become, dispatcher, stop, system, watch}
 
@@ -57,7 +58,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         val peerPort = connected.remoteAddress.getPort
         s"Connector-TCP-$peerInterface:$peerPort"
       }
-      val connector = actorOf(Connector.props(tcp = sender(), connected), name = name)
+      val connector = actorOf(Connector.props(connectorHandler = self, tcp = sender(), connected, inactivityTimeout = inactivityTimeout), name = name)
       watch(connector)
 
     case m @ NewTunnel(id, listener, startedByIpOption) ⇒
@@ -154,6 +155,13 @@ private[tunnel] final class ConnectorHandler private extends Actor {
             currentRequestIssuedAt = handle.statistics.currentRequestIssuedAt,
             handle.statistics.failure map { _.toString }))
       }).toVector
+
+    case Connector.BecameInactive(tunnelId, since) ⇒
+      for (handle ← register.get(tunnelId); callback ← handle.onInactivityCallback) {
+        ignoreException(logger.error) {
+          callback(since)
+        }
+      }
   }
 
   private def removeHandle(id: TunnelId): Unit = register -= id
@@ -173,7 +181,7 @@ private[tunnel] object ConnectorHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
 
-  private[tunnel] def props = Props { new ConnectorHandler }
+  private[tunnel] def props(inactivityTimeout: Duration) = Props { new ConnectorHandler(inactivityTimeout = inactivityTimeout) }
 
   sealed trait Command
 
@@ -206,6 +214,7 @@ private[tunnel] object ConnectorHandler {
     var state: Handle.State = Handle.Uninitialized,
     val statistics: Statistics = Statistics())
   extends TunnelHandle {
+    private[ConnectorHandler] val onInactivityCallback = new SetOnce[Instant ⇒ Unit]
 
     def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(tunnelToken)
 
@@ -222,6 +231,10 @@ private[tunnel] object ConnectorHandler {
     def onRequestSent(request: Connector.Request)(implicit ec:ExecutionContext): Unit = {
       statistics.updateWith(request)
       listener send { _.onRequest(request.message) }
+    }
+
+    def onInactivity(callback: Instant ⇒ Unit) = {
+      onInactivityCallback := callback
     }
   }
 

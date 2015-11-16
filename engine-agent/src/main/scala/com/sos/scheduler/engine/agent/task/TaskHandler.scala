@@ -53,23 +53,42 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
     val task = newAgentTask(command, meta.clientIpOption)
     tasks += task
     task.start()
+    task.onTunnelInactivity(terminateAfterTunnelInactivity(task))
     StartTaskResponse(task.id, task.tunnelToken)
+  }
+
+  private def terminateAfterTunnelInactivity(task: AgentTask)(since: Instant): Unit = {
+    logger.error(s"$task has no connection activity since $since. Task is being killed")
+    task.closeTunnel()  // This terminates Remoting and then SimpleTaskServer
+    task.sendProcessSignal(SIGTERM)
+    task.terminated.onComplete { case _ ⇒ removeTaskAfterTermination(task) }
+    Future {
+      blocking { sleep(TunnelInactivitySigtermDuration) }
+      tryKillTask(task)
+    }
   }
 
   private def executeCloseTask(id: AgentTaskId, kill: Boolean) = {
     val task = tasks(id)
-    if (kill) ignoreException(logger.error) {
-      task.sendProcessSignal(SIGKILL)
-    }
+    if (kill) tryKillTask(task)
     task.terminated recover {
       case t ⇒ logger.error(s"$task: $t", t)
     } map { _ ⇒
-      // Now, the master has completed all API calls
-      logger.info(s"$task terminated")
-      task.close()
-      tasks -= task.id
+      // Now, the master has completed all API calls or the connection has been closed
+      removeTaskAfterTermination(task)
       EmptyResponse
     }
+  }
+
+  private def tryKillTask(task: AgentTask): Unit =
+    ignoreException(logger.error) {
+      task.sendProcessSignal(SIGKILL)
+    }
+
+  private def removeTaskAfterTermination(task: AgentTask): Unit = {
+    logger.info(s"$task terminated")
+    task.close()
+    tasks -= task.id
   }
 
   private def executeSendProcessSignal(id: AgentTaskId, signal: ProcessSignal) = Future {
@@ -146,6 +165,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
 private object TaskHandler {
   private val logger = Logger(getClass)
   private val ImmediateTerminationDelay = 1.s  // Allow HTTP with termination command request to be responded
+  private val TunnelInactivitySigtermDuration = 2.s  // Time between SIGTERM and SIGKILL
 
   private class TaskRegister extends Register[AgentTask] {
     override def onAdded(task: AgentTask) = logger.info(s"$task registered")

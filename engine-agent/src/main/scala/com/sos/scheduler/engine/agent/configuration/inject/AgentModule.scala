@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.TaskHandler
 import com.sos.scheduler.engine.agent.web.common.ExtraWebService
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
+import com.sos.scheduler.engine.tunnel.server.TunnelConfiguration
 import javax.inject.Singleton
 import scala.collection.immutable
 
@@ -23,6 +24,7 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
     bindInstance[Closer](closer)
     bindInstance[AgentConfiguration](agentConfiguration)
     provideSingleton[ActorSystem] { newActorSystem("JobScheduler-Agent")(closer) }
+    bindInstance[TunnelConfiguration](TunnelConfiguration(inactivityTimeout = agentConfiguration.tunnelInactivityTimeout))
   }
 
   @Provides @Singleton

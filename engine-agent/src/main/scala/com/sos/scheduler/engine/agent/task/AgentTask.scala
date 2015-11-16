@@ -31,14 +31,15 @@ with HasKey {
 
   protected def taskServer: TaskServer
 
-  private
-  val startedAt = Instant.now()
+  private val startedAt = Instant.now()
 
   final def closeTunnelAndTaskServer() = closeOrdered(tunnel, taskServer)  // Close tunnel before taskServer
 
-  final def closeTaskServer() = taskServer.close()
+  final def closeTunnel() = tunnel.close()
 
   final def start(): Unit = taskServer.start()
+
+  final def onTunnelInactivity(callback: Instant ⇒ Unit): Unit = tunnel.onInactivity(callback)
 
   final def sendProcessSignal(signal: ProcessSignal): Unit = taskServer.sendProcessSignal(signal)
 

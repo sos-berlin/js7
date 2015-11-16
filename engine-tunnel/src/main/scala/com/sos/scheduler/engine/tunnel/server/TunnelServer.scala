@@ -23,9 +23,9 @@ import scala.util.Try
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem) extends AutoCloseable {
+final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem, conf: TunnelConfiguration) extends AutoCloseable {
 
-  private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props, name = "ConnectorHandler")
+  private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props(inactivityTimeout = conf.inactivityTimeout), name = "ConnectorHandler")
   private implicit val askTimeout = Timeout(ShortTimeout.toFiniteDuration)
 
   private[tunnel] val proxyAddress: InetSocketAddress = {

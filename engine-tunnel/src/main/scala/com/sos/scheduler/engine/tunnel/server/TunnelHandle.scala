@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.tunnel.server
 
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.{InetAddress, InetSocketAddress}
+import java.time.Instant
 import scala.concurrent.Future
 
 /**
@@ -11,9 +12,14 @@ import scala.concurrent.Future
  * @author Joacim Zschimmer
  */
 trait TunnelHandle extends AutoCloseable {
+
   final def id: TunnelId = tunnelToken.id
 
+  def onInactivity(callback: Instant ⇒ Unit): Unit
+
   def tunnelToken: TunnelToken
+
   def startedByHttpIpOption: Option[InetAddress]
+
   def connected: Future[InetSocketAddress]
 }

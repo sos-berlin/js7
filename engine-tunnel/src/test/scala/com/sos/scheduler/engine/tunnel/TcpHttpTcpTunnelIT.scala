@@ -13,7 +13,7 @@ import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcp
 import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
 import com.sos.scheduler.engine.tunnel.client.TcpToHttpBridge
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
+import com.sos.scheduler.engine.tunnel.server.{TunnelConfiguration, TunnelListener, TunnelServer}
 import com.sos.scheduler.engine.tunnel.web.TunnelWebService._
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
@@ -131,7 +131,7 @@ object TcpHttpTcpTunnelIT {
 
   private class ServerSideTunnelHandler {
     val actorSystem = ActorSystem(getClass.getSimpleName)
-    val tunnelServer = new TunnelServer(actorSystem)
+    val tunnelServer = new TunnelServer(actorSystem, TunnelConfiguration(inactivityTimeout = 60.s))
     val uri = startWebServer()
     import actorSystem.dispatcher
     val listener = Agent(new TestTunnelListener)
