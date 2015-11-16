@@ -4,7 +4,7 @@ import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.scalautil.{SetOnce, Logger}
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.Connector._
@@ -32,8 +32,8 @@ private[server] final class Connector private(tcp: ActorRef, connected: Tcp.Conn
 extends Actor with FSM[State, Data] {
   import connected.remoteAddress
 
-  private var tunnelId: TunnelId = null
-  private val messageTcpBridge = context.actorOf(Props { new MessageTcpBridge(tcp, connected) })
+  private val tunnelIdOnce = new SetOnce[TunnelId]
+  private val messageTcpBridge = context.actorOf(MessageTcpBridge.props(tcp, connected))
   private var messageTcpBridgeTerminated = false
 
   override def supervisorStrategy = stoppingStrategy
@@ -45,7 +45,7 @@ extends Actor with FSM[State, Data] {
     case Event(MessageTcpBridge.MessageReceived(message), NoData) ⇒
       val connectionMessage = JsonParser(message.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
       logger.trace(s"$connectionMessage")
-      tunnelId = connectionMessage.tunnelToken.id
+      tunnelIdOnce := connectionMessage.tunnelToken.id
       context.parent ! AssociatedWithTunnelId(connectionMessage.tunnelToken, remoteAddress)
       goto(ExpectingRequest) using NoData
 
@@ -94,7 +94,6 @@ extends Actor with FSM[State, Data] {
       goto(Closing) using NoData
 
     case Event(closed: Tcp.ConnectionClosed, data) ⇒
-      logger.debug(s"$closed")
       val exception = new RuntimeException(s"Connection with $remoteAddress has unexpectedly been closed: $closed")
       data match {
         case Respond(responsePromise) ⇒ responsePromise.failure(exception)
@@ -107,9 +106,10 @@ extends Actor with FSM[State, Data] {
       stop()
   }
 
-  override def toString = s"Connector($tunnelIdString)"
-
-  private def tunnelIdString = if (tunnelId == null) "tunnel is not yet established" else tunnelId.string
+  override def toString = {
+    val s = tunnelIdOnce toStringOr "tunnel"
+    s"Connector($s server endpoint $remoteAddress)"
+  }
 }
 
 private[server] object Connector {
@@ -136,7 +136,7 @@ private[server] object Connector {
   }
 
   private[server] sealed trait State
-  private case object ExpectingRequest extends State {}
+  private case object ExpectingRequest extends State
   private case object ExpectingMessageFromTcp extends State
   private case object Closing extends State
 

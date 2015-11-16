@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.tcp
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -16,7 +16,7 @@ import com.sos.scheduler.engine.common.tcp.MessageTcpBridge._
  *
  * @author Joacim Zschimmer
  */
-final class MessageTcpBridge(tcp: ActorRef, connected: Tcp.Connected)
+final class MessageTcpBridge private(tcp: ActorRef, connected: Tcp.Connected)
 extends Actor {
 
   import connected.{localAddress, remoteAddress}
@@ -84,6 +84,8 @@ extends Actor {
 
 object MessageTcpBridge {
   val MessageSizeMaximum = 100*1000*1000
+
+  def props(tcp: ActorRef, connected: Tcp.Connected) = Props { new MessageTcpBridge(tcp, connected) }
 
   sealed trait Command
 

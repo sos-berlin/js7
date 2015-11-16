@@ -58,7 +58,7 @@ extends AutoCloseable {
       case connected: Tcp.Connected ⇒
         startedPromise.success(())
         val tcp = sender()
-        val bridge = actorOf(Props { new MessageTcpBridge(tcp, connected) })
+        val bridge = actorOf(MessageTcpBridge.props(tcp, connected), name = "MessageTcpBridge")
         context.watch(bridge)
         for (m ← connectionMessageOption) bridge ! MessageTcpBridge.SendMessage(m)
         become(running(bridge = bridge))
