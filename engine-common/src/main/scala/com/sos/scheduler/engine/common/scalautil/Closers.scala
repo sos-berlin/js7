@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.common.scalautil
 
 import com.google.common.io.Closer
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import scala.language.reflectiveCalls
 
 /**
@@ -64,4 +65,10 @@ object Closers {
     }
 
   def withCloser[A](f: Closer ⇒ A): A = autoClosing(Closer.create())(f)
+
+  def closeOrdered(closeables: AutoCloseable*): Unit = {
+    val closer = Closer.create()
+    closeables.reverseIterator foreach closer.registerAutoCloseable
+    closer.close()
+  }
 }

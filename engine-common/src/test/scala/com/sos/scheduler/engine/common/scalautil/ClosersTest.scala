@@ -9,6 +9,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
+import scala.collection.mutable
 import scala.language.reflectiveCalls
 
 @RunWith(classOf[JUnitRunner])
@@ -65,5 +66,13 @@ final class ClosersTest extends FreeSpec {
       closer.register(a)
     }
     verify(a).close()
+  }
+
+  "closeOrdered" in {
+    val closed = mutable.Buffer[Any]()
+    val a = new AutoCloseable { def close() = closed += this }
+    val b = new AutoCloseable { def close() = closed += this }
+    closeOrdered(a, b)
+    assert(closed == List(a, b))
   }
 }
