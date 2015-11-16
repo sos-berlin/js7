@@ -60,6 +60,8 @@ extends TaskServer {
 
   def sendProcessSignal(signal: ProcessSignal) =
     for (p ← processOnce) p.sendProcessSignal(signal)
+
+  def pidOption = processOnce flatMap { _.pidOption }
 }
 
 object OwnProcessTaskServer {

@@ -30,6 +30,7 @@ extends AutoCloseable {
 
   def overview = TaskOverview(
     id,
+    pid = taskServer.pidOption map { _.number },
     tunnel.id,
     startedAt,
     startedByHttpIp = tunnel.startedByHttpIpOption,

@@ -16,9 +16,9 @@ object Processes {
 
   def processToPidOption(process: Process): Option[Pid] = ProcessesJava8pid.processToPid(process)
 
-  final case class Pid(value: Long)
-
-
+  final case class Pid(number: Long) {
+    def string = number.toString
+  }
 
   def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
 

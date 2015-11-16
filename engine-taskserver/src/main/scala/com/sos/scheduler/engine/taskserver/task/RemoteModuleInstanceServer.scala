@@ -93,6 +93,8 @@ extends HasCloser with Invocable with HasSendProcessSignal {
       s"${getClass.getSimpleName}",
       Option(taskArguments) map { t ⇒ s"(task ${t.jobName}:${t.taskId.string})" } getOrElse ""
     ).mkString("")
+
+  def pidOption = task.pidOption
 }
 
 object RemoteModuleInstanceServer extends InvocableFactory {

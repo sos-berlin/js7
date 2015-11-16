@@ -30,7 +30,7 @@ import scala.util.control.NonFatal
 final class RichProcess private(val processConfiguration: ProcessConfiguration, process: Process)
 extends HasCloser with ClosedFuture {
 
-  private val pidOption = processToPidOption(process)
+  val pidOption = processToPidOption(process)
   private val logger = Logger.withPrefix(getClass, toString)
   /**
    * UTF-8 encoded stdin.

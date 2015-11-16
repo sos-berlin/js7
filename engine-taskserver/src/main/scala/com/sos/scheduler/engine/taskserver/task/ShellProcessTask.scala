@@ -154,6 +154,8 @@ extends HasCloser with Task with HasSendProcessSignal {
   }
 
   override def toString = List(super.toString) ++ (richProcessOnce map { _.toString }) mkString " "
+
+  def pidOption = richProcessOnce flatMap { _.pidOption }
 }
 
 private object ShellProcessTask {

@@ -209,6 +209,8 @@ private object TaskHandlerTest {
         closed = true
       }
     }
+
+    def pidOption = None
   }
 
   private class TestModule(tasks: List[AgentTask]) extends AbstractModule {

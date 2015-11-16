@@ -86,6 +86,8 @@ extends Task with HasCloser {
       instance.spooler_close()
     }
   }
+
+  def pidOption = None
 }
 
 private object JavaProcessTask {

@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.task.process.Processes.Pid
 import scala.concurrent.Future
 
 /**
@@ -15,4 +16,5 @@ trait TaskServer extends AutoCloseable {
   def start(): Unit
   def sendProcessSignal(signal: ProcessSignal): Unit
   def terminated: Future[Unit]
+  def pidOption: Option[Pid]
 }

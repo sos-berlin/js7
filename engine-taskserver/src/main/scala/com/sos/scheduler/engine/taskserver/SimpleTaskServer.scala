@@ -63,6 +63,8 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
   }
 
   override def toString = s"TaskServer(master=${taskStartArguments.masterAddress})"
+
+  def pidOption = (remoting.invocables[RemoteModuleInstanceServer] flatMap { _.pidOption }).headOption
 }
 
 object SimpleTaskServer {
@@ -71,7 +73,7 @@ object SimpleTaskServer {
   private val logger = Logger(getClass)
 
   def runAsMain(startArguments: TaskStartArguments): Unit =
-    autoClosing(new SimpleTaskServer(startArguments, isMain = true)) { taskServer ⇒
+    autoClosing(new SimpleTaskServer(startArguments, isMain = true)(global)) { taskServer ⇒
       taskServer.start()
       awaitResult(taskServer.terminated, MaxDuration)
     }

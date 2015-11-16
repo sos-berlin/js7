@@ -38,6 +38,7 @@ final class TaskServiceTest extends FreeSpec with ScalatestRouteTest with TaskSe
 
     def taskOverview(id: AgentTaskId) = TaskOverview(
       testAgentTaskId,
+      pid = None,
       TunnelId("99"),
       Instant.parse("2015-06-10T12:00:00Z"),
       startedByHttpIp = Some(InetAddress.getByName("127.1.2.3")),
