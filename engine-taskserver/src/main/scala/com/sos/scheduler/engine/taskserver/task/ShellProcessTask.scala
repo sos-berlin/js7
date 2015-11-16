@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.base.process.ProcessSignal._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
+import com.sos.scheduler.engine.common.scalautil.{SetOnce, HasCloser, Logger}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.data.HasSendProcessSignal
@@ -45,7 +45,7 @@ extends HasCloser with Task with HasSendProcessSignal {
   private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",
     stdFiles.copy(stdFileMap = processStdFileMap ++ stdFiles.stdFileMap)).closeWithCloser
   private var startCalled = false
-  private var richProcess: RichProcess = null
+  private val richProcessOnce = new SetOnce[RichProcess]
   private val logger = Logger.withPrefix(getClass, toString)
   private var sigtermForwarder: JavaShutdownHook = null
 
@@ -74,8 +74,7 @@ extends HasCloser with Task with HasSendProcessSignal {
     val (idStringOption, killScriptFileOption) =
       if (taskServerMainTerminatedOption.nonEmpty) (None, None)
       else (Some(agentTaskId.string), killScriptPathOption)  // No idString if this is an own process (due to a monitor), already started with idString
-    require(richProcess == null)
-    richProcess = RichProcess.startShellScript(
+    richProcessOnce := RichProcess.startShellScript(
       ProcessConfiguration(
         processStdFileMap,
         additionalEnvironment = env,
@@ -90,7 +89,12 @@ extends HasCloser with Task with HasSendProcessSignal {
 
   private def deleteFilesWhenProcessClosed(files: Iterable[Path]): Unit = {
     if (files.nonEmpty) {
-      for (_ ← richProcess.closed; _ ← concurrentStdoutStderrWell.closed) RichProcess.tryDeleteFiles(files)
+      for (richProcess ← richProcessOnce;
+           _ ← richProcess.closed;
+           _ ← concurrentStdoutStderrWell.closed)
+      {
+        RichProcess.tryDeleteFiles(files)
+      }
     }
   }
 
@@ -98,17 +102,18 @@ extends HasCloser with Task with HasSendProcessSignal {
 
   def step() = {
     requireState(startCalled)
-    if (richProcess == null)
-      <process.result spooler_process_result="false"/>.toString()
-    else {
-      val rc = richProcess.waitForTermination()
-      if (sigtermForwarder != null) sigtermForwarder.close()
-      concurrentStdoutStderrWell.finish()
-      transferReturnValuesToMaster()
-      val success =
-        try monitorProcessor.postStep(rc.isSuccess)
-        finally monitorProcessor.postTask()
-      <process.result spooler_process_result={success.toString} exit_code={rc.toInt.toString} state_text={concurrentStdoutStderrWell.firstStdoutLine}/>.toString()
+    richProcessOnce.get match {
+      case None ⇒
+        <process.result spooler_process_result="false"/>.toString()
+      case Some(richProcess) ⇒
+        val rc = richProcess.waitForTermination()
+        if (sigtermForwarder != null) sigtermForwarder.close()
+        concurrentStdoutStderrWell.finish()
+        transferReturnValuesToMaster()
+        val success =
+          try monitorProcessor.postStep(rc.isSuccess)
+          finally monitorProcessor.postTask()
+        <process.result spooler_process_result={success.toString} exit_code={rc.toInt.toString} state_text={concurrentStdoutStderrWell.firstStdoutLine}/>.toString()
     }
   }
 
@@ -136,19 +141,19 @@ extends HasCloser with Task with HasSendProcessSignal {
 
   def sendProcessSignal(signal: ProcessSignal) = {
     logger.trace(s"sendProcessSignal $signal")
-    for (p ← Option(richProcess)) p.sendProcessSignal(signal)
+    for (p ← richProcessOnce) p.sendProcessSignal(signal)
   }
 
   @TestOnly
   def files = {
     requireState(startCalled)
-    richProcess match {
-      case null ⇒ Nil
-      case o ⇒ o.processConfiguration.files
+    richProcessOnce.toOption match {
+      case None ⇒ Nil
+      case Some(o) ⇒ o.processConfiguration.files
     }
   }
 
-  override def toString = List(super.toString) ++ (Option(richProcess) map { _.toString }) mkString " "
+  override def toString = List(super.toString) ++ (richProcessOnce map { _.toString }) mkString " "
 }
 
 private object ShellProcessTask {
