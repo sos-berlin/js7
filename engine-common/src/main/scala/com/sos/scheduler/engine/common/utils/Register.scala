@@ -16,29 +16,42 @@ trait Register[V <: HasKey] {
   }
   private val counter = new AtomicInteger
 
-  def isEmpty = keyToValue.isEmpty
+  final def isEmpty = keyToValue.isEmpty
 
-  def nonEmpty = keyToValue.nonEmpty
+  final def nonEmpty = keyToValue.nonEmpty
 
-  def size = keyToValue.size
+  final def size = keyToValue.size
 
-  def apply(key: Id) = keyToValue(key)
+  final def apply(key: Id) = keyToValue(key)
 
-  def foreach(body: V ⇒ Unit) = keyToValue.values foreach body
+  final def foreach(body: V ⇒ Unit) = keyToValue.values foreach body
 
-  def map[A](f: V ⇒ A) = keyToValue.values map f
+  final def map[A](f: V ⇒ A) = keyToValue.values map f
 
-  def +=(value: V): Unit = {
+  final def +=(value: V): Unit = add(value)
+
+  final def add(value: V): Unit = {
     synchronized {
       if (keyToValue contains value.key) throw new DuplicateIdException(value)
       keyToValue += value.key → value
     }
     counter.incrementAndGet()
+    onAdded(value)
   }
 
-  def -=(key: Id) = keyToValue remove key
+  def onAdded(value: V) = {}
 
-  def totalCount = counter.get
+  final def -=(key: Id): Unit =
+    remove(key) match {
+      case Some(removed) ⇒ onRemoved(removed)
+      case None ⇒
+    }
+
+  final def remove(key: Id): Option[V] = keyToValue remove key
+
+  def onRemoved(value: V) = {}
+
+  final def totalCount = counter.get
 
   protected def throwNoSuchId(key: Id) = throw new NoSuchElementException(s"Unknown '$key'")
 
@@ -48,7 +61,7 @@ trait Register[V <: HasKey] {
 }
 
 object Register {
-  def apply[V <: HasKey](): Register[V] = new Standard[V]
+  final def apply[V <: HasKey](): Register[V] = new Standard[V]
 
   private class Standard[V <: HasKey] extends Register[V]
 }

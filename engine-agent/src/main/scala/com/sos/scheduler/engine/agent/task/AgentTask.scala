@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.task
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.views.TaskOverview
 import com.sos.scheduler.engine.base.process.ProcessSignal
+import com.sos.scheduler.engine.base.utils.HasKey
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.task.TaskArguments
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
@@ -14,7 +15,11 @@ import scala.util.Success
 * @author Joacim Zschimmer
 */
 private[task] final class AgentTask(val id: AgentTaskId, tunnel: TunnelHandle, val taskServer: TaskServer, taskArgumentsFuture: Future[TaskArguments])
-extends AutoCloseable {
+extends AutoCloseable
+with HasKey {
+
+  type Key = AgentTaskId
+  def key = id
 
   val startedAt = Instant.now()
 
