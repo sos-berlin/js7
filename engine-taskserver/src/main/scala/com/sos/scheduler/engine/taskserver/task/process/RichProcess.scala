@@ -21,7 +21,8 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, blocking}
+import scala.concurrent.{Future, Promise, blocking}
+import scala.util.Try
 import scala.util.control.NonFatal
 
 /**
@@ -36,6 +37,20 @@ extends HasCloser with ClosedFuture {
    * UTF-8 encoded stdin.
    */
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
+  private val terminatedPromise = Promise[Unit]()
+
+  Future {
+    terminatedPromise complete Try {
+      blocking {
+        waitForTermination()
+        logger.info(s"Process ended with ${ReturnCode(process.exitValue)}")
+      }
+    }
+  }
+
+  logger.info(s"Process started")
+
+  def terminated: Future[Unit] = terminatedPromise.future
 
   def kill() = process.destroyForcibly()
 
@@ -53,7 +68,7 @@ extends HasCloser with ClosedFuture {
               logger.info("Executing kill script: " + (args mkString ", "))
               val onKillProcess = new ProcessBuilder(args).start()
               Future {
-                waitForProcessTermination(onKillProcess)
+                blocking { waitForProcessTermination(onKillProcess) }
                 onKillProcess.exitValue match {
                   case 0 ⇒
                   case o ⇒ logger.warn(s"Kill script '$onKillScriptFile' has returned exit code $o")
@@ -119,7 +134,7 @@ object RichProcess {
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
-    logger.debug("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
+    logger.info("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     val process = processBuilder.start()
     new RichProcess(processConfiguration, process)
   }
@@ -128,12 +143,11 @@ object RichProcess {
 
   def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newTemporaryOutputFile("sos", o) }).toMap
 
-  private def waitForProcessTermination(process: Process): Unit =
-    blocking {
-      logger.debug(s"waitFor ${processToString(process)} ...")
-      while (!process.waitFor(WaitForProcessPeriod.toMillis, MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
-      logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
-    }
+  private def waitForProcessTermination(process: Process): Unit = {
+    logger.debug(s"waitFor ${processToString(process)} ...")
+    while (!process.waitFor(WaitForProcessPeriod.toMillis, MILLISECONDS)) {}
+    logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
+  }
 
   def tryDeleteFiles(files: Iterable[Path]): Unit =
     for (file ← files) {

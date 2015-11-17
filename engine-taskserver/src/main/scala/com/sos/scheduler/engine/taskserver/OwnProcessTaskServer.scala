@@ -4,8 +4,7 @@ import com.google.common.io.Closer
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
-import com.sos.scheduler.engine.taskserver.OwnProcessTaskServer._
+import com.sos.scheduler.engine.common.scalautil.SetOnce
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, ProcessConfiguration, RichProcess}
 import java.io.File
@@ -21,6 +20,7 @@ extends TaskServer {
 
   private val processOnce = new SetOnce[RichProcess]
   private val terminatedPromise = Promise[Unit]()
+
   def terminated = terminatedPromise.future
 
   def start() = {
@@ -39,8 +39,7 @@ extends TaskServer {
         mainClass = TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix
         arguments = Nil)
       processOnce := process
-      process.closed.onComplete { tried ⇒
-        for (t ← tried.failed) logger.error(t.toString, t)
+      process.terminated onComplete { tried ⇒
         try closer.close()
         finally terminatedPromise.complete(tried)
       }
@@ -62,8 +61,4 @@ extends TaskServer {
     for (p ← processOnce) p.sendProcessSignal(signal)
 
   def pidOption = processOnce flatMap { _.pidOption }
-}
-
-object OwnProcessTaskServer {
-  private val logger = Logger(getClass)
 }
