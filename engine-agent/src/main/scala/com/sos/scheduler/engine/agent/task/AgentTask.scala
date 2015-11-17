@@ -4,8 +4,10 @@ import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.views.TaskOverview
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.utils.HasKey
+import com.sos.scheduler.engine.common.scalautil.Closers._
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.task.TaskArguments
+import com.sos.scheduler.engine.taskserver.task.process.Processes.Pid
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.time.Instant
 import scala.concurrent.Future
@@ -14,26 +16,37 @@ import scala.util.Success
 /**
 * @author Joacim Zschimmer
 */
-private[task] final class AgentTask(val id: AgentTaskId, tunnel: TunnelHandle, val taskServer: TaskServer, taskArgumentsFuture: Future[TaskArguments])
+private[task] trait AgentTask
 extends AutoCloseable
 with HasKey {
 
-  type Key = AgentTaskId
-  def key = id
+  final type Key = AgentTaskId
+  final def key = id
 
+  def id: AgentTaskId
+
+  protected def taskArgumentsFuture: Future[TaskArguments]
+
+  protected def tunnel: TunnelHandle
+
+  protected def taskServer: TaskServer
+
+  private
   val startedAt = Instant.now()
 
-  def close(): Unit =
-    try tunnel.close()  // Close tunnel first, then task server
-    finally taskServer.close()
+  final def closeTunnelAndTaskServer() = closeOrdered(tunnel, taskServer)  // Close tunnel before taskServer
 
-  def start(): Unit = taskServer.start()
+  final def closeTaskServer() = taskServer.close()
 
-  def sendProcessSignal(signal: ProcessSignal): Unit = taskServer.sendProcessSignal(signal)
+  final def start(): Unit = taskServer.start()
 
-  def terminated: Future[Unit] = taskServer.terminated
+  final def sendProcessSignal(signal: ProcessSignal): Unit = taskServer.sendProcessSignal(signal)
 
-  def overview = TaskOverview(
+  final def terminated: Future[Unit] = taskServer.terminated
+
+  final def pidOption: Option[Pid] = taskServer.pidOption
+
+  final def overview = TaskOverview(
     id,
     pid = taskServer.pidOption map { _.number },
     tunnel.id,
@@ -49,7 +62,7 @@ with HasKey {
           monitorCount = a.monitors.size)
     })
 
-  private[task] def tunnelToken = tunnel.tunnelToken
+  private[task] final def tunnelToken = tunnel.tunnelToken
 
-  override def toString = s"AgentTask($id)"
+  override def toString = s"$id: $taskServer"
 }

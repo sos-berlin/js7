@@ -8,6 +8,7 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commands.{StartApiTask, StartNonApiTask, StartTask}
 import com.sos.scheduler.engine.agent.task.StandardAgentTaskFactory._
+import com.sos.scheduler.engine.common.scalautil.AutoClosing.closeOnError
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
@@ -39,15 +40,21 @@ extends AgentTaskFactory {
 
   private val agentTaskIdGenerator = AgentTaskId.newGenerator()
 
-  def apply(command: StartTask, clientIpOption: Option[InetAddress]) = {
-    val id = agentTaskIdGenerator.next()
-    val address = tunnelServer.proxyAddressString
+  def apply(command: StartTask, clientIpOption: Option[InetAddress]): AgentTask = {
     val taskArgumentsPromise = Promise[TaskArguments]()
-    val listener = Agent(new TaskArgumentsListener(taskArgumentsPromise))
-    val tunnel = tunnelServer.newTunnel(TunnelId(id.index.toString), listener, clientIpOption)
-    val taskServer = newTaskServer(id, command, address, tunnel.tunnelToken)
-    new AgentTask(id, tunnel, taskServer, taskArgumentsPromise.future)
-    // AgentTask.close will close Tunnel and TaskServer, too
+    new AgentTask {
+      val id = agentTaskIdGenerator.next()
+      val taskArgumentsFuture = taskArgumentsPromise.future
+      val tunnel = {
+        val listener = Agent(new TaskArgumentsListener(taskArgumentsPromise))
+        tunnelServer.newTunnel(TunnelId(id.index.toString), listener, clientIpOption)
+      }
+      val taskServer = closeOnError(tunnel) {
+        newTaskServer(id, command, masterAddress = tunnelServer.proxyAddressString, tunnel.tunnelToken)
+      }
+
+      def close() = closeTunnelAndTaskServer()
+    }
   }
 
   private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, masterAddress: String, tunnelToken: TunnelToken) = {
