@@ -13,6 +13,7 @@ import com.sos.scheduler.engine.taskserver.data.{HasSendProcessSignal, TaskStart
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.task.process.Processes.Pid
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
@@ -94,7 +95,7 @@ extends HasCloser with Invocable with HasSendProcessSignal {
       Option(taskArguments) map { t ⇒ s"(task ${t.jobName}:${t.taskId.string})" } getOrElse ""
     ).mkString("")
 
-  def pidOption = task.pidOption
+  def pidOption: Option[Pid] = Option(task) flatMap { _.pidOption }
 }
 
 object RemoteModuleInstanceServer extends InvocableFactory {
