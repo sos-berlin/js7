@@ -1,13 +1,16 @@
 package com.sos.scheduler.engine.tunnel.web
 
 import akka.util.ByteString
+import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.scheduler.engine.tunnel.data.Http.SecretHeaderName
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
+import com.sos.scheduler.engine.tunnel.server.ConnectionClosedException
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
+import spray.http.StatusCodes.Gone
 import spray.json.DefaultJsonProtocol._
 import spray.routing.Directives._
 
@@ -17,6 +20,8 @@ import spray.routing.Directives._
 object TunnelWebService {
   intelliJuseImports(rootFormat _)
 
+  private val logger = Logger(getClass)
+
   type ExecuteTunneledRequest = (TunnelToken, ByteString) ⇒ Future[ByteString]
 
   def tunnelRequestRoute(id: TunnelId)(execute: ExecuteTunneledRequest)(implicit ec: ExecutionContext) =
@@ -24,8 +29,13 @@ object TunnelWebService {
       headerValueByName(SecretHeaderName) { secret ⇒
         val token = TunnelToken(id, TunnelToken.Secret(secret))
         entity(as[ByteString]) { request ⇒
-          val future = execute(token, request)
-          onSuccess(future) { response: ByteString ⇒ complete(response) }
+          val executed = execute(token, request)
+          onSuccess(executed) { response: ByteString ⇒ complete(response) }
+          onFailure(executed) {
+            case t: ConnectionClosedException ⇒
+              logger.error(s"$t")
+              complete(Gone)
+          }
         }
       }
     } 

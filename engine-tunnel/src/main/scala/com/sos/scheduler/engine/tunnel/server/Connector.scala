@@ -54,7 +54,7 @@ extends Actor with FSM[State, Data] {
       goto(ExpectingRequest) using NoData
 
     case Event(MessageTcpBridge.PeerClosed, Respond(responsePromise)) ⇒
-      val e = new RuntimeException(s"Peer $remoteAddress has closed the connection while expecting a response")
+      responsePromise.failure(new RuntimeException(s"$toString: Peer has closed the connection while expecting a response"))
       responsePromise.failure(e)
       stop(FSM.Failure(e))
 
@@ -94,12 +94,14 @@ extends Actor with FSM[State, Data] {
       goto(Closing) using NoData
 
     case Event(closed: Tcp.ConnectionClosed, data) ⇒
-      val exception = new RuntimeException(s"Connection with $remoteAddress has unexpectedly been closed: $closed")
+      logger.debug(s"$closed")
+      val exception = new ConnectionClosedException(s"$toString: Connection has unexpectedly been closed: $closed")
       data match {
-        case Respond(responsePromise) ⇒ responsePromise.failure(exception)
-        case _ ⇒
+        case Respond(responsePromise) ⇒
+          responsePromise.failure(exception)
+          stop()
+        case _ ⇒ stop(FSM.Failure(exception))
       }
-      stop(FSM.Failure(exception))
 
     case Event(Terminated(_), _) ⇒
       messageTcpBridgeTerminated = true
