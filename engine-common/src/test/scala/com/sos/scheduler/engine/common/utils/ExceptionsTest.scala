@@ -4,15 +4,32 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.utils.Exceptions._
 import com.sos.scheduler.engine.common.utils.ExceptionsTest._
 import java.io.IOException
+import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import com.sos.scheduler.engine.common.time.ScalaTime._
 
 /**
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
 final class ExceptionsTest extends FreeSpec {
+
+  "repeatUntilNoException" in {
+    var i = 0
+    val t = Instant.now()
+    repeatUntilNoException(10.s, 10.ms) {
+      i += 1
+      if (i < 5) sys.error("TEST")
+    }
+    assert(i == 5)
+    val duration = Instant.now() - t
+    assert(duration >= 40.ms && duration <= 200.ms)
+    intercept[IOException] {
+      repeatUntilNoException(100.ms, 10.ms) { throw new IOException }
+    }
+  }
 
   "ignoreException executes code" in {
     var executed = false
