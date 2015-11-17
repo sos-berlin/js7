@@ -75,7 +75,7 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
 
   "Speed test" in {
     val (clientSide, serverSide) = startTunneledSystem()
-    measureTime(1000, "request") {
+    measureTime(1000, "requests") {
       clientSide.checkSendReceive()
     }
     serverSide.closeTunnel()

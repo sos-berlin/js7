@@ -33,6 +33,6 @@ object Stopwatch {
 
   final case class Result(n: Int, itemName: String, totalDuration: Duration) {
     val singleDuration = totalDuration / n
-    override def toString = s"${singleDuration.pretty}/$itemName (${totalDuration.pretty}/$n)"
-  }
+    val perSecond = n * 1000 / totalDuration.toMillis
+    override def toString = s"$perSecond $itemName/s (${totalDuration.pretty}/$n = ${singleDuration.pretty})"  }
 }

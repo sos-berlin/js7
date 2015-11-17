@@ -64,7 +64,7 @@ final class TunnelIT extends FreeSpec {
       blocking {
         val stepSize = min(Iterations, 1000)
         for (i ← 0 until Iterations by stepSize) {
-          val m = Stopwatch.measureTime(stepSize, "request") {
+          val m = Stopwatch.measureTime(stepSize, "requests") {
             val request = ByteString.fromArray(Array.fill[Byte](messageSizes.next())(i.toByte))
             val responded = tunnelServer.request(tunnel.tunnelToken, request) map { response ⇒
               if (!byteStringsFastEqual(response, requestToResponse(request, tunnel.id))) fail("Response is not as expected")
