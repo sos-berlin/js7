@@ -32,8 +32,13 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
   private lazy val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val terminatedPromise = Promise[Unit]()
   private val injector = Guice.createInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
-  private val remoting = new Remoting(injector, new DialogConnection(master), IDispatchFactories, ProxyIDispatchFactories, name = taskStartArguments.agentTaskId.toString)
-
+  private val remoting = new Remoting(
+    injector,
+    new DialogConnection(master),
+    IDispatchFactories,
+    ProxyIDispatchFactories,
+    name = taskStartArguments.agentTaskId.toString,
+    returnAfterReleaseOf = _.isInstanceOf[RemoteModuleInstanceServer])
   def terminated = terminatedPromise.future
 
   def start(): Unit =

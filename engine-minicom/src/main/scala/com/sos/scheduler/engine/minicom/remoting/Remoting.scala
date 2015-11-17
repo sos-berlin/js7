@@ -30,7 +30,8 @@ final class Remoting(
   dialogConnection: DialogConnection,
   invocableFactories: Iterable[InvocableFactory],
   proxyIDispatchFactories: Iterable[ProxyIDispatchFactory],
-  name: String)
+  name: String,
+  returnAfterReleaseOf: Invocable ⇒ Boolean = _ ⇒ false)
 extends ServerRemoting with ClientRemoting {
 
   private val logger = Logger.withPrefix(getClass, name)
@@ -38,6 +39,7 @@ extends ServerRemoting with ClientRemoting {
   private val createInvocable = toCreateInvocableByCLSID(invocableFactories)
   private val proxyClsidMap: Map[CLSID, ProxyIDispatchFactory.Fun] =
     (List(SimpleProxyIDispatch) ++ proxyIDispatchFactories).map { o ⇒ o.clsid → o.apply _ } (breakOut)
+  private var end = false
 
   def run(): Unit = {
     logger.debug("Started")
@@ -56,8 +58,11 @@ extends ServerRemoting with ClientRemoting {
       messageOption match {
         case Some(message) ⇒
           val response = executeMessage(message)
-          val nextMessageOption = dialogConnection.sendAndReceive(response)
-          continue(nextMessageOption)
+          if (!end) {
+            val nextMessageOption = dialogConnection.sendAndReceive(response)
+            continue(nextMessageOption)
+          } else
+            dialogConnection.sendLastMessage(response)
         case None ⇒
       }
   }
@@ -88,7 +93,9 @@ extends ServerRemoting with ClientRemoting {
       CreateInstanceResult(invocable = createInvocable(clsid, iids.head))
 
     case ReleaseCall(proxyId) ⇒
+      val released = proxyRegister.invocable(proxyId)
       proxyRegister.release(proxyId)
+      end = returnAfterReleaseOf(released)
       EmptyResult
 
     case _: QueryInterfaceCall | _: GetIDsOfNamesCall | _: InvokeCall ⇒
