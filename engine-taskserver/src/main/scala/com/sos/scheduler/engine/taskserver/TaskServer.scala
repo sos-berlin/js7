@@ -17,4 +17,6 @@ trait TaskServer extends AutoCloseable {
   def sendProcessSignal(signal: ProcessSignal): Unit
   def terminated: Future[Unit]
   def pidOption: Option[Pid]
+
+  override def toString = Some(s"master=${taskStartArguments.masterAddress})") ++ pidOption mkString (s"${getClass.getSimpleName}(", " ", ")")
 }

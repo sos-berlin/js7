@@ -20,8 +20,9 @@ import spray.httpx.encoding.Gzip
  */
 trait WebTunnelClient {
 
+  def uri: Uri
+  def tunnelUri(tunnelId: TunnelId): Uri
   protected implicit def actorSystem: ActorSystem
-  protected def tunnelUri(tunnelId: TunnelId): Uri
 
   private implicit def executionContext = actorSystem.dispatcher
   private val veryLongTimeout = Akkas.maximumTimeout(actorSystem.settings)
@@ -42,6 +43,8 @@ trait WebTunnelClient {
       throw t
     }
   }
+
+  override def toString = s"WebTunnelClient($uri)"
 }
 
 object WebTunnelClient {

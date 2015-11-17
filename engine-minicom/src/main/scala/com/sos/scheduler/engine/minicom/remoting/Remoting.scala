@@ -29,15 +29,18 @@ final class Remoting(
   injector: Injector,
   dialogConnection: DialogConnection,
   invocableFactories: Iterable[InvocableFactory],
-  proxyIDispatchFactories: Iterable[ProxyIDispatchFactory])
+  proxyIDispatchFactories: Iterable[ProxyIDispatchFactory],
+  name: String)
 extends ServerRemoting with ClientRemoting {
 
+  private val logger = Logger.withPrefix(getClass, name)
   private val proxyRegister = new ProxyRegister
   private val createInvocable = toCreateInvocableByCLSID(invocableFactories)
   private val proxyClsidMap: Map[CLSID, ProxyIDispatchFactory.Fun] =
     (List(SimpleProxyIDispatch) ++ proxyIDispatchFactories).map { o ⇒ o.clsid → o.apply _ } (breakOut)
 
   def run(): Unit = {
+    logger.debug("Started")
     val firstRequest = dialogConnection.receiveFirstMessage()
     val keepaliveThread = new KeepaliveThread
     keepaliveThread.start()
@@ -46,6 +49,7 @@ extends ServerRemoting with ClientRemoting {
       keepaliveThread.interrupt()
       keepaliveThread.join()
     }
+    logger.debug("Ended")
 
     @tailrec
     def continue(messageOption: Option[ByteString]): Unit =
@@ -163,5 +167,4 @@ extends ServerRemoting with ClientRemoting {
 object Remoting {
   private val KeepalivePause = (5 * 60).s
   private type CreateInvocableByCLSID = (CLSID, IID) ⇒ Invocable
-  private val logger = Logger(getClass)
 }

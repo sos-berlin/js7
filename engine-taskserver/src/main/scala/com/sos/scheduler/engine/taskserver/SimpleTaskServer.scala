@@ -32,7 +32,7 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
   private lazy val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val terminatedPromise = Promise[Unit]()
   private val injector = Guice.createInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
-  private val remoting = new Remoting(injector, new DialogConnection(master), IDispatchFactories, ProxyIDispatchFactories)
+  private val remoting = new Remoting(injector, new DialogConnection(master), IDispatchFactories, ProxyIDispatchFactories, name = taskStartArguments.agentTaskId.toString)
 
   def terminated = terminatedPromise.future
 
@@ -44,16 +44,11 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
         remoting.run()
         master.close()
       }
+    } recover {
+      case t: AsynchronousCloseException ⇒ logger.info("Terminating after close()")   // Exception is okay and ignored
     } onComplete { tried ⇒
-      terminatedPromise.complete(tried recover {
-        case t: AsynchronousCloseException ⇒
-          logger.info("Terminating after close()")
-          // Exception is okay and ignored
-        case t ⇒
-          logger.error(s"$toString $t", t)
-          throw t
-      })
       logger.info("Terminated")
+      terminatedPromise.complete(tried)
     }
 
   def sendProcessSignal(signal: ProcessSignal) = {
@@ -62,9 +57,7 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
     signalables foreach { _.sendProcessSignal(signal) }
   }
 
-  override def toString = s"TaskServer(master=${taskStartArguments.masterAddress})"
-
-  def pidOption = (remoting.invocables[RemoteModuleInstanceServer] flatMap { _.pidOption }).headOption
+  def pidOption = remoting.invocables[RemoteModuleInstanceServer].headOption flatMap { _.pidOption }
 }
 
 object SimpleTaskServer {

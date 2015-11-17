@@ -22,7 +22,8 @@ extends AutoCloseable {
   private val tcpHttpBridge = new TcpToRequestResponse(
     actorSystem,
     connectTo = connectTo,
-    executeRequest = request ⇒ tunnelClient.tunnelRequest(tunnelToken, request))
+    executeRequest = request ⇒ tunnelClient.tunnelRequest(tunnelToken, request),
+    name = s"${tunnelClient.tunnelUri(tunnelToken.id)}")
 
   def start() = tcpHttpBridge.start()
 
@@ -31,7 +32,8 @@ extends AutoCloseable {
 
 object TcpToHttpBridge {
   private def newWebTunnelClient(pActorSystem: ActorSystem, baseUri: Uri) = new WebTunnelClient {
-    protected def actorSystem = pActorSystem
-    protected def tunnelUri(id: TunnelId) = baseUri withPath (baseUri.path / id.string)
+    def uri = baseUri
+    def tunnelUri(id: TunnelId) = baseUri withPath (baseUri.path / id.string)
+    def actorSystem = pActorSystem
   }
 }

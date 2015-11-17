@@ -3,10 +3,12 @@ package com.sos.scheduler.engine.common.tcp
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.{IO, Tcp}
+import akka.pattern.AskTimeoutException
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Futures.catchInFuture
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.tcp.TcpToRequestResponse.{Close, Start, _}
+import com.sos.scheduler.engine.common.tcp.TcpToRequestResponse._
+import com.sos.scheduler.engine.common.utils.Exceptions.toStringWithCauses
 import java.net.InetSocketAddress
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
@@ -19,10 +21,13 @@ import scala.util.{Failure, Success}
 final class TcpToRequestResponse(
   actorSystem: ActorSystem,
   connectTo: InetSocketAddress,
-  executeRequest: ByteString ⇒ Future[ByteString])
+  executeRequest: ByteString ⇒ Future[ByteString],
+  name: String)
 extends AutoCloseable {
 
   import actorSystem.dispatcher
+
+  private val logger = Logger.withPrefix(getClass, name)
 
   @volatile private var actorClosed = false
   private val actor = actorSystem.actorOf(Props { new MessageTcpBridgeClient })
@@ -42,7 +47,7 @@ extends AutoCloseable {
     }
 
   private class MessageTcpBridgeClient extends Actor {
-    import context.{actorOf, become, dispatcher, stop, system}
+    import context.{actorOf, become, dispatcher, stop, system, watch}
 
     override def supervisorStrategy = stoppingStrategy
 
@@ -59,7 +64,7 @@ extends AutoCloseable {
         startedPromise.success(())
         val tcp = sender()
         val bridge = actorOf(MessageTcpBridge.props(tcp, connected), name = "MessageTcpBridge")
-        context.watch(bridge)
+        watch(bridge)
         for (m ← connectionMessageOption) bridge ! MessageTcpBridge.SendMessage(m)
         become(running(bridge = bridge))
       case m: Tcp.CommandFailed ⇒
@@ -74,9 +79,14 @@ extends AutoCloseable {
           case Success(response) ⇒
             bridge ! MessageTcpBridge.SendMessage(response)
           case Failure(t) ⇒
-            logger.error(s"$t", t)
+            t match {
+              case t: AskTimeoutException ⇒ logger.error(toStringWithCauses(t))
+              case _ ⇒ logger.error(s"$t", t)
+            }
             bridge ! MessageTcpBridge.Close // 2015-06-29 Tcp.Abort does not close the connection when peer is C++ JobScheduler
         }
+      case m @ MessageTcpBridge.PeerClosed ⇒
+        logger.info(s"$m")  // We ignore this. The JobScheduler COM RPC protocol ensures the server side termination.
       case Close ⇒
         bridge ! MessageTcpBridge.Close
       case Terminated(_) ⇒
@@ -87,8 +97,6 @@ extends AutoCloseable {
 }
 
 object TcpToRequestResponse {
-  private val logger = Logger(getClass)
-
   private case class Start(connectionMessage: Option[ByteString])
   private case object Close
 }
