@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.common.utils
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.utils.Exceptions._
 import com.sos.scheduler.engine.common.utils.ExceptionsTest._
+import java.io.IOException
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -42,6 +43,23 @@ final class ExceptionsTest extends FreeSpec {
     ignoreException(logger.debug) {
       throw new RuntimeException
     }
+  }
+
+  "ignoreNonFatal ignores exception of given type, with Logger.debug" in {
+    ignoreNonFatal[RuntimeException](logger.debug) {
+      throw new IllegalStateException
+    }
+    intercept[IOException] {
+      ignoreNonFatal[RuntimeException](logger.debug) {
+        throw new IOException
+      }
+    }
+  }
+
+  "toStringWithCauses" in {
+    assert(toStringWithCauses(new RuntimeException("TEST")) == "java.lang.RuntimeException: TEST")
+    assert(toStringWithCauses(new RuntimeException("TEST", new IllegalStateException("STATE"))) ==
+      "java.lang.RuntimeException: TEST, caused by java.lang.IllegalStateException: STATE")
   }
 }
 
