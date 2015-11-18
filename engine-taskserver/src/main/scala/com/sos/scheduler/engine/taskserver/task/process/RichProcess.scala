@@ -52,8 +52,6 @@ extends HasCloser with ClosedFuture {
 
   def terminated: Future[Unit] = terminatedPromise.future
 
-  def kill() = process.destroyForcibly()
-
   def sendProcessSignal(signal: ProcessSignal): Unit =
     signal match {
       case SIGTERM ⇒
@@ -62,27 +60,28 @@ extends HasCloser with ClosedFuture {
         process.destroy()
       case SIGKILL ⇒
         processConfiguration.killScriptFileOption match {
-          case Some(onKillScriptFile) ⇒
-            try {
-              val args = toShellCommandArguments(onKillScriptFile, List(processConfiguration.killScriptArgument))
-              logger.info("Executing kill script: " + (args mkString ", "))
-              val onKillProcess = new ProcessBuilder(args).start()
-              Future {
-                blocking { waitForProcessTermination(onKillProcess) }
-                onKillProcess.exitValue match {
-                  case 0 ⇒
-                  case o ⇒ logger.warn(s"Kill script '$onKillScriptFile' has returned exit code $o")
-                }
-                killNow()
-              }
-            } catch {
-              case NonFatal(t) ⇒
-                killNow()
-                throw t
+          case Some(file) ⇒
+            executeKillScriptFileThenKill(file) recover {
+              case t ⇒ logger.error(s"Cannot start kill script '$file': $t")
+            } onComplete { case _ ⇒
+              killNow()
             }
           case None ⇒
             killNow()
         }
+    }
+
+  private def executeKillScriptFileThenKill(file: Path) = Future[Unit] {
+    val args = toShellCommandArguments(file, List(processConfiguration.killScriptArgument))
+    logger.info("Executing kill script: " + (args mkString ", "))
+    val onKillProcess = new ProcessBuilder(args).start()
+    val promise = Promise[Unit]()
+      blocking { waitForProcessTermination(onKillProcess) }
+      onKillProcess.exitValue match {
+        case 0 ⇒
+        case o ⇒ logger.warn(s"Kill script '$file' has returned exit code $o")
+      }
+      promise.success(())
     }
 
   private def killNow(): Unit = {
