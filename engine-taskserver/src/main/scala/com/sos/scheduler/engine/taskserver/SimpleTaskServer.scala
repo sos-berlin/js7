@@ -73,7 +73,7 @@ object SimpleTaskServer {
   private val logger = Logger(getClass)
 
   def runAsMain(startArguments: TaskStartArguments): Unit =
-    autoClosing(new SimpleTaskServer(startArguments, isMain = true)(global)) { taskServer ⇒
+    autoClosing(new SimpleTaskServer(startArguments, isMain = true)) { taskServer ⇒
       taskServer.start()
       awaitResult(taskServer.terminated, MaxDuration)
     }
