@@ -54,7 +54,8 @@ final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain:
       }
     } onComplete { tried ⇒
       val (correctedTried, msg) = tried match {
-        case Failure(t: AsynchronousCloseException) ⇒ (Success(()), "Terminated after close()")
+        case Failure(t: AsynchronousCloseException) ⇒ (Success(()), s"Terminated after close(): $t")
+        case Failure(t: Remoting.ConnectionClosedException) ⇒ (Success(()), s"Terminated, $t")
         case _ ⇒ (tried, Some("Terminated") ++ tried.failed.toOption mkString ", ")
       }
       logger.info(msg)

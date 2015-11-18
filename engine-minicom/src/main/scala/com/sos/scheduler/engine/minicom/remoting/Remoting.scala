@@ -138,7 +138,7 @@ extends ServerRemoting with ClientRemoting {
 
   private def sendReceive(call: Call): ResultDeserializer = {
     val callMessage = serializeCall(proxyRegister, call)
-    val byteString = dialogConnection.sendAndReceive(callMessage).get
+    val byteString = dialogConnection.sendAndReceive(callMessage) getOrElse { throw new ConnectionClosedException }
     new ResultDeserializer(this, byteString)
   }
 
@@ -175,4 +175,5 @@ extends ServerRemoting with ClientRemoting {
 
 object Remoting {
   private type CreateInvocableByCLSID = (CLSID, IID) ⇒ Invocable
+  final class ConnectionClosedException extends RuntimeException
 }
