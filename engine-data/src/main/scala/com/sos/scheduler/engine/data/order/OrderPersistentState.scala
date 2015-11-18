@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.order
 
-import com.sos.scheduler.engine.data.base.HasKey
+import com.sos.scheduler.engine.base.utils.HasKey
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.order.OrderPersistentState._
 import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
@@ -22,7 +22,9 @@ final case class OrderPersistentState(
   runtimeXmlOption: Option[String],
   xmlOption: Option[String])
 
-extends HasKey[OrderKey] {
+extends HasKey {
+
+  type Key = OrderKey
 
   def key = OrderKey(jobChainPath, orderId)
   //Compiles, but is wrongly typed (Joda vs Java Time): def isOnBlacklist = distributedNextTimeOption contains BlacklistDatabaseDistributedNextTime
