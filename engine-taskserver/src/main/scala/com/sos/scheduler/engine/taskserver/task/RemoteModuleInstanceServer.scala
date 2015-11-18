@@ -84,7 +84,6 @@ extends HasCloser with Invocable with HasSendProcessSignal {
   def waitForSubprocesses(): Unit = {}
 
   def sendProcessSignal(signal: ProcessSignal) = {
-    Logger(getClass).trace(s"sendProcessSignal $signal")
     task match {
       case o: HasSendProcessSignal ⇒ o.sendProcessSignal(signal)
     }
