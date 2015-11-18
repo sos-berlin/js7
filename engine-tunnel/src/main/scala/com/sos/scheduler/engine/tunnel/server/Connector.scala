@@ -76,7 +76,7 @@ extends Actor with FSM[State, Data] {
       goto(ExpectingRequest) using NoData
 
     case Event(MessageTcpBridge.PeerClosed, Respond(responsePromise)) ⇒
-      responsePromise.failure(new RuntimeException(s"$toString: Peer has closed the connection while expecting a response"))
+      responsePromise.failure(new ConnectionClosedException(s"$toString: Peer has closed the connection while expecting a response"))
       stop()
 
     case Event(MessageTcpBridge.Failed(throwable), Respond(responsePromise)) ⇒
