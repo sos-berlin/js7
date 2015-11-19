@@ -14,7 +14,7 @@ import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
-import com.sos.scheduler.engine.common.utils.Register
+import com.sos.scheduler.engine.common.utils.ConcurrentRegister
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.atomic.AtomicBoolean
@@ -167,7 +167,7 @@ private object TaskHandler {
   private val ImmediateTerminationDelay = 1.s  // Allow HTTP with termination command request to be responded
   private val TunnelInactivitySigtermDuration = 2.s  // Time between SIGTERM and SIGKILL
 
-  private class TaskRegister extends Register[AgentTask] {
+  private class TaskRegister extends ConcurrentRegister[AgentTask] {
     override def onAdded(task: AgentTask) = logger.info(s"$task registered")
     override def onRemoved(task: AgentTask) = logger.info(s"$task unregistered")
   }

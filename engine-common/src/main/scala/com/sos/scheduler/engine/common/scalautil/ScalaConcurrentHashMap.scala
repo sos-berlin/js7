@@ -8,7 +8,7 @@ import scala.collection.mutable
  * @author Joacim Zschimmer
  */
 class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]{
-  protected val delegate = new java.util.concurrent.ConcurrentHashMap[K, V]
+  val delegate = new java.util.concurrent.ConcurrentHashMap[K, V]
 
   final override def +=(kv: (K, V)) = {
     delegate.put(kv._1, kv._2)

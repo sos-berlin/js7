@@ -11,11 +11,11 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class RegisterTest extends FreeSpec {
+final class ConcurrentRegisterTest extends FreeSpec {
 
-  private val register = Register[Value]()
+  private val register = ConcurrentRegister[Value]()
 
-  "Initially, Register is empty" in {
+  "Initially, ConcurrentRegister is empty" in {
     assert(register.isEmpty)
     assert(!register.nonEmpty)
     assert(register.size == 0)
@@ -45,7 +45,7 @@ final class RegisterTest extends FreeSpec {
   }
 
   "Adding a known entry is rejected" in {
-    val e = intercept[register.DuplicateIdException] {
+    val e = intercept[register.DuplicateKeyException] {
       register += Value(2)
     }
     assert(e.key == 2)
