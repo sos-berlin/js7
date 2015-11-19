@@ -39,6 +39,7 @@ extends Actor with FSM[State, Data] {
   private val tunnelIdOnce = new SetOnce[TunnelId]
   private val messageTcpBridge = context.actorOf(MessageTcpBridge.props(tcp, connected))
   private var messageTcpBridgeTerminated = false
+  private var logger = Logger(getClass)
 
   private object inactivityWatchdog {
     private var timer: Cancellable = new DummyCancellable
@@ -66,6 +67,7 @@ extends Actor with FSM[State, Data] {
   when(ExpectingMessageFromTcp) {
     case Event(MessageTcpBridge.MessageReceived(message), NoData) ⇒
       val connectionMessage = JsonParser(message.toArray[Byte]).convertTo(TunnelConnectionMessage.MyJsonFormat)
+      logger = Logger.withPrefix(getClass, connectionMessage.tunnelToken.id.toString)
       logger.trace(s"$connectionMessage")
       tunnelIdOnce := connectionMessage.tunnelToken.id
       parent ! AssociatedWithTunnelId(connectionMessage.tunnelToken, remoteAddress)
@@ -141,8 +143,6 @@ extends Actor with FSM[State, Data] {
 }
 
 private[server] object Connector {
-  private val logger = Logger(getClass)
-
   private[server] def props(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, inactivityTimeout: Duration) =
     Props { new Connector(connectorHandler, tcp, connected, inactivityTimeout) }
 
