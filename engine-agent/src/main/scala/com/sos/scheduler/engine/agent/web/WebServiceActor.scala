@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
-import com.sos.scheduler.engine.agent.web.common.ExtraWebService
+import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
@@ -30,7 +30,7 @@ final class WebServiceActor @Inject private(
   agentOverviewProvider: Provider[AgentOverview],
   protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
-  extraWebServices: immutable.Seq[ExtraWebService],
+  extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,
   injector: Injector)
 extends HttpServiceActor

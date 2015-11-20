@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.configuration
 
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration._
-import com.sos.scheduler.engine.agent.web.common.ExtraWebService
+import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.time.ScalaTime._
@@ -27,7 +27,7 @@ final case class AgentConfiguration(
   uriPathPrefix: String = "",
   directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
   environment: immutable.Iterable[(String, String)] = Nil,
-  extraWebServiceClasses: immutable.Seq[Class[_ <: ExtraWebService]] = Nil,
+  externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
   tunnelInactivityTimeout: Duration = DefaultTunnelInactivityTimeout,
   killScriptFile: Option[Path] = None)
@@ -37,9 +37,9 @@ final case class AgentConfiguration(
 
   def strippedUriPathPrefix = uriPathPrefix stripPrefix "/" stripSuffix "/"
 
-  def withWebService[A <: ExtraWebService : ClassTag] = withWebServices(List(implicitClass[A]))
+  def withWebService[A <: ExternalWebService : ClassTag] = withWebServices(List(implicitClass[A]))
 
-  def withWebServices(classes: Iterable[Class[_ <: ExtraWebService]]) = copy(extraWebServiceClasses = extraWebServiceClasses ++ classes)
+  def withWebServices(classes: Iterable[Class[_ <: ExternalWebService]]) = copy(externalWebServiceClasses = externalWebServiceClasses ++ classes)
 }
 
 object AgentConfiguration {
