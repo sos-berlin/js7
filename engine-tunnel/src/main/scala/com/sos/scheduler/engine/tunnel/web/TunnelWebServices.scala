@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.scheduler.engine.tunnel.data.Http.SecretHeaderName
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.ConnectionClosedException
+import com.sos.scheduler.engine.tunnel.server.{ConnectionClosedException ⇒ TunnelConnectionClosedException}
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import spray.http.StatusCodes.Gone
@@ -32,13 +32,13 @@ object TunnelWebServices {
           val executed = execute(token, request)
           onSuccess(executed) { response: ByteString ⇒ complete(response) }
           onFailure(executed) {
-            case t: ConnectionClosedException ⇒
+            case t: TunnelConnectionClosedException ⇒
               logger.error(s"$t")
               complete(Gone)
           }
         }
       }
-    } 
+    }
 
   def tunnelHandlerOverviewRouteComplete(body: ⇒ Future[TunnelHandlerOverview])(implicit ec: ExecutionContext) =
     (pathEndOrSingleSlash & get) {
