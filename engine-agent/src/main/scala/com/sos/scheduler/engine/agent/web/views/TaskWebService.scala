@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.agent.web.views
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
-import com.sos.scheduler.engine.agent.web.common.ServiceStandards
+import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils._
 import spray.http.CacheDirectives.`max-age`
@@ -13,7 +13,7 @@ import spray.routing.Directives._
 /**
  * @author Joacim Zschimmer
  */
-trait TaskService extends ServiceStandards {
+trait TaskWebService extends AgentWebService {
 
   intelliJuseImports(rootFormat _)
 

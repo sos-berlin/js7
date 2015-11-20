@@ -20,7 +20,7 @@ import spray.testkit.ScalatestRouteTest
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class CommandHandlerViewServiceTest extends FreeSpec with ScalatestRouteTest with CommandHandlerViewService {
+final class CommandViewServiceTest extends FreeSpec with ScalatestRouteTest with CommandViewWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
   override protected val uriPathPrefix = "test"

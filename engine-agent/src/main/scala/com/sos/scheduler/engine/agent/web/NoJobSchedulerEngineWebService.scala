@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.web
 
-import com.sos.scheduler.engine.agent.web.NoJobSchedulerEngineService._
-import com.sos.scheduler.engine.agent.web.common.ServiceStandards
+import com.sos.scheduler.engine.agent.web.NoJobSchedulerEngineWebService._
+import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.scalautil.Logger
 import spray.http.RemoteAddress
 import spray.routing.Directives._
@@ -9,7 +9,7 @@ import spray.routing.Directives._
 /**
  * @author Joacim Zschimmer
  */
-trait NoJobSchedulerEngineService extends ServiceStandards {
+trait NoJobSchedulerEngineWebService extends AgentWebService {
 
   addJobschedulerRoute {
     pathPrefix("engine") {
@@ -21,7 +21,7 @@ trait NoJobSchedulerEngineService extends ServiceStandards {
   }
 }
 
-object NoJobSchedulerEngineService {
+object NoJobSchedulerEngineWebService {
   private val logger = Logger(getClass)
   private[web] val Message = "You are trying to access this Universal Agent as a JobScheduler or Classic Agent." +
     " Use this Universal Agent with JobScheduler 1.10 or newer."

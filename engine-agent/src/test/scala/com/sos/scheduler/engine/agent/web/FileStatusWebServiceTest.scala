@@ -19,7 +19,7 @@ import spray.testkit.ScalatestRouteTest
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class FileStatusServiceTest extends FreeSpec with ScalatestRouteTest with FileStatusService {
+final class FileStatusWebServiceTest extends FreeSpec with ScalatestRouteTest with FileStatusWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
 

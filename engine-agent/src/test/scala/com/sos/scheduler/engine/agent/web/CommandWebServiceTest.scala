@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate, _}
-import com.sos.scheduler.engine.agent.web.CommandServiceTest._
+import com.sos.scheduler.engine.agent.web.CommandWebServiceTest._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
@@ -24,7 +24,7 @@ import spray.testkit.ScalatestRouteTest
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with CommandService {
+final class CommandWebServiceTest extends FreeSpec with ScalatestRouteTest with CommandWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
   override protected val uriPathPrefix = "test"
@@ -90,7 +90,7 @@ final class CommandServiceTest extends FreeSpec with ScalatestRouteTest with Com
       route
 }
 
-object CommandServiceTest {
+object CommandWebServiceTest {
   private val KnownFile = "/DIRECTORY/known"
   private val TestRequestFileOrderSourceContent = RequestFileOrderSourceContent("/DIRECTORY", ".*", Duration.ofMillis(111222333444555666L), Set(KnownFile))
   private val FailingRequestFileOrderSourceContent = RequestFileOrderSourceContent("ERROR", "", Duration.ZERO, Set())

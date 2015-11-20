@@ -17,7 +17,7 @@ import spray.testkit.ScalatestRouteTest
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class MainViewServiceTest extends FreeSpec with ScalatestRouteTest with MainViewService {
+final class RootWebServiceTest extends FreeSpec with ScalatestRouteTest with RootWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
 

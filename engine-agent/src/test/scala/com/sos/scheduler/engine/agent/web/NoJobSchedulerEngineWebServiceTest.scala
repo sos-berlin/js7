@@ -9,21 +9,21 @@ import spray.testkit.ScalatestRouteTest
 /**
  * @author Joacim Zschimmer
  */
-final class NoJobSchedulerEngineServiceTest extends FreeSpec with ScalatestRouteTest with NoJobSchedulerEngineService {
+final class NoJobSchedulerEngineWebServiceTest extends FreeSpec with ScalatestRouteTest with NoJobSchedulerEngineWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
 
   "/jobscheduler/engine/command" in {
     Post(Uri("/jobscheduler/engine/command"), <test/>) ~> route ~> check {
       assert(status == NotFound)
-      assert(entity.asString contains NoJobSchedulerEngineService.Message)
+      assert(entity.asString contains NoJobSchedulerEngineWebService.Message)
     }
   }
 
   "/jobscheduler/engine" in {
     Get(Uri("/jobscheduler/engine")) ~> route ~> check {
       assert(status == NotFound)
-      assert(entity.asString contains NoJobSchedulerEngineService.Message)
+      assert(entity.asString contains NoJobSchedulerEngineWebService.Message)
     }
   }
 }

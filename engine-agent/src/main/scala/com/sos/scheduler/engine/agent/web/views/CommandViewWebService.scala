@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.web.views
 
 import com.sos.scheduler.engine.agent.command.{CommandHandlerOverview, CommandRunOverview}
-import com.sos.scheduler.engine.agent.web.common.ServiceStandards
+import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils._
 import scala.collection.immutable
@@ -13,7 +13,7 @@ import spray.routing.Directives._
 /**
   * @author Joacim Zschimmer
   */
-trait CommandHandlerViewService extends ServiceStandards {
+trait CommandViewWebService extends AgentWebService {
 
   protected def commandHandlerOverview: CommandHandlerOverview
   protected def commandRunOverviews: immutable.Iterable[CommandRunOverview]
@@ -32,6 +32,6 @@ trait CommandHandlerViewService extends ServiceStandards {
   }
 }
 
-object CommandHandlerViewService {
+object CommandViewWebService {
   intelliJuseImports(rootFormat _)
 }

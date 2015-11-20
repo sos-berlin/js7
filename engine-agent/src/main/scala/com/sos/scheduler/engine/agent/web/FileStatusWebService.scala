@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.web
 
-import com.sos.scheduler.engine.agent.web.common.ServiceStandards
+import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.sprayutils.SimpleTypeSprayJsonSupport._
 import java.nio.file.Files.exists
 import java.nio.file.Paths
@@ -13,7 +13,7 @@ import spray.routing.Directives._
 /**
  * @author Joacim Zschimmer
  */
-trait FileStatusService extends ServiceStandards {
+trait FileStatusWebService extends AgentWebService {
 
   addApiRoute {
     (path("fileExists") & get) {

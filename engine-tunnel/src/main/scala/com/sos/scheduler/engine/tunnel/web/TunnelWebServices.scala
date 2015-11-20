@@ -17,7 +17,7 @@ import spray.routing.Directives._
 /**
  * @author Joacim Zschimmer
  */
-object TunnelWebService {
+object TunnelWebServices {
   intelliJuseImports(rootFormat _)
 
   private val logger = Logger(getClass)

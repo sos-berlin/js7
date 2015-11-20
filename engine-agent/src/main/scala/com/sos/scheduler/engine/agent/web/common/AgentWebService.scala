@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.agent.web.common
 
 import akka.actor.ActorRefFactory
 import com.google.common.base.Strings.isNullOrEmpty
-import com.sos.scheduler.engine.agent.web.common.ServiceStandards._
+import com.sos.scheduler.engine.agent.web.common.AgentWebService._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.collection.mutable
 import spray.http.StatusCodes.InternalServerError
@@ -18,7 +18,7 @@ import spray.util.LoggingContext
  *
  * @author Joacim Zschimmer
  */
-trait ServiceStandards {
+trait AgentWebService {
   protected implicit def actorRefFactory: ActorRefFactory
   /**
    * URI path prefix without prefix or suffix slashes.
@@ -71,7 +71,7 @@ trait ServiceStandards {
   }
 }
 
-object ServiceStandards {
+object AgentWebService {
   val AgentPrefix = "agent"
   private val logger = Logger(getClass)
   private val PackageName = getClass.getPackage.getName

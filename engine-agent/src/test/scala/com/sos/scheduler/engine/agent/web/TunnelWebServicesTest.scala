@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.agent.web
 
 import akka.actor.ActorSystem
 import akka.util.ByteString
-import com.sos.scheduler.engine.agent.web.TunnelServiceTest._
+import com.sos.scheduler.engine.agent.web.TunnelWebServicesTest._
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.tunnel.data.Http._
 import com.sos.scheduler.engine.tunnel.data._
@@ -27,7 +27,7 @@ import spray.testkit.ScalatestRouteTest
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TunnelServiceTest extends FreeSpec with ScalatestRouteTest with TunnelService {
+final class TunnelWebServicesTest extends FreeSpec with ScalatestRouteTest with TunnelWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
 
@@ -72,7 +72,7 @@ final class TunnelServiceTest extends FreeSpec with ScalatestRouteTest with Tunn
   private def requestToResponse(request: ByteString) = request ++ ByteString(" RESPONSE)")
 }
 
-private object TunnelServiceTest {
+private object TunnelWebServicesTest {
   private val TunnelPath = Path("/jobscheduler/agent/api/tunnel")
   private val CrazyString = """,.-;:_!"§$%&/()=#'+*´`<>"""
   private val TestTunnelId = TunnelId(CrazyString * 2)  // In practice (2015), the TunnelId is simpler

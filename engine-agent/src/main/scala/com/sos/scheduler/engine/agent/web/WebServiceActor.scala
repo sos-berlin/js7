@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.ExtraWebService
-import com.sos.scheduler.engine.agent.web.views.{CommandHandlerViewService, MainViewService, TaskService}
+import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
@@ -34,13 +34,13 @@ final class WebServiceActor @Inject private(
   agentConfiguration: AgentConfiguration,
   injector: Injector)
 extends HttpServiceActor
-with CommandService
-with TunnelService
-with FileStatusService
-with MainViewService
-with TaskService
-with CommandHandlerViewService
-with NoJobSchedulerEngineService
+with CommandWebService
+with TunnelWebService
+with FileStatusWebService
+with RootWebService
+with TaskWebService
+with CommandViewWebService
+with NoJobSchedulerEngineWebService
 {
   private lazy val addWebServices = for (o ← extraWebServices) {
     logger.debug(s"Adding extra web service $o")
