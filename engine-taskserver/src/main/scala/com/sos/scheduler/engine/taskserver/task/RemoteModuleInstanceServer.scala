@@ -3,13 +3,13 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
+import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
-import com.sos.scheduler.engine.taskserver.data.{HasSendProcessSignal, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
@@ -24,7 +24,7 @@ import scala.concurrent.Future
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
 final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskStartArguments, taskServerMainTerminatedOption: Option[Future[Unit]])
-extends HasCloser with Invocable with HasSendProcessSignal {
+extends HasCloser with Invocable {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
 
   private var taskArguments: TaskArguments = null
@@ -83,11 +83,10 @@ extends HasCloser with Invocable with HasSendProcessSignal {
   @invocable
   def waitForSubprocesses(): Unit = {}
 
-  def sendProcessSignal(signal: ProcessSignal) = {
+  def sendProcessSignal(signal: ProcessSignal): Unit =
     task match {
-      case o: HasSendProcessSignal ⇒ o.sendProcessSignal(signal)
+      case o: ShellProcessTask ⇒ o.sendProcessSignal(signal)
     }
-  }
 
   override def toString = List(
       s"${getClass.getSimpleName}",

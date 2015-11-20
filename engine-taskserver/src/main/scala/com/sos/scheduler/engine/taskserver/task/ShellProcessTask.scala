@@ -5,10 +5,9 @@ import com.sos.scheduler.engine.base.process.ProcessSignal._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.{SetOnce, HasCloser, Logger}
+import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
-import com.sos.scheduler.engine.taskserver.data.HasSendProcessSignal
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
@@ -34,7 +33,7 @@ private[task] final class ShellProcessTask(
   environment: immutable.Iterable[(String, String)],
   killScriptPathOption: Option[Path],
   taskServerMainTerminatedOption: Option[Future[Unit]] = None)
-extends HasCloser with Task with HasSendProcessSignal {
+extends HasCloser with Task {
 
   import commonArguments.{agentTaskId, hasOrder, jobName, monitors, namedInvocables, stdFiles}
   import namedInvocables.spoolerTask
@@ -139,7 +138,7 @@ extends HasCloser with Task with HasSendProcessSignal {
       (source.getLines map lineToKeyValue).toMap
     }
 
-  def sendProcessSignal(signal: ProcessSignal) = {
+  def sendProcessSignal(signal: ProcessSignal): Unit = {
     logger.trace(s"sendProcessSignal $signal")
     for (p ← richProcessOnce) p.sendProcessSignal(signal)
   }
