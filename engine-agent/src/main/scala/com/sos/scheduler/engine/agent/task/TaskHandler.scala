@@ -13,8 +13,8 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import com.sos.scheduler.engine.common.utils.ConcurrentRegister
+import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.atomic.AtomicBoolean
@@ -51,7 +51,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
     }
     if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept task starts")
     val task = newAgentTask(command, meta.clientIpOption)
-    tasks += task
+    tasks.insert(task)
     task.start()
     task.onTunnelInactivity(terminateAfterTunnelInactivity(task))
     StartTaskResponse(task.id, task.tunnelToken)

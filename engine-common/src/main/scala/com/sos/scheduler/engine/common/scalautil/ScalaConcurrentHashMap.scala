@@ -10,6 +10,14 @@ import scala.collection.mutable
 class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]{
   val delegate = new java.util.concurrent.ConcurrentHashMap[K, V]
 
+  final def insert(kv: (K, V)): this.type = insert(kv._1, kv._2)
+
+  final def insert(key: K, value: V): this.type = {
+    val existingValue = delegate.putIfAbsent(key, value)
+    if (existingValue != null) throw new DuplicateKeyException(s"'$key' has already been registered")
+    this
+  }
+
   final override def +=(kv: (K, V)) = {
     delegate.put(kv._1, kv._2)
     this

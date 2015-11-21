@@ -12,6 +12,11 @@ final class ScalaConcurrentHashMapTest extends FreeSpec {
 
   private val m = new ScalaConcurrentHashMap[Int, String]
 
+  "insert" in {
+    m.insert(1 → "eins")
+    intercept[DuplicateKeyException] { m.insert(1 → "eins") }
+  }
+
   "+=" in {
     m += 1 → "eins"
     m += 2 → "zwei"

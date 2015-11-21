@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.utils
 
 import com.sos.scheduler.engine.base.utils.HasKey
-import com.sos.scheduler.engine.common.scalautil.{DuplicateKeyException ⇒ BaseDuplicateKeyException, ScalaConcurrentHashMap}
+import com.sos.scheduler.engine.common.scalautil.ScalaConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -28,34 +28,30 @@ trait ConcurrentRegister[V <: HasKey] {
 
   final def map[A](f: V ⇒ A) = keyToValue.values map f
 
-  final def +=(value: V): Unit = add(value)
-
-  final def add(value: V): Unit = {
-    val existingValue = keyToValue.delegate.putIfAbsent(value.key, value)
-    if (existingValue != null) throw new DuplicateKeyException(value)
+  final def insert(value: V): Unit = {
+    keyToValue.insert(value.key, value)
     counter.incrementAndGet()
     onAdded(value)
   }
 
   def onAdded(value: V) = {}
 
-  final def -=(key: Key): Unit =
-    remove(key) match {
+  final def -=(key: Key): Unit = remove(key)
+
+  final def remove(key: Key): Option[V] = {
+    val removedOption = keyToValue remove key
+    removedOption match {
       case Some(removed) ⇒ onRemoved(removed)
       case None ⇒
     }
-
-  final def remove(key: Key): Option[V] = keyToValue remove key
+    removedOption
+  }
 
   def onRemoved(value: V) = {}
 
   final def totalCount = counter.get
 
   protected def throwNoSuchId(key: Key) = throw new NoSuchElementException(s"Unknown '$key'")
-
-  final class DuplicateKeyException(val value: V) extends BaseDuplicateKeyException("'$key' is already registered") {
-    def key = value.key
-  }
 }
 
 object ConcurrentRegister {

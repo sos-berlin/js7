@@ -24,7 +24,7 @@ final class ConcurrentRegisterTest extends FreeSpec {
   }
 
   "Add a first entry" in {
-    register += Value(1)
+    register.insert(Value(1))
     assert(!register.isEmpty)
     assert(register.nonEmpty)
     assert(register.size == 1)
@@ -33,7 +33,7 @@ final class ConcurrentRegisterTest extends FreeSpec {
   }
 
   "Add a second entry" in {
-    register += Value(2)
+    register.insert(Value(2))
     assert(!register.isEmpty)
     assert(register.nonEmpty)
     assert(register.size == 2)
@@ -45,13 +45,11 @@ final class ConcurrentRegisterTest extends FreeSpec {
   }
 
   "Adding a known entry is rejected" in {
-    val e = intercept[register.DuplicateKeyException] {
-      register += Value(2)
-    }
-    assert(e.key == 2)
-    assert(e.value == Value(2))
     intercept[DuplicateKeyException] {
-      register += Value(2)
+      register.insert(Value(2))
+    }
+    intercept[DuplicateKeyException] {
+      register.insert(Value(2))
     }
   }
 
