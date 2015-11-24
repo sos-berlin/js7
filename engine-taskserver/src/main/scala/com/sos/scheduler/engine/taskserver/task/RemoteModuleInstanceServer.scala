@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
-import com.sos.scheduler.engine.common.scalautil.HasCloser
+import com.sos.scheduler.engine.common.scalautil.{SetOnce, HasCloser}
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
@@ -28,7 +28,7 @@ extends HasCloser with Invocable {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
 
   private var taskArguments: TaskArguments = null
-  private var task: Task = null
+  private val taskOnce = new SetOnce[Task]
 
   @invocable
   def construct(arguments: VariantArray): Unit = taskArguments = TaskArguments(arguments)
@@ -48,7 +48,7 @@ extends HasCloser with Invocable {
       taskArguments.monitors,
       hasOrder = taskArguments.hasOrder,
       stdFiles)
-    task = taskArguments.module match {
+    val task = taskArguments.module match {
       case module: ShellModule ⇒
         new ShellProcessTask(module, commonArguments,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
@@ -61,34 +61,31 @@ extends HasCloser with Invocable {
         new JavaProcessTask(module, commonArguments)
     }
     closer.registerAutoCloseable(task)
+    taskOnce := task
     task.start()
   }
 
   @invocable
-  def end(succeeded: Boolean): Unit = {
-    if (task != null)
-      task.end()
-  }
+  def end(succeeded: Boolean): Unit =
+    for (t ← taskOnce) t.end()
 
   @invocable
-  def step(): Any = task.step()
+  def step(): Any = taskOnce().step()
 
   @invocable
   def call(javaSignature: String): Any = {
-    if (task == null && Set(SpoolerOnErrorSignature, SpoolerExitSignature)(javaSignature))
+    if (taskOnce.isEmpty && Set(SpoolerOnErrorSignature, SpoolerExitSignature)(javaSignature))
       ()
-    else {
-      require(task != null, s"No task when calling $javaSignature")
-      task.callIfExists(javaSignature)
-    }
+    else
+      taskOnce().callIfExists(javaSignature)
   }
 
   @invocable
   def waitForSubprocesses(): Unit = {}
 
   def sendProcessSignal(signal: ProcessSignal): Unit =
-    task match {
-      case o: ShellProcessTask ⇒ o.sendProcessSignal(signal)
+    taskOnce.toOption match {
+      case Some(o: ShellProcessTask) ⇒ o.sendProcessSignal(signal)
     }
 
   override def toString = List(
@@ -96,7 +93,7 @@ extends HasCloser with Invocable {
       Option(taskArguments) map { t ⇒ s"(task ${t.jobName}:${t.taskId.string})" } getOrElse ""
     ).mkString("")
 
-  def pidOption: Option[Pid] = Option(task) flatMap { _.pidOption }
+  def pidOption: Option[Pid] = taskOnce flatMap { _.pidOption }
 }
 
 object RemoteModuleInstanceServer extends InvocableFactory {

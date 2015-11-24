@@ -62,7 +62,7 @@ object SetOnce {
   /**
     * Makes a SetOnce implicitly readable.
     * <pre>
-    * val once = new SetOnce[Int]
+    * val once = new SetOnce[Int] with SetOnce.Implicit
     * ...
     * val i: Int = once
     * </pre>
@@ -71,5 +71,7 @@ object SetOnce {
     this: SetOnce[_] ⇒
   }
 
-  implicit def dereference[A](a: SetOnce[A] with Implicit): A = a()
+  object Implicit {
+    implicit def dereference[A](a: SetOnce[A] with Implicit): A = a()
+  }
 }
