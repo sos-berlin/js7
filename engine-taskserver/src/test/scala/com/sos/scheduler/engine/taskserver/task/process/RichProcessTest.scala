@@ -55,7 +55,7 @@ final class RichProcessTest extends FreeSpec {
             s"""#! $interpreter
                |echo TEST-SCRIPT
                |""".stripMargin
-          val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, name = "task-test")
+          val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = s"RichProcessTest-shebang")
           val processConfig = ProcessConfiguration(stdFileMap)
           val shellProcess = RichProcess.startShellScript(processConfig, name = "TEST", scriptString = scriptString)
           shellProcess.waitForTermination()
@@ -65,20 +65,23 @@ final class RichProcessTest extends FreeSpec {
               |TEST-SCRIPT
               |INTERPRETER-END
               |""".stripMargin)
+          RichProcess.tryDeleteFiles(stdFileMap.values)
         }
       }
   }
 
   "sendProcessSignal SIGKILL" in {
     val idString = "TEST-PROCESS-ID"
-    val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 60 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 60"
+    val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 7 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 6"
     withCloser { closer ⇒
-      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, name = "task-test")
+      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "RichProcessTest-kill")
       val killScriptOutputFile = createTempFile("test-", ".tmp")
       val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
       killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n"
       closer.onClose {
-        RichProcess.tryDeleteFiles(stdFileMap.values)  // Under Windows the files will not be deleted, because ping.exe will be not killed (and JS-1468 doesn't allow integrated kill scripts) !!!
+        waitForCondition(15.s, 1.s) {
+          RichProcess.tryDeleteFiles(stdFileMap.values)
+        }
         delete(killScriptOutputFile)
         delete(killScriptFile)
       }

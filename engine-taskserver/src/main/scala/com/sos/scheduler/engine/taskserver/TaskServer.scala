@@ -15,6 +15,7 @@ trait TaskServer extends AutoCloseable {
   def taskStartArguments: TaskStartArguments
   def start(): Unit
   def sendProcessSignal(signal: ProcessSignal): Unit
+  def deleteLogFiles(): Unit
   def terminated: Future[Unit]
   def pidOption: Option[Pid]
 

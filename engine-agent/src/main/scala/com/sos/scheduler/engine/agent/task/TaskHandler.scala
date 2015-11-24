@@ -74,6 +74,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
     task.terminated recover {
       case t ⇒ logger.error(s"$task: $t", t)
     } map { _ ⇒
+      task.deleteLogFiles()
       // Now, the master has completed all API calls or the connection has been closed
       removeTaskAfterTermination(task)
       EmptyResponse

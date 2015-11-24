@@ -43,7 +43,7 @@ extends HasCloser with Task {
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
-  private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, name = logFilenamePart) else Map[StdoutStderrType, Path]()
+  private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, id = logFilenamePart) else Map[StdoutStderrType, Path]()
   private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",
     stdFiles.copy(stdFileMap = processStdFileMap ++ stdFiles.stdFileMap)).closeWithCloser
   private var startCalled = false

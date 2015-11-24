@@ -24,7 +24,7 @@ final class JavaProcessTest extends FreeSpec {
 
   "JavaProcess" in {
     withCloser { closer ⇒
-      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, name = "task-test")
+      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "JavaProcessTest")
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
       val stopwatch = new Stopwatch
       val process = JavaProcess.startJava(

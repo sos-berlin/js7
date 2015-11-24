@@ -43,6 +43,8 @@ with HasKey {
 
   final def sendProcessSignal(signal: ProcessSignal): Unit = taskServer.sendProcessSignal(signal)
 
+  final def deleteLogFiles(): Unit = taskServer.deleteLogFiles()
+
   final def terminated: Future[Unit] = taskServer.terminated
 
   final def pidOption: Option[Pid] = taskServer.pidOption

@@ -140,7 +140,7 @@ object RichProcess {
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
 
-  def createStdFiles(directory: Path, name: String): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, name, o) }).toMap
+  def createStdFiles(directory: Path, id: String): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, id, o) }).toMap
 
   private def waitForProcessTermination(process: Process): Unit = {
     logger.debug(s"waitFor ${processToString(process)} ...")
@@ -148,12 +148,18 @@ object RichProcess {
     logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
   }
 
-  def tryDeleteFiles(files: Iterable[Path]): Unit =
+  def tryDeleteFiles(files: Iterable[Path]): Boolean = {
+    var allFilesDeleted = true
     for (file ← files) {
       try {
         logger.debug(s"Delete file '$file'")
         delete(file)
       }
-      catch { case NonFatal(t) ⇒ logger.error(t.toString) }
+      catch { case NonFatal(t) ⇒
+        allFilesDeleted = false
+        logger.error(t.toString)
+      }
     }
+    allFilesDeleted
+  }
 }

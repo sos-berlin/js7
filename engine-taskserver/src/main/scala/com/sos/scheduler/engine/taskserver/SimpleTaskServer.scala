@@ -69,6 +69,8 @@ extends TaskServer with HasCloser {
     signalables foreach { _.sendProcessSignal(signal) }
   }
 
+  def deleteLogFiles() = {}  // Files are closed when master via COM RPC releases RemoteModuleInstanceServer
+
   override def toString = s"SimpleTaskServer(master=${taskStartArguments.masterAddress})"
 
   def pidOption = (remoteModuleInstanceServers flatMap { _.pidOption }).headOption

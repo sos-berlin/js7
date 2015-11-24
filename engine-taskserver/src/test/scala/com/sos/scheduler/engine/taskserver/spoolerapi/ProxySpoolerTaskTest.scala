@@ -28,7 +28,7 @@ import scala.util.Random
 final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with HasCloser {
 
   private lazy val stdFileMap = {
-    val r = RichProcess.createStdFiles(temporaryDirectory, name = "task-test")
+    val r = RichProcess.createStdFiles(temporaryDirectory, id = "ProxySpoolerTaskTest")
     closer.onClose { RichProcess.tryDeleteFiles(r.values) }
     r
   }

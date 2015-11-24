@@ -210,6 +210,8 @@ private object TaskHandlerTest {
         terminatedPromise.success(())
     }
 
+    def deleteLogFiles() = {}
+
     def start() = {
       assert(!started && !closed)
       started = true

@@ -31,20 +31,26 @@ import scala.collection.mutable
 final class ShellProcessTaskTest extends FreeSpec {
 
   "ShellProcessTask exit 0" in {
-    runTask(Setting(preTask = true, preStep = true, exitCode = 0, postStep = identity), expectedSpoolerProcessResult = Some(true))
+    runTask("exit-0",
+      Setting(preTask = true, preStep = true, exitCode = 0, postStep = identity),
+      expectedSpoolerProcessResult = Some(true))
   }
 
   "ShellProcessTask exit 0 pretask false" in {
-    runTask(Setting(preTask = false, preStep = true, exitCode = 0, postStep = identity), expectedStartResult = false)
+    runTask("exit-0-pretask-false",
+      Setting(preTask = false, preStep = true, exitCode = 0, postStep = identity),
+      expectedStartResult = false)
   }
 
   "ShellProcessTask exit 7" in {
-    runTask(Setting(preTask = true, preStep = true, exitCode = 7, postStep = identity), expectedSpoolerProcessResult = Some(false))
+    runTask("exit-7",
+      Setting(preTask = true, preStep = true, exitCode = 7, postStep = identity),
+      expectedSpoolerProcessResult = Some(false))
   }
 
-  private def runTask(setting: Setting, expectedStartResult: Boolean = true, expectedSpoolerProcessResult: Option[Boolean] = None): Unit = {
+  private def runTask(id: String, setting: Setting, expectedStartResult: Boolean = true, expectedSpoolerProcessResult: Option[Boolean] = None): Unit = {
     val spoolerLog = new TestSpoolerLog
-    val (stepResultOption, files) = autoClosing(newShellProcessTask(spoolerLog, setting)) { task ⇒
+    val (stepResultOption, files) = autoClosing(newShellProcessTask(id, spoolerLog, setting)) { task ⇒
       val taskResult = task.start()
       assert(taskResult == expectedStartResult)
       val r = taskResult.option(task.step())
@@ -81,7 +87,7 @@ private object ShellProcessTaskTest {
 
   private case class Setting(preTask: Boolean, preStep: Boolean, exitCode: Int, postStep: Boolean ⇒ Boolean)
 
-  private def newShellProcessTask(spoolerLog: SpoolerLog, setting: Setting) =
+  private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting) =
     new ShellProcessTask(
       ShellModule(testScript(setting.exitCode)),
       CommonArguments(
@@ -100,7 +106,7 @@ private object ShellProcessTaskTest {
       environment = Map(TestName → TestValue),
       variablePrefix = TaskArguments.DefaultShellVariablePrefix,
       logDirectory = temporaryDirectory,
-      logFilenamePart = "test-task",
+      logFilenamePart = s"ShellProcessTaskTest-$id",
       killScriptPathOption = None)
 
   private def testScript(exitCode: Int) = Script(

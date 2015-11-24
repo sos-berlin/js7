@@ -3,8 +3,8 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
-import com.sos.scheduler.engine.common.scalautil.{SetOnce, HasCloser}
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
+import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
@@ -90,11 +90,13 @@ extends HasCloser with Invocable {
   def sendProcessSignal(signal: ProcessSignal): Unit =
     taskOnce.toOption match {
       case Some(o: ShellProcessTask) ⇒ o.sendProcessSignal(signal)
+      case _ ⇒
     }
 
   private def deleteLogFiles(): Unit =
     taskOnce.toOption match {
       case Some(o: ShellProcessTask) ⇒ o.deleteLogFiles()
+      case _ ⇒
     }
 
   override def toString = List(
