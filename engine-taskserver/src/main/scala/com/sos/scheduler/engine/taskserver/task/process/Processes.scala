@@ -46,9 +46,9 @@ object Processes {
       private val shellFileAttribute = asFileAttribute(PosixFilePermissions fromString "rwx------")
       private val outputFileAttribute = asFileAttribute(PosixFilePermissions fromString "rw-------")
 
-      def newTemporaryShellFile(name: String) = createTempFile(name, ".sh", shellFileAttribute)
+      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttribute)
 
-      def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = createTempFile(directory, s"${filenamePrefix(name)}", s".$outerr", outputFileAttribute)
+      def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = createTempFile(directory, s"$name-$outerr-", ".log", outputFileAttribute)
 
       def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
     }
@@ -56,9 +56,9 @@ object Processes {
     private[Processes] object Windows extends OperatingSystemSpecific {
       private val Cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
 
-      def newTemporaryShellFile(name: String) = createTempFile(name, ".cmd")
+      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
 
-      def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = createTempFile(directory, s"${filenamePrefix(name)}$outerr-", ".log")
+      def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = createTempFile(directory, s"$name-$outerr-", ".log")
 
       def directShellCommandArguments(argument: String) = Vector(Cmd, "/C", argument)
     }

@@ -85,19 +85,8 @@ extends HasCloser with Task {
       name = jobName,
       scriptString = module.script.string.trim)
     .closeWithCloser
-    deleteFilesWhenProcessClosed(List(orderParamsFile) ++ processStdFileMap.values)
+    deleteFilesWhenProcessClosed(List(orderParamsFile))
     concurrentStdoutStderrWell.start()
-  }
-
-  private def deleteFilesWhenProcessClosed(files: Iterable[Path]): Unit = {
-    if (files.nonEmpty) {
-      for (richProcess ← richProcessOnce;
-           _ ← richProcess.closed;
-           _ ← concurrentStdoutStderrWell.closed)
-      {
-        RichProcess.tryDeleteFiles(files)
-      }
-    }
   }
 
   def end() = {}  // Not called
@@ -144,6 +133,19 @@ extends HasCloser with Task {
   def sendProcessSignal(signal: ProcessSignal): Unit = {
     logger.trace(s"sendProcessSignal $signal")
     for (p ← richProcessOnce) p.sendProcessSignal(signal)
+  }
+
+  def deleteLogFiles() = deleteFilesWhenProcessClosed(processStdFileMap.values)
+
+  private def deleteFilesWhenProcessClosed(files: Iterable[Path]): Unit = {
+    if (files.nonEmpty) {
+      for (richProcess ← richProcessOnce;
+           _ ← richProcess.closed;
+           _ ← concurrentStdoutStderrWell.closed)
+      {
+        RichProcess.tryDeleteFiles(files)
+      }
+    }
   }
 
   @TestOnly

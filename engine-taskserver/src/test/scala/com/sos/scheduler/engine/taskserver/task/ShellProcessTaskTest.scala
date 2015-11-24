@@ -49,6 +49,7 @@ final class ShellProcessTaskTest extends FreeSpec {
       assert(taskResult == expectedStartResult)
       val r = taskResult.option(task.step())
       // Is not called by C++ Scheduler: task.end()
+      task.deleteLogFiles()
       (r, task.files)
     }
     (setting.preTask, stepResultOption) match {

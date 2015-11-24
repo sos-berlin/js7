@@ -30,6 +30,10 @@ extends HasCloser with Invocable {
   private var taskArguments: TaskArguments = null
   private val taskOnce = new SetOnce[Task]
 
+  onClose {  // Called when Remoting releases this object (ReleaseCall)
+    deleteLogFiles()
+  }
+
   @invocable
   def construct(arguments: VariantArray): Unit = taskArguments = TaskArguments(arguments)
 
@@ -86,6 +90,11 @@ extends HasCloser with Invocable {
   def sendProcessSignal(signal: ProcessSignal): Unit =
     taskOnce.toOption match {
       case Some(o: ShellProcessTask) ⇒ o.sendProcessSignal(signal)
+    }
+
+  private def deleteLogFiles(): Unit =
+    taskOnce.toOption match {
+      case Some(o: ShellProcessTask) ⇒ o.deleteLogFiles()
     }
 
   override def toString = List(
