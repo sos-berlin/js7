@@ -22,7 +22,7 @@ object Processes {
 
   def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
 
-  def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path = OS.newTemporaryOutputFile(name, outerr)
+  def newLogFile(directory: Path, name: String, outerr: StdoutStderrType): Path = OS.newLogFile(directory, name, outerr)
 
   /**
    * Builds an argument list for [[ProcessBuilder]].
@@ -35,7 +35,7 @@ object Processes {
 
   private sealed trait OperatingSystemSpecific {
     def newTemporaryShellFile(name: String): Path
-    def newTemporaryOutputFile(name: String, outerr: StdoutStderrType): Path
+    def newLogFile(directory: Path, name: String, outerr: StdoutStderrType): Path
     def directShellCommandArguments(argument: String): immutable.Seq[String]
 
     protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name-"
@@ -46,9 +46,9 @@ object Processes {
       private val shellFileAttribute = asFileAttribute(PosixFilePermissions fromString "rwx------")
       private val outputFileAttribute = asFileAttribute(PosixFilePermissions fromString "rw-------")
 
-      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttribute)
+      def newTemporaryShellFile(name: String) = createTempFile(name, ".sh", shellFileAttribute)
 
-      def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}", s".$outerr", outputFileAttribute)
+      def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = createTempFile(directory, s"${filenamePrefix(name)}", s".$outerr", outputFileAttribute)
 
       def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
     }
@@ -56,9 +56,9 @@ object Processes {
     private[Processes] object Windows extends OperatingSystemSpecific {
       private val Cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
 
-      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
+      def newTemporaryShellFile(name: String) = createTempFile(name, ".cmd")
 
-      def newTemporaryOutputFile(name: String, outerr: StdoutStderrType) = createTempFile(s"${filenamePrefix(name)}$outerr-", ".log")
+      def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = createTempFile(directory, s"${filenamePrefix(name)}$outerr-", ".log")
 
       def directShellCommandArguments(argument: String) = Vector(Cmd, "/C", argument)
     }

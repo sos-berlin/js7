@@ -24,7 +24,7 @@ extends TaskServer {
   def terminated = terminatedPromise.future
 
   def start() = {
-    val stdFileMap = RichProcess.createTemporaryStdFiles()
+    val stdFileMap = RichProcess.createStdFiles(taskStartArguments.logDirectory, name = taskStartArguments.logFilenamePart)
     val closer = Closer.create()
     closeOnError(closer) {
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }

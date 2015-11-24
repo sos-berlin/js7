@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.scalautil.HasCloser
+import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
@@ -27,7 +28,7 @@ import scala.util.Random
 final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with HasCloser {
 
   private lazy val stdFileMap = {
-    val r = RichProcess.createTemporaryStdFiles()
+    val r = RichProcess.createStdFiles(temporaryDirectory, name = "task-test")
     closer.onClose { RichProcess.tryDeleteFiles(r.values) }
     r
   }

@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.data.job.ReturnCode
@@ -23,7 +24,7 @@ final class JavaProcessTest extends FreeSpec {
 
   "JavaProcess" in {
     withCloser { closer ⇒
-      val stdFileMap = RichProcess.createTemporaryStdFiles()
+      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, name = "task-test")
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
       val stopwatch = new Stopwatch
       val process = JavaProcess.startJava(

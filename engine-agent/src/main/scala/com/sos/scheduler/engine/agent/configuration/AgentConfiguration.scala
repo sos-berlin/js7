@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration._
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
+import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.common.utils.TcpUtils.{parseTcpPort, requireTcpPortNumber}
@@ -26,6 +27,7 @@ final case class AgentConfiguration(
   /** Prefix slash and suffix slash are striped. **/
   uriPathPrefix: String = "",
   directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
+  logDirectory: Path = temporaryDirectory,
   environment: immutable.Iterable[(String, String)] = Nil,
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
@@ -51,6 +53,7 @@ object AgentConfiguration {
         httpPort = a.asConverted("-http-port=")(parseTcpPort),
         httpInterfaceRestriction = a.getString("-ip-address="),
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
+        logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
         tunnelInactivityTimeout = a.asConvertedOption("-tunnel-inactivity-timeout=") { o ⇒ Duration.ofSeconds(o.toInt) } getOrElse DefaultTunnelInactivityTimeout,
         killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath })
     }

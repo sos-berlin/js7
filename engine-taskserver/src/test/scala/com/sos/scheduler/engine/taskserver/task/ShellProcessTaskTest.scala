@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
+import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
@@ -97,6 +98,8 @@ private object ShellProcessTaskTest {
         stdFiles = StdFiles(stdFileMap = Map(), stderrLogLevel = SchedulerLogLevel.info, log = (_, lines) ⇒ spoolerLog.info(lines))),
       environment = Map(TestName → TestValue),
       variablePrefix = TaskArguments.DefaultShellVariablePrefix,
+      logDirectory = temporaryDirectory,
+      logFilenamePart = "test-task",
       killScriptPathOption = None)
 
   private def testScript(exitCode: Int) = Script(

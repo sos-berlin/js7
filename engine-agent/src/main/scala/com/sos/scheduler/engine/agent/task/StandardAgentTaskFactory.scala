@@ -63,6 +63,7 @@ extends AgentTaskFactory {
       masterAddress = masterAddress,
       tunnelToken = tunnelToken,
       directory = agentConfiguration.directory,
+      logDirectory = agentConfiguration.logDirectory,
       environment = agentConfiguration.environment,
       killScriptFileOption = agentConfiguration.killScriptFile,
       tunnelInactivityTimeout = agentConfiguration.tunnelInactivityTimeout)

@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.configuration
 
+import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
 import java.nio.file.Paths
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -22,19 +23,27 @@ final class AgentConfigurationTest extends FreeSpec {
   }
 
   "-ip-address=" in {
-    assert(AgentConfiguration(List("-http-port=1")).httpInterfaceRestriction.isEmpty)
-    assert(AgentConfiguration(List("-http-port=1", "-ip-address=1.2.3.4")).httpInterfaceRestriction == Some("1.2.3.4"))
+    assert(conf(Nil).httpInterfaceRestriction.isEmpty)
+    assert(conf(List("-ip-address=1.2.3.4")).httpInterfaceRestriction == Some("1.2.3.4"))
+  }
+
+  "-log-directory=" in {
+    assert(conf(Nil).uriPathPrefix == "")
+    assert(conf(Nil).logDirectory == temporaryDirectory)
+    assert(conf(List("-log-directory=test")).logDirectory == Paths.get("test").toAbsolutePath)
   }
 
   "-uri-prefix=" in {
-    assert(AgentConfiguration(List("-http-port=1")).uriPathPrefix == "")
-    assert(AgentConfiguration(List("-http-port=1", "-uri-prefix=test")).strippedUriPathPrefix == "test")
-    assert(AgentConfiguration(List("-http-port=1", "-uri-prefix=/test/")).strippedUriPathPrefix == "test")
+    assert(conf(Nil).uriPathPrefix == "")
+    assert(conf(List("-uri-prefix=test")).strippedUriPathPrefix == "test")
+    assert(conf(List("-uri-prefix=/test/")).strippedUriPathPrefix == "test")
   }
 
   "-kill-script=" in {
-    assert(AgentConfiguration(List("-http-port=1")).killScriptFile == None)
+    assert(conf(Nil).killScriptFile == None)
     val killScript = Paths.get("kill-script")
-    assert(AgentConfiguration(List("-http-port=1", s"-kill-script=$killScript")).killScriptFile == Some(killScript.toAbsolutePath))
+    assert(conf(List(s"-kill-script=$killScript")).killScriptFile == Some(killScript.toAbsolutePath))
   }
+
+  private def conf(args: Seq[String]) = AgentConfiguration(List("-http-port=1") ++ args)
 }

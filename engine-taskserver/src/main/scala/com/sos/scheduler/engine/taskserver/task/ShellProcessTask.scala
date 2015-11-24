@@ -32,6 +32,8 @@ private[task] final class ShellProcessTask(
   protected val commonArguments: CommonArguments,
   environment: immutable.Iterable[(String, String)],
   variablePrefix: String,
+  logDirectory: Path,
+  logFilenamePart: String,
   killScriptPathOption: Option[Path],
   taskServerMainTerminatedOption: Option[Future[Unit]] = None)
 extends HasCloser with Task {
@@ -41,7 +43,7 @@ extends HasCloser with Task {
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
-  private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createTemporaryStdFiles() else Map[StdoutStderrType, Path]()
+  private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, name = logFilenamePart) else Map[StdoutStderrType, Path]()
   private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",
     stdFiles.copy(stdFileMap = processStdFileMap ++ stdFiles.stdFileMap)).closeWithCloser
   private var startCalled = false

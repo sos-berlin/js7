@@ -53,6 +53,8 @@ extends HasCloser with Invocable {
         new ShellProcessTask(module, commonArguments,
           environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
           variablePrefix = taskArguments.shellVariablePrefix,
+          logDirectory = taskStartArguments.logDirectory,
+          logFilenamePart = taskStartArguments.logFilenamePart,
           killScriptPathOption = taskStartArguments.killScriptFileOption,
           taskServerMainTerminatedOption = taskServerMainTerminatedOption)
       case module: JavaModule ⇒

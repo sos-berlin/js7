@@ -140,7 +140,7 @@ object RichProcess {
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
 
-  def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newTemporaryOutputFile("sos", o) }).toMap
+  def createStdFiles(directory: Path, name: String): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, name, o) }).toMap
 
   private def waitForProcessTermination(process: Process): Unit = {
     logger.debug(s"waitFor ${processToString(process)} ...")

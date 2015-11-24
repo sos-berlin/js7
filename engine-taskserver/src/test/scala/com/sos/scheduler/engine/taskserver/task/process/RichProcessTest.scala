@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCl
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem.{KernelSupportsNestedShebang, isUnix, isWindows}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
@@ -54,7 +55,7 @@ final class RichProcessTest extends FreeSpec {
             s"""#! $interpreter
                |echo TEST-SCRIPT
                |""".stripMargin
-          val stdFileMap = RichProcess.createTemporaryStdFiles()
+          val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, name = "task-test")
           val processConfig = ProcessConfiguration(stdFileMap)
           val shellProcess = RichProcess.startShellScript(processConfig, name = "TEST", scriptString = scriptString)
           shellProcess.waitForTermination()
@@ -72,7 +73,7 @@ final class RichProcessTest extends FreeSpec {
     val idString = "TEST-PROCESS-ID"
     val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 60 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 60"
     withCloser { closer ⇒
-      val stdFileMap = RichProcess.createTemporaryStdFiles()
+      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, name = "task-test")
       val killScriptOutputFile = createTempFile("test-", ".tmp")
       val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
       killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n"
