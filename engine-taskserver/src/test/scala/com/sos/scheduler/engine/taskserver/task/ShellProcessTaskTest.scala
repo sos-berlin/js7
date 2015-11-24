@@ -96,6 +96,7 @@ private object ShellProcessTaskTest {
         hasOrder = false,
         stdFiles = StdFiles(stdFileMap = Map(), stderrLogLevel = SchedulerLogLevel.info, log = (_, lines) ⇒ spoolerLog.info(lines))),
       environment = Map(TestName → TestValue),
+      variablePrefix = TaskArguments.DefaultShellVariablePrefix,
       killScriptPathOption = None)
 
   private def testScript(exitCode: Int) = Script(

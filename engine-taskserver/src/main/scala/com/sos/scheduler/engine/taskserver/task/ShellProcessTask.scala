@@ -31,6 +31,7 @@ private[task] final class ShellProcessTask(
   module: ShellModule,
   protected val commonArguments: CommonArguments,
   environment: immutable.Iterable[(String, String)],
+  variablePrefix: String,
   killScriptPathOption: Option[Path],
   taskServerMainTerminatedOption: Option[Future[Unit]] = None)
 extends HasCloser with Task {
@@ -67,7 +68,7 @@ extends HasCloser with Task {
     }
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
-      val paramEnv = params map { case (k, v) ⇒ paramNameToEnv(k) → v }
+      val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
     val (idStringOption, killScriptFileOption) =
@@ -160,8 +161,6 @@ extends HasCloser with Task {
 private object ShellProcessTask {
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
-
-  private def paramNameToEnv(name: String) = s"SCHEDULER_PARAM_${name.toUpperCase}"
 
   private def lineToKeyValue(line: String): (String, String) = line match {
     case ReturnValuesRegex(name, value) ⇒ name.trim → value.trim

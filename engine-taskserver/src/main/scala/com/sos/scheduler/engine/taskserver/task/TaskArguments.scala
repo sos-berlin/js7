@@ -28,6 +28,7 @@ final class TaskArguments private(arguments: List[(String, String)]) {
   lazy val module = Module(moduleLanguage, script, javaClassNameOption)
   lazy val moduleLanguage: ModuleLanguage = ModuleLanguage(apply(LanguageKey))
   lazy val script: Script = Script.parseXmlString(apply(ScriptKey))
+  lazy val shellVariablePrefix: String = get(ShellVariablePrefixKey) getOrElse DefaultShellVariablePrefix
   lazy val stderrLogLevel: SchedulerLogLevel = get(StderrLogLevelKey) map { o ⇒ SchedulerLogLevel.ofCpp(o.toInt) } getOrElse SchedulerLogLevel.info
   lazy val taskId: TaskId = TaskId(apply(TaskIdKey).toInt)
 
@@ -46,6 +47,7 @@ final class TaskArguments private(arguments: List[(String, String)]) {
 }
 
 object TaskArguments {
+  val DefaultShellVariablePrefix = "SCHEDULER_PARAM_"
   private val EnvironmentKey = "environment"
   private val HasOrderKey = "has_order"
   private val JavaClassKey = "java_class"
@@ -57,12 +59,12 @@ object TaskArguments {
   private val MonitorOrderingKey = "monitor.ordering"
   private val MonitorScriptKey = "monitor.script"
   private val ScriptKey = "script"
+  private val ShellVariablePrefixKey = "process.shell_variable_prefix"
   private val StderrLogLevelKey = "stderr_log_level"
   private val TaskIdKey = "task_id"
-  //TODO private val ProcessShellVariablePrefixKey = "process.shell_variable_prefix"
   private val KeySet = Set(EnvironmentKey, HasOrderKey, JavaClassKey, JobKey, LanguageKey,
     MonitorJavaClassKey, MonitorLanguageKey, MonitorNameKey, MonitorOrderingKey, MonitorScriptKey,
-    ScriptKey, StderrLogLevelKey, TaskIdKey)
+    ScriptKey, ShellVariablePrefixKey, StderrLogLevelKey, TaskIdKey)
   private val IsLegacyKeyValue = Set(
     "com_class" → "",
     "filename" → "",
