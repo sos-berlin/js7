@@ -6,6 +6,8 @@ import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Random
+
 //import scala.language.implicitConversions
 import scala.math.abs
 
@@ -78,10 +80,13 @@ object ScalaTime {
    */
   def parseDuration(string: String) = Duration parse (if (string.nonEmpty && string(0).isDigit) s"PT$string" else string)
 
+  def randomDuration(maximum: Duration): Duration = Duration ofNanos (maximum.toNanos * Random.nextFloat).toLong
+
   implicit class RichDuration(val delegate: Duration) extends AnyVal with Ordered[RichDuration] {
     def unary_- = Duration.ZERO minus delegate
     def +(o: Duration): Duration = delegate plus o
     def -(o: Duration): Duration = delegate minus o
+    def *(o: Int): Duration = delegate multipliedBy o
     def /(o: Int): Duration = delegate dividedBy o
     def min(o: Duration): Duration = if (this <= o) delegate else o
     def max(o: Duration): Duration = if (this > o) delegate else o
@@ -95,9 +100,9 @@ object ScalaTime {
       if (delegate.getSeconds > 1000000) s"${delegate.getSeconds}s"
       else {
         val millis = delegate.toMillis
-        if (abs(millis) >= 10) millisToPretty(millis)
+        val nanos = delegate.toNanos
+        if (abs(millis) >= 10 || millis >= 1 && nanos / 1000 % 1000 == 0) millisToPretty(millis)
         else {
-          val nanos = delegate.toNanos
           if (abs(nanos) > 10000) s"${delegate.toNanos / 1000}µs"
           else s"${delegate.toNanos}ns"
         }

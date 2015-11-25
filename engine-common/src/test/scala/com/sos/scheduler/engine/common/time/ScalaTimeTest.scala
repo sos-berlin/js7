@@ -74,6 +74,14 @@ final class ScalaTimeTest extends FreeSpec {
 //      (7L.days: Duration).toMillis shouldEqual (7*24*3600*1000)
 //    }
 
+    "randomDuration" in {
+      val durations = 1 to 1000 map { _ ⇒ randomDuration(2.s) }
+      val min = durations.min
+      val max = durations.max
+      assert(min >= 0.s && min <= 100.ms)
+      assert(max >= 1900.ms && min <= 2.s)
+    }
+
     "-Duration" in {
       assert(-7.s == Duration.ofSeconds(-7))
     }
@@ -84,6 +92,10 @@ final class ScalaTimeTest extends FreeSpec {
 
     "Duration - Duration" in {
       (7.s - 2.ms: Duration).toMillis shouldEqual (7*1000 - 2)
+    }
+
+    "Duration * Int" in {
+      (7.s * 2).toMillis shouldEqual 14000
     }
 
     "Duration / Int" in {
@@ -116,9 +128,12 @@ final class ScalaTimeTest extends FreeSpec {
       1230.ms.pretty shouldEqual "1.23s"
       1234.ms.pretty shouldEqual "1.234s"
       10.ms.pretty shouldEqual "0.01s"
-      for (i <- 1 to 10000000) (-10).ms.pretty
+      1.ms.pretty shouldEqual "0.001s"
       (-10).ms.pretty shouldEqual "-0.01s"
       (-1).s.pretty shouldEqual "-1s"
+      Duration.ofNanos(1000000).pretty shouldEqual "0.001s"
+      Duration.ofNanos(1000001).pretty shouldEqual "0.001s"
+      Duration.ofNanos(1001000).pretty shouldEqual "1001µs"
       Duration.ofNanos(100000).pretty shouldEqual "100µs"
       Duration.ofNanos(100).pretty shouldEqual "100ns"
     }
