@@ -16,7 +16,7 @@ import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializ
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
 import com.sos.scheduler.engine.minicom.remoting.serial.{ResultDeserializer, ServerRemoting}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
-import java.time.Duration
+import java.time.{Instant, Duration}
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
 import scala.collection.{breakOut, immutable}
@@ -168,16 +168,19 @@ extends ServerRemoting with ClientRemoting {
     }
   }
 
-  private class KeepaliveThread(inactivityTimeout: Duration) extends Thread {
+  private class KeepaliveThread(keepaliveDuration: Duration) extends Thread {
     setName("Remoting.Keepalive")
 
     override def run() =
-      try
+      try {
+        var t = Instant.now()
         while (true) {
-          sleep(inactivityTimeout)
+          t += keepaliveDuration
+          if (t > Instant.now()) sleepUntil(t)
+          else t = Instant.now()
           sendReceiveKeepalive()
         }
-      catch {
+      } catch {
         case _: InterruptedException ⇒
         case NonFatal(t) ⇒ logger.error(t.toString)
       }
