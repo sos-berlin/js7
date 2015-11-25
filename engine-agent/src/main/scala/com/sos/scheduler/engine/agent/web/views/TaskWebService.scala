@@ -29,7 +29,7 @@ trait TaskWebService extends AgentWebService {
         } ~
         pathSingleSlash {
           get {
-            complete { taskHandlerView.taskOverviews }
+            complete { taskHandlerView.taskOverviews sortBy { _.id.index } }
           }
         } ~
         path(Segment) { idString ⇒
