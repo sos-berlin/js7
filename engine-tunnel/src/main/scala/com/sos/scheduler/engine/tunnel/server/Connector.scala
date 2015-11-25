@@ -134,7 +134,7 @@ extends Actor with FSM[State, Data] {
   }
 
   onTransition {
-    case _ -> (ExpectingMessageFromTcp | ExpectingRequest) ⇒ inactivityWatchdog.restart()
+    case _ -> ExpectingRequest ⇒ inactivityWatchdog.restart()  // Only HTTP requests reset the timer
     case _ -> Closing ⇒ inactivityWatchdog.stop()
   }
 
