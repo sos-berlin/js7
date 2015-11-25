@@ -33,7 +33,7 @@ final class Remoting(
   proxyIDispatchFactories: Iterable[ProxyIDispatchFactory],
   name: String,
   returnAfterReleaseOf: Invocable ⇒ Boolean = _ ⇒ false,
-  inactivityTimeout: Duration)
+  inactivityTimeoutOption: Option[Duration])
 extends ServerRemoting with ClientRemoting {
 
   private val logger = Logger.withPrefix(getClass, name)
@@ -46,12 +46,13 @@ extends ServerRemoting with ClientRemoting {
   def run(): Unit = {
     logger.debug("Started")
     val firstRequest = dialogConnection.receiveFirstMessage()
-    val keepaliveThread = new KeepaliveThread
-    keepaliveThread.start()
-    try continue(firstRequest)
-    finally {
-      keepaliveThread.interrupt()
-      keepaliveThread.join()
+    inactivityTimeoutOption match {
+      case Some(inactivityTimeout) ⇒
+        withKeepaliveThread(1.s max inactivityTimeout) {
+          continue(firstRequest)
+        }
+      case None ⇒
+        continue(firstRequest)
     }
     logger.debug("Ended")
 
@@ -157,13 +158,23 @@ extends ServerRemoting with ClientRemoting {
    */
   def invocables[A : ClassTag]: immutable.Iterable[A] = proxyRegister.invocables[A]
 
-  private class KeepaliveThread extends Thread {
+  private def withKeepaliveThread[A](inactivityTimeout: Duration)(body: ⇒ A): A = {
+    val keepaliveThread = new KeepaliveThread(1.s max inactivityTimeout)
+    keepaliveThread.start()
+    try body
+    finally {
+      keepaliveThread.interrupt()
+      keepaliveThread.join()
+    }
+  }
+
+  private class KeepaliveThread(inactivityTimeout: Duration) extends Thread {
     setName("Remoting.Keepalive")
 
     override def run() =
       try
         while (true) {
-          sleep(1.s max inactivityTimeout)
+          sleep(inactivityTimeout)
           sendReceiveKeepalive()
         }
       catch {

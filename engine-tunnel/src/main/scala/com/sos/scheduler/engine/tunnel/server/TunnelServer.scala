@@ -23,7 +23,7 @@ import scala.util.Try
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem, conf: TunnelConfiguration) extends AutoCloseable {
+final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem, conf: TunnelConfiguration = TunnelConfiguration()) extends AutoCloseable {
 
   private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props(inactivityTimeout = conf.inactivityTimeout), name = "ConnectorHandler")
   private implicit val askTimeout = Timeout(ShortTimeout.toFiniteDuration)

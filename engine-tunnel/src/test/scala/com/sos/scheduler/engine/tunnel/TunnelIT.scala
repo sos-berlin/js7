@@ -29,7 +29,7 @@ import scala.util.Random
 final class TunnelIT extends FreeSpec {
 
   private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
-  private lazy val tunnelServer = new TunnelServer(actorSystem, TunnelConfiguration(inactivityTimeout = 60.s))
+  private lazy val tunnelServer = new TunnelServer(actorSystem)
   import actorSystem.dispatcher
 
   "Simple" in {

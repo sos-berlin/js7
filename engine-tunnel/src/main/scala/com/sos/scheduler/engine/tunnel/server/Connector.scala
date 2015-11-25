@@ -5,7 +5,7 @@ import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.akkautils.Akkas.DummyCancellable
-import com.sos.scheduler.engine.common.scalautil.{SetOnce, Logger}
+import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
@@ -31,7 +31,7 @@ import spray.json.JsonParser
  *
  * @author Joacim Zschimmer
  */
-private[server] final class Connector private(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, inactivityTimeout: Duration)
+private[server] final class Connector private(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, inactivityTimeoutOption: Option[Duration])
 extends Actor with FSM[State, Data] {
   import connected.remoteAddress
   import context.{dispatcher, parent, system, watch}
@@ -47,12 +47,14 @@ extends Actor with FSM[State, Data] {
     def stop() = timer.cancel()
 
     def restart(): Unit = {
-      timer.cancel()
-      val since = Instant.now()
-      timer = system.scheduler.scheduleOnce(inactivityTimeout.toFiniteDuration) {
-        val msg = BecameInactive(tunnelIdOnce(), since)
-        logger.debug(s"$msg")
-        connectorHandler ! msg
+      for (inactivityTimeout ← inactivityTimeoutOption) {
+        timer.cancel()
+        val since = Instant.now()
+        timer = system.scheduler.scheduleOnce(inactivityTimeout.toFiniteDuration) {
+          val msg = BecameInactive(tunnelIdOnce(), since)
+          logger.debug(s"$msg")
+          connectorHandler ! msg
+        }
       }
     }
   }
@@ -143,7 +145,7 @@ extends Actor with FSM[State, Data] {
 }
 
 private[server] object Connector {
-  private[server] def props(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, inactivityTimeout: Duration) =
+  private[server] def props(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, inactivityTimeout: Option[Duration]) =
     Props { new Connector(connectorHandler, tcp, connected, inactivityTimeout) }
 
   // Actor messages commanding this actor

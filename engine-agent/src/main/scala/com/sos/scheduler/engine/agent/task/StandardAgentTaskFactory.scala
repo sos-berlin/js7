@@ -66,7 +66,7 @@ extends AgentTaskFactory {
       logDirectory = agentConfiguration.logDirectory,
       environment = agentConfiguration.environment,
       killScriptFileOption = agentConfiguration.killScriptFile,
-      tunnelInactivityTimeout = agentConfiguration.tunnelInactivityTimeout)
+      tunnelInactivityTimeoutOption = agentConfiguration.tunnelInactivityTimeout)
     if (sys.props contains UseThreadPropertyName) { // For debugging
       logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")
       new SimpleTaskServer(taskStartArguments)

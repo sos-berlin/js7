@@ -31,7 +31,7 @@ final case class AgentConfiguration(
   environment: immutable.Iterable[(String, String)] = Nil,
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
-  tunnelInactivityTimeout: Duration = DefaultTunnelInactivityTimeout,
+  tunnelInactivityTimeout: Option[Duration] = None,
   killScriptFile: Option[Path] = None)
 {
   requireTcpPortNumber(httpPort)
@@ -45,8 +45,6 @@ final case class AgentConfiguration(
 }
 
 object AgentConfiguration {
-  private val DefaultTunnelInactivityTimeout = 20.s
-
   def apply(args: Seq[String]): AgentConfiguration =
     CommandLineArguments.parse(args) { a ⇒
       new AgentConfiguration(
@@ -54,7 +52,7 @@ object AgentConfiguration {
         httpInterfaceRestriction = a.getString("-ip-address="),
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
         logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
-        tunnelInactivityTimeout = a.asConvertedOption("-tunnel-inactivity-timeout=") { o ⇒ Duration.ofSeconds(o.toInt) } getOrElse DefaultTunnelInactivityTimeout,
+        tunnelInactivityTimeout = a.asConvertedOption("-tunnel-inactivity-timeout=") { o ⇒ Duration.ofSeconds(o.toInt) },
         killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath })
     }
 

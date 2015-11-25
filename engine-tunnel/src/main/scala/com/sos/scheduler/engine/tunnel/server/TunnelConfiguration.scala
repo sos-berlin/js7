@@ -5,4 +5,4 @@ import java.time.Duration
 /**
   * @author Joacim Zschimmer
   */
-final case class TunnelConfiguration(inactivityTimeout: Duration)
+final case class TunnelConfiguration(inactivityTimeout: Option[Duration] = None)

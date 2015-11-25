@@ -131,7 +131,7 @@ object TcpHttpTcpTunnelIT {
 
   private class ServerSideTunnelHandler {
     val actorSystem = ActorSystem(getClass.getSimpleName)
-    val tunnelServer = new TunnelServer(actorSystem, TunnelConfiguration(inactivityTimeout = 60.s))
+    val tunnelServer = new TunnelServer(actorSystem)
     val uri = startWebServer()
     import actorSystem.dispatcher
     val listener = Agent(new TestTunnelListener)

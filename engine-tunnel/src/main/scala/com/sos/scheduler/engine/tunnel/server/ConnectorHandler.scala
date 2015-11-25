@@ -22,7 +22,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * @author Joacim Zschimmer
  */
-private[tunnel] final class ConnectorHandler private(inactivityTimeout: Duration) extends Actor {
+private[tunnel] final class ConnectorHandler private(inactivityTimeoutOption: Option[Duration]) extends Actor {
 
   import context.{actorOf, become, dispatcher, stop, system, watch}
 
@@ -59,7 +59,7 @@ private[tunnel] final class ConnectorHandler private(inactivityTimeout: Duration
         val peerPort = connected.remoteAddress.getPort
         s"Connector-TCP-$peerInterface:$peerPort"
       }
-      val connector = actorOf(Connector.props(connectorHandler = self, tcp = sender(), connected, inactivityTimeout = inactivityTimeout), name = name)
+      val connector = actorOf(Connector.props(connectorHandler = self, tcp = sender(), connected, inactivityTimeout = inactivityTimeoutOption), name = name)
       watch(connector)
 
     case m @ NewTunnel(id, listener, startedByIpOption) ⇒
@@ -183,7 +183,7 @@ private[tunnel] object ConnectorHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
 
-  private[tunnel] def props(inactivityTimeout: Duration) = Props { new ConnectorHandler(inactivityTimeout = inactivityTimeout) }
+  private[tunnel] def props(inactivityTimeout: Option[Duration]) = Props { new ConnectorHandler(inactivityTimeoutOption = inactivityTimeout) }
 
   sealed trait Command
 

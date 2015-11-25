@@ -28,7 +28,7 @@ final case class TaskStartArguments(
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
   logStdoutAndStderr: Boolean = false,
   killScriptFileOption: Option[Path] = None,
-  tunnelInactivityTimeout: Duration)
+  tunnelInactivityTimeoutOption: Option[Duration])
 {
   def masterInetSocketAddress = toInetSocketAddress(masterAddress)
   def logFilenamePart = s"task-${agentTaskId.string}"
@@ -49,7 +49,7 @@ object TaskStartArguments {
       logDirectory = temporaryDirectory,
       stdFileMap = stdFileMap,
       agentTaskId = AgentTaskId("1-1"),
-      tunnelInactivityTimeout = 60.s)
+      tunnelInactivityTimeoutOption = None)
 
   private def toInetSocketAddress(string: String): InetSocketAddress =
     string match {
