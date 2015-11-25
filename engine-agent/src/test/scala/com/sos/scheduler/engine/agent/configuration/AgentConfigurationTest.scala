@@ -51,17 +51,17 @@ final class AgentConfigurationTest extends FreeSpec {
     assert(conf(List("-rpc-keepalive=300")).rpcKeepaliveDuration == Some(300.s))
   }
 
-  "-tunnel-inactivity-timeout=" in {
-    assert(conf(Nil).tunnelInactivityTimeout == None)
-    assert(conf(List("-tunnel-inactivity-timeout=10", "-rpc-keepalive=9")).tunnelInactivityTimeout == Some(10.s))
+  "-kill-after-tunnel-timeout=" in {
+    assert(conf(Nil).killAfterTunnelTimeout == None)
+    assert(conf(List("-kill-after-tunnel-timeout=10", "-rpc-keepalive=9")).killAfterTunnelTimeout == Some(10.s))
     intercept[IllegalArgumentException] {
-      conf(List("-tunnel-inactivity-timeout=10", "-rpc-keepalive=10"))
+      conf(List("-kill-after-tunnel-timeout=10", "-rpc-keepalive=10"))
     }
     intercept[IllegalArgumentException] {
-      conf(List("-tunnel-inactivity-timeout=10", "-rpc-keepalive=11"))
+      conf(List("-kill-after-tunnel-timeout=10", "-rpc-keepalive=11"))
     }
     intercept[IllegalArgumentException] {
-      conf(List("-tunnel-inactivity-timeout=10"))
+      conf(List("-kill-after-tunnel-timeout=10"))
     }
   }
 

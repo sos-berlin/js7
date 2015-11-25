@@ -53,12 +53,12 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
     val task = newAgentTask(command, meta.clientIpOption)
     tasks.insert(task)
     task.start()
-    task.onTunnelInactivity(terminateAfterTunnelInactivity(task))
+    task.onTunnelInactivity(killAfterTunnelInactivity(task))
     StartTaskResponse(task.id, task.tunnelToken)
   }
 
-  private def terminateAfterTunnelInactivity(task: AgentTask)(since: Instant): Unit = {
-    logger.error(s"$task has no connection activity since $since. Task is being killed")
+  private def killAfterTunnelInactivity(task: AgentTask)(since: Instant): Unit = {
+    logger.error(s"$task has no connection activity since $since. Task is being killed, 2s after SIGTERM")
     task.closeTunnel()  // This terminates Remoting and then SimpleTaskServer
     task.sendProcessSignal(SIGTERM)
     task.terminated.onComplete { case _ ⇒ removeTaskAfterTermination(task) }

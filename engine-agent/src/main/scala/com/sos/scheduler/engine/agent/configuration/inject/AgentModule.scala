@@ -24,7 +24,7 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
     bindInstance[Closer](closer)
     bindInstance[AgentConfiguration](agentConfiguration)
     provideSingleton[ActorSystem] { newActorSystem("JobScheduler-Agent")(closer) }
-    bindInstance[TunnelConfiguration](TunnelConfiguration(inactivityTimeout = agentConfiguration.tunnelInactivityTimeout))
+    bindInstance[TunnelConfiguration](TunnelConfiguration(inactivityTimeout = agentConfiguration.killAfterTunnelTimeout))
   }
 
   @Provides @Singleton
