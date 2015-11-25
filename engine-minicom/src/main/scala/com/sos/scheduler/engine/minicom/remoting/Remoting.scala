@@ -33,7 +33,7 @@ final class Remoting(
   proxyIDispatchFactories: Iterable[ProxyIDispatchFactory],
   name: String,
   returnAfterReleaseOf: Invocable ⇒ Boolean = _ ⇒ false,
-  inactivityTimeoutOption: Option[Duration])
+  keepaliveDurationOption: Option[Duration])
 extends ServerRemoting with ClientRemoting {
 
   private val logger = Logger.withPrefix(getClass, name)
@@ -46,9 +46,9 @@ extends ServerRemoting with ClientRemoting {
   def run(): Unit = {
     logger.debug("Started")
     val firstRequest = dialogConnection.receiveFirstMessage()
-    inactivityTimeoutOption match {
-      case Some(inactivityTimeout) ⇒
-        withKeepaliveThread(1.s max inactivityTimeout) {
+    keepaliveDurationOption match {
+      case Some(keepaliveDuration) ⇒
+        withKeepaliveThread(1.s max keepaliveDuration) {
           continue(firstRequest)
         }
       case None ⇒
@@ -158,8 +158,8 @@ extends ServerRemoting with ClientRemoting {
    */
   def invocables[A : ClassTag]: immutable.Iterable[A] = proxyRegister.invocables[A]
 
-  private def withKeepaliveThread[A](inactivityTimeout: Duration)(body: ⇒ A): A = {
-    val keepaliveThread = new KeepaliveThread(1.s max inactivityTimeout)
+  private def withKeepaliveThread[A](duration: Duration)(body: ⇒ A): A = {
+    val keepaliveThread = new KeepaliveThread(1.s max duration)
     keepaliveThread.start()
     try body
     finally {

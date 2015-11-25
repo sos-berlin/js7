@@ -42,7 +42,7 @@ extends TaskServer with HasCloser {
     ProxyIDispatchFactories,
     name = taskStartArguments.agentTaskId.toString,
     returnAfterReleaseOf = _.isInstanceOf[RemoteModuleInstanceServer],
-    inactivityTimeoutOption = taskStartArguments.tunnelInactivityTimeoutOption)
+    keepaliveDurationOption = taskStartArguments.rpcKeepaliveDurationOption)
   def terminated = terminatedPromise.future
 
   def start(): Unit =

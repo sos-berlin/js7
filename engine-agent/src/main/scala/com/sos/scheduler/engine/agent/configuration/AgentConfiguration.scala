@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.agent.configuration
 
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration._
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
@@ -31,11 +30,18 @@ final case class AgentConfiguration(
   environment: immutable.Iterable[(String, String)] = Nil,
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
+  rpcKeepaliveDuration: Option[Duration] = None,
   tunnelInactivityTimeout: Option[Duration] = None,
   killScriptFile: Option[Path] = None)
 {
   requireTcpPortNumber(httpPort)
   require(directory.isAbsolute)
+  for (t ← tunnelInactivityTimeout) {
+    require(t >= 1.s)
+    val d = rpcKeepaliveDuration getOrElse { throw new IllegalArgumentException("tunnel-inactivity-timeout requires rpc-keepalive") }
+    require(d >= 1.s)
+    if (!(t > d)) throw new IllegalArgumentException("tunnel-inactivity-timeout must be longer than rpc-keepalive ")
+  }
 
   def strippedUriPathPrefix = uriPathPrefix stripPrefix "/" stripSuffix "/"
 
@@ -53,6 +59,7 @@ object AgentConfiguration {
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
         logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
         tunnelInactivityTimeout = a.asConvertedOption("-tunnel-inactivity-timeout=") { o ⇒ Duration.ofSeconds(o.toInt) },
+        rpcKeepaliveDuration = a.asConvertedOption("-rpc-keepalive=") { o ⇒ Duration.ofSeconds(o.toInt) },
         killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath })
     }
 

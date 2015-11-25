@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.configuration
 
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
 import java.nio.file.Paths
 import org.junit.runner.RunWith
@@ -43,6 +44,25 @@ final class AgentConfigurationTest extends FreeSpec {
     assert(conf(Nil).killScriptFile == None)
     val killScript = Paths.get("kill-script")
     assert(conf(List(s"-kill-script=$killScript")).killScriptFile == Some(killScript.toAbsolutePath))
+  }
+
+  "-rpc-keepalive=" in {
+    assert(conf(Nil).rpcKeepaliveDuration == None)
+    assert(conf(List("-rpc-keepalive=300")).rpcKeepaliveDuration == Some(300.s))
+  }
+
+  "-tunnel-inactivity-timeout=" in {
+    assert(conf(Nil).tunnelInactivityTimeout == None)
+    assert(conf(List("-tunnel-inactivity-timeout=10", "-rpc-keepalive=9")).tunnelInactivityTimeout == Some(10.s))
+    intercept[IllegalArgumentException] {
+      conf(List("-tunnel-inactivity-timeout=10", "-rpc-keepalive=10"))
+    }
+    intercept[IllegalArgumentException] {
+      conf(List("-tunnel-inactivity-timeout=10", "-rpc-keepalive=11"))
+    }
+    intercept[IllegalArgumentException] {
+      conf(List("-tunnel-inactivity-timeout=10"))
+    }
   }
 
   private def conf(args: Seq[String]) = AgentConfiguration(List("-http-port=1") ++ args)
