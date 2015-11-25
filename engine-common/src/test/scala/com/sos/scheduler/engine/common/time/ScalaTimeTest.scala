@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.time
 
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalTime}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -43,6 +44,16 @@ final class ScalaTimeTest extends FreeSpec {
         assert(duration.toBigDecimal == bigDecimal)
       }
     }
+
+//    "Int.min" in {
+//      (7.min: Duration).toMinutes shouldEqual 7
+//      (7.min: Duration).toMillis shouldEqual (7*60*1000)
+//    }
+//
+//    "Long.min" in {
+//      (7L.min: Duration).toHours shouldEqual 7
+//      (7L.min: Duration).toMillis shouldEqual (7*60*1000)
+//    }
 
     "Int.h" in {
       (7.h: Duration).toHours shouldEqual 7
@@ -110,6 +121,17 @@ final class ScalaTimeTest extends FreeSpec {
       (-1).s.pretty shouldEqual "-1s"
       Duration.ofNanos(100000).pretty shouldEqual "100µs"
       Duration.ofNanos(100).pretty shouldEqual "100ns"
+    }
+
+    "parseDuration" in {
+      assert(parseDuration("0.123s") == 123.ms)
+      assert(parseDuration("PT0.123S") == 123.ms)
+      assert(parseDuration("1m") == 60.s)
+      assert(parseDuration("1h2m3s") == 1.h + 2*60.s + 3.s)
+      intercept[DateTimeParseException] { parseDuration("1d") }
+      assert(parseDuration("P1d") == 24 * 3600.s)
+      intercept[DateTimeParseException] { parseDuration(".123s") }
+      intercept[DateTimeParseException] { parseDuration("1") }
     }
 
     "toConcurrent" in {

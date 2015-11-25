@@ -58,8 +58,8 @@ object AgentConfiguration {
         httpInterfaceRestriction = a.getString("-ip-address="),
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
         logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
-        killAfterTunnelTimeout = a.asConvertedOption("-kill-after-tunnel-timeout=") { o ⇒ Duration.ofSeconds(o.toInt) },
-        rpcKeepaliveDuration = a.asConvertedOption("-rpc-keepalive=") { o ⇒ Duration.ofSeconds(o.toInt) },
+        killAfterTunnelTimeout = a.asConvertedOption("-kill-after-tunnel-timeout=")(parseDuration),
+        rpcKeepaliveDuration = a.asConvertedOption("-rpc-keepalive=")(parseDuration),
         killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath })
     }
 

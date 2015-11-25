@@ -18,17 +18,23 @@ object ScalaTime {
     /**
      * Duration, counted in milliseconds.
      */
-    final def ms = Duration.ofMillis(delegate)
+    final def ms = Duration ofMillis delegate
 
     /**
      * Duration, counted in seconds.
      */
-    final def s = Duration.ofSeconds(delegate)
+    final def s = Duration ofSeconds delegate
+
+    // Conflicts with scala.runtime.RichInt.min
+    ///**
+    // * Duration, counted in minutes.
+    // */
+    //final def min = Duration ofMinutes delegate
 
     /**
      * Duration, counted in hours.
      */
-    final def h = Duration.ofHours(delegate)
+    final def h = Duration ofHours delegate
 
     final def *(o: Duration) =  o multipliedBy delegate
   }
@@ -37,17 +43,23 @@ object ScalaTime {
     /**
      * Duration, counted in milliseconds.
      */
-    final def ms = Duration.ofMillis(delegate)
+    final def ms = Duration ofMillis delegate
 
     /**
      * Duration, counted in seconds.
      */
-    final def s = Duration.ofSeconds(delegate)
+    final def s = Duration ofSeconds delegate
+
+    // Conflicts with scala.runtime.RichLong.min
+    ///**
+    // * Duration, counted in minutes.
+    // */
+    //final def min = Duration ofMinutes delegate
 
     /**
      * Duration, counted in hours.
      */
-    final def h = Duration.ofHours(delegate)
+    final def h = Duration ofHours delegate
 
     final def *(o: Duration) = o multipliedBy delegate
   }
@@ -60,6 +72,11 @@ object ScalaTime {
     val (seconds, nanos) = o /% 1
     Duration.ofSeconds(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
   }
+
+  /**
+   * Parses a duration according to ISO-8601 with optional first letters PT.
+   */
+  def parseDuration(string: String) = Duration parse (if (string.nonEmpty && string(0).isDigit) s"PT$string" else string)
 
   implicit class RichDuration(val delegate: Duration) extends AnyVal with Ordered[RichDuration] {
     def unary_- = Duration.ZERO minus delegate
