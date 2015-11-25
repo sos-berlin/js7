@@ -59,7 +59,7 @@ object AgentConfiguration {
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
         logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
         killAfterTunnelTimeout = a.asConvertedOption("-kill-after-tunnel-timeout=")(parseDuration),
-        rpcKeepaliveDuration = a.asConvertedOption("-rpc-keepalive=")(parseDuration),
+        rpcKeepaliveDuration = Some(a.asConvertedOption("-rpc-keepalive=")(parseDuration) getOrElse 300.s),
         killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath })
     }
 
