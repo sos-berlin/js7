@@ -128,7 +128,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
 
   private def sendSignalToAllProcesses(signal: ProcessSignal): Unit =
     for (p ← tasks) {
-      logger.info(s"$signal $p")
+      logger.warn(s"$signal $p")
       ignoreException(logger.warn) { p.sendProcessSignal(signal) }
     }
 
