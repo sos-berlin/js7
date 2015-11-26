@@ -24,6 +24,8 @@
         <module>engine-data</module>
         <module>engine-filewatcher</module>
         <module>engine-common</module>
+        <module>engine-http-client</module>
+        <module>engine-http-server</module>
         <module>engine-job-api</module>
         <module>engine-minicom</module>
         <module>engine-newkernel</module>
