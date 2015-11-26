@@ -4,4 +4,5 @@ public final class SchedulerDataConstants {
     private SchedulerDataConstants() {}
 
     public static final long eternalCppMillis = Integer.MAX_VALUE * 1000L;     // Wie C++ time::eternal
+    public static final long neverCppMillis = Integer.MAX_VALUE * 1000L;     // Wie C++ Duration::never
 }

@@ -39,6 +39,11 @@
         </dependency>
         <dependency>
             <groupId>com.sos-berlin.jobscheduler.engine</groupId>
+            <artifactId>engine-http-server</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sos-berlin.jobscheduler.engine</groupId>
             <artifactId>engine-common</artifactId>
             <version>${project.version}</version>
         </dependency>

@@ -8,6 +8,7 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
+import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatTimeout
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
@@ -134,8 +135,7 @@ private[tunnel] final class ConnectorHandler private(inactivityTimeoutOption: Op
           }
           removeHandle(tunnelToken.id)
         }
-      }
-      catch {
+      } catch {
         case NonFatal(t) ⇒ logger.error(s"$m: $t", t)
       }
 
@@ -158,10 +158,15 @@ private[tunnel] final class ConnectorHandler private(inactivityTimeoutOption: Op
       }).toVector
 
     case Connector.BecameInactive(tunnelId, since) ⇒
-      for (handle ← register.get(tunnelId); callback ← handle.onInactivityCallback) {
-        ignoreException(logger.error) {
-          callback(since)
-        }
+      for (handle ← register.get(tunnelId)) {
+        handle.callOnInactivity(since)
+      }
+
+    case m @ OnHeartbeatTimeout(tunnelToken, t) ⇒
+      try {
+        checkedHandle(tunnelToken).callOnInactivity(t.since)
+      } catch {
+        case NonFatal(t) ⇒ logger.error(s"$m: $t", t)
       }
   }
 
@@ -196,6 +201,8 @@ private[tunnel] object ConnectorHandler {
   extends Command
 
   private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
+
+  private[tunnel] final case class OnHeartbeatTimeout(tunnelToken: TunnelToken, timeout: HeartbeatTimeout) extends Command
 
   private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request) extends Command
 
@@ -237,6 +244,14 @@ private[tunnel] object ConnectorHandler {
 
     def onInactivity(callback: Instant ⇒ Unit) = {
       onInactivityCallback := callback
+    }
+
+    private[ConnectorHandler] def callOnInactivity(since: Instant): Unit = {
+      for (callback ← onInactivityCallback) {
+        ignoreException(logger.error) {
+          callback(since)
+        }
+      }
     }
   }
 

@@ -5,6 +5,7 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.akkautils.Akkas
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
+import com.sos.scheduler.engine.http.client.heartbeat.{HeartbeatRequestor, HttpHeartbeatTiming}
 import com.sos.scheduler.engine.tunnel.client.WebTunnelClient._
 import com.sos.scheduler.engine.tunnel.data.Http._
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
@@ -12,7 +13,7 @@ import scala.concurrent.Future
 import spray.client.pipelining._
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes._
-import spray.http.{HttpRequest, Uri}
+import spray.http.{HttpRequest, HttpResponse, Uri}
 import spray.httpx.encoding.Gzip
 
 /**
@@ -23,21 +24,26 @@ trait WebTunnelClient {
   def uri: Uri
   def tunnelUri(tunnelId: TunnelId): Uri
   protected implicit def actorSystem: ActorSystem
+  def heartbeatTimingOption: Option[HttpHeartbeatTiming]
 
   private implicit def executionContext = actorSystem.dispatcher
   private val veryLongTimeout = Akkas.maximumTimeout(actorSystem.settings)
 
-  private lazy val pipelineTrunk: HttpRequest ⇒ Future[ByteString] =
+  private lazy val pipelineTrunk: HttpRequest ⇒ Future[HttpResponse] =
     addHeader(Accept(`application/octet-stream`)) ~>
-      encode(Gzip) ~>
-      sendReceive(actorSystem, actorSystem.dispatcher, veryLongTimeout) ~>
-      decode(Gzip) ~>
-      unmarshal[ByteString]
+    encode(Gzip) ~>
+    sendReceive(actorSystem, actorSystem.dispatcher, veryLongTimeout) ~>
+    decode(Gzip)
 
   final def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString): Future[ByteString] = {
     val TunnelToken(id, secret) = tunnelToken
-    val pipeline = addHeader(SecretHeaderName, secret.string) ~> pipelineTrunk
-    try pipeline(Post(tunnelUri(id), requestMessage))
+    val addSecretHeader = addHeader(SecretHeaderName, secret.string)
+    val request = Post(tunnelUri(id), requestMessage)
+    try
+      heartbeatTimingOption match {
+        case Some(timing) ⇒ HeartbeatRequestor(timing)(addSecretHeader, pipelineTrunk, request) map { _ ~> unmarshal[ByteString] }
+        case None ⇒ (addSecretHeader ~> pipelineTrunk ~> unmarshal[ByteString]).apply(request)
+      }
     catch { case t: IllegalArgumentException ⇒
       logger.error(s"akka.scheduler.tick-duration is below 1s? $t")
       throw t

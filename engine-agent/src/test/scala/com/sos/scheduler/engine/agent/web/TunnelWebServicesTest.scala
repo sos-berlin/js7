@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.util.ByteString
 import com.sos.scheduler.engine.agent.web.TunnelWebServicesTest._
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
+import com.sos.scheduler.engine.http.server.heartbeat.{HeartbeatService, HeartbeatTimeout}
 import com.sos.scheduler.engine.tunnel.data.Http._
 import com.sos.scheduler.engine.tunnel.data._
 import java.net.InetAddress
@@ -30,12 +31,14 @@ import spray.testkit.ScalatestRouteTest
 final class TunnelWebServicesTest extends FreeSpec with ScalatestRouteTest with TunnelWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
+  protected val heartbeatService = new HeartbeatService
 
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = {
     assert(tunnelToken == TunnelToken(TestTunnelId, TestSecret))
     Future.successful(requestToResponse(requestMessage))
   }
 
+  protected def onTunnelHeartbeatTimeout(tunnelToken: TunnelToken, t: HeartbeatTimeout): Unit = ???
   protected def tunnelHandlerOverview = Future.successful(TestTunnelHandlerOverview)
   protected def tunnelOverviews = Future.successful(TestTunnelOverviews)
 

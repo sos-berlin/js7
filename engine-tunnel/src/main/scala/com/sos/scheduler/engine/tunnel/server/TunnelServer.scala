@@ -7,6 +7,7 @@ import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatTimeout
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelServer._
 import java.net.{InetAddress, InetSocketAddress}
@@ -42,8 +43,12 @@ final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem, conf:
   /**
    * @param startedByIpOption Only for information
    */
-  def newTunnel[A <: TunnelListener](tunnelId: TunnelId, tunnelListener: Agent[A], startedByIpOption: Option[InetAddress] = None) =
+  def newTunnel[A <: TunnelListener](tunnelId: TunnelId, tunnelListener: Agent[A], startedByIpOption: Option[InetAddress] = None): TunnelHandle =
     awaitResult((connectorHandler ? ConnectorHandler.NewTunnel(tunnelId, tunnelListener, startedByIpOption)).mapTo[Try[TunnelHandle]],
+      ShortTimeout).get
+
+  def onHeartbeatTimeout(tunnelToken: TunnelToken, t: HeartbeatTimeout): Unit =
+    awaitResult((connectorHandler ? ConnectorHandler.OnHeartbeatTimeout(tunnelToken, t)).mapTo[Try[TunnelHandle]],
       ShortTimeout).get
 
   def request(tunnelToken: TunnelToken, requestMessage: ByteString): Future[ByteString] = {

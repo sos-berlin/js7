@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.http.server.heartbeat.{HeartbeatService, HeartbeatTimeout}
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
 import javax.inject.{Inject, Provider}
@@ -30,6 +31,7 @@ final class WebServiceActor @Inject private(
   agentOverviewProvider: Provider[AgentOverview],
   protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
+  protected val heartbeatService: HeartbeatService,
   extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,
   injector: Injector)
@@ -67,6 +69,7 @@ with NoJobSchedulerEngineWebService
   protected def executeCommand(command: Command, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
   protected def agentOverview = agentOverviewProvider.get()
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString) = tunnelServer.request(tunnelToken, requestMessage)
+  protected def onTunnelHeartbeatTimeout(tunnelToken: TunnelToken, t: HeartbeatTimeout) = tunnelServer.onHeartbeatTimeout(tunnelToken, t)
   protected def tunnelHandlerOverview = tunnelServer.overview
   protected def tunnelOverviews = tunnelServer.tunnelOverviews
   override protected def uriPathPrefix = agentConfiguration.strippedUriPathPrefix
