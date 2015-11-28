@@ -31,7 +31,7 @@ import spray.json.JsonParser
  *
  * @author Joacim Zschimmer
  */
-private[server] final class Connector private(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, inactivityTimeoutOption: Option[Duration])
+private[server] final class Connector private(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected)
 extends Actor with FSM[State, Data] {
   import connected.remoteAddress
   import context.{dispatcher, parent, system, watch}
@@ -46,11 +46,11 @@ extends Actor with FSM[State, Data] {
 
     def stop() = timer.cancel()
 
-    def restart(): Unit = {
-      for (inactivityTimeout ← inactivityTimeoutOption) {
-        timer.cancel()
+    def restart(timeoutOption: Option[Duration]): Unit = {
+      timer.cancel()
+      for (timeout ← timeoutOption) {
         val since = Instant.now()
-        timer = system.scheduler.scheduleOnce(inactivityTimeout.toFiniteDuration) {
+        timer = system.scheduler.scheduleOnce(timeout.toFiniteDuration) {
           val msg = BecameInactive(tunnelIdOnce(), since)
           logger.debug(s"$msg")
           connectorHandler ! msg
@@ -89,9 +89,14 @@ extends Actor with FSM[State, Data] {
   }
 
   when(ExpectingRequest) {
-    case Event(m @ Request(message, responsePromise), NoData) ⇒
+    case Event(m @ Request(message, responsePromise, timeout), NoData) ⇒
       messageTcpBridge ! MessageTcpBridge.SendMessage(message)
+      inactivityWatchdog.restart(timeout)
       goto(ExpectingMessageFromTcp) using Respond(responsePromise)
+
+    case Event(Heartbeat(timeout: Duration), NoData) ⇒
+      inactivityWatchdog.restart(Some(timeout))
+      stay()
 
     case Event(m @ MessageTcpBridge.PeerClosed, NoData) ⇒
       logger.trace(s"$m")
@@ -134,7 +139,6 @@ extends Actor with FSM[State, Data] {
   }
 
   onTransition {
-    case _ -> ExpectingRequest ⇒ inactivityWatchdog.restart()  // Only HTTP requests reset the timer
     case _ -> Closing ⇒ inactivityWatchdog.stop()
   }
 
@@ -145,27 +149,22 @@ extends Actor with FSM[State, Data] {
 }
 
 private[server] object Connector {
-  private[server] def props(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, inactivityTimeout: Option[Duration]) =
-    Props { new Connector(connectorHandler, tcp, connected, inactivityTimeout) }
+  private[server] def props(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected) =
+    Props { new Connector(connectorHandler, tcp, connected) }
 
-  // Actor messages commanding this actor
-
-  private[server] final case class Request(message: ByteString, responsePromise: Promise[ByteString]) {
+  private[server] sealed trait Command
+  private[server] case class Heartbeat(timeout: Duration)
+  private[server] final case class Request(message: ByteString, responsePromise: Promise[ByteString], timeout: Option[Duration]) extends Command {
     override def toString = s"Request(${message.size} bytes)"
   }
+  private[server] case object Close extends Command
 
-  private[server] case object Close
-
-
-  // Event messages from this actor
-
-  private[server] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress)
-
-  private[server] final case class Response(message: ByteString) {
+  private[server] sealed trait MyEvent
+  private[server] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress) extends MyEvent
+  private[server] final case class Response(message: ByteString) extends MyEvent {
     override def toString = s"Response(${message.size} bytes)"
   }
-
-  private[server] final case class BecameInactive(tunnelId: TunnelId, since: Instant)
+  private[server] final case class BecameInactive(tunnelId: TunnelId, since: Instant) extends MyEvent
 
   private[server] sealed trait State
   private case object ExpectingRequest extends State

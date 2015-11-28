@@ -8,7 +8,6 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatTimeout
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
@@ -23,7 +22,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * @author Joacim Zschimmer
  */
-private[tunnel] final class ConnectorHandler private(inactivityTimeoutOption: Option[Duration]) extends Actor {
+private[tunnel] final class ConnectorHandler private extends Actor {
 
   import context.{actorOf, become, dispatcher, stop, system, watch}
 
@@ -60,7 +59,7 @@ private[tunnel] final class ConnectorHandler private(inactivityTimeoutOption: Op
         val peerPort = connected.remoteAddress.getPort
         s"Connector-TCP-$peerInterface:$peerPort"
       }
-      val connector = actorOf(Connector.props(connectorHandler = self, tcp = sender(), connected, inactivityTimeout = inactivityTimeoutOption), name = name)
+      val connector = actorOf(Connector.props(connectorHandler = self, tcp = sender(), connected), name = name)
       watch(connector)
 
     case m @ NewTunnel(id, listener, startedByIpOption) ⇒
@@ -157,16 +156,16 @@ private[tunnel] final class ConnectorHandler private(inactivityTimeoutOption: Op
             handle.statistics.failure map { _.toString }))
       }).toVector
 
-    case Connector.BecameInactive(tunnelId, since) ⇒
-      for (handle ← register.get(tunnelId)) {
-        handle.callOnInactivity(since)
-      }
-
-    case m @ OnHeartbeatTimeout(tunnelToken, t) ⇒
+    case m @ OnHeartbeat(tunnelToken) ⇒
       try {
-        checkedHandle(tunnelToken).callOnInactivity(t.since)
+        checkedHandle(tunnelToken).heartbeat()
       } catch {
         case NonFatal(t) ⇒ logger.error(s"$m: $t", t)
+      }
+
+    case Connector.BecameInactive(tunnelId, since) ⇒   // Timeout of last Connector.Request or Connector.Heartbeat has elapsed
+      for (handle ← register.get(tunnelId)) {
+        handle.callOnInactivity(since)
       }
   }
 
@@ -188,7 +187,7 @@ private[tunnel] object ConnectorHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
 
-  private[tunnel] def props(inactivityTimeout: Option[Duration]) = Props { new ConnectorHandler(inactivityTimeoutOption = inactivityTimeout) }
+  private[tunnel] def props = Props { new ConnectorHandler }
 
   sealed trait Command
 
@@ -202,13 +201,13 @@ private[tunnel] object ConnectorHandler {
 
   private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
 
-  private[tunnel] final case class OnHeartbeatTimeout(tunnelToken: TunnelToken, timeout: HeartbeatTimeout) extends Command
+  private[tunnel] final case class OnHeartbeat(tunnelToken: TunnelToken) extends Command
 
   private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request) extends Command
 
   private[tunnel] object DirectedRequest {
-    def apply(tunnelToken: TunnelToken, message: ByteString, responsePromise: Promise[ByteString]): DirectedRequest =
-      DirectedRequest(tunnelToken, Connector.Request(message, responsePromise))
+    def apply(tunnelToken: TunnelToken, message: ByteString, responsePromise: Promise[ByteString], timeout: Option[Duration]): DirectedRequest =
+      DirectedRequest(tunnelToken, Connector.Request(message, responsePromise, timeout))
   }
 
   private[tunnel] object GetOverview extends Command
@@ -241,6 +240,8 @@ private[tunnel] object ConnectorHandler {
       statistics.updateWith(request)
       listener send { _.onRequest(request.message) }
     }
+
+    def heartbeat(): Unit = connectorHandler ! Connector.Heartbeat
 
     def onInactivity(callback: Instant ⇒ Unit) = {
       onInactivityCallback := callback

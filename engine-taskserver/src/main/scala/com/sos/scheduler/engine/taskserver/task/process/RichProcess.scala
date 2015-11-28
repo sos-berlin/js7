@@ -56,7 +56,7 @@ extends HasCloser with ClosedFuture {
     signal match {
       case SIGTERM ⇒
         if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
-        logger.debug("destroy")
+        logger.info("destroy (SIGTERM)")
         process.destroy()
       case SIGKILL ⇒
         processConfiguration.killScriptFileOption match {
@@ -86,7 +86,7 @@ extends HasCloser with ClosedFuture {
 
   private def killNow(): Unit = {
     if (process.isAlive) {
-      logger.debug("destroyForcibly")
+      logger.info("destroyForcibly" + (if (!isWindows) " (SIGKILL)" else ""))
       process.destroyForcibly()
     }
   }

@@ -10,7 +10,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.tunnel.TunnelIT._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.{TunnelConfiguration, TunnelListener, TunnelServer}
+import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -38,7 +38,7 @@ final class TunnelIT extends FreeSpec {
     tcpServer.start()
     for (i ← 1 to 3) {
       val request = ByteString(s"TEST-REQUEST #$i")
-      val responded = tunnelServer.request(tunnel.tunnelToken, request) map { response ⇒
+      val responded = tunnelServer.request(tunnel.tunnelToken, request, timeout = None) map { response ⇒
         assert(response == requestToResponse(request, tunnel.id))
       }
       awaitResult(responded, 10.s)
@@ -66,7 +66,7 @@ final class TunnelIT extends FreeSpec {
         for (i ← 0 until Iterations by stepSize) {
           val m = Stopwatch.measureTime(stepSize, "requests") {
             val request = ByteString.fromArray(Array.fill[Byte](messageSizes.next())(i.toByte))
-            val responded = tunnelServer.request(tunnel.tunnelToken, request) map { response ⇒
+            val responded = tunnelServer.request(tunnel.tunnelToken, request, timeout = None) map { response ⇒
               if (!byteStringsFastEqual(response, requestToResponse(request, tunnel.id))) fail("Response is not as expected")
             }
             awaitResult(responded, 10.s)

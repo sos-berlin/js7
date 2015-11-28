@@ -181,7 +181,10 @@ object TcpHttpTcpTunnelIT {
     def running: Receive = runRoute {
       (decompressRequest() & compressResponseIfRequested(())) {
         (post & pathPrefix("test" / "tunnel" / Segment)) { idString ⇒
-          tunnelRequestRoute(TunnelId(idString))(executeTunnelRequest, onTunnelHeartbeatTimeout = (_, _) ⇒ ???, heartbeatService)
+          tunnelRequestRoute(TunnelId(idString))(
+            executeTunnelRequest,
+            onHeartbeat = _ ⇒ {},
+            heartbeatService)
         }
       }
     }

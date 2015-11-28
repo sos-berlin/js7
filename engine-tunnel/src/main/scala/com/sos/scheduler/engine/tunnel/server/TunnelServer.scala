@@ -7,10 +7,10 @@ import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatTimeout
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelServer._
 import java.net.{InetAddress, InetSocketAddress}
+import java.time.Duration
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable
 import scala.concurrent.{Future, Promise}
@@ -24,9 +24,9 @@ import scala.util.Try
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem, conf: TunnelConfiguration = TunnelConfiguration()) extends AutoCloseable {
+final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem) extends AutoCloseable {
 
-  private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props(inactivityTimeout = conf.inactivityTimeout), name = "ConnectorHandler")
+  private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props, name = "ConnectorHandler")
   private implicit val askTimeout = Timeout(ShortTimeout.toFiniteDuration)
 
   private[tunnel] val proxyAddress: InetSocketAddress = {
@@ -47,13 +47,12 @@ final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem, conf:
     awaitResult((connectorHandler ? ConnectorHandler.NewTunnel(tunnelId, tunnelListener, startedByIpOption)).mapTo[Try[TunnelHandle]],
       ShortTimeout).get
 
-  def onHeartbeatTimeout(tunnelToken: TunnelToken, t: HeartbeatTimeout): Unit =
-    awaitResult((connectorHandler ? ConnectorHandler.OnHeartbeatTimeout(tunnelToken, t)).mapTo[Try[TunnelHandle]],
-      ShortTimeout).get
+  def onHeartbeat(tunnelToken: TunnelToken): Unit =
+    connectorHandler ! ConnectorHandler.OnHeartbeat(tunnelToken)
 
-  def request(tunnelToken: TunnelToken, requestMessage: ByteString): Future[ByteString] = {
+  def request(tunnelToken: TunnelToken, requestMessage: ByteString, timeout: Option[Duration]): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
-    connectorHandler ! ConnectorHandler.DirectedRequest(tunnelToken, requestMessage, responsePromise)
+    connectorHandler ! ConnectorHandler.DirectedRequest(tunnelToken, requestMessage, responsePromise, timeout)
     responsePromise.future
   }
 
