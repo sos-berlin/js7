@@ -29,7 +29,7 @@ final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extend
       wake()
     }
 
-    def signal()(implicit ec: ExecutionContext): Unit = {
+    def onAdded()(implicit ec: ExecutionContext): Unit = {
       if (_isRunning.compareAndSet(false, true)) {
         Future {
           blocking {
@@ -42,7 +42,7 @@ final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extend
       }
     }
 
-    private def wake(): Unit = lock.synchronized { lock.notifyAll() }
+    def wake(): Unit = lock.synchronized { lock.notifyAll() }
 
     private def run() =
       try loop()
@@ -83,7 +83,7 @@ final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extend
     def isRunning = _isRunning.get
   }
 
-  private val neverAlarm = Alarm(at = Instant.ofEpochMilli((Long.MaxValue / precisionMillis - 1) * precisionMillis), "Never", () ⇒ {})(null: ExecutionContext)
+  private val neverAlarm = Alarm(at = Instant.ofEpochMilli((Long.MaxValue / precisionMillis - 1) * precisionMillis), () ⇒ "Never", () ⇒ {})(null: ExecutionContext)
   private val neverKey = millisToKey(neverAlarm.atEpochMilli)
   queue add neverAlarm  // Marker at end of the never empty queue
 
@@ -93,11 +93,11 @@ final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extend
     queue.clear()
   }
 
-  def delay(delay: Duration, name: String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext): Alarm =
+  def delay(delay: Duration, name: ⇒ String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext): Alarm =
     at(Instant.now() + delay, name = name)(call)
 
-  def at(at: Instant, name: String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext) = {
-    val alarm = Alarm(at, name = name, call = () ⇒ call)
+  def at(at: Instant, name: ⇒ String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext) = {
+    val alarm = Alarm(at, name = () ⇒ name, call = () ⇒ call)
     add(alarm)
     alarm
   }
@@ -109,7 +109,7 @@ final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extend
     val t = nextInstant
     queue.add(alarm)
     if (alarm.at < t) {
-      clock.signal()
+      clock.onAdded()
     }
   }
 
