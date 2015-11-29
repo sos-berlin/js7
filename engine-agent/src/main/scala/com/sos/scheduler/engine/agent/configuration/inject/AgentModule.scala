@@ -9,6 +9,9 @@ import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.TaskHandler
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
+import com.sos.scheduler.engine.common.time.ScalaTime.DurationRichInt
+import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import javax.inject.Singleton
 import scala.collection.immutable
 
@@ -18,11 +21,13 @@ import scala.collection.immutable
 final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbstractModule {
 
   private val closer = Closer.create()
+  private val actorSystem = newActorSystem("JobScheduler-Agent")(closer)
 
   protected def configure() = {
     bindInstance[Closer](closer)
     bindInstance[AgentConfiguration](agentConfiguration)
-    provideSingleton[ActorSystem] { newActorSystem("JobScheduler-Agent")(closer) }
+    bindInstance[AlarmClock](new AlarmClock(100.ms) closeWithCloser closer)
+    provideSingleton[ActorSystem] { actorSystem }
   }
 
   @Provides @Singleton

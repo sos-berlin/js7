@@ -13,6 +13,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.common.utils.ConcurrentRegister
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import java.time.Instant
@@ -21,13 +22,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, Promise, blocking}
+import scala.concurrent.{Future, Promise}
 
 /**
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends TaskHandlerView {
+final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, alarmClock: AlarmClock) extends TaskHandlerView {
 
   private val terminating = new AtomicBoolean
   private val terminatedPromise = Promise[Unit]()
@@ -64,8 +65,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
     task.closeTunnel()  // This terminates Remoting and then SimpleTaskServer
     task.terminated.onComplete { case _ ⇒ removeTaskAfterTermination(task) }
     if (firstSignal == SIGTERM) {
-      Future {
-        blocking { sleep(TunnelInactivitySigtermDuration) }
+      alarmClock.delay(TunnelInactivitySigtermDuration) {
         tryKillTask(task)
       }
     }
@@ -121,10 +121,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
 
   private def sigkillProcessesAt(at: Instant): Unit = {
     logger.info(s"All task processes will be terminated with SIGKILL at $at")
-    Future {
-      blocking {
-        sleep(at - now())
-      }
+    alarmClock.at(at) {
       sendSignalToAllProcesses(SIGKILL)
     }
   }
@@ -141,10 +138,11 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory) extends 
       if (delay > 0.s) {
         // Wait until HTTP request with termination command probably has been responded
         logger.debug(s"Delaying termination for ${delay.pretty}")
-        sleep(delay)
       }
-      logger.info("Agent is terminating now")
-      terminatedPromise.complete(o map { _ ⇒ () })
+      alarmClock.delay(delay) {
+        logger.info("Agent is terminating now")
+        terminatedPromise.complete(o map { _ ⇒ () })
+      }
     }
   }
 

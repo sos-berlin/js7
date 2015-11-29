@@ -93,6 +93,7 @@ object ScalaTime {
     def toBigDecimal = BigDecimal(delegate.getSeconds) + BigDecimal(delegate.getNano) / (1000*1000*1000)
     def toConcurrent: scala.concurrent.duration.Duration = javaToConcurrentDuration(delegate)
     def toFiniteDuration: scala.concurrent.duration.FiniteDuration = javaToConcurrentFiniteDuration(delegate)
+    override def toString = pretty  // For ScalaTest
 
     def pretty =
       if (delegate == Duration.ZERO) millisToPretty(0)
@@ -116,6 +117,7 @@ object ScalaTime {
     def -(o: Duration) = delegate minus o
     def -(o: Instant) = Duration.between(o, delegate)
     def compare(o: RichInstant) = delegate compareTo o.delegate
+    override def toString = delegate.toString  // For ScalaTest
   }
 
   implicit class RichLocalTime(val delegate: LocalTime) extends AnyVal with Ordered[RichLocalTime] {

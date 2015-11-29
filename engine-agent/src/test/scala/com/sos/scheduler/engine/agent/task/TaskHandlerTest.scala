@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.task
 
 import akka.actor.{Actor, ActorSystem, Props}
-import com.google.inject.{AbstractModule, Guice, Provides}
+import com.google.inject.{Guice, Provides}
 import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
@@ -12,11 +12,13 @@ import com.sos.scheduler.engine.base.exceptions.PublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
+import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.soslicense.{LicenseKeyBunch, LicenseKeyParameterIsMissingException}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
@@ -229,10 +231,12 @@ private object TaskHandlerTest {
     def pidOption = None
   }
 
-  private class TestModule(tasks: List[AgentTask]) extends AbstractModule {
+  private class TestModule(tasks: List[AgentTask]) extends ScalaAbstractModule {
     private val taskIterator = tasks.iterator
 
-    def configure() = {}
+    def configure() = {
+      bindInstance[AlarmClock](new AlarmClock(10.ms))
+    }
 
     @Provides @Singleton
     private def agentTaskFactory: AgentTaskFactory = new AgentTaskFactory {
