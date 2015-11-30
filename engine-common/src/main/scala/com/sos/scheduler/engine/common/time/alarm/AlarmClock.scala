@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future, blocking}
 /**
  * @author Joacim Zschimmer
  */
-final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extends AutoCloseable {
+final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = Some(30.s)) extends AutoCloseable {
 
   private val precisionMillis = precision.toMillis max 1
   private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Alarm ⇒ millisToKey(a.atEpochMilli): java.lang.Long }))
@@ -29,11 +29,17 @@ final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extend
       wake()
     }
 
-    def onAdded()(implicit ec: ExecutionContext): Unit = {
+    def onAdded()(implicit ec: ExecutionContext): Unit = startOrWake()
+
+    def startOrWake()(implicit ec: ExecutionContext): Unit = {
       if (_isRunning.compareAndSet(false, true)) {
         Future {
           blocking {
-            try run()
+            try loop()
+            catch { case t: Throwable ⇒
+              logger.error(s"$t", t)
+              throw t
+            }
             finally _isRunning.set(false)
           }
         }
@@ -44,13 +50,6 @@ final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extend
 
     def wake(): Unit = lock.synchronized { lock.notifyAll() }
 
-    private def run() =
-      try loop()
-      catch { case t: Throwable ⇒
-        logger.error(s"$t", t)
-        throw t
-      }
-
     private def loop(): Unit = {
       var timedout = false
       var hot = false
@@ -58,8 +57,8 @@ final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extend
         queue.popNext(millisToKey(nowMillis())) match {
           case Left(key) ⇒
             if (key == neverKey) {
-              lock.synchronized { lock.wait(idleTimeout.toMillis) }
-              timedout = stopped || isEmpty
+              hot = false
+              timedout = idleUntilTimeout()
             } else {
               keyToMillis(key) - nowMillis() match {
                 case duration if duration > 0 ⇒
@@ -78,6 +77,16 @@ final class AlarmClock(precision: Duration, idleTimeout: Duration = 30.s) extend
             alarm.run()
         }
       }
+    }
+
+    private def idleUntilTimeout(): Boolean = {
+      lock.synchronized {
+        idleTimeout match {
+          case Some(d) ⇒ lock.wait(d.toMillis)
+          case None ⇒ lock.wait()
+        }
+      }
+      isEmpty && idleTimeout.isDefined
     }
 
     def isRunning = _isRunning.get

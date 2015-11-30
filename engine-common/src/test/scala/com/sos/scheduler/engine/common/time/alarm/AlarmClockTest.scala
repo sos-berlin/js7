@@ -20,7 +20,7 @@ final class AlarmClockTest extends FreeSpec {
 
   "Thread timeout and warm-up" in {
     new ConcurrentLinkedQueue[String]().add("WARM-UP")
-    autoClosing(new AlarmClock(10.ms, idleTimeout = 1.s)) { alarmClock ⇒
+    autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
       alarmClock.delay(0.s) {}
       assert(alarmClock.isRunning)
       assert(waitForCondition(2.s, 10.ms) { !alarmClock.isRunning })
