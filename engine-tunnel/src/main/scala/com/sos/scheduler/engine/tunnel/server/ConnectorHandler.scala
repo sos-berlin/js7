@@ -7,15 +7,13 @@ import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
-import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
-import java.time.Instant.now
-import java.time.{Duration, Instant}
+import java.time.Duration
 import scala.PartialFunction.cond
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Promise}
+import scala.concurrent.Promise
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -157,10 +155,8 @@ private[tunnel] final class ConnectorHandler private extends Actor {
       }).toVector
 
     case m @ OnHeartbeat(tunnelToken) ⇒
-      try {
+      sender() ! Try {
         checkedHandle(tunnelToken).heartbeat()
-      } catch {
-        case NonFatal(t) ⇒ logger.error(s"$m: $t", t)
       }
 
     case Connector.BecameInactive(tunnelId, since) ⇒   // Timeout of last Connector.Request or Connector.Heartbeat has elapsed
@@ -212,78 +208,4 @@ private[tunnel] object ConnectorHandler {
 
   private[tunnel] object GetOverview extends Command
   private[tunnel] object GetTunnelOverviews extends Command
-
-  private class Handle(
-    connectorHandler: ActorRef,
-    val tunnelToken: TunnelToken,
-    val startedByHttpIpOption: Option[InetAddress],
-    val connectedPromise: Promise[InetSocketAddress],
-    val listener: Agent[TunnelListener],
-    var state: Handle.State = Handle.Uninitialized,
-    val statistics: Statistics = Statistics())
-  extends TunnelHandle {
-    private[ConnectorHandler] val onInactivityCallback = new SetOnce[Instant ⇒ Unit]
-
-    def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(tunnelToken)
-
-    override def toString = s"TunnelHandler($id,HTTP client ${startedByHttpIpOption getOrElse "unknown"} -> TCP server ${serverAddressOption getOrElse "not yet connected"})"
-
-    private def serverAddressOption: Option[InetSocketAddress] = connectedPromise.future.value map { _.get }
-
-    def connected = connectedPromise.future
-
-    def remoteAddressString: String = remoteAddressStringOption getOrElse "(not connected via TCP)"
-
-    def remoteAddressStringOption: Option[String] = connectedPromise.future.value flatMap { _.toOption } map { _.toString stripPrefix "/" }
-
-    def onRequestSent(request: Connector.Request)(implicit ec:ExecutionContext): Unit = {
-      statistics.updateWith(request)
-      listener send { _.onRequest(request.message) }
-    }
-
-    def heartbeat(): Unit = connectorHandler ! Connector.Heartbeat
-
-    def onInactivity(callback: Instant ⇒ Unit) = {
-      onInactivityCallback := callback
-    }
-
-    private[ConnectorHandler] def callOnInactivity(since: Instant): Unit = {
-      for (callback ← onInactivityCallback) {
-        ignoreException(logger.error) {
-          callback(since)
-        }
-      }
-    }
-  }
-
-  private object Handle {
-    sealed trait State
-    case object Uninitialized extends State
-    case class RequestBeforeConnected(request: Connector.Request) extends State
-    case class ConnectedConnector(connector: ActorRef) extends State
-  }
-
-  private case class Statistics(  // We don't care about synchronization ???
-    var requestCount: Int = 0,
-    var messageByteCount: Long = 0,
-    var currentRequestIssuedAt: Option[Instant] = None,
-    var failure: Option[Throwable] = None) {
-
-    def updateWith(request: Connector.Request)(implicit ec: ExecutionContext): Unit = {
-      currentRequestIssuedAt = Some(now)
-      requestCount += 1
-      messageByteCount += request.message.size
-      request.responsePromise.future.onComplete { tried ⇒
-        // We don't care about synchronization
-        tried match {
-          case Success(message) ⇒
-            messageByteCount += message.size
-            failure = None
-          case Failure(t) ⇒
-            failure = Some(t)
-        }
-        currentRequestIssuedAt = None
-      }
-    }
-  }
 }

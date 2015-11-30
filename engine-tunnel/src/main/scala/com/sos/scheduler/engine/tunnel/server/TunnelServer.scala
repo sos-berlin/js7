@@ -48,7 +48,7 @@ final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem) exten
       ShortTimeout).get
 
   def onHeartbeat(tunnelToken: TunnelToken): Unit =
-    connectorHandler ! ConnectorHandler.OnHeartbeat(tunnelToken)
+    (connectorHandler ? ConnectorHandler.OnHeartbeat(tunnelToken)).mapTo[Try[Unit]]
 
   def request(tunnelToken: TunnelToken, requestMessage: ByteString, timeout: Option[Duration]): Future[ByteString] = {
     val responsePromise = Promise[ByteString]()
