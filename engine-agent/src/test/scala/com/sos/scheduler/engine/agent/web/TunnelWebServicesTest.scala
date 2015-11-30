@@ -42,7 +42,7 @@ final class TunnelWebServicesTest extends FreeSpec with ScalatestRouteTest with 
     Future.successful(requestToResponse(requestMessage))
   }
 
-  protected def onTunnelHeartbeat(tunnelToken: TunnelToken): Unit = logger.debug(s"$tunnelToken: Heartbeat")
+  protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration): Unit = logger.debug(s"$tunnelToken: Heartbeat $timeout")
   protected def tunnelHandlerOverview = Future.successful(TestTunnelHandlerOverview)
   protected def tunnelOverviews = Future.successful(TestTunnelOverviews)
 

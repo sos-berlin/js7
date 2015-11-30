@@ -18,7 +18,7 @@ import spray.routing.Directives._
 trait TunnelWebService extends AgentWebService {
 
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString, timeout: Option[Duration]): Future[ByteString]
-  protected def onTunnelHeartbeat(tunnelToken: TunnelToken): Unit
+  protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration): Unit
   protected def tunnelHandlerOverview: Future[TunnelHandlerOverview]
   protected def tunnelOverviews: Future[immutable.Iterable[TunnelOverview]]
   protected def heartbeatService: HeartbeatService

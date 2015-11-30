@@ -29,7 +29,7 @@ object TunnelWebServices {
 
   def tunnelRequestRoute(id: TunnelId)(
     execute: ExecuteTunneledRequest,
-    onHeartbeat: TunnelToken ⇒ Unit,
+    onHeartbeat: (TunnelToken, Duration) ⇒ Unit,
     heartbeatService: HeartbeatService)
     (implicit refFactory: ActorRefFactory) =
   {
@@ -39,7 +39,7 @@ object TunnelWebServices {
           val token = TunnelToken(id, TunnelToken.Secret(secret))
           entity(as[ByteString]) { request ⇒
             handleExceptions(connectionClosedExceptionHandler) {
-              heartbeatService.startHeartbeat(onHeartbeat = () ⇒ onHeartbeat(token)) {
+              heartbeatService.startHeartbeat(onHeartbeat = timeout ⇒ onHeartbeat(token, timeout)) {
                 timeout ⇒ execute(token, request, timeout)
               }
             }

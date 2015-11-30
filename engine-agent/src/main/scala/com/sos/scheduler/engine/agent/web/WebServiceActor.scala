@@ -71,7 +71,7 @@ with NoJobSchedulerEngineWebService
   protected def agentOverview = agentOverviewProvider.get()
   protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString, timeout: Option[Duration]) =
     tunnelServer.request(tunnelToken, requestMessage, timeout)
-  protected def onTunnelHeartbeat(tunnelToken: TunnelToken) = tunnelServer.onHeartbeat(tunnelToken)
+  protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration) = tunnelServer.onHeartbeat(tunnelToken, timeout)
   protected def tunnelHandlerOverview = tunnelServer.overview
   protected def tunnelOverviews = tunnelServer.tunnelOverviews
   override protected def uriPathPrefix = agentConfiguration.strippedUriPathPrefix

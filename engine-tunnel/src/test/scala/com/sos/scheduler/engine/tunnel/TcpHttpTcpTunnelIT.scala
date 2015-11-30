@@ -184,7 +184,7 @@ object TcpHttpTcpTunnelIT {
         (post & pathPrefix("test" / "tunnel" / Segment)) { idString ⇒
           tunnelRequestRoute(TunnelId(idString))(
             executeTunnelRequest,
-            onHeartbeat = _ ⇒ {},
+            onHeartbeat = (_, _) ⇒ {},
             heartbeatService)
         }
       }

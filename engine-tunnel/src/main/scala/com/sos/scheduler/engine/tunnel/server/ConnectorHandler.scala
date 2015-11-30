@@ -123,6 +123,19 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         case NonFatal(t) ⇒ request.responsePromise.failure(t)
       }
 
+    case m @ OnHeartbeat(tunnelToken, timeout) ⇒
+      sender() ! Try {
+        checkedHandle(tunnelToken).state match {
+          case Handle.ConnectedConnector(connector) ⇒ connector ! Connector.Heartbeat(timeout)
+          case state ⇒ logger.debug(s"$m ignored in state $state")
+        }
+      }
+
+    case Connector.BecameInactive(tunnelId, since) ⇒   // Timeout of last Connector.Request or Connector.Heartbeat has elapsed
+      for (handle ← register.get(tunnelId)) {
+        handle.callOnInactivity(since)
+      }
+
     case m @ CloseTunnel(tunnelToken) ⇒
       try {
         if (register contains tunnelToken.id) {
@@ -153,16 +166,6 @@ private[tunnel] final class ConnectorHandler private extends Actor {
             currentRequestIssuedAt = handle.statistics.currentRequestIssuedAt,
             handle.statistics.failure map { _.toString }))
       }).toVector
-
-    case m @ OnHeartbeat(tunnelToken) ⇒
-      sender() ! Try {
-        checkedHandle(tunnelToken).heartbeat()
-      }
-
-    case Connector.BecameInactive(tunnelId, since) ⇒   // Timeout of last Connector.Request or Connector.Heartbeat has elapsed
-      for (handle ← register.get(tunnelId)) {
-        handle.callOnInactivity(since)
-      }
   }
 
   private def removeHandle(id: TunnelId): Unit = register -= id
@@ -197,7 +200,7 @@ private[tunnel] object ConnectorHandler {
 
   private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
 
-  private[tunnel] final case class OnHeartbeat(tunnelToken: TunnelToken) extends Command
+  private[tunnel] final case class OnHeartbeat(tunnelToken: TunnelToken, timeout: Duration) extends Command
 
   private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request) extends Command
 

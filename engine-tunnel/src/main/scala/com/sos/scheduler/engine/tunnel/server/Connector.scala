@@ -94,10 +94,6 @@ extends Actor with FSM[State, Data] {
       inactivityWatchdog.restart(timeout)
       goto(ExpectingMessageFromTcp) using Respond(responsePromise)
 
-    case Event(Heartbeat(timeout: Duration), NoData) ⇒
-      inactivityWatchdog.restart(Some(timeout))
-      stay()
-
     case Event(m @ MessageTcpBridge.PeerClosed, NoData) ⇒
       logger.trace(s"$m")
       stop()
@@ -110,6 +106,11 @@ extends Actor with FSM[State, Data] {
   }
 
   whenUnhandled {
+    case Event(m @ Heartbeat(timeout: Duration), _) ⇒
+      logger.debug(s"$m")
+      inactivityWatchdog.restart(Some(timeout))
+      stay()
+
     case Event(m @ MessageTcpBridge.Failed(throwable), _) ⇒
       logger.warn(s"$m", throwable)
       if (!messageTcpBridgeTerminated) {

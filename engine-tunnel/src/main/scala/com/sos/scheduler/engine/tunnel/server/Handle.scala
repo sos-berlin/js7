@@ -41,8 +41,6 @@ extends TunnelHandle {
     listener send { _.onRequest(request.message) }
   }
 
-  def heartbeat(): Unit = connectorHandler ! Connector.Heartbeat
-
   def onInactivity(callback: Instant ⇒ Unit) = {
     onInactivityCallback := callback
   }
