@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future, blocking}
 /**
  * @author Joacim Zschimmer
  */
-final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = Some(30.s)) extends AutoCloseable {
+final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None) extends AutoCloseable {
 
   private val precisionMillis = precision.toMillis max 1
   private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Alarm ⇒ millisToKey(a.atEpochMilli): java.lang.Long }))

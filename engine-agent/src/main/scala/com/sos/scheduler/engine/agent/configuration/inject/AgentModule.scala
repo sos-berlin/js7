@@ -26,7 +26,7 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
   protected def configure() = {
     bindInstance[Closer](closer)
     bindInstance[AgentConfiguration](agentConfiguration)
-    bindInstance[AlarmClock](new AlarmClock(100.ms, idleTimeout = None) closeWithCloser closer)
+    bindInstance[AlarmClock](new AlarmClock(100.ms) closeWithCloser closer)
     provideSingleton[ActorSystem] { actorSystem }
   }
 

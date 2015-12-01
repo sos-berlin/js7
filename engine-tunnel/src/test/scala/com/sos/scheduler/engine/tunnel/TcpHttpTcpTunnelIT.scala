@@ -155,7 +155,7 @@ object TcpHttpTcpTunnelIT {
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
-      val heartbeatService = new HeartbeatService(new AlarmClock(100.ms))
+      val heartbeatService = new HeartbeatService(new AlarmClock(100.ms, idleTimeout = Some(1.s)))
       actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer, heartbeatService, tunnelServer.request) })
       val httpAddress = awaitResult(startedPromise.future, 10.s)
       Uri(s"http://${httpAddress.getAddress.getHostAddress}:${httpAddress.getPort}")

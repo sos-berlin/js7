@@ -28,7 +28,7 @@ final class AlarmClockTest extends FreeSpec {
   }
 
   "AlarmClock" in {
-    autoClosing(new AlarmClock(2.ms)) { alarmClock ⇒
+    autoClosing(new AlarmClock(2.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
       for (nr ← 1 to 2) {
         val results = new ConcurrentLinkedQueue[(String, Instant)]()
         val t = Instant.now()
@@ -49,7 +49,7 @@ final class AlarmClockTest extends FreeSpec {
   }
 
   "Brute force" in {
-    autoClosing(new AlarmClock(2.ms)) { alarmClock ⇒
+    autoClosing(new AlarmClock(2.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
       for (nr ← 1 to 100) {
         val counter = new AtomicInteger
         val n = 1000

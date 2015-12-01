@@ -235,7 +235,7 @@ private object TaskHandlerTest {
     private val taskIterator = tasks.iterator
 
     def configure() = {
-      bindInstance[AlarmClock](new AlarmClock(10.ms))
+      bindInstance[AlarmClock](new AlarmClock(10.ms, idleTimeout = Some(1.s)))
     }
 
     @Provides @Singleton
