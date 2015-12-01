@@ -5,10 +5,10 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.akkautils.Akkas
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
-import com.sos.scheduler.engine.http.client.heartbeat.{HeartbeatRequestor, HttpHeartbeatTiming}
+import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestor
 import com.sos.scheduler.engine.tunnel.client.WebTunnelClient._
 import com.sos.scheduler.engine.tunnel.data.Http._
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import scala.concurrent.Future
 import spray.client.pipelining._
 import spray.http.HttpHeaders.Accept
@@ -19,12 +19,12 @@ import spray.httpx.encoding.Gzip
 /**
  * @author Joacim Zschimmer
  */
-trait WebTunnelClient {
+trait WebTunnelClient extends AutoCloseable {
 
-  def uri: Uri
-  def tunnelUri(tunnelId: TunnelId): Uri
+  protected def tunnelToken: TunnelToken
+  def tunnelUri: Uri
+  protected val heartbeatRequestorOption: Option[HeartbeatRequestor]
   protected implicit def actorSystem: ActorSystem
-  def heartbeatTimingOption: Option[HttpHeartbeatTiming]
 
   private implicit def executionContext = actorSystem.dispatcher
   private val veryLongTimeout = Akkas.maximumTimeout(actorSystem.settings)
@@ -35,13 +35,14 @@ trait WebTunnelClient {
     sendReceive(actorSystem, actorSystem.dispatcher, veryLongTimeout) ~>
     decode(Gzip)
 
-  final def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString): Future[ByteString] = {
-    val TunnelToken(id, secret) = tunnelToken
-    val addSecretHeader = addHeader(SecretHeaderName, secret.string)
-    val request = Post(tunnelUri(id), requestMessage)
+  def close() = heartbeatRequestorOption foreach { _.close() }
+
+  final def tunnelRequest(requestMessage: ByteString): Future[ByteString] = {
+    val addSecretHeader = addHeader(SecretHeaderName, tunnelToken.secret.string)
+    val request = Post(tunnelUri, requestMessage)
     try
-      heartbeatTimingOption match {
-        case Some(timing) ⇒ HeartbeatRequestor(timing)(addSecretHeader, pipelineTrunk, request) map { _ ~> unmarshal[ByteString] }
+      heartbeatRequestorOption match {
+        case Some(requestor) ⇒ requestor.apply(addSecretHeader, pipelineTrunk, request) map { _ ~> unmarshal[ByteString] }
         case None ⇒ (addSecretHeader ~> pipelineTrunk ~> unmarshal[ByteString]).apply(request)
       }
     catch { case t: IllegalArgumentException ⇒
@@ -50,7 +51,7 @@ trait WebTunnelClient {
     }
   }
 
-  override def toString = s"WebTunnelClient($uri)"
+  override def toString = s"WebTunnelClient($tunnelUri)"
 }
 
 object WebTunnelClient {

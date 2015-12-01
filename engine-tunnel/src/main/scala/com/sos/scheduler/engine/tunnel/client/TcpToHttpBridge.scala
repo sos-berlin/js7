@@ -17,8 +17,8 @@ extends AutoCloseable {
   private val tcpHttpBridge = new TcpToRequestResponse(
     actorSystem,
     connectTo = connectTo,
-    executeRequest = request ⇒ tunnelClient.tunnelRequest(tunnelToken, request),
-    name = s"${tunnelClient.tunnelUri(tunnelToken.id)}")
+    executeRequest = request ⇒ tunnelClient.tunnelRequest(request),
+    name = s"${tunnelClient.tunnelUri}")
 
   def start() = tcpHttpBridge.start()
 

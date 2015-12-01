@@ -104,9 +104,12 @@ object TcpHttpTcpTunnelIT {
       clientSideListener.boundAddress,
       tunnelToken,
       new WebTunnelClient {
-        def uri = ClientSide.this.uri withPath Path("/test/tunnel")
-        def tunnelUri(id: TunnelId) = uri withPath (uri.path / id.string)
-        def heartbeatTimingOption = None
+        def tunnelToken = ClientSide.this.tunnelToken
+        def tunnelUri = {
+          val uri = ClientSide.this.uri withPath Path("/test/tunnel")
+          uri withPath (uri.path / tunnelToken.id.string)
+        }
+        val heartbeatRequestorOption = None
         def actorSystem = ClientSide.this.actorSystem
       })
     tcpHttpBridge.start()
