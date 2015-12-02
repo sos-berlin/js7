@@ -37,8 +37,8 @@ object TunnelWebServices {
     (pathEndOrSingleSlash & post) {
       headerValueByName(SecretHeaderName) { secret ⇒
         val token = TunnelToken(id, TunnelToken.Secret(secret))
-        clientSideHeartbeat {
-          timeout ⇒ onHeartbeat(token, timeout)
+        clientSideHeartbeat { timeout ⇒
+          onHeartbeat(token, timeout)
         } ~
         heartbeatService.continueHeartbeat ~
         entity(as[ByteString]) { request ⇒

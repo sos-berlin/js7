@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.tunnel.client
 
-import spray.http.StatusCodes.OK
 import akka.actor.ActorSystem
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.akkautils.Akkas
@@ -14,6 +13,7 @@ import scala.concurrent.Future
 import spray.client.pipelining._
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes._
+import spray.http.StatusCodes.OK
 import spray.http.{HttpRequest, HttpResponse, Uri}
 import spray.httpx.encoding.Gzip
 
