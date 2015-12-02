@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
+import com.sos.scheduler.engine.http.server.heartbeat.ClientSideHeartbeatService.clientSideHeartbeat
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.data.Http.SecretHeaderName
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
@@ -34,14 +35,16 @@ object TunnelWebServices {
     (implicit refFactory: ActorRefFactory) =
   {
     (pathEndOrSingleSlash & post) {
-      heartbeatService.continueHeartbeat ~ {
-        headerValueByName(SecretHeaderName) { secret ⇒
-          val token = TunnelToken(id, TunnelToken.Secret(secret))
-          entity(as[ByteString]) { request ⇒
-            handleExceptions(connectionClosedExceptionHandler) {
-              heartbeatService.startHeartbeat(onHeartbeat = timeout ⇒ onHeartbeat(token, timeout)) {
-                timeout ⇒ execute(token, request, timeout)
-              }
+      headerValueByName(SecretHeaderName) { secret ⇒
+        val token = TunnelToken(id, TunnelToken.Secret(secret))
+        clientSideHeartbeat {
+          timeout ⇒ onHeartbeat(token, timeout)
+        } ~
+        heartbeatService.continueHeartbeat ~
+        entity(as[ByteString]) { request ⇒
+          handleExceptions(connectionClosedExceptionHandler) {
+            heartbeatService.startHeartbeat(onHeartbeat = timeout ⇒ onHeartbeat(token, timeout)) {
+              timeout ⇒ execute(token, request, timeout)
             }
           }
         }

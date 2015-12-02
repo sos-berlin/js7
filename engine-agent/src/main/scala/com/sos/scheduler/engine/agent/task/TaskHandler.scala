@@ -65,7 +65,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, alarmClo
     task.closeTunnel()  // This terminates Remoting and then SimpleTaskServer
     task.terminated.onComplete { case _ ⇒ removeTaskAfterTermination(task) }
     if (firstSignal == SIGTERM) {
-      alarmClock.delay(TunnelInactivitySigtermDuration) {
+      alarmClock.delay(TunnelInactivitySigtermDuration, name = s"$task TunnelInactivitySigtermDuration" ) {
         tryKillTask(task)
       }
     }

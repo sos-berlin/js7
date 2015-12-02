@@ -38,12 +38,12 @@ trait WebTunnelClient extends AutoCloseable {
   def close() = heartbeatRequestorOption foreach { _.close() }
 
   final def tunnelRequest(requestMessage: ByteString): Future[ByteString] = {
-    val addSecretHeader = addHeader(SecretHeaderName, tunnelToken.secret.string)
+    val mySendReceive = addHeader(SecretHeaderName, tunnelToken.secret.string) ~> pipelineTrunk
     val request = Post(tunnelUri, requestMessage)
     try
       heartbeatRequestorOption match {
-        case Some(requestor) ⇒ requestor.apply(addSecretHeader, pipelineTrunk, request) map { _ ~> unmarshal[ByteString] }
-        case None ⇒ (addSecretHeader ~> pipelineTrunk ~> unmarshal[ByteString]).apply(request)
+        case Some(requestor) ⇒ requestor.apply(mySendReceive, request) map { _ ~> unmarshal[ByteString] }
+        case None ⇒ (mySendReceive ~> unmarshal[ByteString]).apply(request)
       }
     catch { case t: IllegalArgumentException ⇒
       logger.error(s"akka.scheduler.tick-duration is below 1s? $t")
