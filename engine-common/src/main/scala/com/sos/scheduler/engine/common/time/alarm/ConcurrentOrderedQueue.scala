@@ -5,6 +5,8 @@ package com.sos.scheduler.engine.common.time.alarm
   */
 private[alarm] class ConcurrentOrderedQueue[K: Ordering, V](delegate: OrderedQueue[K, V]) {
 
+  final def isEmpty = synchronized { delegate.isEmpty }
+
   final def size = synchronized { delegate.size }
 
   final def clear(): Unit = synchronized { delegate.clear() }

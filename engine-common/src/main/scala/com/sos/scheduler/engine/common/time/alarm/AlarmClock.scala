@@ -124,7 +124,7 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
 
   override def toString = "AlarmClock" + (if (isEmpty) "" else s"(${queue.head.at}: ${queue.size} alarms)") mkString ""
 
-  def isEmpty = queue.head.atEpochMilli == neverAlarm.atEpochMilli
+  def isEmpty = queue.isEmpty/*when closed*/ || queue.head.atEpochMilli == neverAlarm.atEpochMilli
 
   private def nextInstant = queue.head.at
 
