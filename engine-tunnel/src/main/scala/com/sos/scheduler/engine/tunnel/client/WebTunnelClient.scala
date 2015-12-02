@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.tunnel.client
 
+import spray.http.StatusCodes.OK
 import akka.actor.ActorSystem
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.akkautils.Akkas
@@ -42,7 +43,10 @@ trait WebTunnelClient extends AutoCloseable {
     val request = Post(tunnelUri, requestMessage)
     try
       heartbeatRequestorOption match {
-        case Some(requestor) ⇒ requestor.apply(mySendReceive, request) map { _ ~> unmarshal[ByteString] }
+        case Some(requestor) ⇒ requestor.apply(mySendReceive, request) map {
+          case o @ HttpResponse(OK, _, _, _) ⇒ o ~> unmarshal[ByteString]
+          case HttpResponse(status, entity, _, _) ⇒ sys.error(s"Unexpected tunnel response: $status" + (if (status.isFailure) s": ${entity.asString take 500}" else ""))
+        }
         case None ⇒ (mySendReceive ~> unmarshal[ByteString]).apply(request)
       }
     catch { case t: IllegalArgumentException ⇒
