@@ -86,6 +86,11 @@ extends Actor with FSM[State, Data] {
     case Event(MessageTcpBridge.Failed(throwable), Respond(responsePromise)) ⇒
       responsePromise.failure(throwable)
       goto(ExpectingRequest) using NoData
+
+    case Event(Close, Respond(responsePromise)) ⇒
+      responsePromise.failure(new ConnectionClosedException(s"$toString: Connection to peer has been closed by command"))
+      closeBridge()
+      goto(Closing) using NoData
   }
 
   when(ExpectingRequest) {
@@ -119,9 +124,7 @@ extends Actor with FSM[State, Data] {
       goto(Closing) using NoData
 
     case Event(Close, _) ⇒
-      if (!messageTcpBridgeTerminated) {
-        messageTcpBridge ! MessageTcpBridge.Close
-      }
+      closeBridge()
       goto(Closing) using NoData
 
     case Event(closed: Tcp.ConnectionClosed, data) ⇒
@@ -142,6 +145,11 @@ extends Actor with FSM[State, Data] {
   onTransition {
     case _ -> Closing ⇒ inactivityWatchdog.stop()
   }
+
+  private def closeBridge(): Unit =
+    if (!messageTcpBridgeTerminated) {
+      messageTcpBridge ! MessageTcpBridge.Close
+    }
 
   override def toString = {
     val s = tunnelIdOnce toStringOr "tunnel"
