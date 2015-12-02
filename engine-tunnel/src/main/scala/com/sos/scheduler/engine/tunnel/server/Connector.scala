@@ -154,7 +154,9 @@ private[server] object Connector {
     Props { new Connector(connectorHandler, tcp, connected) }
 
   private[server] sealed trait Command
-  private[server] case class Heartbeat(timeout: Duration)
+  private[server] case class Heartbeat(timeout: Duration) {
+    override def toString = s"Heartbeat(timeout ${timeout.pretty})"
+  }
   private[server] final case class Request(message: ByteString, responsePromise: Promise[ByteString], timeout: Option[Duration]) extends Command {
     override def toString = s"Request(${message.size} bytes)"
   }
