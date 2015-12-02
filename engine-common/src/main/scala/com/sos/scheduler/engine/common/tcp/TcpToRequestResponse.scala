@@ -80,7 +80,7 @@ extends AutoCloseable {
             bridge ! MessageTcpBridge.SendMessage(response)
           case Failure(t) ⇒
             t match {
-              case t: AskTimeoutException ⇒ logger.error(toStringWithCauses(t))
+              case _ if t.getClass.getName == "com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestor$HttpRequestTimeoutException" ⇒ logger.error(toStringWithCauses(t))
               case _ ⇒ logger.error(s"$t", t)
             }
             bridge ! MessageTcpBridge.Close // 2015-06-29 Tcp.Abort does not close the connection when peer is C++ JobScheduler
