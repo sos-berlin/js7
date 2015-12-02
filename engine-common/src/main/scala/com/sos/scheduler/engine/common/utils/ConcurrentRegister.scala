@@ -24,6 +24,10 @@ trait ConcurrentRegister[V <: HasKey] {
 
   final def apply(key: Key) = keyToValue(key)
 
+  final def get(key: Key): Option[V] = keyToValue.get(key)
+
+  final def getOrElse[A >: V](key: Key, default: ⇒ A): A = keyToValue.getOrElse(key, default)
+
   final def foreach(body: V ⇒ Unit) = keyToValue.values foreach body
 
   final def map[A](f: V ⇒ A) = keyToValue.values map f

@@ -30,6 +30,7 @@ final class ConcurrentRegisterTest extends FreeSpec {
     assert(register.size == 1)
     assert((register map { _.key }) == List(1))
     assert(register.totalCount == 1)
+    assert(register(1) == Value(1))
   }
 
   "Add a second entry" in {
@@ -42,6 +43,20 @@ final class ConcurrentRegisterTest extends FreeSpec {
     var values = mutable.Set[Value]()
     for (v ← register) values += v
     assert(values == Set(Value(1), Value(2)))
+  }
+
+  "Unknown key" in {
+    intercept[NoSuchElementException] { register(99) }
+  }
+
+  "get" in {
+    assert(register.get(1) == Some(Value(1)))
+    assert(register.get(99) == None)
+  }
+
+  "getOrElse" in {
+    assert(register.getOrElse(1, Value(99)) == Value(1))
+    assert(register.getOrElse(9, Value(99)) == Value(99))
   }
 
   "Adding a known entry is rejected" in {
