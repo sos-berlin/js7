@@ -7,13 +7,13 @@ import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
-
-//import scala.language.implicitConversions
 import scala.math.abs
 
 object ScalaTime {
   val MaxDuration = Duration.ofSeconds(Long.MaxValue, 999999999)
   private val MaxConcurrentDuration = Duration.ofNanos(Long.MaxValue)
+  val Iso8601DurationRegex = "[0-9.A-Za-z]+".r
+
   @TestOnly @volatile var extraSleepCount = 0L
 
   implicit class DurationRichInt(val delegate: Int) extends AnyVal {
