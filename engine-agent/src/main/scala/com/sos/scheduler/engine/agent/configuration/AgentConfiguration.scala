@@ -31,17 +31,10 @@ final case class AgentConfiguration(
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
   rpcKeepaliveDuration: Option[Duration] = None,
-  killAfterTunnelTimeout: Option[Duration] = None,
   killScriptFile: Option[Path] = None)
 {
   requireTcpPortNumber(httpPort)
   require(directory.isAbsolute)
-  for (t ← killAfterTunnelTimeout) {
-    require(t >= 1.s)
-    val d = rpcKeepaliveDuration getOrElse { throw new IllegalArgumentException("kill-after-tunnel-timeout requires rpc-keepalive") }
-    require(d >= 1.s)
-    if (!(t > d)) throw new IllegalArgumentException("kill-after-tunnel-timeout must be longer than rpc-keepalive ")
-  }
 
   def strippedUriPathPrefix = uriPathPrefix stripPrefix "/" stripSuffix "/"
 
@@ -58,7 +51,6 @@ object AgentConfiguration {
         httpInterfaceRestriction = a.getString("-ip-address="),
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
         logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
-        killAfterTunnelTimeout = a.asConvertedOption("-kill-after-tunnel-timeout=")(parseDuration),
         rpcKeepaliveDuration = Some(a.asConvertedOption("-rpc-keepalive=")(parseDuration) getOrElse 300.s),
         killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath })
     }
