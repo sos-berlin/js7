@@ -6,7 +6,6 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
-import com.sos.scheduler.engine.http.server.heartbeat.ClientSideHeartbeatService.clientSideHeartbeat
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.data.Http.SecretHeaderName
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
@@ -28,7 +27,7 @@ object TunnelWebServices {
   type ExecuteTunneledRequest = (TunnelToken, ByteString, Option[Duration]) ⇒ Future[ByteString]
   private val logger = Logger(getClass)
 
-  def tunnelRequestRoute(id: TunnelId)(
+  def tunnelRequestRoute(tunnelId: TunnelId)(
     execute: ExecuteTunneledRequest,
     onHeartbeat: (TunnelToken, Duration) ⇒ Unit,
     heartbeatService: HeartbeatService)
@@ -36,11 +35,8 @@ object TunnelWebServices {
   {
     (pathEndOrSingleSlash & post) {
       headerValueByName(SecretHeaderName) { secret ⇒
-        val token = TunnelToken(id, TunnelToken.Secret(secret))
-        clientSideHeartbeat { timeout ⇒
-          onHeartbeat(token, timeout)
-        } ~
-        heartbeatService.continueHeartbeat ~
+        val token = TunnelToken(tunnelId, TunnelToken.Secret(secret))
+        heartbeatService.continueHeartbeat(onClientHeartbeat = onHeartbeat(token, _)) ~
         entity(as[ByteString]) { request ⇒
           handleExceptions(connectionClosedExceptionHandler) {
             heartbeatService.startHeartbeat(onHeartbeat = timeout ⇒ onHeartbeat(token, timeout)) {

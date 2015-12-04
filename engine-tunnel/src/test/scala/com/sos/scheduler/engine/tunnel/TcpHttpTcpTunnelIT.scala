@@ -12,6 +12,7 @@ import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
 import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
+import com.sos.scheduler.engine.http.server.idempotence.Idempotence
 import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
 import com.sos.scheduler.engine.tunnel.client.{TcpToHttpBridge, WebTunnelClient}
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
@@ -155,7 +156,9 @@ object TcpHttpTcpTunnelIT {
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
-      val heartbeatService = new HeartbeatService(new AlarmClock(100.ms, idleTimeout = Some(1.s)))
+      val alarmClock = new AlarmClock(100.ms, idleTimeout = Some(1.s))
+      val idempotence = new Idempotence(alarmClock)
+      val heartbeatService = new HeartbeatService(alarmClock, idempotence)
       actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer, heartbeatService, tunnelServer.request) })
       val httpAddress = awaitResult(startedPromise.future, 10.s)
       Uri(s"http://${httpAddress.getAddress.getHostAddress}:${httpAddress.getPort}")

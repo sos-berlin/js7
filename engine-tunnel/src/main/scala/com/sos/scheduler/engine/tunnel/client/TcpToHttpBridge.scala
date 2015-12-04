@@ -14,7 +14,7 @@ final class TcpToHttpBridge(actorSystem: ActorSystem, connectTo: InetSocketAddre
 extends AutoCloseable {
   protected def executionContext = actorSystem.dispatcher
 
-  private val tcpHttpBridge = new TcpToRequestResponse(
+  private lazy val tcpHttpBridge = new TcpToRequestResponse(
     actorSystem,
     connectTo = connectTo,
     executeRequest = request ⇒ tunnelClient.tunnelRequest(request),
