@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.common.scalautil
 
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicits._
+import java.util.concurrent.atomic.AtomicBoolean
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -58,5 +59,18 @@ final class ScalaUtilsTest extends FreeSpec {
     7 substitute 4 -> 3 shouldEqual 7
     7.substitute(4, sys.error("ERROR")) shouldEqual 7
     "" substitute "" -> null shouldEqual null
+  }
+
+  "AtomicBoolean.switchOn" in {
+    val a = new AtomicBoolean
+    var x = 0
+    a.switchOn { x = 1 }
+    assert(x == 1)
+    a.switchOn { x = 2 }
+    assert(x == 1)
+    a.switchOff { x = 3 }
+    assert(x == 3)
+    a.switchOff { x = 4 }
+    assert(x == 3)
   }
 }
