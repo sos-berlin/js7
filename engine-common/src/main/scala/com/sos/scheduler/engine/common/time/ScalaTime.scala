@@ -88,6 +88,8 @@ object ScalaTime {
     def -(o: Duration): Duration = delegate minus o
     def *(o: Int): Duration = delegate multipliedBy o
     def /(o: Int): Duration = delegate dividedBy o
+    def *(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal * o)
+    def /(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal / o)
     def min(o: Duration): Duration = if (this <= o) delegate else o
     def max(o: Duration): Duration = if (this > o) delegate else o
     def toBigDecimal = BigDecimal(delegate.getSeconds) + BigDecimal(delegate.getNano) / (1000*1000*1000)
@@ -116,6 +118,8 @@ object ScalaTime {
     def +(o: Duration) = delegate plus o
     def -(o: Duration) = delegate minus o
     def -(o: Instant) = Duration.between(o, delegate)
+    def min(o: Instant): Instant = if (this <= o) delegate else o
+    def max(o: Instant): Instant = if (this > o) delegate else o
     def compare(o: RichInstant) = delegate compareTo o.delegate
     override def toString = delegate.toString  // For ScalaTest
   }

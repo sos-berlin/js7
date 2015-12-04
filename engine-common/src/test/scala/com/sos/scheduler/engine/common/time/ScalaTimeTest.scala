@@ -102,6 +102,16 @@ final class ScalaTimeTest extends FreeSpec {
       (7.s / 2).toMillis shouldEqual 3500
     }
 
+    "Duration * BigDecimal" in {
+      (3.s * BigDecimal("2.5")).toMillis shouldEqual 7500
+      (3.s * 2.5).toMillis shouldEqual 7500
+    }
+
+    "Duration / BigDecimal" in {
+      (10.s / BigDecimal("2.5")).toMillis shouldEqual 4000
+      (10.s / 2.5).toMillis shouldEqual 4000
+    }
+
     "Int * Duration" in {
       (3 * 7.s: Duration).toMillis shouldEqual (3 * 7*1000)
     }
@@ -192,6 +202,14 @@ final class ScalaTimeTest extends FreeSpec {
 
     "Instant - Instant" in {
       (Instant.ofEpochMilli(7) - Instant.ofEpochMilli(2): Duration) shouldEqual Duration.ofMillis(7 - 2)
+    }
+
+    "Instant max Instant" in {
+      Instant.ofEpochMilli(1) max Instant.ofEpochMilli(2) shouldEqual Instant.ofEpochMilli(2)
+    }
+
+    "Instant min Instant" in {
+      Instant.ofEpochMilli(1) min Instant.ofEpochMilli(2) shouldEqual Instant.ofEpochMilli(1)
     }
   }
 
