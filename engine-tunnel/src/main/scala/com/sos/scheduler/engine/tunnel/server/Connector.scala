@@ -61,10 +61,17 @@ extends Actor with FSM[State, Data] {
 
   override def supervisorStrategy = stoppingStrategy
 
-  override def postStop() = inactivityWatchdog.stop()
+  override def preStart() = {
+    super.preStart()
+    watch(messageTcpBridge)
+    inactivityWatchdog.restart(Some(FirstRequestTimeout))
+    startWith(ExpectingMessageFromTcp, NoData)
+  }
 
-  watch(messageTcpBridge)
-  startWith(ExpectingMessageFromTcp, NoData)
+  override def postStop() = {
+    inactivityWatchdog.stop()
+    super.postStop()
+  }
 
   when(ExpectingMessageFromTcp) {
     case Event(MessageTcpBridge.MessageReceived(message), NoData) ⇒
@@ -158,6 +165,8 @@ extends Actor with FSM[State, Data] {
 }
 
 private[server] object Connector {
+  private val FirstRequestTimeout = 60.s
+
   private[server] def props(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected) =
     Props { new Connector(connectorHandler, tcp, connected) }
 
