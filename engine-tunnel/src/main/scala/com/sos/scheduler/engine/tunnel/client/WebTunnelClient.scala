@@ -20,12 +20,12 @@ import spray.httpx.encoding.Gzip
 /**
  * @author Joacim Zschimmer
  */
-trait WebTunnelClient extends AutoCloseable {
-
-  protected def tunnelToken: TunnelToken
-  def tunnelUri: Uri
-  protected val heartbeatRequestorOption: Option[HeartbeatRequestor]
-  protected implicit def actorSystem: ActorSystem
+final class WebTunnelClient(
+  tunnelToken: TunnelToken,
+  val tunnelUri: Uri,
+  heartbeatRequestorOption: Option[HeartbeatRequestor])
+  (implicit actorSystem: ActorSystem)
+extends AutoCloseable {
 
   private implicit def executionContext = actorSystem.dispatcher
   private val veryLongTimeout = Akkas.maximumTimeout(actorSystem.settings)
@@ -38,7 +38,7 @@ trait WebTunnelClient extends AutoCloseable {
 
   def close() = heartbeatRequestorOption foreach { _.close() }
 
-  final def tunnelRequest(requestMessage: ByteString): Future[ByteString] = {
+  def tunnelRequest(requestMessage: ByteString): Future[ByteString] = {
     val mySendReceive = addHeader(SecretHeaderName, tunnelToken.secret.string) ~> pipelineTrunk
     val request = Post(tunnelUri, requestMessage)
     try

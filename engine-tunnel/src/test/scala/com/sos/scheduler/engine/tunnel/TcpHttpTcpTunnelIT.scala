@@ -98,21 +98,19 @@ object TcpHttpTcpTunnelIT {
   }
 
   private class ClientSide(uri: Uri, tunnelToken: TunnelToken) {
-    private val actorSystem = ActorSystem(getClass.getSimpleName)
+    private implicit val actorSystem = ActorSystem(getClass.getSimpleName)
     private val clientSideListener = TcpConnection.Listener.forLocalHostPort()
     private val tcpHttpBridge = new TcpToHttpBridge(
       actorSystem,
       clientSideListener.boundAddress,
       tunnelToken,
-      new WebTunnelClient {
-        def tunnelToken = ClientSide.this.tunnelToken
-        def tunnelUri = {
+      new WebTunnelClient(
+        ClientSide.this.tunnelToken,
+        tunnelUri = {
           val uri = ClientSide.this.uri withPath Path("/test/tunnel")
           uri withPath (uri.path / tunnelToken.id.string)
-        }
-        val heartbeatRequestorOption = None
-        def actorSystem = ClientSide.this.actorSystem
-      })
+        },
+        heartbeatRequestorOption = None))
     tcpHttpBridge.start()
     val tcp = clientSideListener.accept()
 
