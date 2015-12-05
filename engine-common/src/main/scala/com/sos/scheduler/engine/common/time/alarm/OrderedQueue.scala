@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.time.alarm
 
-import org.jetbrains.annotations.TestOnly
+import scala.collection.immutable
 
 /**
   * @author Joacim Zschimmer
@@ -17,12 +17,15 @@ trait OrderedQueue[K, V] {
 
   def foreach(body: V ⇒ Unit): Unit
 
-  def head: V
+  def head: V = headOption getOrElse { throw new NoSuchElementException("AlarmClock.head") }
+
+  def headOption: Option[V]
+
+  def lastOption: Option[V]
 
   def popNext(untilIncluding: K): Either[K, V]
 
-  @TestOnly
-  private[alarm] def toSeq: Seq[V]
+  def toSeq: immutable.Seq[V]
 }
 
 object OrderedQueue {

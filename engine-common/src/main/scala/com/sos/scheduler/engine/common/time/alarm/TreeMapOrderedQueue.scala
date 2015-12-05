@@ -30,13 +30,11 @@ extends OrderedQueue.Implement[K, V] {
 
   def foreach(body: V ⇒ Unit): Unit = toSeq foreach body
 
-  private[alarm] def toSeq = treeMap.values.toArray.toIndexedSeq.asInstanceOf[IndexedSeq[mutable.ListBuffer[V]]].flatten
+  def toSeq = treeMap.values.toArray(new Array[mutable.ListBuffer[V]](0)).toIndexedSeq.flatten
 
-  def head: V =
-    treeMap.firstEntry match {
-      case null ⇒ throw new NoSuchElementException
-      case e ⇒ e.getValue.head
-    }
+  def headOption: Option[V] = Option(treeMap.firstEntry) map { _.getValue.head }
+
+  def lastOption: Option[V] = Option(treeMap.lastEntry) map { _.getValue.last }
 
   protected def removeHead(): V = {
     val first = treeMap.firstEntry

@@ -19,6 +19,9 @@ final class OrderedQueueTest extends FreeSpec {
     val queue = newOrderedQueue()
     assert(queue.isEmpty)
     assert(queue.size == 0)
+    assert(queue.headOption.isEmpty)
+    assert(queue.lastOption.isEmpty)
+    intercept[NoSuchElementException] { queue.head }
     val orderedThings = List(Thing(100, "A"), Thing(200, "B"), Thing(200, "C"), Thing(300, "D"))
     queue.add(orderedThings(1))
     queue.add(orderedThings(0))
@@ -27,6 +30,9 @@ final class OrderedQueueTest extends FreeSpec {
     assert(!queue.isEmpty)
     assert(queue.size == 4)
     assert(queue.head == orderedThings.head)
+    assert(queue.headOption == orderedThings.headOption)
+    assert(queue.lastOption == orderedThings.lastOption)
+    assert(queue.toSeq == orderedThings)
     assert(queue.popNext(0) == Left(100))
     assert(queue.size == 4)
     assert(queue.popNext(100) == Right(orderedThings(0)))
@@ -92,7 +98,8 @@ final class OrderedQueueTest extends FreeSpec {
 object OrderedQueueTest {
   private val logger = Logger(getClass)
 
-  private def newOrderedQueue() = new TreeMapOrderedQueue((_: Thing).criterion: java.lang.Integer)
+  private def newOrderedQueue(): OrderedQueue[java.lang.Integer, Thing] =
+    new TreeMapOrderedQueue((_: Thing).criterion: java.lang.Integer)
 
   private case class Thing(criterion: Int, string: String)
 }

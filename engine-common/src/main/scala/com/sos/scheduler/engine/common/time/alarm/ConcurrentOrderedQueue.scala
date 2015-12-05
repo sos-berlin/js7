@@ -1,9 +1,12 @@
 package com.sos.scheduler.engine.common.time.alarm
 
+import scala.collection.immutable
+
 /**
   * @author Joacim Zschimmer
   */
-private[alarm] class ConcurrentOrderedQueue[K: Ordering, V](delegate: OrderedQueue[K, V]) {
+private[alarm] class ConcurrentOrderedQueue[K: Ordering, V](delegate: OrderedQueue[K, V])
+extends OrderedQueue[K, V]{
 
   final def isEmpty = synchronized { delegate.isEmpty }
 
@@ -13,9 +16,17 @@ private[alarm] class ConcurrentOrderedQueue[K: Ordering, V](delegate: OrderedQue
 
   final def add(v: V): Unit = synchronized { delegate.add(v) }
 
-  final def foreach(body: V ⇒ Unit): Unit = synchronized { delegate.toSeq foreach body }
+  final def foreach(body: V ⇒ Unit): Unit = (delegate.toSeq: immutable.Seq[V]) foreach body
+
+  final def map[A](body: V ⇒ A): immutable.Seq[A] = toSeq map body
+
+  final def toSeq: immutable.Seq[V] = synchronized { delegate.toSeq }
 
   final def popNext(untilIncluding: K): Either[K, V] = synchronized { delegate.popNext(untilIncluding) }
 
-  final def head: V = synchronized { delegate.head }
+  final override def head: V = synchronized { delegate.head }
+
+  final def headOption: Option[V] = synchronized { delegate.headOption }
+
+  final def lastOption: Option[V] = synchronized { delegate.lastOption }
 }

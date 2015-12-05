@@ -3,10 +3,12 @@ package com.sos.scheduler.engine.common.time.alarm
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.alarm.Alarm.nowMillis
+import com.sos.scheduler.engine.common.time.alarm.AlarmClock._
 import java.lang.Math.addExact
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicBoolean
 import org.scalactic.Requirements._
+import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future, blocking}
 
 /**
@@ -126,9 +128,18 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
 
   def isEmpty = queue.isEmpty/*when closed*/ || queue.head.atEpochMilli == neverAlarm.atEpochMilli
 
+  def overview: AlarmClockOverview = AlarmClockOverview(
+    count = queue.size - 1,
+    first = queue.headOption filterNot isEndMark map alarmToOverview,
+    last = (queue.toSeq dropRight 1).lastOption map alarmToOverview)  // O(queue.size) !!!
+
+  def alarmOverviews: immutable.Seq[AlarmOverview] = queue.toSeq filterNot isEndMark map alarmToOverview
+
   private def nextInstant = queue.head.at
 
   private[alarm] def isRunning = clock.isRunning
+
+  private def isEndMark(alarm: Alarm) = alarm.atEpochMilli == neverAlarm.atEpochMilli
 
   private def millisToKey(millis: Long) = addExact(millis, precisionMillis - 1) / precisionMillis
 
@@ -136,5 +147,5 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
 }
 
 object AlarmClock {
-  final class ClosedException extends RuntimeException("AlarmClock is closed, no more alarms possible")
+  private def alarmToOverview(alarm: Alarm) = AlarmOverview(alarm.at, name = alarm.name)
 }
