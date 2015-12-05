@@ -21,7 +21,7 @@ final class AlarmClockTest extends FreeSpec {
   "Thread timeout and warm-up" in {
     new ConcurrentLinkedQueue[String]().add("WARM-UP")
     autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
-      alarmClock.delay(0.s) {}
+      alarmClock.delay(0.s, "test") {}
       assert(alarmClock.isRunning)
       assert(waitForCondition(2.s, 10.ms) { !alarmClock.isRunning })
     }
@@ -32,9 +32,9 @@ final class AlarmClockTest extends FreeSpec {
       for (nr ← 1 to 2) {
         val results = new ConcurrentLinkedQueue[(String, Instant)]()
         val t = Instant.now()
-        alarmClock.at(t + 0.ms) { results.add("A" → Instant.now()) }
-        alarmClock.at(t + 400.ms) { results.add("C" → Instant.now()) }
-        alarmClock.at(t + 200.ms) { results.add("B" → Instant.now()) }
+        alarmClock.at(t + 0.ms, "test") { results.add("A" → Instant.now()) }
+        alarmClock.at(t + 400.ms, "test") { results.add("C" → Instant.now()) }
+        alarmClock.at(t + 200.ms, "test") { results.add("B" → Instant.now()) }
         sleep(500.ms)
         withClue(s"Run $nr: ") {
           val r = results.toVector
@@ -54,7 +54,7 @@ final class AlarmClockTest extends FreeSpec {
         val counter = new AtomicInteger
         val n = 1000
         val delays = for (i ← 1 to n) yield Random.nextInt(40).ms
-        for (delay ← delays) alarmClock.delay(delay) { counter.incrementAndGet() }
+        for (delay ← delays) alarmClock.delay(delay, "test") { counter.incrementAndGet() }
         val ok = waitForCondition(2.s, 10.ms) { counter.get == n }
         if (!ok) logger.error(s"$counter/$n $alarmClock")
         assert(ok)

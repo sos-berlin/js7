@@ -102,10 +102,10 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
     queue.clear()
   }
 
-  def delay(delay: Duration, name: String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext): Alarm =
+  def delay(delay: Duration, name: String)(call: ⇒ Unit)(implicit ec: ExecutionContext): Alarm =
     at(Instant.now() + delay, name = name)(call)
 
-  def at(at: Instant, name: String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext) = {
+  def at(at: Instant, name: String)(call: ⇒ Unit)(implicit ec: ExecutionContext) = {
     val alarm = Alarm(at, name = name, call = () ⇒ call)
     add(alarm)
     alarm
