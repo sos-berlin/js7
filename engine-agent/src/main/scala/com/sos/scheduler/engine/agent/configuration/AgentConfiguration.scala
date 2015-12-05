@@ -52,7 +52,8 @@ object AgentConfiguration {
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
         logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
         rpcKeepaliveDuration = Some(a.asConvertedOption("-rpc-keepalive=")(parseDuration) getOrElse 300.s),
-        killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath })
+        killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath },
+        jobJavaOptions = a.getString("-job-java-options=").toList)
     }
 
   def forTest(httpPort: Int = findRandomFreeTcpPort()) = AgentConfiguration(
