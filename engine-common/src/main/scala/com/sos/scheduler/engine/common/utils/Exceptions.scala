@@ -24,12 +24,10 @@ object Exceptions {
     tried.get
   }
 
-  def ignoreException(log: (⇒ String, Throwable) ⇒ Unit)(body: ⇒ Unit): Unit = ignoreNonFatal[Throwable](log)(body)
-
-  def ignoreNonFatal[T <: Throwable: ClassTag](log: (⇒ String, Throwable) ⇒ Unit)(body: ⇒ Unit): Unit =
-    try body
-    catch {
-      case NonFatal(t) if implicitClass[T] isAssignableFrom t.getClass ⇒ log(s"Ignoring exception $t", t)
+  def ignoreException[A](log: (⇒ String, Throwable) ⇒ Unit)(body: ⇒ A): Try[A] =
+    Try { body } recover { case NonFatal(t)  ⇒
+      log(s"Ignoring exception $t", t)
+      throw t
     }
 
   def toStringWithCauses(throwable: Throwable): String = {

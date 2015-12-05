@@ -9,6 +9,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import scala.util.{Try, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -32,21 +33,20 @@ final class ExceptionsTest extends FreeSpec {
   }
 
   "ignoreException executes code" in {
-    var executed = false
-    ignoreException(logger.debug) {
-      executed = true
-    }
-    assert(executed)
+    val t: Try[Int] = ignoreException(logger.debug) { 123 }
+    assert(t == Success(123))
   }
 
   "ignoreException ignores exception" in {
     val exception = new RuntimeException("TEST")
     var ignored: Throwable = null
     def onException(message: ⇒ String, t: Throwable) = ignored = t
-    ignoreException(onException) {
+    val t = ignoreException(onException) {
       throw exception
     }
     assert(ignored eq exception)
+    assert(t.isFailure)
+    assert(t.failed.get.getMessage == "TEST")
   }
 
 //  "ignoreException ignores exception, with slf4j.Logger.debug" in {
@@ -58,18 +58,7 @@ final class ExceptionsTest extends FreeSpec {
 
   "ignoreException ignores exception, with Logger.debug" in {
     ignoreException(logger.debug) {
-      throw new RuntimeException
-    }
-  }
-
-  "ignoreNonFatal ignores exception of given type, with Logger.debug" in {
-    ignoreNonFatal[RuntimeException](logger.debug) {
-      throw new IllegalStateException
-    }
-    intercept[IOException] {
-      ignoreNonFatal[RuntimeException](logger.debug) {
-        throw new IOException
-      }
+      throw new RuntimeException("TEST")
     }
   }
 
