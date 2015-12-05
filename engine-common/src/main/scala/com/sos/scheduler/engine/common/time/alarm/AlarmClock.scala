@@ -92,7 +92,7 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
     def isRunning = _isRunning.get
   }
 
-  private val neverAlarm = Alarm(at = Instant.ofEpochMilli((Long.MaxValue / precisionMillis - 1) * precisionMillis), () ⇒ "Never", () ⇒ {})(null: ExecutionContext)
+  private val neverAlarm = Alarm(at = Instant.ofEpochMilli((Long.MaxValue / precisionMillis - 1) * precisionMillis), "Never", () ⇒ {})(null: ExecutionContext)
   private val neverKey = millisToKey(neverAlarm.atEpochMilli)
   queue add neverAlarm  // Marker at end of the never empty queue
 
@@ -102,11 +102,11 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
     queue.clear()
   }
 
-  def delay(delay: Duration, name: ⇒ String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext): Alarm =
+  def delay(delay: Duration, name: String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext): Alarm =
     at(Instant.now() + delay, name = name)(call)
 
-  def at(at: Instant, name: ⇒ String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext) = {
-    val alarm = Alarm(at, name = () ⇒ name, call = () ⇒ call)
+  def at(at: Instant, name: String = "")(call: ⇒ Unit)(implicit ec: ExecutionContext) = {
+    val alarm = Alarm(at, name = name, call = () ⇒ call)
     add(alarm)
     alarm
   }
