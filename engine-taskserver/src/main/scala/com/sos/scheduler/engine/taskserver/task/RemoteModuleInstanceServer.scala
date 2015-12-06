@@ -35,7 +35,10 @@ extends HasCloser with Invocable {
   }
 
   @invocable
-  def construct(arguments: VariantArray): Unit = taskArguments = TaskArguments(arguments)
+  def construct(arguments: VariantArray): Unit = {
+    taskArguments = TaskArguments(arguments)
+    logger.info(s"${taskStartArguments.agentTaskId} is Master's task ${taskArguments.jobName}:${taskArguments.taskId}")
+  }
 
   @invocable
   def begin(objectAnys: VariantArray, objectNamesAnys: VariantArray): Boolean = {
@@ -110,6 +113,7 @@ extends HasCloser with Invocable {
 object RemoteModuleInstanceServer extends InvocableFactory {
   val clsid = CLSID(UUID fromString "feee47a3-6c1b-11d8-8103-000476ee8afb")
   val iid   = IID  (UUID fromString "feee47a2-6c1b-11d8-8103-000476ee8afb")
+  private val logger = Logger(getClass)
 
   def invocableClass = classOf[RemoteModuleInstanceServer]
 
