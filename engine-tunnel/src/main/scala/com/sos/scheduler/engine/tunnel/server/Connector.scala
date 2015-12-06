@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.tunnel.server
 
+import akka.actor.FSM.Event
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
@@ -39,6 +40,7 @@ extends Actor with FSM[State, Data] {
   private val tunnelIdOnce = new SetOnce[TunnelId]
   private val messageTcpBridge = context.actorOf(MessageTcpBridge.props(tcp, connected))
   private var messageTcpBridgeTerminated = false
+  private var messageTcpBridgeCloseSent = false
   private var logger = Logger(getClass)
 
   private object inactivityWatchdog {
@@ -100,6 +102,8 @@ extends Actor with FSM[State, Data] {
       goto(Closing) using NoData
   }
 
+  when(ExpectingMessageFromTcp)(handleHeartbeat)
+
   when(ExpectingRequest) {
     case Event(m @ Request(message, responsePromise, timeout), NoData) ⇒
       messageTcpBridge ! MessageTcpBridge.SendMessage(message)
@@ -111,6 +115,8 @@ extends Actor with FSM[State, Data] {
       stop()
   }
 
+  when(ExpectingRequest)(handleHeartbeat)
+
   when(Closing) {
     case Event(closed: Tcp.ConnectionClosed, _) ⇒
       logger.debug(s"$closed")
@@ -118,11 +124,6 @@ extends Actor with FSM[State, Data] {
   }
 
   whenUnhandled {
-    case Event(m @ Heartbeat(timeout: Duration), _) ⇒
-      logger.debug(s"$m")
-      inactivityWatchdog.restart(Some(timeout))
-      stay()
-
     case Event(m @ MessageTcpBridge.Failed(throwable), _) ⇒
       logger.warn(s"$m", throwable)
       if (!messageTcpBridgeTerminated) {
@@ -156,9 +157,16 @@ extends Actor with FSM[State, Data] {
       goto(Closing) using NoData
 
     case Event(event, NoData) ⇒
-      logger.error(s"Unexpected message received: $event")
+      logger.error(s"Unexpected message received in state $stateName: $event")
       closeBridge()
       goto(Closing) using NoData
+  }
+
+  private def handleHeartbeat: StateFunction = {
+    case Event(m @ Heartbeat(timeout: Duration), _) ⇒
+      logger.debug(s"$m")
+      inactivityWatchdog.restart(Some(timeout))
+      stay()
   }
 
   onTransition {
@@ -166,7 +174,8 @@ extends Actor with FSM[State, Data] {
   }
 
   private def closeBridge(): Unit =
-    if (!messageTcpBridgeTerminated) {
+    if (!messageTcpBridgeTerminated && !messageTcpBridgeCloseSent) {
+      messageTcpBridgeCloseSent = true
       messageTcpBridge ! MessageTcpBridge.Close
     }
 
