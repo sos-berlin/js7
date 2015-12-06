@@ -9,6 +9,7 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.FreeSpec
+import org.scalatest.concurrent.ScalaFutures
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Random
@@ -16,7 +17,7 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class AlarmClockTest extends FreeSpec {
+final class AlarmClockTest extends FreeSpec with ScalaFutures {
 
   "Thread timeout and warm-up" in {
     new ConcurrentLinkedQueue[String]().add("WARM-UP")
@@ -28,7 +29,7 @@ final class AlarmClockTest extends FreeSpec {
   }
 
   "AlarmClock" in {
-    autoClosing(new AlarmClock(2.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
+    autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
       for (nr ← 1 to 2) {
         val results = new ConcurrentLinkedQueue[(String, Instant)]()
         val t = Instant.now()
@@ -45,6 +46,13 @@ final class AlarmClockTest extends FreeSpec {
           assert(r(2)._2 >= t && r(2)._2 <= t + 500.ms)
         }
       }
+    }
+  }
+
+  "Alarm is a Future" in {
+    autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
+      val a = alarmClock.delay(0.s, "test") { 777 }
+      whenReady(a) { o ⇒ assert( o == 777 )}
     }
   }
 

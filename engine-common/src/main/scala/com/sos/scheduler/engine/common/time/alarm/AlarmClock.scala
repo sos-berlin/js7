@@ -17,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future, blocking}
 final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None) extends AutoCloseable {
 
   private val precisionMillis = precision.toMillis max 1
-  private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Alarm ⇒ millisToKey(a.atEpochMilli): java.lang.Long }))
+  private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Alarm[_] ⇒ millisToKey(a.atEpochMilli): java.lang.Long }))
   @volatile private var closed = false
 
   private object clock {
@@ -104,16 +104,16 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
     queue.clear()
   }
 
-  def delay(delay: Duration, name: String)(call: ⇒ Unit)(implicit ec: ExecutionContext): Alarm =
+  def delay[A](delay: Duration, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Alarm[A] =
     at(Instant.now() + delay, name = name)(call)
 
-  def at(at: Instant, name: String)(call: ⇒ Unit)(implicit ec: ExecutionContext) = {
+  def at[A](at: Instant, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Alarm[A] = {
     val alarm = Alarm(at, name = name, call = () ⇒ call)
     add(alarm)
     alarm
   }
 
-  private def add(alarm: Alarm)(implicit ec: ExecutionContext): Unit = {
+  private def add[A](alarm: Alarm[A])(implicit ec: ExecutionContext): Unit = {
     require(millisToKey(alarm.at.toEpochMilli) < neverKey)
     requireState(!closed)
 
@@ -139,7 +139,7 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
 
   private[alarm] def isRunning = clock.isRunning
 
-  private def isEndMark(alarm: Alarm) = alarm.atEpochMilli == neverAlarm.atEpochMilli
+  private def isEndMark[A](alarm: Alarm[_]) = alarm.atEpochMilli == neverAlarm.atEpochMilli
 
   private def millisToKey(millis: Long) = addExact(millis, precisionMillis - 1) / precisionMillis
 
@@ -147,5 +147,5 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
 }
 
 object AlarmClock {
-  private def alarmToOverview(alarm: Alarm) = AlarmOverview(alarm.at, name = alarm.name)
+  private def alarmToOverview(alarm: Alarm[_]) = AlarmOverview(alarm.at, name = alarm.name)
 }
