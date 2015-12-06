@@ -121,7 +121,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, alarmClo
 
   private def sigkillProcessesAt(at: Instant): Unit = {
     logger.info(s"All task processes will be terminated with SIGKILL at $at")
-    alarmClock.at(at) {
+    alarmClock.at(at, "SIGKILL all processes") {
       sendSignalToAllProcesses(SIGKILL)
     }
   }
@@ -139,7 +139,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, alarmClo
         // Wait until HTTP request with termination command probably has been responded
         logger.debug(s"Delaying termination for ${delay.pretty}")
       }
-      alarmClock.delay(delay) {
+      alarmClock.delay(delay, "Terminate after HTTP response has been sent") {
         logger.info("Agent is terminating now")
         terminatedPromise.complete(o map { _ ⇒ () })
       }
