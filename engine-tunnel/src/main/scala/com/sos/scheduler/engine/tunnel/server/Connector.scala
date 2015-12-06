@@ -4,7 +4,7 @@ import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.akkautils.Akkas.DummyCancellable
+import com.sos.scheduler.engine.common.akkautils.Akkas.{DummyCancellable, byteStringToTruncatedString}
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
 import com.sos.scheduler.engine.common.time.ScalaTime._
@@ -147,6 +147,18 @@ extends Actor with FSM[State, Data] {
     case Event(Terminated(_), _) ⇒
       messageTcpBridgeTerminated = true
       stop()
+
+    case Event(unexpectedRequest: Request, _) ⇒
+      val msg = s"Unexpected request in state $stateName"
+      logger.error(s"$msg: $unexpectedRequest")
+      unexpectedRequest.responsePromise tryFailure new IllegalStateException(msg)
+      closeBridge()
+      goto(Closing) using NoData
+
+    case Event(event, NoData) ⇒
+      logger.error(s"Unexpected message received: $event")
+      closeBridge()
+      goto(Closing) using NoData
   }
 
   onTransition {
@@ -175,14 +187,14 @@ private[server] object Connector {
     override def toString = s"Heartbeat(timeout ${timeout.pretty})"
   }
   private[server] final case class Request(message: ByteString, responsePromise: Promise[ByteString], timeout: Option[Duration]) extends Command {
-    override def toString = s"Request(${message.size} bytes)"
+    override def toString = s"Request(${byteStringToTruncatedString(message)})"
   }
   private[server] case object Close extends Command
 
   private[server] sealed trait MyEvent
   private[server] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress) extends MyEvent
   private[server] final case class Response(message: ByteString) extends MyEvent {
-    override def toString = s"Response(${message.size} bytes)"
+    override def toString = s"Response(${byteStringToTruncatedString(message)})"
   }
   private[server] final case class BecameInactive(tunnelId: TunnelId, since: Instant) extends MyEvent
 

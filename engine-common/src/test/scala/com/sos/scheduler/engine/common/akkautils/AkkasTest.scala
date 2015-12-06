@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.akkautils
 
 import akka.actor.ActorSystem
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.akkautils.Akkas._
 import com.typesafe.config.ConfigFactory
 import java.util.concurrent.TimeUnit
@@ -41,5 +41,18 @@ final class AkkasTest extends FreeSpec {
     assert(c.isCancelled)
     assert(!c.cancel())
     assert(c.isCancelled)
+  }
+
+  "byteStringToTruncatedString" in {
+    val byteString = ByteString(0, 1, 30, 31)
+    assert(byteStringToTruncatedString(byteString) == "4 bytes 00 01 1e 1f")
+  }
+
+  "Big byteStringToTruncatedString" in {
+    val byteString = ByteString.fromInts(0 until 1000: _*)
+    val string = byteStringToTruncatedString(byteString)
+    assert(string startsWith "1000 bytes 00 01 02 03 04 ")
+    assert(string endsWith " ...")
+    assert(byteStringToTruncatedString(byteString).size < 330)
   }
 }

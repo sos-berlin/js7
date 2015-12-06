@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.common.akkautils
 
 import akka.actor.ActorSystem.Settings
 import akka.actor.Cancellable
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 
@@ -35,6 +35,9 @@ object Akkas {
     // 68 years, maximum for scheduler.tick-duration = 1s, 8 months when tick-duration = 10ms
     Timeout(1000L * Int.MaxValue / (1000 / tickMillis) - 2000, MILLISECONDS)
   }
+
+  def byteStringToTruncatedString(byteString: ByteString, size: Int = 100, name: String = "ByteString") =
+    s"${byteString.size} bytes " + (byteString take size map { c ⇒ f"$c%02x" } mkString " ") + (if (byteString.size > size) " ..." else "")
 
   final class DummyCancellable extends Cancellable {
     private var _isCancelled = false

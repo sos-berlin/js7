@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.common.tcp
 import akka.actor.{Actor, ActorRef, Props}
 import akka.io.Tcp
 import akka.util.ByteString
+import com.sos.scheduler.engine.common.akkautils.Akkas._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.LengthHeaderMessageCollector._
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge._
@@ -90,7 +91,7 @@ object MessageTcpBridge {
   sealed trait Command
 
   final case class SendMessage(message: ByteString) extends Command {
-    override def toString = s"SendMessage(${message.size} bytes)"
+    override def toString = s"SendMessage(${byteStringToTruncatedString(message)})"
   }
 
   case object Close extends Command
@@ -100,7 +101,7 @@ object MessageTcpBridge {
   case object PeerClosed extends Event
 
   final case class MessageReceived(message: ByteString) extends Event {
-    override def toString = s"MessageReceived(${message.size} bytes)"
+    override def toString = s"MessageReceived(${byteStringToTruncatedString(message)})"
   }
 
   final case class Failed(throwable: Throwable) extends Event
