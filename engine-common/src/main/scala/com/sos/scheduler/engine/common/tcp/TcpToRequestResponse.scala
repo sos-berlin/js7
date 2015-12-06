@@ -86,7 +86,7 @@ extends AutoCloseable {
             bridge ! MessageTcpBridge.Close // 2015-06-29 Tcp.Abort does not close the connection when peer is C++ JobScheduler
         }
       case m @ MessageTcpBridge.PeerClosed ⇒
-        logger.info(s"$m")  // We ignore this. The JobScheduler COM RPC protocol ensures the server side termination.
+        logger.debug(s"$m")  // We ignore this. The JobScheduler COM RPC protocol ensures the server side termination.
       case Close ⇒
         bridge ! MessageTcpBridge.Close
       case Terminated(_) ⇒
