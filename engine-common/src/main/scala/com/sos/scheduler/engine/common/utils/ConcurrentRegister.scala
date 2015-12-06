@@ -12,7 +12,7 @@ trait ConcurrentRegister[V <: HasKey] {
   private type Key = V#Key
 
   private val keyToValue = new ScalaConcurrentHashMap[Key, V] {
-    override def default(key: Key) = throwNoSuchId(key)
+    override def default(key: Key) = throwNoSuchKey(key)
   }
   private val counter = new AtomicInteger
 
@@ -55,7 +55,7 @@ trait ConcurrentRegister[V <: HasKey] {
 
   final def totalCount = counter.get
 
-  protected def throwNoSuchId(key: Key) = throw new NoSuchElementException(s"Unknown '$key'")
+  protected def throwNoSuchKey(key: Key) = throw new NoSuchElementException(s"Unknown '$key'")
 }
 
 object ConcurrentRegister {

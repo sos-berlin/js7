@@ -26,7 +26,7 @@ import spray.testkit.ScalatestRouteTest
 @RunWith(classOf[JUnitRunner])
 final class CommandWebServiceTest extends FreeSpec with ScalatestRouteTest with CommandWebService {
 
-  protected implicit lazy val actorRefFactory = ActorSystem()
+  protected implicit lazy val actorRefFactory = ActorSystem("TEST")
   override protected val uriPathPrefix = "test"
 
   protected def executeCommand(command: Command, meta: CommandMeta) =

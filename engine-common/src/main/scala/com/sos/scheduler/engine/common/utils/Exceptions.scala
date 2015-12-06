@@ -1,9 +1,7 @@
 package com.sos.scheduler.engine.common.utils
 
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import java.time.{Duration, Instant}
 import scala.collection.mutable
-import scala.reflect.ClassTag
 import scala.util.Try
 import scala.util.control.NonFatal
 
