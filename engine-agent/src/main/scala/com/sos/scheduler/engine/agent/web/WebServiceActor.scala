@@ -19,9 +19,7 @@ import java.time.Duration
 import javax.inject.{Inject, Provider}
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext
-import spray.http.StatusCodes._
-import spray.routing.{ExceptionHandler, HttpServiceActor}
-import spray.util.LoggingContext
+import spray.routing.HttpServiceActor
 
 /**
  * @author Joacim Zschimmer
@@ -47,20 +45,12 @@ with RootWebService
 with TaskWebService
 with CommandViewWebService
 with NoJobSchedulerEngineWebService
+with AgentExceptionHandler
 {
   private lazy val addWebServices = for (o ← extraWebServices) {
     logger.debug(s"Adding extra web service $o")
     addRawRoute(o.route)  // The route is already wrapped, so add it raw, not wrapping it again with agentStandard
   }
-
-  implicit private def myExceptionHandler(implicit log: LoggingContext) =
-    ExceptionHandler {
-      case e: Exception =>
-        requestUri { uri =>
-          logger.warn(s"Error while handling request to $uri: $e", e)
-          complete(InternalServerError, e.getClass.getSimpleName + (Option(e.getMessage) map { o ⇒ s": $o" } getOrElse ""))  // We expose the message of every error !!!
-        }
-    }
 
   def receive = {
     addWebServices

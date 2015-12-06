@@ -7,5 +7,6 @@ package com.sos.scheduler.engine.base.exceptions
  */
 trait PublicException {
   this: Throwable ⇒
-  def publicMessage: String
+
+  def publicMessage: String = Option(getMessage) getOrElse getClass.getName
 }

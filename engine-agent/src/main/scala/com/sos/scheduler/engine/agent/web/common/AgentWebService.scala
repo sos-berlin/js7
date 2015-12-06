@@ -1,15 +1,12 @@
 package com.sos.scheduler.engine.agent.web.common
 
 import akka.actor.ActorRefFactory
-import com.google.common.base.Strings.isNullOrEmpty
 import com.sos.scheduler.engine.agent.web.common.AgentWebService._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.collection.mutable
-import spray.http.StatusCodes.InternalServerError
 import spray.http.Uri.Path
 import spray.routing.Directives._
-import spray.routing.{ExceptionHandler, Route}
-import spray.util.LoggingContext
+import spray.routing.Route
 
 /**
  * Standard trait for Agent web services.
@@ -31,19 +28,6 @@ trait AgentWebService {
     decompressRequest() & compressResponseIfRequested(()) & pathPrefix(separateOnSlashes(jobschedulerPath.toString))
 
   private val addedRoutes = mutable.Buffer[Entry]()
-
-  implicit def exceptionHandler(implicit log: LoggingContext) =
-    ExceptionHandler {
-      case e ⇒
-        requestUri { uri ⇒
-          logger.debug(s"Request $uri: $e", e)
-          val msg = e match {
-            case e: RuntimeException if !isNullOrEmpty(e.getMessage) ⇒ e.getMessage
-            case _ ⇒ e.toString
-          }
-          complete(InternalServerError, msg)
-        }
-    }
 
   protected def addApiRoute(route: ⇒ Route): Unit =
     addJobschedulerRoute {
