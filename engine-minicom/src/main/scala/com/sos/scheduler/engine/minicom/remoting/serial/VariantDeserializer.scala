@@ -45,7 +45,8 @@ private[remoting] trait VariantDeserializer extends BaseDeserializer {
       case VT_BSTR ⇒ readString()
       case VT_BOOL ⇒ readBoolean()
       case VT_I8 ⇒ readInt64()
-      case o ⇒ throw new COMException(DISP_E_BADVARTYPE, f"Unsupported Variant VT=$o%x")
+      case VT_ERROR ⇒ throw new COMException(DISP_E_BADVARTYPE, f"Unsupported Variant VT_ERROR")
+      case o ⇒ throw new COMException(DISP_E_BADVARTYPE, f"Unsupported Variant VT=$o%02x")
     }
 
     protected def readInvocableOrNull(): Invocable
