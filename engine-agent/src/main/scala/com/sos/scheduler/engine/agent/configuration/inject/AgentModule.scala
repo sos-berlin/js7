@@ -20,14 +20,8 @@ import scala.collection.immutable
  */
 final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbstractModule {
 
-  private val closer = Closer.create()
-  private val actorSystem = newActorSystem("JobScheduler-Agent")(closer)
-
   protected def configure() = {
-    bindInstance[Closer](closer)
     bindInstance[AgentConfiguration](agentConfiguration)
-    bindInstance[AlarmClock](new AlarmClock(100.ms) closeWithCloser closer)
-    provideSingleton[ActorSystem] { actorSystem }
   }
 
   @Provides @Singleton
@@ -37,6 +31,15 @@ final class AgentModule(agentConfiguration: AgentConfiguration) extends ScalaAbs
   @Provides @Singleton
   private def actorRefFactory(o: ActorSystem): ActorRefFactory = o
 
-  @Provides
+  @Provides @Singleton
   private def taskHandlerView(o: TaskHandler): TaskHandlerView = o
+
+  @Provides @Singleton
+  private def closer: Closer = Closer.create()
+
+  @Provides @Singleton
+  private def actorSystem(closer: Closer): ActorSystem = newActorSystem("JobScheduler-Agent")(closer)
+
+  @Provides @Singleton
+  private def alarmClock(closer: Closer): AlarmClock = new AlarmClock(100.ms) closeWithCloser closer
 }
