@@ -18,6 +18,7 @@ import com.sos.scheduler.engine.common.utils.ConcurrentRegister
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import java.time.Instant
 import java.time.Instant.now
+import java.util.NoSuchElementException
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable
@@ -172,5 +173,10 @@ private object TaskHandler {
   private class TaskRegister extends ConcurrentRegister[AgentTask] {
     override def onAdded(task: AgentTask) = logger.info(s"$task registered")
     override def onRemoved(task: AgentTask) = logger.info(s"$task unregistered")
+    override protected def throwNoSuchKey(id: AgentTask#Key) = throw new UnknownTaskException(id)
+  }
+
+  final class UnknownTaskException(agentTaskId: AgentTaskId) extends NoSuchElementException {
+    override def getMessage = s"Unknown $agentTaskId"
   }
 }
