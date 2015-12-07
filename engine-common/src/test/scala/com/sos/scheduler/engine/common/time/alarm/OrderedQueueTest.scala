@@ -47,6 +47,35 @@ final class OrderedQueueTest extends FreeSpec {
     intercept[NoSuchElementException] { queue.popNext(300) }
   }
 
+  "remove" in {
+    val queue = newOrderedQueue()
+    val orderedThings = List(
+      Thing(100, "100-A"), Thing(100, "100-B"),
+      Thing(200, "200-A"),
+      Thing(300, "300-A"), Thing(300, "300-B"), Thing(300, "300-C"))
+    orderedThings foreach queue.add
+    assert(orderedThings.toSeq == orderedThings)
+    assert(!queue.remove(100, Thing(200, "200-A")))
+    assert(!queue.remove(7, Thing(200, "200-A")))
+    assert(!queue.remove(100, Thing(7, "200-A")))
+    assert(queue.remove(200, Thing(200, "200-A")))
+    assert(queue.toSeq == List(
+      Thing(100, "100-A"), Thing(100, "100-B"),
+      Thing(300, "300-A"), Thing(300, "300-B"), Thing(300, "300-C")))
+    assert(queue.remove(300, Thing(300, "300-C")))
+    assert(queue.toSeq == List(
+      Thing(100, "100-A"), Thing(100, "100-B"),
+      Thing(300, "300-A"), Thing(300, "300-B")))
+    assert(queue.remove(300, Thing(300, "300-A")))
+    assert(queue.remove(300, Thing(300, "300-B")))
+    assert(queue.toSeq == List(Thing(100, "100-A"), Thing(100, "100-B")))
+    assert(queue.remove(100, Thing(100, "100-A")))
+    assert(queue.toSeq == List(Thing(100, "100-B")))
+    assert(queue.remove(100, Thing(100, "100-B")))
+    assert(queue.toSeq == Nil)
+    assert(queue.isEmpty)
+  }
+
   "Random values, mixed added and popped" in {
     implicit val thingOrdering = new Ordering[Thing] {
       def compare(a: Thing, b: Thing) = a.criterion compare b.criterion

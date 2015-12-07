@@ -28,6 +28,19 @@ extends OrderedQueue.Implement[K, V] {
     buffer += value
   }
 
+  def remove(key: K, value: V): Boolean =
+    treeMap.get(key) match {
+      case null ⇒ false
+      case buffer ⇒
+        buffer indexOf value match {
+          case -1 ⇒ false
+          case i ⇒
+            buffer.remove(i)
+            if (buffer.isEmpty) treeMap.remove(key)
+            true
+        }
+    }
+
   def foreach(body: V ⇒ Unit): Unit = toSeq foreach body
 
   def toSeq = treeMap.values.toArray(new Array[mutable.ListBuffer[V]](0)).toIndexedSeq.flatten

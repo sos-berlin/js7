@@ -15,6 +15,8 @@ trait OrderedQueue[K, V] {
 
   def add(value: V): Unit
 
+  def remove(key: K, value: V): Boolean
+
   def foreach(body: V ⇒ Unit): Unit
 
   def head: V = headOption getOrElse { throw new NoSuchElementException("AlarmClock.head") }
