@@ -14,7 +14,7 @@ import org.scalatest.junit.JUnitRunner
 import scala.concurrent.Future
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.`application/json`
-import spray.http.StatusCodes.InternalServerError
+import spray.http.StatusCodes.BadRequest
 import spray.httpx.SprayJsonSupport._
 import spray.httpx.marshalling.BasicMarshallers.stringMarshaller
 import spray.json._
@@ -79,7 +79,7 @@ final class CommandWebServiceTest extends FreeSpec with ScalatestRouteTest with 
         "knownFiles": []
       }"""
     postJsonCommand(json) ~> check {
-      assert(status == InternalServerError)
+      assert(status == BadRequest)
       assert(responseAs[String] startsWith "TEST EXCEPTION")
     }
   }

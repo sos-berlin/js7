@@ -15,7 +15,7 @@ import spray.routing.Route
  *
  * @author Joacim Zschimmer
  */
-trait AgentWebService {
+trait AgentWebService extends AgentExceptionHandler {
   protected implicit def actorRefFactory: ActorRefFactory
   /**
    * URI path prefix without prefix or suffix slashes.

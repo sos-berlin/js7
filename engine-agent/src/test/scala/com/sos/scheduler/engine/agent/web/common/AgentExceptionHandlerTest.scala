@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.scheduler.engine.agent.web.common
 
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import org.junit.runner.RunWith
@@ -18,7 +18,7 @@ final class AgentExceptionHandlerTest extends FreeSpec with ScalatestRouteTest w
     Post("/") ~> complete { throw new RuntimeException("MESSAGE") } ~>
       check {
         assert(status == InternalServerError)
-        assert(entity.asString == "RuntimeException: MESSAGE")
+        assert(entity.asString == "MESSAGE")
       }
   }
 
@@ -26,7 +26,7 @@ final class AgentExceptionHandlerTest extends FreeSpec with ScalatestRouteTest w
     Post("/") ~> complete { throw new RuntimeException("MESSAGE") {} } ~>
       check {
         assert(status == InternalServerError)
-        assert(entity.asString == "$anon$1: MESSAGE")
+        assert(entity.asString endsWith "$anon$1: MESSAGE")
       }
   }
 
@@ -34,7 +34,7 @@ final class AgentExceptionHandlerTest extends FreeSpec with ScalatestRouteTest w
     Post("/") ~> complete { throw new RuntimeException } ~>
       check {
         assert(status == InternalServerError)
-        assert(entity.asString == "RuntimeException")
+        assert(entity.asString == "java.lang.RuntimeException")
       }
   }
 
