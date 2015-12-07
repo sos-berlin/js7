@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.tunnel.server
 
-import akka.actor.FSM.Event
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
