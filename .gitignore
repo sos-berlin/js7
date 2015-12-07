@@ -4,6 +4,7 @@
 .svn/
 
 # MAVEN
+.surefire-*
 /target/
 
 # ECLIPSE
