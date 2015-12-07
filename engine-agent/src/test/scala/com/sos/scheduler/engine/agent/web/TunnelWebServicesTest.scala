@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.http.server.idempotence.Idempotence
 import com.sos.scheduler.engine.tunnel.data.Http._
 import com.sos.scheduler.engine.tunnel.data._
+import com.sos.scheduler.engine.tunnel.server.TunnelAccess
 import java.net.InetAddress
 import java.time.{Duration, Instant}
 import org.junit.runner.RunWith
@@ -35,13 +36,17 @@ import spray.testkit.ScalatestRouteTest
 final class TunnelWebServicesTest extends FreeSpec with ScalatestRouteTest with TunnelWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
-  private val alarmClock = new AlarmClock(100.ms, idleTimeout = Some(1.s))
-  protected val heartbeatService = new HeartbeatService(alarmClock, new Idempotence(alarmClock))
+  private implicit val alarmClock = new AlarmClock(100.ms, idleTimeout = Some(1.s))
+  protected val heartbeatService = new HeartbeatService
 
-  protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString, timeout: Option[Duration]) = {
-    assert(tunnelToken == TunnelToken(TestTunnelId, TestSecret))
-    require(timeout.isEmpty)
-    Future.successful(requestToResponse(requestMessage))
+  protected def tunnelAccess(tunnelToken: TunnelToken) = new TunnelAccess {
+    val idempotence = new Idempotence
+
+    def execute(requestMessage: ByteString, timeout: Option[Duration]) = {
+      assert(tunnelToken == TunnelToken(TestTunnelId, TestSecret))
+      require(timeout.isEmpty)
+      Future.successful(requestToResponse(requestMessage))
+    }
   }
 
   protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration): Unit = logger.debug(s"$tunnelToken: Heartbeat $timeout")

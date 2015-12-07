@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.agent.web
 
-import akka.util.ByteString
 import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.command.{AgentCommandHandler, CommandExecutor, CommandMeta}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
@@ -45,7 +44,6 @@ with RootWebService
 with TaskWebService
 with CommandViewWebService
 with NoJobSchedulerEngineWebService
-with AgentExceptionHandler
 {
   private lazy val addWebServices = for (o ← extraWebServices) {
     logger.debug(s"Adding extra web service $o")
@@ -62,8 +60,7 @@ with AgentExceptionHandler
   protected def executionContext: ExecutionContext = context.dispatcher
   protected def executeCommand(command: Command, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
   protected def agentOverview = agentOverviewProvider.get()
-  protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString, timeout: Option[Duration]) =
-    tunnelServer.request(tunnelToken, requestMessage, timeout)
+  protected def tunnelAccess(tunnelToken: TunnelToken) = tunnelServer.tunnelAccess(tunnelToken)
   protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration) = tunnelServer.onHeartbeat(tunnelToken, timeout)
   protected def tunnelHandlerOverview = tunnelServer.overview
   protected def tunnelOverviews = tunnelServer.tunnelOverviews

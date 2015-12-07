@@ -7,13 +7,14 @@ import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelServer._
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.Duration
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Future
 import scala.util.Try
 
 /**
@@ -24,9 +25,9 @@ import scala.util.Try
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem) extends AutoCloseable {
+final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem)(implicit alarmClock: AlarmClock) extends AutoCloseable {
 
-  private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props, name = "ConnectorHandler")
+  private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props(alarmClock), name = "ConnectorHandler")
   private implicit val askTimeout = Timeout(ShortTimeout.toFiniteDuration)
 
   private[tunnel] val proxyAddress: InetSocketAddress = {
@@ -51,11 +52,14 @@ final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem) exten
     (connectorHandler ? ConnectorHandler.OnHeartbeat(tunnelToken, timeout)).mapTo[Try[Unit]]
   }
 
-  def request(tunnelToken: TunnelToken, requestMessage: ByteString, timeout: Option[Duration]): Future[ByteString] = {
-    val responsePromise = Promise[ByteString]()
-    connectorHandler ! ConnectorHandler.DirectedRequest(tunnelToken, requestMessage, responsePromise, timeout)
-    responsePromise.future
+  def tunnelAccess(tunnelToken: TunnelToken) = new TunnelAccess {
+    private val tunnel = handle(tunnelToken)
+    val idempotence = tunnel.idempotence
+    def execute(requestMessage: ByteString, timeout: Option[Duration]) = tunnel.request(requestMessage, timeout)
   }
+
+  def handle(tunnelToken: TunnelToken): TunnelHandle =
+    awaitResult((connectorHandler ? ConnectorHandler.GetHandle(tunnelToken)).mapTo[Try[TunnelHandle]], ShortTimeout).get
 
   override def toString = s"TunnelHandler($proxyAddress)"
 

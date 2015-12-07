@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.agent.task
 
 import akka.actor.{Actor, ActorSystem, Props}
+import akka.util.ByteString
 import com.google.inject.{Guice, Provides}
 import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.AgentTaskId
@@ -24,7 +25,7 @@ import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.net.InetAddress
-import java.time.Instant
+import java.time.{Duration, Instant}
 import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -191,6 +192,8 @@ private object TaskHandlerTest {
     def peerAddress = () ⇒ None
     def close() = {}
     def onInactivity(callback: Instant ⇒ Unit) = {}
+    def idempotence = ???
+    def request(request: ByteString, timeout: Option[Duration]) = ???
   }
 
   private class MockTaskServer extends TaskServer {

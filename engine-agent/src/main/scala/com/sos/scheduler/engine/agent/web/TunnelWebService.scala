@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.agent.web
 
-import akka.util.ByteString
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
+import com.sos.scheduler.engine.tunnel.server.TunnelAccess
 import com.sos.scheduler.engine.tunnel.web.TunnelWebServices._
 import java.time.Duration
 import scala.collection.immutable
@@ -17,7 +17,7 @@ import spray.routing.Directives._
  */
 trait TunnelWebService extends AgentWebService {
 
-  protected def tunnelRequest(tunnelToken: TunnelToken, requestMessage: ByteString, timeout: Option[Duration]): Future[ByteString]
+  protected def tunnelAccess(tunnelToken: TunnelToken): TunnelAccess
   protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration): Unit
   protected def tunnelHandlerOverview: Future[TunnelHandlerOverview]
   protected def tunnelOverviews: Future[immutable.Iterable[TunnelOverview]]
@@ -29,7 +29,7 @@ trait TunnelWebService extends AgentWebService {
     pathPrefix("tunnel") {
       path(Segment) { idString ⇒
         post {
-          tunnelRequestRoute(TunnelId(idString))(tunnelRequest, onTunnelHeartbeat, heartbeatService)
+          tunnelRequestRoute(TunnelId(idString))(tunnelAccess, onTunnelHeartbeat, heartbeatService)
         }
       } ~
       respondWithHeader(`Cache-Control`(`max-age`(0))) {

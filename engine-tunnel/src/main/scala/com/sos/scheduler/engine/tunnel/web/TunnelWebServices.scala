@@ -8,8 +8,8 @@ import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.data.Http.SecretHeaderName
-import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.{ConnectionClosedException ⇒ TunnelConnectionClosedException}
+import com.sos.scheduler.engine.tunnel.data._
+import com.sos.scheduler.engine.tunnel.server.{ConnectionClosedException ⇒ TunnelConnectionClosedException, TunnelAccess}
 import java.time.Duration
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -28,19 +28,20 @@ object TunnelWebServices {
   private val logger = Logger(getClass)
 
   def tunnelRequestRoute(tunnelId: TunnelId)(
-    execute: ExecuteTunneledRequest,
+    tunnelAccess: TunnelToken ⇒ TunnelAccess,
     onHeartbeat: (TunnelToken, Duration) ⇒ Unit,
     heartbeatService: HeartbeatService)
     (implicit refFactory: ActorRefFactory) =
   {
     (pathEndOrSingleSlash & post) {
       headerValueByName(SecretHeaderName) { secret ⇒
-        val token = TunnelToken(tunnelId, TunnelToken.Secret(secret))
-        heartbeatService.continueHeartbeat(onClientHeartbeat = onHeartbeat(token, _)) ~
+        val tunnelToken = TunnelToken(tunnelId, TunnelToken.Secret(secret))
+        val tunnel = tunnelAccess(tunnelToken)
+        heartbeatService.continueHeartbeat(tunnel.idempotence, onClientHeartbeat = onHeartbeat(tunnelToken, _)) ~
         entity(as[ByteString]) { request ⇒
           handleExceptions(connectionClosedExceptionHandler) {
-            heartbeatService.startHeartbeat(onHeartbeat = timeout ⇒ onHeartbeat(token, timeout)) {
-              timeout ⇒ execute(token, request, timeout)
+            heartbeatService.startHeartbeat(tunnel.idempotence, onHeartbeat = timeout ⇒ onHeartbeat(tunnelToken, timeout)) {
+              timeout ⇒ tunnel.execute(request, timeout)
             }
           }
         }

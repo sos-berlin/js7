@@ -12,11 +12,10 @@ import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
 import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
-import com.sos.scheduler.engine.http.server.idempotence.Idempotence
 import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
 import com.sos.scheduler.engine.tunnel.client.{TcpToHttpBridge, WebTunnelClient}
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
+import com.sos.scheduler.engine.tunnel.server.{TunnelAccess, TunnelHandle, TunnelListener, TunnelServer}
 import com.sos.scheduler.engine.tunnel.web.TunnelWebServices._
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
@@ -40,6 +39,7 @@ import spray.routing.HttpServiceActor
 final class TcpHttpTcpTunnelIT extends FreeSpec {
 
   private implicit val timeout = Timeout(5.seconds)
+  private implicit val alarmClock = new AlarmClock(10.ms, idleTimeout = Some(1.s))
 
   "Normal application" in {
     val (clientSide, serverSide) = startTunneledSystem()
@@ -90,7 +90,7 @@ object TcpHttpTcpTunnelIT {
   private val TerminateMessage = ByteString("TERMINATE")
   private val logger = Logger(getClass)
 
-  private def startTunneledSystem() = {
+  private def startTunneledSystem()(implicit alarmClock: AlarmClock) = {
     val serverSideTunnelHandler = new ServerSideTunnelHandler
     val server = new TunnelledTcpServer(serverSideTunnelHandler)
     val client = new ClientSide(serverSideTunnelHandler.uri, server.tunnelToken)
@@ -142,7 +142,7 @@ object TcpHttpTcpTunnelIT {
     def closeTunnel() = tunnel.close()
   }
 
-  private class ServerSideTunnelHandler {
+  private class ServerSideTunnelHandler(implicit alarmClock: AlarmClock) {
     val actorSystem = ActorSystem(getClass.getSimpleName)
     val tunnelServer = new TunnelServer(actorSystem)
     val uri = startWebServer()
@@ -154,10 +154,9 @@ object TcpHttpTcpTunnelIT {
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
-      val alarmClock = new AlarmClock(100.ms, idleTimeout = Some(1.s))
-      val idempotence = new Idempotence(alarmClock)
-      val heartbeatService = new HeartbeatService(alarmClock, idempotence)
-      actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer, heartbeatService, tunnelServer.request) })
+      implicit val alarmClock = new AlarmClock(100.ms, idleTimeout = Some(1.s))
+      val heartbeatService = new HeartbeatService
+      actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer.tunnelAccess, heartbeatService) })
       val httpAddress = awaitResult(startedPromise.future, 10.s)
       Uri(s"http://${httpAddress.getAddress.getHostAddress}:${httpAddress.getPort}")
     }
@@ -166,9 +165,8 @@ object TcpHttpTcpTunnelIT {
   private class TestWebServiceActor(
     port: Int,
     startedPromise: Promise[InetSocketAddress],
-    tunnelServer: TunnelServer,
-    heartbeatService: HeartbeatService,
-    executeTunnelRequest: ExecuteTunneledRequest)
+    tunnelAccess: TunnelToken ⇒ TunnelAccess,
+    heartbeatService: HeartbeatService)
   extends HttpServiceActor {
 
     IO(Http)(context.system) ! Http.Bind(self, interface = "127.0.0.1", port = port)
@@ -187,7 +185,7 @@ object TcpHttpTcpTunnelIT {
       (decompressRequest() & compressResponseIfRequested(())) {
         (post & pathPrefix("test" / "tunnel" / Segment)) { idString ⇒
           tunnelRequestRoute(TunnelId(idString))(
-            executeTunnelRequest,
+            tunnelAccess,
             onHeartbeat = (_, _) ⇒ {},
             heartbeatService)
         }

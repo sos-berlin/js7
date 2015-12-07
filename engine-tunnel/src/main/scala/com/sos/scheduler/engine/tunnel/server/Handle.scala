@@ -2,13 +2,16 @@ package com.sos.scheduler.engine.tunnel.server
 
 import akka.actor.ActorRef
 import akka.agent.Agent
+import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
+import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.common.utils.Exceptions._
+import com.sos.scheduler.engine.http.server.idempotence.Idempotence
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import com.sos.scheduler.engine.tunnel.server.Handle._
 import java.net.{InetAddress, InetSocketAddress}
-import java.time.Instant
-import scala.concurrent.{ExecutionContext, Promise}
+import java.time.{Duration, Instant}
+import scala.concurrent.{Future, ExecutionContext, Promise}
 
 /**
   * @author Joacim Zschimmer
@@ -21,10 +24,19 @@ private[server] class Handle(
   val listener: Agent[TunnelListener],
   var state: Handle.State = Handle.Uninitialized,
   val statistics: Statistics = Statistics())
+  (implicit alarmClock: AlarmClock)
 extends TunnelHandle {
+
+  val idempotence = new Idempotence
   private val onInactivityCallback = new SetOnce[Instant ⇒ Unit]
 
   def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(tunnelToken)
+
+  def request(requestMessage: ByteString, timeout: Option[Duration]) = {
+    val responsePromise = Promise[ByteString]()
+    connectorHandler ! ConnectorHandler.DirectedRequest(tunnelToken, requestMessage, responsePromise, timeout)
+    responsePromise.future
+  }
 
   override def toString = s"TunnelHandler($id,HTTP client ${startedByHttpIpOption getOrElse "unknown"} -> TCP server ${serverAddressOption getOrElse "not yet connected"})"
 

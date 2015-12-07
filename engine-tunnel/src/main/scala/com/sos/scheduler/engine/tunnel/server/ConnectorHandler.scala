@@ -7,6 +7,7 @@ import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
+import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
@@ -20,7 +21,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * @author Joacim Zschimmer
  */
-private[tunnel] final class ConnectorHandler private extends Actor {
+private[tunnel] final class ConnectorHandler private(implicit alarmClock: AlarmClock) extends Actor {
 
   import context.{actorOf, become, dispatcher, stop, system, watch}
 
@@ -149,6 +150,9 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         case NonFatal(t) ⇒ logger.error(s"$m: $t", t)
       }
 
+    case GetHandle(tunnelToken) ⇒
+      sender() ! Try { checkedHandle(tunnelToken) }
+
     case GetOverview ⇒
       sender() ! TunnelHandlerOverview(
         tcpAddress = tcpAddressOnce.get map { _.toString },
@@ -186,7 +190,7 @@ private[tunnel] object ConnectorHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
 
-  private[tunnel] def props = Props { new ConnectorHandler }
+  private[tunnel] def props(implicit alarmClock: AlarmClock) = Props { new ConnectorHandler }
 
   sealed trait Command
 
@@ -200,11 +204,13 @@ private[tunnel] object ConnectorHandler {
 
   private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
 
+  private[tunnel] final case class GetHandle(tunnelToken: TunnelToken) extends Command
+
   private[tunnel] final case class OnHeartbeat(tunnelToken: TunnelToken, timeout: Duration) extends Command
 
   private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request) extends Command
 
-  private[tunnel] object DirectedRequest {
+  private[tunnel] object DirectedRequest extends Command {
     def apply(tunnelToken: TunnelToken, message: ByteString, responsePromise: Promise[ByteString], timeout: Option[Duration]): DirectedRequest =
       DirectedRequest(tunnelToken, Connector.Request(message, responsePromise, timeout))
   }
