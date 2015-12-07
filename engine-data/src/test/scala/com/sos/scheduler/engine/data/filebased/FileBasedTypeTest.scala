@@ -7,11 +7,14 @@ import com.sos.scheduler.engine.data.lock.LockPath
 import com.sos.scheduler.engine.data.order.OrderKey
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
 import com.sos.scheduler.engine.data.schedule.SchedulePath
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
+import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
+@RunWith(classOf[JUnitRunner])
 final class FileBasedTypeTest extends FreeSpec {
   "path" in {
     assert(FileBasedType.folder.toPath("/a") == FolderPath("/a"))

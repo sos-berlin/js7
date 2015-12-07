@@ -1,11 +1,14 @@
 package com.sos.scheduler.engine.agent.common
 
 import com.sos.scheduler.engine.agent.common.BeanPropertyReader.Keep
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
+import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
+@RunWith(classOf[JUnitRunner])
 final class BeanPropertyReaderTest extends FreeSpec {
   "BeanPropertyReader" in {
     class Bean {
