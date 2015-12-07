@@ -104,8 +104,18 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
     queue.clear()
   }
 
+  def delay[A, B](delay: Duration, cancelWhenCompleted: Future[B], name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Unit =
+    at(Instant.now() + delay, cancelWhenCompleted, name = name)(call)
+
   def delay[A](delay: Duration, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Alarm[A] =
     at(Instant.now() + delay, name = name)(call)
+
+  def at[A, B](at: Instant, cancelWhenCompleted: Future[B], name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Unit = {
+    if (!cancelWhenCompleted.isCompleted) {
+      val alarm = this.at(at, name)(call)
+      cancelWhenCompleted onComplete { case _ ⇒ cancel(alarm) }
+    }
+  }
 
   def at[A](at: Instant, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Alarm[A] = {
     val alarm = Alarm(at, name = name, call = () ⇒ call)

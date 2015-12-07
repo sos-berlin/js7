@@ -8,15 +8,19 @@ import com.sos.scheduler.engine.common.time.alarm.AlarmClockTest._
 import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, Promise}
 import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
   */
+@RunWith(classOf[JUnitRunner])
 final class AlarmClockTest extends FreeSpec with ScalaFutures {
 
   "Thread timeout and warm-up" in {
@@ -49,18 +53,23 @@ final class AlarmClockTest extends FreeSpec with ScalaFutures {
     }
   }
 
-  "cancel" in {
+  "cancel, cancelWhenCompleted" in {
     autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
       for (nr ← 1 to 2) {
         val results = new ConcurrentLinkedQueue[(String, Instant)]()
         val t = Instant.now()
-        val aAlarm = alarmClock.at(t + 200.ms, "test") { results.add("200" → Instant.now()) }
-                     alarmClock.at(t + 400.ms, "test") { results.add("400" → Instant.now()) }
+        val promise = Promise[Unit]()
+
+        alarmClock.delay(200.ms, cancelWhenCompleted = promise.future, "test") { results.add("200" → Instant.now()) }
+        alarmClock.at(t + 400.ms, "test") { results.add("400" → Instant.now()) }
         val cAlarm = alarmClock.at(t + 600.ms, "test") { results.add("600" → Instant.now()) }
-        alarmClock.cancel(aAlarm)
+        alarmClock.at(t + 999.ms, cancelWhenCompleted = Future.successful(()), "test") { results.add("B" → Instant.now()) }  // Immediately ignored
+        assert(alarmClock.overview.count == 3)
+        promise.success(())
         alarmClock.cancel(cAlarm)
+        sleep(100.ms)
         assert(alarmClock.overview.count == 1)
-        sleep(800.ms)
+        sleep(600.ms)
         withClue(s"Run $nr: ") {
           val r = results.toVector
           assert((r map { _._1 }) == Vector("400"))
