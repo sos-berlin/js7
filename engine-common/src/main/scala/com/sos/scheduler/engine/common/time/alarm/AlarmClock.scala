@@ -124,6 +124,11 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
     }
   }
 
+  def cancel[A](alarm: Alarm[A]): Unit = {
+    queue.remove(millisToKey(alarm.atEpochMilli), alarm)
+    clock.wake()
+  }
+
   override def toString = "AlarmClock" + (if (isEmpty) "" else s"(${queue.head.at}: ${queue.size} alarms)") mkString ""
 
   def isEmpty = queue.isEmpty/*when closed*/ || queue.head.atEpochMilli == neverAlarm.atEpochMilli

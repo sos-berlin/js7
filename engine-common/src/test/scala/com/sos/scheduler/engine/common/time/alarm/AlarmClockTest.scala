@@ -49,6 +49,27 @@ final class AlarmClockTest extends FreeSpec with ScalaFutures {
     }
   }
 
+  "cancel" in {
+    autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
+      for (nr ← 1 to 2) {
+        val results = new ConcurrentLinkedQueue[(String, Instant)]()
+        val t = Instant.now()
+        val aAlarm = alarmClock.at(t + 200.ms, "test") { results.add("200" → Instant.now()) }
+                     alarmClock.at(t + 400.ms, "test") { results.add("400" → Instant.now()) }
+        val cAlarm = alarmClock.at(t + 600.ms, "test") { results.add("600" → Instant.now()) }
+        alarmClock.cancel(aAlarm)
+        alarmClock.cancel(cAlarm)
+        assert(alarmClock.overview.count == 1)
+        sleep(800.ms)
+        withClue(s"Run $nr: ") {
+          val r = results.toVector
+          assert((r map { _._1 }) == Vector("400"))
+          assert(r(0)._2 >= t + 400.ms && r(0)._2 <= t + 500.ms)
+        }
+      }
+    }
+  }
+
   "Alarm is a Future" in {
     autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
       val a = alarmClock.delay(0.s, "test") { 777 }
