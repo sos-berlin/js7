@@ -4,8 +4,9 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
+import com.sos.scheduler.engine.common.time.timer.TimerService._
 import com.sos.scheduler.engine.common.time.timer.TimerServiceTest._
-import java.time.Instant
+import java.time.{Duration, Instant}
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.runner.RunWith
@@ -14,7 +15,8 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Random, Success}
 
 /**
@@ -137,6 +139,22 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         if (!ok) logger.error(s"$counter/$n $timerService")
         assert(ok)
       }
+    }
+  }
+
+  "Future.timeoutAfter" in {
+    autoClosing(new TimerService(2.ms, idleTimeout = Some(1.s))) { implicit timerService ⇒
+      def newFuture(a: Duration, timeout: Duration) = Future { sleep(a); "OK" } timeoutAfter (timeout, "test")
+      whenReady(newFuture(50.ms, 100.ms)) {
+        o ⇒ assert(o == "OK")
+      }
+      intercept[Timer.ElapsedException] {
+        Await.result(newFuture(100.ms, 50.ms), 200.millis)
+      }
+
+      def newRecoveredFuture(a: Duration, timeout: Duration) = newFuture(a, timeout) recover { case _: Timer.ElapsedException ⇒ "TIMEOUT" }
+      whenReady(newRecoveredFuture(50.ms, 100.ms)) { o ⇒ assert(o == "OK") }
+      whenReady(newRecoveredFuture(100.ms, 50.ms)) { o ⇒ assert(o == "TIMEOUT") }
     }
   }
 }

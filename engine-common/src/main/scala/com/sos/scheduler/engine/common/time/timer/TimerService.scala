@@ -182,4 +182,16 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
 
 object TimerService {
   private def timerToOverview(timer: Timer[_]) = TimerOverview(timer.at, name = timer.name)
+
+  implicit class TimeoutFuture[A](val delegate: Future[A]) extends AnyVal {
+    def timeoutAfter(delay: Duration, name: String)(implicit timerService: TimerService, ec: ExecutionContext): Future[A] =
+      timeoutAt(now + delay, name)
+
+    def timeoutAt(at: Instant, name: String)(implicit timerService: TimerService, ec: ExecutionContext): Future[A] = {
+      val promise = Promise[A]()
+      delegate onComplete promise.tryComplete
+      timerService.at(at, name, cancelWhenCompleted = promise.future, promise = promise)
+      promise.future
+    }
+  }
 }
