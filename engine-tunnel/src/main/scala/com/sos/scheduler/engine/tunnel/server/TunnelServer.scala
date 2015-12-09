@@ -7,7 +7,7 @@ import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.TunnelServer._
 import java.net.{InetAddress, InetSocketAddress}
@@ -25,9 +25,9 @@ import scala.util.Try
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem)(implicit alarmClock: AlarmClock) extends AutoCloseable {
+final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem)(implicit timerService: TimerService) extends AutoCloseable {
 
-  private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props(alarmClock), name = "ConnectorHandler")
+  private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props(timerService), name = "ConnectorHandler")
   private implicit val askTimeout = Timeout(ShortTimeout.toFiniteDuration)
 
   import actorSystem.dispatcher

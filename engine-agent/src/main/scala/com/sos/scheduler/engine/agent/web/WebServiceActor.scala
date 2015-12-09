@@ -10,7 +10,7 @@ import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
 import java.time.Duration
@@ -29,12 +29,12 @@ final class WebServiceActor @Inject private(
   agentOverviewProvider: Provider[AgentOverview],
   protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
-  protected val alarmClock: AlarmClock,
+  protected val timerService: TimerService,
   extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,
   injector: Injector)
 extends HttpServiceActor
-with AlarmClockWebService
+with TimerWebService
 with CommandWebService
 with TunnelWebService
 with FileStatusWebService

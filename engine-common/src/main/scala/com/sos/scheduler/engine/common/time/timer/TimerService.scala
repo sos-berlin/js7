@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.common.time.alarm
+package com.sos.scheduler.engine.common.time.timer
 
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.alarm.Alarm.nowMillis
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock._
+import com.sos.scheduler.engine.common.time.timer.Timer.nowMillis
+import com.sos.scheduler.engine.common.time.timer.TimerService._
 import java.lang.Math.addExact
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicBoolean
@@ -14,10 +14,10 @@ import scala.concurrent.{ExecutionContext, Future, blocking}
 /**
  * @author Joacim Zschimmer
  */
-final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None) extends AutoCloseable {
+final class TimerService(precision: Duration, idleTimeout: Option[Duration] = None) extends AutoCloseable {
 
   private val precisionMillis = precision.toMillis max 1
-  private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Alarm[_] ⇒ millisToKey(a.atEpochMilli): java.lang.Long }))
+  private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer[_] ⇒ millisToKey(a.atEpochMilli): java.lang.Long }))
   @volatile private var closed = false
 
   private object clock {
@@ -74,9 +74,9 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
                   hot = true
               }
             }
-          case Right(alarm) ⇒
+          case Right(timer) ⇒
             hot = false
-            alarm.run()
+            timer.run()
         }
       }
     }
@@ -94,9 +94,9 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
     def isRunning = _isRunning.get
   }
 
-  private val neverAlarm = Alarm(at = Instant.ofEpochMilli((Long.MaxValue / precisionMillis - 1) * precisionMillis), "Never", () ⇒ {})(null: ExecutionContext)
-  private val neverKey = millisToKey(neverAlarm.atEpochMilli)
-  queue add neverAlarm  // Marker at end of the never empty queue
+  private val neverTimer = Timer(at = Instant.ofEpochMilli((Long.MaxValue / precisionMillis - 1) * precisionMillis), "Never", () ⇒ {})(null: ExecutionContext)
+  private val neverKey = millisToKey(neverTimer.atEpochMilli)
+  queue add neverTimer  // Marker at end of the never empty queue
 
   def close(): Unit = {
     closed = true
@@ -107,60 +107,60 @@ final class AlarmClock(precision: Duration, idleTimeout: Option[Duration] = None
   def delay[A, B](delay: Duration, cancelWhenCompleted: Future[B], name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Unit =
     at(Instant.now() + delay, cancelWhenCompleted, name = name)(call)
 
-  def delay[A](delay: Duration, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Alarm[A] =
+  def delay[A](delay: Duration, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Timer[A] =
     at(Instant.now() + delay, name = name)(call)
 
   def at[A, B](at: Instant, cancelWhenCompleted: Future[B], name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Unit = {
     if (!cancelWhenCompleted.isCompleted) {
-      val alarm = this.at(at, name)(call)
-      cancelWhenCompleted onComplete { case _ ⇒ cancel(alarm) }
+      val timer = this.at(at, name)(call)
+      cancelWhenCompleted onComplete { case _ ⇒ cancel(timer) }
     }
   }
 
-  def at[A](at: Instant, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Alarm[A] = {
-    val alarm = Alarm(at, name = name, call = () ⇒ call)
-    add(alarm)
-    alarm
+  def at[A](at: Instant, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Timer[A] = {
+    val timer = Timer(at, name = name, call = () ⇒ call)
+    add(timer)
+    timer
   }
 
-  private def add[A](alarm: Alarm[A])(implicit ec: ExecutionContext): Unit = {
-    require(millisToKey(alarm.at.toEpochMilli) < neverKey)
+  private def add[A](timer: Timer[A])(implicit ec: ExecutionContext): Unit = {
+    require(millisToKey(timer.at.toEpochMilli) < neverKey)
     requireState(!closed)
 
     val t = nextInstant
-    queue.add(alarm)
-    if (alarm.at < t) {
+    queue.add(timer)
+    if (timer.at < t) {
       clock.onAdded()
     }
   }
 
-  def cancel[A](alarm: Alarm[A]): Unit = {
-    queue.remove(millisToKey(alarm.atEpochMilli), alarm)
+  def cancel[A](timer: Timer[A]): Unit = {
+    queue.remove(millisToKey(timer.atEpochMilli), timer)
     clock.wake()
   }
 
-  override def toString = "AlarmClock" + (if (isEmpty) "" else s"(${queue.head.at}: ${queue.size} alarms)") mkString ""
+  override def toString = "TimerService" + (if (isEmpty) "" else s"(${queue.head.at}: ${queue.size} timers)") mkString ""
 
-  def isEmpty = queue.isEmpty/*when closed*/ || queue.head.atEpochMilli == neverAlarm.atEpochMilli
+  def isEmpty = queue.isEmpty/*when closed*/ || queue.head.atEpochMilli == neverTimer.atEpochMilli
 
-  def overview: AlarmClockOverview = AlarmClockOverview(
+  def overview: TimerServiceOverview = TimerServiceOverview(
     count = queue.size - 1,
-    first = queue.headOption filterNot isEndMark map alarmToOverview,
-    last = (queue.toSeq dropRight 1).lastOption map alarmToOverview)  // O(queue.size) !!!
+    first = queue.headOption filterNot isEndMark map timerToOverview,
+    last = (queue.toSeq dropRight 1).lastOption map timerToOverview)  // O(queue.size) !!!
 
-  def alarmOverviews: immutable.Seq[AlarmOverview] = queue.toSeq filterNot isEndMark map alarmToOverview
+  def timerOverviews: immutable.Seq[TimerOverview] = queue.toSeq filterNot isEndMark map timerToOverview
 
   private def nextInstant = queue.head.at
 
-  private[alarm] def isRunning = clock.isRunning
+  private[timer] def isRunning = clock.isRunning
 
-  private def isEndMark[A](alarm: Alarm[_]) = alarm.atEpochMilli == neverAlarm.atEpochMilli
+  private def isEndMark[A](timer: Timer[_]) = timer.atEpochMilli == neverTimer.atEpochMilli
 
   private def millisToKey(millis: Long) = addExact(millis, precisionMillis - 1) / precisionMillis
 
   private def keyToMillis(key: Long) = key * precisionMillis
 }
 
-object AlarmClock {
-  private def alarmToOverview(alarm: Alarm[_]) = AlarmOverview(alarm.at, name = alarm.name)
+object TimerService {
+  private def timerToOverview(timer: Timer[_]) = TimerOverview(timer.at, name = timer.name)
 }

@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 import akka.agent.Agent
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.common.utils.Exceptions._
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.data.{TunnelStatistics, TunnelToken, TunnelView}
@@ -24,7 +24,7 @@ private[server] class Handle(
   val listener: Agent[TunnelListener],
   var state: Handle.State = Handle.Uninitialized,
   val statistics: Statistics = Statistics())
-  (implicit alarmClock: AlarmClock)
+  (implicit timerService: TimerService)
 extends TunnelHandle {
 
   private val startedAt = Instant.now

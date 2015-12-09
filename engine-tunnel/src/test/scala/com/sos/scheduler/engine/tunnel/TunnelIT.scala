@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.{MessageTcpBridge, TcpConnection}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.tunnel.TunnelIT._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
@@ -30,7 +30,7 @@ import scala.util.Random
 final class TunnelIT extends FreeSpec {
 
   private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
-  private implicit val alarmClock = new AlarmClock(10.ms, idleTimeout = Some(1.s))
+  private implicit val timerService = new TimerService(10.ms, idleTimeout = Some(1.s))
   private lazy val tunnelServer = new TunnelServer(actorSystem)
   import actorSystem.dispatcher
 

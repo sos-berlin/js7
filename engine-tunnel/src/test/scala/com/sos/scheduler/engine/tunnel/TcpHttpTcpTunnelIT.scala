@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
@@ -39,7 +39,7 @@ import spray.routing.HttpServiceActor
 final class TcpHttpTcpTunnelIT extends FreeSpec {
 
   private implicit val timeout = Timeout(5.seconds)
-  private implicit val alarmClock = new AlarmClock(10.ms, idleTimeout = Some(1.s))
+  private implicit val timerService = new TimerService(10.ms, idleTimeout = Some(1.s))
 
   "Normal application" in {
     val (clientSide, serverSide) = startTunneledSystem()
@@ -90,7 +90,7 @@ object TcpHttpTcpTunnelIT {
   private val TerminateMessage = ByteString("TERMINATE")
   private val logger = Logger(getClass)
 
-  private def startTunneledSystem()(implicit alarmClock: AlarmClock) = {
+  private def startTunneledSystem()(implicit timerService: TimerService) = {
     val serverSideTunnelHandler = new ServerSideTunnelHandler
     val server = new TunnelledTcpServer(serverSideTunnelHandler)
     val client = new ClientSide(serverSideTunnelHandler.uri, server.tunnelToken)
@@ -142,7 +142,7 @@ object TcpHttpTcpTunnelIT {
     def closeTunnel() = tunnel.close()
   }
 
-  private class ServerSideTunnelHandler(implicit alarmClock: AlarmClock) {
+  private class ServerSideTunnelHandler(implicit timerService: TimerService) {
     val actorSystem = ActorSystem(getClass.getSimpleName)
     val tunnelServer = new TunnelServer(actorSystem)
     val uri = startWebServer()
@@ -154,7 +154,7 @@ object TcpHttpTcpTunnelIT {
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
-      implicit val alarmClock = new AlarmClock(100.ms, idleTimeout = Some(1.s))
+      implicit val timerService = new TimerService(100.ms, idleTimeout = Some(1.s))
       val heartbeatService = new HeartbeatService
       actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer.tunnelAccess, heartbeatService) })
       val httpAddress = awaitResult(startedPromise.future, 10.s)

@@ -14,10 +14,9 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.common.utils.ConcurrentRegister
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
-import java.nio.file.Path
 import java.time.Instant
 import java.time.Instant.now
 import java.util.NoSuchElementException
@@ -31,7 +30,7 @@ import scala.concurrent.{Future, Promise}
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, agentConfiguration: AgentConfiguration, alarmClock: AlarmClock)
+final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, agentConfiguration: AgentConfiguration, timerService: TimerService)
 extends TaskHandlerView {
 
   private val terminating = new AtomicBoolean
@@ -122,7 +121,7 @@ extends TaskHandlerView {
 
   private def sigkillProcessesAt(at: Instant): Unit = {
     logger.info(s"All task processes will be terminated with SIGKILL at $at")
-    alarmClock.at(at, "SIGKILL all processes") {
+    timerService.at(at, "SIGKILL all processes") {
       sendSignalToAllProcesses(SIGKILL)
     }
   }
@@ -140,7 +139,7 @@ extends TaskHandlerView {
         // Wait until HTTP request with termination command probably has been responded
         logger.debug(s"Delaying termination for ${delay.pretty}")
       }
-      alarmClock.delay(delay, "Terminate after HTTP response has been sent") {
+      timerService.delay(delay, "Terminate after HTTP response has been sent") {
         logger.info("Agent is terminating now")
         terminatedPromise.complete(o map { _ ⇒ () })
       }

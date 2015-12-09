@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.time.alarm
+package com.sos.scheduler.engine.common.time.timer
 
 import scala.collection.immutable
 
@@ -19,7 +19,7 @@ trait OrderedQueue[K, V] {
 
   def foreach(body: V ⇒ Unit): Unit
 
-  def head: V = headOption getOrElse { throw new NoSuchElementException("AlarmClock.head") }
+  def head: V = headOption getOrElse { throw new NoSuchElementException("OrderedQueue.head") }
 
   def headOption: Option[V]
 

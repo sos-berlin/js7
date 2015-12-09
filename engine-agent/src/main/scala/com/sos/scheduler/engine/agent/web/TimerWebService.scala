@@ -2,30 +2,30 @@ package com.sos.scheduler.engine.agent.web
 
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import spray.http.CacheDirectives.`max-age`
 import spray.http.HttpHeaders.`Cache-Control`
-import spray.routing.Directives._
 import spray.json.DefaultJsonProtocol._
+import spray.routing.Directives._
 
 /**
   * @author Joacim Zschimmer
   */
-trait AlarmClockWebService extends AgentWebService {
+trait TimerWebService extends AgentWebService {
 
-  protected def alarmClock: AlarmClock
+  protected def timerService: TimerService
 
   addApiRoute {
-    pathPrefix("alarmClock") {
+    pathPrefix("timer") {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {
           get {
-            complete { alarmClock.overview }
+            complete { timerService.overview }
           }
         } ~
         pathSingleSlash {
           get {
-            complete { alarmClock.alarmOverviews }
+            complete { timerService.timerOverviews }
           }
         }
       }

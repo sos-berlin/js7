@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.agent.web
 
 import akka.actor.ActorSystem
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.alarm.{AlarmClock, AlarmClockOverview, AlarmOverview}
+import com.sos.scheduler.engine.common.time.timer.{TimerOverview, TimerService, TimerServiceOverview}
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -20,36 +20,36 @@ import spray.testkit.ScalatestRouteTest
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class AlarmClockWebServiceTest extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with AlarmClockWebService  {
+final class TimerWebServiceTest extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with TimerWebService  {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
-  protected lazy val alarmClock = new AlarmClock(1.s)
+  protected lazy val timerService = new TimerService(1.s)
 
   override protected def afterAll() = {
-    alarmClock.close()
+    timerService.close()
     super.afterAll()
   }
 
-  "alarmClock (empty)" in {
-    Get(Uri("/jobscheduler/agent/api/alarmClock")) ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[AlarmClockOverview] == alarmClock.overview)
+  "timerService (empty)" in {
+    Get(Uri("/jobscheduler/agent/api/timer")) ~> Accept(`application/json`) ~> route ~> check {
+      assert(responseAs[TimerServiceOverview] == timerService.overview)
       assert(responseAs[JsObject] == JsObject("count" → JsNumber(0)))
     }
   }
 
-  "alarmClock/ (empty)" in {
-    Get(Uri("/jobscheduler/agent/api/alarmClock/")) ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[immutable.Seq[AlarmOverview]] == alarmClock.alarmOverviews)
+  "timerService/ (empty)" in {
+    Get(Uri("/jobscheduler/agent/api/timer/")) ~> Accept(`application/json`) ~> route ~> check {
+      assert(responseAs[immutable.Seq[TimerOverview]] == timerService.timerOverviews)
       assert(responseAs[JsArray] == JsArray())
     }
   }
 
-  "alarmClock (3 alarms)" in {
-    alarmClock.at(Instant.parse("2111-01-01T12:11:11Z"), name = "TEST-A") {}
-    alarmClock.at(Instant.parse("2222-01-02T12:22:22Z"), name = "TEST-B") {}
-    alarmClock.at(Instant.parse("2333-01-03T12:33:33Z"), name = "TEST-C") {}
-    Get(Uri("/jobscheduler/agent/api/alarmClock")) ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[AlarmClockOverview] == alarmClock.overview)
+  "timerService (3 timers)" in {
+    timerService.at(Instant.parse("2111-01-01T12:11:11Z"), name = "TEST-A") {}
+    timerService.at(Instant.parse("2222-01-02T12:22:22Z"), name = "TEST-B") {}
+    timerService.at(Instant.parse("2333-01-03T12:33:33Z"), name = "TEST-C") {}
+    Get(Uri("/jobscheduler/agent/api/timer")) ~> Accept(`application/json`) ~> route ~> check {
+      assert(responseAs[TimerServiceOverview] == timerService.overview)
       assert(responseAs[JsObject] == JsObject(
         "count" → JsNumber(3),
         "first" → JsObject(
@@ -61,9 +61,9 @@ final class AlarmClockWebServiceTest extends FreeSpec with BeforeAndAfterAll wit
     }
   }
 
-  "alarmClock/ (3 alarms)" in {
-    Get(Uri("/jobscheduler/agent/api/alarmClock/")) ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[immutable.Seq[AlarmOverview]] == alarmClock.alarmOverviews)
+  "timerService/ (3 timers)" in {
+    Get(Uri("/jobscheduler/agent/api/timer/")) ~> Accept(`application/json`) ~> route ~> check {
+      assert(responseAs[immutable.Seq[TimerOverview]] == timerService.timerOverviews)
       assert(responseAs[JsArray] == JsArray(
         JsObject(
           "at" → JsString("2111-01-01T12:11:11Z"),

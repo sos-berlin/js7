@@ -12,7 +12,7 @@ import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.time.ScalaTime.DurationRichInt
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider
 import javax.inject.Singleton
 import scala.collection.immutable
@@ -38,7 +38,7 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
   private def actorSystem(closer: Closer): ActorSystem = newActorSystem("JobScheduler-Agent")(closer)
 
   @Provides @Singleton
-  private def alarmClock(closer: Closer): AlarmClock = new AlarmClock(100.ms) closeWithCloser closer
+  private def timerService(closer: Closer): TimerService = new TimerService(100.ms) closeWithCloser closer
 
   @Provides @Singleton
   private def agentConfiguration(): AgentConfiguration =

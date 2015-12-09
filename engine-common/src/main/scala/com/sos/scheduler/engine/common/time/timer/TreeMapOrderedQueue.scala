@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.time.alarm
+package com.sos.scheduler.engine.common.time.timer
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
@@ -7,7 +7,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-private[alarm] final class TreeMapOrderedQueue[K <: java.lang.Comparable[K], V: ClassTag](toKey_ : V ⇒ K)
+private[timer] final class TreeMapOrderedQueue[K <: java.lang.Comparable[K], V: ClassTag](toKey_ : V ⇒ K)
 extends OrderedQueue.Implement[K, V] {
 
   private val treeMap = new java.util.TreeMap[K, mutable.ListBuffer[V]]()

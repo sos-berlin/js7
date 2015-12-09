@@ -20,7 +20,7 @@ import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.soslicense.{LicenseKeyBunch, LicenseKeyParameterIsMissingException}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
@@ -240,7 +240,7 @@ private object TaskHandlerTest {
     private val taskIterator = tasks.iterator
 
     def configure() = {
-      bindInstance[AlarmClock](new AlarmClock(10.ms, idleTimeout = Some(1.s)))
+      bindInstance[TimerService](new TimerService(10.ms, idleTimeout = Some(1.s)))
     }
 
     @Provides @Singleton

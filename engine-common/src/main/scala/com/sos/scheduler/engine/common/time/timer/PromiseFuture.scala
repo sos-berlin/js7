@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.time.alarm
+package com.sos.scheduler.engine.common.time.timer
 
 import scala.concurrent.Promise
 

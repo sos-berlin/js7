@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.common.time.alarm
+package com.sos.scheduler.engine.common.time.timer
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
-import com.sos.scheduler.engine.common.time.alarm.AlarmClockTest._
+import com.sos.scheduler.engine.common.time.timer.TimerServiceTest._
 import java.time.Instant
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
@@ -21,25 +21,25 @@ import scala.util.Random
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class AlarmClockTest extends FreeSpec with ScalaFutures {
+final class TimerServiceTest extends FreeSpec with ScalaFutures {
 
   "Thread timeout and warm-up" in {
     new ConcurrentLinkedQueue[String]().add("WARM-UP")
-    autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
-      alarmClock.delay(0.s, "test") {}
-      assert(alarmClock.isRunning)
-      assert(waitForCondition(2.s, 10.ms) { !alarmClock.isRunning })
+    autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
+      timerService.delay(0.s, "test") {}
+      assert(timerService.isRunning)
+      assert(waitForCondition(2.s, 10.ms) { !timerService.isRunning })
     }
   }
 
-  "AlarmClock" in {
-    autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
+  "TimerService" in {
+    autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
       for (nr ← 1 to 2) {
         val results = new ConcurrentLinkedQueue[(String, Instant)]()
         val t = Instant.now()
-        alarmClock.at(t + 0.ms, "test") { results.add("A" → Instant.now()) }
-        alarmClock.at(t + 400.ms, "test") { results.add("C" → Instant.now()) }
-        alarmClock.at(t + 200.ms, "test") { results.add("B" → Instant.now()) }
+        timerService.at(t + 0.ms, "test") { results.add("A" → Instant.now()) }
+        timerService.at(t + 400.ms, "test") { results.add("C" → Instant.now()) }
+        timerService.at(t + 200.ms, "test") { results.add("B" → Instant.now()) }
         sleep(500.ms)
         withClue(s"Run $nr: ") {
           val r = results.toVector
@@ -54,21 +54,21 @@ final class AlarmClockTest extends FreeSpec with ScalaFutures {
   }
 
   "cancel, cancelWhenCompleted" in {
-    autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
+    autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
       for (nr ← 1 to 2) {
         val results = new ConcurrentLinkedQueue[(String, Instant)]()
         val t = Instant.now()
         val promise = Promise[Unit]()
 
-        alarmClock.delay(200.ms, cancelWhenCompleted = promise.future, "test") { results.add("200" → Instant.now()) }
-        alarmClock.at(t + 400.ms, "test") { results.add("400" → Instant.now()) }
-        val cAlarm = alarmClock.at(t + 600.ms, "test") { results.add("600" → Instant.now()) }
-        alarmClock.at(t + 999.ms, cancelWhenCompleted = Future.successful(()), "test") { results.add("B" → Instant.now()) }  // Immediately ignored
-        assert(alarmClock.overview.count == 3)
+        timerService.delay(200.ms, cancelWhenCompleted = promise.future, "test") { results.add("200" → Instant.now()) }
+        timerService.at(t + 400.ms, "test") { results.add("400" → Instant.now()) }
+        val cTimer = timerService.at(t + 600.ms, "test") { results.add("600" → Instant.now()) }
+        timerService.at(t + 999.ms, cancelWhenCompleted = Future.successful(()), "test") { results.add("B" → Instant.now()) }  // Immediately ignored
+        assert(timerService.overview.count == 3)
         promise.success(())
-        alarmClock.cancel(cAlarm)
+        timerService.cancel(cTimer)
         sleep(100.ms)
-        assert(alarmClock.overview.count == 1)
+        assert(timerService.overview.count == 1)
         sleep(600.ms)
         withClue(s"Run $nr: ") {
           val r = results.toVector
@@ -79,28 +79,28 @@ final class AlarmClockTest extends FreeSpec with ScalaFutures {
     }
   }
 
-  "Alarm is a Future" in {
-    autoClosing(new AlarmClock(10.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
-      val a = alarmClock.delay(0.s, "test") { 777 }
+  "Timer is a Future" in {
+    autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
+      val a = timerService.delay(0.s, "test") { 777 }
       whenReady(a) { o ⇒ assert( o == 777 )}
     }
   }
 
   "Brute force" in {
-    autoClosing(new AlarmClock(2.ms, idleTimeout = Some(1.s))) { alarmClock ⇒
+    autoClosing(new TimerService(2.ms, idleTimeout = Some(1.s))) { timerService ⇒
       for (nr ← 1 to 100) {
         val counter = new AtomicInteger
         val n = 1000
         val delays = for (i ← 1 to n) yield Random.nextInt(40).ms
-        for (delay ← delays) alarmClock.delay(delay, "test") { counter.incrementAndGet() }
+        for (delay ← delays) timerService.delay(delay, "test") { counter.incrementAndGet() }
         val ok = waitForCondition(2.s, 10.ms) { counter.get == n }
-        if (!ok) logger.error(s"$counter/$n $alarmClock")
+        if (!ok) logger.error(s"$counter/$n $timerService")
         assert(ok)
       }
     }
   }
 }
 
-private object AlarmClockTest {
+private object TimerServiceTest {
   private val logger = Logger(getClass)
 }

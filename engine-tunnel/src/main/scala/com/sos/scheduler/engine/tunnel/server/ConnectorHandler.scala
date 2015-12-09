@@ -7,7 +7,7 @@ import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
@@ -21,7 +21,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * @author Joacim Zschimmer
  */
-private[tunnel] final class ConnectorHandler private(implicit alarmClock: AlarmClock) extends Actor {
+private[tunnel] final class ConnectorHandler private(implicit timerService: TimerService) extends Actor {
 
   import context.{actorOf, become, dispatcher, stop, system, watch}
 
@@ -192,7 +192,7 @@ private[tunnel] object ConnectorHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
 
-  private[tunnel] def props(implicit alarmClock: AlarmClock) = Props { new ConnectorHandler }
+  private[tunnel] def props(implicit timerService: TimerService) = Props { new ConnectorHandler }
 
   sealed trait Command
 

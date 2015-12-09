@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.agent.web.TunnelWebServicesTest._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.time.ScalaTime.DurationRichInt
-import com.sos.scheduler.engine.common.time.alarm.AlarmClock
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatId
 import com.sos.scheduler.engine.http.server.heartbeat.{HeartbeatService, HeartbeatView}
 import com.sos.scheduler.engine.tunnel.data.Http._
@@ -36,7 +36,7 @@ import spray.testkit.ScalatestRouteTest
 final class TunnelWebServicesTest extends FreeSpec with ScalatestRouteTest with TunnelWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
-  private implicit val alarmClock = new AlarmClock(100.ms, idleTimeout = Some(1.s))
+  private implicit val timerService = new TimerService(100.ms, idleTimeout = Some(1.s))
 
   protected def tunnelAccess(tunnelToken: TunnelToken) = new TunnelAccess {
     val heartbeatService = new HeartbeatService

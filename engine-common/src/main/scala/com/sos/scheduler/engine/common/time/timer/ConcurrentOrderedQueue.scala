@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.common.time.alarm
+package com.sos.scheduler.engine.common.time.timer
 
 import scala.collection.immutable
 
 /**
   * @author Joacim Zschimmer
   */
-private[alarm] class ConcurrentOrderedQueue[K: Ordering, V](delegate: OrderedQueue[K, V])
+private[timer] class ConcurrentOrderedQueue[K: Ordering, V](delegate: OrderedQueue[K, V])
 extends OrderedQueue[K, V]{
 
   final def isEmpty = synchronized { delegate.isEmpty }

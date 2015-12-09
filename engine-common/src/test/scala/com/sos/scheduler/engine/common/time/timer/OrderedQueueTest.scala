@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.time.alarm
+package com.sos.scheduler.engine.common.time.timer
 
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.alarm.OrderedQueueTest._
+import com.sos.scheduler.engine.common.time.timer.OrderedQueueTest._
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
