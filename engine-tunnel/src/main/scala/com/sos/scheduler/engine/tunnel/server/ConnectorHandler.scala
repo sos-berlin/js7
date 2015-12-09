@@ -154,22 +154,24 @@ private[tunnel] final class ConnectorHandler private(implicit alarmClock: AlarmC
       sender() ! Try { checkedHandle(tunnelToken) }
 
     case GetOverview ⇒
-      sender() ! TunnelHandlerOverview(
-        tcpAddress = tcpAddressOnce.get map { _.toString },
-        tunnelCount = register.size)
+      sender() ! Try {
+        TunnelHandlerOverview(
+          tcpAddress = tcpAddressOnce.get map { _.toString },
+          tunnelCount = register.size)
+      }
 
     case GetTunnelOverviews ⇒
-      sender() ! (register map { case (id, handle) ⇒
-        TunnelOverview(
-          id,
-          handle.startedByHttpIpOption,
-          handle.remoteAddressStringOption,
-          TunnelStatistics(
-            requestCount = handle.statistics.requestCount,
-            messageByteCount = handle.statistics.messageByteCount,
-            currentRequestIssuedAt = handle.statistics.currentRequestIssuedAt,
-            handle.statistics.failure map { _.toString }))
-      }).toVector
+      sender() ! Try {
+        (register map { case (id, handle) ⇒
+          TunnelOverview(
+            id,
+            handle.startedByHttpIpOption,
+            handle.remoteAddressStringOption)
+        }).toVector
+      }
+
+    case GetTunnelView(tunnelId) ⇒
+      sender() ! Try { register(tunnelId).view }
   }
 
   private def removeHandle(id: TunnelId): Unit = register -= id
@@ -205,6 +207,8 @@ private[tunnel] object ConnectorHandler {
   private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
 
   private[tunnel] final case class GetHandle(tunnelToken: TunnelToken) extends Command
+
+  private[tunnel] final case class GetTunnelView(tunnelId: TunnelId) extends Command
 
   private[tunnel] final case class OnHeartbeat(tunnelToken: TunnelToken, timeout: Duration) extends Command
 

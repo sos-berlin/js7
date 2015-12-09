@@ -11,7 +11,7 @@ import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.alarm.AlarmClock
-import com.sos.scheduler.engine.tunnel.data.TunnelToken
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
 import java.time.Duration
 import javax.inject.{Inject, Provider}
@@ -62,6 +62,8 @@ with NoJobSchedulerEngineWebService
   protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration) = tunnelServer.onHeartbeat(tunnelToken, timeout)
   protected def tunnelHandlerOverview = tunnelServer.overview
   protected def tunnelOverviews = tunnelServer.tunnelOverviews
+  protected def tunnelView(tunnelId: TunnelId) = tunnelServer.tunnelView(tunnelId)
+
   override protected def uriPathPrefix = agentConfiguration.strippedUriPathPrefix
 }
 

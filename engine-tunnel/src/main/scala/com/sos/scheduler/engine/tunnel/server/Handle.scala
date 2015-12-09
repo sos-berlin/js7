@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.common.utils.Exceptions._
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
-import com.sos.scheduler.engine.tunnel.data.TunnelToken
+import com.sos.scheduler.engine.tunnel.data.{TunnelStatistics, TunnelToken, TunnelView}
 import com.sos.scheduler.engine.tunnel.server.Handle._
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.{Duration, Instant}
@@ -65,6 +65,18 @@ extends TunnelHandle {
       }
     }
   }
+
+  def view = TunnelView(
+    id,
+    startedAt,
+    startedByHttpIpOption,
+    remoteAddressStringOption,
+    heartbeatService.overview,
+    TunnelStatistics(
+      requestCount = statistics.requestCount,
+      messageByteCount = statistics.messageByteCount,
+      currentRequestIssuedAt = statistics.currentRequestIssuedAt,
+      statistics.failure map { _.toString })  )
 }
 
 private object Handle {

@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.tunnel.server
 
 import akka.util.ByteString
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken, TunnelView}
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.{Duration, Instant}
 import scala.concurrent.Future
@@ -28,4 +28,6 @@ trait TunnelHandle extends AutoCloseable {
   def startedByHttpIpOption: Option[InetAddress]
 
   def connected: Future[InetSocketAddress]
+
+  def view: TunnelView
 }

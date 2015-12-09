@@ -8,7 +8,7 @@ import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.alarm.AlarmClock
-import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
+import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.TunnelServer._
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.Duration
@@ -29,6 +29,8 @@ final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem)(impli
 
   private val connectorHandler = actorSystem.actorOf(ConnectorHandler.props(alarmClock), name = "ConnectorHandler")
   private implicit val askTimeout = Timeout(ShortTimeout.toFiniteDuration)
+
+  import actorSystem.dispatcher
 
   private[tunnel] val proxyAddress: InetSocketAddress = {
     val future = (connectorHandler ? ConnectorHandler.Start).mapTo[Try[Bound]]
@@ -64,10 +66,13 @@ final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem)(impli
   override def toString = s"TunnelHandler($proxyAddress)"
 
   def overview: Future[TunnelHandlerOverview] =
-    (connectorHandler ? ConnectorHandler.GetOverview).mapTo[TunnelHandlerOverview]
+    (connectorHandler ? ConnectorHandler.GetOverview).mapTo[Try[TunnelHandlerOverview]] map { _.get }
 
   def tunnelOverviews: Future[immutable.Iterable[TunnelOverview]] =
-    (connectorHandler ? ConnectorHandler.GetTunnelOverviews).mapTo[immutable.Iterable[TunnelOverview]]
+    (connectorHandler ? ConnectorHandler.GetTunnelOverviews).mapTo[Try[immutable.Iterable[TunnelOverview]]] map { _.get }
+
+  def tunnelView(tunnelId: TunnelId): Future[TunnelView] =
+    (connectorHandler ? ConnectorHandler.GetTunnelView(tunnelId)).mapTo[Try[TunnelView]] map { _.get }
 }
 
 object TunnelServer {

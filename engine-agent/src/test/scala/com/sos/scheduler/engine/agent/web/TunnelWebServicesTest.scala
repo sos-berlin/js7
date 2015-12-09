@@ -7,7 +7,8 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.time.ScalaTime.DurationRichInt
 import com.sos.scheduler.engine.common.time.alarm.AlarmClock
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
+import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatId
+import com.sos.scheduler.engine.http.server.heartbeat.{HeartbeatService, HeartbeatView}
 import com.sos.scheduler.engine.tunnel.data.Http._
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.TunnelAccess
@@ -50,6 +51,7 @@ final class TunnelWebServicesTest extends FreeSpec with ScalatestRouteTest with 
   protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration): Unit = logger.debug(s"$tunnelToken: Heartbeat $timeout")
   protected def tunnelHandlerOverview = Future.successful(TestTunnelHandlerOverview)
   protected def tunnelOverviews = Future.successful(TestTunnelOverviews)
+  protected def tunnelView(tunnelId: TunnelId) = Future.successful(TestTunnelView)
 
   s"GET $TunnelPath" in {
     Get(s"$TunnelPath") ~>
@@ -95,6 +97,24 @@ private object TunnelWebServicesTest {
     TunnelOverview(
       TunnelId("TUNNEL-1"),
       startedByHttpIp = Some(InetAddress.getByName("127.1.2.3")),
-      remoteTcpAddress = Some("REMOTE-ADDRESS"),
-      TunnelStatistics(10, 1000, Some(Instant.parse("2015-07-03T12:00:00Z")), failure = Some("FAILURE"))))
+      remoteTcpAddress = Some("REMOTE-ADDRESS")))
+  private val TestTunnelView = TunnelView(
+    TunnelId("TUNNEL-1"),
+    startedAt = Instant.parse("2015-12-08T12:00:00Z"),
+    startedByHttpIp = Some(InetAddress.getByName("127.1.2.3")),
+    remoteTcpAddress = Some("REMOTE-ADDRESS"),
+    heartbeat = HeartbeatView(
+      startCount = 3,
+      count = 9,
+      concurrentMaximum = 1,
+      pendingOperations = Map(
+        HeartbeatId("HEARTBEAT-1") → HeartbeatView.PendingOperation(
+          startedAt = Instant.parse("2015-12-08T12:00:11Z"),
+          lastAt = Some(Instant.parse("2015-12-08T12:00:22Z")),
+          count = 7))),
+    TunnelStatistics(
+      requestCount = 10,
+      messageByteCount = 1000,
+      currentRequestIssuedAt = Some(Instant.parse("2015-07-03T12:00:00Z")),
+      failure = Some("FAILURE")))
 }

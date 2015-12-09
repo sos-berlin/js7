@@ -195,6 +195,7 @@ private object TaskHandlerTest {
     def onInactivity(callback: Instant ⇒ Unit) = {}
     def heartbeatService = ???
     def request(request: ByteString, timeout: Option[Duration]) = ???
+    override def view = ???
   }
 
   private class MockTaskServer extends TaskServer {

@@ -1,8 +1,9 @@
 package com.sos.scheduler.engine.agent.web
 
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
-import com.sos.scheduler.engine.tunnel.data.{TunnelHandlerOverview, TunnelId, TunnelOverview, TunnelToken}
+import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.scheduler.engine.tunnel.data.TunnelView._
+import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.TunnelAccess
 import com.sos.scheduler.engine.tunnel.web.TunnelWebServices._
 import java.time.Duration
@@ -21,6 +22,7 @@ trait TunnelWebService extends AgentWebService {
   protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration): Unit
   protected def tunnelHandlerOverview: Future[TunnelHandlerOverview]
   protected def tunnelOverviews: Future[immutable.Iterable[TunnelOverview]]
+  protected def tunnelView(tunnelId: TunnelId): Future[TunnelView]
 
   private implicit val executionContext = actorRefFactory.dispatcher
 
@@ -40,6 +42,12 @@ trait TunnelWebService extends AgentWebService {
         pathSingleSlash  {
           get {
             tunnelOverviewsRouteComplete(tunnelOverviews)
+          }
+        } ~
+        path(Segment) { idString ⇒
+          val tunnelId = TunnelId(idString)
+          (pathEnd & get) {
+              onSuccess(tunnelView(tunnelId)) { result ⇒ complete(result) }
           }
         }
       }
