@@ -35,10 +35,11 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
   private def taskHandlerView(o: TaskHandler): TaskHandlerView = o
 
   @Provides @Singleton
-  private def actorSystem(closer: Closer): ActorSystem = newActorSystem("JobScheduler-Agent")(closer)
+  private def timerService(actorSystem: ActorSystem, closer: Closer): TimerService =
+    new TimerService(100.ms)(actorSystem.dispatcher) closeWithCloser closer
 
   @Provides @Singleton
-  private def timerService(closer: Closer): TimerService = new TimerService(100.ms) closeWithCloser closer
+  private def actorSystem(closer: Closer): ActorSystem = newActorSystem("JobScheduler-Agent")(closer)
 
   @Provides @Singleton
   private def agentConfiguration(): AgentConfiguration =

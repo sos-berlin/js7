@@ -14,10 +14,10 @@ import scala.concurrent.{ExecutionContext, Future, blocking}
 /**
  * @author Joacim Zschimmer
  */
-final class TimerService(precision: Duration, idleTimeout: Option[Duration] = None) extends AutoCloseable {
+final class TimerService(precision: Duration, idleTimeout: Option[Duration] = None)(implicit ec: ExecutionContext) extends AutoCloseable {
 
   private val precisionMillis = precision.toMillis max 1
-  private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer[_] ⇒ millisToKey(a.atEpochMilli): java.lang.Long }))
+  private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer ⇒ millisToKey(a.atEpochMilli): java.lang.Long }))
   @volatile private var closed = false
 
   private object clock {
@@ -31,9 +31,9 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
       wake()
     }
 
-    def onAdded()(implicit ec: ExecutionContext): Unit = startOrWake()
+    def onAdded(): Unit = startOrWake()
 
-    def startOrWake()(implicit ec: ExecutionContext): Unit = {
+    def startOrWake(): Unit = {
       if (_isRunning.compareAndSet(false, true)) {
         Future {
           blocking {
@@ -76,7 +76,7 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
             }
           case Right(timer) ⇒
             hot = false
-            timer.run()
+            timer.fulfill()
         }
       }
     }
@@ -94,7 +94,7 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
     def isRunning = _isRunning.get
   }
 
-  private val neverTimer = Timer(at = Instant.ofEpochMilli((Long.MaxValue / precisionMillis - 1) * precisionMillis), "Never", () ⇒ {})(null: ExecutionContext)
+  private val neverTimer = Timer(at = Instant.ofEpochMilli((Long.MaxValue / precisionMillis - 1) * precisionMillis), "Never")
   private val neverKey = millisToKey(neverTimer.atEpochMilli)
   queue add neverTimer  // Marker at end of the never empty queue
 
@@ -104,26 +104,16 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
     queue.clear()
   }
 
-  def delay[A, B](delay: Duration, cancelWhenCompleted: Future[B], name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Unit =
-    at(Instant.now() + delay, cancelWhenCompleted, name = name)(call)
+  def delay(delay: Duration, name: String): Timer =
+    at(Instant.now() + delay, name = name)
 
-  def delay[A](delay: Duration, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Timer[A] =
-    at(Instant.now() + delay, name = name)(call)
-
-  def at[A, B](at: Instant, cancelWhenCompleted: Future[B], name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Unit = {
-    if (!cancelWhenCompleted.isCompleted) {
-      val timer = this.at(at, name)(call)
-      cancelWhenCompleted onComplete { case _ ⇒ cancel(timer) }
-    }
-  }
-
-  def at[A](at: Instant, name: String)(call: ⇒ A)(implicit ec: ExecutionContext): Timer[A] = {
-    val timer = Timer(at, name = name, call = () ⇒ call)
+  def at(at: Instant, name: String): Timer = {
+    val timer = Timer(at, name = name)
     add(timer)
     timer
   }
 
-  private def add[A](timer: Timer[A])(implicit ec: ExecutionContext): Unit = {
+  private def add[A](timer: Timer): Unit = {
     require(millisToKey(timer.at.toEpochMilli) < neverKey)
     requireState(!closed)
 
@@ -134,7 +124,7 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
     }
   }
 
-  def cancel[A](timer: Timer[A]): Unit = {
+  def cancel[A](timer: Timer): Unit = {
     queue.remove(millisToKey(timer.atEpochMilli), timer)
     clock.wake()
   }
@@ -154,7 +144,7 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
 
   private[timer] def isRunning = clock.isRunning
 
-  private def isEndMark[A](timer: Timer[_]) = timer.atEpochMilli == neverTimer.atEpochMilli
+  private def isEndMark[A](timer: Timer) = timer.atEpochMilli == neverTimer.atEpochMilli
 
   private def millisToKey(millis: Long) = addExact(millis, precisionMillis - 1) / precisionMillis
 
@@ -162,5 +152,5 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
 }
 
 object TimerService {
-  private def timerToOverview(timer: Timer[_]) = TimerOverview(timer.at, name = timer.name)
+  private def timerToOverview(timer: Timer) = TimerOverview(timer.at, name = timer.name)
 }

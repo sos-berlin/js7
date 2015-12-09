@@ -26,7 +26,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
   "Thread timeout and warm-up" in {
     new ConcurrentLinkedQueue[String]().add("WARM-UP")
     autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
-      timerService.delay(0.s, "test") {}
+      timerService.delay(0.s, "test")
       assert(timerService.isRunning)
       assert(waitForCondition(2.s, 10.ms) { !timerService.isRunning })
     }
@@ -37,9 +37,9 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       for (nr ← 1 to 2) {
         val results = new ConcurrentLinkedQueue[(String, Instant)]()
         val t = Instant.now()
-        timerService.at(t + 0.ms, "test") { results.add("A" → Instant.now()) }
-        timerService.at(t + 400.ms, "test") { results.add("C" → Instant.now()) }
-        timerService.at(t + 200.ms, "test") { results.add("B" → Instant.now()) }
+        timerService.at(t + 0.ms, "test") then_ { results.add("A" → Instant.now()) }
+        timerService.at(t + 400.ms, "test") then_ { results.add("C" → Instant.now()) }
+        timerService.at(t + 200.ms, "test") then_ { results.add("B" → Instant.now()) }
         sleep(500.ms)
         withClue(s"Run $nr: ") {
           val r = results.toVector
@@ -60,10 +60,11 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         val t = Instant.now()
         val promise = Promise[Unit]()
 
-        timerService.delay(200.ms, cancelWhenCompleted = promise.future, "test") { results.add("200" → Instant.now()) }
-        timerService.at(t + 400.ms, "test") { results.add("400" → Instant.now()) }
-        val cTimer = timerService.at(t + 600.ms, "test") { results.add("600" → Instant.now()) }
-        timerService.at(t + 999.ms, cancelWhenCompleted = Future.successful(()), "test") { results.add("B" → Instant.now()) }  // Immediately ignored
+        timerService.delay(200.ms, "test").cancelWhenCompleted(promise.future) then_ { results.add("200" → Instant.now()) }
+        timerService.at(t + 400.ms, "test") then_ { results.add("400" → Instant.now()) }
+        val cTimer = timerService.at(t + 600.ms, "test")
+        cTimer onSuccess { case _ ⇒ results.add("600" → Instant.now()) }
+        timerService.at(t + 999.ms, "test").cancelWhenCompleted(Future.successful(())) then_ { results.add("B" → Instant.now()) }  // Immediately ignored
         assert(timerService.overview.count == 3)
         promise.success(())
         timerService.cancel(cTimer)
@@ -81,8 +82,8 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
 
   "Timer is a Future" in {
     autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
-      val a = timerService.delay(0.s, "test") { 777 }
-      whenReady(a) { o ⇒ assert( o == 777 )}
+      val a = timerService.delay(0.s, "test")
+      whenReady(a) { o ⇒ }
     }
   }
 
@@ -92,7 +93,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         val counter = new AtomicInteger
         val n = 1000
         val delays = for (i ← 1 to n) yield Random.nextInt(40).ms
-        for (delay ← delays) timerService.delay(delay, "test") { counter.incrementAndGet() }
+        for (delay ← delays) timerService.delay(delay, "test") then_ { counter.incrementAndGet() }
         val ok = waitForCondition(2.s, 10.ms) { counter.get == n }
         if (!ok) logger.error(s"$counter/$n $timerService")
         assert(ok)

@@ -29,6 +29,7 @@ import spray.can.Http
 import spray.http.Uri
 import spray.http.Uri.Path
 import spray.routing.HttpServiceActor
+import ExecutionContext.Implicits.global
 
 /**
  * Tests a whole tunnel from TCP via HTTP to TCP.
@@ -146,7 +147,6 @@ object TcpHttpTcpTunnelIT {
     val actorSystem = ActorSystem(getClass.getSimpleName)
     val tunnelServer = new TunnelServer(actorSystem)
     val uri = startWebServer()
-    import actorSystem.dispatcher
     val listener = Agent(new TestTunnelListener)
 
     def newTunnel(id: TunnelId) = tunnelServer.newTunnel(id, listener)

@@ -33,7 +33,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Inside.inside
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContext, Promise}
 
 /**
  * @author Joacim Zschimmer
@@ -240,7 +240,7 @@ private object TaskHandlerTest {
     private val taskIterator = tasks.iterator
 
     def configure() = {
-      bindInstance[TimerService](new TimerService(10.ms, idleTimeout = Some(1.s)))
+      bindInstance[TimerService](new TimerService(10.ms, idleTimeout = Some(1.s))(ExecutionContext.global))
     }
 
     @Provides @Singleton
