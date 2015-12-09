@@ -15,7 +15,7 @@ import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
-import scala.util.Random
+import scala.util.{Random, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -37,9 +37,9 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       for (nr ← 1 to 2) {
         val results = new ConcurrentLinkedQueue[(String, Instant)]()
         val t = Instant.now()
-        timerService.at(t + 0.ms, "test") then_ { results.add("A" → Instant.now()) }
-        timerService.at(t + 400.ms, "test") then_ { results.add("C" → Instant.now()) }
-        timerService.at(t + 200.ms, "test") then_ { results.add("B" → Instant.now()) }
+        timerService.at(t + 0.ms, "test") onElapsed { results.add("A" → Instant.now()) }
+        timerService.at(t + 400.ms, "test") onElapsed { results.add("C" → Instant.now()) }
+        timerService.at(t + 200.ms, "test") onElapsed { results.add("B" → Instant.now()) }
         sleep(500.ms)
         withClue(s"Run $nr: ") {
           val r = results.toVector
@@ -60,30 +60,69 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         val t = Instant.now()
         val promise = Promise[Unit]()
 
-        timerService.delay(200.ms, "test").cancelWhenCompleted(promise.future) then_ { results.add("200" → Instant.now()) }
-        timerService.at(t + 400.ms, "test") then_ { results.add("400" → Instant.now()) }
+        timerService.delay(200.ms, "test", cancelWhenCompleted = promise.future) onElapsed { results.add("200" → Instant.now()) }
+        timerService.at(t + 400.ms, "test") onElapsed { results.add("400" → Instant.now()) }
         val cTimer = timerService.at(t + 600.ms, "test")
         cTimer onSuccess { case _ ⇒ results.add("600" → Instant.now()) }
-        timerService.at(t + 999.ms, "test").cancelWhenCompleted(Future.successful(())) then_ { results.add("B" → Instant.now()) }  // Immediately ignored
-        assert(timerService.overview.count == 3)
+        timerService.at(t + 999.ms, "test", cancelWhenCompleted = Future.successful(())) onElapsed { results.add("B" → Instant.now()) }  // Immediately ignored
         promise.success(())
+        assert(!cTimer.canceled)
         timerService.cancel(cTimer)
-        sleep(100.ms)
-        assert(timerService.overview.count == 1)
-        sleep(600.ms)
+        assert(cTimer.canceled)
+        sleep(700.ms)
         withClue(s"Run $nr: ") {
           val r = results.toVector
           assert((r map { _._1 }) == Vector("400"))
           assert(r(0)._2 >= t + 400.ms && r(0)._2 <= t + 500.ms)
         }
+        timerService.cancel(cTimer)
       }
     }
   }
 
-  "Timer is a Future" in {
+  "onElapsed" in {
     autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
-      val a = timerService.delay(0.s, "test")
-      whenReady(a) { o ⇒ }
+      val timer = timerService.delay(0.s, "test")
+      val myPromise = Promise[Int]()
+      val future: Future[Unit] = timer onElapsed { myPromise success 777 }
+      assert(future eq timer)
+      whenReady(myPromise.future) { o ⇒ assert(o == 777) }
+      assert(timer.isCompleted)
+      assert(timer.value == Some(Timer.ElapsedFailure))
+      assert(myPromise.isCompleted)
+      assert(myPromise.future.value == Some(Success(777)))
+    }
+  }
+
+  "Timer is a Future, ElapsedException" in {
+    autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
+      val timer = timerService.delay(0.s, "test")
+      val recovered = timer recover {
+        case _: Timer.ElapsedException ⇒ 777
+      }
+      whenReady(recovered) { o ⇒ 777 }
+      assert(timer.value == Some(Timer.ElapsedFailure))
+    }
+  }
+
+  "completeWith" in {
+    autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
+      val a = timerService.delay(100.ms, "test", completeWith = Success(777))
+      sleep(10.ms)
+      assert(!a.isCompleted)
+      whenReady(a) { o ⇒ assert(o == 777) }
+    }
+  }
+
+  "fullfilWith and own promise" in {
+    autoClosing(new TimerService(10.ms, idleTimeout = Some(1.s))) { timerService ⇒
+      val promise = Promise[Int]()
+      val a = timerService.delay(100.ms, "test", Success(777), promise)
+      sleep(10.ms)
+      assert(!promise.isCompleted && !a.isCompleted)
+      whenReady(a) { o ⇒ assert(o == 777) }
+      assert(promise.isCompleted && a.isCompleted)
+      assert(promise.future.value == Some(Success(777)))
     }
   }
 
@@ -93,7 +132,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         val counter = new AtomicInteger
         val n = 1000
         val delays = for (i ← 1 to n) yield Random.nextInt(40).ms
-        for (delay ← delays) timerService.delay(delay, "test") then_ { counter.incrementAndGet() }
+        for (delay ← delays) timerService.delay(delay, "test") onElapsed { counter.incrementAndGet() }
         val ok = waitForCondition(2.s, 10.ms) { counter.get == n }
         if (!ok) logger.error(s"$counter/$n $timerService")
         assert(ok)
