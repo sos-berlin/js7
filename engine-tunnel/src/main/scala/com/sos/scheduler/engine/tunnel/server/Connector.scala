@@ -4,10 +4,11 @@ import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.akkautils.Akkas.{DummyCancellable, byteStringToTruncatedString}
+import com.sos.scheduler.engine.common.akkautils.Akkas.byteStringToTruncatedString
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.time.timer.{Timer, TimerService}
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.Connector._
 import java.net.InetSocketAddress
@@ -31,10 +32,10 @@ import spray.json.JsonParser
  *
  * @author Joacim Zschimmer
  */
-private[server] final class Connector private(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected)
+private[server] final class Connector private(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, timerService: TimerService)
 extends Actor with FSM[State, Data] {
   import connected.remoteAddress
-  import context.{dispatcher, parent, system, watch}
+  import context.{dispatcher, parent, watch}
 
   private val tunnelIdOnce = new SetOnce[TunnelId]
   private val messageTcpBridge = context.actorOf(MessageTcpBridge.props(tcp, connected))
@@ -43,15 +44,19 @@ extends Actor with FSM[State, Data] {
   private var logger = Logger(getClass)
 
   private object inactivityWatchdog {
-    private var timer: Cancellable = new DummyCancellable
+    private var timer: Timer[Unit] = null
 
-    def stop() = timer.cancel()
+    def stop(): Unit =
+      if (timer != null) {
+        timerService.cancel(timer)
+        timer = null
+      }
 
     def restart(timeoutOption: Option[Duration]): Unit = {
-      timer.cancel()
+      stop()
       for (timeout ← timeoutOption) {
         val since = Instant.now()
-        timer = system.scheduler.scheduleOnce(timeout.toFiniteDuration) {
+        timer = timerService.delay(timeout, toString) onElapsed {
           val msg = BecameInactive(tunnelIdOnce(), since)
           logger.debug(s"$msg")
           connectorHandler ! msg
@@ -187,8 +192,8 @@ extends Actor with FSM[State, Data] {
 private[server] object Connector {
   private val FirstRequestTimeout = 60.s
 
-  private[server] def props(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected) =
-    Props { new Connector(connectorHandler, tcp, connected) }
+  private[server] def props(connectorHandler: ActorRef, tcp: ActorRef, connected: Tcp.Connected, timerService: TimerService) =
+    Props { new Connector(connectorHandler, tcp, connected, timerService) }
 
   private[server] sealed trait Command
   private[server] case class Heartbeat(timeout: Duration) {

@@ -58,7 +58,7 @@ private[tunnel] final class ConnectorHandler private(implicit timerService: Time
         val peerPort = connected.remoteAddress.getPort
         s"Connector-TCP-$peerInterface:$peerPort"
       }
-      val connector = actorOf(Connector.props(connectorHandler = self, tcp = sender(), connected), name = name)
+      val connector = actorOf(Connector.props(connectorHandler = self, tcp = sender(), connected, timerService), name = name)
       watch(connector)
 
     case m @ NewTunnel(id, listener, startedByIpOption) ⇒
