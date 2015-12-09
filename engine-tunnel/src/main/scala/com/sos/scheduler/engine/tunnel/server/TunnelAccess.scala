@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.tunnel.server
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.http.server.idempotence.Idempotence
+import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import java.time.Duration
 import scala.concurrent.Future
 
@@ -10,6 +10,6 @@ import scala.concurrent.Future
   */
 
 trait TunnelAccess {
-  def idempotence: Idempotence
+  def heartbeatService: HeartbeatService
   def execute(requestMessage: ByteString, timeout: Option[Duration]): Future[ByteString]
 }

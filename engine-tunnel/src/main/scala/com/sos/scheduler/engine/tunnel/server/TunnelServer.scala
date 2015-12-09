@@ -54,7 +54,7 @@ final class TunnelServer @Inject private[tunnel](actorSystem: ActorSystem)(impli
 
   def tunnelAccess(tunnelToken: TunnelToken) = new TunnelAccess {
     private val tunnel = handle(tunnelToken)
-    val idempotence = tunnel.idempotence
+    val heartbeatService = tunnel.heartbeatService
     def execute(requestMessage: ByteString, timeout: Option[Duration]) = tunnel.request(requestMessage, timeout)
   }
 

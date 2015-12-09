@@ -6,7 +6,6 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.data.Http.SecretHeaderName
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.{ConnectionClosedException ⇒ TunnelConnectionClosedException, TunnelAccess}
@@ -29,18 +28,17 @@ object TunnelWebServices {
 
   def tunnelRequestRoute(tunnelId: TunnelId)(
     tunnelAccess: TunnelToken ⇒ TunnelAccess,
-    onHeartbeat: (TunnelToken, Duration) ⇒ Unit,
-    heartbeatService: HeartbeatService)
+    onHeartbeat: (TunnelToken, Duration) ⇒ Unit)
     (implicit refFactory: ActorRefFactory) =
   {
-    (pathEndOrSingleSlash & post) {
+    pathEndOrSingleSlash {
       headerValueByName(SecretHeaderName) { secret ⇒
         val tunnelToken = TunnelToken(tunnelId, TunnelToken.Secret(secret))
         val tunnel = tunnelAccess(tunnelToken)
-        heartbeatService.continueHeartbeat(tunnel.idempotence, onClientHeartbeat = onHeartbeat(tunnelToken, _)) ~
+        tunnel.heartbeatService.continueHeartbeat(onClientHeartbeat = onHeartbeat(tunnelToken, _)) ~
         entity(as[ByteString]) { request ⇒
           handleExceptions(connectionClosedExceptionHandler) {
-            heartbeatService.startHeartbeat(tunnel.idempotence, onHeartbeat = timeout ⇒ onHeartbeat(tunnelToken, timeout)) {
+            tunnel.heartbeatService.startHeartbeat(onHeartbeat = timeout ⇒ onHeartbeat(tunnelToken, timeout)) {
               timeout ⇒ tunnel.execute(request, timeout)
             }
           }
@@ -57,11 +55,11 @@ object TunnelWebServices {
 
   def tunnelHandlerOverviewRouteComplete(body: ⇒ Future[TunnelHandlerOverview])(implicit ec: ExecutionContext) =
     (pathEndOrSingleSlash & get) {
-      onSuccess(body) { response ⇒ complete(response) }
+      complete(body)
     }
 
   def tunnelOverviewsRouteComplete(body: ⇒ Future[immutable.Iterable[TunnelOverview]])(implicit ec: ExecutionContext) =
     (pathEndOrSingleSlash & get) {
-      onSuccess(body) { response ⇒ complete(response) }
+      complete(body)
     }
 }

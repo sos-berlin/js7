@@ -11,7 +11,6 @@ import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.alarm.AlarmClock
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
 import java.time.Duration
@@ -30,7 +29,6 @@ final class WebServiceActor @Inject private(
   agentOverviewProvider: Provider[AgentOverview],
   protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
-  protected val heartbeatService: HeartbeatService,
   protected val alarmClock: AlarmClock,
   extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,

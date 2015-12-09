@@ -21,7 +21,6 @@ trait TunnelWebService extends AgentWebService {
   protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration): Unit
   protected def tunnelHandlerOverview: Future[TunnelHandlerOverview]
   protected def tunnelOverviews: Future[immutable.Iterable[TunnelOverview]]
-  protected def heartbeatService: HeartbeatService
 
   private implicit val executionContext = actorRefFactory.dispatcher
 
@@ -29,7 +28,7 @@ trait TunnelWebService extends AgentWebService {
     pathPrefix("tunnel") {
       path(Segment) { idString ⇒
         post {
-          tunnelRequestRoute(TunnelId(idString))(tunnelAccess, onTunnelHeartbeat, heartbeatService)
+          tunnelRequestRoute(TunnelId(idString))(tunnelAccess, onTunnelHeartbeat)
         }
       } ~
       respondWithHeader(`Cache-Control`(`max-age`(0))) {

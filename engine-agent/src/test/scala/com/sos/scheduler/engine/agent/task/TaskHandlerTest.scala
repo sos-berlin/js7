@@ -193,7 +193,7 @@ private object TaskHandlerTest {
     def peerAddress = () ⇒ None
     def close() = {}
     def onInactivity(callback: Instant ⇒ Unit) = {}
-    def idempotence = ???
+    def heartbeatService = ???
     def request(request: ByteString, timeout: Option[Duration]) = ???
   }
 

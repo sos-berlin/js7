@@ -6,12 +6,12 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.common.utils.Exceptions._
-import com.sos.scheduler.engine.http.server.idempotence.Idempotence
+import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.data.TunnelToken
 import com.sos.scheduler.engine.tunnel.server.Handle._
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.{Duration, Instant}
-import scala.concurrent.{Future, ExecutionContext, Promise}
+import scala.concurrent.{ExecutionContext, Promise}
 
 /**
   * @author Joacim Zschimmer
@@ -27,7 +27,8 @@ private[server] class Handle(
   (implicit alarmClock: AlarmClock)
 extends TunnelHandle {
 
-  val idempotence = new Idempotence
+  private val startedAt = Instant.now
+  val heartbeatService = new HeartbeatService
   private val onInactivityCallback = new SetOnce[Instant ⇒ Unit]
 
   def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(tunnelToken)

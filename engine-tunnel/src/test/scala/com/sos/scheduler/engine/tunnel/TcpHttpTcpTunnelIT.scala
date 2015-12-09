@@ -15,7 +15,7 @@ import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
 import com.sos.scheduler.engine.tunnel.client.{TcpToHttpBridge, WebTunnelClient}
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.{TunnelAccess, TunnelHandle, TunnelListener, TunnelServer}
+import com.sos.scheduler.engine.tunnel.server.{TunnelAccess, TunnelListener, TunnelServer}
 import com.sos.scheduler.engine.tunnel.web.TunnelWebServices._
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
@@ -186,8 +186,7 @@ object TcpHttpTcpTunnelIT {
         (post & pathPrefix("test" / "tunnel" / Segment)) { idString ⇒
           tunnelRequestRoute(TunnelId(idString))(
             tunnelAccess,
-            onHeartbeat = (_, _) ⇒ {},
-            heartbeatService)
+            onHeartbeat = (_, _) ⇒ {})
         }
       }
     }

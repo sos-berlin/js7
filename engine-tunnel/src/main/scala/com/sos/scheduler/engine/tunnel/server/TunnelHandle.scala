@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.tunnel.server
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.http.server.idempotence.Idempotence
+import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.{Duration, Instant}
@@ -17,7 +17,7 @@ trait TunnelHandle extends AutoCloseable {
 
   final def id: TunnelId = tunnelToken.id
 
-  def idempotence: Idempotence
+  def heartbeatService: HeartbeatService
 
   def request(request: ByteString, timeout: Option[Duration]): Future[ByteString]
 
