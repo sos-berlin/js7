@@ -107,22 +107,19 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
     queue.clear()
   }
 
-  def delay[A](delay: Duration, name: String): Timer[A] =
+  def delay(delay: Duration, name: String): Timer[Unit] =
     at(now + delay, name)
 
-  def delay[A, B](
-    delay: Duration,
-    name: String,
-    completeWith: Try[A] = Timer.ElapsedFailure,
-    promise: Promise[A] = Promise[A](),
-    cancelWhenCompleted: Future[B] = NoFuture): Timer[A]
-  =
-    at(now + delay, name, completeWith, promise, cancelWhenCompleted)
+  def delay[A, B](delay: Duration, name: String, cancelWhenCompleted: Future[B]): Timer[A] =
+    at2(now + delay, name, cancelWhenCompleted = cancelWhenCompleted)
 
   def at(at: Instant, name: String): Timer[Unit] =
     add(new Timer[Unit](at, name))
 
-  def at[A, B](
+  def at[B](at: Instant, name: String, cancelWhenCompleted: Future[B]): Timer[Unit] =
+    at2(at, name, cancelWhenCompleted = cancelWhenCompleted)
+
+  private[timer] def at2[A, B](
     at: Instant,
     name: String,
     completeWith: Try[A] = Timer.ElapsedFailure,
@@ -184,13 +181,13 @@ object TimerService {
   private def timerToOverview(timer: Timer[_]) = TimerOverview(timer.at, name = timer.name)
 
   implicit class TimeoutFuture[A](val delegate: Future[A]) extends AnyVal {
-    def timeoutAfter(delay: Duration, name: String)(implicit timerService: TimerService, ec: ExecutionContext): Future[A] =
+    def timeoutAfter[B >: A](delay: Duration, name: String, completeWith: Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] =
       timeoutAt(now + delay, name)
 
-    def timeoutAt(at: Instant, name: String)(implicit timerService: TimerService, ec: ExecutionContext): Future[A] = {
-      val promise = Promise[A]()
+    def timeoutAt[B >: A](at: Instant, name: String, completeWith: Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] = {
+      val promise = Promise[B]()
       delegate onComplete promise.tryComplete
-      timerService.at(at, name, cancelWhenCompleted = promise.future, promise = promise)
+      timerService.at2(at, name, cancelWhenCompleted = promise.future, promise = promise, completeWith = completeWith)
       promise.future
     }
   }
