@@ -79,7 +79,7 @@
         <test.logback.configurationFile />
         <enginedoc.version>${project.version}</enginedoc.version>
         <argLine />
-        <LC_ALL>C</LC_ALL>    <!-- Neutrales Locale für H2Database -->
+        <LC_ALL>C</LC_ALL>    <!-- Neutral Locale for H2Database -->
 		<!-- disable strict javadoc validation of Java 8 -->
 		<additionalparam>-Xdoclint:none</additionalparam>
     </properties>
@@ -93,7 +93,6 @@
                 <configuration>
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <tagBase>scm:git:git@github.com:sos-berlin/scheduler-engine.git</tagBase>
-                    <!--tagNameFormat>{1}</tagNameFormat--><!-- {0} ist ${project.artifactId}, {1} ist ${project.version} -->
                     <tagNameFormat>v@{project.version}</tagNameFormat>
                     <allowTimestampedSnapshots>true</allowTimestampedSnapshots>
                 </configuration>
@@ -148,7 +147,7 @@
                     <environmentVariables>
                         <LC_ALL>${LC_ALL}</LC_ALL>
                     </environmentVariables>
-                    <argLine>-Xms10m -Xmx50m ${argLine}</argLine>  <!-- Sparsame Heap-Zuteilung für die parallelen Prozesse -->
+                    <argLine>-Xms10m -Xmx50m ${argLine}</argLine>  <!-- Small heap for multiple parallel JVM processes-->
                     <systemPropertyVariables>
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
@@ -216,10 +215,6 @@
                     <artifactId>maven-assembly-plugin</artifactId>
                     <version>2.5.1</version>
                 </plugin>
-                <!--plugin>
-                    <artifactId>maven-deploy-plugin</artifactId>
-                    <version>2.6</version>
-                </plugin-->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
