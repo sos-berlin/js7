@@ -872,18 +872,6 @@
         </dependencies>
     </dependencyManagement>
 
-    <distributionManagement>
-        <repository>
-            <id>sos-release</id>
-            <name>SOS Release Repository</name>
-            <url>${repositoryBase}/sos-release</url>
-        </repository>
-        <snapshotRepository>
-            <id>snapshots</id>
-            <url>${repositoryBase}/snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
-
     <scm>
         <connection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</connection>
         <developerConnection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</developerConnection>
