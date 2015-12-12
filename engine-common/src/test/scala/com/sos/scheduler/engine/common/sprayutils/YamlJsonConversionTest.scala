@@ -5,6 +5,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import spray.json._
+import spray.json.DefaultJsonProtocol._
 
 /**
  * @author Joacim Zschimmer
@@ -36,6 +37,12 @@ final class YamlJsonConversionTest extends FreeSpec {
 
   "toYaml" in {
     assert(toYaml(jsObject) == yaml)
+  }
+
+  "toYamlString" in {
+    case class A(x: Int, y: String)
+    implicit val jsonFormat = jsonFormat2(A.apply)
+    assert(A(123, "ABC").toYamlString == "x: 123\n" + "y: ABC\n")
   }
 
   "toJson" in {

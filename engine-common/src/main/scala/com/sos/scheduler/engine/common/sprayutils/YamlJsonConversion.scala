@@ -19,7 +19,11 @@ object YamlJsonConversion {
     new Yaml(options)
   }
 
-  def toYaml(v: JsValue) = yaml.dump(yaml.load(v.compactPrint))
+  def toYaml(v: JsValue): String = yaml.dump(yaml.load(v.compactPrint))
 
   def yamlToJsValue(yamlString: String): JsValue = valueToJsValue(yaml.load(yamlString))
+
+  implicit class ToYamlString[A](val delegate: A) extends AnyVal {
+    def toYamlString(implicit writer: JsonWriter[A]): String = toYaml(delegate.toJson)
+  }
 }
