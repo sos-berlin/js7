@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.Timer.nowMillis
 import com.sos.scheduler.engine.common.time.timer.TimerService._
-import java.lang.Math.addExact
 import java.time.Instant.now
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicBoolean
@@ -17,10 +16,9 @@ import scala.util.Try
 /**
  * @author Joacim Zschimmer
  */
-final class TimerService(precision: Duration, idleTimeout: Option[Duration] = None)(implicit ec: ExecutionContext) extends AutoCloseable {
+final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: ExecutionContext) extends AutoCloseable {
 
-  private val precisionMillis = precision.toMillis max 1
-  private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer[_] ⇒ millisToKey(a.atEpochMilli): java.lang.Long }))
+  private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer[_] ⇒ a.atEpochMilli: java.lang.Long }))
   @volatile private var closed = false
 
   private object clock {
@@ -56,29 +54,34 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
     def wake(): Unit = lock.synchronized { lock.notifyAll() }
 
     private def loop(): Unit = {
-      var timedout = false
-      var hot = false
-      while (!stopped && !timedout) {
-        queue.popNext(millisToKey(nowMillis())) match {
-          case Left(key) ⇒
-            if (key == neverKey) {
+      object waitUntil {
+        var hot = false
+        def apply(waitUntil: Long): Unit = {
+          waitUntil - nowMillis() match {
+            case remainingMillis if remainingMillis > 0 ⇒
               hot = false
+              lock.synchronized { lock.wait(remainingMillis) }
+            case d ⇒
+              if (hot) {
+                logger.warn(s"queue.popNext returns $d")
+                Thread.sleep(100)
+              }
+              hot = true
+          }
+        }
+      }
+      var timedout = false
+      while (!stopped && !timedout) {
+        queue.popNext(nowMillis()) match {
+          case Left(atMillis) ⇒
+            if (atMillis == neverMillis) {
+              waitUntil.hot = false
               timedout = idleUntilTimeout()
             } else {
-              keyToMillis(key) - nowMillis() match {
-                case duration if duration > 0 ⇒
-                  hot = false
-                  lock.synchronized { lock.wait(duration) }
-                case d ⇒
-                  if (hot) {
-                    logger.warn(s"queue.popNext returns $d")
-                    Thread.sleep(precisionMillis max 100)
-                  }
-                  hot = true
-              }
+              waitUntil(atMillis)
             }
           case Right(timer) ⇒
-            hot = false
+            waitUntil.hot = false
             timer.complete()
         }
       }
@@ -97,8 +100,8 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
     def isRunning = _isRunning.get
   }
 
-  private val neverTimer = new Timer[Nothing](Instant.ofEpochMilli((Long.MaxValue / precisionMillis - 1) * precisionMillis), "Never")
-  private val neverKey = millisToKey(neverTimer.atEpochMilli)
+  private val neverTimer = new Timer[Nothing](Instant.ofEpochMilli(Long.MaxValue), "Never")
+  private val neverMillis = neverTimer.atEpochMilli
   queue add neverTimer  // Marker at end of the never empty queue
 
   def close(): Unit = {
@@ -139,7 +142,7 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
   }
 
   private def add[A](timer: Timer[A]): timer.type = {
-    require(millisToKey(timer.at.toEpochMilli) < neverKey)
+    require(timer.at.toEpochMilli < neverMillis)
     requireState(!closed)
     val t = nextInstant
     queue.add(timer)
@@ -151,13 +154,13 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
 
   def cancel[A](timer: Timer[A]): Unit = {
     timer.cancel()
-    queue.remove(millisToKey(timer.atEpochMilli), timer)
+    queue.remove(timer.atEpochMilli, timer)
     clock.wake()
   }
 
   override def toString = "TimerService" + (if (isEmpty) "" else s"(${queue.head.at}: ${queue.size} timers)") mkString ""
 
-  def isEmpty = queue.isEmpty/*when closed*/ || queue.head.atEpochMilli == neverTimer.atEpochMilli
+  def isEmpty: Boolean = queue.headOption.fold(true) { _.atEpochMilli == neverTimer.atEpochMilli }
 
   def overview: TimerServiceOverview = TimerServiceOverview(
     count = queue.size - 1,
@@ -171,10 +174,6 @@ final class TimerService(precision: Duration, idleTimeout: Option[Duration] = No
   private[timer] def isRunning = clock.isRunning
 
   private def isEndMark[A](timer: Timer[_]) = timer.atEpochMilli == neverTimer.atEpochMilli
-
-  private def millisToKey(millis: Long) = addExact(millis, precisionMillis - 1) / precisionMillis
-
-  private def keyToMillis(key: Long) = key * precisionMillis
 }
 
 object TimerService {
