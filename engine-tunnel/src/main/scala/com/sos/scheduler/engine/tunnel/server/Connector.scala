@@ -161,7 +161,9 @@ extends Actor with FSM[State, Data] {
       goto(Closing) using NoData
 
     case Event(event, NoData) ⇒
-      logger.error(s"Unexpected message received in state $stateName: $event")
+      val msg = s"Unexpected message received in state $stateName: $event"
+      if (stateName == Closing) logger.debug(msg)
+      else logger.error(msg)
       closeBridge()
       goto(Closing) using NoData
   }
