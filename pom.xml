@@ -80,8 +80,6 @@
         <enginedoc.version>${project.version}</enginedoc.version>
         <argLine />
         <LC_ALL>C</LC_ALL>    <!-- Neutral Locale for H2Database -->
-		<!-- disable strict javadoc validation of Java 8 -->
-		<additionalparam>-Xdoclint:none</additionalparam>
     </properties>
 
     <build>
@@ -169,6 +167,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <configuration>
+                    <additionalparam>-Xdoclint:none</additionalparam>
                     <quiet>true</quiet>
                 </configuration>
                 <executions>
