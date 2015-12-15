@@ -9,7 +9,8 @@ import scala.collection.immutable
  */
 final case class ProcessClassConfiguration(
   processMaximum: Option[Int] = None,
-  agentUris: immutable.Seq[String] = Nil)
+  agentUris: immutable.Seq[String] = Nil,
+  select: Option[String] = None)
 extends XmlCommand {
 
   def xmlElem: xml.Elem = {
@@ -18,7 +19,10 @@ extends XmlCommand {
       agentUris match {
         case Nil ⇒ xml.NodeSeq.Empty
         case Seq(_) ⇒ xml.NodeSeq.Empty
-        case _ ⇒ <remote_schedulers>{agentUris map { o ⇒ <remote_scheduler remote_scheduler={o}/> }}</remote_schedulers>
+        case _ ⇒
+          <remote_schedulers select={select.orNull}>{
+            agentUris map { o ⇒ <remote_scheduler remote_scheduler={o}/> }
+          }</remote_schedulers>
       }
     }</process_class>
   }
