@@ -211,6 +211,20 @@ final class ScalaTimeTest extends FreeSpec {
     "Instant min Instant" in {
       Instant.ofEpochMilli(1) min Instant.ofEpochMilli(2) shouldEqual Instant.ofEpochMilli(1)
     }
+
+    "roundTo" in {
+      assert(Instant.parse("2015-01-01T12:01:01.499Z").roundTo(1.s) == Instant.parse("2015-01-01T12:01:01Z"))
+      assert(Instant.parse("2015-01-01T12:01:01.500Z").roundTo(1.s) == Instant.parse("2015-01-01T12:01:02Z"))
+      assert(Instant.parse("2015-01-01T12:01:29.999Z").roundTo(60.s) == Instant.parse("2015-01-01T12:01:00Z"))
+      assert(Instant.parse("2015-01-01T12:01:30Z"    ).roundTo(60.s) == Instant.parse("2015-01-01T12:02:00Z"))
+    }
+
+    "roundDownTo" in {
+      assert(Instant.parse("2015-01-01T12:01:01.499Z").roundDownTo(1.s) == Instant.parse("2015-01-01T12:01:01Z"))
+      assert(Instant.parse("2015-01-01T12:01:01.500Z").roundDownTo(1.s) == Instant.parse("2015-01-01T12:01:01Z"))
+      assert(Instant.parse("2015-01-01T12:01:29.999Z").roundDownTo(60.s) == Instant.parse("2015-01-01T12:01:00Z"))
+      assert(Instant.parse("2015-01-01T12:01:30Z"    ).roundDownTo(60.s) == Instant.parse("2015-01-01T12:01:00Z"))
+    }
   }
 
 //  "DateTime" - {

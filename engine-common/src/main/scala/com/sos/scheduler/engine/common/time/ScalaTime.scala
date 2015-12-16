@@ -121,6 +121,14 @@ object ScalaTime {
     def min(o: Instant): Instant = if (this <= o) delegate else o
     def max(o: Instant): Instant = if (this > o) delegate else o
     def compare(o: RichInstant) = delegate compareTo o.delegate
+
+    def roundTo(duration: Duration): Instant = this + duration / 2 roundDownTo duration
+
+    def roundDownTo(duration: Duration): Instant = {
+      val durationMillis = duration.toMillis
+      Instant.ofEpochMilli(delegate.toEpochMilli / durationMillis * durationMillis)
+    }
+
     override def toString = delegate.toString  // For ScalaTest
   }
 
