@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorSystem, Props}
 import akka.util.ByteString
 import com.google.inject.{Guice, Provides}
 import com.sos.scheduler.engine.agent.command.CommandMeta
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
@@ -256,5 +257,8 @@ private object TaskHandlerTest {
     @Provides @Singleton
     private def newAgentTaskId: () ⇒ AgentTaskId =
       AgentTaskIds.synchronized { AgentTaskIds.iterator.next }
+
+    @Provides @Singleton
+    private def agentConfiguration: AgentConfiguration = AgentConfiguration.forTest()
   }
 }

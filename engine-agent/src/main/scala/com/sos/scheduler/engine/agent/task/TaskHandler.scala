@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.agent.task
 
 import com.sos.scheduler.engine.agent.command.CommandMeta
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, Response, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
@@ -16,6 +17,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.alarm.AlarmClock
 import com.sos.scheduler.engine.common.utils.ConcurrentRegister
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
+import java.nio.file.Path
 import java.time.Instant
 import java.time.Instant.now
 import java.util.NoSuchElementException
@@ -29,11 +31,13 @@ import scala.concurrent.{Future, Promise}
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, alarmClock: AlarmClock) extends TaskHandlerView {
+final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, agentConfiguration: AgentConfiguration, alarmClock: AlarmClock)
+extends TaskHandlerView {
 
   private val terminating = new AtomicBoolean
   private val terminatedPromise = Promise[Unit]()
   private val tasks = new TaskRegister
+  private val crashKillScriptOption = agentConfiguration.killScript map { o ⇒ new CrashKillScript(o, agentConfiguration.crashKillScriptFile) }
 
   def isTerminating = terminating.get
   def terminated = terminatedPromise.future
@@ -53,6 +57,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, alarmClo
     }
     if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept task starts")
     val task = newAgentTask(command, meta.clientIpOption)
+    for (o ← crashKillScriptOption) o.add(task.id)
     tasks.insert(task)
     task.start()
     task.onTunnelInactivity(killAfterTunnelInactivity(task))
@@ -88,6 +93,7 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, alarmClo
     logger.info(s"$task terminated")
     task.close()
     tasks -= task.id
+    for (o ← crashKillScriptOption) o.remove(task.id)
   }
 
   private def executeSendProcessSignal(id: AgentTaskId, signal: ProcessSignal) = Future {
