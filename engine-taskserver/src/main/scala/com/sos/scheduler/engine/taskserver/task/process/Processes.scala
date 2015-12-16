@@ -31,6 +31,8 @@ object Processes {
 
   def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
 
+  def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
+
   private val OS: OperatingSystemSpecific = if (isWindows) OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
 
   private sealed trait OperatingSystemSpecific {
@@ -44,6 +46,8 @@ object Processes {
       file
     }
 
+    def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
+
     protected def outputFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
 
     def directShellCommandArguments(argument: String): immutable.Seq[String]
@@ -53,18 +57,20 @@ object Processes {
 
   private object OperatingSystemSpecific {
     private[Processes] object Unix extends OperatingSystemSpecific {
-      private val shellFileAttribute = asFileAttribute(PosixFilePermissions fromString "rwx------")
-      protected val outputFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
+      val shellFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rwx------"))
+        .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
+      val outputFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
         .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
 
-      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttribute)
+      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttributes: _*)
 
       def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
     }
 
     private[Processes] object Windows extends OperatingSystemSpecific {
       private val Cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
-      protected val outputFileAttributes = Nil
+      val shellFileAttributes = Nil
+      val outputFileAttributes = Nil
 
       def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
 

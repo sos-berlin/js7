@@ -26,9 +26,7 @@ import scala.concurrent.Future
  */
 final class Agent(module: Module) extends AutoCloseable {
 
-  def this(configuration: AgentConfiguration) = {
-    this(new AgentModule(configuration))
-  }
+  def this(configuration: AgentConfiguration) = this(new AgentModule(configuration))
 
   val injector = Guice.createInjector(PRODUCTION, module)
   val configuration = injector.instance[AgentConfiguration]
