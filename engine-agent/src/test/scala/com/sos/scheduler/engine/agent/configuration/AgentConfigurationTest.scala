@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.configuration
 
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.UseInternalKillScript
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
 import com.sos.scheduler.engine.common.time.ScalaTime._
@@ -42,7 +43,8 @@ final class AgentConfigurationTest extends FreeSpec {
   }
 
   "-kill-script=" in {
-    assert(conf(Nil).killScript == None)
+    assert(conf(Nil).killScript == Some(UseInternalKillScript))
+    assert(conf(List(s"-kill-script=")).killScript == None)
     val killScript = Paths.get("kill-script")
     assert(conf(List(s"-kill-script=$killScript")).killScript == Some(ProcessKillScript(killScript.toAbsolutePath)))
   }

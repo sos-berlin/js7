@@ -61,7 +61,7 @@ extends HasCloser with ClosedFuture {
       case SIGKILL ⇒
         processConfiguration.toCommandArgumentsOption match {
           case Some(args) ⇒
-            executeKillScriptThenKill(args) recover {
+            executeKillScript(args) recover {
               case t ⇒ logger.error(s"Cannot start kill script command '$args': $t")
             } onComplete { case _ ⇒
               killNow()
@@ -71,7 +71,7 @@ extends HasCloser with ClosedFuture {
         }
     }
 
-  private def executeKillScriptThenKill(args: Seq[String]) = Future[Unit] {
+  private def executeKillScript(args: Seq[String]) = Future[Unit] {
     logger.info("Executing kill script: " + (args mkString "  "))
     val onKillProcess = new ProcessBuilder(args).start()
     val promise = Promise[Unit]()

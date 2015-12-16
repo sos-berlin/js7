@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.configuration
 
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration._
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
@@ -32,7 +33,7 @@ final case class AgentConfiguration(
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
   rpcKeepaliveDuration: Option[Duration] = None,
-  killScript: Option[ProcessKillScript] = None)
+  killScript: Option[ProcessKillScript] = Some(UseInternalKillScript))
 {
   requireTcpPortNumber(httpPort)
   require(directory.isAbsolute)
@@ -45,16 +46,22 @@ final case class AgentConfiguration(
 }
 
 object AgentConfiguration {
+  val UseInternalKillScript = ProcessKillScript("")   // Marker
+
   def apply(args: Seq[String]): AgentConfiguration =
     CommandLineArguments.parse(args) { a ⇒
-      new AgentConfiguration(
+      val r = new AgentConfiguration(
         httpPort = a.asConverted("-http-port=")(parseTcpPort),
         httpInterfaceRestriction = a.getString("-ip-address="),
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
         logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
         rpcKeepaliveDuration = Some(a.asConvertedOption("-rpc-keepalive=")(parseDuration) getOrElse 300.s),
-        killScript = a.getString("-kill-script=") map { o ⇒ ProcessKillScript(Paths.get(o).toAbsolutePath) },
         jobJavaOptions = a.getString("-job-java-options=").toList)
+      r.copy(killScript = a.getString("-kill-script=") match {
+        case None ⇒ r.killScript  // -kill-script= not given: Agent uses the internally provided kill script
+        case Some("") ⇒ None      // -kill-script= (empty argument) means: don't use any kill script
+        case Some(o) ⇒ Some(ProcessKillScript(Paths.get(o).toAbsolutePath))
+      })
     }
 
   def forTest(httpPort: Int = findRandomFreeTcpPort()) = AgentConfiguration(

@@ -4,6 +4,7 @@ import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
 import com.google.inject.{Injector, Provides}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.UseInternalKillScript
 import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.TaskHandler
@@ -41,14 +42,14 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
 
   @Provides @Singleton
   private def agentConfiguration(): AgentConfiguration =
-    if (originalAgentConfiguration.killScript.nonEmpty)
-      originalAgentConfiguration
-    else {
-      val provider = new ProcessKillScriptProvider // closeWithCloser closer
+    if (originalAgentConfiguration.killScript contains UseInternalKillScript) {
       // After Agent termination, leave behind the kill script, in case of regular termination after error.
+      val provider = new ProcessKillScriptProvider // closeWithCloser closer
       val killScript = provider.provideTo(originalAgentConfiguration.logDirectory)  // logDirectory for lack of a work directory
       originalAgentConfiguration.copy(killScript = Some(killScript))
-    }
+    } else
+      originalAgentConfiguration
+
 
   @Provides @Singleton
   private def closer: Closer = Closer.create()
