@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.agent.configuration
 
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.nio.file.Paths
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -41,9 +42,9 @@ final class AgentConfigurationTest extends FreeSpec {
   }
 
   "-kill-script=" in {
-    assert(conf(Nil).killScriptFile == None)
+    assert(conf(Nil).killScript == None)
     val killScript = Paths.get("kill-script")
-    assert(conf(List(s"-kill-script=$killScript")).killScriptFile == Some(killScript.toAbsolutePath))
+    assert(conf(List(s"-kill-script=$killScript")).killScript == Some(ProcessKillScript(killScript.toAbsolutePath)))
   }
 
   "-rpc-keepalive=" in {

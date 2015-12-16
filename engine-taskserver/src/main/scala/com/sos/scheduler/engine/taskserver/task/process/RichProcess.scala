@@ -59,10 +59,10 @@ extends HasCloser with ClosedFuture {
         logger.info("destroy (SIGTERM)")
         process.destroy()
       case SIGKILL ⇒
-        processConfiguration.killScriptFileOption match {
-          case Some(file) ⇒
-            executeKillScriptFileThenKill(file) recover {
-              case t ⇒ logger.error(s"Cannot start kill script '$file': $t")
+        processConfiguration.toCommandArgumentsOption match {
+          case Some(args) ⇒
+            executeKillScriptThenKill(args) recover {
+              case t ⇒ logger.error(s"Cannot start kill script command '$args': $t")
             } onComplete { case _ ⇒
               killNow()
             }
@@ -71,15 +71,14 @@ extends HasCloser with ClosedFuture {
         }
     }
 
-  private def executeKillScriptFileThenKill(file: Path) = Future[Unit] {
-    val args = toShellCommandArguments(file, List(processConfiguration.killScriptArgument))
-    logger.info("Executing kill script: " + (args mkString ", "))
+  private def executeKillScriptThenKill(args: Seq[String]) = Future[Unit] {
+    logger.info("Executing kill script: " + (args mkString "  "))
     val onKillProcess = new ProcessBuilder(args).start()
     val promise = Promise[Unit]()
       blocking { waitForProcessTermination(onKillProcess) }
       onKillProcess.exitValue match {
         case 0 ⇒
-        case o ⇒ logger.warn(s"Kill script '$file' has returned exit code $o")
+        case o ⇒ logger.warn(s"Kill script '${args(0)}' has returned exit code $o")
       }
       promise.success(())
     }
@@ -101,7 +100,7 @@ extends HasCloser with ClosedFuture {
 
   def stdin = process.getOutputStream
 
-  override def toString = (processConfiguration.idStringOption ++ List(processToString(process, pidOption)) ++ processConfiguration.fileOption) mkString " "
+  override def toString = (processConfiguration.agentTaskIdOption ++ List(processToString(process, pidOption)) ++ processConfiguration.fileOption) mkString " "
 }
 
 object RichProcess {

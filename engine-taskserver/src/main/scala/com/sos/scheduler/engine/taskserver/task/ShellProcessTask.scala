@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
@@ -34,7 +35,7 @@ private[task] final class ShellProcessTask(
   variablePrefix: String,
   logDirectory: Path,
   logFilenamePart: String,
-  killScriptPathOption: Option[Path],
+  killScriptOption: Option[ProcessKillScript],
   taskServerMainTerminatedOption: Option[Future[Unit]] = None)
 extends HasCloser with Task {
 
@@ -73,15 +74,15 @@ extends HasCloser with Task {
       val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
-    val (idStringOption, killScriptFileOption) =
+    val (agentTaskIdOption, killScriptFileOption) =
       if (taskServerMainTerminatedOption.nonEmpty) (None, None)
-      else (Some(agentTaskId.string), killScriptPathOption)  // No idString if this is an own process (due to a monitor), already started with idString
+      else (Some(agentTaskId), killScriptOption)  // No idString if this is an own process (due to a monitor), already started with idString
     richProcessOnce := RichProcess.startShellScript(
       ProcessConfiguration(
         processStdFileMap,
         additionalEnvironment = env,
-        idStringOption = idStringOption,
-        killScriptFileOption = killScriptFileOption),
+        agentTaskIdOption = agentTaskIdOption,
+        killScriptOption = killScriptFileOption),
       name = jobName,
       scriptString = module.script.string.trim)
     .closeWithCloser

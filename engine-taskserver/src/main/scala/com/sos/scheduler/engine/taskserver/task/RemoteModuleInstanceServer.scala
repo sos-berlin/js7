@@ -62,7 +62,7 @@ extends HasCloser with Invocable {
           variablePrefix = taskArguments.shellVariablePrefix,
           logDirectory = taskStartArguments.logDirectory,
           logFilenamePart = taskStartArguments.logFilenamePart,
-          killScriptPathOption = taskStartArguments.killScriptFileOption,
+          killScriptOption = taskStartArguments.killScriptOption,
           taskServerMainTerminatedOption = taskServerMainTerminatedOption)
       case module: JavaModule ⇒
         new JavaProcessTask(module, commonArguments)

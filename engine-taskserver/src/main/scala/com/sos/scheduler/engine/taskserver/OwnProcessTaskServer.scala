@@ -26,8 +26,8 @@ extends TaskServer {
       ProcessConfiguration(
         stdFileMap,
         additionalEnvironment = taskStartArguments.environment,
-        idStringOption = Some(taskStartArguments.agentTaskId.string),
-        killScriptFileOption = taskStartArguments.killScriptFileOption),
+        agentTaskIdOption = Some(taskStartArguments.agentTaskId),
+        killScriptOption = taskStartArguments.killScriptOption),
       options = javaOptions,
       classpath = Some(javaClasspath + File.pathSeparator + JavaProcess.OwnClasspath),
       mainClass = TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix

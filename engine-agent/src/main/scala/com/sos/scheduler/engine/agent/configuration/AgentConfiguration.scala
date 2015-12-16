@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.configuration
 
+import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
@@ -31,7 +32,7 @@ final case class AgentConfiguration(
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
   rpcKeepaliveDuration: Option[Duration] = None,
-  killScriptFile: Option[Path] = None)
+  killScript: Option[ProcessKillScript] = None)
 {
   requireTcpPortNumber(httpPort)
   require(directory.isAbsolute)
@@ -52,7 +53,7 @@ object AgentConfiguration {
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
         logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
         rpcKeepaliveDuration = Some(a.asConvertedOption("-rpc-keepalive=")(parseDuration) getOrElse 300.s),
-        killScriptFile = a.getString("-kill-script=") map { o ⇒ Paths.get(o).toAbsolutePath },
+        killScript = a.getString("-kill-script=") map { o ⇒ ProcessKillScript(Paths.get(o).toAbsolutePath) },
         jobJavaOptions = a.getString("-job-java-options=").toList)
     }
 

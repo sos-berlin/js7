@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
@@ -71,7 +72,7 @@ final class RichProcessTest extends FreeSpec {
   }
 
   "sendProcessSignal SIGKILL" in {
-    val idString = "TEST-PROCESS-ID"
+    val agentTaskId = AgentTaskId("TEST-PROCESS-ID")
     val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 7 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 6"
     withCloser { closer ⇒
       val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "RichProcessTest-kill")
@@ -85,7 +86,10 @@ final class RichProcessTest extends FreeSpec {
         delete(killScriptOutputFile)
         delete(killScriptFile)
       }
-      val processConfig = ProcessConfiguration(stdFileMap = stdFileMap, idStringOption = Some(idString), killScriptFileOption = Some(killScriptFile))
+      val processConfig = ProcessConfiguration(
+        stdFileMap = stdFileMap,
+        agentTaskIdOption = Some(agentTaskId),
+        killScriptOption = Some(ProcessKillScript(killScriptFile)))
       val shellProcess = startShellScript(processConfig, scriptString = script)
       assert(shellProcess.processConfiguration.files.size == 3)
       sleep(3.s)
@@ -98,8 +102,8 @@ final class RichProcessTest extends FreeSpec {
       shellProcess.close()
 
       assert(stdFileMap(Stdout).contentString contains "SCRIPT-ARGUMENTS=")
-      assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=-agent-task-id=$idString")
-      assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=-kill-agent-task-id=$idString")
+      assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=-agent-task-id=${agentTaskId.string}")
+      assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=-kill-agent-task-id=${agentTaskId.string}")
     }
   }
 

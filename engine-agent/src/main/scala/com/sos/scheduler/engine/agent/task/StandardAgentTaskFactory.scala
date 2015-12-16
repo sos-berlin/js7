@@ -65,7 +65,7 @@ extends AgentTaskFactory {
       directory = agentConfiguration.directory,
       logDirectory = agentConfiguration.logDirectory,
       environment = agentConfiguration.environment,
-      killScriptFileOption = agentConfiguration.killScriptFile,
+      killScriptOption = agentConfiguration.killScript,
       rpcKeepaliveDurationOption = agentConfiguration.rpcKeepaliveDuration)
     if (sys.props contains UseThreadPropertyName) { // For debugging
       logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")

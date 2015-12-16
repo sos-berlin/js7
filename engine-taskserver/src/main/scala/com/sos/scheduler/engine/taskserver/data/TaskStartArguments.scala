@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.data
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 import com.sos.scheduler.engine.common.system.FileUtils._
@@ -26,7 +26,7 @@ final case class TaskStartArguments(
   logDirectory: Path,
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
   logStdoutAndStderr: Boolean = false,
-  killScriptFileOption: Option[Path] = None,
+  killScriptOption: Option[ProcessKillScript] = None,
   rpcKeepaliveDurationOption: Option[Duration])
 {
   def masterInetSocketAddress = toInetSocketAddress(masterAddress)

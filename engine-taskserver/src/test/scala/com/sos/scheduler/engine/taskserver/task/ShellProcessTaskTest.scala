@@ -107,7 +107,7 @@ private object ShellProcessTaskTest {
       variablePrefix = TaskArguments.DefaultShellVariablePrefix,
       logDirectory = temporaryDirectory,
       logFilenamePart = s"ShellProcessTaskTest-$id",
-      killScriptPathOption = None)
+      killScriptOption = None)
 
   private def testScript(exitCode: Int) = Script(
     (if (isWindows) s"@echo off\necho $TestName=%$TestName%" else s"echo $TestName=$$$TestName") +
