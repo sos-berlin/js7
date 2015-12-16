@@ -5,7 +5,7 @@ import java.util.NoSuchElementException
 /**
  * @author Joacim Zschimmer
  */
-trait SpecializedProxyIDispatch extends ProxyIDispatch
+trait SpecializedProxyIDispatch extends CachingProxyIDispatch
 
 object SpecializedProxyIDispatch  {
 
