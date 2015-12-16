@@ -82,8 +82,10 @@ extends TunnelHandle {
 private object Handle {
   private val logger = Logger(getClass)
 
-  sealed trait State
-  case object Uninitialized extends State
-  case class RequestBeforeConnected(request: Connector.Request) extends State
-  case class ConnectedConnector(connector: ActorRef) extends State
+  private[server] sealed trait State {
+    override def toString = getClass.getSimpleName
+  }
+  private[server] case object Uninitialized extends State
+  private[server] case class RequestBeforeConnected(request: Connector.Request) extends State
+  private[server] case class ConnectedConnector(connector: ActorRef) extends State
 }
