@@ -36,7 +36,7 @@ import spray.testkit.ScalatestRouteTest
 final class TunnelWebServicesTest extends FreeSpec with ScalatestRouteTest with TunnelWebService {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
-  private implicit val timerService = new TimerService(100.ms, idleTimeout = Some(1.s))
+  private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
 
   protected def tunnelAccess(tunnelToken: TunnelToken) = new TunnelAccess {
     val heartbeatService = new HeartbeatService

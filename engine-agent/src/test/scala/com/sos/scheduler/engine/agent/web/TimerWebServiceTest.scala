@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.agent.web
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.{TimerOverview, TimerService, TimerServiceOverview}
 import java.time.Instant
 import org.junit.runner.RunWith
@@ -23,7 +22,7 @@ import spray.testkit.ScalatestRouteTest
 final class TimerWebServiceTest extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with TimerWebService  {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
-  protected lazy val timerService = new TimerService(1.s)
+  protected lazy val timerService = new TimerService
 
   override protected def afterAll() = {
     timerService.close()
@@ -33,7 +32,11 @@ final class TimerWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
   "timerService (empty)" in {
     Get(Uri("/jobscheduler/agent/api/timer")) ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TimerServiceOverview] == timerService.overview)
-      assert(responseAs[JsObject] == JsObject("count" → JsNumber(0)))
+      assert(responseAs[JsObject] == JsObject(
+        "completeCount" → JsNumber(0),
+        "elapsedCount" → JsNumber(0),
+        "count" → JsNumber(0)
+      ))
     }
   }
 
@@ -51,6 +54,8 @@ final class TimerWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     Get(Uri("/jobscheduler/agent/api/timer")) ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TimerServiceOverview] == timerService.overview)
       assert(responseAs[JsObject] == JsObject(
+        "completeCount" → JsNumber(0),
+        "elapsedCount" → JsNumber(0),
         "count" → JsNumber(3),
         "first" → JsObject(
           "at" → JsString("2111-01-01T12:11:11Z"),
@@ -76,5 +81,4 @@ final class TimerWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
           "name" → JsString("TEST-C"))))
     }
   }
-
 }

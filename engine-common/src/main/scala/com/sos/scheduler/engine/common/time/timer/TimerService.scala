@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.Timer.nowMillis
 import com.sos.scheduler.engine.common.time.timer.TimerService._
+import java.lang.System.currentTimeMillis
 import java.time.Instant.now
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicBoolean
@@ -12,6 +13,7 @@ import org.scalactic.Requirements._
 import scala.collection.immutable
 import scala.concurrent._
 import scala.util.Try
+import spray.json._
 
 /**
  * @author Joacim Zschimmer
@@ -20,6 +22,8 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
 
   private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer[_] ⇒ a.atEpochMilli: java.lang.Long }))
   @volatile private var closed = false
+  @volatile private var elapsedCounter = 0
+  @volatile private var timerCompleteCounter = 0
 
   private object clock {
     private val logger = Logger(getClass)
@@ -60,7 +64,9 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
           waitUntil - nowMillis() match {
             case remainingMillis if remainingMillis > 0 ⇒
               hot = false
+              val t = currentTimeMillis
               lock.synchronized { lock.wait(remainingMillis) }
+              if (currentTimeMillis - t >= remainingMillis) elapsedCounter += 1  // Time elapsed (probably no notifyAll)
             case d ⇒
               if (hot) {
                 logger.warn(s"queue.popNext returns $d")
@@ -82,6 +88,7 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
             }
           case Right(timer) ⇒
             waitUntil.hot = false
+            timerCompleteCounter += 1
             timer.complete()
         }
       }
@@ -107,6 +114,7 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
   def close(): Unit = {
     closed = true
     clock.stop()
+    logger.debug("close " + overview.toJson.compactPrint)
     queue.clear()
   }
 
@@ -117,7 +125,7 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
     at2(now + delay, name, cancelWhenCompleted = cancelWhenCompleted)
 
   def at(at: Instant, name: String): Timer[Unit] =
-    add(new Timer[Unit](at, name))
+    at2(at, name)
 
   def at[B](at: Instant, name: String, cancelWhenCompleted: Future[B]): Timer[Unit] =
     at2(at, name, cancelWhenCompleted = cancelWhenCompleted)
@@ -129,7 +137,7 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
     promise: Promise[A] = Promise[A](),
     cancelWhenCompleted: Future[B] = NoFuture): Timer[A] =
   {
-    val timer = new Timer(at, name, completeWith, promise)
+    val timer = new Timer(chooseWakeTime(at), name, completeWith, promise)
     if (cancelWhenCompleted.isCompleted) {
       timer.cancel()
     } else {
@@ -163,6 +171,8 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
   def isEmpty: Boolean = queue.headOption.fold(true) { _.atEpochMilli == neverTimer.atEpochMilli }
 
   def overview: TimerServiceOverview = TimerServiceOverview(
+    elapsedCount = elapsedCounter,
+    completeCount = timerCompleteCounter,
     count = queue.size - 1,
     first = queue.headOption filterNot isEndMark map timerToOverview,
     last = (queue.toSeq dropRight 1).lastOption map timerToOverview)  // O(queue.size) !!!
@@ -177,6 +187,30 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
 }
 
 object TimerService {
+  private val logger = Logger(getClass)
+
+  /**
+    * Coalesces wake-up times to reduce processor wake-ups.
+    * @see http://msdn.microsoft.com/en-us/library/windows/hardware/gg463266.aspx
+    */
+  private def chooseWakeTime(at: Instant): Instant = roundUp(at, currentTimeMillis = currentTimeMillis)
+
+  private[timer] def roundUp(at: Instant, currentTimeMillis: Long): Instant = {
+    val atMillis = at.toEpochMilli
+    val round = roundUp(atMillis - currentTimeMillis)
+    Instant.ofEpochMilli((atMillis + round - 1) / round * round)
+  }
+
+  private def roundUp(millis: Long): Long =
+    millis match {
+      case d if d >= 10000 ⇒ 1000
+      case d if d >= 5000 ⇒ 500
+      case d if d >= 1000 ⇒ 100
+      case d if d >= 500 ⇒ 50
+      case d if d >= 100 ⇒ 10
+      case _ ⇒ 1
+    }
+
   private def timerToOverview(timer: Timer[_]) = TimerOverview(timer.at, name = timer.name)
 
   implicit class TimeoutFuture[A](val delegate: Future[A]) extends AnyVal {

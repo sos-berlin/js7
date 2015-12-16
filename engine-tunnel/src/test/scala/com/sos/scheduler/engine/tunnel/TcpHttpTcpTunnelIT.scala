@@ -22,6 +22,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.Random
@@ -29,7 +30,6 @@ import spray.can.Http
 import spray.http.Uri
 import spray.http.Uri.Path
 import spray.routing.HttpServiceActor
-import ExecutionContext.Implicits.global
 
 /**
  * Tests a whole tunnel from TCP via HTTP to TCP.
@@ -40,7 +40,7 @@ import ExecutionContext.Implicits.global
 final class TcpHttpTcpTunnelIT extends FreeSpec {
 
   private implicit val timeout = Timeout(5.seconds)
-  private implicit val timerService = new TimerService(10.ms, idleTimeout = Some(1.s))
+  private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
 
   "Normal application" in {
     val (clientSide, serverSide) = startTunneledSystem()
@@ -154,7 +154,7 @@ object TcpHttpTcpTunnelIT {
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
-      implicit val timerService = new TimerService(100.ms, idleTimeout = Some(1.s))
+      implicit val timerService = new TimerService(idleTimeout = Some(1.s))
       val heartbeatService = new HeartbeatService
       actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer.tunnelAccess, heartbeatService) })
       val httpAddress = awaitResult(startedPromise.future, 10.s)
