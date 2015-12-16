@@ -60,16 +60,10 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, alarmClo
   }
 
   private def killAfterTunnelInactivity(task: AgentTask)(since: Instant): Unit = {
-    val firstSignal = if (isWindows) SIGKILL else SIGTERM
-    logger.error(s"$task has no connection activity since $since. Task is being killed" + (if (firstSignal == SIGTERM) ", 2s after SIGTERM" else ""))
-    ignoreException(logger.error) { task.sendProcessSignal(firstSignal) }
+    logger.error(s"$task has no connection activity since $since. Task is being killed")
+    ignoreException(logger.error) { task.sendProcessSignal(SIGKILL) }
     task.closeTunnel()  // This terminates Remoting and then SimpleTaskServer
     task.terminated.onComplete { case _ ⇒ removeTaskAfterTermination(task) }
-    if (firstSignal == SIGTERM) {
-      alarmClock.delay(TunnelInactivitySigtermDuration, name = s"$task TunnelInactivitySigtermDuration" ) {
-        tryKillTask(task)
-      }
-    }
   }
 
   private def executeCloseTask(id: AgentTaskId, kill: Boolean) = {
@@ -168,7 +162,6 @@ final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, alarmClo
 private object TaskHandler {
   private val logger = Logger(getClass)
   private val ImmediateTerminationDelay = 1.s  // Allow HTTP with termination command request to be responded
-  private val TunnelInactivitySigtermDuration = 2.s  // Time between SIGTERM and SIGKILL
 
   private class TaskRegister extends ConcurrentRegister[AgentTask] {
     override def onAdded(task: AgentTask) = logger.info(s"$task registered")
