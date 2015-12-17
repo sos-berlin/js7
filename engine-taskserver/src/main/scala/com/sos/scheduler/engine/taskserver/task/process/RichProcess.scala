@@ -53,22 +53,24 @@ extends HasCloser with ClosedFuture {
   def terminated: Future[Unit] = terminatedPromise.future
 
   def sendProcessSignal(signal: ProcessSignal): Unit =
-    signal match {
-      case SIGTERM ⇒
-        if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
-        logger.info("destroy (SIGTERM)")
-        process.destroy()
-      case SIGKILL ⇒
-        processConfiguration.toCommandArgumentsOption match {
-          case Some(args) ⇒
-            executeKillScript(args) recover {
-              case t ⇒ logger.error(s"Cannot start kill script command '$args': $t")
-            } onComplete { case _ ⇒
+    if (process.isAlive) {
+      signal match {
+        case SIGTERM ⇒
+          if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
+          logger.info("destroy (SIGTERM)")
+          process.destroy()
+        case SIGKILL ⇒
+          processConfiguration.toCommandArgumentsOption match {
+            case Some(args) ⇒
+              executeKillScript(args) recover {
+                case t ⇒ logger.error(s"Cannot start kill script command '$args': $t")
+              } onComplete { case _ ⇒
+                killNow()
+              }
+            case None ⇒
               killNow()
-            }
-          case None ⇒
-            killNow()
-        }
+          }
+      }
     }
 
   private def executeKillScript(args: Seq[String]) = Future[Unit] {
