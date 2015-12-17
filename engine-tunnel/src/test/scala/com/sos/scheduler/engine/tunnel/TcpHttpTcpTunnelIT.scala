@@ -40,7 +40,7 @@ import spray.routing.HttpServiceActor
 final class TcpHttpTcpTunnelIT extends FreeSpec {
 
   private implicit val timeout = Timeout(5.seconds)
-  private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
+  private implicit val timerService = TimerService(idleTimeout = Some(1.s))
 
   "Normal application" in {
     val (clientSide, serverSide) = startTunneledSystem()
@@ -154,7 +154,7 @@ object TcpHttpTcpTunnelIT {
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
-      implicit val timerService = new TimerService(idleTimeout = Some(1.s))
+      implicit val timerService = TimerService(idleTimeout = Some(1.s))
       val heartbeatService = new HeartbeatService
       actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer.tunnelAccess, heartbeatService) })
       val httpAddress = awaitResult(startedPromise.future, 10.s)

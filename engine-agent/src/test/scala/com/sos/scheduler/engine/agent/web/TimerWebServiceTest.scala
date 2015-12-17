@@ -22,7 +22,7 @@ import spray.testkit.ScalatestRouteTest
 final class TimerWebServiceTest extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with TimerWebService  {
 
   protected implicit lazy val actorRefFactory = ActorSystem()
-  protected lazy val timerService = new TimerService
+  protected lazy val timerService = TimerService()
 
   override protected def afterAll() = {
     timerService.close()

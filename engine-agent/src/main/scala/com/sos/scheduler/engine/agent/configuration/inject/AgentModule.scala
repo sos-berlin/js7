@@ -35,7 +35,7 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
 
   @Provides @Singleton
   private def timerService(actorSystem: ActorSystem, closer: Closer): TimerService =
-    new TimerService()(actorSystem.dispatcher) closeWithCloser closer
+    TimerService()(actorSystem.dispatcher) closeWithCloser closer
 
   @Provides @Singleton
   private def actorSystem(closer: Closer): ActorSystem = newActorSystem("JobScheduler-Agent")(closer)

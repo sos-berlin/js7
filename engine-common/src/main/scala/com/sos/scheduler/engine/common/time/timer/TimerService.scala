@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.time.timer
 
-import com.sos.scheduler.engine.common.scalautil.Futures.NoFuture
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.Timer.nowMillis
@@ -18,7 +17,7 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: ExecutionContext) extends AutoCloseable {
+final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Option[Duration] = None) extends AutoCloseable {
 
   private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer[_] ⇒ a.atEpochMilli: java.lang.Long }))
   @volatile private var closed = false
@@ -40,15 +39,13 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
 
     def startOrWake(): Unit = {
       if (_isRunning.compareAndSet(false, true)) {
-        Future {
-          blocking {
-            try loop()
-            catch { case t: Throwable ⇒
-              logger.error(s"$t", t)
-              throw t
-            }
-            finally _isRunning.set(false)
+        runInBackground {
+          try loop()
+          catch { case t: Throwable ⇒
+            logger.error(s"$t", t)
+            throw t
           }
+          finally _isRunning.set(false)
         }
       } else {
         wake()
@@ -121,23 +118,16 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
   def delay(delay: Duration, name: String): Timer[Unit] =
     at(now + delay, name)
 
-  def delay[A, B](delay: Duration, name: String, cancelWhenCompleted: Future[B]): Timer[A] =
-    at2(now + delay, name, cancelWhenCompleted = cancelWhenCompleted)
+  def delay[B](delay: Duration, name: String, cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): Timer[Unit] =
+    at(now + delay, name, cancelWhenCompleted)
 
   def at(at: Instant, name: String): Timer[Unit] =
-    at2(at, name)
+    add(new Timer[Unit](chooseWakeTime(at), name))
 
-  def at[B](at: Instant, name: String, cancelWhenCompleted: Future[B]): Timer[Unit] =
-    at2(at, name, cancelWhenCompleted = cancelWhenCompleted)
+  def at[B](at: Instant, name: String, cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): Timer[Unit] =
+    add(new Timer[Unit](chooseWakeTime(at), name), cancelWhenCompleted)
 
-  private[timer] def at2[A, B](
-    at: Instant,
-    name: String,
-    completeWith: Try[A] = Timer.ElapsedFailure,
-    promise: Promise[A] = Promise[A](),
-    cancelWhenCompleted: Future[B] = NoFuture): Timer[A] =
-  {
-    val timer = new Timer(chooseWakeTime(at), name, completeWith, promise)
+  private def add[A, B](timer: Timer[A], cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): timer.type = {
     if (cancelWhenCompleted.isCompleted) {
       timer.cancel()
     } else {
@@ -149,7 +139,7 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
     timer
   }
 
-  private def add[A](timer: Timer[A]): timer.type = {
+  private[timer] def add[A](timer: Timer[A]): timer.type = {
     require(timer.at.toEpochMilli < neverMillis)
     requireState(!closed)
     val t = nextInstant
@@ -189,6 +179,9 @@ final class TimerService(idleTimeout: Option[Duration] = None)(implicit ec: Exec
 object TimerService {
   private val logger = Logger(getClass)
 
+  def apply(idleTimeout: Option[Duration] = None)(implicit ec: ExecutionContext) =
+    new TimerService(runInBackground = body ⇒ Future { blocking { body } }, idleTimeout)
+
   /**
     * Coalesces wake-up times to reduce processor wake-ups.
     * @see http://msdn.microsoft.com/en-us/library/windows/hardware/gg463266.aspx
@@ -220,7 +213,7 @@ object TimerService {
     def timeoutAt[B >: A](at: Instant, name: String, completeWith: Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] = {
       val promise = Promise[B]()
       delegate onComplete promise.tryComplete
-      timerService.at2(at, name, cancelWhenCompleted = promise.future, promise = promise, completeWith = completeWith)
+      timerService.add(new Timer(at, name, promise = promise, completeWith = completeWith), cancelWhenCompleted = promise.future)
       promise.future
     }
   }

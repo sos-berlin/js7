@@ -31,7 +31,7 @@ final class TunnelIT extends FreeSpec {
 
   private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
   import actorSystem.dispatcher
-  private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
+  private implicit val timerService = TimerService(idleTimeout = Some(1.s))
   private lazy val tunnelServer = new TunnelServer(actorSystem)
 
   "Simple" in {
