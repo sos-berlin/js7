@@ -12,30 +12,33 @@ import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
 final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
 
-  private val taskIds = new ScalaConcurrentHashMap[AgentTaskId, Unit]
+  private val taskIds = new mutable.HashMap[AgentTaskId, Unit]
 
   deleteIfExists(file)
   createFile(file)
 
-  def add(id: AgentTaskId) = {
-    taskIds.put(id, ())
-    ignoreException(logger.warn) {
-      file.append(idToKillCommand(id), defaultCharset)
+  def add(id: AgentTaskId) =
+    synchronized {
+      taskIds.put(id, ())
+      ignoreException(logger.warn) {
+        file.append(idToKillCommand(id), defaultCharset)
+      }
     }
-  }
 
-  def remove(id: AgentTaskId): Unit = {
-    taskIds -= id
-    ignoreException(logger.warn) {
-      rewriteFile()
+  def remove(id: AgentTaskId): Unit =
+    synchronized {
+      taskIds -= id
+      ignoreException(logger.warn) {
+        rewriteFile()
+      }
     }
-  }
 
   private def rewriteFile(): Unit = {
     val tmp = file.getParent resolve s"~${file.getFileName}.tmp"
