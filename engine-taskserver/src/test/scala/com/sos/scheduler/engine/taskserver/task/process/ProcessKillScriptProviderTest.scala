@@ -18,6 +18,8 @@ import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 
 /**
+  * JS-1558 Agent includes kill scripts
+  *
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
@@ -74,6 +76,7 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
       assert(killTerminated)
       val terminated = process.waitFor(60, SECONDS)
       assert(terminated)
+      sleep(1.s)  // Time to let kill take effect
       val outSize = size(out)
       sleep(2.s)
       assert(outSize == size(out), "Stdout file must not grow after kill script")
