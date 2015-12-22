@@ -2,15 +2,18 @@ package com.sos.scheduler.engine.common.async
 
 import com.sos.scheduler.engine.common.async.CallQueue._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import java.util.NoSuchElementException
 import java.time.Instant
+import java.util.NoSuchElementException
 import scala.concurrent.ExecutionContext
 
 trait CallQueue extends AutoCloseable {
 
   object executionContext extends ExecutionContext {
     def execute(o: Runnable): Unit = {
-      add(o)
+      try add(o)
+      catch {
+        case t: CallQueue.ClosedException ⇒ logger.warn(s"$t ($o)")
+      }
     }
 
     def reportFailure(t: Throwable): Unit = {

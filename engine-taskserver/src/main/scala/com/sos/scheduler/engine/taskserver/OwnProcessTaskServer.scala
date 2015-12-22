@@ -1,11 +1,7 @@
 package com.sos.scheduler.engine.taskserver
 
-import com.google.common.io.Closer
 import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.common.scalautil.AutoClosing._
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.taskserver.OwnProcessTaskServer._
+import com.sos.scheduler.engine.common.scalautil.SetOnce
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, ProcessConfiguration, RichProcess}
 import java.io.File
@@ -19,48 +15,43 @@ final class OwnProcessTaskServer(val taskStartArguments: TaskStartArguments, jav
 (implicit executionContext: ExecutionContext)
 extends TaskServer {
 
-  private var process: RichProcess = null
+  private val processOnce = new SetOnce[RichProcess]
   private val terminatedPromise = Promise[Unit]()
+
   def terminated = terminatedPromise.future
 
   def start() = {
-    val stdFileMap = RichProcess.createTemporaryStdFiles()
-    val closer = Closer.create()
-    closeOnError(closer) {
-      closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
-      process = JavaProcess.startJava(
-        ProcessConfiguration(
-          stdFileMap,
-          additionalEnvironment = taskStartArguments.environment,
-          idStringOption = Some(taskStartArguments.agentTaskId.string),
-          killScriptFileOption = taskStartArguments.killScriptFileOption),
-        options = javaOptions,
-        classpath = Some(javaClasspath + File.pathSeparator + JavaProcess.OwnClasspath),
-        mainClass = TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix
-        arguments = Nil)
-      process.closed.onComplete { tried ⇒
-        for (t ← tried.failed) logger.error(t.toString, t)
-        try closer.close()
-        finally terminatedPromise.complete(tried)
-      }
-      val a = taskStartArguments.copy(stdFileMap = stdFileMap, logStdoutAndStderr = true)
-      process.stdinWriter.write(a.toJson.compactPrint)
-      process.stdinWriter.close()
-    }
+    val stdFileMap = RichProcess.createStdFiles(taskStartArguments.logDirectory, id = taskStartArguments.logFilenamePart)
+    val process = JavaProcess.startJava(
+      ProcessConfiguration(
+        stdFileMap,
+        additionalEnvironment = taskStartArguments.environment,
+        agentTaskIdOption = Some(taskStartArguments.agentTaskId),
+        killScriptOption = taskStartArguments.killScriptOption),
+      options = javaOptions,
+      classpath = Some(javaClasspath + File.pathSeparator + JavaProcess.OwnClasspath),
+      mainClass = TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix
+      arguments = Nil)
+    processOnce := process
+    process.terminated onComplete terminatedPromise.complete
+    val a = taskStartArguments.copy(stdFileMap = stdFileMap, logStdoutAndStderr = true)
+    process.stdinWriter.write(a.toJson.compactPrint)
+    process.stdinWriter.close()
   }
 
   override def close(): Unit = {
-    if (process != null) {
+    for (p ← processOnce) {
       // Wait for process _after_ Tunnel, registered with registerCloseable, has been closed
-      try process.waitForTermination()
-      finally process.close()
+      try p.waitForTermination()
+      finally p.close()
     }
   }
 
   def sendProcessSignal(signal: ProcessSignal) =
-    for (p ← Option(process)) p.sendProcessSignal(signal)
-}
+    for (p ← processOnce) p.sendProcessSignal(signal)
 
-object OwnProcessTaskServer {
-  private val logger = Logger(getClass)
+  def deleteLogFiles(): Unit =
+    for (p ← processOnce) RichProcess.tryDeleteFiles(p.processConfiguration.stdFileMap.values)
+
+  def pidOption = processOnce flatMap { _.pidOption }
 }

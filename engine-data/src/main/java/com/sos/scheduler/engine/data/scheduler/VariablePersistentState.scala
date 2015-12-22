@@ -1,10 +1,13 @@
 package com.sos.scheduler.engine.data.scheduler
 
-import com.sos.scheduler.engine.data.base.{HasKey, IsString}
+import com.sos.scheduler.engine.base.utils.HasKey
+import com.sos.scheduler.engine.data.base.IsString
 import com.sos.scheduler.engine.data.scheduler.VariablePersistentState.{StringValue, _}
 
 final case class VariablePersistentState(name: String, value: IntOrStringValue)
-extends HasKey[String] {
+extends HasKey {
+
+  type Key = String
 
   def key = name
 

@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.taskserver.task.process.Processes._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.Stdout
@@ -64,8 +65,8 @@ final class ProcessesTest extends FreeSpec {
     }
   }
 
-  "newTemporaryOutputFile" in {
-    autoDeleting(newTemporaryOutputFile("NAME", Stdout)) { file ⇒
+  "newLogFile" in {
+    autoDeleting(newLogFile(temporaryDirectory, "NAME", Stdout)) { file ⇒
       assert(exists(file))
       assert(!(file.toString contains "--"))
     }

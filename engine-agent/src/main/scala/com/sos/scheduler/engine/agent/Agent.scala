@@ -26,11 +26,9 @@ import scala.concurrent.Future
  */
 final class Agent(module: Module) extends AutoCloseable {
 
-  def this(configuration: AgentConfiguration) = {
-    this(new AgentModule(configuration))
-  }
+  def this(configuration: AgentConfiguration) = this(new AgentModule(configuration))
 
-  private val injector = Guice.createInjector(PRODUCTION, module)
+  val injector = Guice.createInjector(PRODUCTION, module)
   val configuration = injector.instance[AgentConfiguration]
   val localUri = s"http://127.0.0.1:${configuration.httpPort}/${configuration.strippedUriPathPrefix}" stripSuffix "/"
   private val server = injector.instance[AgentWebServer]

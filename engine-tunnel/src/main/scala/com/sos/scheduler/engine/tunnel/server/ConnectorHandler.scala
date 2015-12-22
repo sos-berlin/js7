@@ -6,22 +6,23 @@ import akka.agent.Agent
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
-import com.sos.scheduler.engine.common.scalautil.{SetOnce, Logger}
+import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
-import java.time.Instant
 import java.time.Instant.now
+import java.time.Duration
 import scala.PartialFunction.cond
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Promise}
+import scala.concurrent.Promise
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
  * @author Joacim Zschimmer
  */
-private[tunnel] final class ConnectorHandler private extends Actor {
+private[tunnel] final class ConnectorHandler private(implicit timerService: TimerService) extends Actor {
 
   import context.{actorOf, become, dispatcher, stop, system, watch}
 
@@ -58,7 +59,7 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         val peerPort = connected.remoteAddress.getPort
         s"Connector-TCP-$peerInterface:$peerPort"
       }
-      val connector = actorOf(Connector.props(tcp = sender(), connected), name = name)
+      val connector = actorOf(Connector.props(connectorHandler = self, tcp = sender(), connected, timerService), name = name)
       watch(connector)
 
     case m @ NewTunnel(id, listener, startedByIpOption) ⇒
@@ -124,6 +125,19 @@ private[tunnel] final class ConnectorHandler private extends Actor {
         case NonFatal(t) ⇒ request.responsePromise.failure(t)
       }
 
+    case m @ OnHeartbeat(tunnelToken, timeout) ⇒
+      sender() ! Try {
+        checkedHandle(tunnelToken).state match {
+          case Handle.ConnectedConnector(connector) ⇒ connector ! Connector.Heartbeat(timeout)
+          case state ⇒ logger.debug(s"$m ignored in state $state")
+        }
+      }
+
+    case Connector.BecameInactive(tunnelId, since) ⇒   // Timeout of last Connector.Request or Connector.Heartbeat has elapsed
+      for (handle ← register.get(tunnelId)) {
+        handle.callOnInactivity(since)
+      }
+
     case m @ CloseTunnel(tunnelToken) ⇒
       try {
         if (register contains tunnelToken.id) {
@@ -133,28 +147,32 @@ private[tunnel] final class ConnectorHandler private extends Actor {
           }
           removeHandle(tunnelToken.id)
         }
-      }
-      catch {
+      } catch {
         case NonFatal(t) ⇒ logger.error(s"$m: $t", t)
       }
 
+    case GetHandle(tunnelToken) ⇒
+      sender() ! Try { checkedHandle(tunnelToken) }
+
     case GetOverview ⇒
-      sender() ! TunnelHandlerOverview(
-        tcpAddress = tcpAddressOnce.get map { _.toString },
-        tunnelCount = register.size)
+      sender() ! Try {
+        TunnelHandlerOverview(
+          tcpAddress = tcpAddressOnce.get map { _.toString },
+          tunnelCount = register.size)
+      }
 
     case GetTunnelOverviews ⇒
-      sender() ! (register map { case (id, handle) ⇒
-        TunnelOverview(
-          id,
-          handle.startedByHttpIpOption,
-          handle.remoteAddressStringOption,
-          TunnelStatistics(
-            requestCount = handle.statistics.requestCount,
-            messageByteCount = handle.statistics.messageByteCount,
-            currentRequestIssuedAt = handle.statistics.currentRequestIssuedAt,
-            handle.statistics.failure map { _.toString }))
-      }).toVector
+      sender() ! Try {
+        (register map { case (id, handle) ⇒
+          TunnelOverview(
+            id,
+            handle.startedByHttpIpOption,
+            handle.remoteAddressStringOption)
+        }).toVector
+      }
+
+    case GetTunnelView(tunnelId) ⇒
+      sender() ! Try { register(tunnelId).view }
   }
 
   private def removeHandle(id: TunnelId): Unit = register -= id
@@ -175,7 +193,7 @@ private[tunnel] object ConnectorHandler {
   private val LocalInterface = "127.0.0.1"
   private val logger = Logger(getClass)
 
-  private[tunnel] def props = Props { new ConnectorHandler }
+  private[tunnel] def props(implicit timerService: TimerService) = Props { new ConnectorHandler }
 
   sealed trait Command
 
@@ -189,72 +207,19 @@ private[tunnel] object ConnectorHandler {
 
   private[tunnel] final case class CloseTunnel(tunnelToken: TunnelToken) extends Command
 
+  private[tunnel] final case class GetHandle(tunnelToken: TunnelToken) extends Command
+
+  private[tunnel] final case class GetTunnelView(tunnelId: TunnelId) extends Command
+
+  private[tunnel] final case class OnHeartbeat(tunnelToken: TunnelToken, timeout: Duration) extends Command
+
   private[tunnel] final case class DirectedRequest private[tunnel](tunnelToken: TunnelToken, request: Connector.Request) extends Command
 
-  private[tunnel] object DirectedRequest {
-    def apply(tunnelToken: TunnelToken, message: ByteString, responsePromise: Promise[ByteString]): DirectedRequest =
-      DirectedRequest(tunnelToken, Connector.Request(message, responsePromise))
+  private[tunnel] object DirectedRequest extends Command {
+    def apply(tunnelToken: TunnelToken, message: ByteString, responsePromise: Promise[ByteString], timeout: Option[Duration]): DirectedRequest =
+      DirectedRequest(tunnelToken, Connector.Request(message, responsePromise, timeout))
   }
 
   private[tunnel] object GetOverview extends Command
   private[tunnel] object GetTunnelOverviews extends Command
-
-  private class Handle(
-    connectorHandler: ActorRef,
-    val tunnelToken: TunnelToken,
-    val startedByHttpIpOption: Option[InetAddress],
-    val connectedPromise: Promise[InetSocketAddress],
-    val listener: Agent[TunnelListener],
-    var state: Handle.State = Handle.Uninitialized,
-    val statistics: Statistics = Statistics())
-  extends TunnelHandle {
-
-    def close(): Unit = connectorHandler ! ConnectorHandler.CloseTunnel(tunnelToken)
-
-    override def toString = s"TunnelHandler($id,HTTP client ${startedByHttpIpOption getOrElse "unknown"} -> TCP server ${serverAddressOption getOrElse "not yet connected"})"
-
-    private def serverAddressOption: Option[InetSocketAddress] = connectedPromise.future.value map { _.get }
-
-    def connected = connectedPromise.future
-
-    def remoteAddressString: String = remoteAddressStringOption getOrElse "(not connected via TCP)"
-
-    def remoteAddressStringOption: Option[String] = connectedPromise.future.value flatMap { _.toOption } map { _.toString stripPrefix "/" }
-
-    def onRequestSent(request: Connector.Request)(implicit ec:ExecutionContext): Unit = {
-      statistics.updateWith(request)
-      listener send { _.onRequest(request.message) }
-    }
-  }
-
-  private object Handle {
-    sealed trait State
-    case object Uninitialized extends State
-    case class RequestBeforeConnected(request: Connector.Request) extends State
-    case class ConnectedConnector(connector: ActorRef) extends State
-  }
-
-  private case class Statistics(  // We don't care about synchronization ???
-    var requestCount: Int = 0,
-    var messageByteCount: Long = 0,
-    var currentRequestIssuedAt: Option[Instant] = None,
-    var failure: Option[Throwable] = None) {
-
-    def updateWith(request: Connector.Request)(implicit ec: ExecutionContext): Unit = {
-      currentRequestIssuedAt = Some(now)
-      requestCount += 1
-      messageByteCount += request.message.size
-      request.responsePromise.future.onComplete { tried ⇒
-        // We don't care about synchronization
-        tried match {
-          case Success(message) ⇒
-            messageByteCount += message.size
-            failure = None
-          case Failure(t) ⇒
-            failure = Some(t)
-        }
-        currentRequestIssuedAt = None
-      }
-    }
-  }
 }

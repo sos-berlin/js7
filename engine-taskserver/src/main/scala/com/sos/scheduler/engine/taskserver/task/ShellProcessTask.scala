@@ -1,14 +1,14 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
+import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
-import com.sos.scheduler.engine.taskserver.data.HasSendProcessSignal
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
@@ -31,21 +31,24 @@ private[task] final class ShellProcessTask(
   module: ShellModule,
   protected val commonArguments: CommonArguments,
   environment: immutable.Iterable[(String, String)],
-  killScriptPathOption: Option[Path],
+  variablePrefix: String,
+  logDirectory: Path,
+  logFilenamePart: String,
+  killScriptOption: Option[ProcessKillScript],
   taskServerMainTerminatedOption: Option[Future[Unit]] = None)
-(implicit executionContext: ExecutionContext)
-extends HasCloser with Task with HasSendProcessSignal {
+  (implicit executionContext: ExecutionContext)
+extends HasCloser with Task {
 
   import commonArguments.{agentTaskId, hasOrder, jobName, monitors, namedInvocables, stdFiles}
   import namedInvocables.spoolerTask
 
   private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
-  private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createTemporaryStdFiles() else Map[StdoutStderrType, Path]()
+  private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, id = logFilenamePart) else Map[StdoutStderrType, Path]()
   private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",
     stdFiles.copy(stdFileMap = processStdFileMap ++ stdFiles.stdFileMap)).closeWithCloser
   private var startCalled = false
-  private var richProcess: RichProcess = null
+  private val richProcessOnce = new SetOnce[RichProcess]
   private val logger = Logger.withPrefix(getClass, toString)
   private var sigtermForwarder: JavaShutdownHook = null
 
@@ -68,47 +71,41 @@ extends HasCloser with Task with HasSendProcessSignal {
     }
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
-      val paramEnv = params map { case (k, v) ⇒ paramNameToEnv(k) → v }
+      val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
       environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
-    val (idStringOption, killScriptFileOption) =
+    val (agentTaskIdOption, killScriptFileOption) =
       if (taskServerMainTerminatedOption.nonEmpty) (None, None)
-      else (Some(agentTaskId.string), killScriptPathOption)  // No idString if this is an own process (due to a monitor), already started with idString
-    require(richProcess == null)
-    richProcess = RichProcess.startShellScript(
+      else (Some(agentTaskId), killScriptOption)  // No idString if this is an own process (due to a monitor), already started with idString
+    richProcessOnce := RichProcess.startShellScript(
       ProcessConfiguration(
         processStdFileMap,
         additionalEnvironment = env,
-        idStringOption = idStringOption,
-        killScriptFileOption = killScriptFileOption),
+        agentTaskIdOption = agentTaskIdOption,
+        killScriptOption = killScriptFileOption),
       name = jobName,
       scriptString = module.script.string.trim)
     .closeWithCloser
-    deleteFilesWhenProcessClosed(List(orderParamsFile) ++ processStdFileMap.values)
+    deleteFilesWhenProcessClosed(List(orderParamsFile))
     concurrentStdoutStderrWell.start()
-  }
-
-  private def deleteFilesWhenProcessClosed(files: Iterable[Path]): Unit = {
-    if (files.nonEmpty) {
-      for (_ ← richProcess.closed; _ ← concurrentStdoutStderrWell.closed) RichProcess.tryDeleteFiles(files)
-    }
   }
 
   def end() = {}  // Not called
 
   def step() = {
     requireState(startCalled)
-    if (richProcess == null)
-      <process.result spooler_process_result="false"/>.toString()
-    else {
-      val rc = richProcess.waitForTermination()
-      if (sigtermForwarder != null) sigtermForwarder.close()
-      concurrentStdoutStderrWell.finish()
-      transferReturnValuesToMaster()
-      val success =
-        try monitorProcessor.postStep(rc.isSuccess)
-        finally monitorProcessor.postTask()
-      <process.result spooler_process_result={success.toString} exit_code={rc.toInt.toString} state_text={concurrentStdoutStderrWell.firstStdoutLine}/>.toString()
+    richProcessOnce.get match {
+      case None ⇒
+        <process.result spooler_process_result="false"/>.toString()
+      case Some(richProcess) ⇒
+        val rc = richProcess.waitForTermination()
+        if (sigtermForwarder != null) sigtermForwarder.close()
+        concurrentStdoutStderrWell.finish()
+        transferReturnValuesToMaster()
+        val success =
+          try monitorProcessor.postStep(rc.isSuccess)
+          finally monitorProcessor.postTask()
+        <process.result spooler_process_result={success.toString} exit_code={rc.toInt.toString} state_text={concurrentStdoutStderrWell.firstStdoutLine}/>.toString()
     }
   }
 
@@ -134,28 +131,41 @@ extends HasCloser with Task with HasSendProcessSignal {
       (source.getLines map lineToKeyValue).toMap
     }
 
-  def sendProcessSignal(signal: ProcessSignal) = {
+  def sendProcessSignal(signal: ProcessSignal): Unit = {
     logger.trace(s"sendProcessSignal $signal")
-    for (p ← Option(richProcess)) p.sendProcessSignal(signal)
+    for (p ← richProcessOnce) p.sendProcessSignal(signal)
+  }
+
+  def deleteLogFiles() = deleteFilesWhenProcessClosed(processStdFileMap.values)
+
+  private def deleteFilesWhenProcessClosed(files: Iterable[Path]): Unit = {
+    if (files.nonEmpty) {
+      for (richProcess ← richProcessOnce;
+           _ ← richProcess.closed;
+           _ ← concurrentStdoutStderrWell.closed)
+      {
+        RichProcess.tryDeleteFiles(files)
+      }
+    }
   }
 
   @TestOnly
   def files = {
     requireState(startCalled)
-    richProcess match {
-      case null ⇒ Nil
-      case o ⇒ o.processConfiguration.files
+    richProcessOnce.toOption match {
+      case None ⇒ Nil
+      case Some(o) ⇒ o.processConfiguration.files
     }
   }
 
-  override def toString = List(super.toString) ++ (Option(richProcess) map { _.toString }) mkString " "
+  override def toString = List(super.toString) ++ (richProcessOnce map { _.toString }) mkString " "
+
+  def pidOption = richProcessOnce flatMap { _.pidOption }
 }
 
 private object ShellProcessTask {
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
-
-  private def paramNameToEnv(name: String) = s"SCHEDULER_PARAM_${name.toUpperCase}"
 
   private def lineToKeyValue(line: String): (String, String) = line match {
     case ReturnValuesRegex(name, value) ⇒ name.trim → value.trim

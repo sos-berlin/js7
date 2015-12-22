@@ -9,17 +9,20 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
 import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
-import com.sos.scheduler.engine.tunnel.client.TcpToHttpBridge
+import com.sos.scheduler.engine.tunnel.client.{TcpToHttpBridge, WebTunnelClient}
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
-import com.sos.scheduler.engine.tunnel.web.TunnelWebService._
+import com.sos.scheduler.engine.tunnel.server.{TunnelAccess, TunnelListener, TunnelServer}
+import com.sos.scheduler.engine.tunnel.web.TunnelWebServices._
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.Random
@@ -37,6 +40,7 @@ import spray.routing.HttpServiceActor
 final class TcpHttpTcpTunnelIT extends FreeSpec {
 
   private implicit val timeout = Timeout(5.seconds)
+  private implicit val timerService = TimerService(idleTimeout = Some(1.s))
 
   "Normal application" in {
     val (clientSide, serverSide) = startTunneledSystem()
@@ -75,7 +79,7 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
 
   "Speed test" in {
     val (clientSide, serverSide) = startTunneledSystem()
-    measureTime(1000, "request") {
+    measureTime(1000, "requests") {
       clientSide.checkSendReceive()
     }
     serverSide.closeTunnel()
@@ -87,7 +91,7 @@ object TcpHttpTcpTunnelIT {
   private val TerminateMessage = ByteString("TERMINATE")
   private val logger = Logger(getClass)
 
-  private def startTunneledSystem() = {
+  private def startTunneledSystem()(implicit timerService: TimerService) = {
     val serverSideTunnelHandler = new ServerSideTunnelHandler
     val server = new TunnelledTcpServer(serverSideTunnelHandler)
     val client = new ClientSide(serverSideTunnelHandler.uri, server.tunnelToken)
@@ -95,9 +99,19 @@ object TcpHttpTcpTunnelIT {
   }
 
   private class ClientSide(uri: Uri, tunnelToken: TunnelToken) {
-    private val actorSystem = ActorSystem(getClass.getSimpleName)
+    private implicit val actorSystem = ActorSystem(getClass.getSimpleName)
     private val clientSideListener = TcpConnection.Listener.forLocalHostPort()
-    private val tcpHttpBridge = new TcpToHttpBridge(actorSystem, clientSideListener.boundAddress, tunnelToken, uri withPath Path("/test/tunnel"))
+    private val tcpHttpBridge = new TcpToHttpBridge(
+      actorSystem,
+      clientSideListener.boundAddress,
+      tunnelToken,
+      new WebTunnelClient(
+        ClientSide.this.tunnelToken,
+        tunnelUri = {
+          val uri = ClientSide.this.uri withPath Path("/test/tunnel")
+          uri withPath (uri.path / tunnelToken.id.string)
+        },
+        heartbeatRequestorOption = None))
     tcpHttpBridge.start()
     val tcp = clientSideListener.accept()
 
@@ -129,11 +143,10 @@ object TcpHttpTcpTunnelIT {
     def closeTunnel() = tunnel.close()
   }
 
-  private class ServerSideTunnelHandler {
+  private class ServerSideTunnelHandler(implicit timerService: TimerService) {
     val actorSystem = ActorSystem(getClass.getSimpleName)
     val tunnelServer = new TunnelServer(actorSystem)
     val uri = startWebServer()
-    import actorSystem.dispatcher
     val listener = Agent(new TestTunnelListener)
 
     def newTunnel(id: TunnelId) = tunnelServer.newTunnel(id, listener)
@@ -141,14 +154,20 @@ object TcpHttpTcpTunnelIT {
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()
-      actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer, tunnelServer.request) })
+      implicit val timerService = TimerService(idleTimeout = Some(1.s))
+      val heartbeatService = new HeartbeatService
+      actorSystem.actorOf(Props { new TestWebServiceActor(findRandomFreeTcpPort(), startedPromise, tunnelServer.tunnelAccess, heartbeatService) })
       val httpAddress = awaitResult(startedPromise.future, 10.s)
       Uri(s"http://${httpAddress.getAddress.getHostAddress}:${httpAddress.getPort}")
     }
   }
 
-  private class TestWebServiceActor(port: Int, startedPromise: Promise[InetSocketAddress], tunnelServer: TunnelServer, execute: ExecuteTunneledRequest) extends HttpServiceActor  {
-    import context.dispatcher
+  private class TestWebServiceActor(
+    port: Int,
+    startedPromise: Promise[InetSocketAddress],
+    tunnelAccess: TunnelToken ⇒ TunnelAccess,
+    heartbeatService: HeartbeatService)
+  extends HttpServiceActor {
 
     IO(Http)(context.system) ! Http.Bind(self, interface = "127.0.0.1", port = port)
 
@@ -165,7 +184,9 @@ object TcpHttpTcpTunnelIT {
     def running: Receive = runRoute {
       (decompressRequest() & compressResponseIfRequested(())) {
         (post & pathPrefix("test" / "tunnel" / Segment)) { idString ⇒
-          tunnelRequestRoute(TunnelId(idString))(execute)
+          tunnelRequestRoute(TunnelId(idString))(
+            tunnelAccess,
+            onHeartbeat = (_, _) ⇒ {})
         }
       }
     }

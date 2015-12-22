@@ -16,6 +16,7 @@ import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializ
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
 import com.sos.scheduler.engine.minicom.remoting.serial.{ResultDeserializer, ServerRemoting}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
+import java.time.{Instant, Duration}
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
 import scala.collection.{breakOut, immutable}
@@ -29,31 +30,42 @@ final class Remoting(
   injector: Injector,
   dialogConnection: DialogConnection,
   invocableFactories: Iterable[InvocableFactory],
-  proxyIDispatchFactories: Iterable[ProxyIDispatchFactory])
+  proxyIDispatchFactories: Iterable[ProxyIDispatchFactory],
+  name: String,
+  returnAfterReleaseOf: Invocable ⇒ Boolean = _ ⇒ false,
+  keepaliveDurationOption: Option[Duration])
 extends ServerRemoting with ClientRemoting {
 
+  private val logger = Logger.withPrefix(getClass, name)
   private val proxyRegister = new ProxyRegister
   private val createInvocable = toCreateInvocableByCLSID(invocableFactories)
   private val proxyClsidMap: Map[CLSID, ProxyIDispatchFactory.Fun] =
     (List(SimpleProxyIDispatch) ++ proxyIDispatchFactories).map { o ⇒ o.clsid → o.apply _ } (breakOut)
+  private var end = false
 
   def run(): Unit = {
+    logger.debug("Started")
     val firstRequest = dialogConnection.receiveFirstMessage()
-    val keepAliveThread = new KeepAliveThread
-    keepAliveThread.start()
-    try continue(firstRequest)
-    finally {
-      keepAliveThread.interrupt()
-      keepAliveThread.join()
+    keepaliveDurationOption match {
+      case Some(keepaliveDuration) ⇒
+        withKeepaliveThread(1.s max keepaliveDuration) {
+          continue(firstRequest)
+        }
+      case None ⇒
+        continue(firstRequest)
     }
+    logger.debug("Ended")
 
     @tailrec
     def continue(messageOption: Option[ByteString]): Unit =
       messageOption match {
         case Some(message) ⇒
           val response = executeMessage(message)
-          val nextMessageOption = dialogConnection.sendAndReceive(response)
-          continue(nextMessageOption)
+          if (!end) {
+            val nextMessageOption = dialogConnection.sendAndReceive(response)
+            continue(nextMessageOption)
+          } else
+            dialogConnection.sendLastMessage(response)
         case None ⇒
       }
   }
@@ -84,7 +96,9 @@ extends ServerRemoting with ClientRemoting {
       CreateInstanceResult(invocable = createInvocable(clsid, iids.head))
 
     case ReleaseCall(proxyId) ⇒
+      val released = proxyRegister.invocable(proxyId)
       proxyRegister.release(proxyId)
+      end = returnAfterReleaseOf(released)
       EmptyResult
 
     case _: QueryInterfaceCall | _: GetIDsOfNamesCall | _: InvokeCall ⇒
@@ -95,7 +109,7 @@ extends ServerRemoting with ClientRemoting {
       val result = invocable.call(methodName, arguments)
       InvokeResult(result)
 
-    case KeepAliveCall ⇒ EmptyResult
+    case KeepaliveCall ⇒ EmptyResult
   }
 
   private[remoting] def newProxy(proxyId: ProxyId, name: String, proxyClsid: CLSID, properties: Iterable[(String, Any)]) = {
@@ -121,11 +135,11 @@ extends ServerRemoting with ClientRemoting {
     value
   }
 
-  def keepAlive(): Unit = sendReceive(KeepAliveCall).readEmptyResult()
+  def sendReceiveKeepalive(): Unit = sendReceive(KeepaliveCall).readEmptyResult()
 
   private def sendReceive(call: Call): ResultDeserializer = {
     val callMessage = serializeCall(proxyRegister, call)
-    val byteString = dialogConnection.sendAndReceive(callMessage).get
+    val byteString = dialogConnection.sendAndReceive(callMessage) getOrElse { throw new ConnectionClosedException }
     new ResultDeserializer(this, byteString)
   }
 
@@ -144,22 +158,36 @@ extends ServerRemoting with ClientRemoting {
    */
   def invocables[A : ClassTag]: immutable.Iterable[A] = proxyRegister.invocables[A]
 
-  private class KeepAliveThread extends Thread {
-    setName("Remoting.KeepAlive")
+  private def withKeepaliveThread[A](duration: Duration)(body: ⇒ A): A = {
+    val keepaliveThread = new KeepaliveThread(1.s max duration)
+    keepaliveThread.start()
+    try body
+    finally {
+      keepaliveThread.interrupt()
+      keepaliveThread.join()
+    }
+  }
+
+  private class KeepaliveThread(keepaliveDuration: Duration) extends Thread {
+    setName("Remoting.Keepalive")
 
     override def run() =
-      try
+      try {
+        var t = Instant.now()
         while (true) {
-          sleep(5 * 60.s)
-          keepAlive()
+          t += keepaliveDuration
+          if (t > Instant.now()) sleepUntil(t)
+          else t = Instant.now()
+          sendReceiveKeepalive()
         }
-      catch {
+      } catch {
         case _: InterruptedException ⇒
+        case NonFatal(t) ⇒ logger.error(t.toString)
       }
   }
 }
 
 object Remoting {
   private type CreateInvocableByCLSID = (CLSID, IID) ⇒ Invocable
-  private val logger = Logger(getClass)
+  final class ConnectionClosedException extends RuntimeException
 }

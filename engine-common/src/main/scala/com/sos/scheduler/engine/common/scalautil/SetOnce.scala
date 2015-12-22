@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * @author Joacim Zschimmer
  */
-final class SetOnce[A] {
+class SetOnce[A] {
   private val ref = new AtomicReference[A]
 
   /**
@@ -15,29 +15,31 @@ final class SetOnce[A] {
    *
    * @throws IllegalStateException
    */
-  def apply() = getOrElse { throw new IllegalStateException("Value is not yet set") }
+  final def apply() = getOrElse { throw new IllegalStateException("Value is not yet set") }
 
-  override def toString = toStringOr("(not yet set)")
+  final override def toString = toStringOr("(not yet set)")
 
-  @inline def toStringOr(or: ⇒ String): String =
+  @inline final def toStringOr(or: ⇒ String): String =
     ref.get() match {
       case null ⇒ or
       case o ⇒ o.toString
     }
 
-  @inline def getOrElse[B >: A](els: ⇒ B) =
+  @inline final def getOrElse[B >: A](els: ⇒ B) =
     ref.get() match {
       case null ⇒ els
       case o ⇒ o
     }
 
-  def get = Option(ref.get())
+  final def get = toOption
 
-  def isDefined = nonEmpty
+  final def toOption = Option(ref.get())
 
-  def nonEmpty = ref.get != null
+  final def isDefined = nonEmpty
 
-  def isEmpty = ref.get == null
+  final def nonEmpty = ref.get != null
+
+  final def isEmpty = ref.get == null
 
   /**
    * Sets the variable.
@@ -46,8 +48,30 @@ final class SetOnce[A] {
    *
    * @throws IllegalStateException
    */
-  def :=(value: A): Unit = {
+  final def :=(value: A): Unit = {
     val ok = ref.compareAndSet(null.asInstanceOf[A], value)
     if (!ok) throw new IllegalStateException(s"SetOnce[${ref.get.getClass.getName}] has already been set")
+  }
+}
+
+object SetOnce {
+  import scala.language.implicitConversions
+
+  implicit def setOnceToOption[A](o: SetOnce[A]): Option[A] = o.toOption
+
+  /**
+    * Makes a SetOnce implicitly readable.
+    * <pre>
+    * val once = new SetOnce[Int] with SetOnce.Implicit
+    * ...
+    * val i: Int = once
+    * </pre>
+    */
+  trait Implicit {
+    this: SetOnce[_] ⇒
+  }
+
+  object Implicit {
+    implicit def dereference[A](a: SetOnce[A] with Implicit): A = a()
   }
 }

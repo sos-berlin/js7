@@ -52,4 +52,4 @@ extends ObjectCall
 final case class CallCall(proxyId: ProxyId, methodName: String, arguments: immutable.Seq[Any])
 extends ObjectCall
 
-case object KeepAliveCall extends Call
+case object KeepaliveCall extends Call

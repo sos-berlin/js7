@@ -3,8 +3,11 @@ package com.sos.scheduler.engine.agent.task
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.views.TaskOverview
 import com.sos.scheduler.engine.base.process.ProcessSignal
+import com.sos.scheduler.engine.base.utils.HasKey
+import com.sos.scheduler.engine.common.scalautil.Closers._
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.task.TaskArguments
+import com.sos.scheduler.engine.taskserver.task.process.Processes.Pid
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.time.Instant
 import scala.concurrent.Future
@@ -13,23 +16,42 @@ import scala.util.Success
 /**
 * @author Joacim Zschimmer
 */
-private[task] final class AgentTask(val id: AgentTaskId, tunnel: TunnelHandle, val taskServer: TaskServer, taskArgumentsFuture: Future[TaskArguments])
-extends AutoCloseable {
+private[task] trait AgentTask
+extends AutoCloseable
+with HasKey {
 
-  val startedAt = Instant.now()
+  final type Key = AgentTaskId
+  final def key = id
 
-  def close(): Unit =
-    try tunnel.close()  // Close tunnel first, then task server
-    finally taskServer.close()
+  def id: AgentTaskId
 
-  def start(): Unit = taskServer.start()
+  protected def taskArgumentsFuture: Future[TaskArguments]
 
-  def sendProcessSignal(signal: ProcessSignal): Unit = taskServer.sendProcessSignal(signal)
+  protected def tunnel: TunnelHandle
 
-  def terminated: Future[Unit] = taskServer.terminated
+  protected def taskServer: TaskServer
 
-  def overview = TaskOverview(
+  private val startedAt = Instant.now()
+
+  final def closeTunnelAndTaskServer() = closeOrdered(tunnel, taskServer)  // Close tunnel before taskServer
+
+  final def closeTunnel() = tunnel.close()
+
+  final def start(): Unit = taskServer.start()
+
+  final def onTunnelInactivity(callback: Instant ⇒ Unit): Unit = tunnel.onInactivity(callback)
+
+  final def sendProcessSignal(signal: ProcessSignal): Unit = taskServer.sendProcessSignal(signal)
+
+  final def deleteLogFiles(): Unit = taskServer.deleteLogFiles()
+
+  final def terminated: Future[Unit] = taskServer.terminated
+
+  final def pidOption: Option[Pid] = taskServer.pidOption
+
+  final def overview = TaskOverview(
     id,
+    pid = taskServer.pidOption map { _.number },
     tunnel.id,
     startedAt,
     startedByHttpIp = tunnel.startedByHttpIpOption,
@@ -43,7 +65,7 @@ extends AutoCloseable {
           monitorCount = a.monitors.size)
     })
 
-  private[task] def tunnelToken = tunnel.tunnelToken
+  private[task] final def tunnelToken = tunnel.tunnelToken
 
-  override def toString = s"AgentTask($id)"
+  override def toString = s"$id: $taskServer"
 }

@@ -8,6 +8,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.{MessageTcpBridge, TcpConnection}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.tunnel.TunnelIT._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
@@ -29,8 +30,9 @@ import scala.util.Random
 final class TunnelIT extends FreeSpec {
 
   private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
-  private lazy val tunnelServer = new TunnelServer(actorSystem)
   import actorSystem.dispatcher
+  private implicit val timerService = TimerService(idleTimeout = Some(1.s))
+  private lazy val tunnelServer = new TunnelServer(actorSystem)
 
   "Simple" in {
     val tunnel = tunnelServer.newTunnel(TunnelId("TEST-TUNNEL"), Agent(TunnelListener.StopListening))
@@ -38,7 +40,7 @@ final class TunnelIT extends FreeSpec {
     tcpServer.start()
     for (i ← 1 to 3) {
       val request = ByteString(s"TEST-REQUEST #$i")
-      val responded = tunnelServer.request(tunnel.tunnelToken, request) map { response ⇒
+      val responded = tunnel.request(request, timeout = None) map { response ⇒
         assert(response == requestToResponse(request, tunnel.id))
       }
       awaitResult(responded, 10.s)
@@ -64,9 +66,9 @@ final class TunnelIT extends FreeSpec {
       blocking {
         val stepSize = min(Iterations, 1000)
         for (i ← 0 until Iterations by stepSize) {
-          val m = Stopwatch.measureTime(stepSize, "request") {
+          val m = Stopwatch.measureTime(stepSize, "requests") {
             val request = ByteString.fromArray(Array.fill[Byte](messageSizes.next())(i.toByte))
-            val responded = tunnelServer.request(tunnel.tunnelToken, request) map { response ⇒
+            val responded = tunnel.request(request, timeout = None) map { response ⇒
               if (!byteStringsFastEqual(response, requestToResponse(request, tunnel.id))) fail("Response is not as expected")
             }
             awaitResult(responded, 10.s)

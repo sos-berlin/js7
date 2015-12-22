@@ -10,8 +10,23 @@
     </parent>
 
     <name>${project.artifactId}</name>
-    <inceptionYear>2012</inceptionYear>
-    <description>Klassen für die Task-Prozesse des Schedulers</description>
+    <inceptionYear>2001</inceptionYear>
+
+    <description>JobScheduler Java Job API</description>
+    <url>https://www.sos-berlin.com/</url>
+    <licenses>
+        <license>
+            <name>GNU General Public License (GPL), Version 2.0</name>
+            <url>http://www.gnu.org/licenses/gpl-2.0-standalone.html</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Joacim Zschimmer</name>
+            <organization>SOS Berlin</organization>
+            <organizationUrl>https://www.sos-berlin.com/</organizationUrl>
+        </developer>
+    </developers>
 
     <dependencies>
         <dependency>
@@ -56,6 +71,7 @@
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
@@ -84,6 +100,22 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <configuration>
+                    <quiet>true</quiet>
+                    <additionalparam>-Xdoclint:-missing</additionalparam>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

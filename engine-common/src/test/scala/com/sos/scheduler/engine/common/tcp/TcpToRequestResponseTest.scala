@@ -53,7 +53,7 @@ final class TcpToRequestResponseTest extends FreeSpec {
 
   private def newTcpToRequestResponse(connectionMessage: Option[ByteString] = None) =
     autoClosing(TcpConnection.Listener.forLocalHostPort()) { listener ⇒
-      val tcpToRequestResponse = new TcpToRequestResponse(actorSystem, listener.boundAddress, executeRequest)
+      val tcpToRequestResponse = new TcpToRequestResponse(actorSystem, listener.boundAddress, executeRequest, name = "TEST")
       tcpToRequestResponse.start(connectionMessage)
       val tcpConnection = listener.accept()
       (tcpToRequestResponse, tcpConnection)

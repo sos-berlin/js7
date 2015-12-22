@@ -6,29 +6,37 @@ import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
-//import scala.language.implicitConversions
+import scala.util.Random
 import scala.math.abs
 
 object ScalaTime {
   val MaxDuration = Duration.ofSeconds(Long.MaxValue, 999999999)
   private val MaxConcurrentDuration = Duration.ofNanos(Long.MaxValue)
+  val Iso8601DurationRegex = "[0-9.A-Za-z]+".r
+
   @TestOnly @volatile var extraSleepCount = 0L
 
   implicit class DurationRichInt(val delegate: Int) extends AnyVal {
     /**
      * Duration, counted in milliseconds.
      */
-    final def ms = Duration.ofMillis(delegate)
+    final def ms = Duration ofMillis delegate
 
     /**
      * Duration, counted in seconds.
      */
-    final def s = Duration.ofSeconds(delegate)
+    final def s = Duration ofSeconds delegate
+
+    // Conflicts with scala.runtime.RichInt.min
+    ///**
+    // * Duration, counted in minutes.
+    // */
+    //final def min = Duration ofMinutes delegate
 
     /**
      * Duration, counted in hours.
      */
-    final def h = Duration.ofHours(delegate)
+    final def h = Duration ofHours delegate
 
     final def *(o: Duration) =  o multipliedBy delegate
   }
@@ -37,17 +45,23 @@ object ScalaTime {
     /**
      * Duration, counted in milliseconds.
      */
-    final def ms = Duration.ofMillis(delegate)
+    final def ms = Duration ofMillis delegate
 
     /**
      * Duration, counted in seconds.
      */
-    final def s = Duration.ofSeconds(delegate)
+    final def s = Duration ofSeconds delegate
+
+    // Conflicts with scala.runtime.RichLong.min
+    ///**
+    // * Duration, counted in minutes.
+    // */
+    //final def min = Duration ofMinutes delegate
 
     /**
      * Duration, counted in hours.
      */
-    final def h = Duration.ofHours(delegate)
+    final def h = Duration ofHours delegate
 
     final def *(o: Duration) = o multipliedBy delegate
   }
@@ -61,13 +75,27 @@ object ScalaTime {
     Duration.ofSeconds(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
   }
 
+  /**
+   * Parses a duration according to ISO-8601 with optional first letters PT.
+   */
+  def parseDuration(string: String) = Duration parse (if (string.nonEmpty && string(0).isDigit) s"PT$string" else string)
+
+  def randomDuration(maximum: Duration): Duration = Duration ofNanos (maximum.toNanos * Random.nextFloat).toLong
+
   implicit class RichDuration(val delegate: Duration) extends AnyVal with Ordered[RichDuration] {
-    def +(o: Duration) = delegate plus o
-    def -(o: Duration) = delegate minus o
-    def /(o: Int) = delegate dividedBy o
+    def unary_- = Duration.ZERO minus delegate
+    def +(o: Duration): Duration = delegate plus o
+    def -(o: Duration): Duration = delegate minus o
+    def *(o: Int): Duration = delegate multipliedBy o
+    def /(o: Int): Duration = delegate dividedBy o
+    def *(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal * o)
+    def /(o: BigDecimal): Duration = bigDecimalToDuration(delegate.toBigDecimal / o)
+    def min(o: Duration): Duration = if (this <= o) delegate else o
+    def max(o: Duration): Duration = if (this > o) delegate else o
     def toBigDecimal = BigDecimal(delegate.getSeconds) + BigDecimal(delegate.getNano) / (1000*1000*1000)
     def toConcurrent: scala.concurrent.duration.Duration = javaToConcurrentDuration(delegate)
     def toFiniteDuration: scala.concurrent.duration.FiniteDuration = javaToConcurrentFiniteDuration(delegate)
+    override def toString = pretty  // For ScalaTest
 
     def pretty =
       if (delegate == Duration.ZERO) millisToPretty(0)
@@ -75,9 +103,9 @@ object ScalaTime {
       if (delegate.getSeconds > 1000000) s"${delegate.getSeconds}s"
       else {
         val millis = delegate.toMillis
-        if (abs(millis) >= 10) millisToPretty(millis)
+        val nanos = delegate.toNanos
+        if (abs(millis) >= 10 || millis >= 1 && nanos / 1000 % 1000 == 0) millisToPretty(millis)
         else {
-          val nanos = delegate.toNanos
           if (abs(nanos) > 10000) s"${delegate.toNanos / 1000}µs"
           else s"${delegate.toNanos}ns"
         }
@@ -90,7 +118,18 @@ object ScalaTime {
     def +(o: Duration) = delegate plus o
     def -(o: Duration) = delegate minus o
     def -(o: Instant) = Duration.between(o, delegate)
+    def min(o: Instant): Instant = if (this <= o) delegate else o
+    def max(o: Instant): Instant = if (this > o) delegate else o
     def compare(o: RichInstant) = delegate compareTo o.delegate
+
+    def roundTo(duration: Duration): Instant = this + duration / 2 roundDownTo duration
+
+    def roundDownTo(duration: Duration): Instant = {
+      val durationMillis = duration.toMillis
+      Instant.ofEpochMilli(delegate.toEpochMilli / durationMillis * durationMillis)
+    }
+
+    override def toString = delegate.toString  // For ScalaTest
   }
 
   implicit class RichLocalTime(val delegate: LocalTime) extends AnyVal with Ordered[RichLocalTime] {

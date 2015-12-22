@@ -13,12 +13,13 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
 import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerModule
-import com.sos.scheduler.engine.taskserver.data.{HasSendProcessSignal, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
 import com.sos.scheduler.engine.tunnel.data.TunnelConnectionMessage
 import java.nio.channels.AsynchronousCloseException
 import scala.concurrent._
+import scala.util.{Failure, Success}
 import spray.json._
 
 /**
@@ -29,10 +30,19 @@ import spray.json._
 final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain: Boolean = false)(implicit executionContext: ExecutionContext)
 extends TaskServer with HasCloser {
 
+  private val logger = Logger.withPrefix(getClass, taskStartArguments.agentTaskId.toString)
   private lazy val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val terminatedPromise = Promise[Unit]()
   private val injector = Guice.createInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
-  private val remoting = new Remoting(injector, new DialogConnection(master), IDispatchFactories, ProxyIDispatchFactories)
+  private val remoting = new Remoting(
+    injector,
+    new DialogConnection(master),
+    IDispatchFactories,
+    ProxyIDispatchFactories,
+    name = taskStartArguments.agentTaskId.toString,
+    returnAfterReleaseOf = _.isInstanceOf[RemoteModuleInstanceServer],
+    keepaliveDurationOption = taskStartArguments.rpcKeepaliveDurationOption)
+
   def terminated = terminatedPromise.future
 
   def start(): Unit =
@@ -44,24 +54,28 @@ extends TaskServer with HasCloser {
         master.close()
       }
     } onComplete { tried ⇒
-      terminatedPromise.complete(tried recover {
-        case t: AsynchronousCloseException ⇒
-          logger.info("Terminating after close()")
-          // Exception is okay and ignored
-        case t ⇒
-          logger.error(s"$toString $t", t)
-          throw t
-      })
-      logger.info("Terminated")
+      val (correctedTried, msg) = tried match {
+        case Failure(t: AsynchronousCloseException) ⇒ (Success(()), s"Terminated after close(): $t")
+        case Failure(t: Remoting.ConnectionClosedException) ⇒ (Success(()), s"Terminated, $t")
+        case _ ⇒ (tried, Some("Terminated") ++ tried.failed.toOption mkString ", ")
+      }
+      logger.info(msg)
+      terminatedPromise.complete(correctedTried)
     }
 
   def sendProcessSignal(signal: ProcessSignal) = {
-    val signalables = remoting.invocables[HasSendProcessSignal]
+    val signalables = remoteModuleInstanceServers
     logger.debug(s"sendProcessSignal $signal to $signalables")
     signalables foreach { _.sendProcessSignal(signal) }
   }
 
-  override def toString = s"TaskServer(master=${taskStartArguments.masterAddress})"
+  def deleteLogFiles() = {}  // Files are closed when master via COM RPC releases RemoteModuleInstanceServer
+
+  override def toString = s"SimpleTaskServer(master=${taskStartArguments.masterAddress})"
+
+  def pidOption = (remoteModuleInstanceServers flatMap { _.pidOption }).headOption
+
+  private def remoteModuleInstanceServers = remoting.invocables[RemoteModuleInstanceServer]  // Should return one
 }
 
 object SimpleTaskServer {
@@ -69,7 +83,6 @@ object SimpleTaskServer {
 
   private val IDispatchFactories = List(RemoteModuleInstanceServer)
   private val ProxyIDispatchFactories = List(ProxySpooler, ProxySpoolerLog, ProxySpoolerTask)
-  private val logger = Logger(getClass)
 
   def runAsMain(startArguments: TaskStartArguments): Unit =
     autoClosing(new SimpleTaskServer(startArguments, isMain = true)) { taskServer ⇒

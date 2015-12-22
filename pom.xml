@@ -24,6 +24,8 @@
         <module>engine-data</module>
         <module>engine-filewatcher</module>
         <module>engine-common</module>
+        <module>engine-http-client</module>
+        <module>engine-http-server</module>
         <module>engine-job-api</module>
         <module>engine-minicom</module>
         <module>engine-newkernel</module>
@@ -70,7 +72,7 @@
         <test.logback.configurationFile>-</test.logback.configurationFile> <!-- Something for logback.ConfigurationFile, to let logback use its default configuration -->
         <enginedoc.version>${project.version}</enginedoc.version>
         <argLine />
-        <LC_ALL>C</LC_ALL>    <!-- Neutrales Locale für H2Database -->
+        <LC_ALL>C</LC_ALL>    <!-- Neutral Locale for H2Database -->
     </properties>
 
     <build>
@@ -82,7 +84,6 @@
                 <configuration>
                     <autoVersionSubmodules>true</autoVersionSubmodules>
                     <tagBase>scm:git:git@github.com:sos-berlin/scheduler-engine.git</tagBase>
-                    <!--tagNameFormat>{1}</tagNameFormat--><!-- {0} ist ${project.artifactId}, {1} ist ${project.version} -->
                     <tagNameFormat>v@{project.version}</tagNameFormat>
                     <allowTimestampedSnapshots>true</allowTimestampedSnapshots>
                 </configuration>
@@ -110,30 +111,6 @@
                     </excludes>
                 </configuration>
             </plugin>
-            <!--plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -142,7 +119,7 @@
                     <environmentVariables>
                         <LC_ALL>${LC_ALL}</LC_ALL>
                     </environmentVariables>
-                    <argLine>-Xms10m -Xmx150m ${argLine}</argLine>  <!-- Sparsame Heap-Zuteilung für die parallelen Prozesse -->
+                    <argLine>-Xms10m -Xmx150m ${argLine}</argLine>  <!-- Small heap for multiple parallel JVM processes-->
                     <systemPropertyVariables>
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
@@ -160,7 +137,7 @@
                     <environmentVariables>
                         <LC_ALL>${LC_ALL}</LC_ALL>
                     </environmentVariables>
-                    <argLine>-Xms10m -Xmx100m ${argLine}</argLine>  <!-- Sparsame Heap-Zuteilung für die parallelen Prozesse -->
+                    <argLine>-Xms10m -Xmx100m ${argLine}</argLine>  <!-- Small heap for multiple parallel JVM processes-->
                     <systemPropertyVariables>
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
@@ -180,12 +157,15 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.8</version>
-                <configuration>
-                    <quiet>true</quiet>
-                    <additionalparam>-Xdoclint:-missing</additionalparam>
-                </configuration>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -196,6 +176,16 @@
 
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>2.10.3</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>2.4</version>
+                </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-clean-plugin</artifactId>
@@ -210,10 +200,6 @@
                     <artifactId>maven-assembly-plugin</artifactId>
                     <version>2.5.1</version>
                 </plugin>
-                <!--plugin>
-                    <artifactId>maven-deploy-plugin</artifactId>
-                    <version>2.6</version>
-                </plugin-->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
@@ -587,7 +573,7 @@
             <dependency>
                 <groupId>com.h2database</groupId>
                 <artifactId>h2</artifactId>
-                <version>1.4.187</version>
+                <version>1.3.176</version>
             </dependency>
             <dependency>
                 <groupId>commons-io</groupId>

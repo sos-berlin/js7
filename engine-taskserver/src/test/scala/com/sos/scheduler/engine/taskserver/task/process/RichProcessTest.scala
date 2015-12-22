@@ -1,10 +1,12 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem.{KernelSupportsNestedShebang, isUnix, isWindows}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
@@ -55,7 +57,7 @@ final class RichProcessTest extends FreeSpec {
             s"""#! $interpreter
                |echo TEST-SCRIPT
                |""".stripMargin
-          val stdFileMap = RichProcess.createTemporaryStdFiles()
+          val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = s"RichProcessTest-shebang")
           val processConfig = ProcessConfiguration(stdFileMap)
           val shellProcess = RichProcess.startShellScript(processConfig, name = "TEST", scriptString = scriptString)
           shellProcess.waitForTermination()
@@ -65,24 +67,30 @@ final class RichProcessTest extends FreeSpec {
               |TEST-SCRIPT
               |INTERPRETER-END
               |""".stripMargin)
+          RichProcess.tryDeleteFiles(stdFileMap.values)
         }
       }
   }
 
   "sendProcessSignal SIGKILL" in {
-    val idString = "TEST-PROCESS-ID"
-    val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 60 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 60"
+    val agentTaskId = AgentTaskId("TEST-PROCESS-ID")
+    val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 7 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 6"
     withCloser { closer ⇒
-      val stdFileMap = RichProcess.createTemporaryStdFiles()
+      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "RichProcessTest-kill")
       val killScriptOutputFile = createTempFile("test-", ".tmp")
       val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
       killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n"
       closer.onClose {
-        RichProcess.tryDeleteFiles(stdFileMap.values)  // Under Windows the files will not be deleted, because ping.exe will be not killed (and JS-1468 doesn't allow integrated kill scripts) !!!
+        waitForCondition(15.s, 1.s) {
+          RichProcess.tryDeleteFiles(stdFileMap.values)
+        }
         delete(killScriptOutputFile)
         delete(killScriptFile)
       }
-      val processConfig = ProcessConfiguration(stdFileMap = stdFileMap, idStringOption = Some(idString), killScriptFileOption = Some(killScriptFile))
+      val processConfig = ProcessConfiguration(
+        stdFileMap = stdFileMap,
+        agentTaskIdOption = Some(agentTaskId),
+        killScriptOption = Some(ProcessKillScript(killScriptFile)))
       val shellProcess = startShellScript(processConfig, scriptString = script)
       assert(shellProcess.processConfiguration.files.size == 3)
       sleep(3.s)
@@ -95,8 +103,8 @@ final class RichProcessTest extends FreeSpec {
       shellProcess.close()
 
       assert(stdFileMap(Stdout).contentString contains "SCRIPT-ARGUMENTS=")
-      assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=-agent-task-id=$idString")
-      assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=-kill-agent-task-id=$idString")
+      assert(stdFileMap(Stdout).contentString contains s"SCRIPT-ARGUMENTS=-agent-task-id=${agentTaskId.string}")
+      assert(killScriptOutputFile.contentString contains s"KILL-ARGUMENTS=-kill-agent-task-id=${agentTaskId.string}")
     }
   }
 

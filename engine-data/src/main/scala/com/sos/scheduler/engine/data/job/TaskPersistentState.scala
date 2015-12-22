@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.job
 
+import com.sos.scheduler.engine.base.utils.HasKey
 import com.sos.scheduler.engine.cplusplus.runtime.annotation.ForCpp
-import com.sos.scheduler.engine.data.base.HasKey
 import org.joda.time.ReadableInstant
 import scala.annotation.meta.getter
 
@@ -13,10 +13,11 @@ final case class TaskPersistentState(
                       startTimeOption: Option[ReadableInstant],
     @(ForCpp @getter) parametersXml: String,
     @(ForCpp @getter) xml: String)
-extends HasKey[TaskId] {
+extends HasKey {
 
-  def key =
-    taskId
+  type Key = TaskId
+
+  def key = taskId
 
   @ForCpp
   def startTimeMillis: Long = startTimeOption map { _.getMillis } getOrElse 0

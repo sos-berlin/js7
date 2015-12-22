@@ -3,9 +3,10 @@ package com.sos.scheduler.engine.common.scalautil
 import com.sos.scheduler.engine.common.scalautil.Tries.{extendStackTraceWith, newStackTrace}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
+import java.util.concurrent.TimeoutException
+import scala.concurrent._
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author Joacim Zschimmer
@@ -32,7 +33,13 @@ object Futures {
   /**
    * A Future that will never happen.
    */
-  val NoFuture: Future[Nothing] = Promise().future
+  object NoFuture extends Future[Nothing] {
+    def onComplete[U](f: (Try[Nothing]) ⇒ U)(implicit ec: ExecutionContext) = {}
+    def isCompleted = false
+    def value = None
+    def result(atMost: duration.Duration)(implicit permit: CanAwait) = throw new TimeoutException("NoFuture")
+    def ready(atMost: duration.Duration)(implicit permit: CanAwait) = throw new TimeoutException("NoFuture")
+  }
 
   object implicits {
 

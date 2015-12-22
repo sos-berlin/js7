@@ -1,8 +1,10 @@
 package com.sos.scheduler.engine.agent.task
 
 import akka.actor.{Actor, ActorSystem, Props}
-import com.google.inject.{AbstractModule, Guice, Provides}
+import akka.util.ByteString
+import com.google.inject.{Guice, Provides}
 import com.sos.scheduler.engine.agent.command.CommandMeta
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
@@ -18,11 +20,13 @@ import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.soslicense.{LicenseKeyBunch, LicenseKeyParameterIsMissingException}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.net.InetAddress
+import java.time.{Duration, Instant}
 import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -39,9 +43,10 @@ final class TaskHandlerTest extends FreeSpec {
 
   "Second StartApiTask without a license is rejected - JS-1482" in {
     val testContext = new TestContext
-    import testContext.{taskHandler, tasks}
+    import testContext.{taskHandler, taskServers, tasks}
     def startTask() = awaitResult(taskHandler.execute(TestStartApiTask), 3.s)
     startTask()
+    taskServers(0).mockedTerminate()
     intercept[LicenseKeyParameterIsMissingException] { startTask() }
     awaitResult(taskHandler.execute(CloseTask(tasks(0).id, kill = false)), 3.s)
     startTask()
@@ -89,6 +94,7 @@ final class TaskHandlerTest extends FreeSpec {
     }
 
     "CloseTask" in {
+      taskServers(0).mockedTerminate()
       val commands = List(
         CloseTask(tasks(0).id, kill = false),
         CloseTask(tasks(1).id, kill = true))
@@ -168,7 +174,13 @@ private object TaskHandlerTest {
   private class TestContext {
     val taskServers = List.fill(AgentTaskIds.size) { new MockTaskServer }
     val tasks = AgentTaskIds zip taskServers map {
-      case (id, taskServer) ⇒ new AgentTask(id, tunnel = mockTunnelHandle(), taskServer, taskArgumentsFuture = NoFuture)
+      case (id_, taskServer_) ⇒ new AgentTask {
+        def id = id_
+        def tunnel = mockTunnelHandle()
+        def taskServer = taskServer_
+        def taskArgumentsFuture = NoFuture
+        def close() = closeTunnelAndTaskServer()
+      }
     }
     val taskHandler = Guice.createInjector(new TestModule(tasks)).instance[TaskHandler]
   }
@@ -180,6 +192,10 @@ private object TaskHandlerTest {
     def connected = Promise().future
     def peerAddress = () ⇒ None
     def close() = {}
+    def onInactivity(callback: Instant ⇒ Unit) = {}
+    def heartbeatService = ???
+    def request(request: ByteString, timeout: Option[Duration]) = ???
+    override def view = ???
   }
 
   private class MockTaskServer extends TaskServer {
@@ -194,9 +210,14 @@ private object TaskHandlerTest {
     def taskStartArguments = TaskStartArguments.forTest(tcpPort = TestMasterPort)   // For TaskHandler.overview
 
     def sendProcessSignal(signal: ProcessSignal) = signal match {
-      case SIGTERM ⇒ sigtermed = true
-      case SIGKILL ⇒ sigkilled = true; terminatedPromise.success(())
+      case SIGTERM ⇒
+        sigtermed = true
+      case SIGKILL ⇒
+        sigkilled = true
+        terminatedPromise.success(())
     }
+
+    def deleteLogFiles() = {}
 
     def start() = {
       assert(!started && !closed)
@@ -206,16 +227,22 @@ private object TaskHandlerTest {
     def close() = {
       if (!closed) {
         assert(started)
-        terminatedPromise.trySuccess(())
         closed = true
       }
     }
+
+    def mockedTerminate(): Unit = terminatedPromise.trySuccess(())
+
+    def pidOption = None
   }
 
   private class TestModule(tasks: List[AgentTask]) extends ScalaAbstractModule {
     private val taskIterator = tasks.iterator
 
-    def configure() = bindInstance[ExecutionContext](ExecutionContext.global)
+    def configure() = {
+      bindInstance[TimerService](TimerService(idleTimeout = Some(1.s))(ExecutionContext.global))
+      bindInstance[ExecutionContext](ExecutionContext.global)
+    }
 
     @Provides @Singleton
     private def agentTaskFactory: AgentTaskFactory = new AgentTaskFactory {
@@ -232,5 +259,8 @@ private object TaskHandlerTest {
     @Provides @Singleton
     private def newAgentTaskId: () ⇒ AgentTaskId =
       AgentTaskIds.synchronized { AgentTaskIds.iterator.next }
+
+    @Provides @Singleton
+    private def agentConfiguration(): AgentConfiguration = AgentConfiguration.forTest()
   }
 }

@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil
 
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
 
@@ -61,5 +62,10 @@ object ScalaUtils {
 
     @inline def substitute(when: A, _then: ⇒ A): A =
       if (delegate == when) _then else delegate
+  }
+
+  implicit class SwitchOnAtomicBoolean(val delegate: AtomicBoolean) extends AnyVal {
+    def switchOn(body: ⇒ Unit) = if (delegate.compareAndSet(false, true)) body
+    def switchOff(body: ⇒ Unit) = if (delegate.compareAndSet(true, false)) body
   }
 }

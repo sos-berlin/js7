@@ -20,7 +20,8 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
-import scala.concurrent.{ExecutionContext, Future, blocking}
+import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
+import scala.util.Try
 import scala.util.control.NonFatal
 
 /**
@@ -30,49 +31,63 @@ final class RichProcess private(val processConfiguration: ProcessConfiguration, 
 (implicit executionContext: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
-  private val pidOption = processToPidOption(process)
+  val pidOption = processToPidOption(process)
   private val logger = Logger.withPrefix(getClass, toString)
   /**
    * UTF-8 encoded stdin.
    */
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
+  private val terminatedPromise = Promise[Unit]()
 
-  def kill() = process.destroyForcibly()
+  Future {
+    terminatedPromise complete Try {
+      blocking {
+        waitForTermination()
+        logger.info(s"Process ended with ${ReturnCode(process.exitValue)}")
+      }
+    }
+  }
+
+  logger.info(s"Process started")
+
+  def terminated: Future[Unit] = terminatedPromise.future
 
   def sendProcessSignal(signal: ProcessSignal): Unit =
-    signal match {
-      case SIGTERM ⇒
-        if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
-        logger.debug("destroy")
-        process.destroy()
-      case SIGKILL ⇒
-        processConfiguration.killScriptFileOption match {
-          case Some(onKillScriptFile) ⇒
-            try {
-              val args = toShellCommandArguments(onKillScriptFile, List(processConfiguration.killScriptArgument))
-              logger.info("Executing kill script: " + (args mkString ", "))
-              val onKillProcess = new ProcessBuilder(args).start()
-              Future {
-                waitForProcessTermination(onKillProcess)
-                onKillProcess.exitValue match {
-                  case 0 ⇒
-                  case o ⇒ logger.warn(s"Kill script '$onKillScriptFile' has returned exit code $o")
-                }
+    if (process.isAlive) {
+      signal match {
+        case SIGTERM ⇒
+          if (isWindows) throw new UnsupportedOperationException("SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows")
+          logger.info("destroy (SIGTERM)")
+          process.destroy()
+        case SIGKILL ⇒
+          processConfiguration.toCommandArgumentsOption match {
+            case Some(args) ⇒
+              executeKillScript(args) recover {
+                case t ⇒ logger.error(s"Cannot start kill script command '$args': $t")
+              } onComplete { case _ ⇒
                 killNow()
               }
-            } catch {
-              case NonFatal(t) ⇒
-                killNow()
-                throw t
-            }
-          case None ⇒
-            killNow()
-        }
+            case None ⇒
+              killNow()
+          }
+      }
+    }
+
+  private def executeKillScript(args: Seq[String]) = Future[Unit] {
+    logger.info("Executing kill script: " + (args mkString "  "))
+    val onKillProcess = new ProcessBuilder(args).start()
+    val promise = Promise[Unit]()
+      blocking { waitForProcessTermination(onKillProcess) }
+      onKillProcess.exitValue match {
+        case 0 ⇒
+        case o ⇒ logger.warn(s"Kill script '${args(0)}' has returned exit code $o")
+      }
+      promise.success(())
     }
 
   private def killNow(): Unit = {
     if (process.isAlive) {
-      logger.debug("destroyForcibly")
+      logger.info("destroyForcibly" + (if (!isWindows) " (SIGKILL)" else ""))
       process.destroyForcibly()
     }
   }
@@ -87,7 +102,7 @@ extends HasCloser with ClosedFuture {
 
   def stdin = process.getOutputStream
 
-  override def toString = (processConfiguration.idStringOption ++ List(processToString(process, pidOption)) ++ processConfiguration.fileOption) mkString " "
+  override def toString = (processConfiguration.agentTaskIdOption ++ List(processToString(process, pidOption)) ++ processConfiguration.fileOption) mkString " "
 }
 
 object RichProcess {
@@ -125,28 +140,33 @@ object RichProcess {
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
-    logger.debug("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
+    logger.info("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     val process = processBuilder.start()
     new RichProcess(processConfiguration, process)
   }
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
 
-  def createTemporaryStdFiles(): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newTemporaryOutputFile("sos", o) }).toMap
+  def createStdFiles(directory: Path, id: String): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, id, o) }).toMap
 
-  private def waitForProcessTermination(process: Process): Unit =
-    blocking {
-      logger.debug(s"waitFor ${processToString(process)} ...")
-      while (!process.waitFor(WaitForProcessPeriod.toMillis, MILLISECONDS)) {}   // Die waitFor-Implementierung fragt millisekündlich ab
-      logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
-    }
+  private def waitForProcessTermination(process: Process): Unit = {
+    logger.debug(s"waitFor ${processToString(process)} ...")
+    while (!process.waitFor(WaitForProcessPeriod.toMillis, MILLISECONDS)) {}
+    logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
+  }
 
-  def tryDeleteFiles(files: Iterable[Path]): Unit =
+  def tryDeleteFiles(files: Iterable[Path]): Boolean = {
+    var allFilesDeleted = true
     for (file ← files) {
       try {
         logger.debug(s"Delete file '$file'")
         delete(file)
       }
-      catch { case NonFatal(t) ⇒ logger.error(t.toString) }
+      catch { case NonFatal(t) ⇒
+        allFilesDeleted = false
+        logger.error(t.toString)
+      }
     }
+    allFilesDeleted
+  }
 }

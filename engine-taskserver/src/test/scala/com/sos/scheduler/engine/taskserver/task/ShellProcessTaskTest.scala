@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
+import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
@@ -32,24 +33,31 @@ import scala.concurrent.ExecutionContext.Implicits.global
 final class ShellProcessTaskTest extends FreeSpec {
 
   "ShellProcessTask exit 0" in {
-    runTask(Setting(preTask = true, preStep = true, exitCode = 0, postStep = identity), expectedSpoolerProcessResult = Some(true))
+    runTask("exit-0",
+      Setting(preTask = true, preStep = true, exitCode = 0, postStep = identity),
+      expectedSpoolerProcessResult = Some(true))
   }
 
   "ShellProcessTask exit 0 pretask false" in {
-    runTask(Setting(preTask = false, preStep = true, exitCode = 0, postStep = identity), expectedStartResult = false)
+    runTask("exit-0-pretask-false",
+      Setting(preTask = false, preStep = true, exitCode = 0, postStep = identity),
+      expectedStartResult = false)
   }
 
   "ShellProcessTask exit 7" in {
-    runTask(Setting(preTask = true, preStep = true, exitCode = 7, postStep = identity), expectedSpoolerProcessResult = Some(false))
+    runTask("exit-7",
+      Setting(preTask = true, preStep = true, exitCode = 7, postStep = identity),
+      expectedSpoolerProcessResult = Some(false))
   }
 
-  private def runTask(setting: Setting, expectedStartResult: Boolean = true, expectedSpoolerProcessResult: Option[Boolean] = None): Unit = {
+  private def runTask(id: String, setting: Setting, expectedStartResult: Boolean = true, expectedSpoolerProcessResult: Option[Boolean] = None): Unit = {
     val spoolerLog = new TestSpoolerLog
-    val (stepResultOption, files) = autoClosing(newShellProcessTask(spoolerLog, setting)) { task ⇒
+    val (stepResultOption, files) = autoClosing(newShellProcessTask(id, spoolerLog, setting)) { task ⇒
       val taskResult = task.start()
       assert(taskResult == expectedStartResult)
       val r = taskResult.option(task.step())
       // Is not called by C++ Scheduler: task.end()
+      task.deleteLogFiles()
       (r, task.files)
     }
     (setting.preTask, stepResultOption) match {
@@ -81,7 +89,7 @@ private object ShellProcessTaskTest {
 
   private case class Setting(preTask: Boolean, preStep: Boolean, exitCode: Int, postStep: Boolean ⇒ Boolean)
 
-  private def newShellProcessTask(spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) =
+  private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) =
     new ShellProcessTask(
       ShellModule(testScript(setting.exitCode)),
       CommonArguments(
@@ -98,7 +106,10 @@ private object ShellProcessTaskTest {
         hasOrder = false,
         stdFiles = StdFiles(stdFileMap = Map(), stderrLogLevel = SchedulerLogLevel.info, log = (_, lines) ⇒ spoolerLog.info(lines))),
       environment = Map(TestName → TestValue),
-      killScriptPathOption = None)
+      variablePrefix = TaskArguments.DefaultShellVariablePrefix,
+      logDirectory = temporaryDirectory,
+      logFilenamePart = s"ShellProcessTaskTest-$id",
+      killScriptOption = None)
 
   private def testScript(exitCode: Int) = Script(
     (if (isWindows) s"@echo off\necho $TestName=%$TestName%" else s"echo $TestName=$$$TestName") +

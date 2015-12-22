@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.agent.task
 
 import com.sos.scheduler.engine.agent.command.CommandMeta
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, Response, StartTaskResponse}
 import com.sos.scheduler.engine.agent.data.commands._
@@ -9,15 +10,18 @@ import com.sos.scheduler.engine.agent.task.TaskHandler._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
+import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.time.timer.TimerService
+import com.sos.scheduler.engine.common.utils.ConcurrentRegister
+import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import java.time.Instant
 import java.time.Instant.now
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.NoSuchElementException
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.{Inject, Singleton}
-import org.scalactic.Requirements._
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 import scala.util.control.NonFatal
@@ -26,16 +30,17 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory)(implicit ec: ExecutionContext)
+final class TaskHandler @Inject private(
+  newAgentTask: AgentTaskFactory,
+  agentConfiguration: AgentConfiguration,
+  timerService: TimerService)
+  (implicit ec: ExecutionContext)
 extends TaskHandlerView {
 
-  private val totalTaskCounter = new AtomicInteger(0)
   private val terminating = new AtomicBoolean
   private val terminatedPromise = Promise[Unit]()
-
-  private val idToAgentTask = new ScalaConcurrentHashMap[AgentTaskId, AgentTask] {
-    override def default(id: AgentTaskId) = throwUnknownTask(id)
-  }
+  private val tasks = new TaskRegister
+  private val crashKillScriptOption = agentConfiguration.killScript map { o ⇒ new CrashKillScript(o, agentConfiguration.crashKillScriptFile) }
 
   def isTerminating = terminating.get
   def terminated = terminatedPromise.future
@@ -50,47 +55,52 @@ extends TaskHandlerView {
     }
 
   private def executeStartTask(command: StartTask, meta: CommandMeta) = Future {
-    if (idToAgentTask.nonEmpty) {
+    if (tasks.nonEmpty) {
       meta.licenseKeyBunch.require(UniversalAgent, "No license key provided by master to execute jobs in parallel")
     }
     if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept task starts")
     val task = newAgentTask(command, meta.clientIpOption)
+    for (o ← crashKillScriptOption) o.add(task.id)
+    tasks.insert(task)
     task.start()
-    registerTask(task)
-    totalTaskCounter.incrementAndGet()
+    task.onTunnelInactivity(killAfterTunnelInactivity(task))
     StartTaskResponse(task.id, task.tunnelToken)
   }
 
-  private def registerTask(task: AgentTask): Unit = {
-    idToAgentTask.synchronized {
-      require(!(idToAgentTask contains task.id))
-      idToAgentTask += task.id → task
-    }
+  private def killAfterTunnelInactivity(task: AgentTask)(since: Instant): Unit = {
+    logger.error(s"$task has no connection activity since $since. Task is being killed")
+    ignoreException(logger.error) { task.sendProcessSignal(SIGKILL) }
+    task.closeTunnel()  // This terminates Remoting and then SimpleTaskServer
+    task.terminated.onComplete { case _ ⇒ removeTaskAfterTermination(task) }
   }
 
   private def executeCloseTask(id: AgentTaskId, kill: Boolean) = {
-    val task = idToAgentTask.remove(id) getOrElse throwUnknownTask(id)
-    if (kill) {
-      try task.sendProcessSignal(SIGKILL)
-      catch { case NonFatal(t) ⇒
-        logger.warn(s"Kill $task failed: $t")
-        // Anyway, close Tunnel and TaskServer
-        task.close()
-      }
-    } else {
-      task.close()
+    val task = tasks(id)
+    if (kill) tryKillTask(task)
+    task.terminated recover {
+      case t ⇒ logger.error(s"$task: $t", t)
+    } map { _ ⇒
+      task.deleteLogFiles()
+      // Now, the master has completed all API calls or the connection has been closed
+      removeTaskAfterTermination(task)
+      EmptyResponse
     }
-    val responsePromise = Promise[EmptyResponse.type]()
-    task.terminated.onComplete { case o ⇒
-      // In case of kill, task has terminated but not yet closed.
-      task.close()
-      responsePromise.complete(o map { _ ⇒ EmptyResponse })
+  }
+
+  private def tryKillTask(task: AgentTask): Unit =
+    ignoreException(logger.error) {
+      task.sendProcessSignal(SIGKILL)
     }
-    responsePromise.future
+
+  private def removeTaskAfterTermination(task: AgentTask): Unit = {
+    logger.info(s"$task terminated")
+    task.close()
+    tasks -= task.id
+    for (o ← crashKillScriptOption) o.remove(task.id)
   }
 
   private def executeSendProcessSignal(id: AgentTaskId, signal: ProcessSignal) = Future {
-    idToAgentTask(id).sendProcessSignal(signal)
+    tasks(id).sendProcessSignal(signal)
     EmptyResponse
   }
 
@@ -115,35 +125,33 @@ extends TaskHandlerView {
 
   private def sigkillProcessesAt(at: Instant): Unit = {
     logger.info(s"All task processes will be terminated with SIGKILL at $at")
-    Future {
-      blocking {
-        sleep(at - now())
-      }
+    timerService.at(at, "SIGKILL all processes") onElapsed {
       sendSignalToAllProcesses(SIGKILL)
     }
   }
 
   private def sendSignalToAllProcesses(signal: ProcessSignal): Unit =
-    for (p ← agentTasks) {
-      logger.info(s"$signal $p")
-      p.sendProcessSignal(signal)
+    for (p ← tasks) {
+      logger.warn(s"$signal $p")
+      ignoreException(logger.warn) { p.sendProcessSignal(signal) }
     }
 
   private def terminateWithTasksNotBefore(notBefore: Instant): Unit = {
-    Future.sequence(agentTasks map { _.terminated }) onComplete { o ⇒
+    Future.sequence(tasks map { _.terminated }) onComplete { o ⇒
       val delay = notBefore - now()
       if (delay > 0.s) {
         // Wait until HTTP request with termination command probably has been responded
         logger.debug(s"Delaying termination for ${delay.pretty}")
-        sleep(delay)
       }
-      logger.info("Agent is terminating now")
-      terminatedPromise.complete(o map { _ ⇒ () })
+      timerService.delay(delay, "Terminate after HTTP response has been sent") onElapsed {
+        logger.info("Agent is terminating now")
+        terminatedPromise.complete(o map { _ ⇒ () })
+      }
     }
   }
 
   private def executeAbortImmediately(): Nothing = {
-    for (o ← agentTasks) o.sendProcessSignal(SIGKILL)
+    for (o ← tasks) ignoreException(logger.warn) { o.sendProcessSignal(SIGKILL) }
     val msg = "Due to command AbortImmediately, Agent is halted now!"
     logger.warn(msg)
     System.err.println(msg)
@@ -152,19 +160,25 @@ extends TaskHandlerView {
   }
 
   def overview = TaskHandlerOverview(
-    currentTaskCount = idToAgentTask.size,
-    totalTaskCount = totalTaskCounter.get)
+    currentTaskCount = tasks.size,
+    totalTaskCount = tasks.totalCount)
 
-  def taskOverviews: immutable.Seq[TaskOverview] = (idToAgentTask.values map { _.overview }).toVector
+  def taskOverviews: immutable.Seq[TaskOverview] = (tasks map { _.overview }).toVector
 
-  def taskOverview(id: AgentTaskId) = idToAgentTask(id).overview
-
-  private def agentTasks = idToAgentTask.values
+  def taskOverview(id: AgentTaskId) = tasks(id).overview
 }
 
 private object TaskHandler {
   private val logger = Logger(getClass)
   private val ImmediateTerminationDelay = 1.s  // Allow HTTP with termination command request to be responded
 
-  private def throwUnknownTask(id: AgentTaskId) = throw new NoSuchElementException(s"Unknown agent task '$id'")
+  private class TaskRegister extends ConcurrentRegister[AgentTask] {
+    override def onAdded(task: AgentTask) = logger.info(s"$task registered")
+    override def onRemoved(task: AgentTask) = logger.info(s"$task unregistered")
+    override protected def throwNoSuchKey(id: AgentTask#Key) = throw new UnknownTaskException(id)
+  }
+
+  final class UnknownTaskException(agentTaskId: AgentTaskId) extends NoSuchElementException {
+    override def getMessage = s"Unknown $agentTaskId"
+  }
 }

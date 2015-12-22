@@ -8,5 +8,5 @@ import com.sos.scheduler.engine.common.soslicense.Parameters.parameterToString
  * @author Joacim Zschimmer
  */
 class LicenseKeyParameterIsMissingException(parameter: Parameter, failureText: String = "")
-extends StandardPublicException(s"License key required for '${parameterToString(parameter)}'" +
+extends StandardPublicException(s"LicenseKeyParameterIsMissingException: License key required for '${parameterToString(parameter)}'" +
   (if (failureText.isEmpty) "" else s" ($failureText)"))

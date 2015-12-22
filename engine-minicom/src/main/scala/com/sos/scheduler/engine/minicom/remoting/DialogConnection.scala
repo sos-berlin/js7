@@ -16,24 +16,37 @@ import org.scalactic.Requirements._
  */
 final class DialogConnection(connection: MessageConnection) {
 
-  private var firstMessageRead = false
+  private var firstMessageReceived = false
+  private var lastMessageSent = false
   private val lock = new ReentrantLock
 
   def receiveFirstMessage(): Option[ByteString] = {
-    requireState(!firstMessageRead)
+    requireState(!firstMessageReceived)
     val r = connection.receiveMessage()
-    firstMessageRead = true
+    firstMessageReceived = true
     r
   }
 
   def sendAndReceive(data: ByteString): Option[ByteString] = {
-    requireState(firstMessageRead)
-    if (lock.isLocked) logger.trace("Waiting for completion of a concurrent connection dialog")
-    lock.lock()
-    try {
+    requireState(firstMessageReceived && !lastMessageSent)
+    exclusive {
       connection.sendMessage(data)
       connection.receiveMessage()
     }
+  }
+
+  def sendLastMessage(data: ByteString) = {
+    requireState(firstMessageReceived && !lastMessageSent)
+    lastMessageSent = true
+    exclusive {
+      connection.sendMessage(data)
+    }
+  }
+
+  private def exclusive[A](body: ⇒ A): A = {
+    if (lock.isLocked) logger.trace("Waiting for completion of a concurrent connection dialog")
+    lock.lock()
+    try body
     finally lock.unlock()
   }
 }

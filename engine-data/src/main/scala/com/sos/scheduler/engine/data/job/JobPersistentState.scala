@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.data.job
 
+import com.sos.scheduler.engine.base.utils.HasKey
 import com.sos.scheduler.engine.cplusplus.runtime.annotation.ForCpp
-import com.sos.scheduler.engine.data.base.{HasKey, HasIsDefault}
+import com.sos.scheduler.engine.data.base.HasIsDefault
 import java.time.Instant
 import scala.annotation.meta.getter
 
@@ -10,12 +11,12 @@ final case class JobPersistentState(
     jobPath: JobPath,
     @(ForCpp @getter) isPermanentlyStopped: Boolean,
     nextStartTimeOption: Option[Instant])
-extends HasKey[JobPath]
+extends HasKey
 with HasIsDefault {
 
-  def key =
-    jobPath
+  type Key = JobPath
 
-  def isDefault =
-    nextStartTimeOption.isEmpty && !isPermanentlyStopped
+  def key = jobPath
+
+  def isDefault = nextStartTimeOption.isEmpty && !isPermanentlyStopped
 }

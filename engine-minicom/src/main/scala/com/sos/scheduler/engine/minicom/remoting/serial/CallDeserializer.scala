@@ -23,7 +23,7 @@ private[serial] trait CallDeserializer extends VariantDeserializer {
     readByte() match {
       case MessageClass.Session ⇒ readSessionCall()
       case MessageClass.Object ⇒ readObjectCall()
-      case MessageClass.KeepAlive ⇒ KeepAliveCall
+      case MessageClass.KeepAlive ⇒ KeepaliveCall
     }
 
   private def readSessionCall(): Call = {

@@ -11,8 +11,10 @@ trait ProxyIDispatch extends IDispatch {
   val name: String
   protected val remoting: ClientRemoting
 
-  final def getIdOfName(name: String) = remoting.getIdOfName(id, name)
+  def getIdOfName(name: String) = remoting.getIdOfName(id, name)
 
   final def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any] = Nil, namedArguments: Seq[(DISPID, Any)] = Nil) =
     remoting.invoke(id, dispId, dispatchTypes, arguments, namedArguments)
+
+  override def toString = name
 }

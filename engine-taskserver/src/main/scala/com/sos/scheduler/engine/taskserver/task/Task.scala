@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.taskserver.task.process.Processes.Pid
+
 /**
  * @author Joacim Zschimmer
  */
@@ -19,4 +21,6 @@ private[task] trait Task extends AutoCloseable {
     import commonArguments.{agentTaskId, jobName}
     s"${getClass.getSimpleName}($agentTaskId $jobName)"
   }
+
+  def pidOption: Option[Pid]
 }

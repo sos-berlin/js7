@@ -19,7 +19,7 @@ private final class CallSerializer(protected val proxyRegister: ProxyRegister) e
         writeByte(MessageClass.Object)
         writeInt64(call.proxyId.value)
         writeObjectCall(call)
-      case KeepAliveCall ⇒
+      case KeepaliveCall ⇒
         writeByte(MessageClass.KeepAlive)
     }
 

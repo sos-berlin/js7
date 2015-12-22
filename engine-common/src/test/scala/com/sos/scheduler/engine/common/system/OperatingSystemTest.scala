@@ -9,7 +9,7 @@ import org.scalatest.FreeSpec
 /**
  * @author Joacim Zschimmer
  */
-@RunWith (classOf[org.scalatest.junit.JUnitRunner] )
+@RunWith(classOf[org.scalatest.junit.JUnitRunner] )
 final class OperatingSystemTest extends FreeSpec {
 
   "makeModuleFilename" in {

@@ -17,7 +17,7 @@ import static com.google.common.base.Preconditions.checkArgument;
     public void onWaitBegin() {
         try {
             float load = loadMeter.getLoad();
-            if (load > loadWarnLevel)  Nicht jedesmal die Meldung ausgeben. In Plugin oder sowas auslagern, mit Abonnement.
+            if (load &gt; loadWarnLevel)  Nicht jedesmal die Meldung ausgeben. In Plugin oder sowas auslagern, mit Abonnement.
                 log().info("Load is " + above " + (int)(100 * loadWarnLevel) + "%");
 
             loadMeter.meter(0, new Date().getTime());

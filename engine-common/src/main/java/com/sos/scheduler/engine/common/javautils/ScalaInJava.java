@@ -11,6 +11,7 @@ public class ScalaInJava {
     /**
      * @return A copy of the argument list as an immutable.Set, ignoring duplicates
      */
+    @SafeVarargs
     public static <A> scala.collection.immutable.Set<A> toScalaSet(A... o) {
         return ScalaInJavaHelper$.MODULE$.toScalaSet(o);
     }
