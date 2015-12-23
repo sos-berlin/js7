@@ -1,11 +1,11 @@
 package com.sos.scheduler.engine.agent.task
 
 import com.google.common.base.StandardSystemProperty.LINE_SEPARATOR
-import com.sos.scheduler.engine.agent.data.{ProcessKillScript, AgentTaskId}
+import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.agent.task.CrashKillScript._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
+import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.Charset.defaultCharset

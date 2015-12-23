@@ -16,7 +16,7 @@ import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializ
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
 import com.sos.scheduler.engine.minicom.remoting.serial.{ResultDeserializer, ServerRemoting}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
-import java.time.{Instant, Duration}
+import java.time.{Duration, Instant}
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
 import scala.collection.{breakOut, immutable}

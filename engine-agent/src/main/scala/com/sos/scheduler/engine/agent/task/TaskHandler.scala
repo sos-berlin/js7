@@ -23,8 +23,7 @@ import java.util.NoSuchElementException
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable
-import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
-import scala.util.control.NonFatal
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
  * @author Joacim Zschimmer

@@ -11,7 +11,6 @@ import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
-import java.time.Instant.now
 import java.time.Duration
 import scala.PartialFunction.cond
 import scala.collection.mutable

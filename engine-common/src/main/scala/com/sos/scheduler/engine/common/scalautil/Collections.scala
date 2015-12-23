@@ -4,8 +4,8 @@ import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 import scala.collection.{TraversableLike, immutable, mutable}
-import scala.util.control.NonFatal
 import scala.language.implicitConversions
+import scala.util.control.NonFatal
 
 object Collections {
   object implicits {
