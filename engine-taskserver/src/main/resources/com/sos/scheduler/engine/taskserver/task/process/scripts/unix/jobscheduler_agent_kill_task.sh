@@ -27,8 +27,7 @@ stoptree() {
     PIDS_TREE="${_pid} ${PIDS_TREE}"
     echo "stopping pid ${_pid}..." >> ${KILL_TASK_LOG_FILE}
     kill -stop ${_pid} # needed to stop quickly forking parent from producing children between child killing and parent killing
-    _regex="^\s*[0-9]+\s+${_pid}\s*$"
-    for _child in `ps ax -o "pid= ppid=" | egrep "${_regex}" | awk '{print $1}'`; do
+    for _child in `ps ax -o "pid= ppid=" | egrep " ${_pid}$" | awk '{print $1}'`; do
         stoptree "${_child}"
     done
 }
