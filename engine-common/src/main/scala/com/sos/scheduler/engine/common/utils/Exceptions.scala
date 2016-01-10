@@ -1,9 +1,10 @@
 package com.sos.scheduler.engine.common.utils
 
+import com.sos.scheduler.engine.common.scalautil.Logger
 import java.time.{Duration, Instant}
 import scala.collection.mutable
-import scala.util.Try
 import scala.util.control.NonFatal
+import scala.util.{Failure, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -22,10 +23,23 @@ object Exceptions {
     tried.get
   }
 
-  def ignoreException[A](log: (⇒ String, Throwable) ⇒ Unit)(body: ⇒ A): Try[A] =
-    Try { body } recover { case NonFatal(t)  ⇒
-      log(s"Ignoring exception $t", t)
-      throw t
+  private type LogFunction = (⇒ String, Throwable) ⇒ Unit
+
+  private def shouldCompile = Logger(getClass).debug: LogFunction
+
+  def ignoreException[A](log: LogFunction)(body: ⇒ A): Try[A] =
+    Try { body } recoverWith {
+      case NonFatal(t)  ⇒
+        log(s"Ignoring exception $t", t)
+        Failure(t)
+      }
+
+  def logException[A](log: LogFunction)(body: ⇒ A): A =
+    try body
+    catch {
+      case t: Throwable ⇒
+        log(t.toString, t)
+        throw t
     }
 
   def toStringWithCauses(throwable: Throwable): String = {
