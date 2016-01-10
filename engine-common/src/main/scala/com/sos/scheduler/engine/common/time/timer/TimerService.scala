@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.Timer.nowMillis
 import com.sos.scheduler.engine.common.time.timer.TimerService._
+import com.sos.scheduler.engine.common.time.timer.signaling.SynchronizedSignaling
 import java.lang.System.currentTimeMillis
 import java.time.Instant.now
 import java.time.{Duration, Instant}
@@ -26,7 +27,7 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
 
   private object clock {
     private val logger = Logger(getClass)
-    private val lock = new Object
+    private val headChanged = new SynchronizedSignaling
     private val _isRunning = new AtomicBoolean
     @volatile private var stopped = false
 
@@ -52,7 +53,7 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
       }
     }
 
-    def wake(): Unit = lock.synchronized { lock.notifyAll() }
+    def wake(): Unit = headChanged.signal()
 
     private def loop(): Unit = {
       object waitUntil {
@@ -62,7 +63,7 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
             case remainingMillis if remainingMillis > 0 ⇒
               hot = false
               val t = currentTimeMillis
-              lock.synchronized { lock.wait(remainingMillis) }
+              headChanged.awaitMillis(remainingMillis)
               if (currentTimeMillis - t >= remainingMillis) elapsedCounter += 1  // Time elapsed (probably no notifyAll)
             case d ⇒
               if (hot) {
@@ -91,15 +92,15 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
       }
     }
 
-    private def idleUntilTimeout(): Boolean = {
-      lock.synchronized {
-        idleTimeout match {
-          case Some(d) ⇒ lock.wait(d.toMillis)
-          case None ⇒ lock.wait()
-        }
+    private def idleUntilTimeout(): Boolean =
+      idleTimeout match {
+        case Some(d) ⇒
+          val signaled = headChanged.awaitMillis(d.toMillis)
+          !signaled
+        case None ⇒
+          headChanged.await()
+          true
       }
-      isEmpty && idleTimeout.isDefined
-    }
 
     def isRunning = _isRunning.get
   }
