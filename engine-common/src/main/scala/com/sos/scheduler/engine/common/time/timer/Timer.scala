@@ -22,7 +22,7 @@ extends PromiseFuture[A] {
 
   private[timer] def cancel(): Boolean = promise.tryComplete(CanceledFailure)
 
-  def onElapsed(body : ⇒ Unit)(implicit ec: ExecutionContext): this.type = {
+  def onElapsed(body: ⇒ Unit)(implicit ec: ExecutionContext): this.type = {
     onComplete {
       case ElapsedFailure ⇒ body
       case _ ⇒
@@ -32,11 +32,11 @@ extends PromiseFuture[A] {
 
   override def toString = s"Timer($at $name)"
 
-  def canceled = promise.future.value == Some(CanceledFailure)
+  def isCanceled = promise.future.value == Some(CanceledFailure)
 }
 
 object Timer {
-  private[timer] def nowMillis() = System.currentTimeMillis
+  private[timer] def nowMillis = System.currentTimeMillis
 
   final class CanceledException private[Timer] extends RuntimeException with NoStackTrace
   val CanceledFailure = Failure(new CanceledException)

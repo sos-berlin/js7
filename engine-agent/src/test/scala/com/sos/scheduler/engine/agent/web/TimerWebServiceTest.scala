@@ -33,9 +33,9 @@ final class TimerWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     Get(Uri("/jobscheduler/agent/api/timer")) ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TimerServiceOverview] == timerService.overview)
       assert(responseAs[JsObject] == JsObject(
+        "count" → JsNumber(0),
         "completeCount" → JsNumber(0),
-        "elapsedCount" → JsNumber(0),
-        "count" → JsNumber(0)
+        "wakeCount" → JsNumber(0)
       ))
     }
   }
@@ -54,9 +54,9 @@ final class TimerWebServiceTest extends FreeSpec with BeforeAndAfterAll with Sca
     Get(Uri("/jobscheduler/agent/api/timer")) ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TimerServiceOverview] == timerService.overview)
       assert(responseAs[JsObject] == JsObject(
-        "completeCount" → JsNumber(0),
-        "elapsedCount" → JsNumber(0),
         "count" → JsNumber(3),
+        "completeCount" → JsNumber(0),
+        "wakeCount" → JsNumber(0),
         "first" → JsObject(
           "at" → JsString("2111-01-01T12:11:11Z"),
           "name" → JsString("TEST-A")),

@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.common.time.timer
 
+import TreeMapOrderedQueue._
+import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -23,7 +25,11 @@ extends OrderedQueue.Implement[K, V] {
     var buffer = treeMap.get(key)
     if (buffer == null) {
       buffer = new mutable.ListBuffer[V]()
-      treeMap.put(key, buffer)
+      val old = treeMap.put(key, buffer)
+      if (old != null) {
+        logger.error(s"Concurrent TreeMapOrderedQueue.add: $old")
+        throw new AssertionError("Concurrent TreeMapOrderedQueue.add")
+      }
     }
     buffer += value
   }
@@ -36,7 +42,13 @@ extends OrderedQueue.Implement[K, V] {
           case -1 ⇒ false
           case i ⇒
             buffer.remove(i)
-            if (buffer.isEmpty) treeMap.remove(key)
+            if (buffer.isEmpty) {
+              val b = treeMap.remove(key)
+              if (b.nonEmpty) {
+                logger.error(s"Concurrent access during TreeMapOrderedQueue.remove: $buffer")
+                throw new AssertionError("Concurrent access during TreeMapOrderedQueue.remove")
+              }
+            }
             true
         }
     }
@@ -62,4 +74,8 @@ extends OrderedQueue.Implement[K, V] {
   protected def toKey(value: V) = toKey_(value)
 
   protected def lt(a: K, b: K) = (a compareTo b) < 0
+}
+
+object TreeMapOrderedQueue {
+  private val logger = Logger(getClass)
 }
