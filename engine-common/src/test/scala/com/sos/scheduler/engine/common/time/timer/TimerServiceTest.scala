@@ -14,8 +14,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.Matchers._
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -61,29 +61,23 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
     assert(timerService.isEmpty)
   }
 
-  "cancel, cancelWhenCompleted" in {
+  "cancel" in {
     autoClosing(TimerService(idleTimeout = Some(1.s))) { timerService ⇒
       for (nr ← 1 to 2) {
         val results = new ConcurrentLinkedQueue[(String, Instant)]()
         val t = now
-        val promise = Promise[Unit]()
-
-        timerService.delay(200.ms, "test", cancelWhenCompleted = promise.future) onElapsed { results.add("200" → now) }
-        timerService.at(t + 400.ms, "test") onElapsed { results.add("400" → now) }
-        val cTimer = timerService.at(t + 600.ms, "test")
-        cTimer onSuccess { case _ ⇒ results.add("600" → now) }
-        timerService.at(t + 999.ms, "test", cancelWhenCompleted = Future.successful(())) onElapsed { results.add("B" → now) }  // Immediately ignored
-        promise.success(())
-        assert(!cTimer.isCanceled)
-        timerService.cancel(cTimer)
-        assert(cTimer.isCanceled)
+        timerService.delay(200.ms, "test") onElapsed { results.add("200" → now) }
+        val cancelledTimer = timerService.at(t + 400.ms, "test") onElapsed { results.add("400" → now) }
+        assert(!cancelledTimer.isCanceled)
+        timerService.cancel(cancelledTimer)
+        assert(cancelledTimer.isCanceled)
         sleep(700.ms)
         withClue(s"Run $nr: ") {
           val r = results.toVector
-          assert((r map { _._1 }) == Vector("400"))
-          assert(r(0)._2 >= t + 400.ms && r(0)._2 <= t + 500.ms)
+          assert((r map { _._1 }) == Vector("200"))
+          assert(r(0)._2 >= t + 200.ms && r(0)._2 <= t + 300.ms)
         }
-        timerService.cancel(cTimer)
+        timerService.cancel(cancelledTimer)  // Cancel is idempotent
       }
     }
   }

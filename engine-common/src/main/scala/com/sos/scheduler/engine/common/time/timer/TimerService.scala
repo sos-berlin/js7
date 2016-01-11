@@ -125,28 +125,8 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
   def delay(delay: Duration, name: String): Timer[Unit] =
     at((now plusNanos 1000) + delay, name)
 
-  def delay[B](delay: Duration, name: String, cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): Timer[Unit] =
-    at((now plusNanos 1000) + delay, name, cancelWhenCompleted)
-
   def at(at: Instant, name: String): Timer[Unit] =
     add(new Timer[Unit](chooseWakeTime(at), name))
-
-  def at[B](at: Instant, name: String, cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): Timer[Unit] =
-    add(new Timer[Unit](chooseWakeTime(at), name), cancelWhenCompleted)
-
-  private def add[A, B](timer: Timer[A], cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): timer.type = {
-    if (cancelWhenCompleted.isCompleted) {
-      timer.cancel()
-    } else {
-      add(timer)
-      if (!timer.isCompleted) {
-        cancelWhenCompleted onComplete { _ ⇒
-          cancel(timer)
-        }
-      }
-    }
-    timer
-  }
 
   private[timer] def add[A](timer: Timer[A]): timer.type = {
     require(timer.at.toEpochMilli < NeverMillis)
@@ -236,7 +216,8 @@ object TimerService {
     def timeoutAt[B >: A](at: Instant, name: String, completeWith: Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] = {
       val promise = Promise[B]()
       delegate onComplete promise.tryComplete
-      timerService.add(new Timer(at, name, promise = promise, completeWith = completeWith), cancelWhenCompleted = promise.future)
+      val timer = timerService.add(new Timer(at, name, promise = promise, completeWith = completeWith))
+      promise.future onComplete { _ ⇒ timerService.cancel(timer) }
       promise.future
     }
   }
