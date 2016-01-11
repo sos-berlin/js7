@@ -66,7 +66,8 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
           waitUntil - nowMillis match {
             case remainingMillis if remainingMillis > 0 ⇒
               hot = false
-              headChanged.awaitMillis(remainingMillis)
+              val signaled = headChanged.awaitMillis(remainingMillis)
+              if (!signaled) wakeCounter += 1
             case d ⇒
               if (hot) {
                 prematureWakeCounter += 1
@@ -87,7 +88,6 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
             } else {
               waitUntil(atMillis)
             }
-            wakeCounter += 1
           case Right(timer) ⇒
             waitUntil.hot = false
             timer.complete()
@@ -98,15 +98,17 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
       if (timedout) logger.debug("Timedout")
     }
 
-    private def idleUntilTimeout(): Boolean =
-      idleTimeout match {
+    private def idleUntilTimeout(): Boolean = {
+      val signaled = idleTimeout match {
         case Some(d) ⇒
-          val signaled = headChanged.awaitMillis(d.toMillis)
-          !signaled
+          headChanged.awaitMillis(d.toMillis)
         case None ⇒
           headChanged.await()
           true
       }
+      if (!signaled) wakeCounter += 1
+      !signaled
+    }
 
     def isRunning = _isRunning.get
   }
@@ -121,10 +123,10 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
   }
 
   def delay(delay: Duration, name: String): Timer[Unit] =
-    at(now + delay, name)
+    at((now plusNanos 1000) + delay, name)
 
   def delay[B](delay: Duration, name: String, cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): Timer[Unit] =
-    at(now + delay, name, cancelWhenCompleted)
+    at((now plusNanos 1000) + delay, name, cancelWhenCompleted)
 
   def at(at: Instant, name: String): Timer[Unit] =
     add(new Timer[Unit](chooseWakeTime(at), name))
@@ -151,6 +153,7 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
     requireState(!closed)
     if (timer.at <= now) {
       timer.complete()
+      timerCompleteCounter += 1
     } else {
       enqueue(timer)
     }
