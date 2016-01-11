@@ -49,7 +49,7 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
           finally {
             logger.debug("Terminated")
             _isRunning.set(false)
-            if (nonEmpty) startOrWake()
+            if (!stopped && nonEmpty) startOrWake()
           }
         }
       } else {
@@ -66,7 +66,8 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
           waitUntil - nowMillis match {
             case remainingMillis if remainingMillis > 0 ⇒
               hot = false
-              headChanged.awaitMillis(remainingMillis)
+              val signaled = headChanged.awaitMillis(remainingMillis)
+              if (!signaled) wakeCounter += 1
             case d ⇒
               if (hot) {
                 prematureWakeCounter += 1
@@ -87,7 +88,6 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
             } else {
               waitUntil(atMillis)
             }
-            wakeCounter += 1
           case Right(timer) ⇒
             waitUntil.hot = false
             timer.complete()
@@ -98,15 +98,17 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
       if (timedout) logger.debug("Timedout")
     }
 
-    private def idleUntilTimeout(): Boolean =
-      idleTimeout match {
+    private def idleUntilTimeout(): Boolean = {
+      val signaled = idleTimeout match {
         case Some(d) ⇒
-          val signaled = headChanged.awaitMillis(d.toMillis)
-          !signaled
+          headChanged.awaitMillis(d.toMillis)
         case None ⇒
           headChanged.await()
           true
       }
+      if (!signaled) wakeCounter += 1
+      !signaled
+    }
 
     def isRunning = _isRunning.get
   }
@@ -121,36 +123,17 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
   }
 
   def delay(delay: Duration, name: String): Timer[Unit] =
-    at(now + delay, name)
-
-  def delay[B](delay: Duration, name: String, cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): Timer[Unit] =
-    at(now + delay, name, cancelWhenCompleted)
+    at((now plusNanos 1000) + delay, name)
 
   def at(at: Instant, name: String): Timer[Unit] =
     add(new Timer[Unit](chooseWakeTime(at), name))
-
-  def at[B](at: Instant, name: String, cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): Timer[Unit] =
-    add(new Timer[Unit](chooseWakeTime(at), name), cancelWhenCompleted)
-
-  private def add[A, B](timer: Timer[A], cancelWhenCompleted: Future[B])(implicit ec: ExecutionContext): timer.type = {
-    if (cancelWhenCompleted.isCompleted) {
-      timer.cancel()
-    } else {
-      add(timer)
-      if (!timer.isCompleted) {
-        cancelWhenCompleted onComplete { _ ⇒
-          cancel(timer)
-        }
-      }
-    }
-    timer
-  }
 
   private[timer] def add[A](timer: Timer[A]): timer.type = {
     require(timer.at.toEpochMilli < NeverMillis)
     requireState(!closed)
     if (timer.at <= now) {
       timer.complete()
+      timerCompleteCounter += 1
     } else {
       enqueue(timer)
     }
@@ -233,7 +216,8 @@ object TimerService {
     def timeoutAt[B >: A](at: Instant, name: String, completeWith: Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] = {
       val promise = Promise[B]()
       delegate onComplete promise.tryComplete
-      timerService.add(new Timer(at, name, promise = promise, completeWith = completeWith), cancelWhenCompleted = promise.future)
+      val timer = timerService.add(new Timer(at, name, promise = promise, completeWith = completeWith))
+      promise.future onComplete { _ ⇒ timerService.cancel(timer) }
       promise.future
     }
   }
