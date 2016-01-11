@@ -63,6 +63,8 @@ extends Actor with FSM[State, Data] {
         }
       }
     }
+
+    override def toString = s"${Connector.this} inactivityWatchdog"
   }
 
   override def supervisorStrategy = stoppingStrategy
