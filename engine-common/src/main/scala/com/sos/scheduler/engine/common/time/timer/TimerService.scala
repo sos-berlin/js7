@@ -49,7 +49,7 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
           finally {
             logger.debug("Terminated")
             _isRunning.set(false)
-            if (nonEmpty) startOrWake()
+            if (!stopped && nonEmpty) startOrWake()
           }
         }
       } else {
