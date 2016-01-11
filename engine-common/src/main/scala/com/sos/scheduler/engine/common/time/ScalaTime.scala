@@ -18,6 +18,11 @@ object ScalaTime {
 
   implicit class DurationRichInt(val delegate: Int) extends AnyVal {
     /**
+     * Duration, counted in microseconds.
+     */
+    final def μs = Duration ofNanos 1000 * delegate
+
+    /**
      * Duration, counted in milliseconds.
      */
     final def ms = Duration ofMillis delegate
@@ -42,6 +47,11 @@ object ScalaTime {
   }
 
   implicit class DurationRichLong(val delegate: Long) extends AnyVal {
+    /**
+     * Duration, counted in microseconds.
+     */
+    final def μs = Duration ofNanos 1000 * delegate
+
     /**
      * Duration, counted in milliseconds.
      */
