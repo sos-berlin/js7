@@ -3,7 +3,6 @@ package com.sos.scheduler.engine.common.tcp
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.{IO, Tcp}
-import akka.pattern.AskTimeoutException
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Futures.catchInFuture
 import com.sos.scheduler.engine.common.scalautil.Logger
