@@ -37,10 +37,8 @@ do
   case "$param" in
          -kill-agent-task-id=*)     KILL_TASK_ID=`echo "$param" | sed 's/-kill-agent-task-id=//'`
                             ;;
-  case "$param" in
          -kill-master-task-id=*)    MASTER_TASK_ID=`echo "$param" | sed 's/-kill-master-task-id=//'`
                             ;;
-  case "$param" in
          -job-name=*)               JOB_NAME=`echo "$param" | sed 's/-job-name=//'`
                             ;;
   esac
