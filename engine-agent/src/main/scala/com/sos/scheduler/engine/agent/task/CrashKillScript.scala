@@ -1,11 +1,11 @@
 package com.sos.scheduler.engine.agent.task
 
 import com.google.common.base.StandardSystemProperty.LINE_SEPARATOR
-import com.sos.scheduler.engine.agent.data.{ProcessKillScript, AgentTaskId}
+import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.agent.task.CrashKillScript._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
+import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.Charset.defaultCharset
@@ -34,21 +34,25 @@ final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
 
   def remove(id: AgentTaskId): Unit =
     synchronized {
-      taskIds -= id
-      ignoreException(logger.warn) {
-        rewriteFile()
+      for (_ ← taskIds.remove(id)) {
+        ignoreException(logger.warn) {
+          rewriteFile()
+        }
       }
     }
 
-  private def rewriteFile(): Unit = {
-    val tmp = file.getParent resolve s"~${file.getFileName}.tmp"
-    autoClosing(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmp), defaultCharset))) { writer ⇒
-      for (id ← taskIds.keysIterator) {
-        writer.write(idToKillCommand(id))
+  private def rewriteFile(): Unit =
+    if (taskIds.isEmpty) {
+      deleteIfExists(file)
+    } else {
+      val tmp = file.getParent resolve s"~${file.getFileName}.tmp"
+      autoClosing(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmp), defaultCharset))) { writer ⇒
+        for (id ← taskIds.keysIterator) {
+          writer.write(idToKillCommand(id))
+        }
       }
+      move(tmp, file, REPLACE_EXISTING)
     }
-    move(tmp, file, REPLACE_EXISTING)
-  }
 
   private def idToKillCommand(id: AgentTaskId) = (killScript.toCommandArguments(id) mkString " ") + LineSeparator
 }

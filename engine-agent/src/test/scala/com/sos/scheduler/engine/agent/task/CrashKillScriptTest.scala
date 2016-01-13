@@ -6,13 +6,15 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import java.nio.file.Files.{delete, size}
+import java.nio.file.Files.{delete, exists, size}
 import java.nio.file.{Files, Paths}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 
 /**
+  * JS-1551.
+  *
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
@@ -74,7 +76,14 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
   "remove last" in {
     crashKillScript.remove(AgentTaskId("1-111"))
     crashKillScript.remove(AgentTaskId("4-444"))
-    assert(lines == Nil)
+    assert(!exists(file))
+  }
+
+  "add again and remove last" in {
+    crashKillScript.add(AgentTaskId("5-5555"))
+    assert(lines == List("test-kill.sh -kill-agent-task-id=5-5555"))
+    crashKillScript.remove(AgentTaskId("5-5555"))
+    assert(!exists(file))
   }
 
   private def lines = autoClosing(io.Source.fromFile(file)) { _.getLines.toList }
