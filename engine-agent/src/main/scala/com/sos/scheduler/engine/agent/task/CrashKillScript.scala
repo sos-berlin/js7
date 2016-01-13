@@ -54,7 +54,10 @@ final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
       move(tmp, file, REPLACE_EXISTING)
     }
 
-  private def idToKillCommand(id: AgentTaskId) = (killScript.toCommandArguments(id) mkString " ") + LineSeparator
+  private def idToKillCommand(id: AgentTaskId) = {
+    val args = killScript.toCommandArguments(id)
+    ((s""""${args.head}"""" +: args.tail) mkString " ") + LineSeparator
+  }
 }
 
 object CrashKillScript {

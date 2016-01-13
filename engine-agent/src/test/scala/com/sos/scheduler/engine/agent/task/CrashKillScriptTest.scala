@@ -49,28 +49,28 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
 
   "add" in {
     crashKillScript.add(AgentTaskId("1-111"))
-    assert(file.contentString == "test-kill.sh -kill-agent-task-id=1-111" + (if (isWindows) "\r\n" else "\n"))
+    assert(file.contentString == """"test-kill.sh" -kill-agent-task-id=1-111""" + (if (isWindows) "\r\n" else "\n"))
   }
 
   "add more" in {
     crashKillScript.add(AgentTaskId("2-222"))
     crashKillScript.add(AgentTaskId("3-333"))
-    assert(lines == List("test-kill.sh -kill-agent-task-id=1-111",
-                         "test-kill.sh -kill-agent-task-id=2-222",
-                         "test-kill.sh -kill-agent-task-id=3-333"))
+    assert(lines == List(""""test-kill.sh" -kill-agent-task-id=1-111""",
+                         """"test-kill.sh" -kill-agent-task-id=2-222""",
+                         """"test-kill.sh" -kill-agent-task-id=3-333"""))
   }
 
   "remove" in {
     crashKillScript.remove(AgentTaskId("2-222"))
-    assert(lines.toSet == Set("test-kill.sh -kill-agent-task-id=1-111",
-                              "test-kill.sh -kill-agent-task-id=3-333"))
+    assert(lines.toSet == Set(""""test-kill.sh" -kill-agent-task-id=1-111""",
+                              """"test-kill.sh" -kill-agent-task-id=3-333"""))
   }
 
   "add then remove" in {
     crashKillScript.add(AgentTaskId("4-444"))
     crashKillScript.remove(AgentTaskId("3-333"))
-    assert(lines.toSet == Set("test-kill.sh -kill-agent-task-id=1-111",
-                              "test-kill.sh -kill-agent-task-id=4-444"))
+    assert(lines.toSet == Set(""""test-kill.sh" -kill-agent-task-id=1-111""",
+                              """"test-kill.sh" -kill-agent-task-id=4-444"""))
   }
 
   "remove last" in {
@@ -81,7 +81,7 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
 
   "add again and remove last" in {
     crashKillScript.add(AgentTaskId("5-5555"))
-    assert(lines == List("test-kill.sh -kill-agent-task-id=5-5555"))
+    assert(lines == List(""""test-kill.sh" -kill-agent-task-id=5-5555"""))
     crashKillScript.remove(AgentTaskId("5-5555"))
     assert(!exists(file))
   }
