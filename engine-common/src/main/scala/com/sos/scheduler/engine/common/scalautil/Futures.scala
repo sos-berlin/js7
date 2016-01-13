@@ -66,6 +66,8 @@ object Futures {
             Future.failed[A](t)
         }
       }
+
+      def await(duration: Duration) = Await.result(delegate, duration.toFiniteDuration)
     }
 
     implicit class SuccessPromise[A](val delegate: Promise[A]) extends AnyVal {
