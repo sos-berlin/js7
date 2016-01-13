@@ -69,7 +69,8 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         timerService.delay(200.ms, "test") onElapsed { results.add("200" → now) }
         val cancelledTimer = timerService.at(t + 400.ms, "test") onElapsed { results.add("400" → now) }
         assert(!cancelledTimer.isCanceled)
-        timerService.cancel(cancelledTimer)
+        timerService.cancel(cancelledTimer) shouldBe true
+        timerService.cancel(cancelledTimer) shouldBe false
         assert(cancelledTimer.isCanceled)
         sleep(700.ms)
         withClue(s"Run $nr: ") {
@@ -77,7 +78,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
           assert((r map { _._1 }) == Vector("200"))
           assert(r(0)._2 >= t + 200.ms && r(0)._2 <= t + 300.ms)
         }
-        timerService.cancel(cancelledTimer)  // Cancel is idempotent
+        timerService.cancel(cancelledTimer) shouldBe false // Cancel is idempotent
       }
     }
   }

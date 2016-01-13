@@ -148,10 +148,14 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
     }
   }
 
-  def cancel[A](timer: Timer[A]): Unit = {
+  /**
+    * @return true when cancelled
+    */
+  def cancel[A](timer: Timer[A]): Boolean = {
     timer.cancel()
-    queue.remove(timer.atEpochMilli, timer)
+    val removed = queue.remove(timer.atEpochMilli, timer)
     clock.wake()
+    removed
   }
 
   override def toString = overview.toFlowYaml
