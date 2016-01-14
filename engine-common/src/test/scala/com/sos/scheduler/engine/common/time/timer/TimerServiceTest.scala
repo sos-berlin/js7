@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.time.timer
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
@@ -89,7 +90,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       val myPromise = Promise[Int]()
       val future: Future[Unit] = timer onElapsed { myPromise success 777 }
       assert(future eq timer)
-      whenReady(myPromise.future) { o ⇒ assert(o == 777) }
+      myPromise.future await 1.s shouldEqual 777
       assert(timer.isCompleted)
       assert(timer.value == Some(Timer.ElapsedFailure))
       assert(myPromise.isCompleted)
@@ -103,7 +104,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       val recovered = timer recover {
         case _: Timer.ElapsedException ⇒ 777
       }
-      whenReady(recovered) { o ⇒ 777 }
+      recovered await 1.s shouldEqual 777
       assert(timer.value == Some(Timer.ElapsedFailure))
     }
   }
@@ -113,7 +114,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       val a = timerService.add(new Timer(now + 100.ms, "test", completeWith = Success(777)))
       sleep(10.ms)
       assert(!a.isCompleted)
-      whenReady(a) { o ⇒ assert(o == 777) }
+      a await 1.s shouldEqual 777
     }
   }
 
@@ -123,7 +124,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       val a = timerService.add(new Timer(now + 100.ms, "test", Success(777), promise))
       sleep(10.ms)
       assert(!promise.isCompleted && !a.isCompleted)
-      whenReady(a) { o ⇒ assert(o == 777) }
+      a await 1.s shouldEqual 777
       assert(promise.isCompleted && a.isCompleted)
       assert(promise.future.value == Some(Success(777)))
     }
@@ -191,17 +192,15 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
   "Future.timeoutAfter" in {
     autoClosing(TimerService(idleTimeout = Some(1.s))) { implicit timerService ⇒
       def newFuture(a: Duration, timeout: Duration) = Future { sleep(a); "OK" } timeoutAfter (timeout, "test")
-      whenReady(newFuture(50.ms, 100.ms)) {
-        o ⇒ assert(o == "OK")
-      }
+      newFuture(100.ms, 200.ms) await 1.s shouldEqual "OK"
       intercept[Timer.ElapsedException] {
-        Await.result(newFuture(100.ms, 50.ms), 200.millis)
+        newFuture(200.ms, 100.ms) await 1.s
       }
 
       def newRecoveredFuture(a: Duration, timeout: Duration) = newFuture(a, timeout) recover { case _: Timer.ElapsedException ⇒ "TIMEOUT" }
       Await.ready(newRecoveredFuture(2.ms, 2.ms), 500.millis) // Warm-up
-      whenReady(newRecoveredFuture(10.ms, 20.ms)) { o ⇒ assert(o == "OK") }
-      whenReady(newRecoveredFuture(200.ms, 100.ms)) { o ⇒ assert(o == "TIMEOUT") }
+      newRecoveredFuture(10.ms, 20.ms) await 1.s shouldEqual "OK"
+      newRecoveredFuture(200.ms, 100.ms) await 1.s shouldEqual "TIMEOUT"
     }
   }
 
