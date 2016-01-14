@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.time.timer
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
@@ -191,11 +192,9 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
   "Future.timeoutAfter" in {
     autoClosing(TimerService(idleTimeout = Some(1.s))) { implicit timerService ⇒
       def newFuture(a: Duration, timeout: Duration) = Future { sleep(a); "OK" } timeoutAfter (timeout, "test")
-      whenReady(newFuture(50.ms, 100.ms)) {
-        o ⇒ assert(o == "OK")
-      }
+      newFuture(100.ms, 200.ms) await 1.s shouldEqual "OK"
       intercept[Timer.ElapsedException] {
-        Await.result(newFuture(100.ms, 50.ms), 200.millis)
+        newFuture(200.ms, 100.ms) await 1.s
       }
 
       def newRecoveredFuture(a: Duration, timeout: Duration) = newFuture(a, timeout) recover { case _: Timer.ElapsedException ⇒ "TIMEOUT" }
