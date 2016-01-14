@@ -68,7 +68,6 @@
         <project.cplusplusVersion>${project.version}</project.cplusplusVersion>
         <sos.subversion.url>http://subversion.sos/svn/sos/scheduler/engine</sos.subversion.url>
         <osArch>osArch-UNKNOWN-OPERATING-SYSTEM-OR-CPU</osArch>
-        <test.forkCount>1</test.forkCount>
         <test.logback.configurationFile>-</test.logback.configurationFile> <!-- Something for logback.ConfigurationFile, to let logback use its default configuration -->
         <enginedoc.version>${project.version}</enginedoc.version>
         <argLine />
@@ -115,11 +114,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <forkCount>${test.forkCount}</forkCount>
                     <environmentVariables>
                         <LC_ALL>${LC_ALL}</LC_ALL>
                     </environmentVariables>
                     <argLine>-Xms10m -Xmx150m ${argLine}</argLine>  <!-- Small heap for multiple parallel JVM processes-->
+                    <shutdown>exit</shutdown>
+                    <trimStackTrace>false</trimStackTrace>
                     <systemPropertyVariables>
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
@@ -133,11 +133,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <forkCount>${test.forkCount}</forkCount>
                     <environmentVariables>
                         <LC_ALL>${LC_ALL}</LC_ALL>
                     </environmentVariables>
                     <argLine>-Xms10m -Xmx100m ${argLine}</argLine>  <!-- Small heap for multiple parallel JVM processes-->
+                    <shutdown>exit</shutdown>
+                    <trimStackTrace>false</trimStackTrace>
                     <systemPropertyVariables>
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
