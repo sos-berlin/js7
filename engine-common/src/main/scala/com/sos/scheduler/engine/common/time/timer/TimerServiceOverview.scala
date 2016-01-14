@@ -6,13 +6,14 @@ import spray.json.DefaultJsonProtocol._
   * @author Joacim Zschimmer
   */
 final case class TimerServiceOverview(
-  elapsedCount: Int,
-  completeCount: Int,
   count: Int,
-  first: Option[TimerOverview],
-  last: Option[TimerOverview]
+  completeCount: Int,
+  wakeCount: Int,
+  prematureWakeCount: Option[Int] = None,
+  first: Option[TimerOverview] = None,
+  last: Option[TimerOverview] = None
 )
 
 object TimerServiceOverview {
-  implicit val MyJsonFormat = jsonFormat5(apply)
+  implicit val MyJsonFormat = jsonFormat6(apply)
 }

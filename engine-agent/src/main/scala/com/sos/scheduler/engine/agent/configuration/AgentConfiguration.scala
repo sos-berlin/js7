@@ -59,7 +59,7 @@ object AgentConfiguration {
         httpInterfaceRestriction = a.getString("-ip-address="),
         uriPathPrefix = a.getString("-uri-prefix=") getOrElse "",
         logDirectory = a.asConvertedOption("-log-directory=") { o ⇒ Paths.get(o).toAbsolutePath } getOrElse temporaryDirectory,
-        rpcKeepaliveDuration = Some(a.asConvertedOption("-rpc-keepalive=")(parseDuration) getOrElse 300.s),
+        rpcKeepaliveDuration = a.asConvertedOption("-rpc-keepalive=")(parseDuration),
         jobJavaOptions = a.getString("-job-java-options=").toList)
       r.copy(killScript = a.getString("-kill-script=") match {
         case None ⇒ r.killScript  // -kill-script= not given: Agent uses the internally provided kill script

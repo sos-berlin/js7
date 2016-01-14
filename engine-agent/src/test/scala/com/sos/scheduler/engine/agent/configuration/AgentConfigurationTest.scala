@@ -50,7 +50,7 @@ final class AgentConfigurationTest extends FreeSpec {
   }
 
   "-rpc-keepalive=" in {
-    assert(conf(Nil).rpcKeepaliveDuration == Some(5 * 60.s))
+    assert(conf(Nil).rpcKeepaliveDuration == None)
     assert(conf(List("-rpc-keepalive=5m")).rpcKeepaliveDuration == Some(5 * 60.s))
   }
 

@@ -33,33 +33,45 @@ final class ExceptionsTest extends FreeSpec {
   }
 
   "ignoreException executes code" in {
-    val t: Try[Int] = ignoreException(logger.debug) { 123 }
+    val t: Try[Int] = ignoreException(logger.trace) { 123 }
     assert(t == Success(123))
   }
 
   "ignoreException ignores exception" in {
     val exception = new RuntimeException("TEST")
-    var ignored: Throwable = null
-    def onException(message: ⇒ String, t: Throwable) = ignored = t
+    var ignored: (String, Throwable) = null
+    def onException(message: ⇒ String, t: Throwable) = ignored = (message, t)
     val t = ignoreException(onException) {
       throw exception
     }
-    assert(ignored eq exception)
+    assert(ignored == (s"Ignoring exception $exception", exception))
     assert(t.isFailure)
     assert(t.failed.get.getMessage == "TEST")
   }
 
-//  "ignoreException ignores exception, with slf4j.Logger.debug" in {
+//  "ignoreException ignores exception, with slf4j.Logger.trace" in {
 //    val slf4jLogger: slf4j.Logger = logger.delegate
-//    ignoreException(slf4jLogger.debug) {
+//    ignoreException(slf4jLogger.trace) {
 //      throw new RuntimeException
 //    }
 //  }
 
-  "ignoreException ignores exception, with Logger.debug" in {
-    ignoreException(logger.debug) {
+  "ignoreException ignores exception, with Logger" in {
+    ignoreException(logger.trace) {
       throw new RuntimeException("TEST")
     }
+  }
+
+  "logException" in {
+    val exception = new RuntimeException("TEST")
+    var logged: (String, Throwable) = null
+    def onException(message: ⇒ String, t: Throwable) = logged = (message, t)
+    intercept[RuntimeException] {
+      logException(onException) {
+        throw exception
+      }
+    }
+    assert(logged == (exception.toString, exception))
   }
 
   "toStringWithCauses" in {

@@ -4,8 +4,8 @@ import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import spray.json._
 import spray.json.DefaultJsonProtocol._
+import spray.json._
 
 /**
  * @author Joacim Zschimmer
@@ -39,13 +39,21 @@ final class YamlJsonConversionTest extends FreeSpec {
     assert(toYaml(jsObject) == yaml)
   }
 
-  "toYamlString" in {
+  ".toYaml" in {
     case class A(x: Int, y: String)
     implicit val jsonFormat = jsonFormat2(A.apply)
-    assert(A(123, "ABC").toYamlString == "x: 123\n" + "y: ABC\n")
+    assert(A(123, "ABC").toYaml == "x: 123\n" + "y: ABC\n")
   }
 
-  "toJson" in {
+  ".toJson" in {
     assert(yamlToJsValue(yaml) == jsObject)
+  }
+
+  ".toFlowYaml" in {
+    case class A(string: String, number: Int, `"quoted`: Boolean)
+    implicit val jsonFormat = jsonFormat3(A.apply)
+    val a = A("test", 1, true)
+
+    assert(a.toFlowYaml == """{string: test, number: 1, '"quoted': true}""")
   }
 }
