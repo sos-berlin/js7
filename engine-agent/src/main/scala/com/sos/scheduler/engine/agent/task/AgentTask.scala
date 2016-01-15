@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.agent.task
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.views.TaskOverview
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.utils.HasKey
@@ -24,6 +25,8 @@ with HasKey {
   final def key = id
 
   def id: AgentTaskId
+
+  def startMeta: StartTask.Meta
 
   protected def taskArgumentsFuture: Future[TaskArguments]
 
@@ -55,6 +58,7 @@ with HasKey {
     tunnel.id,
     startedAt,
     startedByHttpIp = tunnel.startedByHttpIpOption,
+    startMeta = AgentTask.this.startMeta,
     arguments = taskArgumentsFuture.value collect {
       case Success(a) ⇒
         TaskOverview.Arguments(

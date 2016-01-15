@@ -2,8 +2,9 @@ package com.sos.scheduler.engine.agent.web.views
 
 import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
-import com.sos.scheduler.engine.data.job.TaskId
+import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
 import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetAddress
 import java.time.Instant
@@ -42,6 +43,7 @@ final class TaskWebServiceTest extends FreeSpec with ScalatestRouteTest with Tas
       TunnelId("99"),
       Instant.parse("2015-06-10T12:00:00Z"),
       startedByHttpIp = Some(InetAddress.getByName("127.1.2.3")),
+      startMeta = StartTask.Meta(JobPath("/FOLDER/JOB"), TaskId(123)),
       arguments = Some(TaskOverview.Arguments(
         TaskId(123),
         jobName = "JOB",
@@ -68,6 +70,10 @@ final class TaskWebServiceTest extends FreeSpec with ScalatestRouteTest with Tas
           "tunnelId" → JsString("99"),
           "startedAt" → JsString("2015-06-10T12:00:00Z"),
           "startedByHttpIp" → JsString("127.1.2.3"),
+          "startMeta" → JsObject(
+            "job" → JsString("/FOLDER/JOB"),
+            "taskId" → JsString("123")
+          ),
           "arguments" → JsObject(
             "taskId" → JsString("123"),
             "jobName" → JsString("JOB"),
@@ -85,6 +91,10 @@ final class TaskWebServiceTest extends FreeSpec with ScalatestRouteTest with Tas
           "tunnelId" → JsString("99"),
           "startedAt" → JsString("2015-06-10T12:00:00Z"),
           "startedByHttpIp" → JsString("127.1.2.3"),
+          "startMeta" → JsObject(
+            "job" → JsString("/FOLDER/JOB"),
+            "taskId" → JsString("123")
+          ),
           "arguments" → JsObject(
             "taskId" → JsString("123"),
             "jobName" → JsString("JOB"),

@@ -13,6 +13,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
+import scala.util.control.NoStackTrace
 
 /**
  * @author Joacim Zschimmer
@@ -64,7 +65,7 @@ final class ProxyRegisterTest extends FreeSpec {
   "remoteProxy closes AutoCloseable" in {
     trait A extends IDispatch with AutoCloseable
     val a = mock[A]
-    when (a.close()) thenThrow new Exception("SHOULD BE IGNORED, ONLY LOGGED")
+    when (a.close()) thenThrow new Exception("SHOULD BE IGNORED, ONLY LOGGED") with NoStackTrace
     val (proxyId, true) = proxyRegister.invocableToProxyId(a)
     proxyRegister.release(proxyId)
     verify(a).close()
