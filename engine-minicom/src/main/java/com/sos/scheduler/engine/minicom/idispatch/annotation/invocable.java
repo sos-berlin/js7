@@ -6,7 +6,7 @@ import java.lang.annotation.Target;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Annotated method can be dynamically invoked via {@link com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch#invoke}.
+ * Annotated method can be dynamically invoked via com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch#invoke.
  */
 @Retention(RUNTIME)
 @Target(ElementType.METHOD)

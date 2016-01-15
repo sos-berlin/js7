@@ -13,6 +13,22 @@
     <name>${project.artifactId}</name>
     <inceptionYear>2010</inceptionYear>
 
+    <description>Parent and module POM for JobScheduler Engine</description>
+    <url>https://www.sos-berlin.com/</url>
+    <licenses>
+        <license>
+            <name>GNU General Public License (GPL), Version 2.0</name>
+            <url>http://www.gnu.org/licenses/gpl-2.0-standalone.html</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Joacim Zschimmer</name>
+            <organization>SOS Berlin</organization>
+            <organizationUrl>https://www.sos-berlin.com/</organizationUrl>
+        </developer>
+    </developers>
+
     <modules>
         <module>engine-agent</module>
         <module>engine-agent-client</module>
@@ -296,74 +312,11 @@
                         </dependency>
                     </dependencies>
                 </plugin>
-                <plugin>
-                    <!-- Damit Eclipse mit Scala-Maven-Plugin klarkommt. -->
-                    <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-                    <groupId>org.eclipse.m2e</groupId>
-                    <artifactId>lifecycle-mapping</artifactId>
-                    <version>1.0.0</version>
-                    <configuration>
-                        <lifecycleMappingMetadata>
-                            <pluginExecutions>
-                                <pluginExecution>
-                                    <pluginExecutionFilter>
-                                        <groupId>org.codehaus.mojo</groupId>
-                                        <artifactId>exec-maven-plugin</artifactId>
-                                        <goals>
-                                            <goal>exec</goal>
-                                            <goal>java</goal>
-                                        </goals>
-                                    </pluginExecutionFilter>
-                                    <action>
-                                        <ignore />
-                                    </action>
-                                </pluginExecution>
-                                <pluginExecution>
-                                    <pluginExecutionFilter>
-                                        <groupId>org.apache.maven.plugins</groupId>
-                                        <artifactId>maven-antrun-plugin</artifactId>
-                                        <versionRange>[1.7,)</versionRange>
-                                        <goals>
-                                            <goal>run</goal>
-                                        </goals>
-                                    </pluginExecutionFilter>
-                                    <action>
-                                        <ignore />
-                                    </action>
-                                </pluginExecution>
-                            </pluginExecutions>
-                        </lifecycleMappingMetadata>
-                    </configuration>
-                </plugin>
             </plugins>
         </pluginManagement>
     </build>
 
     <profiles>
-        <profile>
-        <!-- This profile is for collecting the sources of all artifacts in one jar (in the install phase). In case of deployment the sources will also deployed -->
-            <id>collect-sources</id>
-            <build>
-                <plugins>
-                    <!-- Aggregate the source of all artifacts -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <version>2.4</version>
-                        <executions>
-                            <execution>
-                                <phase>generate-resources</phase>
-                                <id>aggregate-sources</id>
-                                <goals>
-                                    <goal>aggregate</goal>
-                                </goals>
-                                <inherited>false</inherited>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <profile>
             <id>delete-local-repository</id>
             <build>
@@ -906,32 +859,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>codehaus-snapshots</id>
-            <name>Codehaus Snapshots</name>
-            <url>CODEHAUS-SNAPSHOTS-ARE-SUPPRESSED</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </pluginRepository>
-    </pluginRepositories>
-
-    <distributionManagement>
-        <repository>
-            <id>sos-release</id>
-            <name>SOS Release Repository</name>
-            <url>${repositoryBase}/sos-release</url>
-        </repository>
-        <snapshotRepository>
-            <id>snapshots</id>
-            <url>${repositoryBase}/snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
 
     <scm>
         <connection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</connection>
