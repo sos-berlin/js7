@@ -56,7 +56,7 @@ extends TaskHandlerView {
     }
     if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept task starts")
     val task = newAgentTask(command, meta.clientIpOption)
-    for (o ← crashKillScriptOption) o.add(task.id)
+    for (o ← crashKillScriptOption) o.add(task.id, task.startMeta.taskId, task.startMeta.job)
     tasks.insert(task)
     task.start()
     task.onTunnelInactivity(killAfterTunnelInactivity(task))
