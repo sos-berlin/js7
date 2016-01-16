@@ -62,6 +62,7 @@ extends AgentTaskFactory {
   private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, masterAddress: String, tunnelToken: TunnelToken) = {
     val taskStartArguments = TaskStartArguments(
       agentTaskId,
+      startMeta = command.meta getOrElse StartTask.Meta.Default,
       masterAddress = masterAddress,
       tunnelToken = tunnelToken,
       directory = agentConfiguration.directory,
