@@ -12,7 +12,6 @@ import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}
 import java.time.Duration
-import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -23,7 +22,7 @@ final case class TaskStartArguments(
   startMeta: StartTask.Meta,
   masterAddress: String,
   tunnelToken: TunnelToken,
-  environment: immutable.Iterable[(String, String)] = Nil,
+  environment: Map[String, String] = Map(),
   directory: Path,
   logDirectory: Path,
   stdFileMap: Map[StdoutStderrType, Path] = Map(),

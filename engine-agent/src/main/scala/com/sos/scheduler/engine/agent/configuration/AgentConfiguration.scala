@@ -31,7 +31,7 @@ final case class AgentConfiguration(
   uriPathPrefix: String = "",
   directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
   logDirectory: Path = temporaryDirectory,
-  environment: immutable.Iterable[(String, String)] = Nil,
+  environment: Map[String, String] = Map(),
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
   rpcKeepaliveDuration: Option[Duration] = None,

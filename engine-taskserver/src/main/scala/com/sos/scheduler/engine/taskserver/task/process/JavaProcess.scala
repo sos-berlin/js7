@@ -23,7 +23,7 @@ object JavaProcess {
     RichProcess.start(
       processConfiguration.copy(
         fileOption = Some(JavaExecutable),
-        additionalEnvironment = processConfiguration.additionalEnvironment ++ List(classpathEnv)),
+        additionalEnvironment = processConfiguration.additionalEnvironment + classpathEnv),
       file = JavaExecutable,
       arguments = options ++ List(mainClass) ++ arguments)
   }

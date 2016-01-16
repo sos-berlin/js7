@@ -18,7 +18,6 @@ import java.nio.file.Files._
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
-import scala.collection.immutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration.Inf
 import scala.concurrent.{Await, Future}
@@ -31,7 +30,7 @@ import scala.concurrent.{Await, Future}
 private[task] final class ShellProcessTask(
   module: ShellModule,
   protected val commonArguments: CommonArguments,
-  environment: immutable.Iterable[(String, String)],
+  environment: Map[String, String],
   variablePrefix: String,
   logDirectory: Path,
   logFilenamePart: String,
@@ -72,7 +71,7 @@ extends HasCloser with Task {
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
       val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
-      environment ++ List(ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
+      environment + (ReturnValuesFileEnvironmentVariableName → orderParamsFile.toAbsolutePath.toString) ++ paramEnv
     }
     val (agentTaskIdOption, killScriptFileOption) =
       if (taskServerMainTerminatedOption.nonEmpty) (None, None)

@@ -10,7 +10,7 @@ import scala.collection.immutable
  */
 final case class ProcessConfiguration(
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
-  additionalEnvironment: immutable.Iterable[(String, String)] = Map(),
+  additionalEnvironment: Map[String, String] = Map(),
   fileOption: Option[Path] = None,
   agentTaskIdOption: Option[AgentTaskId] = None,
   killScriptOption: Option[ProcessKillScript] = None)
