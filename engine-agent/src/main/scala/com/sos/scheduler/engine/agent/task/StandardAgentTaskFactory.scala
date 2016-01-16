@@ -12,6 +12,7 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.closeOnError
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
+import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
 import com.sos.scheduler.engine.minicom.remoting.calls.CallCall
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer.{deserializeCall, messageIsCall}
 import com.sos.scheduler.engine.minicom.types.VariantArray
@@ -44,6 +45,7 @@ extends AgentTaskFactory {
     val taskArgumentsPromise = Promise[TaskArguments]()
     new AgentTask {
       val id = agentTaskIdGenerator.next()
+      val startMeta = command.meta getOrElse StartTask.Meta.Default
       val taskArgumentsFuture = taskArgumentsPromise.future
       val tunnel = {
         val listener = Agent(new TaskArgumentsListener(taskArgumentsPromise))
@@ -60,6 +62,7 @@ extends AgentTaskFactory {
   private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, masterAddress: String, tunnelToken: TunnelToken) = {
     val taskStartArguments = TaskStartArguments(
       agentTaskId,
+      startMeta = command.meta getOrElse StartTask.Meta.Default,
       masterAddress = masterAddress,
       tunnelToken = tunnelToken,
       directory = agentConfiguration.directory,
@@ -72,7 +75,7 @@ extends AgentTaskFactory {
       new SimpleTaskServer(taskStartArguments)
     } else
       command match {
-        case StartNonApiTask ⇒ new SimpleTaskServer(taskStartArguments)
+        case _: StartNonApiTask ⇒ new SimpleTaskServer(taskStartArguments)
         case o: StartApiTask ⇒ new OwnProcessTaskServer(
           taskStartArguments,
           javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),

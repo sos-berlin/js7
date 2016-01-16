@@ -2,7 +2,6 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
@@ -59,7 +58,7 @@ extends HasCloser with Invocable {
     val task = taskArguments.module match {
       case module: ShellModule ⇒
         new ShellProcessTask(module, commonArguments,
-          environment = taskStartArguments.environment.toImmutableSeq ++ taskArguments.environment,
+          environment = taskStartArguments.environment ++ taskArguments.environment,
           variablePrefix = taskArguments.shellVariablePrefix,
           logDirectory = taskStartArguments.logDirectory,
           logFilenamePart = taskStartArguments.logFilenamePart,

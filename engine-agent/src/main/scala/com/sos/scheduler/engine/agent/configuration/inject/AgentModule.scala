@@ -48,7 +48,7 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
   private def agentConfiguration(): AgentConfiguration =
     if (originalAgentConfiguration.killScript contains UseInternalKillScript) {
       // After Agent termination, leave behind the kill script, in case of regular termination after error.
-      val provider = new ProcessKillScriptProvider // closeWithCloser closer
+      val provider = new ProcessKillScriptProvider
       val killScript = provider.provideTo(originalAgentConfiguration.logDirectory)  // logDirectory for lack of a work directory
       originalAgentConfiguration.copy(killScript = Some(killScript))
     } else

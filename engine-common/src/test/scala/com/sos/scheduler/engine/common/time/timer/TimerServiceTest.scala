@@ -199,7 +199,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
 
       def newRecoveredFuture(a: Duration, timeout: Duration) = newFuture(a, timeout) recover { case _: Timer.ElapsedException ⇒ "TIMEOUT" }
       Await.ready(newRecoveredFuture(2.ms, 2.ms), 500.millis) // Warm-up
-      newRecoveredFuture(10.ms, 20.ms) await 1.s shouldEqual "OK"
+      newRecoveredFuture(100.ms, 200.ms) await 1.s shouldEqual "OK"
       newRecoveredFuture(200.ms, 100.ms) await 1.s shouldEqual "TIMEOUT"
     }
   }
