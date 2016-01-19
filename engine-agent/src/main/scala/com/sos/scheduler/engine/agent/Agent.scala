@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent
 import com.google.common.io.Closer
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Module}
+import com.sos.scheduler.engine.agent.Agent._
 import com.sos.scheduler.engine.agent.command.CommandExecutor
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
@@ -13,6 +14,7 @@ import com.sos.scheduler.engine.agent.views.AgentStartInformation
 import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
+import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime.MaxDuration
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
 import scala.concurrent.Future
@@ -40,7 +42,11 @@ final class Agent(module: Module) extends AutoCloseable {
 
   def start(): Future[Unit] = server.start()
 
-  def close(): Unit = closer.close()
+  def close(): Unit = {
+    logger.info("close")
+    closer.close()
+    logger.info("closed")
+  }
 
   def run(): Unit = {
     start()
@@ -53,6 +59,8 @@ final class Agent(module: Module) extends AutoCloseable {
 }
 
 object Agent {
+  private val logger = Logger(getClass)
+
   def forTest(): Agent = forTest(httpPort = findRandomFreeTcpPort())
 
   def forTest(httpPort: Int): Agent = new Agent(AgentConfiguration.forTest(httpPort))
