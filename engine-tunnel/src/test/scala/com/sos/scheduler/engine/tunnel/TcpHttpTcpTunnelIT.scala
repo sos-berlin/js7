@@ -54,6 +54,8 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
     val listenedMessages = Await.result(serverSide.listener.future(), 1.second).messages
     assert(listenedMessages.size == n + 1)
     assert(listenedMessages(n) == TerminateMessage)
+    clientSide.close()
+    serverSide.close()
   }
 
   "Server-side tunnel is closed" in {
@@ -64,6 +66,8 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
     clientSide.tcp.sendMessage(ByteString("AFTER CLOSED"))
     clientSide.requireEOF()
     clientSide.closeBrigde()
+    clientSide.close()
+    serverSide.close()
   }
 
   "TCP server closes connection and terminates" in {
@@ -75,6 +79,8 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
     clientSide.tcp.receiveMessage() shouldEqual None
     serverSide.closeTunnel()
     clientSide.closeBrigde()
+    clientSide.close()
+    serverSide.close()
   }
 
   "Speed test" in {
@@ -92,13 +98,12 @@ object TcpHttpTcpTunnelIT {
   private val logger = Logger(getClass)
 
   private def startTunneledSystem()(implicit timerService: TimerService) = {
-    val serverSideTunnelHandler = new ServerSideTunnelHandler
-    val server = new TunnelledTcpServer(serverSideTunnelHandler)
-    val client = new ClientSide(serverSideTunnelHandler.uri, server.tunnelToken)
+    val server = new TunnelledTcpServer
+    val client = new ClientSide(server.handler.uri, server.tunnelToken)
     (client, server)
   }
 
-  private class ClientSide(uri: Uri, tunnelToken: TunnelToken) {
+  private class ClientSide(uri: Uri, tunnelToken: TunnelToken) extends AutoCloseable {
     private implicit val actorSystem = ActorSystem(getClass.getSimpleName)
     private val clientSideListener = TcpConnection.Listener.forLocalHostPort()
     private val tcpHttpBridge = new TcpToHttpBridge(
@@ -112,8 +117,11 @@ object TcpHttpTcpTunnelIT {
           uri withPath (uri.path / tunnelToken.id.string)
         },
         heartbeatRequestorOption = None))
+
     tcpHttpBridge.start()
     val tcp = clientSideListener.accept()
+
+    def close() = actorSystem.shutdown()
 
     def checkSendReceive(): Unit = {
       val request = ByteString(s"TEST " + Random.nextInt())
@@ -131,11 +139,15 @@ object TcpHttpTcpTunnelIT {
     def closeBrigde() = tcpHttpBridge.close()
   }
 
-  private class TunnelledTcpServer(handler: ServerSideTunnelHandler) {
+  private class TunnelledTcpServer(implicit timerService: TimerService) extends AutoCloseable {
+    val handler = new ServerSideTunnelHandler
     private val tunnel = handler.newTunnel(TunnelId("TEST-TUNNEL"))
     private val tcpServer = new TcpServer(tunnel.tunnelToken, handler.tcpAddress)
     def listener = handler.listener
+
     tcpServer.start()
+
+    def close() = handler.close()
 
     def connection = tcpServer.connection
     def awaitTermination() = Await.ready(tcpServer.terminatedPromise.future, 10.s.toConcurrent)
@@ -143,7 +155,7 @@ object TcpHttpTcpTunnelIT {
     def closeTunnel() = tunnel.close()
   }
 
-  private class ServerSideTunnelHandler(implicit timerService: TimerService) {
+  private class ServerSideTunnelHandler(implicit timerService: TimerService) extends AutoCloseable {
     val actorSystem = ActorSystem(getClass.getSimpleName)
     val tunnelServer = new TunnelServer(actorSystem)
     val uri = startWebServer()
@@ -151,6 +163,8 @@ object TcpHttpTcpTunnelIT {
 
     def newTunnel(id: TunnelId) = tunnelServer.newTunnel(id, listener)
     def tcpAddress = tunnelServer.proxyAddress
+
+    def close() = actorSystem.shutdown()
 
     private def startWebServer(): Uri = {
       val startedPromise = Promise[InetSocketAddress]()

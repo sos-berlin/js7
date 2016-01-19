@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.agent.web.views
 
-import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.command.{CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate}
+import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.common.sprayutils.JsArrayMarshallers._
 import java.time.Instant
 import org.junit.runner.RunWith
@@ -14,15 +14,13 @@ import spray.http.Uri
 import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
-import spray.testkit.ScalatestRouteTest
 
 /**
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class CommandViewServiceTest extends FreeSpec with ScalatestRouteTest with CommandViewWebService {
+final class CommandViewServiceTest extends FreeSpec with WebServiceTest with CommandViewWebService {
 
-  protected implicit lazy val actorRefFactory = ActorSystem()
   override protected val uriPathPrefix = "test"
 
   protected def commandHandlerOverview = new CommandHandlerOverview {

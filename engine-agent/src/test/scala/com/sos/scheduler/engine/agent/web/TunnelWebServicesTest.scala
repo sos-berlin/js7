@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.agent.web
 
-import akka.actor.ActorSystem
 import akka.util.ByteString
 import com.sos.scheduler.engine.agent.web.TunnelWebServicesTest._
+import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.time.ScalaTime.DurationRichInt
@@ -27,15 +27,13 @@ import spray.http.Uri.Path
 import spray.http.{MediaTypes, Uri}
 import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
-import spray.testkit.ScalatestRouteTest
 
 /**
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TunnelWebServicesTest extends FreeSpec with ScalatestRouteTest with TunnelWebService {
+final class TunnelWebServicesTest extends FreeSpec with WebServiceTest with TunnelWebService {
 
-  protected implicit lazy val actorRefFactory = ActorSystem()
   private implicit val timerService = TimerService(idleTimeout = Some(1.s))
 
   protected def tunnelAccess(tunnelToken: TunnelToken) = new TunnelAccess {

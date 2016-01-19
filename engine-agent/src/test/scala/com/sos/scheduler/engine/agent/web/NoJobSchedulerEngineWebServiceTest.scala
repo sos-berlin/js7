@@ -1,20 +1,17 @@
 package com.sos.scheduler.engine.agent.web
 
-import akka.actor.ActorSystem
+import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import spray.http.StatusCodes.NotFound
 import spray.http.Uri
-import spray.testkit.ScalatestRouteTest
 
 /**
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class NoJobSchedulerEngineWebServiceTest extends FreeSpec with ScalatestRouteTest with NoJobSchedulerEngineWebService {
-
-  protected implicit lazy val actorRefFactory = ActorSystem()
+final class NoJobSchedulerEngineWebServiceTest extends FreeSpec with WebServiceTest with NoJobSchedulerEngineWebService {
 
   "/jobscheduler/engine/command" in {
     Post(Uri("/jobscheduler/engine/command"), <test/>) ~> route ~> check {

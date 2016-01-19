@@ -1,10 +1,10 @@
 package com.sos.scheduler.engine.agent.web
 
-import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate, _}
 import com.sos.scheduler.engine.agent.web.CommandWebServiceTest._
+import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
@@ -18,15 +18,13 @@ import spray.http.StatusCodes.BadRequest
 import spray.httpx.SprayJsonSupport._
 import spray.httpx.marshalling.BasicMarshallers.stringMarshaller
 import spray.json._
-import spray.testkit.ScalatestRouteTest
 
 /**
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class CommandWebServiceTest extends FreeSpec with ScalatestRouteTest with CommandWebService {
+final class CommandWebServiceTest extends FreeSpec with WebServiceTest with CommandWebService {
 
-  protected implicit lazy val actorRefFactory = ActorSystem("TEST")
   override protected val uriPathPrefix = "test"
 
   protected def executeCommand(command: Command, meta: CommandMeta) =

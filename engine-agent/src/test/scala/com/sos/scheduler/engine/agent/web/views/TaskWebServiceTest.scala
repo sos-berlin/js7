@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.agent.web.views
 
-import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
+import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
 import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetAddress
@@ -18,15 +18,12 @@ import spray.http.Uri
 import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
-import spray.testkit.ScalatestRouteTest
 
 /**
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TaskWebServiceTest extends FreeSpec with ScalatestRouteTest with TaskWebService {
-
-  protected implicit lazy val actorRefFactory = ActorSystem()
+final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWebService {
 
   private val testAgentTaskId = AgentTaskId("1-123")
 

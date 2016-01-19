@@ -1,8 +1,9 @@
 package com.sos.scheduler.engine.agent.web.views
 
-import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.views.AgentOverview
+import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.common.sprayutils.JsArrayMarshallers._
+import com.sos.scheduler.engine.common.utils.IntelliJUtils
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -11,15 +12,14 @@ import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.{`application/json`, `text/plain`}
 import spray.http.Uri
 import spray.json._
-import spray.testkit.ScalatestRouteTest
 
 /**
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class RootWebServiceTest extends FreeSpec with ScalatestRouteTest with RootWebService {
+final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWebService {
 
-  protected implicit lazy val actorRefFactory = ActorSystem()
+  IntelliJUtils.intelliJuseImports(JsArrayMarshaller)
 
   protected def agentOverview = AgentOverview(
     startedAt = Instant.parse("2015-06-01T12:00:00Z"),
