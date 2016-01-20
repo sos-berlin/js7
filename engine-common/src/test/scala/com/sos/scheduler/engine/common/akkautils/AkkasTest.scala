@@ -24,14 +24,18 @@ final class AkkasTest extends FreeSpec {
   "maximumTimeout" in {
     val millis = Int.MaxValue * 10L - 2000
     assert(millis / 1000 / 3600 / 24 / 30 == 8)  // Months
-    assert(maximumTimeout(ActorSystem().settings) == Timeout.apply(millis, TimeUnit.MILLISECONDS))
+    val actorSystem = ActorSystem("AkkasTest")
+    assert(maximumTimeout(actorSystem.settings) == Timeout.apply(millis, TimeUnit.MILLISECONDS))
+    actorSystem.shutdown()
   }
 
   "maximumTimeout with tick-duration = 1s" in {
     val millis = Int.MaxValue * 1000L - 2000
     assert(millis / 1000 / 3600 / 24 / 365 == 68)  // Years
     val config = ConfigFactory.parseString("akka.scheduler.tick-duration = 1s")
-    assert(maximumTimeout(ActorSystem("TEST", config).settings) == Timeout.apply(millis, TimeUnit.MILLISECONDS))
+    val actorSystem = ActorSystem("AkkasTest", config)
+    assert(maximumTimeout(actorSystem.settings) == Timeout.apply(millis, TimeUnit.MILLISECONDS))
+    actorSystem.shutdown()
   }
 
   "DummyCancellable" in {

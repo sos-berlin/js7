@@ -22,7 +22,7 @@ import spray.httpx.UnsuccessfulResponseException
 final class NoJobSchedulerEngineServiceIT extends FreeSpec {
 
   "Access as Classic Agent is rejected with special message" in {
-    implicit lazy val actorSystem = ActorSystem("TEST")
+    implicit lazy val actorSystem = ActorSystem(getClass.getSimpleName)
     import actorSystem.dispatcher
     autoClosing(Agent.forTest()) { agent ⇒
       awaitResult(agent.start(), 5.s)

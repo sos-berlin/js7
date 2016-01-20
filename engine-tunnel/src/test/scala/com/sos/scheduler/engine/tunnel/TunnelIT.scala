@@ -14,7 +14,7 @@ import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, 
 import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
 import java.net.InetSocketAddress
 import org.junit.runner.RunWith
-import org.scalatest.FreeSpec
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import org.scalatest.junit.JUnitRunner
 import scala.concurrent.{Future, Promise, blocking}
 import scala.math.{log, min, pow}
@@ -27,12 +27,17 @@ import scala.util.Random
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TunnelIT extends FreeSpec {
+final class TunnelIT extends FreeSpec with BeforeAndAfterAll {
 
   private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
   import actorSystem.dispatcher
   private implicit val timerService = TimerService(idleTimeout = Some(1.s))
   private lazy val tunnelServer = new TunnelServer(actorSystem)
+
+  override protected def afterAll() = {
+    actorSystem.shutdown()
+    super.afterAll()
+  }
 
   "Simple" in {
     val tunnel = tunnelServer.newTunnel(TunnelId("TEST-TUNNEL"), Agent(TunnelListener.StopListening))

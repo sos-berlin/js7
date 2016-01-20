@@ -50,7 +50,7 @@ extends AutoCloseable {
     implicit val timeout = Timeout(ShutdownTimeout.toFiniteDuration)
     val future = for (_ ← IO(Http) ? Unbind(ShutdownTimeout.toConcurrent);
                       _ ← IO(Http) ? Http.CloseAll) yield ()
-    awaitResult(future, ShutdownTimeout)
+    // Does not terminate in time !!!  awaitResult(future, ShutdownTimeout)
   }
 }
 

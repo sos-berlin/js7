@@ -39,7 +39,7 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
     TimerService()(actorSystem.dispatcher) closeWithCloser closer
 
   @Provides @Singleton
-  private def actorSystem(closer: Closer): ActorSystem = newActorSystem("JobScheduler-Agent")(closer)
+  private def actorSystem(closer: Closer): ActorSystem = newActorSystem("Agent")(closer)
 
   @Provides @Singleton
   private def executionContext(actorSystem: ActorSystem): ExecutionContext = actorSystem.dispatcher
@@ -54,7 +54,6 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
     } else
       originalAgentConfiguration
 
-
   @Provides @Singleton
-  private def closer(): Closer = Closer.create()
+  private def closer(): Closer = Closer.create()  // Do not use concurrently !!!
 }

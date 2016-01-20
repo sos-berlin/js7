@@ -1,34 +1,29 @@
 package com.sos.scheduler.engine.agent.web
 
-import akka.actor.ActorSystem
+import com.sos.scheduler.engine.agent.web.test.WebServiceTest
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.time.timer.{TimerOverview, TimerService, TimerServiceOverview}
 import java.time.Instant
 import org.junit.runner.RunWith
+import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes._
 import spray.http.Uri
 import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
-import spray.json.{JsArray, JsObject, _}
-import spray.testkit.ScalatestRouteTest
+import spray.json._
+import com.sos.scheduler.engine.common.time.ScalaTime._
 
 /**
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class TimerWebServiceTest extends FreeSpec with BeforeAndAfterAll with ScalatestRouteTest with TimerWebService  {
+final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerWebService {
 
-  protected implicit lazy val actorRefFactory = ActorSystem()
   protected def executionContext = actorRefFactory.dispatcher
-  protected lazy val timerService = TimerService()
-
-  override protected def afterAll() = {
-    timerService.close()
-    super.afterAll()
-  }
+  protected lazy val timerService = TimerService(Some(5.s)).closeWithCloser
 
   "timerService (empty)" in {
     Get(Uri("/jobscheduler/agent/api/timer")) ~> Accept(`application/json`) ~> route ~> check {

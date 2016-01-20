@@ -189,7 +189,7 @@ private object TaskHandlerTest {
   }
 
   private def mockTunnelHandle() = new TunnelHandle {
-    val connectorHandler = ActorSystem().actorOf(Props { new Actor { def receive = { case _ ⇒ }}})
+    val connectorHandler = ActorSystem("TaskHandlerTest").actorOf(Props { new Actor { def receive = { case _ ⇒ }}})
     def tunnelToken = TestTunnelToken
     def startedByHttpIpOption = None
     def connected = Promise().future

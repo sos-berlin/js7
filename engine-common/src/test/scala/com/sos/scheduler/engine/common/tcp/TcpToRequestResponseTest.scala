@@ -5,7 +5,7 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.tcp.TcpToRequestResponseTest._
 import org.junit.runner.RunWith
-import org.scalatest.FreeSpec
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import scala.concurrent.Future
@@ -14,9 +14,14 @@ import scala.concurrent.Future
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TcpToRequestResponseTest extends FreeSpec {
+final class TcpToRequestResponseTest extends FreeSpec with BeforeAndAfterAll {
 
-  private lazy val actorSystem = ActorSystem("TEST")
+  private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
+
+  override protected def afterAll() = {
+    actorSystem.shutdown()
+    super.afterAll()
+  }
 
   for ((testName, connectionMessageOption) ← List("without connection message" → None, "with connection message" → Some(ByteString("Connection message")))) {
     s"Some requests, $testName" in {

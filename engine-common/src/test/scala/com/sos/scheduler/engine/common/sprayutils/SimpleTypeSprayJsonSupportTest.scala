@@ -19,7 +19,7 @@ import spray.testkit.ScalatestRouteTest
 @RunWith(classOf[JUnitRunner])
 final class SimpleTypeSprayJsonSupportTest extends FreeSpec with ScalatestRouteTest with HttpService {
 
-  implicit lazy val actorRefFactory = ActorSystem()
+  implicit lazy val actorRefFactory = ActorSystem(getClass.getSimpleName)
 
   private val TestInt = JsNumber(123456789)
   private val TestLong = JsNumber(123456789012345678L)

@@ -63,6 +63,13 @@ final class FuturesTest extends FreeSpec {
     }
   }
 
+  "futures.await" in {
+    List(Future { true }, Future { 1 }) await 1.s shouldBe List(true, 1)
+    intercept[TimeoutException] {
+      Future { sleep(100.ms) } await 1.ms shouldBe true
+    }
+  }
+
   "NoFuture" in {
     val neverHappeningFuture: Future[Int] = NoFuture
     assert(!neverHappeningFuture.isCompleted)

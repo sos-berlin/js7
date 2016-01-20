@@ -31,7 +31,7 @@ object TunnelWebServices {
     onHeartbeat: (TunnelToken, Duration) ⇒ Unit)
     (implicit refFactory: ActorRefFactory) =
   {
-    pathEndOrSingleSlash {
+    (pathEndOrSingleSlash & post) {
       headerValueByName(SecretHeaderName) { secret ⇒
         val tunnelToken = TunnelToken(tunnelId, TunnelToken.Secret(secret))
         val tunnel = tunnelAccess(tunnelToken)

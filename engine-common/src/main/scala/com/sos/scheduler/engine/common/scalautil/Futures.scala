@@ -70,6 +70,10 @@ object Futures {
       def await(duration: Duration) = Await.result(delegate, duration.toFiniteDuration)
     }
 
+    implicit class RichFututes[A](val delegate: Iterable[Future[A]]) extends AnyVal {
+      def await(duration: Duration)(implicit ec: ExecutionContext) = Await.result(Future.sequence(delegate), duration.toFiniteDuration)
+    }
+
     implicit class SuccessPromise[A](val delegate: Promise[A]) extends AnyVal {
       def successValue: A = delegate.future.successValue
     }

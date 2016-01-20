@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.web
 
-import akka.actor.ActorSystem
+import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.sprayutils.SimpleTypeSprayJsonSupport._
@@ -13,15 +13,12 @@ import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.`application/json`
 import spray.http.Uri
 import spray.json.JsBoolean
-import spray.testkit.ScalatestRouteTest
 
 /**
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class FileStatusWebServiceTest extends FreeSpec with ScalatestRouteTest with FileStatusWebService {
-
-  protected implicit lazy val actorRefFactory = ActorSystem()
+final class FileStatusWebServiceTest extends FreeSpec with WebServiceTest with FileStatusWebService {
 
   "fileExists" in {
     withCloser { implicit closer ⇒
