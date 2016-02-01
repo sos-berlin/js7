@@ -1,11 +1,16 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
+import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
+import java.time.Duration
 import scala.collection.immutable
 
 object Processes {
+  private val logger = Logger(getClass)
 
   def processToString(process: Process): String = processToString(process, processToPidOption(process))
 
@@ -33,4 +38,25 @@ object Processes {
   def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
 
   def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
+
+  implicit class RobustlyStartProcess(val delegate: ProcessBuilder) extends AnyVal {
+    /**
+      * Like ProcessBuilder.start, but retries after IOException("error=26, Text file busy").
+      *
+      * @see https://change.sos-berlin.com/browse/JS-1581
+      * @see https://bugs.openjdk.java.net/browse/JDK-8068370
+      */
+    def startRobustly(durations: Iterator[Duration] = RobustlyStartProcess.DefaultDurations.iterator): Process =
+      try delegate.start()
+      catch {
+        case e: IOException if durations.hasNext && (e.getMessage contains "error=26, Text file busy") ⇒
+          logger.warn(s"Retrying process start after error: $e")
+          sleep(durations.next())
+          startRobustly(durations)
+      }
+  }
+
+  private object RobustlyStartProcess {
+    private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms) ensuring { o ⇒ (o map { _.toMillis }).sum.ms == 2.s }
+  }
 }
