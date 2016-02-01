@@ -1,11 +1,8 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
-import java.nio.file.Files._
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions._
-import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
+import java.nio.file.attribute.FileAttribute
 import scala.collection.immutable
 
 object Processes {
@@ -20,61 +17,20 @@ object Processes {
     def string = number.toString
   }
 
-  def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
-
-  def newLogFile(directory: Path, name: String, outerr: StdoutStderrType): Path = OS.newLogFile(directory, name, outerr)
-
   /**
    * Builds an argument list for [[ProcessBuilder]].
    */
   def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String] = Vector(file.toString) ++ arguments
 
+
+  // Shortcuts for operating system specific methods
+  import OperatingSystemSpecific.OS
+
+  def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
+
+  def newLogFile(directory: Path, name: String, outerr: StdoutStderrType): Path = OS.newLogFile(directory, name, outerr)
+
   def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
 
   def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
-
-  private val OS: OperatingSystemSpecific = if (isWindows) OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
-
-  private sealed trait OperatingSystemSpecific {
-    def newTemporaryShellFile(name: String): Path
-
-    def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = {
-      val file = directory resolve s"$name-$outerr.log"
-      if (!exists(file)) {
-        createFile(file, outputFileAttributes: _*)
-      }
-      file
-    }
-
-    def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
-
-    protected def outputFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
-
-    def directShellCommandArguments(argument: String): immutable.Seq[String]
-
-    protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name-"
-  }
-
-  private object OperatingSystemSpecific {
-    private[Processes] object Unix extends OperatingSystemSpecific {
-      val shellFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rwx------"))
-        .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
-      val outputFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
-        .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
-
-      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttributes: _*)
-
-      def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
-    }
-
-    private[Processes] object Windows extends OperatingSystemSpecific {
-      private val Cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
-      val shellFileAttributes = Nil
-      val outputFileAttributes = Nil
-
-      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
-
-      def directShellCommandArguments(argument: String) = Vector(Cmd, "/C", argument)
-    }
-  }
 }
