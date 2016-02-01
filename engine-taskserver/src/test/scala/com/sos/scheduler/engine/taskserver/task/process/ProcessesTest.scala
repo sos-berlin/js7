@@ -41,12 +41,8 @@ final class ProcessesTest extends FreeSpec {
   "toShellCommandArguments" in {
     val file = Paths.get("FILE")
     val a = toShellCommandArguments(file, args)
-    if (isWindows) {
-      assert(a == List("FILE") ++ args)
-    } else {
-      assert(a == List("FILE") ++ args)
-      assert(toShellCommandArguments(file) == List("FILE"))  // Without arguments, it is shorter
-    }
+    assert(a == List("FILE") ++ args)
+    assert(toShellCommandArguments(file) == List("FILE"))  // Without arguments, it is shorter
   }
 
   "newTemporaryShellFile, toShellCommandArguments and script execution" in {
