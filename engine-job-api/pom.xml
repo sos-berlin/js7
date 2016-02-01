@@ -33,6 +33,7 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>engine-common</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
