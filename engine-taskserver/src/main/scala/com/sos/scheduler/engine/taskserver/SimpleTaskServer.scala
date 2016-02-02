@@ -1,15 +1,12 @@
 package com.sos.scheduler.engine.taskserver
 
 import akka.util.ByteString
-import com.google.inject.Guice
+import com.google.inject.Injector
 import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.tcp.TcpConnection
-import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
 import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerModule
@@ -28,15 +25,15 @@ import spray.json._
  *
  * @author Joacim Zschimmer
  */
-final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain: Boolean = false)
+final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain: Boolean = false)(injector: Injector)
 extends TaskServer with HasCloser {
 
   private val logger = Logger.withPrefix(getClass, taskStartArguments.agentTaskId.toString)
   private lazy val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val terminatedPromise = Promise[Unit]()
-  private val injector = Guice.createInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
+  private val childInjector = injector.createChildInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
   private val remoting = new Remoting(
-    injector,
+    childInjector,
     new DialogConnection(master),
     IDispatchFactories,
     ProxyIDispatchFactories,
@@ -82,9 +79,4 @@ object SimpleTaskServer {
   private val IDispatchFactories = List(RemoteModuleInstanceServer)
   private val ProxyIDispatchFactories = List(ProxySpooler, ProxySpoolerLog, ProxySpoolerTask)
 
-  def runAsMain(startArguments: TaskStartArguments): Unit =
-    autoClosing(new SimpleTaskServer(startArguments, isMain = true)) { taskServer ⇒
-      taskServer.start()
-      awaitResult(taskServer.terminated, MaxDuration)
-    }
 }

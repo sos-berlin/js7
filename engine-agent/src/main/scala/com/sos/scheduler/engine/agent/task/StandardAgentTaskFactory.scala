@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.agent.Agent
 import akka.util.ByteString
 import com.google.common.base.Splitter
+import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commands.{StartApiTask, StartNonApiTask, StartTask}
@@ -12,7 +13,6 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.closeOnError
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
 import com.sos.scheduler.engine.minicom.remoting.calls.CallCall
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer.{deserializeCall, messageIsCall}
 import com.sos.scheduler.engine.minicom.types.VariantArray
@@ -34,7 +34,8 @@ import scala.concurrent.Promise
 final class StandardAgentTaskFactory @Inject private(
   agentConfiguration: AgentConfiguration,
   tunnelServer: TunnelServer,
-  actorSystem: ActorSystem)
+  actorSystem: ActorSystem,
+  injector: Injector)
 extends AgentTaskFactory {
 
   import actorSystem.dispatcher
@@ -72,10 +73,10 @@ extends AgentTaskFactory {
       rpcKeepaliveDurationOption = agentConfiguration.rpcKeepaliveDuration)
     if (sys.props contains UseThreadPropertyName) { // For debugging
       logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")
-      new SimpleTaskServer(taskStartArguments)
+      new SimpleTaskServer(taskStartArguments)(injector)
     } else
       command match {
-        case _: StartNonApiTask ⇒ new SimpleTaskServer(taskStartArguments)
+        case _: StartNonApiTask ⇒ new SimpleTaskServer(taskStartArguments)(injector)
         case o: StartApiTask ⇒ new OwnProcessTaskServer(
           taskStartArguments,
           javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
