@@ -25,6 +25,7 @@ final class ProcessesIT extends FreeSpec {
   private val n = 2000
   private val threadCount = 500
 
+  if (false) // Not tested here. Issue is solved on a higher level with RichProcessStartSynchronizer
   s"Massive parallel test with $n process starts and $threadCount threads" in {
     val forkJoinPool = new ForkJoinPool(threadCount)
     implicit val executionContext = ExecutionContext.fromExecutor(forkJoinPool)

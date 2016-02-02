@@ -2,8 +2,10 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
@@ -22,7 +24,10 @@ import scala.concurrent.Future
  * @author Joacim Zschimmer
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
-final class RemoteModuleInstanceServer @Inject private(taskStartArguments: TaskStartArguments, taskServerMainTerminatedOption: Option[Future[Unit]])
+final class RemoteModuleInstanceServer @Inject private(
+  taskStartArguments: TaskStartArguments,
+  synchronizedStartProcess: RichProcessStartSynchronizer,
+  taskServerMainTerminatedOption: Option[Future[Unit]])
 extends HasCloser with Invocable {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
 
@@ -62,13 +67,14 @@ extends HasCloser with Invocable {
           logDirectory = taskStartArguments.logDirectory,
           logFilenamePart = taskStartArguments.logFilenamePart,
           killScriptOption = taskStartArguments.killScriptOption,
+          synchronizedStartProcess,
           taskServerMainTerminatedOption = taskServerMainTerminatedOption)
       case module: JavaModule ⇒
         new JavaProcessTask(module, commonArguments)
     }
     closer.registerAutoCloseable(task)
     taskOnce := task
-    task.start()
+    task.start() await 1.h   // Asynchronous @invocable would be nice ...
   }
 
   @invocable
