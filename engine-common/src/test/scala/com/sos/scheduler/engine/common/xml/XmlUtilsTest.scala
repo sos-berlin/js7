@@ -11,6 +11,22 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class XmlUtilsTest extends FreeSpec {
 
+  "sanitize" in {
+    val original = ((0 to 300) map { _.toChar }).mkString
+    val sanitized = sanitize(original)
+    assert(original.size == sanitized.size)
+    val ValidChars = List('\t', '\n', '\r') ++ (' ' to 300.toChar)
+    val InvalidChars = ValidChars.toSet -- ValidChars
+    for (c ← ValidChars) {
+      assert(original(c) == c)
+      assert(sanitized(c) == c)
+    }
+    for (c ← InvalidChars) {
+      assert(original(c) == c)
+      assert(sanitized(c) == '�')
+    }
+  }
+
   "loadXml String" in {
     assertResult("a") { loadXml("<a>A</a>").getDocumentElement.getNodeName }
   }
