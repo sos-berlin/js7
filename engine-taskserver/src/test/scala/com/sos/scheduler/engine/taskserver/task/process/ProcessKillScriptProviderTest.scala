@@ -80,7 +80,7 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
       createTempFile("test-", ".sh") sideEffect { file ⇒
         delete(file)
         createFile(file, Processes.shellFileAttributes: _*)
-        file.contentString = "ping -c 100 127.0.0.1\n"
+        file.contentString = "sleep 99\n"
       }
     val b = new ProcessBuilder(file.toString, s"-agent-task-id=${agentTaskId.string}")
     b.redirectOutput(out)
