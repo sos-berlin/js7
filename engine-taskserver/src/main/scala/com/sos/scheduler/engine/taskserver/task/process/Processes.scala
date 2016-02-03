@@ -1,7 +1,9 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.taskserver.task.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import java.io.IOException
 import java.nio.file.Path
@@ -49,14 +51,19 @@ object Processes {
     def startRobustly(durations: Iterator[Duration] = RobustlyStartProcess.DefaultDurations.iterator): Process =
       try delegate.start()
       catch {
-        case e: IOException if durations.hasNext && (e.getMessage contains "error=26, Text file busy") ⇒
+        case TextFileBusyIOException(e) if durations.hasNext ⇒
           logger.warn(s"Retrying process start after error: $e")
           sleep(durations.next())
           startRobustly(durations)
       }
   }
 
-  private object RobustlyStartProcess {
+  private[process] object RobustlyStartProcess {
     private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms) ensuring { o ⇒ (o map { _.toMillis }).sum.ms == 2.s }
+
+    object TextFileBusyIOException {
+      private val matchesError26 = """.*\berror=26\b.*""".r.pattern.matcher _
+      def unapply(e: IOException): Option[IOException] = matchesError26(e.getMessage).matches option e
+    }
   }
 }
