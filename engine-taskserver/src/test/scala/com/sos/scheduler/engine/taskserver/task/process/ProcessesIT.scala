@@ -22,10 +22,10 @@ import scala.concurrent.{ExecutionContext, Future}
 @RunWith(classOf[JUnitRunner])
 final class ProcessesIT extends FreeSpec {
 
-  private val n = 2000
-  private val threadCount = 50 * sys.runtime.availableProcessors
+  private val n = 1000
+  private val threadCount = 10 * sys.runtime.availableProcessors
 
-  s"Massive parallel test with $n process starts and $threadCount threads" in {
+  s"$n concurrent process starts with $threadCount threads" in {
     val forkJoinPool = new ForkJoinPool(threadCount)
     implicit val executionContext = ExecutionContext.fromExecutor(forkJoinPool)
     val filesAndProcesses = for (i ← 0 until n) yield Future {

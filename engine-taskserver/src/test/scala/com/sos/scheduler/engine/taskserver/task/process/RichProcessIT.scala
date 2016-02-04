@@ -16,10 +16,10 @@ import scala.concurrent.{ExecutionContext, Future}
 @RunWith(classOf[JUnitRunner])
 final class RichProcessIT extends FreeSpec {
 
-  private val n = 2000
-  private val threadCount = 500
+  private val n = 1000
+  private val threadCount = 10 * sys.runtime.availableProcessors
 
-  s"Massive parallel test with $n process starts and $threadCount threads (JS-1581)" in {
+  s"$n concurrent process starts with $threadCount threads (JS-1581)" in {
     // Handling "Text file busy" when starting many processes.
     val forkJoinPool = new ForkJoinPool(threadCount)
     implicit val executionContext = ExecutionContext.fromExecutor(forkJoinPool)
