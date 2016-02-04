@@ -333,7 +333,7 @@
 		                            <goal>run</goal>
 		                        </goals>
 		                        <configuration>
-		                            <target name="clean-local-repo">                            
+		                            <target name="clean-local-repo">
 		                                <echo>Purging ${settings.localRepository}/com/sos-berlin...</echo>
 		                                <delete dir="${settings.localRepository}/com/sos-berlin" verbose="true" />
 		                            </target>
@@ -342,7 +342,7 @@
 		                    </execution>
 		                </executions>
 	                </plugin>
-                </plugins>           
+                </plugins>
             </build>
         </profile>
         <profile>
