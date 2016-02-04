@@ -126,7 +126,7 @@
                     <environmentVariables>
                         <LC_ALL>${LC_ALL}</LC_ALL>
                     </environmentVariables>
-                    <argLine>-Xms10m -Xmx50m ${argLine}</argLine>  <!-- Sparsame Heap-Zuteilung für die parallelen Prozesse -->
+                    <argLine>-Xms10m -Xmx150m ${argLine}</argLine>  <!-- Small heap for multiple parallel JVM processes-->
                     <systemPropertyVariables>
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
@@ -145,7 +145,7 @@
                     <environmentVariables>
                         <LC_ALL>${LC_ALL}</LC_ALL>
                     </environmentVariables>
-                    <argLine>-Xms10m -Xmx50m ${argLine}</argLine>  <!-- Small heap for multiple parallel JVM processes-->
+                    <argLine>-Xms10m -Xmx100m ${argLine}</argLine>  <!-- Small heap for multiple parallel JVM processes-->
                     <systemPropertyVariables>
                         <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
@@ -324,7 +324,7 @@
 		                            <goal>run</goal>
 		                        </goals>
 		                        <configuration>
-		                            <target name="clean-local-repo">                            
+		                            <target name="clean-local-repo">
 		                                <echo>Purging ${settings.localRepository}/com/sos-berlin...</echo>
 		                                <delete dir="${settings.localRepository}/com/sos-berlin" verbose="true" />
 		                            </target>
@@ -333,7 +333,7 @@
 		                    </execution>
 		                </executions>
 	                </plugin>
-                </plugins>           
+                </plugins>
             </build>
         </profile>
         <profile>
