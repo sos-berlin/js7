@@ -15,11 +15,11 @@ import java.nio.file.Path
 /**
  * @author Joacim Zschimmer
  */
-final class ProcessKillScriptProvider extends HasCloser {
+final class ProcessKillScriptProvider(httpPort: Int) extends HasCloser {
 
   def provideTo(directory: Path): ProcessKillScript = {
     val resource = if (isWindows) WindowsScriptResource else UnixScriptResource
-    val file = directory / resource.simpleName
+    val file = directory / resource.simpleName.replace(Prefix, s"$Prefix${httpPort}_")
     deleteIfExists(file)
     createFile(file, Processes.shellFileAttributes: _*)
     Resources.asByteSource(resource.url) copyTo asByteSink(file)
@@ -32,6 +32,7 @@ final class ProcessKillScriptProvider extends HasCloser {
 
 object ProcessKillScriptProvider {
   private val logger = Logger(getClass)
+  private val Prefix = "jobscheduler_agent_"
   private val WindowsScriptResource = JavaResource("com/sos/scheduler/engine/taskserver/task/process/scripts/windows/jobscheduler_agent_kill_task.cmd")
   private val UnixScriptResource = JavaResource("com/sos/scheduler/engine/taskserver/task/process/scripts/unix/jobscheduler_agent_kill_task.sh")
 }
