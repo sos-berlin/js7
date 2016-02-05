@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerMainModule._
 import com.typesafe.config.ConfigFactory
 import javax.inject.Singleton
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
@@ -18,6 +19,9 @@ import javax.inject.Singleton
 final class TaskServerMainModule extends ScalaAbstractModule {
 
   def configure() = {}
+
+  @Provides @Singleton
+  private def executionContext(o: ActorSystem): ExecutionContext = o.dispatcher
 
   @Provides @Singleton
   private def actorRefFactory(o: ActorSystem): ActorRefFactory = o

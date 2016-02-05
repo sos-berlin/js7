@@ -73,10 +73,10 @@ extends AgentTaskFactory {
       rpcKeepaliveDurationOption = agentConfiguration.rpcKeepaliveDuration)
     if (sys.props contains UseThreadPropertyName) { // For debugging
       logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")
-      new SimpleTaskServer(taskStartArguments)(injector)
+      new SimpleTaskServer(injector, taskStartArguments)
     } else
       command match {
-        case _: StartNonApiTask ⇒ new SimpleTaskServer(taskStartArguments)(injector)
+        case _: StartNonApiTask ⇒ new SimpleTaskServer(injector, taskStartArguments)
         case o: StartApiTask ⇒ new OwnProcessTaskServer(
           taskStartArguments,
           javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),

@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver
 
+import akka.actor.ActorSystem
 import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.google.inject.Stage._
@@ -14,7 +15,6 @@ import java.net.{InetAddress, ServerSocket}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Joacim Zschimmer
@@ -27,8 +27,9 @@ final class SimpleTaskServerTest extends FreeSpec {
     val interface = "127.0.0.1"
     autoClosing(new ServerSocket(port, 1, InetAddress.getByName(interface))) { listener ⇒
       val injector = Guice.createInjector(PRODUCTION, new TaskServerMainModule)
+      implicit val executionContext = injector.instance[ActorSystem].dispatcher
       autoClosing(injector.instance[Closer]) { closer ⇒
-        autoClosing(new SimpleTaskServer(TaskStartArguments.forTest(tcpPort = port))(injector)) { server ⇒
+        autoClosing(new SimpleTaskServer(injector, TaskStartArguments.forTest(tcpPort = port))) { server ⇒
           server.start()
           listener.setSoTimeout(10*1000)
           sleep(100.ms)  // Otherwise, if it starts to fast, read() may throw an IOException "connection lost" instead of returning EOF
