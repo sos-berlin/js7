@@ -77,6 +77,8 @@
         <osArch>osArch-UNKNOWN-OPERATING-SYSTEM-OR-CPU</osArch>
         <test.forkCount>1</test.forkCount>
         <test.logback.configurationFile />
+        <surefire.timeout>3600</surefire.timeout>
+        <failsafe.timeout>10800</failsafe.timeout>
         <enginedoc.version>${project.version}</enginedoc.version>
         <argLine />
         <LC_ALL>C</LC_ALL>    <!-- Neutral Locale for H2Database -->
