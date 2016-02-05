@@ -21,8 +21,17 @@ import org.w3c.dom.{Document, Element, Node, NodeList}
 import org.xml.sax.{ErrorHandler, InputSource, SAXParseException}
 import scala.collection.JavaConversions._
 import scala.collection.immutable
+import scala.util.matching.Regex
 
 @ForCpp object XmlUtils {
+  // See https://www.w3.org/TR/REC-xml/#charsets
+  private lazy val InvalidXmlCharactersRegex = new Regex("[" +
+    "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007" +
+    "\u0008\u000b\u000c\u000e\u000f" +
+    "\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017" +
+    "\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f" +
+    "]")
+  private val ReplacementCharacter = '�' ensuring { _ == '\ufffd' }
   private lazy val xPathFactory = newXPathFactory()
   private lazy val xPath = threadLocal { xPathFactory.newXPath() }
 
@@ -50,6 +59,15 @@ import scala.collection.immutable
     postInitializeDocument(result)
     result
   }
+
+  /**
+    * Replaces characters between code points 0 and 31 which are illegal in XML, with '�'.
+    *
+    * @param string
+    * @return
+    */
+  @ForCpp
+  def sanitize(string: String): String = InvalidXmlCharactersRegex.replaceAllIn(string, ReplacementCharacter.toString)
 
   def prettyXml(document: Document): String =
     writingString { w => writeXmlTo(document, new StreamResult(w), encoding = None, indent = true) }

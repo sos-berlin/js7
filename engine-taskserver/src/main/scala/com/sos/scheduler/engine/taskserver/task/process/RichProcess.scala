@@ -118,7 +118,7 @@ object RichProcess {
     val shellFile = newTemporaryShellFile(name)
     try {
       shellFile.write(scriptString, Encoding)
-      val process = RichProcess.start(processConfiguration.copy(fileOption = Some(shellFile)), shellFile)
+      val process = startRobustly(processConfiguration.copy(fileOption = Some(shellFile)), shellFile)
       process.closed.onComplete { _ ⇒ tryDeleteFiles(List(shellFile)) }
       process.stdin.close() // Process gets an empty stdin
       process
@@ -129,11 +129,24 @@ object RichProcess {
     }
   }
 
-  def start(
-    processConfiguration: ProcessConfiguration,
-    file: Path,
-    arguments: Seq[String] = Nil)
-    (implicit exeuctionContext: ExecutionContext): RichProcess =
+  /**
+    * Like start, but retries after IOException("error=26, Text file busy").
+    *
+    * @see https://change.sos-berlin.com/browse/JS-1581
+    * @see https://bugs.openjdk.java.net/browse/JDK-8068370
+    */
+  def startRobustly(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
+    (implicit ec: ExecutionContext): RichProcess
+  =
+    start2(processConfiguration, file, arguments) { _.startRobustly() }
+
+  def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
+    (implicit ec: ExecutionContext): RichProcess
+  =
+    start2(processConfiguration, file, arguments) { _.start() }
+
+  private def start2(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
+    (builderToProcess: ProcessBuilder ⇒ Process)(implicit ec: ExecutionContext): RichProcess =
   {
     import processConfiguration.{additionalEnvironment, stdFileMap}
     val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption))
@@ -141,7 +154,7 @@ object RichProcess {
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
     logger.info("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
-    val process = processBuilder.start()
+    val process = builderToProcess(processBuilder)
     new RichProcess(processConfiguration, process)
   }
 

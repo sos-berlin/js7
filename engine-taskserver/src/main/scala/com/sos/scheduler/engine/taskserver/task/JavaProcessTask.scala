@@ -8,6 +8,7 @@ import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
 import com.sos.scheduler.engine.taskserver.task.JavaProcessTask._
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 /**
@@ -31,7 +32,8 @@ extends Task with HasCloser {
 
   def start() = {
     concurrentStdoutStderrWell foreach { _.start() }
-    monitorProcessor.preTask() && instance.spooler_init()
+    val result = monitorProcessor.preTask() && instance.spooler_init()
+    Future.successful(result)
   }
 
   /**

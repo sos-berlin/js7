@@ -34,6 +34,7 @@ private[task] final class ShellProcessTask(
   logDirectory: Path,
   logFilenamePart: String,
   killScriptOption: Option[ProcessKillScript],
+  synchronizedStartProcess: RichProcessStartSynchronizer,
   taskServerMainTerminatedOption: Option[Future[Unit]] = None)
   (implicit executionContext: ExecutionContext)
 extends HasCloser with Task {
@@ -54,11 +55,11 @@ extends HasCloser with Task {
   def start() = {
     requireState(!startCalled)
     startCalled = true
-    monitorProcessor.preTask() &&
-      monitorProcessor.preStep() && {
-        startProcess()
-        true
-      }
+    if (monitorProcessor.preTask() && monitorProcessor.preStep()) {
+      startProcess()
+    } else {
+      Future.successful(false)
+    }
   }
 
   private def startProcess() = {
@@ -76,17 +77,19 @@ extends HasCloser with Task {
     val (agentTaskIdOption, killScriptFileOption) =
       if (taskServerMainTerminatedOption.nonEmpty) (None, None)
       else (Some(agentTaskId), killScriptOption)  // No idString if this is an own process (due to a monitor), already started with idString
-    richProcessOnce := RichProcess.startShellScript(
-      ProcessConfiguration(
-        processStdFileMap,
-        additionalEnvironment = env,
-        agentTaskIdOption = agentTaskIdOption,
-        killScriptOption = killScriptFileOption),
-      name = jobName,
-      scriptString = module.script.string.trim)
-    .closeWithCloser
-    deleteFilesWhenProcessClosed(List(orderParamsFile))
-    concurrentStdoutStderrWell.start()
+    val processConfiguration = ProcessConfiguration(
+      processStdFileMap,
+      additionalEnvironment = env,
+      agentTaskIdOption = agentTaskIdOption,
+      killScriptOption = killScriptFileOption)
+    synchronizedStartProcess {
+      RichProcess.startShellScript(processConfiguration, name = jobName, scriptString = module.script.string.trim).closeWithCloser
+    } map { richProcess ⇒
+      richProcessOnce := richProcess
+      deleteFilesWhenProcessClosed(List(orderParamsFile))
+      concurrentStdoutStderrWell.start()
+      true
+    }
   }
 
   def end() = {}  // Not called

@@ -85,6 +85,8 @@
         <sos.subversion.url>http://subversion.sos/svn/sos/scheduler/engine</sos.subversion.url>
         <osArch>osArch-UNKNOWN-OPERATING-SYSTEM-OR-CPU</osArch>
         <test.logback.configurationFile>-</test.logback.configurationFile> <!-- Something for logback.ConfigurationFile, to let logback use its default configuration -->
+        <surefire.timeout>3600</surefire.timeout>
+        <failsafe.timeout>10800</failsafe.timeout>
         <enginedoc.version>${project.version}</enginedoc.version>
         <argLine />
         <LC_ALL>C</LC_ALL>    <!-- Neutral Locale for H2Database -->
@@ -333,7 +335,7 @@
 		                            <goal>run</goal>
 		                        </goals>
 		                        <configuration>
-		                            <target name="clean-local-repo">                            
+		                            <target name="clean-local-repo">
 		                                <echo>Purging ${settings.localRepository}/com/sos-berlin...</echo>
 		                                <delete dir="${settings.localRepository}/com/sos-berlin" verbose="true" />
 		                            </target>
@@ -342,7 +344,7 @@
 		                    </execution>
 		                </executions>
 	                </plugin>
-                </plugins>           
+                </plugins>
             </build>
         </profile>
         <profile>

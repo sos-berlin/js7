@@ -1,14 +1,18 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
+import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.taskserver.task.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
-import java.nio.file.Files._
+import java.io.IOException
 import java.nio.file.Path
-import java.nio.file.attribute.PosixFilePermissions._
-import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
+import java.nio.file.attribute.FileAttribute
+import java.time.Duration
 import scala.collection.immutable
 
 object Processes {
+  private val logger = Logger(getClass)
 
   def processToString(process: Process): String = processToString(process, processToPidOption(process))
 
@@ -20,61 +24,46 @@ object Processes {
     def string = number.toString
   }
 
-  def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
-
-  def newLogFile(directory: Path, name: String, outerr: StdoutStderrType): Path = OS.newLogFile(directory, name, outerr)
-
   /**
    * Builds an argument list for [[ProcessBuilder]].
    */
   def toShellCommandArguments(file: Path, arguments: Seq[String] = Nil): immutable.Seq[String] = Vector(file.toString) ++ arguments
 
+
+  // Shortcuts for operating system specific methods
+  import OperatingSystemSpecific.OS
+
+  def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
+
+  def newLogFile(directory: Path, name: String, outerr: StdoutStderrType): Path = OS.newLogFile(directory, name, outerr)
+
   def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
 
   def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
 
-  private val OS: OperatingSystemSpecific = if (isWindows) OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
-
-  private sealed trait OperatingSystemSpecific {
-    def newTemporaryShellFile(name: String): Path
-
-    def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = {
-      val file = directory resolve s"$name-$outerr.log"
-      if (!exists(file)) {
-        createFile(file, outputFileAttributes: _*)
+  implicit class RobustlyStartProcess(val delegate: ProcessBuilder) extends AnyVal {
+    /**
+      * Like ProcessBuilder.start, but retries after IOException("error=26, Text file busy").
+      *
+      * @see https://change.sos-berlin.com/browse/JS-1581
+      * @see https://bugs.openjdk.java.net/browse/JDK-8068370
+      */
+    def startRobustly(durations: Iterator[Duration] = RobustlyStartProcess.DefaultDurations.iterator): Process =
+      try delegate.start()
+      catch {
+        case TextFileBusyIOException(e) if durations.hasNext ⇒
+          logger.warn(s"Retrying process start after error: $e")
+          sleep(durations.next())
+          startRobustly(durations)
       }
-      file
-    }
-
-    def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
-
-    protected def outputFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
-
-    def directShellCommandArguments(argument: String): immutable.Seq[String]
-
-    protected final def filenamePrefix(name: String) = s"JobScheduler-Agent-$name-"
   }
 
-  private object OperatingSystemSpecific {
-    private[Processes] object Unix extends OperatingSystemSpecific {
-      val shellFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rwx------"))
-        .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
-      val outputFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
-        .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
+  private[process] object RobustlyStartProcess {
+    private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms) ensuring { o ⇒ (o map { _.toMillis }).sum.ms == 2.s }
 
-      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttributes: _*)
-
-      def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
-    }
-
-    private[Processes] object Windows extends OperatingSystemSpecific {
-      private val Cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
-      val shellFileAttributes = Nil
-      val outputFileAttributes = Nil
-
-      def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
-
-      def directShellCommandArguments(argument: String) = Vector(Cmd, "/C", argument)
+    object TextFileBusyIOException {
+      private val matchesError26 = """.*\berror=26\b.*""".r.pattern.matcher _
+      def unapply(e: IOException): Option[IOException] = matchesError26(e.getMessage).matches option e
     }
   }
 }

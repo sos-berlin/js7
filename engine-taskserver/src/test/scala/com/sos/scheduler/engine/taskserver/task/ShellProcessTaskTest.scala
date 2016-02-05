@@ -1,8 +1,12 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
 import com.sos.scheduler.engine.common.system.FileUtils._
@@ -19,9 +23,9 @@ import com.sos.scheduler.engine.taskserver.module.{JavaModuleLanguage, NamedInvo
 import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTaskTest._
 import org.junit.runner.RunWith
-import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,7 +34,15 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class ShellProcessTaskTest extends FreeSpec {
+final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
+
+  private lazy val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.shutdown() }
+  private val synchronizedStartProcess = new RichProcessStartSynchronizer()(actorSystem).closeWithCloser
+
+  override protected def afterAll() = {
+    onClose { super.afterAll() }
+    closer.close()
+  }
 
   "ShellProcessTask exit 0" in {
     runTask("exit-0",
@@ -53,7 +65,7 @@ final class ShellProcessTaskTest extends FreeSpec {
   private def runTask(id: String, setting: Setting, expectedStartResult: Boolean = true, expectedSpoolerProcessResult: Option[Boolean] = None): Unit = {
     val spoolerLog = new TestSpoolerLog
     val (stepResultOption, files) = autoClosing(newShellProcessTask(id, spoolerLog, setting)) { task ⇒
-      val taskResult = task.start()
+      val taskResult = task.start() await 60.s
       assert(taskResult == expectedStartResult)
       val r = taskResult.option(task.step())
       // Is not called by C++ Scheduler: task.end()
@@ -80,14 +92,6 @@ final class ShellProcessTaskTest extends FreeSpec {
       case undeletedFiles ⇒ fail("Files not deleted:\n" + undeletedFiles.mkString("\n"))
     }
   }
-}
-
-private object ShellProcessTaskTest {
-  private val TestName = "TESTENV"
-  private val TestValue = "TESTENV-VALUE"
-  private val TestString = "TEST-SCRIPT"
-
-  private case class Setting(preTask: Boolean, preStep: Boolean, exitCode: Int, postStep: Boolean ⇒ Boolean)
 
   private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) =
     new ShellProcessTask(
@@ -109,7 +113,16 @@ private object ShellProcessTaskTest {
       variablePrefix = TaskArguments.DefaultShellVariablePrefix,
       logDirectory = temporaryDirectory,
       logFilenamePart = s"ShellProcessTaskTest-$id",
-      killScriptOption = None)
+      killScriptOption = None,
+      synchronizedStartProcess)
+}
+
+private object ShellProcessTaskTest {
+  private val TestName = "TESTENV"
+  private val TestValue = "TESTENV-VALUE"
+  private val TestString = "TEST-SCRIPT"
+
+  private case class Setting(preTask: Boolean, preStep: Boolean, exitCode: Int, postStep: Boolean ⇒ Boolean)
 
   private def testScript(exitCode: Int) = Script(
     (if (isWindows) s"@echo off\necho $TestName=%$TestName%" else s"echo $TestName=$$$TestName") +

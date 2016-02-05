@@ -27,15 +27,15 @@ import org.scalatest.junit.JUnitRunner
 final class ProcessKillScriptProviderTest extends FreeSpec {
 
   private lazy val tmp = temporaryDirectory
-  val expectedFile = tmp / (if (isWindows) "jobscheduler_agent_kill_task.cmd" else "jobscheduler_agent_kill_task.sh")
+  val expectedFile = tmp / (if (isWindows) "jobscheduler_agent_1234_kill_task.cmd" else "jobscheduler_agent_1234_kill_task.sh")
 
   "Do nothing" in {
-    val provider = new ProcessKillScriptProvider
+    val provider = new ProcessKillScriptProvider(httpPort = 1234)
     provider.close()
   }
 
   "Provide script and delete it later" in {
-    val provider = new ProcessKillScriptProvider
+    val provider = new ProcessKillScriptProvider(httpPort = 1234)
     deleteIfExists(expectedFile)
     val killScript = provider.provideTo(tmp)
     assert(killScript.file == expectedFile)
@@ -49,7 +49,7 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
 
   "Existing file is overwritten" in {
     touch(expectedFile)
-    val provider = new ProcessKillScriptProvider
+    val provider = new ProcessKillScriptProvider(httpPort = 1234)
     provider.provideTo(tmp)
     assert(exists(expectedFile))
     provider.close()
@@ -80,7 +80,7 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
       createTempFile("test-", ".sh") sideEffect { file ⇒
         delete(file)
         createFile(file, Processes.shellFileAttributes: _*)
-        file.contentString = "ping -c 100 127.0.0.1\n"
+        file.contentString = "sleep 99\n"
       }
     val b = new ProcessBuilder(file.toString, s"-agent-task-id=${agentTaskId.string}")
     b.redirectOutput(out)
@@ -88,7 +88,7 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
   }
 
   private def runKillScript(agentTaskId: AgentTaskId): Unit = {
-    autoClosing(new ProcessKillScriptProvider) { provider ⇒
+    autoClosing(new ProcessKillScriptProvider(httpPort = 1234)) { provider ⇒
       val killScript = provider.provideTo(temporaryDirectory)
       val killProcess = sys.runtime.exec(killScript.toCommandArguments(agentTaskId).toArray)
       killProcess.waitFor(60, SECONDS)
