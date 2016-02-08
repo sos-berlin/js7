@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.agent
 
 import com.google.common.io.Closer
 import com.google.inject.Guice
+import com.google.inject.Stage._
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.web.AgentWebServer
@@ -13,7 +14,7 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
  */
 final class Agent(configuration: AgentConfiguration) extends AutoCloseable {
 
-  private val injector = Guice.createInjector(new AgentModule(configuration))
+  private val injector = Guice.createInjector(PRODUCTION, new AgentModule(configuration))
   private val server = injector.instance[AgentWebServer]
   private val closer = injector.instance[Closer]
 
