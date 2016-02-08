@@ -78,5 +78,4 @@ extends TaskServer with HasCloser {
 object SimpleTaskServer {
   private val IDispatchFactories = List(RemoteModuleInstanceServer)
   private val ProxyIDispatchFactories = List(ProxySpooler, ProxySpoolerLog, ProxySpoolerTask)
-
 }
