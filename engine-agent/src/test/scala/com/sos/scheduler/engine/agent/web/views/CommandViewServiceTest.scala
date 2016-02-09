@@ -32,7 +32,7 @@ final class CommandViewServiceTest extends FreeSpec with WebServiceTest with Com
   protected def commandRunOverviews = List(CommandRunOverview(InternalCommandId(3333), Instant.parse("2015-06-22T12:00:00Z"), testCommand))
 
   "commandHandler returns overview" in {
-    Get(Uri("/test/jobscheduler/agent/api/command")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/test/jobscheduler/agent/api/command") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[JsObject] == JsObject(
         "totalCommandCount" → JsNumber(1111),
         "currentCommandCount" → JsNumber(2222)))
@@ -40,7 +40,7 @@ final class CommandViewServiceTest extends FreeSpec with WebServiceTest with Com
   }
 
   "commandHandler/ returns array of running command" in {
-    Get(Uri("/test/jobscheduler/agent/api/command/")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/test/jobscheduler/agent/api/command/") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[JsArray] == JsArray(
         JsObject(
           "internalId" → JsString("3333"),

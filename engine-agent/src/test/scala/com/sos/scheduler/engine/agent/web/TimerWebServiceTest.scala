@@ -26,7 +26,7 @@ final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerW
   protected lazy val timerService = TimerService(Some(5.s)).closeWithCloser
 
   "timerService (empty)" in {
-    Get(Uri("/jobscheduler/agent/api/timer")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/jobscheduler/agent/api/timer") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TimerServiceOverview] == timerService.overview)
       assert(responseAs[JsObject] == JsObject(
         "count" → JsNumber(0),
@@ -37,7 +37,7 @@ final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerW
   }
 
   "timerService/ (empty)" in {
-    Get(Uri("/jobscheduler/agent/api/timer/")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/jobscheduler/agent/api/timer/") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[immutable.Seq[TimerOverview]] == timerService.timerOverviews)
       assert(responseAs[JsArray] == JsArray())
     }
@@ -47,7 +47,7 @@ final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerW
     timerService.at(Instant.parse("2111-01-01T12:11:11Z"), name = "TEST-A")
     timerService.at(Instant.parse("2222-01-02T12:22:22Z"), name = "TEST-B")
     timerService.at(Instant.parse("2333-01-03T12:33:33Z"), name = "TEST-C")
-    Get(Uri("/jobscheduler/agent/api/timer")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/jobscheduler/agent/api/timer") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TimerServiceOverview] == timerService.overview)
       assert(responseAs[JsObject] == JsObject(
         "count" → JsNumber(3),
@@ -63,7 +63,7 @@ final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerW
   }
 
   "timerService/ (3 timers)" in {
-    Get(Uri("/jobscheduler/agent/api/timer/")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/jobscheduler/agent/api/timer/") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[immutable.Seq[TimerOverview]] == timerService.timerOverviews)
       assert(responseAs[JsArray] == JsArray(
         JsObject(
