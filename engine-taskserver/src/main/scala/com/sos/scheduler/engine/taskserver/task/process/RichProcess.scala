@@ -7,7 +7,6 @@ import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logge
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.job.ReturnCode
-import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration.Encoding
 import com.sos.scheduler.engine.taskserver.task.process.Processes._
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
@@ -28,7 +27,7 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-final class RichProcess private(val processConfiguration: ProcessConfiguration, process: Process)
+class RichProcess protected[process](val processConfiguration: ProcessConfiguration, process: Process)
 extends HasCloser with ClosedFuture {
 
   val pidOption = processToPidOption(process)
@@ -50,9 +49,9 @@ extends HasCloser with ClosedFuture {
 
   logger.info(s"Process started")
 
-  def terminated: Future[Unit] = terminatedPromise.future
+  final def terminated: Future[Unit] = terminatedPromise.future
 
-  def sendProcessSignal(signal: ProcessSignal): Unit =
+  final def sendProcessSignal(signal: ProcessSignal): Unit =
     if (process.isAlive) {
       signal match {
         case SIGTERM ⇒
@@ -93,64 +92,36 @@ extends HasCloser with ClosedFuture {
   }
 
   @TestOnly
-  private[task] def isAlive = process.isAlive
+  private[task] final def isAlive = process.isAlive
 
-  def waitForTermination(): ReturnCode = {
+  final def waitForTermination(): ReturnCode = {
     waitForProcessTermination(process)
     ReturnCode(process.exitValue)
   }
 
-  def stdin = process.getOutputStream
+  final def stdin = process.getOutputStream
 
-  override def toString = (processConfiguration.agentTaskIdOption ++ List(processToString(process, pidOption)) ++ processConfiguration.fileOption) mkString " "
+  override def toString = processConfiguration.agentTaskIdOption ++ List(processToString(process, pidOption)) ++ processConfiguration.fileOption mkString " "
 }
 
 object RichProcess {
   private val WaitForProcessPeriod = 100.ms
   private val logger = Logger(getClass)
 
-  def startShellScript(
-    processConfiguration: ProcessConfiguration = ProcessConfiguration(),
-    name: String = "shell-script",
-    scriptString: String): RichProcess =
-  {
-    val shellFile = newTemporaryShellFile(name)
-    try {
-      shellFile.write(scriptString, Encoding)
-      val process = startRobustly(processConfiguration.copy(fileOption = Some(shellFile)), shellFile)
-      process.closed.onComplete { _ ⇒ tryDeleteFiles(List(shellFile)) }
-      process.stdin.close() // Process gets an empty stdin
-      process
-    }
-    catch { case NonFatal(t) ⇒
-      shellFile.delete()
-      throw t
-    }
+  def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil): RichProcess = {
+    val process = startProcessBuilder(processConfiguration, file, arguments) { _.start() }
+    new RichProcess(processConfiguration, process)
   }
 
-  /**
-    * Like start, but retries after IOException("error=26, Text file busy").
-    *
-    * @see https://change.sos-berlin.com/browse/JS-1581
-    * @see https://bugs.openjdk.java.net/browse/JDK-8068370
-    */
-  def startRobustly(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil): RichProcess =
-    start2(processConfiguration, file, arguments) { _.startRobustly() }
-
-  def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil): RichProcess =
-    start2(processConfiguration, file, arguments) { _.start() }
-
-  private def start2(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
-      (builderToProcess: ProcessBuilder ⇒ Process): RichProcess =
-  {
+  private[process] def startProcessBuilder(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
+      (start: ProcessBuilder ⇒ Process): Process = {
     import processConfiguration.{additionalEnvironment, stdFileMap}
     val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption))
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
     logger.info("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
-    val process = builderToProcess(processBuilder)
-    new RichProcess(processConfiguration, process)
+    start(processBuilder)
   }
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT

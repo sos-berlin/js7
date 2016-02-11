@@ -12,6 +12,7 @@ import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
+import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.taskserver.task.process.{ProcessConfiguration, RichProcess}
 import java.nio.file.Files._
@@ -24,8 +25,7 @@ import scala.concurrent.{Await, Future}
 
 /**
  * @author Joacim Zschimmer
- *
- * @see spooler_module_process.cxx, C++ class Process_module_instance
+  * @see spooler_module_process.cxx, C++ class Process_module_instance
  */
 private[task] final class ShellProcessTask(
   module: ShellModule,
@@ -83,7 +83,7 @@ extends HasCloser with Task {
       agentTaskIdOption = agentTaskIdOption,
       killScriptOption = killScriptFileOption)
     synchronizedStartProcess {
-      RichProcess.startShellScript(processConfiguration, name = jobName, scriptString = module.script.string.trim).closeWithCloser
+      startShellScript(processConfiguration, name = jobName, scriptString = module.script.string.trim).closeWithCloser
     } map { richProcess ⇒
       richProcessOnce := richProcess
       deleteFilesWhenProcessClosed(List(orderParamsFile))
