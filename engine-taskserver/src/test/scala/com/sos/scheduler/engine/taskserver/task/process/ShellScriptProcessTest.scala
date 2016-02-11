@@ -6,15 +6,16 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCl
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem.{KernelSupportsNestedShebang, isUnix, isWindows}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.Processes.newTemporaryShellFile
-import com.sos.scheduler.engine.taskserver.task.process.RichProcess.startShellScript
+import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.Stdout
-import java.nio.file.Files.{createTempFile, delete}
+import java.nio.file.Files._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -24,19 +25,21 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class RichProcessTest extends FreeSpec {
+final class ShellScriptProcessTest extends FreeSpec {
 
-  "RichProcess" in {
+  "ShellScriptProcess" in {
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
     val exitCode = 42
     val processConfig = ProcessConfiguration(additionalEnvironment = Map(envName → envValue))
-    val shellProcess = RichProcess.startShellScript(processConfig, name = "TEST", s"exit $exitCode")
+    val shellProcess = startShellScript(processConfig, name = "TEST", s"exit $exitCode")
     val returnCode = shellProcess.waitForTermination()
     assert(returnCode == ReturnCode(exitCode))
     assert(!shellProcess.closed.isCompleted)
     shellProcess.close()
     assert(shellProcess.closed.isCompleted)
+    shellProcess.scriptFileDeleted await 5.s
+    assert(!exists(shellProcess.temporaryScriptFile))
   }
 
   if (isUnix) {
@@ -57,9 +60,9 @@ final class RichProcessTest extends FreeSpec {
             s"""#! $interpreter
                |echo TEST-SCRIPT
                |""".stripMargin
-          val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = s"RichProcessTest-shebang")
+          val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-shebang")
           val processConfig = ProcessConfiguration(stdFileMap)
-          val shellProcess = RichProcess.startShellScript(processConfig, name = "TEST", scriptString = scriptString)
+          val shellProcess = startShellScript(processConfig, name = "TEST", scriptString = scriptString)
           shellProcess.waitForTermination()
           shellProcess.close()
           assert(stdFileMap(Stdout).contentString ==
@@ -76,7 +79,7 @@ final class RichProcessTest extends FreeSpec {
     val agentTaskId = AgentTaskId("TEST-PROCESS-ID")
     val script = if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 7 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 6"
     withCloser { closer ⇒
-      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "RichProcessTest-kill")
+      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "ShellScriptProcessTest-kill")
       val killScriptOutputFile = createTempFile("test-", ".tmp")
       val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
       killScriptFile.contentString = if (isWindows) s"echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n"
