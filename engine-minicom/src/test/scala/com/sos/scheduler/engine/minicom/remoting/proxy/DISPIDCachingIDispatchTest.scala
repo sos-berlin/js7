@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting.proxy
 
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch}
-import com.sos.scheduler.engine.minicom.remoting.proxy.DISPIDCacheTest._
+import com.sos.scheduler.engine.minicom.remoting.proxy.DISPIDCachingIDispatchTest._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -10,10 +10,10 @@ import org.scalatest.junit.JUnitRunner
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class DISPIDCacheTest extends FreeSpec {
+final class DISPIDCachingIDispatchTest extends FreeSpec {
 
   "test" in {
-    val iDispatch = new MyIDispatch with DISPIDCache
+    val iDispatch = new MyIDispatch with DISPIDCachingIDispatch
     for (_ ← 1 to 3) {
       assert(iDispatch.getIdOfName("aa") == DISPID(1))
       assert(iDispatch.getIdOfName("Aa") == DISPID(1))
@@ -25,7 +25,7 @@ final class DISPIDCacheTest extends FreeSpec {
 
 }
 
-private object DISPIDCacheTest {
+private object DISPIDCachingIDispatchTest {
   private trait MyIDispatch extends IDispatch {
     var idCalls = 0
 

@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.minicom.idispatch.{DISPID, IDispatch}
 /**
   * @author Joacim Zschimmer
   */
-trait DISPIDCache extends IDispatch {
+trait DISPIDCachingIDispatch extends IDispatch {
 
   private val nameToDispId = new ScalaConcurrentHashMap[String, DISPID]
 
