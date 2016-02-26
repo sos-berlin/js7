@@ -50,7 +50,7 @@ extends HasCloser with Task {
   private var startCalled = false
   private val richProcessOnce = new SetOnce[RichProcess]
   private val logger = Logger.withPrefix(getClass, toString)
-  private var sigtermForwarder: JavaShutdownHook = null
+  private var sigtermForwarder: Option[JavaShutdownHook] = None
 
   def start() = {
     requireState(!startCalled)
@@ -63,12 +63,11 @@ extends HasCloser with Task {
   }
 
   private def startProcess() = {
-    for (terminated ← taskServerMainTerminatedOption) {
-      sigtermForwarder = JavaShutdownHook.add(ShellProcessTask.getClass.getName) {
+    sigtermForwarder = for (terminated ← taskServerMainTerminatedOption) yield
+      JavaShutdownHook.add(ShellProcessTask.getClass.getName) {
         sendProcessSignal(SIGTERM)
         Await.ready(terminated, Inf)  // Delay until TaskServer has been terminated
       }
-    }
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
       val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
@@ -101,7 +100,7 @@ extends HasCloser with Task {
         <process.result spooler_process_result="false"/>.toString()
       case Some(richProcess) ⇒
         val rc = richProcess.waitForTermination()
-        if (sigtermForwarder != null) sigtermForwarder.close()
+        for (o ← sigtermForwarder) o.close()
         concurrentStdoutStderrWell.finish()
         transferReturnValuesToMaster()
         val success =

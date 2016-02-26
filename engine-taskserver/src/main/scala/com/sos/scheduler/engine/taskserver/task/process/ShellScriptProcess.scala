@@ -12,7 +12,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class ShellScriptProcess(
+final class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
   process: Process,
   private[process] val temporaryScriptFile: Path)
