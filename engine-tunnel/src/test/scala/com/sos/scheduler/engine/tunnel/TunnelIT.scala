@@ -62,9 +62,7 @@ final class TunnelIT extends FreeSpec with BeforeAndAfterAll {
       val tunnel = tunnelServer.newTunnel(id, Agent(TunnelListener.StopListening))
       val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelServer.proxyAddress)
       tcpServer.start()
-      tunnel.connected onSuccess { case peerAddress: InetSocketAddress ⇒
-        logger.info(s"$tunnel $peerAddress")
-      }
+      for (peerAddress: InetSocketAddress ← tunnel.connected) logger.info(s"$tunnel $peerAddress")
       tunnel → tcpServer
     }
     val tunnelRuns = for ((tunnel, _) ← tunnelsAndServers) yield Future {
