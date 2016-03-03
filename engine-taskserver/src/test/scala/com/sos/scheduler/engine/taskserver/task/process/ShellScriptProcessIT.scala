@@ -34,7 +34,7 @@ final class ShellScriptProcessIT extends FreeSpec {
       assert(rc == ReturnCode(0))
       p.close()
     }
-    processes map { _.scriptFileDeleted } await 10.s
+    processes map { _.scriptFileDeleted } await 60.s
     forkJoinPool.shutdown()
   }
 }
