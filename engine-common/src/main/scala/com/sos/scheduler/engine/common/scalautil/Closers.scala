@@ -71,4 +71,8 @@ object Closers {
     closeables.reverseIterator foreach closer.registerAutoCloseable
     closer.close()
   }
+
+  object EmptyAutoCloseable extends AutoCloseable {
+    def close() = {}
+  }
 }
