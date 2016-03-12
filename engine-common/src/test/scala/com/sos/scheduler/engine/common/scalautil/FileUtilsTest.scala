@@ -1,12 +1,13 @@
 package com.sos.scheduler.engine.common.scalautil
 
+import com.google.common.io.Files.touch
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.{autoDeleting, withTemporaryFile}
 import com.sos.scheduler.engine.common.scalautil.FileUtilsTest._
 import java.io.File
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
-import java.nio.file.Files.{createTempFile, delete, exists}
-import java.nio.file.{Files, Path}
+import java.nio.file.Files.{createTempDirectory, createTempFile, delete, exists}
+import java.nio.file.{Files, NotDirectoryException, Path}
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
@@ -85,11 +86,22 @@ final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
       path.append("X", UTF_16BE)
       path.contentString(UTF_16BE) shouldEqual TestString + "X"
     }
+
+    "pathSet" in {
+      intercept[NotDirectoryException] { path.pathSet }
+      val dir = createTempDirectory("FileUtilsTest-")
+      assert(dir.pathSet.isEmpty)
+      val files = Set("a.tmp", "b.tmp") map dir.resolve
+      files foreach { o ⇒ touch(o) }
+      assert(dir.pathSet == files)
+      files foreach delete
+      delete(dir)
+    }
   }
 
   "createShortNamedDirectory" in {
     assert(FileUtils.ShortNamePermutationCount == 2176782336L)
-    val dir = Files.createTempDirectory("test-")
+    val dir = createTempDirectory("test-")
     val n = 100
     val dirs = List.fill(n) {
       val prefix = "test-"
