@@ -267,6 +267,7 @@
                         <args>
                             <arg>-deprecation</arg>
                             <arg>-feature</arg>
+                            <arg>-Xlint</arg>
                         </args>
                     </configuration>
                 </plugin>
