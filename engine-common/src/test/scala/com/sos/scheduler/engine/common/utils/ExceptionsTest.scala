@@ -44,7 +44,7 @@ final class ExceptionsTest extends FreeSpec {
     val t = ignoreException(onException) {
       throw exception
     }
-    assert(ignored == (s"Ignoring exception $exception", exception))
+    assert(ignored == ((s"Ignoring exception $exception", exception)))
     assert(t.isFailure)
     assert(t.failed.get.getMessage == "TEST")
   }
@@ -71,7 +71,7 @@ final class ExceptionsTest extends FreeSpec {
         throw exception
       }
     }
-    assert(logged == (exception.toString, exception))
+    assert(logged == ((exception.toString, exception)))
   }
 
   "toStringWithCauses" in {

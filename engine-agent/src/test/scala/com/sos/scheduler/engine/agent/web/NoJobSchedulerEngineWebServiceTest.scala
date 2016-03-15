@@ -5,7 +5,6 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import spray.http.StatusCodes.NotFound
-import spray.http.Uri
 
 /**
  * @author Joacim Zschimmer

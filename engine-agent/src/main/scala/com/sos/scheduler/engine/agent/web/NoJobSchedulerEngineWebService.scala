@@ -4,7 +4,9 @@ import com.sos.scheduler.engine.agent.web.NoJobSchedulerEngineWebService._
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.scalautil.Logger
 import spray.http.RemoteAddress
+import spray.http.StatusCodes.NotFound
 import spray.routing.Directives._
+
 
 /**
  * @author Joacim Zschimmer
@@ -15,7 +17,7 @@ trait NoJobSchedulerEngineWebService extends AgentWebService {
     pathPrefix("engine") {
       (clientIP | provide[RemoteAddress](RemoteAddress.Unknown)) { ip ⇒
         logger.warn(s"To HTTP requestor $ip: $Message")
-        complete(404, Message)
+        complete((NotFound, Message))
       }
     }
   }

@@ -20,7 +20,7 @@ trait AgentExceptionHandler {
       case e: PublicException =>
         requestInstance { request ⇒
           logger.debug(toLogMessage(request, e), e)
-          complete(BadRequest, e.publicMessage)
+          complete((BadRequest, e.publicMessage))
         }
       case e ⇒
         requestInstance { request ⇒
@@ -29,7 +29,7 @@ trait AgentExceptionHandler {
             e.getMessage
           else
             e.toString
-          complete(InternalServerError, msg)
+          complete((InternalServerError, msg))
         }
     }
 //  implicit protected def exceptionHandler(implicit log: LoggingContext) =
