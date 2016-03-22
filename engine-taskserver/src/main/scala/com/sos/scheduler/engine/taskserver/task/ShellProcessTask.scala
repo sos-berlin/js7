@@ -55,11 +55,16 @@ extends HasCloser with Task {
   def start() = {
     requireState(!startCalled)
     startCalled = true
-    if (monitorProcessor.preTask() && monitorProcessor.preStep()) {
-      startProcess()
-    } else {
-      Future.successful(false)
+    val precondition = monitorProcessor.preTask() && {
+      onClose {
+        monitorProcessor.postTask()
+      }
+      monitorProcessor.preStep()
     }
+    if (precondition)
+      startProcess()
+    else
+      Future.successful(false)
   }
 
   private def startProcess() = {
@@ -103,9 +108,7 @@ extends HasCloser with Task {
         for (o ← sigtermForwarder) o.close()
         concurrentStdoutStderrWell.finish()
         transferReturnValuesToMaster()
-        val success =
-          try monitorProcessor.postStep(rc.isSuccess)
-          finally monitorProcessor.postTask()
+        val success = monitorProcessor.postStep(rc.isSuccess)
         <process.result spooler_process_result={success.toString} exit_code={rc.toInt.toString} state_text={concurrentStdoutStderrWell.firstStdoutLine}/>.toString()
     }
   }
