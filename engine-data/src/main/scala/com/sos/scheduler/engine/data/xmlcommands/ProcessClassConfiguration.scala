@@ -10,7 +10,8 @@ import scala.collection.immutable
 final case class ProcessClassConfiguration(
   processMaximum: Option[Int] = None,
   agentUris: immutable.Seq[String] = Nil,
-  select: Option[String] = None)
+  select: Option[String] = None,
+  title: String = "")
 extends XmlCommand {
 
   def xmlElem: xml.Elem = {
