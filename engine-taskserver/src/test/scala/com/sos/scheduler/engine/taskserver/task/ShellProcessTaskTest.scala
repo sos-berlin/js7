@@ -84,7 +84,7 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
         assert(spoolerLog.infoMessages == expectedMonitorMessages)
       case _ ⇒ fail()
     }
-    waitForCondition(timeout = 3.s, step = 100.ms) { files forall { !_.exists }}  // Waiting until the Future in RichProcess.startShellScript has deleted the files
+    waitForCondition(timeout = 30.s, step = 100.ms) { files forall { !_.exists }}  // Waiting until the Future in RichProcess.startShellScript has deleted the files
     files filter { _.exists } match {
       case Nil ⇒
       case undeletedFiles ⇒ fail("Files not deleted:\n" + undeletedFiles.mkString("\n"))
