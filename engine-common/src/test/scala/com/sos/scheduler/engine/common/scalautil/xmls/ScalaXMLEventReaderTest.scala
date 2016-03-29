@@ -108,10 +108,12 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
 //    }
 //  }
 
-  "Detects extra attribute" in {
+  "Detects extra attribute, XmlException" in {
     val testXmlString = <A><AA><B/><C x="xx" optional="oo" z="zz"><D/><D/></C></AA></A>.toString()
-    intercept[XmlException] { parseString(testXmlString)(parseA) }
-      .rootCause.asInstanceOf[UnparsedAttributesException].names shouldEqual List("z")
+    val e = intercept[XmlException] { parseString(testXmlString)(parseA) }
+    e.rootCause.asInstanceOf[UnparsedAttributesException].names shouldEqual List("z")
+    val XmlException(throwable) = e
+    assert(throwable.getMessage == "Unknown XML attributes 'z'")
   }
 
   "Ignore all extra attributes" in {
