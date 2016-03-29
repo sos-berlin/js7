@@ -110,12 +110,6 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
     }
   }
 
-  def eatStartElement(name: String) = {
-    val e = eat[StartElement]
-    require(e.getName.getLocalPart == name, s"XML element <$name> expected instead of <${e.getName}>")
-    e
-  }
-
 //  import javax.xml.transform.{Result, TransformerFactory}
 //  import com.sos.scheduler.engine.common.scalautil.StringWriters.writingString
 //  import javax.xml.transform.stax.StAXSource
@@ -191,17 +185,10 @@ object ScalaXMLEventReader {
 
   def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parse: ScalaXMLEventReader ⇒ A): A =
     autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source))) { reader ⇒
-      reader.eat[StartDocument]
-      val result = parse(reader)
-      reader.eat[EndDocument]
-      result
+      reader.parseDocument {
+        parse(reader)
+      }
     }
-
-  def parse[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parseEvents: ScalaXMLEventReader ⇒ A): A = {
-    autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source))) { reader ⇒
-      parseEvents(reader)
-    }
-  }
 
   private def newXMLEventReader(inputFactory: XMLInputFactory, source: Source) =
     inputFactory.createXMLEventReader(source)
