@@ -3,9 +3,9 @@ package com.sos.scheduler.engine.taskserver.task.process
 import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.taskserver.task.process.Processes.RobustlyStartProcess.TextFileBusyIOException
+import com.sos.scheduler.engine.common.system.OperatingSystem.{isSolaris, isWindows}
 import com.sos.scheduler.engine.taskserver.task.process.Processes._
+import com.sos.scheduler.engine.taskserver.task.process.ProcessesTest._
 import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.Stdout
 import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
@@ -21,9 +21,6 @@ import scala.collection.JavaConversions._
  */
 @RunWith(classOf[JUnitRunner])
 final class ProcessesTest extends FreeSpec {
-
-  private val args = if (isWindows) List("1-one", "2-'two", "3\\three", "4-*")  // "-key=value" and several other strings does not work !!!
-                     else List("1 one", "2 'two", "3 \"three", "4\\four", "5 *", "-key=value")
 
   "processToPidOption, toShellCommandArguments" in {
     if (isWindows) {
@@ -42,8 +39,8 @@ final class ProcessesTest extends FreeSpec {
 
   "toShellCommandArguments" in {
     val file = Paths.get("FILE")
-    val a = toShellCommandArguments(file, args)
-    assert(a == List("FILE") ++ args)
+    val a = toShellCommandArguments(file, Args)
+    assert(a == List("FILE") ++ Args)
     assert(toShellCommandArguments(file) == List("FILE"))  // Without arguments, it is shorter
   }
 
@@ -51,12 +48,10 @@ final class ProcessesTest extends FreeSpec {
     autoDeleting(newTemporaryShellFile("NAME")) { file ⇒
       assert(exists(file))
       assert(!(file.toString contains "--"))
-      file.contentString =
-        if (isWindows) "@echo off\n" + (0 to args.size map { i ⇒ s"echo %$i\n" } mkString "")
-        else 0 to args.size map { i ⇒ s"""echo "$$$i"""" + '\n' } mkString ""
-      val process = new ProcessBuilder(toShellCommandArguments(file, args)).redirectOutput(PIPE).start()
+      file.contentString = ShellScript
+      val process = new ProcessBuilder(toShellCommandArguments(file, Args)).redirectOutput(PIPE).start()
       val echoLines = io.Source.fromInputStream(process.getInputStream).getLines().toList
-      val expectedLines = List(file.toString) ++ args
+      val expectedLines = List(file.toString) ++ Args
       for ((a, b) ← echoLines zip expectedLines) assert(a == b)
       assert(echoLines.size == expectedLines.size)
       process.waitFor()
@@ -83,4 +78,27 @@ final class ProcessesTest extends FreeSpec {
     }
     assert(r == expected)
   }
+}
+
+private object ProcessesTest {
+  // Different character combinations should not be changed (interpreted) by the operating systems shell script invoker.
+  private val Args =
+    if (isWindows)
+      List("1-one", "2-'two", "3\\three", "4-*")  // "-key=value" and several other strings do not work !!!
+    else
+      List("1 one",
+        "2 'two",
+        "3 \"three",
+        if (isSolaris)  // TestFailedException: "4[<FF>]our" did not equal "4[\f]our" - Solaris call to /bin/sh seems to interprete "\\f" as '\x0c' (FF)
+          "4 four"  // Backslash is not useable as shell script argument !!!
+        else "4\\four",
+        "5 *",
+        "-key=value")
+
+  private val ShellScript =
+    if (isWindows)
+      "@echo off\r\n" +
+        (0 to Args.size map { i ⇒ s"echo %$i\r\n" } mkString "")
+    else
+        0 to Args.size map { i ⇒ s"""echo "$$$i"""" + '\n' } mkString ""
 }
