@@ -8,7 +8,8 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.system.OperatingSystem.{KernelSupportsNestedShebang, isUnix, isWindows}
+import com.sos.scheduler.engine.common.system.OperatingSystem
+import com.sos.scheduler.engine.common.system.OperatingSystem.{isSolaris, KernelSupportsNestedShebang, isUnix, isWindows}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.job.ReturnCode
@@ -101,7 +102,10 @@ final class ShellScriptProcessTest extends FreeSpec {
       waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
       assert(!shellProcess.isAlive)
       val rc = shellProcess.waitForTermination()
-      assert(rc == (if (isWindows) ReturnCode(1/* This is Java destroy()*/) else ReturnCode(SIGKILL)))
+      assert(rc == (
+        if (isWindows) ReturnCode(1/* This is Java destroy()*/)
+        else if (isSolaris) ReturnCode(SIGKILL.value)  // Solaris: No difference between exit 9 and kill !!!
+        else ReturnCode(SIGKILL)))
       shellProcess.close()
 
       assert(stdFileMap(Stdout).contentString contains "SCRIPT-ARGUMENTS=")
