@@ -1,14 +1,17 @@
 package com.sos.scheduler.engine.common.client
 
-import SchedulerTcpConnection._
-import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.ByteStreams
+import com.sos.scheduler.engine.common.client.SchedulerTcpConnection._
 import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
-import java.io.{StringWriter, InputStream, ByteArrayInputStream}
-import java.net.{SocketAddress, Socket}
+import java.io.{ByteArrayInputStream, InputStream, StringWriter}
+import java.net.{Socket, SocketAddress}
+import java.nio.charset.StandardCharsets.UTF_8
 
+/**
+  * Client connection for legacy JobScheduler TCP interface.
+  */
 final class SchedulerTcpConnection(schedulerAddress: SocketAddress)
-    extends AutoCloseable {
+extends AutoCloseable {
 
   private val socket = new Socket
   private lazy val outputStream = socket.getOutputStream
@@ -19,9 +22,7 @@ final class SchedulerTcpConnection(schedulerAddress: SocketAddress)
     socket.connect(schedulerAddress)
   }
 
-  def close(): Unit = {
-    socket.close()
-  }
+  def close(): Unit = socket.close()
 
   def sendAndReceiveXML(commandXml: xml.Elem): xml.Elem =
     SafeXML.load(new ByteArrayInputStream(sendAndReceiveBytes(xmlToBytes(commandXml))))
@@ -38,8 +39,10 @@ final class SchedulerTcpConnection(schedulerAddress: SocketAddress)
       if (eof) -1
       else
         inputStream.read() match {
-          case '\u0000' => eof = true; -1
-          case c => c
+          case '\u0000' ⇒
+            eof = true
+            -1
+          case c ⇒ c
         }
   }
 }
