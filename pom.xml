@@ -494,6 +494,20 @@
             </properties>
         </profile>
         <profile>
+            <id>sunos</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>sunos</name>
+                </os>
+            </activation>
+            <properties>
+                <operatingSystem>sunos</operatingSystem>
+                <osArch>sunos-${os.arch}</osArch>
+                <cpuArchitecture>${os.arch}</cpuArchitecture>
+            </properties>
+        </profile>
+        <profile>
             <id>aix</id>
             <activation>
                 <os>
