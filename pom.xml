@@ -521,6 +521,14 @@
                 <cpuArchitecture>${os.arch}</cpuArchitecture>
             </properties>
         </profile>
+        <profile>
+            <id>balanced</id>
+            <properties>
+                <forkCount>1C</forkCount>
+                <surefire.runOrder>balanced</surefire.runOrder>
+                <failsafe.runOrder>balanced</failsafe.runOrder>
+            </properties>
+        </profile>
     </profiles>
 
     <dependencyManagement>
