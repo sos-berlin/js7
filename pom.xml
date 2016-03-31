@@ -60,6 +60,7 @@
         <module>engine-plugins</module>
         <module>engine-setup</module>
         <module>engine-taskserver</module>
+        <module>engine-main</module>
     </modules>
 
     <properties>
