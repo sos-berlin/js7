@@ -24,7 +24,6 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
 
   private val localhost = InetAddress.getByName("127.0.0.1")
   private var listenSocket: ServerSocket = _
-  private var port: Int = _
   private var tcpConnection: TcpConnection =  _
   private var testSocket: Socket = null
   private def out = testSocket.getOutputStream
@@ -36,8 +35,16 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
 
   "connect" in {
     listenSocket = new ServerSocket(0, 1, localhost).closeWithCloser
-    port = listenSocket.getLocalPort
     tcpConnection = connect()
+  }
+
+  "ownPort" in {
+    assert(tcpConnection.ownPort > 0)
+    assert(tcpConnection.ownPort != listenSocket.getLocalPort)
+  }
+
+  "isConnected" in {
+    assert(tcpConnection.isConnected)
   }
 
   "receiveMessage" in {
@@ -69,6 +76,7 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
     testSocket.shutdownOutput()
     tcpConnection.receiveMessage() shouldEqual None
     tcpConnection.close()
+    assert(!tcpConnection.isConnected)
     in.read() shouldEqual -1
     testSocket.close()
   }
@@ -82,7 +90,7 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
   }
 
   private def connect(): TcpConnection = {
-    val connected = Future { TcpConnection.connect(new InetSocketAddress(localhost, port)) }
+    val connected = Future { TcpConnection.connect(new InetSocketAddress(localhost, listenSocket.getLocalPort)) }
     listenSocket.setSoTimeout(10*1000)
     testSocket = listenSocket.accept().closeWithCloser
     awaitResult(connected, 1.s)
