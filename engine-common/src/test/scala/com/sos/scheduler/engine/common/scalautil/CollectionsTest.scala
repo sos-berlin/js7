@@ -80,18 +80,6 @@ final class CollectionsTest extends FreeSpec {
     List(1 → 11, 2 → 22, 3 → 33, 2 → 222).toSeqMultiMap shouldEqual Map(1 → List(11), 2 → List(22, 222), 3 → List(33))
   }
 
-  "convert" in {
-    Map(1 → 22).convert(1) { 3 * _ } shouldEqual 66
-    intercept[IllegalArgumentException] { Map(111 → 0).convert(111) { _ ⇒ sys.error("") } } .getMessage should include ("'111'")
-    intercept[NoSuchElementException] { Map(1 → 0).convert(999) { _ ⇒ sys.error("") } } .getMessage
-  }
-
-  "getConverted" in {
-    Map(1 → 22).getConverted(1) { 3 * _ } shouldEqual Some(66)
-    intercept[IllegalArgumentException] { Map(111 → 0).convert(111) { _ ⇒ sys.error("") } } .getMessage should include ("'111'")
-    Map(1 → 0).getConverted(999) { _ ⇒ sys.error("") } shouldEqual None
-  }
-
   "insert" in {
     val m = mutable.Map(1 → "eins", 2 → "zwei")
     m.insert(3 → "drei")

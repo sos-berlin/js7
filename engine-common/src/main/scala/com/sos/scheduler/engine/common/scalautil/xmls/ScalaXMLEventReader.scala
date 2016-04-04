@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
+import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunction
 import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
@@ -8,7 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.xmls.ScalaStax.{RichStartElemen
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import java.util.NoSuchElementException
 import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
-import javax.xml.stream.{EventFilter, Location, XMLEventReader, XMLInputFactory}
+import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
 import javax.xml.transform.Source
 import org.scalactic.Requirements._
 import scala.PartialFunction._
@@ -200,11 +201,14 @@ object ScalaXMLEventReader {
       case _: Comment ⇒ true
     }
 
-  object IgnoreWhitespaceFilter extends EventFilter {
-    def accept(e: XMLEvent) = cond(e) { case e: Characters ⇒ !e.isWhiteSpace }
-  }
+//  object IgnoreWhitespaceFilter extends EventFilter {
+//    def accept(e: XMLEvent) = cond(e) { case e: Characters ⇒ !e.isWhiteSpace }
+//  }
 
-  final class SimpleAttributeMap private[xmls](pairs: TraversableOnce[(String, String)]) extends mutable.HashMap[String, String] {
+  final class SimpleAttributeMap private[xmls](pairs: TraversableOnce[(String, String)])
+  extends mutable.HashMap[String, String]
+  with ConvertiblePartialFunction[String, String]
+  {
     this ++= pairs
     private val readAttributes = mutable.HashSet[String]()
     readAttributes.sizeHint(size)

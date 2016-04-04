@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
+import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions
+import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReaderTest._
@@ -15,6 +16,7 @@ import scala.collection.immutable
  */
 @RunWith(classOf[JUnitRunner])
 final class ScalaXMLEventReaderTest extends FreeSpec {
+
   "Methods" in {
     case class X(y: Y, z: immutable.Seq[Z])
     trait T
@@ -79,16 +81,16 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
     parseString(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "DEFAULT", List(D(), D())))
   }
 
-  "converted and getConverted" in {
+  "as and optionAs" in {
     parseString(<X int="1" empty="" wrong="xx"/>.toString()) { eventReader ⇒
       import eventReader._
       parseElement("X") {
-        assertResult(Some(1)) { attributeMap.getConverted("int") { _.toInt } }
-        assertResult(1) { attributeMap.convert("int") { _.toInt } }
-        assertResult(None) { attributeMap.getConverted("missing") { _.toInt } }
-        intercept[NoSuchElementException] { attributeMap.convert("missing") { _.toInt } }
-        intercept[IllegalArgumentException] { attributeMap.getConverted("empty") { _.toInt } }
-        intercept[IllegalArgumentException] { attributeMap.getConverted("wrong") { _.toInt } }
+        assertResult(1) { attributeMap.as[Int]("int") }
+        assertResult(Some(1)) { attributeMap.optionAs[Int]("int") }
+        assertResult(None) { attributeMap.optionAs[Int]("missing") }
+        intercept[NoSuchElementException] { attributeMap.as[Int]("missing") }
+        intercept[IllegalArgumentException] { attributeMap.as[Int]("empty") }
+        intercept[IllegalArgumentException] { attributeMap.as[Int]("wrong") }
       }
     }
   }
