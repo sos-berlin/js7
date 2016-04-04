@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions
+import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
@@ -108,7 +110,7 @@ object TaskArguments {
     def javaClassNameOption = argMap.get(MonitorJavaClassKey)
     def moduleLanguage = ModuleLanguage(argMap(MonitorLanguageKey))
     def name = argMap.getOrElse(MonitorNameKey, "")
-    def ordering = argMap.getConverted(MonitorOrderingKey) { _.toInt } getOrElse Monitor.DefaultOrdering
+    def ordering = argMap.as[Int](MonitorOrderingKey, default = Monitor.DefaultOrdering)
     def script = javaClassNameOption match {
       case None | Some("") ⇒ Script.parseXmlString(argMap(MonitorScriptKey))
       case Some(o) ⇒ new Script("")
