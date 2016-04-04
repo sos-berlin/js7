@@ -19,10 +19,8 @@ object ConvertiblePartialFunctions {
     def as[W](key: K, default: ⇒ W)(implicit convert: To[V, W], renderKey: RenderKey): W =
       optionAs[W](key) getOrElse default
 
-    def optionAs[W](key: K)(implicit convert: To[V, W], renderKey: RenderKey): Option[W] = {
-      val c = wrappedConvert(convert, renderKey(key))
-      delegate.lift(key) map c
-    }
+    def optionAs[W](key: K)(implicit convert: To[V, W], renderKey: RenderKey): Option[W] =
+      delegate.lift(key) map wrappedConvert(convert, renderKey(key))
   }
 
   private[convert] def wrappedConvert[K, V, W](convert: V ⇒ W, keyString: ⇒ String): V ⇒ W =
