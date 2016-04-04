@@ -7,7 +7,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 
 @RunWith(classOf[JUnitRunner])
 final class CollectionsTest extends FreeSpec {
@@ -17,9 +17,32 @@ final class CollectionsTest extends FreeSpec {
     assert(list.toImmutableSeq eq list)
   }
 
+  "toImmutableIterable" in {
+    val seq = mutable.Seq(1, 2, 3)
+    assert((seq.toImmutableIterable: immutable.Iterable[Int]) == seq.toVector)
+  }
+
   "toImmutableIterable of an already immutable.Iterable" in {
     val list = List(1, 2, 3)
     assert(list.toImmutableIterable eq list)
+  }
+
+  "toImmutableSeq" in {
+    val array = Array(1, 2, 3)
+    assert(array.toImmutableSeq.isInstanceOf[Vector[_]])
+    assert(array.toImmutableSeq == array.toVector)
+
+    val javaList = new java.util.ArrayList[Int]()
+    javaList.add(1)
+    javaList.add(2)
+    javaList.add(3)
+    assert(javaList.toImmutableSeq.isInstanceOf[Vector[_]])
+    assert(javaList.toImmutableSeq == Vector(1, 2, 3))
+
+    val iterator: java.util.Iterator[Int] = javaList.iterator()
+    val iseq = iterator.toImmutableSeq
+    assert(iseq.isInstanceOf[Vector[_]])
+    assert(iseq == Vector(1, 2, 3))
   }
 
   "countEquals" in {
