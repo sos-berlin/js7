@@ -44,7 +44,6 @@
         <module>engine-persistence</module>
         <module>engine-test</module>
         <module>engine-tests</module>
-        <module>engine-testwar</module>
         <module>engine-tunnel</module>
         <module>engine-tunnel-data</module>
         <module>engine-kernel</module>
@@ -887,11 +886,6 @@
                 <groupId>com.typesafe.akka</groupId>
                 <artifactId>akka-testkit_${scala.binaryVersion}</artifactId>
                 <version>${akka.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>javax.servlet</groupId>
-                <artifactId>javax.servlet-api</artifactId>
-                <version>3.1.0</version>
             </dependency>
             <dependency>
                 <groupId>com.intellij</groupId>
