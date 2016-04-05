@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
+import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunction
 import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
@@ -8,7 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.xmls.ScalaStax.{RichStartElemen
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import java.util.NoSuchElementException
 import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
-import javax.xml.stream.{EventFilter, Location, XMLEventReader, XMLInputFactory}
+import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
 import javax.xml.transform.Source
 import org.scalactic.Requirements._
 import scala.PartialFunction._
@@ -110,12 +111,6 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
     }
   }
 
-  def eatStartElement(name: String) = {
-    val e = eat[StartElement]
-    require(e.getName.getLocalPart == name, s"XML element <$name> expected instead of <${e.getName}>")
-    e
-  }
-
 //  import javax.xml.transform.{Result, TransformerFactory}
 //  import com.sos.scheduler.engine.common.scalautil.StringWriters.writingString
 //  import javax.xml.transform.stax.StAXSource
@@ -191,17 +186,10 @@ object ScalaXMLEventReader {
 
   def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parse: ScalaXMLEventReader ⇒ A): A =
     autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source))) { reader ⇒
-      reader.eat[StartDocument]
-      val result = parse(reader)
-      reader.eat[EndDocument]
-      result
+      reader.parseDocument {
+        parse(reader)
+      }
     }
-
-  def parse[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parseEvents: ScalaXMLEventReader ⇒ A): A = {
-    autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source))) { reader ⇒
-      parseEvents(reader)
-    }
-  }
 
   private def newXMLEventReader(inputFactory: XMLInputFactory, source: Source) =
     inputFactory.createXMLEventReader(source)
@@ -213,11 +201,14 @@ object ScalaXMLEventReader {
       case _: Comment ⇒ true
     }
 
-  object IgnoreWhitespaceFilter extends EventFilter {
-    def accept(e: XMLEvent) = cond(e) { case e: Characters ⇒ !e.isWhiteSpace }
-  }
+//  object IgnoreWhitespaceFilter extends EventFilter {
+//    def accept(e: XMLEvent) = cond(e) { case e: Characters ⇒ !e.isWhiteSpace }
+//  }
 
-  final class SimpleAttributeMap private[xmls](pairs: TraversableOnce[(String, String)]) extends mutable.HashMap[String, String] {
+  final class SimpleAttributeMap private[xmls](pairs: TraversableOnce[(String, String)])
+  extends mutable.HashMap[String, String]
+  with ConvertiblePartialFunction[String, String]
+  {
     this ++= pairs
     private val readAttributes = mutable.HashSet[String]()
     readAttributes.sizeHint(size)

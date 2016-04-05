@@ -7,7 +7,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 
 @RunWith(classOf[JUnitRunner])
 final class CollectionsTest extends FreeSpec {
@@ -17,9 +17,32 @@ final class CollectionsTest extends FreeSpec {
     assert(list.toImmutableSeq eq list)
   }
 
+  "toImmutableIterable" in {
+    val seq = mutable.Seq(1, 2, 3)
+    assert((seq.toImmutableIterable: immutable.Iterable[Int]) == seq.toVector)
+  }
+
   "toImmutableIterable of an already immutable.Iterable" in {
     val list = List(1, 2, 3)
     assert(list.toImmutableIterable eq list)
+  }
+
+  "toImmutableSeq" in {
+    val array = Array(1, 2, 3)
+    assert(array.toImmutableSeq.isInstanceOf[Vector[_]])
+    assert(array.toImmutableSeq == array.toVector)
+
+    val javaList = new java.util.ArrayList[Int]()
+    javaList.add(1)
+    javaList.add(2)
+    javaList.add(3)
+    assert(javaList.toImmutableSeq.isInstanceOf[Vector[_]])
+    assert(javaList.toImmutableSeq == Vector(1, 2, 3))
+
+    val iterator: java.util.Iterator[Int] = javaList.iterator()
+    val iseq = iterator.toImmutableSeq
+    assert(iseq.isInstanceOf[Vector[_]])
+    assert(iseq == Vector(1, 2, 3))
   }
 
   "countEquals" in {
@@ -55,18 +78,6 @@ final class CollectionsTest extends FreeSpec {
 
   "toSeqMultiMap" in {
     List(1 → 11, 2 → 22, 3 → 33, 2 → 222).toSeqMultiMap shouldEqual Map(1 → List(11), 2 → List(22, 222), 3 → List(33))
-  }
-
-  "convert" in {
-    Map(1 → 22).convert(1) { 3 * _ } shouldEqual 66
-    intercept[IllegalArgumentException] { Map(111 → 0).convert(111) { _ ⇒ sys.error("") } } .getMessage should include ("'111'")
-    intercept[NoSuchElementException] { Map(1 → 0).convert(999) { _ ⇒ sys.error("") } } .getMessage
-  }
-
-  "getConverted" in {
-    Map(1 → 22).getConverted(1) { 3 * _ } shouldEqual Some(66)
-    intercept[IllegalArgumentException] { Map(111 → 0).convert(111) { _ ⇒ sys.error("") } } .getMessage should include ("'111'")
-    Map(1 → 0).getConverted(999) { _ ⇒ sys.error("") } shouldEqual None
   }
 
   "insert" in {

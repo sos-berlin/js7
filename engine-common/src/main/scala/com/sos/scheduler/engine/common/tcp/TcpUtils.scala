@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.scheduler.engine.common.tcp
 
 /**
  * @author Joacim Zschimmer

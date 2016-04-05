@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.commandline
 
+import com.sos.scheduler.engine.common.commandline.CommandLineArguments.parse
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -11,36 +12,157 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class CommandLineArgumentsTest extends FreeSpec {
 
-  "CommandLineArguments" in {
-    CommandLineArguments.parse(Array("-option", "-int=1", "-multi-int=11", "-single=SINGLE", "-multi-int=22", "UNNAMED-1", "UNNAMED-2", "-")) { a ⇒
-      assert(a.boolean("-option"))
-      assert(a.int("-int=") == 1)
-      assert(a.string("-single=") == "SINGLE")
-      assert(a.asConvertedList("-multi-int=") { _.toInt } == Vector(11, 22))
-      assert(a.namelessValues == Vector("UNNAMED-1", "UNNAMED-2", "-"))
-      "CALLED"
-    } shouldEqual "CALLED"
-  }
+  "Flag" - {
+    "boolean" in {
+      assert(parse(Array("-option")) { _.boolean("-option") })
+    }
 
-  "namelessValue" in {
-    CommandLineArguments.parse(Array("-option", "UNNAMED-1", "UNNAMED-2")) { a ⇒
-      assert(a.boolean("-option"))
-      assert(a.namelessValue(0) == "UNNAMED-1")
-      intercept[IllegalArgumentException] { a.requireNoMoreArguments() } .getMessage should include ("#2")
-      assert(a.namelessValue(1) == "UNNAMED-2")
-      intercept[NoSuchElementException] { a.namelessValue(2) } .getMessage should include ("#3")
+    "Missing boolean" in {
+      assertResult(false) {
+        parse(Nil) { a ⇒
+          a.boolean("-missing")
+        }
+      }
+    }
+
+    "Invalid used boolean option" in {
+      intercept[IllegalArgumentException] {
+        parse(Array("-option=value")) { a ⇒
+          a.boolean("-option")
+        }
+      }
+        .getMessage shouldEqual "Unknown command line arguments: -option=value"
+    }
+
+    "Multiple boolean option" in {
+      intercept[IllegalArgumentException] {
+        parse(Array("-option", "-option")) { a ⇒
+          a.boolean("-option")
+        }
+      }
+        .getMessage shouldEqual "Multiple command line options '-option'"
     }
   }
 
-  "-int=x shoud be rejected" in {
-    CommandLineArguments.parse(Array("-int=x")) { a ⇒
-      intercept[IllegalArgumentException] { a.int("-int=") } .getMessage should include ("-int=")
+  "Single value" - {
+    "as String" in {
+      assertResult("333") {
+        parse(List("-int=333")) { a ⇒
+          a.as[String]("-int=")
+        }
+      }
+    }
+
+    "as Int" in {
+      assertResult(333) {
+        parse(List("-int=333")) { a ⇒
+          a.as[Int]("-int=")
+        }
+      }
+    }
+
+    "as invalid Int" in {
+      intercept[IllegalArgumentException] {
+        parse(List("-int=X")) { a ⇒
+          a.as[Int]("-int=")
+        }
+      }
+        .getMessage shouldEqual """Invalid command line option '-int=': java.lang.NumberFormatException: For input string: "X""""
+    }
+
+    "optionAs Int" in {
+      assertResult(Some(333)) {
+        parse(List("-int=333")) { a ⇒
+          a.optionAs[Int]("-int=")
+        }
+      }
     }
   }
 
-  "Unknown argument name" in {
+  "Multiple values" - {
+    "multiple Int" in {
+      assertResult(List(111, 222)) {
+        parse(List("-int=111", "-int=222")) { a ⇒
+          a.seqAs[Int]("-int=")
+        }
+      }
+    }
+
+    "Zero multiple Int" in {
+      assertResult(Nil) {
+        parse(List[String]()) { a ⇒
+          a.seqAs[Int]("-int=")
+        }
+      }
+    }
+  }
+
+  "keylessValue" - {
+    "One" in {
+      assertResult("333") {
+        parse(List("333")) { a ⇒
+          a.keylessValue(0)
+        }
+      }
+    }
+
+    "Two" in {
+      assertResult(("222", "111")) {
+        parse(List("111", "222")) { a ⇒
+          (a.keylessValue(1), a.keylessValue(0))
+        }
+      }
+    }
+
+    "Too many" in {
+      intercept[IllegalArgumentException] {
+        parse(List("111", "222")) { a ⇒
+          a.keylessValue(0)
+        }
+      }
+        .getMessage shouldEqual "Unknown command line arguments: #2"
+    }
+
+    "Too few" in {
+      intercept[NoSuchElementException] {
+        parse(Nil) { a ⇒
+          a.keylessValue(0)
+        }
+      }
+        .getMessage shouldEqual "To few keyless arguments: argument #1 expected"
+    }
+  }
+
+  "keylessValues" - {
+    "Zero" in {
+      assertResult(Nil) {
+        parse(Nil) { a ⇒
+          a.keylessValues
+        }
+      }
+    }
+
+    "One" in {
+      assertResult(List("111")) {
+        parse(List("111")) { a ⇒
+          a.keylessValues
+        }
+      }
+    }
+
+    "Two" in {
+      assertResult(List("111", "222")) {
+        parse(List("111", "222")) { a ⇒
+          a.keylessValues
+        }
+      }
+    }
+  }
+
+  "Unused options" in {
     intercept[IllegalArgumentException] {
-      CommandLineArguments.parse(Array("-unknown=1")) { _ ⇒ () }
-    } .getMessage should include ("-unknown=1")
+      parse(List("-option", "-unknown=333")) { a ⇒ }
+    }
+      .getMessage shouldEqual "Unknown command line arguments: -option -unknown=333"
   }
 }

@@ -24,7 +24,7 @@ object Collections {
 
       def countEquals: Map[A, Int] =
         delegate.toTraversable groupBy identity map { case (k, v) ⇒ k → v.size }
-  
+
       def compareElementWise(other: TraversableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
     }
 
@@ -69,22 +69,6 @@ object Collections {
         delegate groupBy { _._1 } map { case (key, seq) ⇒ key → (seq map { _._2 }).toImmutableSeq }
     }
 
-    implicit class ConvertingPF[K, V](val delegate: PartialFunction[K, V]) extends AnyVal {
-      /**
-       * @throws IllegalArgumentException with 'key', wrapping the exception of `delegate`
-       */
-      def convert[A](key: K)(f: V ⇒ A): A = handleException[A](key, f, delegate(key))
-
-      /**
-       * @throws IllegalArgumentException with 'key', wrapping the exception of `delegate`
-       */
-      def getConverted[A](key: K)(f: V ⇒ A): Option[A] = delegate.lift(key) map { handleException[A](key, f, _) }
-
-      private def handleException[A](key: K, f: V ⇒ A, value: V): A =
-        try f(value)
-        catch { case NonFatal(t) ⇒ throw new IllegalArgumentException(s"Key '$key': $t", t) }
-    }
-
     implicit class InsertableMutableMap[K, V](val delegate: mutable.Map[K, V]) extends AnyVal {
       def insert(kv: (K, V)): Unit = {
         if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already known in ${delegate.stringPrefix}")
@@ -120,7 +104,4 @@ object Collections {
           case o ⇒ o
         }
     }
-
 }
-
-
