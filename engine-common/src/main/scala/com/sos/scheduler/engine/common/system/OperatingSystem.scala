@@ -30,6 +30,7 @@ object OperatingSystem {
   val cpuArchitecture = CpuArchitecture.cpuArchitecture
   val isWindows = name startsWith "Windows"
   val isUnix = !isWindows
+  val isSolaris = name startsWith "SunOS"
   lazy val unix = new Unix
   lazy val windows = new Windows
   val operatingSystem: OperatingSystem = if (isWindows) windows else unix
