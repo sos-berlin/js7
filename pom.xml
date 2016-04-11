@@ -161,6 +161,7 @@
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
                         <com.sos.scheduler.engine.test.binary.tmpdir>${project.build.directory}/scheduler-test-binaries</com.sos.scheduler.engine.test.binary.tmpdir>
                         <com.sos.scheduler.engine.test.directory>${project.build.directory}/surefire-reports</com.sos.scheduler.engine.test.directory>
+                        <h2.bindAddress>127.0.0.1</h2.bindAddress>  <!-- H2 tries to get the IP number of the local hostname, which does not work on all systems -->
                     </systemPropertyVariables>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
@@ -180,6 +181,7 @@
                         <logback.configurationFile>${test.logback.configurationFile}</logback.configurationFile>
                         <com.sos.scheduler.engine.test.binary.tmpdir>${project.build.directory}/scheduler-test-binaries</com.sos.scheduler.engine.test.binary.tmpdir>
                         <com.sos.scheduler.engine.test.directory>${project.build.directory}/failsafe-reports</com.sos.scheduler.engine.test.directory>
+                        <h2.bindAddress>127.0.0.1</h2.bindAddress>  <!-- H2 tries to get the IP number of the local hostname, which does not work on all systems -->
                     </systemPropertyVariables>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
