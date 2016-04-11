@@ -38,16 +38,15 @@ extends HasCloser with ClosedFuture {
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
   private val terminatedPromise = Promise[Unit]()
 
+  logger.info(s"Process started")
   Future {
     terminatedPromise complete Try {
       blocking {
-        waitForTermination()
-        logger.info(s"Process ended with ${ReturnCode(process.exitValue)}")
+        val rc = waitForTermination()
+        logger.info(s"Process ended with $rc")
       }
     }
   }
-
-  logger.info(s"Process started")
 
   final def terminated: Future[Unit] = terminatedPromise.future
 

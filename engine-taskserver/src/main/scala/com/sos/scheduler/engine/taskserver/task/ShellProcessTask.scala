@@ -103,7 +103,8 @@ extends HasCloser with Task {
     requireState(startCalled)
     richProcessOnce.get match {
       case None ⇒
-        <process.result spooler_process_result="false"/>.toString()
+        logger.warn("step, but no process has been started")
+        <process.result spooler_process_result="false" exit_code="999888999"/>.toString()
       case Some(richProcess) ⇒
         val rc = richProcess.waitForTermination()
         if (sigtermForwarder != null) sigtermForwarder.close()
