@@ -74,7 +74,7 @@ extends HasCloser with ClosedFuture {
 
   private def executeKillScript(args: Seq[String]) = Future[Unit] {
     logger.info("Executing kill script: " + args.mkString("  "))
-    val onKillProcess = new ProcessBuilder(args).start()
+    val onKillProcess = new ProcessBuilder(args).redirectOutput(INHERIT).redirectError(INHERIT).start()
     val promise = Promise[Unit]()
       blocking { waitForProcessTermination(onKillProcess) }
       onKillProcess.exitValue match {
