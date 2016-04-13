@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.taskserver.task.process.Processes.ShellFileExtension
+import com.sos.scheduler.engine.taskserver.task.process.Processes.{Pid, ShellFileExtension, processToPidOption}
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import scala.collection.JavaConversions._
 
 /**
   * JS-1558 Agent includes kill scripts
@@ -62,7 +63,7 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
     val agentTaskId = AgentTaskId("1-TEST")
     val (scriptFile, process) = startNestedProcess(agentTaskId, out)
     sleep(1.s)
-    runKillScript(agentTaskId)
+    runKillScript(agentTaskId, processToPidOption(process))
     process.waitFor(10, SECONDS)
     assert(process.exitValue == (if (isWindows) 1 else 128 + SIGKILL.value))
     sleep(1.s) // Time to let kill take effect
@@ -88,10 +89,13 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
     (file, b.start())
   }
 
-  private def runKillScript(agentTaskId: AgentTaskId): Unit = {
+  private def runKillScript(agentTaskId: AgentTaskId, pidOption: Option[Pid]): Unit = {
     autoClosing(new ProcessKillScriptProvider(httpPort = port)) { provider ⇒
       val killScript = provider.provideTo(temporaryDirectory)
-      val killProcess = sys.runtime.exec(killScript.toCommandArguments(agentTaskId).toArray)
+      val b = new ProcessBuilder(killScript.toCommandArguments(agentTaskId) ++ (pidOption map { o ⇒ s"-pid=${o.string}" }))
+      b.redirectOutput(ProcessBuilder.Redirect.INHERIT)
+      b.redirectError(ProcessBuilder.Redirect.INHERIT)
+      val killProcess = b.start()
       killProcess.waitFor(60, SECONDS)
       assert(killProcess.exitValue == 0)
     }

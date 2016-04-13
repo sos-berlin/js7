@@ -32,6 +32,7 @@ stoptree() {
     done
 }
 
+unset PID
 for param in "$@"
 do
   case "$param" in
@@ -41,10 +42,13 @@ do
                             ;;
          -job-name=*)               JOB_NAME=`echo "$param" | sed 's/-job-name=//'`
                             ;;
+         -pid=*)
+            PID=$(echo "$param" | sed 's/-pid=//')
+            ;;
   esac
 done
 
-if [ -z "${KILL_TASK_ID}" ]
+if [ -z "${KILL_TASK_ID}$PID" ]
 then
   date "+%Y-%m-%d %T,%3N %z [error] option -kill-agent-task-id is not set" >> "${KILL_TASK_LOG_FILE}"
   exit 2
@@ -58,6 +62,9 @@ else
 fi
 
 KILL_TASK_PID=`ps -ef -w -w | grep " -agent-task-id=${KILL_TASK_ID}" | grep -v "grep" | awk '{print $2}'`
+KILL_TASK_PID=""
+
+[ ! -z "$KILL_TASK_PID" ] || KILL_TASK_PID="$PID"
 
 if [ -z "${KILL_TASK_PID}" ]
 then
