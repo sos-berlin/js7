@@ -28,7 +28,7 @@ stoptree() {
     date "+%Y-%m-%d %T,%3N %z [info]  stopping pid ${_pid}..." >> "${KILL_TASK_LOG_FILE}"
     kill -stop ${_pid} # needed to stop quickly forking parent from producing children between child killing and parent killing
     for _child in `ps ax -o "pid= ppid=" | egrep " ${_pid}$" | awk '{print $1}'`; do
-        stoptree "${_child}" 
+        stoptree "${_child}"
     done
 }
 
@@ -70,4 +70,4 @@ date "+%Y-%m-%d %T,%3N %z [info]  Killing task with pid ${KILL_TASK_PID} and its
 stoptree ${KILL_TASK_PID}
 killtree
 
-exit $KILL_TASK_EXIT 
+exit $KILL_TASK_EXIT

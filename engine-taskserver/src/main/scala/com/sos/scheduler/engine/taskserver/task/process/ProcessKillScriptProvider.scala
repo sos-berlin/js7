@@ -21,7 +21,7 @@ final class ProcessKillScriptProvider(httpPort: Int) extends HasCloser {
     val resource = if (isWindows) WindowsScriptResource else UnixScriptResource
     val file = directory / resource.simpleName.replace(Prefix, s"$Prefix${httpPort}_")
     deleteIfExists(file)
-    createFile(file, Processes.shellFileAttributes: _*)
+    createFile(file, Processes.ShellFileAttributes: _*)
     Resources.asByteSource(resource.url) copyTo asByteSink(file)
     onClose {
       ignoreException(logger.error) { delete(file) }

@@ -8,10 +8,10 @@ import com.sos.scheduler.engine.common.convert.Converters.To
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.tcp.TcpUtils.{parseTcpPort, requireTcpPortNumber}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.scheduler.engine.taskserver.task.process.Processes.ShellFileExtension
 import java.nio.file.{Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
@@ -47,7 +47,7 @@ final case class AgentConfiguration(
 
   def withWebServices(classes: Iterable[Class[_ <: ExternalWebService]]) = copy(externalWebServiceClasses = externalWebServiceClasses ++ classes)
 
-  def crashKillScriptFile: Path = logDirectory / (s"kill_tasks_after_crash_$httpPort" + (if (isWindows) ".cmd" else ".sh"))
+  def crashKillScriptFile: Path = logDirectory / s"kill_tasks_after_crash_$httpPort$ShellFileExtension"
 }
 
 object AgentConfiguration {

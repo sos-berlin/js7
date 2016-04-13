@@ -5,10 +5,10 @@ import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.process.ProcessSignal.SIGKILL
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem.{isUnix, isWindows}
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.taskserver.task.process.Processes.ShellFileExtension
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
@@ -27,7 +27,7 @@ import org.scalatest.junit.JUnitRunner
 final class ProcessKillScriptProviderTest extends FreeSpec {
 
   private lazy val tmp = temporaryDirectory
-  val expectedFile = tmp / (if (isWindows) "jobscheduler_agent_1234_kill_task.cmd" else "jobscheduler_agent_1234_kill_task.sh")
+  private val expectedFile = tmp / s"jobscheduler_agent_1234_kill_task$ShellFileExtension"
 
   "Do nothing" in {
     val provider = new ProcessKillScriptProvider(httpPort = 1234)
@@ -74,14 +74,14 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
   }
 
   private def startNestedProcess(agentTaskId: AgentTaskId, out: Path) = {
-    val file = if (isWindows)
-      createTempFile("test-", ".cmd") sideEffect { _.contentString = "ping -n 100 127.0.0.1\r\n" }
-    else
-      createTempFile("test-", ".sh") sideEffect { file ⇒
-        delete(file)
-        createFile(file, Processes.shellFileAttributes: _*)
-        file.contentString = "sleep 99\n"
-      }
+    val file = createTempFile("test-", ShellFileExtension)
+    if (isWindows)
+      file.contentString = "ping -n 100 127.0.0.1\r\n"
+    else {
+      delete(file)
+      createFile(file, Processes.ShellFileAttributes: _*)
+      file.contentString = "sleep 99\n"
+    }
     val b = new ProcessBuilder(file.toString, s"-agent-task-id=${agentTaskId.string}")
     b.redirectOutput(out)
     (file, b.start())

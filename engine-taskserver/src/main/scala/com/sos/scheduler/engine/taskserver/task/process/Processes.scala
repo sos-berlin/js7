@@ -33,13 +33,19 @@ object Processes {
   // Shortcuts for operating system specific methods
   import OperatingSystemSpecific.OS
 
+  /**
+    * Including dot.
+    * For example ".sh" or ".cmd".
+    */
+  val ShellFileExtension = OS.shellFileExtension
+
+  val ShellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
+
   def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
 
   def newLogFile(directory: Path, name: String, outerr: StdoutStderrType): Path = OS.newLogFile(directory, name, outerr)
 
   def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
-
-  def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
 
   implicit class RobustlyStartProcess(val delegate: ProcessBuilder) extends AnyVal {
     /**

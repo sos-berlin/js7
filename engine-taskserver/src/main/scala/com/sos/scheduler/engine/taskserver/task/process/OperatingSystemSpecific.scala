@@ -12,7 +12,16 @@ import scala.collection.immutable
   * @author Joacim Zschimmer
   */
 private[process] sealed trait OperatingSystemSpecific {
-  def newTemporaryShellFile(name: String): Path
+
+  /**
+    * Including dot.
+    * For example ".sh" or ".cmd".
+    */
+  def shellFileExtension: String
+
+  def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
+
+  def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), shellFileExtension, shellFileAttributes: _*)
 
   def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = {
     val file = directory resolve s"$name-$outerr.log"
@@ -21,8 +30,6 @@ private[process] sealed trait OperatingSystemSpecific {
     }
     file
   }
-
-  def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
 
   protected def outputFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]]
 
@@ -36,22 +43,20 @@ private object OperatingSystemSpecific {
   private[process] val OS: OperatingSystemSpecific = if (isWindows) OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
 
   private object Unix extends OperatingSystemSpecific {
+    val shellFileExtension = ".sh"
     val shellFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rwx------"))
       .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
     val outputFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
       .asInstanceOf[immutable.Seq[FileAttribute[java.util.Set[_]]]]
-
-    def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".sh", shellFileAttributes: _*)
 
     def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
   }
 
   private object Windows extends OperatingSystemSpecific {
     private val Cmd: String = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC" /*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
+    val shellFileExtension = ".cmd"
     val shellFileAttributes = Nil
     val outputFileAttributes = Nil
-
-    def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), ".cmd")
 
     def directShellCommandArguments(argument: String) = Vector(Cmd, "/C", argument)
   }
