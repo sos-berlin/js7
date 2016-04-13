@@ -27,15 +27,16 @@ import org.scalatest.junit.JUnitRunner
 final class ProcessKillScriptProviderTest extends FreeSpec {
 
   private lazy val tmp = temporaryDirectory
-  private val expectedFile = tmp / s"jobscheduler_agent_1234_kill_task$ShellFileExtension"
+  private val port = 99999
+  private val expectedFile = tmp / s"jobscheduler_agent_${port}_kill_task$ShellFileExtension"
 
   "Do nothing" in {
-    val provider = new ProcessKillScriptProvider(httpPort = 1234)
+    val provider = new ProcessKillScriptProvider(httpPort = port)
     provider.close()
   }
 
   "Provide script and delete it later" in {
-    val provider = new ProcessKillScriptProvider(httpPort = 1234)
+    val provider = new ProcessKillScriptProvider(httpPort = port)
     deleteIfExists(expectedFile)
     val killScript = provider.provideTo(tmp)
     assert(killScript.file == expectedFile)
@@ -49,7 +50,7 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
 
   "Existing file is overwritten" in {
     touch(expectedFile)
-    val provider = new ProcessKillScriptProvider(httpPort = 1234)
+    val provider = new ProcessKillScriptProvider(httpPort = port)
     provider.provideTo(tmp)
     assert(exists(expectedFile))
     provider.close()
@@ -88,7 +89,7 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
   }
 
   private def runKillScript(agentTaskId: AgentTaskId): Unit = {
-    autoClosing(new ProcessKillScriptProvider(httpPort = 1234)) { provider ⇒
+    autoClosing(new ProcessKillScriptProvider(httpPort = port)) { provider ⇒
       val killScript = provider.provideTo(temporaryDirectory)
       val killProcess = sys.runtime.exec(killScript.toCommandArguments(agentTaskId).toArray)
       killProcess.waitFor(60, SECONDS)
