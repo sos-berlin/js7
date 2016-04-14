@@ -12,6 +12,7 @@ killtree() {
     for _pid in $PIDS_TREE
     do
       date "+%Y-%m-%d %T,%3N %z [info]  killing pid ${_pid}..." >> "${KILL_TASK_LOG_FILE}"
+      echo kill -KILL ${_pid} 1>&2
       kill -KILL ${_pid}
       kill_err=$?
       if [ $kill_err -ne 0 ]
@@ -37,10 +38,12 @@ else
 fi
 
 stoptree() {
+    # First stop all processes to inhibit quickly forking parent from producing children between child killing and parent killing
     _pid="$1"
     PIDS_TREE="${_pid} ${PIDS_TREE}"
     date "+%Y-%m-%d %T,%3N %z [info]  stopping pid ${_pid}..." >> "${KILL_TASK_LOG_FILE}"
-    kill -STOP ${_pid} # needed to stop quickly forking parent from producing children between child killing and parent killing
+    echo kill -STOP ${_pid} 1>&2
+    kill -STOP ${_pid}
     for _child in `$psTree | egrep " ${_pid}$" | awk '{print $1}'`; do
         stoptree "${_child}"
     done
