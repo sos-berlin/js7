@@ -16,7 +16,7 @@ psTreeSolaris() {
 }
 
 psTree() {
-    ps ax -o "pid= ppid="
+    ps ax -o pid,ppid
 }
 
 if [ "$(uname)" = "SunOS" ]; then
@@ -28,7 +28,7 @@ fi
 collectAndStopAllPids() {
     # First stop all processes to inhibit quickly forking parent from producing children between child killing and parent killing
     # $1: Parent PID
-    # $2: Identation
+    # $2: Indentation
     ALL_PIDS="$1 $ALL_PIDS"
     log info "$2 kill -STOP $1 "
     kill -STOP $1 || true
