@@ -78,7 +78,7 @@ else
     log info "Task with Agent task id '$KILL_TASK_ID' will be killed"
 fi
 
-KILL_TASK_PID=`ps ww | grep " -agent-task-id=$KILL_TASK_ID" | grep -v "grep" | awk '{ print $1 }'`
+KILL_TASK_PID=`ps ww | grep " -agent-task-id[=]$KILL_TASK_ID" | awk '{ print $1 }'`
 
 [ ! -z "$KILL_TASK_PID" ] || KILL_TASK_PID="$PID"
 
