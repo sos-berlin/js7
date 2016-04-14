@@ -43,8 +43,8 @@ for arg in "$@"; do
         -kill-agent-task-id=*)
             AGENT_TASK_ID=`echo "$arg" | sed 's/-kill-agent-task-id=//'`
             ;;
-        -kill-master-task-id=*)
-            MASTER_TASK_ID=`echo "$arg" | sed 's/-kill-master-task-id=//'`
+        -master-task-id=*)
+            MASTER_TASK_ID=`echo "$arg" | sed 's/-master-task-id=//'`
              ;;
         -job-name=*)
             JOB_NAME=`echo "$arg" | sed 's/-job-name=//'`
