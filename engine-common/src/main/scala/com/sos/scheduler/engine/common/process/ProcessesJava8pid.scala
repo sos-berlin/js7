@@ -18,7 +18,7 @@ private[process] object ProcessesJava8pid {
   }
 
   private object Jdk9ProcessToPid extends (Process ⇒ Option[Pid]) {
-    private val getPid = classOf[Process].getMethod("getPid")
+    private lazy val getPid = classOf[Process].getMethod("getPid")   // Needs Java 9
 
     def apply(process: Process) =
       try Some(Pid(getPid.invoke(process).asInstanceOf[java.lang.Long]))
