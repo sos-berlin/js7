@@ -65,7 +65,7 @@ else
     log info "Task with Agent task id '$AGENT_TASK_ID' is being killed"
 fi
 
-TASK_PID=`ps ww | grep " -agent-task-id[=]$AGENT_TASK_ID" | awk '{ print $1 }'`
+TASK_PID=`ps ww | grep " -agent-task-id[=]$AGENT_TASK_ID\\b" | awk '{ print $1 }'`
 [ ! -z "$TASK_PID" ] || TASK_PID="$PID"
 if [ -z "$TASK_PID" ]; then
     log info "Process with -agent-task-id=$AGENT_TASK_ID doesn't exist"
