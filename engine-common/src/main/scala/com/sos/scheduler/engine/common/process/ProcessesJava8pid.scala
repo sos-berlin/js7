@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.scheduler.engine.common.process
 
+import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.taskserver.task.process.Processes.Pid
 import javax.lang.model.SourceVersion
 
 /**

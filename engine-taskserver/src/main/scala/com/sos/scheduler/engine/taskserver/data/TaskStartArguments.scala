@@ -3,11 +3,11 @@ package com.sos.scheduler.engine.taskserver.data
 import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.tcp.TcpUtils.parseTcpPort
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments.toInetSocketAddress
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}

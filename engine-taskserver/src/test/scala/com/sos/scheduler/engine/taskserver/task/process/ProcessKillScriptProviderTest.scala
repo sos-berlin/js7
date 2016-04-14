@@ -1,10 +1,11 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
 import com.google.common.io.Files.touch
+import com.sos.scheduler.engine.common.process.Processes
+import com.sos.scheduler.engine.common.process.Processes.ShellFileExtension
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem.isUnix
-import com.sos.scheduler.engine.taskserver.task.process.Processes.ShellFileExtension
 import java.nio.file.Files
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFileAttributes

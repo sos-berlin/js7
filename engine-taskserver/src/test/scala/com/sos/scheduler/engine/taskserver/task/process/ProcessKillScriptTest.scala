@@ -2,6 +2,8 @@ package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.process.ProcessSignal.SIGKILL
+import com.sos.scheduler.engine.common.process.Processes
+import com.sos.scheduler.engine.common.process.Processes.{Pid, processToPidOption}
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
@@ -11,7 +13,6 @@ import com.sos.scheduler.engine.common.system.OperatingSystem.{isSolaris, isUnix
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptTest._
-import com.sos.scheduler.engine.taskserver.task.process.Processes.{Pid, processToPidOption}
 import java.io.InputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files._

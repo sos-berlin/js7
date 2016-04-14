@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.scheduler.engine.common.process
 
+import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import java.nio.file.Files._
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions._

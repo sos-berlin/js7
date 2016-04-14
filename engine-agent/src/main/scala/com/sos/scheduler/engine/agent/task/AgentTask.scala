@@ -5,10 +5,10 @@ import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.views.TaskOverview
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.utils.HasKey
+import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.common.scalautil.Closers._
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.task.TaskArguments
-import com.sos.scheduler.engine.taskserver.task.process.Processes.Pid
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.time.Instant
 import scala.concurrent.Future

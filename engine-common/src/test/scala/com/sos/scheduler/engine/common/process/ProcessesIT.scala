@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.scheduler.engine.common.process
 
+import com.sos.scheduler.engine.common.process.Processes._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFututes
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
-import com.sos.scheduler.engine.taskserver.task.process.Processes._
 import java.nio.file.Files.delete
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

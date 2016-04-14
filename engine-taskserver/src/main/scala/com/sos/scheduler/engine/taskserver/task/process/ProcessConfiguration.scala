@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
+import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
 import java.nio.file.Path
 import scala.collection.immutable
 

@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver.spoolerapi
 
 import com.google.inject.Injector
 import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
+import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.data.message.MessageCode
@@ -14,7 +15,6 @@ import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDi
 import com.sos.scheduler.engine.minicom.types.CLSID
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import java.util.UUID
 
 /**

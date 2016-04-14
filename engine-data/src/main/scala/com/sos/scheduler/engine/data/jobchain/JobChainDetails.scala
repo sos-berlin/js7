@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.base.generic.JavaJsonFormats
 import com.sos.scheduler.engine.base.generic.JavaJsonFormats._
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.data.filebased.{FileBasedDetails, FileBasedState}

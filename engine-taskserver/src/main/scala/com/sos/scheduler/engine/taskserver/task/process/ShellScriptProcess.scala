@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.common.process.Processes._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration.Encoding
-import com.sos.scheduler.engine.taskserver.task.process.Processes._
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import java.nio.file.Path
 import scala.concurrent.ExecutionContext.Implicits.global

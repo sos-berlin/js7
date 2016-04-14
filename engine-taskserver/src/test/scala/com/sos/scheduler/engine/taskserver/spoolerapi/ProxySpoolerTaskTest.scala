@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver.spoolerapi
 
 import com.google.inject.Guice
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
+import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.scalautil.HasCloser
@@ -13,7 +14,6 @@ import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout}
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner

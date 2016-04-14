@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.scheduler.engine.common.process
 
 import com.sos.scheduler.engine.base.generic.IsString
 

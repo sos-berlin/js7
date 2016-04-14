@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.scheduler.engine.common.process
 
+import com.sos.scheduler.engine.common.process.Processes._
+import com.sos.scheduler.engine.common.process.ProcessesTest._
+import com.sos.scheduler.engine.common.process.StdoutStderr.Stdout
 import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem.{isSolaris, isWindows}
-import com.sos.scheduler.engine.taskserver.task.process.Processes._
-import com.sos.scheduler.engine.taskserver.task.process.ProcessesTest._
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.Stdout
 import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
