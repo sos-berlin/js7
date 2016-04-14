@@ -46,8 +46,8 @@ for arg in "$@"; do
         -master-task-id=*)
             MASTER_TASK_ID=`echo "$arg" | sed 's/-master-task-id=//'`
              ;;
-        -job-name=*)
-            JOB_NAME=`echo "$arg" | sed 's/-job-name=//'`
+        -job=*)
+            JOB_PATH=`echo "$arg" | sed 's/-job=//'`
             ;;
         -pid=*)
             PID=$(echo "$arg" | sed 's/-pid=//')
@@ -59,8 +59,8 @@ if [ -z "$AGENT_TASK_ID$PID" ]; then
     log error "Option -kill-agent-task-id is not set"
     exit 2
 fi
-if [ ! -z "$JOB_NAME" ]; then
-    log info "Task '$MASTER_TASK_ID' of Job '$JOB_NAME' with Agent task id '$AGENT_TASK_ID' will be killed"
+if [ ! -z "$JOB_PATH" ]; then
+    log info "Task '$MASTER_TASK_ID' of Job '$JOB_PATH' with Agent task id '$AGENT_TASK_ID' will be killed"
 else
     log info "Task with Agent task id '$AGENT_TASK_ID' will be killed"
 fi
