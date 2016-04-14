@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.base
+package com.sos.scheduler.engine.base.generic
 
 import spray.json.{JsNumber, JsValue, JsonFormat, JsonWriter}
 

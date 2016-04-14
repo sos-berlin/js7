@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.filebased
 
-import com.sos.scheduler.engine.data.base.IsString
+import com.sos.scheduler.engine.base.generic.IsString
 import com.sos.scheduler.engine.data.folder.FolderPath
 import org.jetbrains.annotations.TestOnly
 

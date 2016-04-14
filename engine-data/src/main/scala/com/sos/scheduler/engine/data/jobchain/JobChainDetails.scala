@@ -1,8 +1,9 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.data.base.JavaJsonFormats._
+import com.sos.scheduler.engine.base.generic.JavaJsonFormats
+import com.sos.scheduler.engine.base.generic.JavaJsonFormats._
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.data.filebased.{FileBasedState, FileBasedDetails}
+import com.sos.scheduler.engine.data.filebased.{FileBasedDetails, FileBasedState}
 import java.io.File
 import java.time.Instant
 import scala.collection.immutable

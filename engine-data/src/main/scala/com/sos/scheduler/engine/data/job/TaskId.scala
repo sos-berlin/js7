@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.data.job
 
 import com.fasterxml.jackson.annotation.JsonCreator
+import com.sos.scheduler.engine.base.generic.GenericInt
 import com.sos.scheduler.engine.cplusplus.runtime.annotation.ForCpp
-import com.sos.scheduler.engine.data.base.GenericInt
 import scala.annotation.meta.getter
 import spray.json.{JsNumber, JsString, JsValue, JsonFormat}
 

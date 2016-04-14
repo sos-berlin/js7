@@ -1,8 +1,7 @@
-package com.sos.scheduler.engine.data.base
+package com.sos.scheduler.engine.base.generic
 
 import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.databind.JsonSerializer
-import com.fasterxml.jackson.databind.SerializerProvider
+import com.fasterxml.jackson.databind.{JsonSerializer, SerializerProvider}
 
 /** @author Joacim Zschimmer */
 final class GenericIntSerializer extends JsonSerializer[GenericInt] {

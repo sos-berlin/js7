@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.scheduler
 
+import com.sos.scheduler.engine.base.generic.IsString
 import com.sos.scheduler.engine.base.utils.HasKey
-import com.sos.scheduler.engine.data.base.IsString
 import com.sos.scheduler.engine.data.scheduler.VariablePersistentState.{StringValue, _}
 
 final case class VariablePersistentState(name: String, value: IntOrStringValue)
