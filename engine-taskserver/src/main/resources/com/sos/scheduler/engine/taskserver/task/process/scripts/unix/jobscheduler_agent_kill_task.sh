@@ -60,9 +60,9 @@ if [ -z "$AGENT_TASK_ID$PID" ]; then
     exit 2
 fi
 if [ ! -z "$JOB_PATH" ]; then
-    log info "Task '$MASTER_TASK_ID' of Job '$JOB_PATH' with Agent task id '$AGENT_TASK_ID' will be killed"
+    log info "Task '$MASTER_TASK_ID' of Job '$JOB_PATH' with Agent task id '$AGENT_TASK_ID' is being killed"
 else
-    log info "Task with Agent task id '$AGENT_TASK_ID' will be killed"
+    log info "Task with Agent task id '$AGENT_TASK_ID' is being killed"
 fi
 
 TASK_PID=`ps ww | grep " -agent-task-id[=]$AGENT_TASK_ID" | awk '{ print $1 }'`
