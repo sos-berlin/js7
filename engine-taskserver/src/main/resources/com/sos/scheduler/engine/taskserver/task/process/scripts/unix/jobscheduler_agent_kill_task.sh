@@ -9,17 +9,15 @@ KILL_TASK_EXIT=0
 PIDS_TREE=
 
 killtree() {
-    for _pid in $PIDS_TREE
-    do
-      date "+%Y-%m-%d %T,%3N %z [info]  killing pid ${_pid}..." >> "${KILL_TASK_LOG_FILE}"
-      echo kill -KILL ${_pid} 1>&2
-      kill -KILL ${_pid}
-      kill_err=$?
-      if [ $kill_err -ne 0 ]
-      then
-        date "+%Y-%m-%d %T,%3N %z [error] ...kill pid ${_pid} failed!" >> "${KILL_TASK_LOG_FILE}"
-        KILL_TASK_EXIT=$kill_err
-      fi
+    for _pid in $PIDS_TREE; do
+        date "+%Y-%m-%d %T,%3N %z [info]  killing pid ${_pid}..." >> "${KILL_TASK_LOG_FILE}"
+        echo kill -KILL ${_pid} 1>&2
+        kill -KILL ${_pid}
+        kill_err=$?
+        if [ $kill_err -ne 0 ]; then
+            date "+%Y-%m-%d %T,%3N %z [error] ...kill pid ${_pid} failed!" >> "${KILL_TASK_LOG_FILE}"
+            KILL_TASK_EXIT=$kill_err
+        fi
     done
 }
 
@@ -49,47 +47,45 @@ stoptree() {
     done
 }
 
-unset PID
-for param in "$@"
-do
-  case "$param" in
-         -kill-agent-task-id=*)     KILL_TASK_ID=`echo "$param" | sed 's/-kill-agent-task-id=//'`
-                            ;;
-         -kill-master-task-id=*)    MASTER_TASK_ID=`echo "$param" | sed 's/-kill-master-task-id=//'`
-                            ;;
-         -job-name=*)               JOB_NAME=`echo "$param" | sed 's/-job-name=//'`
-                            ;;
+PID=""
+for param in "$@"; do
+    case "$param" in
+        -kill-agent-task-id=*)
+            KILL_TASK_ID=`echo "$param" | sed 's/-kill-agent-task-id=//'`
+            ;;
+         -kill-master-task-id=*)
+             MASTER_TASK_ID=`echo "$param" | sed 's/-kill-master-task-id=//'`
+             ;;
+         -job-name=*)
+            JOB_NAME=`echo "$param" | sed 's/-job-name=//'`
+            ;;
          -pid=*)
             PID=$(echo "$param" | sed 's/-pid=//')
             ;;
-  esac
+    esac
 done
 
-if [ -z "${KILL_TASK_ID}$PID" ]
-then
-  date "+%Y-%m-%d %T,%3N %z [error] option -kill-agent-task-id is not set" >> "${KILL_TASK_LOG_FILE}"
-  exit 2
+if [ -z "${KILL_TASK_ID}$PID" ]; then
+    date "+%Y-%m-%d %T,%3N %z [error] option -kill-agent-task-id is not set" >> "${KILL_TASK_LOG_FILE}"
+    exit 2
 fi
 
-if [ ! -z "${JOB_NAME}" ]
-then
-  date "+%Y-%m-%d %T,%3N %z [info]  Task \"${MASTER_TASK_ID}\" of Job \"${JOB_NAME}\" with Agent task id \"${KILL_TASK_ID}\" will be killed." >> "${KILL_TASK_LOG_FILE}"
+if [ ! -z "${JOB_NAME}" ]; then
+    date "+%Y-%m-%d %T,%3N %z [info]  Task \"${MASTER_TASK_ID}\" of Job \"${JOB_NAME}\" with Agent task id \"${KILL_TASK_ID}\" will be killed." >> "${KILL_TASK_LOG_FILE}"
 else
-  date "+%Y-%m-%d %T,%3N %z [info]  Task with Agent task id \"${KILL_TASK_ID}\" will be killed." >> "${KILL_TASK_LOG_FILE}"
+    date "+%Y-%m-%d %T,%3N %z [info]  Task with Agent task id \"${KILL_TASK_ID}\" will be killed." >> "${KILL_TASK_LOG_FILE}"
 fi
 
 KILL_TASK_PID=`ps ww | grep " -agent-task-id=${KILL_TASK_ID}" | grep -v "grep" | awk '{ print $1 }'`
 
 [ ! -z "$KILL_TASK_PID" ] || KILL_TASK_PID="$PID"
 
-if [ -z "${KILL_TASK_PID}" ]
-then
-  date "+%Y-%m-%d %T,%3N %z [info]  process with -agent-task-id=${KILL_TASK_ID} doesn't exist." >> "${KILL_TASK_LOG_FILE}"
-  exit 0
+if [ -z "${KILL_TASK_PID}" ]; then
+    date "+%Y-%m-%d %T,%3N %z [info]  process with -agent-task-id=${KILL_TASK_ID} doesn't exist." >> "${KILL_TASK_LOG_FILE}"
+    exit 0
 fi
 
 date "+%Y-%m-%d %T,%3N %z [info]  Killing task with pid ${KILL_TASK_PID} and its children" >> "${KILL_TASK_LOG_FILE}"
-
 stoptree ${KILL_TASK_PID}
 killtree
 
