@@ -36,12 +36,7 @@ final class ProcessKillScriptTest extends FreeSpec {
     val out = createTempFile("test-", ".log")
     val (scriptFile, process) = startNestedProcess(TestAgentTaskId, out)
     sleep(2.s)
-
-    if (isUnix) {
-      val ps = new ProcessBuilder(List("ps", "fux")).start()
-      startLogStreams(ps, "ps") await 15.s
-      ps.waitFor()
-    }
+    logProcessTree()
     runKillScript(TestAgentTaskId, processToPidOption(process))
     process.waitFor(10, SECONDS)
     assert(process.exitValue == SIGKILLexitValue)
@@ -54,6 +49,8 @@ final class ProcessKillScriptTest extends FreeSpec {
       assert(beforeKill contains "TEST-3=")
     }
     sleep(2.s)
+    logger.info("All processes should been kill now")
+    logProcessTree()
     val grown = out.contentString stripPrefix beforeKill
     assert(grown == "", "Stdout file must not grow after kill script")
     delete(scriptFile)
@@ -89,6 +86,14 @@ private object ProcessKillScriptTest {
                else JavaResource("com/sos/scheduler/engine/taskserver/task/process/scripts/unix/test.sh"))
     .asUTF8String
   private val SIGKILLexitValue = if (isWindows) 1 else if (isSolaris) SIGKILL.value else 128 + SIGKILL.value
+
+  private def logProcessTree(): Unit = {
+    if (isUnix) {
+      val ps = new ProcessBuilder(List("ps", "fux")).start()
+      startLogStreams(ps, "ps") await 15.s
+      ps.waitFor()
+    }
+  }
 
   private def startLogStreams(process: Process, prefix: String): Future[Any] =
     Future.sequence(List(

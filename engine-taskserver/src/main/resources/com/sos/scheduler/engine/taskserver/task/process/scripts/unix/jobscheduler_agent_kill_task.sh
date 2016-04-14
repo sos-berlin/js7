@@ -4,24 +4,11 @@
 #  Purpose: "kill script" for JobScheduler Agent
 #  ------------------------------------------------------------
 
-KILL_TASK_EXIT=0
-PIDS_TREE=
+set -e
 
 log() {
     echo "[$1]  $2" 1>&2
     test -z "$KILL_TASK_LOG_FILE" || echo "`date '+%Y-%m-%d %T,%3N %z'` [$1]  $2" >> "$KILL_TASK_LOG_FILE"
-}
-
-killtree() {
-    for _pid in $PIDS_TREE; do
-        log info "kill -KILL $_pid"
-        kill -KILL $_pid
-        kill_err=$?
-        if [ $kill_err -ne 0 ]; then
-            log error "...kill pid $_pid failed!"
-            KILL_TASK_EXIT=$kill_err
-        fi
-    done
 }
 
 psTreeSolaris() {
@@ -38,57 +25,63 @@ else
     psTree=psTree
 fi
 
-stoptree() {
+collectAndStopAllPids() {
     # First stop all processes to inhibit quickly forking parent from producing children between child killing and parent killing
-    _pid="$1"
-    PIDS_TREE="$_pid $PIDS_TREE"
-    log info "kill -STOP $_pid "
-    kill -STOP $_pid
-    for _child in `$psTree | egrep " $_pid$" | awk '{print $1}'`; do
-        stoptree "$_child"
+    # $1: Parent PID
+    # $2: Identation
+    ALL_PIDS="$1 $ALL_PIDS"
+    log info "$2 kill -STOP $1 "
+    kill -STOP $1 || true
+    for _child in `$psTree | egrep " $1\$" | awk '{ print $1 }'`; do
+        collectAndStopAllPids "$_child" "| $2"
     done
 }
 
 PID=""
-for param in "$@"; do
-    case "$param" in
+for arg in "$@"; do
+    case "$arg" in
         -kill-agent-task-id=*)
-            KILL_TASK_ID=`echo "$param" | sed 's/-kill-agent-task-id=//'`
+            AGENT_TASK_ID=`echo "$arg" | sed 's/-kill-agent-task-id=//'`
             ;;
-         -kill-master-task-id=*)
-             MASTER_TASK_ID=`echo "$param" | sed 's/-kill-master-task-id=//'`
+        -kill-master-task-id=*)
+            MASTER_TASK_ID=`echo "$arg" | sed 's/-kill-master-task-id=//'`
              ;;
-         -job-name=*)
-            JOB_NAME=`echo "$param" | sed 's/-job-name=//'`
+        -job-name=*)
+            JOB_NAME=`echo "$arg" | sed 's/-job-name=//'`
             ;;
-         -pid=*)
-            PID=$(echo "$param" | sed 's/-pid=//')
+        -pid=*)
+            PID=$(echo "$arg" | sed 's/-pid=//')
             ;;
     esac
 done
 
-if [ -z "$KILL_TASK_ID$PID" ]; then
+if [ -z "$AGENT_TASK_ID$PID" ]; then
     log error "Option -kill-agent-task-id is not set"
     exit 2
 fi
-
 if [ ! -z "$JOB_NAME" ]; then
-    log info "Task '$MASTER_TASK_ID' of Job '$JOB_NAME' with Agent task id '$KILL_TASK_ID' will be killed"
+    log info "Task '$MASTER_TASK_ID' of Job '$JOB_NAME' with Agent task id '$AGENT_TASK_ID' will be killed"
 else
-    log info "Task with Agent task id '$KILL_TASK_ID' will be killed"
+    log info "Task with Agent task id '$AGENT_TASK_ID' will be killed"
 fi
 
-KILL_TASK_PID=`ps ww | grep " -agent-task-id[=]$KILL_TASK_ID" | awk '{ print $1 }'`
-
-[ ! -z "$KILL_TASK_PID" ] || KILL_TASK_PID="$PID"
-
-if [ -z "$KILL_TASK_PID" ]; then
-    log info "Process with -agent-task-id=$KILL_TASK_ID doesn't exist"
+TASK_PID=`ps ww | grep " -agent-task-id[=]$AGENT_TASK_ID" | awk '{ print $1 }'`
+[ ! -z "$TASK_PID" ] || TASK_PID="$PID"
+if [ -z "$TASK_PID" ]; then
+    log info "Process with -agent-task-id=$AGENT_TASK_ID doesn't exist"
     exit 0
 fi
 
-log info "Killing task with pid $KILL_TASK_PID and its children"
-stoptree "$KILL_TASK_PID"
-killtree
+log info "Killing task with PID $TASK_PID and its children"
+ALL_PIDS=
+collectAndStopAllPids "$TASK_PID"
 
-exit $KILL_TASK_EXIT
+exitCode=0
+for _pid in $ALL_PIDS; do
+    log info "kill -KILL $_pid"
+    kill -KILL $_pid || {
+        log error "...kill PID $_pid failed!"
+        exitCode=1
+    }
+done
+exit $exitCode
