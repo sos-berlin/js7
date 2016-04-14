@@ -69,7 +69,7 @@ final class ProcessKillScriptTest extends FreeSpec {
   private def runKillScript(agentTaskId: AgentTaskId, pidOption: Option[Pid]): Unit = {
     autoClosing(new ProcessKillScriptProvider(httpPort = TestPort)) { provider ⇒
       val killScript = provider.provideTo(temporaryDirectory)
-      val args = killScript.toCommandArguments(agentTaskId) ++ (pidOption map { o ⇒ s"-pid=${o.string}" })
+      val args = killScript.toCommandArguments(agentTaskId, pidOption)
       val killProcess = new ProcessBuilder(args).start()
       startLogStreams(killProcess, "Kill script") await 60.s
       killProcess.waitFor(60, SECONDS)

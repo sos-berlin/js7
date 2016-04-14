@@ -58,7 +58,7 @@ extends HasCloser with ClosedFuture {
           logger.info("destroy (SIGTERM)")
           process.destroy()
         case SIGKILL ⇒
-          processConfiguration.toCommandArgumentsOption match {
+          processConfiguration.toCommandArgumentsOption(pidOption) match {
             case Some(args) ⇒
               val pidArgs = pidOption map { o ⇒ s"-pid=${o.string}" }
               executeKillScript(args ++ pidArgs) recover {

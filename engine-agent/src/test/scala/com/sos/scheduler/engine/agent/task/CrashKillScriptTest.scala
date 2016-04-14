@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.agent.task
 
 import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
+import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -49,15 +50,15 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
   }
 
   "add" in {
-    crashKillScript.add(AgentTaskId("1-111"), TaskId(1), JobPath("/folder/one"))
+    crashKillScript.add(AgentTaskId("1-111"), pid = None, TaskId(1), JobPath("/folder/one"))
     assert(file.contentString == """"test-kill.sh" -kill-agent-task-id=1-111 -master-task-id=1 -job=/folder/one""" + (if (isWindows) "\r\n" else "\n"))
   }
 
   "add more" in {
-    crashKillScript.add(AgentTaskId("2-222"), TaskId(2), JobPath("/folder/two"))
-    crashKillScript.add(AgentTaskId("3-333"), TaskId(3), JobPath("/folder/three"))
+    crashKillScript.add(AgentTaskId("2-222"), pid = Some(Pid(123)), TaskId(2), JobPath("/folder/two"))
+    crashKillScript.add(AgentTaskId("3-333"), pid = None, TaskId(3), JobPath("/folder/three"))
     assert(lines == List(""""test-kill.sh" -kill-agent-task-id=1-111 -master-task-id=1 -job=/folder/one""",
-                         """"test-kill.sh" -kill-agent-task-id=2-222 -master-task-id=2 -job=/folder/two""",
+                         """"test-kill.sh" -kill-agent-task-id=2-222 -pid=123 -master-task-id=2 -job=/folder/two""",
                          """"test-kill.sh" -kill-agent-task-id=3-333 -master-task-id=3 -job=/folder/three"""))
   }
 
@@ -68,7 +69,7 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
   }
 
   "add then remove" in {
-    crashKillScript.add(AgentTaskId("4-444"), TaskId(4), JobPath("/folder/four"))
+    crashKillScript.add(AgentTaskId("4-444"), pid = None, TaskId(4), JobPath("/folder/four"))
     crashKillScript.remove(AgentTaskId("3-333"))
     assert(lines.toSet == Set(""""test-kill.sh" -kill-agent-task-id=1-111 -master-task-id=1 -job=/folder/one""",
                               """"test-kill.sh" -kill-agent-task-id=4-444 -master-task-id=4 -job=/folder/four"""))
@@ -81,7 +82,7 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
   }
 
   "add again and remove last" in {
-    crashKillScript.add(AgentTaskId("5-5555"), TaskId(5), JobPath("/folder/five"))
+    crashKillScript.add(AgentTaskId("5-5555"), pid = None, TaskId(5), JobPath("/folder/five"))
     assert(lines == List(""""test-kill.sh" -kill-agent-task-id=5-5555 -master-task-id=5 -job=/folder/five"""))
     crashKillScript.remove(AgentTaskId("5-5555"))
     assert(!exists(file))
@@ -90,7 +91,7 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
   "Tries to suppress code injection" in {
     val evilJobPaths = Vector("/x$(evil)", "/x|evil ", "/x'|evil")
     for ((evil, i) ← evilJobPaths.zipWithIndex) {
-      crashKillScript.add(AgentTaskId(s"$i"), TaskId(i), JobPath(evil))
+      crashKillScript.add(AgentTaskId(s"$i"), pid = None, TaskId(i), JobPath(evil))
     }
     assert(lines.toSet == (evilJobPaths.indices map { i ⇒ s""""test-kill.sh" -kill-agent-task-id=$i -master-task-id=$i""" }).toSet)
   }
