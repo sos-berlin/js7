@@ -30,7 +30,7 @@ collectAndStopAllPids() {
     # $1: Parent PID
     # $2: Indentation
     ALL_PIDS="$1 $ALL_PIDS"
-    log info "$2 kill -STOP $1 "
+    log info "$2 kill -STOP $1"
     kill -STOP $1 || true
     for _child in `$psTree | egrep " $1\$" | awk '{ print $1 }'`; do
         collectAndStopAllPids "$_child" "| $2"
@@ -77,10 +77,10 @@ ALL_PIDS=
 collectAndStopAllPids "$TASK_PID"
 
 exitCode=0
-for _pid in $ALL_PIDS; do
-    log info "kill -KILL $_pid"
-    kill -KILL $_pid || {
-        log error "...kill PID $_pid failed!"
+for pid in $ALL_PIDS; do
+    log info "kill -KILL $pid"
+    kill -KILL $pid || {
+        log error "...kill PID $pid failed!"
         exitCode=1
     }
 done
