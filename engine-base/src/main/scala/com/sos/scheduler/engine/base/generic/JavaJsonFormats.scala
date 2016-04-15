@@ -1,12 +1,11 @@
-package com.sos.scheduler.engine.data.base
-
-/**
- * @author Joacim Zschimmer
- */
+package com.sos.scheduler.engine.base.generic
 
 import java.io.File
-import spray.json.{JsValue, JsString, JsonFormat}
+import spray.json.{JsString, JsValue, JsonFormat}
 
+/**
+  * @author Joacim Zschimmer
+  */
 object JavaJsonFormats {
   implicit object FileJsonFormat extends JsonFormat[File] {
     def write(o: File) = JsString(o.getPath)

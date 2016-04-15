@@ -1,10 +1,11 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.scheduler.engine.common.process
 
+import com.sos.scheduler.engine.common.process.OperatingSystemSpecific.OS
+import com.sos.scheduler.engine.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
+import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.taskserver.task.process.Processes.RobustlyStartProcess.TextFileBusyIOException
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
@@ -31,15 +32,20 @@ object Processes {
 
 
   // Shortcuts for operating system specific methods
-  import OperatingSystemSpecific.OS
+
+  /**
+    * Including dot.
+    * For example ".sh" or ".cmd".
+    */
+  val ShellFileExtension = OS.shellFileExtension
+
+  val ShellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
 
   def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
 
   def newLogFile(directory: Path, name: String, outerr: StdoutStderrType): Path = OS.newLogFile(directory, name, outerr)
 
   def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
-
-  def shellFileAttributes: immutable.Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
 
   implicit class RobustlyStartProcess(val delegate: ProcessBuilder) extends AnyVal {
     /**

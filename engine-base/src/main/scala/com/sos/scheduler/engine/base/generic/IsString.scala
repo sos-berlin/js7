@@ -1,8 +1,7 @@
-package com.sos.scheduler.engine.data.base
+package com.sos.scheduler.engine.base.generic
 
 import javax.annotation.Nullable
 import scala.language.implicitConversions
-import scala.xml.Text
 import spray.json.{JsString, JsValue, JsonFormat, JsonWriter}
 
 //@JsonSerialize(using = classOf[IsStringSerializer])
@@ -26,7 +25,7 @@ trait IsString extends SerializableIsString {
 
 object IsString {
   /** Für &lt;elememt attribute={stringValue}/>. */
-  implicit def toXmlText(o: StringValue): Text = new xml.Text(o.string)
+  implicit def toXmlText(o: StringValue): xml.Text = new xml.Text(o.string)
 
   @Nullable def stringOrNull[A <: IsString](o: Option[A]): String = o match {
     case Some(a) => a.string

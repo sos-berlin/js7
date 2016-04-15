@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.common.process.StdoutStderr.Stdout
 import com.sos.scheduler.engine.taskserver.task.StdFiles.prefixLinesWithStdoutOrStderr
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.Stdout
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner

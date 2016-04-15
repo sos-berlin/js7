@@ -1,8 +1,9 @@
 package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
+import com.sos.scheduler.engine.common.process.Processes
+import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
-import com.sos.scheduler.engine.taskserver.task.process.Processes.Pid
 import scala.concurrent.Future
 
 /**

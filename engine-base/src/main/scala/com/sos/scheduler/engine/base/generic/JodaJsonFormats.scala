@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.data.base
+package com.sos.scheduler.engine.base.generic
 
 import org.joda.time.Instant
 import org.joda.time.format.ISODateTimeFormat
-import spray.json.{JsValue, JsString, JsonFormat}
+import spray.json.{JsString, JsValue, JsonFormat}
 
 /**
  * @author Joacim Zschimmer

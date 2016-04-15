@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.data.job
 
+import com.sos.scheduler.engine.base.generic.HasIsDefault
 import com.sos.scheduler.engine.base.utils.HasKey
 import com.sos.scheduler.engine.cplusplus.runtime.annotation.ForCpp
-import com.sos.scheduler.engine.data.base.HasIsDefault
 import java.time.Instant
 import scala.annotation.meta.getter
 

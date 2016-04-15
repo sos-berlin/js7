@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.module
 
-import com.sos.scheduler.engine.data.base.IsString
+import com.sos.scheduler.engine.base.generic.IsString
 
 /**
  * @author Joacim Zschimmer

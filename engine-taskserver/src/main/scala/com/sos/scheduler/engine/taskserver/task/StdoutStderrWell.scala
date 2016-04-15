@@ -1,10 +1,10 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.sos.scheduler.engine.common.process.StdoutStderr.{Stdout, StdoutStderrType}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.taskserver.task.filecollector.MultipleFilesLineCollector
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stdout, StdoutStderrType}
 import java.nio.charset.Charset
 import java.nio.file.Path
 

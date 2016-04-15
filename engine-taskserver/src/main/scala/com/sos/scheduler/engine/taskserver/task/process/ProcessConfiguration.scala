@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
+import com.sos.scheduler.engine.common.process.Processes.Pid
+import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
 import java.nio.file.Path
 import scala.collection.immutable
 
@@ -23,5 +24,6 @@ final case class ProcessConfiguration(
 
   def idArgumentOption = agentTaskIdOption map { o ⇒ s"-agent-task-id=${o.string}" }
 
-  def toCommandArgumentsOption = for (id ← agentTaskIdOption; killScript ← killScriptOption) yield killScript.toCommandArguments(id)
+  def toCommandArgumentsOption(pid: Option[Pid]) =
+    for (id ← agentTaskIdOption; killScript ← killScriptOption) yield killScript.toCommandArguments(id, pid)
 }

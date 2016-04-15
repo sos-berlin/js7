@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver.module
 
+import com.sos.scheduler.engine.base.generic.IsString
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.scheduler.engine.data.base.IsString
 
 /**
  * @author Joacim Zschimmer

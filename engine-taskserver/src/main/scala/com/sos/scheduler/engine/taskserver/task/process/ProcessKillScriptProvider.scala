@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.taskserver.task.process
 import com.google.common.io.Files.asByteSink
 import com.google.common.io.Resources
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
+import com.sos.scheduler.engine.common.process.Processes
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
@@ -21,7 +22,7 @@ final class ProcessKillScriptProvider(httpPort: Int) extends HasCloser {
     val resource = if (isWindows) WindowsScriptResource else UnixScriptResource
     val file = directory / resource.simpleName.replace(Prefix, s"$Prefix${httpPort}_")
     deleteIfExists(file)
-    createFile(file, Processes.shellFileAttributes: _*)
+    createFile(file, Processes.ShellFileAttributes: _*)
     Resources.asByteSource(resource.url) copyTo asByteSink(file)
     onClose {
       ignoreException(logger.error) { delete(file) }

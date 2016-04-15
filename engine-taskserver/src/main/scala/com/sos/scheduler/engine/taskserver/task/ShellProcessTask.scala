@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal._
+import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -13,7 +14,6 @@ import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.taskserver.task.process.{ProcessConfiguration, RichProcess}
 import java.nio.file.Files._
 import java.nio.file.Path
@@ -102,7 +102,8 @@ extends HasCloser with Task {
     requireState(startCalled)
     richProcessOnce.get match {
       case None ⇒
-        <process.result spooler_process_result="false"/>.toString()
+        logger.warn("step, but no process has been started")
+        <process.result spooler_process_result="false" exit_code="999888999"/>.toString()
       case Some(richProcess) ⇒
         val rc = richProcess.waitForTermination()
         for (o ← sigtermForwarder) o.close()

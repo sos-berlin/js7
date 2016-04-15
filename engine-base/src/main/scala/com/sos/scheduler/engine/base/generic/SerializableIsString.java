@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.base;
+package com.sos.scheduler.engine.base.generic;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 

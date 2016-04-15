@@ -1,10 +1,9 @@
-package com.sos.scheduler.engine.data.base;
-
-import java.io.IOException;
+package com.sos.scheduler.engine.base.generic;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import java.io.IOException;
 
 /** @author Joacim Zschimmer */
 public final class IsStringSerializer extends JsonSerializer<IsString> {

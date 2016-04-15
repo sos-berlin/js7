@@ -2,14 +2,14 @@ package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.scheduler.engine.common.process.Processes._
+import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logger}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.job.ReturnCode
-import com.sos.scheduler.engine.taskserver.task.process.Processes._
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import java.io.{BufferedOutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT
@@ -38,16 +38,15 @@ extends HasCloser with ClosedFuture {
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
   private val terminatedPromise = Promise[Unit]()
 
+  logger.info(s"Process started")
   Future {
     terminatedPromise complete Try {
       blocking {
-        waitForTermination()
-        logger.info(s"Process ended with ${ReturnCode(process.exitValue)}")
+        val rc = waitForTermination()
+        logger.info(s"Process ended with $rc")
       }
     }
   }
-
-  logger.info(s"Process started")
 
   final def terminated: Future[Unit] = terminatedPromise.future
 
@@ -59,9 +58,10 @@ extends HasCloser with ClosedFuture {
           logger.info("destroy (SIGTERM)")
           process.destroy()
         case SIGKILL ⇒
-          processConfiguration.toCommandArgumentsOption match {
+          processConfiguration.toCommandArgumentsOption(pidOption) match {
             case Some(args) ⇒
-              executeKillScript(args) recover {
+              val pidArgs = pidOption map { o ⇒ s"-pid=${o.string}" }
+              executeKillScript(args ++ pidArgs) recover {
                 case t ⇒ logger.error(s"Cannot start kill script command '$args': $t")
               } onComplete { case _ ⇒
                 killNow()
@@ -73,8 +73,8 @@ extends HasCloser with ClosedFuture {
     }
 
   private def executeKillScript(args: Seq[String]) = Future[Unit] {
-    logger.info("Executing kill script: " + (args mkString "  "))
-    val onKillProcess = new ProcessBuilder(args).start()
+    logger.info("Executing kill script: " + args.mkString("  "))
+    val onKillProcess = new ProcessBuilder(args).redirectOutput(INHERIT).redirectError(INHERIT).start()
     val promise = Promise[Unit]()
       blocking { waitForProcessTermination(onKillProcess) }
       onKillProcess.exitValue match {

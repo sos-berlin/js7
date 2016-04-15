@@ -2,19 +2,19 @@ package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.scheduler.engine.common.process.Processes.newTemporaryShellFile
+import com.sos.scheduler.engine.common.process.StdoutStderr.Stdout
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.system.OperatingSystem.{KernelSupportsNestedShebang, isUnix, isWindows}
+import com.sos.scheduler.engine.common.system.OperatingSystem.{KernelSupportsNestedShebang, isSolaris, isUnix, isWindows}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.job.ReturnCode
-import com.sos.scheduler.engine.taskserver.task.process.Processes.newTemporaryShellFile
 import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr.Stdout
 import java.nio.file.Files._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -102,7 +102,10 @@ final class ShellScriptProcessTest extends FreeSpec {
       waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
       assert(!shellProcess.isAlive)
       val rc = shellProcess.waitForTermination()
-      assert(rc == (if (isWindows) ReturnCode(1/* This is Java destroy()*/) else ReturnCode(SIGKILL)))
+      assert(rc == (
+        if (isWindows) ReturnCode(1/* This is Java destroy()*/)
+        else if (isSolaris) ReturnCode(SIGKILL.value)  // Solaris: No difference between exit 9 and kill !!!
+        else ReturnCode(SIGKILL)))
       shellProcess.close()
 
       assert(stdFileMap(Stdout).contentString contains "SCRIPT-ARGUMENTS=")

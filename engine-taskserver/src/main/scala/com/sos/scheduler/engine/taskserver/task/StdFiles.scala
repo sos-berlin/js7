@@ -1,10 +1,10 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.google.common.base.Splitter
+import com.sos.scheduler.engine.common.process.StdoutStderr._
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.task.StdFiles._
-import com.sos.scheduler.engine.taskserver.task.process.StdoutStderr._
 import java.nio.charset.Charset
 import java.nio.file.Path
 import scala.collection.JavaConversions._

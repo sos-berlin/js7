@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.scheduler.engine.common.process
 
+import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.taskserver.task.process.Processes.Pid
 import javax.lang.model.SourceVersion
 
 /**
@@ -18,7 +18,7 @@ private[process] object ProcessesJava8pid {
   }
 
   private object Jdk9ProcessToPid extends (Process ⇒ Option[Pid]) {
-    private val getPid = classOf[Process].getMethod("getPid")
+    private lazy val getPid = classOf[Process].getMethod("getPid")   // Needs Java 9
 
     def apply(process: Process) =
       try Some(Pid(getPid.invoke(process).asInstanceOf[java.lang.Long]))
