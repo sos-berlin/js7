@@ -62,8 +62,6 @@ with HasKey {
     arguments = taskArgumentsFuture.value collect {
       case Success(a) ⇒
         TaskOverview.Arguments(
-          taskId = a.taskId,
-          jobName = a.jobName,
           language = a.moduleLanguage.string,
           javaClassName = a.javaClassNameOption,
           monitorCount = a.monitors.size)
