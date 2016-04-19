@@ -8,31 +8,22 @@ set -e
 
 log() {
     echo "[$1]  $2" 1>&2
-    test -z "$KILL_TASK_LOG_FILE" || echo "`date '+%Y-%m-%d %T,%3N %z'` [$1]  $2" >> "$KILL_TASK_LOG_FILE"
-}
-
-psTreeSolaris() {
-    ps -ef -o pid,ppid
-}
-
-psTree() {
-    ps ax -o pid,ppid
 }
 
 if [ "`uname`" = "SunOS" ]; then
-    psTree=psTreeSolaris
+    psTree="ps -ef -o pid,ppid"
 else
-    psTree=psTree
+    psTree="ps ax -o pid,ppid"
 fi
 
 collectAndStopAllPids() {
     # First stop all processes to inhibit quickly forking parent from producing children between child killing and parent killing
     # $1: Parent PID
     # $2: Indentation
-    ALL_PIDS="$1 $ALL_PIDS"
     log info "$2 kill -STOP $1"
     kill -STOP $1 || true
     for _child in `$psTree | egrep " $1\$" | awk '{ print $1 }'`; do
+        descendants="$_child $descendants"
         collectAndStopAllPids "$_child" "| $2"
     done
 }
@@ -73,15 +64,16 @@ if [ -z "$TASK_PID" ]; then
 fi
 
 log info "Killing task with PID $TASK_PID and its children"
-ALL_PIDS=
+descendants=
 collectAndStopAllPids "$TASK_PID"
 
 exitCode=0
-for pid in $ALL_PIDS; do
+log info "kill -KILL $TASK_PID  (the task process)"
+kill -KILL $TASK_PID || exitCode=1
+
+for pid in $descendants; do
     log info "kill -KILL $pid"
-    kill -KILL $pid || {
-        log error "...kill PID $pid failed!"
-        exitCode=1
-    }
+    kill -KILL $pid 2>/dev/null || true
 done
+
 exit $exitCode
