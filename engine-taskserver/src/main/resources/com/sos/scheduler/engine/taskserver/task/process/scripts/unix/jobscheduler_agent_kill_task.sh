@@ -10,24 +10,6 @@ log() {
     echo "[$1]  $2" 1>&2
 }
 
-if [ "`uname`" = "SunOS" ]; then
-    psTree="ps -ef -o pid,ppid"
-else
-    psTree="ps ax -o pid,ppid"
-fi
-
-collectAndStopAllPids() {
-    # First stop all processes to inhibit quickly forking parent from producing children between child killing and parent killing
-    # $1: Parent PID
-    # $2: Indentation
-    log info "$2 kill -STOP $1"
-    kill -STOP $1 || true
-    for _child in `$psTree | egrep " $1\$" | awk '{ print $1 }'`; do
-        descendants="$_child $descendants"
-        collectAndStopAllPids "$_child" "| $2"
-    done
-}
-
 PID=""
 for arg in "$@"; do
     case "$arg" in
@@ -65,6 +47,25 @@ fi
 
 log info "Killing task with PID $TASK_PID and its children"
 descendants=
+
+if [ "`uname`" = "SunOS" ]; then
+    psTree="ps -ef -o pid,ppid"
+else
+    psTree="ps ax -o pid,ppid"
+fi
+
+collectAndStopAllPids() {
+    # First stop all processes to inhibit quickly forking parent from producing children between child killing and parent killing
+    # $1: Parent PID
+    # $2: Indentation
+    log info "$2 kill -STOP $1"
+    kill -STOP $1 || true
+    for _child in `$psTree | egrep " $1\$" | awk '{ print $1 }'`; do
+        descendants="$_child $descendants"
+        collectAndStopAllPids "$_child" "| $2"
+    done
+}
+
 collectAndStopAllPids "$TASK_PID"
 
 exitCode=0
