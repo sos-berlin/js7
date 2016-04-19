@@ -19,7 +19,7 @@ psTree() {
     ps ax -o pid,ppid
 }
 
-if [ "$(uname)" = "SunOS" ]; then
+if [ "`uname`" = "SunOS" ]; then
     psTree=psTreeSolaris
 else
     psTree=psTree
@@ -50,7 +50,7 @@ for arg in "$@"; do
             JOB_PATH=`echo "$arg" | sed 's/-job=//'`
             ;;
         -pid=*)
-            PID=$(echo "$arg" | sed 's/-pid=//')
+            PID=`echo "$arg" | sed 's/-pid=//'`
             ;;
     esac
 done
