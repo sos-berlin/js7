@@ -23,7 +23,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{blocking, Future}
 
 /**
   * JS-1558 Agent includes kill scripts
@@ -63,6 +63,7 @@ final class ProcessKillScriptTest extends FreeSpec {
     file.contentString = Script
     val args = List(file.toString, s"-agent-task-id=${agentTaskId.string}")
     val process = new ProcessBuilder(args).redirectOutput(out).redirectError(INHERIT).start()
+    logger.info(s"Started process ${processToPidOption(process)}")
     (file, process)
   }
 
@@ -91,15 +92,15 @@ private object ProcessKillScriptTest {
   private def logProcessTree(): Unit = {
     if (isUnix) {
       val ps = new ProcessBuilder(List("ps", "fux")).start()
-      startLogStreams(ps, "ps") await 15.s
+      startLogStreams(ps, "ps (for information only, please ignore errors)") await 15.s
       ps.waitFor()
     }
   }
 
   private def startLogStreams(process: Process, prefix: String): Future[Any] =
     Future.sequence(List(
-      Future[Unit] { logStream(process.getInputStream, s"$prefix stdout") },
-      Future[Unit] { logStream(process.getErrorStream, s"$prefix stderr") }
+      Future[Unit] { blocking { logStream(process.getInputStream, s"$prefix stdout") }},
+      Future[Unit] { blocking { logStream(process.getErrorStream, s"$prefix stderr") }}
     ))
 
   private def logStream(in: InputStream, prefix: String): Unit =

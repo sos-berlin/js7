@@ -42,8 +42,6 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
       startedByHttpIp = Some(InetAddress.getByName("127.1.2.3")),
       startMeta = StartTask.Meta(JobPath("/FOLDER/JOB"), TaskId(123)),
       arguments = Some(TaskOverview.Arguments(
-        TaskId(123),
-        jobName = "JOB",
         language = "LANGUAGE",
         javaClassName = Some("JAVA.CLASS"),
         monitorCount = 3)))
@@ -72,8 +70,6 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
             "taskId" → JsString("123")
           ),
           "arguments" → JsObject(
-            "taskId" → JsString("123"),
-            "jobName" → JsString("JOB"),
             "language" → JsString("LANGUAGE"),
             "javaClassName" → JsString("JAVA.CLASS"),
             "monitorCount" → JsNumber(3)))))
@@ -93,8 +89,6 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
             "taskId" → JsString("123")
           ),
           "arguments" → JsObject(
-            "taskId" → JsString("123"),
-            "jobName" → JsString("JOB"),
             "language" → JsString("LANGUAGE"),
             "javaClassName" → JsString("JAVA.CLASS"),
             "monitorCount" → JsNumber(3))))
