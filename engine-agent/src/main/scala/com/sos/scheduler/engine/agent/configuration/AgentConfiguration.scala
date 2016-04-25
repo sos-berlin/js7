@@ -12,6 +12,7 @@ import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
 import com.sos.scheduler.engine.common.tcp.TcpUtils.{parseTcpPort, requireTcpPortNumber}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.scheduler.engine.common.utils.JavaResource
 import java.nio.file.{Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
@@ -52,6 +53,7 @@ final case class AgentConfiguration(
 
 object AgentConfiguration {
   val UseInternalKillScript = ProcessKillScript("")   // Marker
+  private val TaskServerLogbackResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/logback.xml")
 
   def apply(args: Seq[String]): AgentConfiguration =
     CommandLineArguments.parse(args) { a ⇒
@@ -72,5 +74,5 @@ object AgentConfiguration {
   def forTest(httpPort: Int = findRandomFreeTcpPort()) = AgentConfiguration(
     httpPort = httpPort,
     httpInterfaceRestriction = Some("127.0.0.1"),
-    jobJavaOptions = sys.props.get("agent.job.javaOptions").toList)
+    jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
 }
