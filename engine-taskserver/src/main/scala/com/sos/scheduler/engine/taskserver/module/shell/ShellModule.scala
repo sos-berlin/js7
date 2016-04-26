@@ -1,10 +1,11 @@
 package com.sos.scheduler.engine.taskserver.module.shell
 
-import com.sos.scheduler.engine.taskserver.module.{Module, Script, ShellModuleLanguage}
+import com.sos.scheduler.engine.taskserver.module.Module
+import com.sos.scheduler.engine.taskserver.module.ModuleArguments.ShellModuleArguments
 
 /**
  * @author Joacim Zschimmer
  */
-final case class ShellModule(script: Script) extends Module {
-  def moduleLanguage = ShellModuleLanguage
+final class ShellModule(val arguments: ShellModuleArguments) extends Module {
+  def script = arguments.script
 }

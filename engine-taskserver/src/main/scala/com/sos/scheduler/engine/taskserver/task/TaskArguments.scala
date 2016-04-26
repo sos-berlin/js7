@@ -1,8 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions
 import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
 import com.sos.scheduler.engine.common.xml.VariableSets
@@ -25,48 +23,74 @@ final class TaskArguments private(arguments: List[(String, String)]) {
     case Some(o) ⇒ throw new IllegalArgumentException(s"Invalid agent argument: $HasOrderKey=$o")
     case None ⇒ false
   }
-  lazy val javaClassNameOption: Option[String] = get(JavaClassKey) filter { _.nonEmpty }
+  lazy val moduleArguments = extractModuleArguments(arguments)
   lazy val jobName: String = apply(JobKey)
-  lazy val module = Module(moduleLanguage, script, javaClassNameOption)
-  lazy val moduleLanguage: ModuleLanguage = ModuleLanguage(apply(LanguageKey))
-  lazy val script: Script = Script.parseXmlString(apply(ScriptKey))
   lazy val shellVariablePrefix: String = get(ShellVariablePrefixKey) getOrElse DefaultShellVariablePrefix
   lazy val stderrLogLevel: SchedulerLogLevel = get(StderrLogLevelKey) map { o ⇒ SchedulerLogLevel.ofCpp(o.toInt) } getOrElse SchedulerLogLevel.info
   lazy val taskId: TaskId = TaskId(apply(TaskIdKey).toInt)
-
   lazy val monitors: immutable.Seq[Monitor] = {
     val unordered =
-      for (m ← splitMonitorArguments(arguments filter { _._1 startsWith "monitor." })) yield {
-        val module = Module(m.moduleLanguage, m.script, m.javaClassNameOption)
-        Monitor(module, name = m.name, ordering = m.ordering)
-      }
-    stableSort(unordered, { o: Monitor ⇒ o.ordering }).toImmutableSeq
+      for (m ← splitMonitorArguments(arguments collect { case (k, v) if k startsWith MonitorPrefix ⇒ (k stripPrefix MonitorPrefix) → v }))
+      yield Monitor(m.moduleArguments, name = m.name, ordering = m.ordering)
+    stableSort(unordered, { o: Monitor ⇒ o.ordering }).toVector
   }
 
   private def apply(name: String) = get(name) getOrElse { throw new NoSuchElementException(s"Agent argument '$name' not given") }
 
   private def get(name: String): Option[String] = arguments collectFirst { case (k, v) if k == name ⇒ v }
+
+  private def splitMonitorArguments(args: List[(String, String)]): List[MonitorArguments] =
+    // For every monitor definition, "monitor.script" is the last argument
+    args indexWhere { _._1 == module.ScriptKey } match {
+      case -1 ⇒ Nil
+      case scriptIndex ⇒
+        val (head, tail) = args splitAt scriptIndex + 1
+        new MonitorArguments(head.toMap) :: splitMonitorArguments(tail)
+    }
+
+  private class MonitorArguments(argMap: Map[String, String]) {
+    def name = argMap.getOrElse(monitor.NameKey, "")
+    val ordering = argMap.as[Int](monitor.OrderingKey, Monitor.DefaultOrdering)
+    val moduleArguments = extractModuleArguments(argMap)
+  }
+
+  private def extractModuleArguments(args: Iterable[(String, String)]) = {
+    val argMap = args.toMap
+    val javaClassNameOption = argMap.get(module.JavaClassKey) filter { _.nonEmpty }
+    ModuleArguments(
+      language = ModuleLanguage(argMap(module.LanguageKey)),
+      javaClassNameOption = javaClassNameOption,
+      script = argMap.getOrElse(module.ScriptKey, "") match {
+        case "" ⇒ new Script("")
+        case string ⇒ Script.parseXmlString(string)
+      })
+  }
 }
 
 object TaskArguments {
   val DefaultShellVariablePrefix = "SCHEDULER_PARAM_"
   private val EnvironmentKey = "environment"
   private val HasOrderKey = "has_order"
-  private val JavaClassKey = "java_class"
   private val JobKey = "job"
-  private val LanguageKey = "language"
-  private val MonitorJavaClassKey = "monitor.java_class"
-  private val MonitorLanguageKey = "monitor.language"
-  private val MonitorNameKey = "monitor.name"
-  private val MonitorOrderingKey = "monitor.ordering"
-  private val MonitorScriptKey = "monitor.script"
-  private val ScriptKey = "script"
   private val ShellVariablePrefixKey = "process.shell_variable_prefix"
   private val StderrLogLevelKey = "stderr_log_level"
   private val TaskIdKey = "task_id"
-  private val KeySet = Set(EnvironmentKey, HasOrderKey, JavaClassKey, JobKey, LanguageKey,
-    MonitorJavaClassKey, MonitorLanguageKey, MonitorNameKey, MonitorOrderingKey, MonitorScriptKey,
-    ScriptKey, ShellVariablePrefixKey, StderrLogLevelKey, TaskIdKey)
+  private object module {
+    val LanguageKey = "language"
+    val ScriptKey = "script"
+    val JavaClassKey = "java_class"
+    val KeySet = Set(LanguageKey, ScriptKey, JavaClassKey)
+  }
+  private object monitor {
+    val NameKey = "name"
+    val OrderingKey = "ordering"
+    val KeySet = module.KeySet ++ Set(NameKey, OrderingKey)
+  }
+  private val MonitorPrefix = "monitor."
+  private val KeySet = Set(EnvironmentKey, HasOrderKey, JobKey,
+    ShellVariablePrefixKey, StderrLogLevelKey, TaskIdKey) ++
+    module.KeySet ++
+    (monitor.KeySet map { o ⇒ s"$MonitorPrefix$o" })
   private val IsLegacyKeyValue = Set(
     "com_class" → "",
     "filename" → "",
@@ -95,25 +119,5 @@ object TaskArguments {
       }
     }
     new TaskArguments(buffer.toList)
-  }
-
-  private def splitMonitorArguments(args: List[(String, String)]): List[MonitorArguments] =
-    // For every monitor definition, "monitor.script" is the last argument
-    args indexWhere { _._1 == MonitorScriptKey } match {
-      case -1 ⇒ Nil
-      case scriptIndex ⇒
-        val (head, tail) = args splitAt scriptIndex + 1
-        new MonitorArguments(head.toMap) :: splitMonitorArguments(tail)
-    }
-
-  private class MonitorArguments(argMap: Map[String, String]) {
-    def javaClassNameOption = argMap.get(MonitorJavaClassKey)
-    def moduleLanguage = ModuleLanguage(argMap(MonitorLanguageKey))
-    def name = argMap.getOrElse(MonitorNameKey, "")
-    def ordering = argMap.as[Int](MonitorOrderingKey, default = Monitor.DefaultOrdering)
-    def script = javaClassNameOption match {
-      case None | Some("") ⇒ Script.parseXmlString(argMap(MonitorScriptKey))
-      case Some(o) ⇒ new Script("")
-    }
   }
 }

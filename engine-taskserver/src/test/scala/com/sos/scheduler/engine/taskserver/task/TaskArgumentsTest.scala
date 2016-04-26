@@ -3,9 +3,9 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.types.VariantArray
-import com.sos.scheduler.engine.taskserver.module.javamodule.StandardJavaModule
-import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{ModuleLanguage, Script}
+import com.sos.scheduler.engine.taskserver.module.ModuleArguments.{JavaModuleArguments, ShellModuleArguments}
+import com.sos.scheduler.engine.taskserver.module.Script
+import java.nio.file.Paths
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -16,6 +16,10 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class TaskArgumentsTest extends FreeSpec {
 
+  private val scriptXml = <source><source_part linenr="1">PART-A
+</source_part><source_part linenr="2">PART-B</source_part></source>
+  private val scriptText = "PART-A\nPART-B"
+
   "jobName" in {
     assert(taskArguments("job=JOBNAME").jobName == "JOBNAME")
   }
@@ -24,13 +28,14 @@ final class TaskArgumentsTest extends FreeSpec {
     assert(taskArguments("task_id=123").taskId == TaskId(123))
   }
 
-  "moduleLanguage" in {
-    assert(taskArguments("language=shell").moduleLanguage == ModuleLanguage("shell"))
+  "language=shell" in {
+    assert(taskArguments("language=shell", s"script=$scriptXml").moduleArguments ==
+      ShellModuleArguments(Script(scriptText)))
   }
 
-  "script" in {
-    assert(taskArguments("script=" + <source><source_part linenr="1">PART-A
-</source_part><source_part linenr="2">PART-B</source_part></source>).script == Script("PART-A\nPART-B"))
+  "language=java" in {
+    assert(taskArguments("language=java", "java_class=com.example.Test").moduleArguments ==
+      JavaModuleArguments("com.example.Test"))
   }
 
   "hasOrder" in {
@@ -41,12 +46,8 @@ final class TaskArgumentsTest extends FreeSpec {
     assert(taskArguments("environment=" + <sos.spooler.variable_set><variable name="A" value="a"/></sos.spooler.variable_set>).environment == Map("A" → "a"))
   }
 
-  "javaClassNameOption" in {
-    assert(taskArguments("java_class=com.example.Test").javaClassNameOption == Some("com.example.Test"))
-  }
-
   "stderr_log_level" in {
-    assert(taskArguments(Nil).stderrLogLevel contains SchedulerLogLevel.info)
+    assert(taskArguments().stderrLogLevel contains SchedulerLogLevel.info)
     assert(taskArguments("stderr_log_level=2").stderrLogLevel contains SchedulerLogLevel.error)
   }
 
@@ -66,6 +67,7 @@ final class TaskArgumentsTest extends FreeSpec {
     assert(a.monitors.size == 3)
     assert(a.monitors(0).name == "")
     assert(a.monitors(0).ordering == 1)
+    assert(a.monitors(0).moduleArguments == JavaModuleArguments("com.example.B"))
     assert(a.monitors(1).name == "")
     assert(a.monitors(1).ordering == 1)
     assert(a.monitors(2).name == "MONITOR-NAME")
@@ -77,7 +79,7 @@ final class TaskArgumentsTest extends FreeSpec {
       "language=shell",
       "script=" + <source><source_part linenr="100">PART-A
 </source_part><source_part linenr="200">PART-B</source_part></source>)))
-    assert(a.module == ShellModule(Script("PART-A\nPART-B")))
+    assert(a.moduleArguments == ShellModuleArguments(Script("PART-A\nPART-B")))
   }
 
   "module (Java)" in {
@@ -85,10 +87,8 @@ final class TaskArgumentsTest extends FreeSpec {
       "language=java",
       "script=<source/>",
       "java_class=com.example.Job")))
-    assert(a.module == StandardJavaModule("com.example.Job"))
+    assert(a.moduleArguments == JavaModuleArguments(className = "com.example.Job"))
   }
 
-  private def taskArguments(argument: String): TaskArguments = taskArguments(Vector(argument))
-
-  private def taskArguments(arguments: Iterable[String]) = TaskArguments(VariantArray(arguments.toIndexedSeq))
+  private def taskArguments(arguments: String*) = TaskArguments(VariantArray(arguments.toIndexedSeq))
 }

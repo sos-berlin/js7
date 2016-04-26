@@ -1,17 +1,17 @@
 package com.sos.scheduler.engine.taskserver.module.javamodule
 
+import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule._
-import com.sos.scheduler.engine.taskserver.module.{Module, NamedInvocables}
 
 /**
- * @author Joacim Zschimmer
- */
-trait JavaModule extends Module {
+  * @author Joacim Zschimmer
+  */
+trait JavaModule extends ApiModule {
 
-  def newJobInstance(): sos.spooler.Job_impl
-  def newMonitorInstance(): sos.spooler.Monitor_impl
+  protected def newJobInstance(): sos.spooler.Job_impl
+  protected def newMonitorInstance(): sos.spooler.Monitor_impl
 
-  final def newJobInstance(namedInvocables: NamedInvocables): sos.spooler.Job_impl = {
+  final def newJobInstance(namedInvocables: NamedInvocables) = {
     val r = newJobInstance()
     r.spooler_log = spooler_log(namedInvocables)
     r.spooler_task = spooler_task(namedInvocables)
@@ -20,7 +20,7 @@ trait JavaModule extends Module {
     r
   }
 
-  final def newMonitorInstance(namedInvocables: NamedInvocables): sos.spooler.Monitor_impl = {
+  final def newMonitorInstance(namedInvocables: NamedInvocables) = {
     val r = newMonitorInstance()
     r.spooler_log = spooler_log(namedInvocables)
     r.spooler_task = spooler_task(namedInvocables)
@@ -31,8 +31,8 @@ trait JavaModule extends Module {
 }
 
 object JavaModule {
-  private def spooler_log(o: NamedInvocables) = new sos.spooler.Log(JavaInvoker(o.spoolerLog))
-  private def spooler_task(o: NamedInvocables) = new sos.spooler.Task(JavaInvoker(o.spoolerTask))
-  private def spooler_job(o: NamedInvocables) = new sos.spooler.Job(JavaInvoker(o.spoolerJob))
-  private def spooler(o: NamedInvocables) = new sos.spooler.Spooler(JavaInvoker(o.spooler))
+  private[module] def spooler_log(o: NamedInvocables) = new sos.spooler.Log(JavaInvoker(o.spoolerLog))
+  private[module] def spooler_task(o: NamedInvocables) = new sos.spooler.Task(JavaInvoker(o.spoolerTask))
+  private[module] def spooler_job(o: NamedInvocables) = new sos.spooler.Job(JavaInvoker(o.spoolerJob))
+  private[module] def spooler(o: NamedInvocables) = new sos.spooler.Spooler(JavaInvoker(o.spooler))
 }

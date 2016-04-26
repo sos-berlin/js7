@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.module
 
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.base.generic.IsString
 
 /**
@@ -8,14 +9,22 @@ import com.sos.scheduler.engine.base.generic.IsString
 sealed trait ModuleLanguage extends IsString
 
 object ModuleLanguage {
-  private val ScriptPrefixes = Set("java:", "javax.script:")
+  private val JavaScriptingEnginePrefixes = Set("java:", "javax.script:")
+  private val SimplyNamedLanguages = List(
+    ShellModuleLanguage,
+    JavaModuleLanguage)
 
-  def apply(language: String): ModuleLanguage =
-    language.toLowerCase match {
-      case ShellModuleLanguage.string ⇒ ShellModuleLanguage
-      case JavaModuleLanguage.string ⇒ JavaModuleLanguage
-      case _ if ScriptPrefixes exists language.startsWith ⇒ new JavaScriptModuleLanguage(language)
-      case _ ⇒ OtherModuleLanguage(language)
+  private val SimpleNameToModuleLanguage: Map[String, ModuleLanguage] = SimplyNamedLanguages toKeyedMap { _.string.toLowerCase }
+
+  def apply(language: String): ModuleLanguage = {
+    val normalized = language.toLowerCase
+    SimpleNameToModuleLanguage.getOrElse(normalized, complexlyNamedToModuleLanguage(normalized))
+  }
+
+  private def complexlyNamedToModuleLanguage(language: String) =
+    language match {
+      case _ if JavaScriptingEnginePrefixes exists language.startsWith ⇒ new JavaScriptModuleLanguage(language)
+      case _ ⇒ throw new IllegalArgumentException(s"Unknown language='$language'")
     }
 }
 
@@ -28,7 +37,5 @@ case object JavaModuleLanguage extends ModuleLanguage {
 }
 
 final case class JavaScriptModuleLanguage(languageName: String) extends ModuleLanguage {
-  def string = languageName
+  val string = languageName
 }
-
-final case class OtherModuleLanguage(string: String) extends ModuleLanguage

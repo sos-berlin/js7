@@ -1,18 +1,13 @@
 package com.sos.scheduler.engine.taskserver.module.javamodule
 
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
-import com.sos.scheduler.engine.taskserver.module.JavaModuleLanguage
+import com.sos.scheduler.engine.taskserver.module.ModuleArguments.JavaModuleArguments
 
 /**
  * @author Joacim Zschimmer
  */
-final case class StandardJavaModule(className: String) extends JavaModule {
+final class StandardJavaModule(val arguments: JavaModuleArguments) extends JavaClassModule {
 
-  def moduleLanguage = JavaModuleLanguage
+  private lazy val clazz = Class.forName(arguments.className)
 
-  def newJobInstance() = cast[sos.spooler.Job_impl](newInstance())
-
-  def newMonitorInstance() = cast[sos.spooler.Monitor_impl](newInstance())
-
-  private def newInstance() = Class.forName(className).newInstance()
+  protected def newInstance() = clazz.newInstance()
 }

@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.common.process.Processes
 import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
@@ -13,9 +12,9 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables
-import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
+import com.sos.scheduler.engine.taskserver.module.javamodule.ApiModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.module.{ModuleFactory, NamedInvocables}
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
@@ -26,6 +25,7 @@ import scala.concurrent.{ExecutionContext, Future}
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
 final class RemoteModuleInstanceServer @Inject private(
+  moduleFactory: ModuleFactory,
   taskStartArguments: TaskStartArguments,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   taskServerMainTerminatedOption: Option[Future[Unit]])
@@ -61,9 +61,9 @@ extends HasCloser with Invocable {
       taskArguments.monitors,
       hasOrder = taskArguments.hasOrder,
       stdFiles)
-    val task = taskArguments.module match {
+    val task = moduleFactory(taskArguments.moduleArguments) match {
       case module: ShellModule ⇒
-        new ShellProcessTask(module, commonArguments,
+        new ShellProcessTask(moduleFactory, module, commonArguments,
           environment = taskStartArguments.environment ++ taskArguments.environment,
           variablePrefix = taskArguments.shellVariablePrefix,
           logDirectory = taskStartArguments.logDirectory,
@@ -71,8 +71,8 @@ extends HasCloser with Invocable {
           killScriptOption = taskStartArguments.killScriptOption,
           synchronizedStartProcess,
           taskServerMainTerminatedOption = taskServerMainTerminatedOption)
-      case module: JavaModule ⇒
-        new JavaProcessTask(module, commonArguments)
+      case module: ApiModule ⇒
+        new ApiProcessTask(moduleFactory, module, commonArguments)
     }
     closer.registerAutoCloseable(task)
     taskOnce := task
