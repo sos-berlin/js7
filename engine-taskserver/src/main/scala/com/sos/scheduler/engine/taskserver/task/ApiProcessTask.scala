@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.taskserver.module.ModuleFactory
 import com.sos.scheduler.engine.taskserver.module.javamodule.ApiModule
 import com.sos.scheduler.engine.taskserver.task.ApiProcessTask._
 import scala.collection.mutable
@@ -18,13 +17,13 @@ import scala.util.control.NonFatal
  *
  * @author Joacim Zschimmer
  */
-private[task] final class ApiProcessTask(moduleFactory: ModuleFactory, module: ApiModule, protected val commonArguments: CommonArguments)
+private[task] final class ApiProcessTask(module: ApiModule, protected val commonArguments: CommonArguments)
 extends Task with HasCloser {
 
   import commonArguments.{jobName, monitors, namedInvocables, stdFiles}
   import namedInvocables.spoolerTask
 
-  private val monitorProcessor = MonitorProcessor.create(moduleFactory, monitors, namedInvocables).closeWithCloser
+  private val monitorProcessor = MonitorProcessor.create(monitors, namedInvocables).closeWithCloser
   private val instance: sos.spooler.Job_impl = module.newJobInstance(namedInvocables)
   private val methodIsCalled = mutable.Set[String]()
   private val concurrentStdoutStderrWell = stdFiles.nonEmpty option new ConcurrentStdoutAndStderrWell(s"Job $jobName", stdFiles).closeWithCloser

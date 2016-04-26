@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.taskserver.module.javamodule.ApiModule
-import com.sos.scheduler.engine.taskserver.module.{ModuleFactory, NamedInvocables}
+import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, NamedInvocables}
 import com.sos.scheduler.engine.taskserver.spoolerapi.SpoolerLog
 import scala.util.control.NonFatal
 
@@ -32,12 +32,12 @@ extends HasCloser {
 }
 
 object MonitorProcessor {
-  def create(moduleFactory: ModuleFactory, monitors: Seq[Monitor], namedInvocables: NamedInvocables) = {
-    def newMonitorInstance(monitor: Monitor): sos.spooler.Monitor_impl =
-      moduleFactory(monitor.moduleArguments) match {
+  def create(monitors: Seq[Monitor], namedInvocables: NamedInvocables) = {
+    def newMonitorInstance(args: ModuleArguments): sos.spooler.Monitor_impl =
+      args.newModule() match {
         case module: ApiModule ⇒ module.newMonitorInstance(namedInvocables)
-        case module ⇒ throw new IllegalArgumentException(s"Unsupported language '${module.language}' for a monitor ($module)")
+        case module ⇒ throw new IllegalArgumentException(s"Unsupported module class '${module.getClass.getSimpleName}' for a monitor")
       }
-    new MonitorProcessor(monitors.toVector map newMonitorInstance, namedInvocables.spoolerLog)
+    new MonitorProcessor(monitors.toVector map { o ⇒ newMonitorInstance(o.moduleArguments) }, namedInvocables.spoolerLog)
   }
 }

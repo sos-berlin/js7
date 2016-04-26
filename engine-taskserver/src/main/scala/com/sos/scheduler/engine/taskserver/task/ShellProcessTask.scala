@@ -11,7 +11,6 @@ import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
-import com.sos.scheduler.engine.taskserver.module.ModuleFactory
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
@@ -28,7 +27,6 @@ import scala.concurrent.{Await, ExecutionContext, Future}
   * @see spooler_module_process.cxx, C++ class Process_module_instance
  */
 private[task] final class ShellProcessTask(
-  moduleFactory: ModuleFactory,
   module: ShellModule,
   protected val commonArguments: CommonArguments,
   environment: Map[String, String],
@@ -44,7 +42,7 @@ extends HasCloser with Task {
   import commonArguments.{agentTaskId, hasOrder, jobName, monitors, namedInvocables, stdFiles}
   import namedInvocables.spoolerTask
 
-  private val monitorProcessor = MonitorProcessor.create(moduleFactory, monitors, namedInvocables).closeWithCloser
+  private val monitorProcessor = MonitorProcessor.create(monitors, namedInvocables).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
   private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, id = logFilenamePart) else Map[StdoutStderrType, Path]()
   private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",

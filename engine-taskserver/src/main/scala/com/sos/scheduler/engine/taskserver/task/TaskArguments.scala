@@ -23,16 +23,16 @@ final class TaskArguments private(arguments: List[(String, String)]) {
     case Some(o) ⇒ throw new IllegalArgumentException(s"Invalid agent argument: $HasOrderKey=$o")
     case None ⇒ false
   }
-  lazy val moduleArguments = extractModuleArguments(arguments)
+  lazy val rawModuleArguments = extractRawModuleArguments(arguments)
   lazy val jobName: String = apply(JobKey)
   lazy val shellVariablePrefix: String = get(ShellVariablePrefixKey) getOrElse DefaultShellVariablePrefix
   lazy val stderrLogLevel: SchedulerLogLevel = get(StderrLogLevelKey) map { o ⇒ SchedulerLogLevel.ofCpp(o.toInt) } getOrElse SchedulerLogLevel.info
   lazy val taskId: TaskId = TaskId(apply(TaskIdKey).toInt)
-  lazy val monitors: immutable.Seq[Monitor] = {
+  lazy val rawMonitorArguments: immutable.Seq[RawMonitorArguments] = {
     val unordered =
       for (m ← splitMonitorArguments(arguments collect { case (k, v) if k startsWith MonitorPrefix ⇒ (k stripPrefix MonitorPrefix) → v }))
-      yield Monitor(m.moduleArguments, name = m.name, ordering = m.ordering)
-    stableSort(unordered, { o: Monitor ⇒ o.ordering }).toVector
+      yield RawMonitorArguments(m.rawModuleArguments, name = m.name, ordering = m.ordering)
+    stableSort(unordered, { o: RawMonitorArguments ⇒ o.ordering }).toVector
   }
 
   private def apply(name: String) = get(name) getOrElse { throw new NoSuchElementException(s"Agent argument '$name' not given") }
@@ -51,13 +51,13 @@ final class TaskArguments private(arguments: List[(String, String)]) {
   private class MonitorArguments(argMap: Map[String, String]) {
     def name = argMap.getOrElse(monitor.NameKey, "")
     val ordering = argMap.as[Int](monitor.OrderingKey, Monitor.DefaultOrdering)
-    val moduleArguments = extractModuleArguments(argMap)
+    val rawModuleArguments = extractRawModuleArguments(argMap)
   }
 
-  private def extractModuleArguments(args: Iterable[(String, String)]) = {
+  private def extractRawModuleArguments(args: Iterable[(String, String)]) = {
     val argMap = args.toMap
     val javaClassNameOption = argMap.get(module.JavaClassKey) filter { _.nonEmpty }
-    ModuleArguments(
+    RawModuleArguments(
       language = ModuleLanguage(argMap(module.LanguageKey)),
       javaClassNameOption = javaClassNameOption,
       script = argMap.getOrElse(module.ScriptKey, "") match {

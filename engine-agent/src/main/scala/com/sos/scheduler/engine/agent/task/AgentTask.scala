@@ -8,11 +8,9 @@ import com.sos.scheduler.engine.base.utils.HasKey
 import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.common.scalautil.Closers._
 import com.sos.scheduler.engine.taskserver.TaskServer
-import com.sos.scheduler.engine.taskserver.module.ModuleArguments.JavaModuleArguments
 import com.sos.scheduler.engine.taskserver.task.TaskArguments
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.time.Instant
-import scala.PartialFunction.condOpt
 import scala.concurrent.Future
 import scala.util.Success
 
@@ -64,9 +62,9 @@ with HasKey {
     arguments = taskArgumentsFuture.value collect {
       case Success(a) ⇒
         TaskOverview.Arguments(
-          language = a.moduleArguments.language.string,
-          javaClassName = condOpt(a.moduleArguments) { case o: JavaModuleArguments ⇒ o.className },
-          monitorCount = a.monitors.size)
+          language = a.rawModuleArguments.language.string,
+          javaClassName = a.rawModuleArguments.javaClassNameOption,
+          monitorCount = a.rawMonitorArguments.size)
     })
 
   private[task] final def tunnelToken = tunnel.tunnelToken

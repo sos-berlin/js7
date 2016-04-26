@@ -14,7 +14,7 @@ import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.module.javamodule.ApiModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{ModuleFactory, NamedInvocables}
+import com.sos.scheduler.engine.taskserver.module.{ModuleRegister, NamedInvocables}
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
@@ -25,7 +25,7 @@ import scala.concurrent.{ExecutionContext, Future}
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
 final class RemoteModuleInstanceServer @Inject private(
-  moduleFactory: ModuleFactory,
+  moduleRegister: ModuleRegister,
   taskStartArguments: TaskStartArguments,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   taskServerMainTerminatedOption: Option[Future[Unit]])
@@ -58,12 +58,12 @@ extends HasCloser with Invocable {
       taskStartArguments.agentTaskId,
       jobName = taskArguments.jobName,
       namedInvocables,
-      taskArguments.monitors,
+      taskArguments.rawMonitorArguments map { o ⇒ Monitor(moduleRegister.toModuleArguments(o.rawModuleArguments), o.name, o.ordering) },
       hasOrder = taskArguments.hasOrder,
       stdFiles)
-    val task = moduleFactory(taskArguments.moduleArguments) match {
+    val task = moduleRegister.newModule(taskArguments.rawModuleArguments) match {
       case module: ShellModule ⇒
-        new ShellProcessTask(moduleFactory, module, commonArguments,
+        new ShellProcessTask(module, commonArguments,
           environment = taskStartArguments.environment ++ taskArguments.environment,
           variablePrefix = taskArguments.shellVariablePrefix,
           logDirectory = taskStartArguments.logDirectory,
@@ -72,7 +72,7 @@ extends HasCloser with Invocable {
           synchronizedStartProcess,
           taskServerMainTerminatedOption = taskServerMainTerminatedOption)
       case module: ApiModule ⇒
-        new ApiProcessTask(moduleFactory, module, commonArguments)
+        new ApiProcessTask(module, commonArguments)
     }
     closer.registerAutoCloseable(task)
     taskOnce := task

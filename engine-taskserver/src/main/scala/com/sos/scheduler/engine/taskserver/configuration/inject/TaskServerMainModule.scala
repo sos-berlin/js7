@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCl
 import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerMainModule._
+import com.sos.scheduler.engine.taskserver.module.ModuleRegister
 import com.typesafe.config.ConfigFactory
 import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
@@ -19,6 +20,9 @@ import scala.concurrent.ExecutionContext
 final class TaskServerMainModule extends ScalaAbstractModule {
 
   def configure() = {}
+
+  @Provides @Singleton
+  private def moduleRegister(): ModuleRegister = new ModuleRegister(ModuleRegister.StandardModuleTypes)
 
   @Provides @Singleton
   private def executionContext(o: ActorSystem): ExecutionContext = o.dispatcher

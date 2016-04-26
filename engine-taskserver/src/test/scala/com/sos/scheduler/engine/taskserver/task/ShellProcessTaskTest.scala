@@ -16,11 +16,10 @@ import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, PublicMethodsAreInvocable}
-import com.sos.scheduler.engine.taskserver.module.ModuleArguments.{ShellModuleArguments, TestJavaModuleArguments}
 import com.sos.scheduler.engine.taskserver.module.NamedInvocables.{SpoolerJobName, SpoolerLogName, SpoolerName, SpoolerTaskName}
-import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
+import com.sos.scheduler.engine.taskserver.module.javamodule.TestJavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{JavaModuleLanguage, ModuleFactory, NamedInvocables, Script}
+import com.sos.scheduler.engine.taskserver.module.{NamedInvocables, Script}
 import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTaskTest._
 import org.junit.runner.RunWith
@@ -96,8 +95,7 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
 
   private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) =
     new ShellProcessTask(
-      ModuleFactory.PureJavaOnly,
-      new ShellModule(ShellModuleArguments(testScript(setting.exitCode))),
+      new ShellModule(ShellModule.Arguments(testScript(setting.exitCode))),
       CommonArguments(
         AgentTaskId("1-1"),
         jobName = "TEST-JOB",
@@ -107,8 +105,8 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
           SpoolerJobName → DummyInvocable,
           SpoolerName → DummyInvocable)),
         monitors = List(
-          Monitor(new TestJavaModuleArguments[TestMonitor](() ⇒ new TestMonitor("A", setting)), name = "Monitor A"),
-          Monitor(new TestJavaModuleArguments[TestMonitor](() ⇒ new TestMonitor("B", setting)), name = "Monitor B")),
+          Monitor(TestJavaModule.arguments { new TestMonitor("A", setting) }, name = "Monitor A"),
+          Monitor(TestJavaModule.arguments { new TestMonitor("B", setting) }, name = "Monitor B")),
         hasOrder = false,
         stdFiles = StdFiles(stdFileMap = Map(), stderrLogLevel = SchedulerLogLevel.info, log = (_, lines) ⇒ spoolerLog.info(lines))),
       environment = Map(TestName → TestValue),
@@ -160,11 +158,6 @@ private object ShellProcessTaskTest {
     s"A $PreStepMessage", s"B $PreStepMessage",
     s"B $PostStepMessage", s"A $PostStepMessage",
     s"B $PostTaskMessage", s"A $PostTaskMessage")
-
-  private trait TestModule extends JavaModule {
-    def moduleLanguage = JavaModuleLanguage
-    protected def newJobInstance() = throw new NotImplementedError
-  }
 
   private class TestMonitor(name: String, setting: Setting) extends sos.spooler.Monitor_impl {
     override def spooler_task_before: Boolean = {

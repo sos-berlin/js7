@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver.module.javamodule
 
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables
 import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule._
+import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, NamedInvocables}
 
 /**
   * @author Joacim Zschimmer
@@ -35,4 +35,6 @@ object JavaModule {
   private[module] def spooler_task(o: NamedInvocables) = new sos.spooler.Task(JavaInvoker(o.spoolerTask))
   private[module] def spooler_job(o: NamedInvocables) = new sos.spooler.Job(JavaInvoker(o.spoolerJob))
   private[module] def spooler(o: NamedInvocables) = new sos.spooler.Spooler(JavaInvoker(o.spooler))
+
+  trait Arguments extends ModuleArguments
 }

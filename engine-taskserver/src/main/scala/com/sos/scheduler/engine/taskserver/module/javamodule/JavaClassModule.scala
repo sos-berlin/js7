@@ -3,8 +3,10 @@ package com.sos.scheduler.engine.taskserver.module.javamodule
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 
 /**
- * @author Joacim Zschimmer
- */
+  * For a Java class which may be a [[sos.spooler.Job_impl]] or [[sos.spooler.Monitor_impl]].
+  *
+  * @author Joacim Zschimmer
+  */
 trait JavaClassModule extends JavaModule {
 
   protected def newInstance(): Any

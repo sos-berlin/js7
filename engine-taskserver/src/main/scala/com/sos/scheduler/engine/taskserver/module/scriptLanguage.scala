@@ -1,12 +1,12 @@
 package com.sos.scheduler.engine.taskserver.module
 
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 
 /**
  * @author Joacim Zschimmer
  */
-sealed trait ModuleLanguage extends IsString
+trait ModuleLanguage extends IsString
 
 object ModuleLanguage {
   private val JavaScriptingEnginePrefixes = Set("java:", "javax.script:")
