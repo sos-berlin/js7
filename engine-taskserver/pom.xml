@@ -10,8 +10,8 @@
     </parent>
     
     <name>${project.artifactId}</name>
-    <inceptionYear>2012</inceptionYear>
-    <description>Data classes of the JobScheduler Engine</description>
+    <inceptionYear>2015</inceptionYear>
+    <description>Agent's Task Server</description>
     <organization>
         <name>SOS Software GmbH, Berlin</name>
         <url>http://www.sos-berlin.com</url>
