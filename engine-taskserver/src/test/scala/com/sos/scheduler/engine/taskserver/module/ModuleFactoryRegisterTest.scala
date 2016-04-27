@@ -36,10 +36,8 @@ final class ModuleFactoryRegisterTest extends FreeSpec {
   }
 }
 
-object ModuleFactoryRegisterTest {
-  private object TestModuleLanguage extends ModuleLanguage {
-    def string = "TEST"
-  }
+private object ModuleFactoryRegisterTest {
+  private val TestModuleLanguage = ModuleLanguage("test")
 
   private case class AModule(arguments: AModule.Arguments) extends Module
 

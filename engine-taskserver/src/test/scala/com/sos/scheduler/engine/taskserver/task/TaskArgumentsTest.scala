@@ -90,7 +90,7 @@ final class TaskArgumentsTest extends FreeSpec {
     assert(a.rawMonitorArguments(1).ordering == 1)
     assert(moduleFactoryRegister.toModuleArguments(a.rawMonitorArguments(1).rawModuleArguments) == DotnetModule.Arguments(
       dotnetModuleType,
-      DotnetModuleReference.DotnetClass(Paths.get("/test-dlls/test.dll"), className = "com.example.C")))
+      DotnetModuleReference.DotnetClass(Paths.get("test.dll"), className = "com.example.C")))
     assert(a.rawMonitorArguments(2).name == "MONITOR-NAME")
     assert(a.rawMonitorArguments(2).ordering == 7)
   }
