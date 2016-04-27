@@ -28,7 +28,7 @@ final class TaskServerMainModule extends ScalaAbstractModule {
     new ModuleRegister(ModuleRegister.StandardModuleTypes :+ dotnetModuleType)
 
   @Provides @Singleton
-  private def dotnetModuleType(factory: DotnetModuleInstanceFactory): DotnetModule = new DotnetModule(factory)
+  private def dotnetModuleType(factory: DotnetModuleInstanceFactory): DotnetModule.Type = new DotnetModule.Type(factory)
 
   @Provides @Singleton
   private def executionContext(o: ActorSystem): ExecutionContext = o.dispatcher
