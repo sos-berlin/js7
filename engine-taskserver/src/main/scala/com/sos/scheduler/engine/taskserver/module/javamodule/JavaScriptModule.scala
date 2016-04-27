@@ -17,7 +17,7 @@ final case class JavaScriptModule(val arguments: JavaScriptModule.Arguments) ext
 
 object JavaScriptModule extends ModuleType {
   def toModuleArguments = {
-    case args @ RawModuleArguments(JavaScriptModuleLanguage(scriptLanguage), javaClassNameOption, script) ⇒
+    case args @ RawModuleArguments(JavaScriptModuleLanguage(scriptLanguage), javaClassNameOption, script, None, None) ⇒
       args.requireUnused("java_class", javaClassNameOption)
       Arguments(scriptLanguage, script)
   }

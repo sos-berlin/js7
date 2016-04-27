@@ -11,7 +11,7 @@ final case class ShellModule(arguments: ShellModule.Arguments) extends Module {
 
 object ShellModule extends ModuleType {
   def toModuleArguments = {
-    case args @ RawModuleArguments(ShellModuleLanguage, javaClassNameOption, script) ⇒
+    case args @ RawModuleArguments(ShellModuleLanguage, javaClassNameOption, script, None, None) ⇒
       args.requireUnused("java_class", javaClassNameOption)
       Arguments(script)
   }

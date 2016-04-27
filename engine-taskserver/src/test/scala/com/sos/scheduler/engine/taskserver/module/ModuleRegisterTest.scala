@@ -13,13 +13,13 @@ import org.scalatest.junit.JUnitRunner
 final class ModuleRegisterTest extends FreeSpec {
 
   "Non matching" in {
-    val raw = RawModuleArguments(TestModuleLanguage, None, Script("ALIEN"))
+    val raw = RawModuleArguments(TestModuleLanguage, None, Script("ALIEN"), None, None)
     intercept[UnsupportedRawModuleArgumentsException] { TestModuleRegister.moduleType(raw) }
   }
 
   "Matching AModule" in {
     val script = Script("TEST-A")
-    val raw = RawModuleArguments(TestModuleLanguage, None, script)
+    val raw = RawModuleArguments(TestModuleLanguage, None, script, None, None)
     val args = AModule.Arguments(script)
     assert(TestModuleRegister.moduleType(raw) == AModule)
     assert(TestModuleRegister.toModuleArguments(raw) == args)
@@ -28,7 +28,7 @@ final class ModuleRegisterTest extends FreeSpec {
 
   "Matching BModule" in {
     val script = Script("TEST-B")
-    val raw = RawModuleArguments(TestModuleLanguage, None, script)
+    val raw = RawModuleArguments(TestModuleLanguage, None, script, None, None)
     val args = BModule.Arguments(script)
     assert(TestModuleRegister.moduleType(raw) == BModule)
     assert(TestModuleRegister.toModuleArguments(raw) == args)
@@ -46,7 +46,7 @@ object ModuleRegisterTest {
 
   private object AModule extends ModuleType {
     def toModuleArguments = {
-      case RawModuleArguments(TestModuleLanguage, None, script) if script.string startsWith "TEST-A" ⇒ Arguments(script)
+      case RawModuleArguments(TestModuleLanguage, None, script, None, None) if script.string startsWith "TEST-A" ⇒ Arguments(script)
     }
 
     def newModule(arguments: ModuleArguments) = AModule(arguments.asInstanceOf[Arguments])
@@ -58,7 +58,7 @@ object ModuleRegisterTest {
 
   private object BModule extends ModuleType {
     def toModuleArguments = {
-      case RawModuleArguments(TestModuleLanguage, None, script) if script.string startsWith "TEST-B" ⇒ Arguments(script)
+      case RawModuleArguments(TestModuleLanguage, None, script, None, None) if script.string startsWith "TEST-B" ⇒ Arguments(script)
     }
 
     def newModule(arguments: ModuleArguments) = BModule(arguments.asInstanceOf[Arguments])

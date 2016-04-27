@@ -14,7 +14,7 @@ final case class StandardJavaModule(arguments: StandardJavaModule.Arguments) ext
 
 object StandardJavaModule extends ModuleType {
   def toModuleArguments = {
-    case args @ RawModuleArguments(JavaModuleLanguage, javaClassNameOption, script) ⇒
+    case args @ RawModuleArguments(JavaModuleLanguage, javaClassNameOption, script, None, None) ⇒
       new Arguments(
         className = javaClassNameOption getOrElse { throw new IllegalArgumentException(s"language='$language' requires a class name") } )
   }
