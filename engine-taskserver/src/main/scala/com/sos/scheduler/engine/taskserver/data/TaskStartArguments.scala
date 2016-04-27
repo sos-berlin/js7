@@ -26,6 +26,7 @@ final case class TaskStartArguments(
   environment: Map[String, String] = Map(),
   directory: Path,
   logDirectory: Path,
+  dotnetDllDirectory: Option[Path] = None,
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
   logStdoutAndStderr: Boolean = false,
   killScriptOption: Option[ProcessKillScript] = None,
@@ -57,5 +58,5 @@ object TaskStartArguments {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }
 
-  implicit val MyJsonFormat = jsonFormat11(apply)
+  implicit val MyJsonFormat = jsonFormat12(apply)
 }
