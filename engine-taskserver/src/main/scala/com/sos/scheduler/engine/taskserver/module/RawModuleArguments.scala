@@ -13,7 +13,4 @@ final case class RawModuleArguments(
   script: Script = Script.Empty,
   dllOption: Option[Path],
   dotnetClassNameOption: Option[String]) {
-
-  def requireUnused[A](name: String, option: Option[A]) =
-    for (o ← option) throw new IllegalArgumentException(s"language='$language' conflicts with parameter $name='$o'")
 }
