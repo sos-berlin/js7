@@ -21,7 +21,7 @@ import scala.concurrent.ExecutionContext
 /**
  * @author Joacim Zschimmer
  */
-final class TaskServerMainModule(dotnetDllDirectory: Option[Path] = None) extends AbstractModule {
+final class TaskServerMainModule(dotnetAdapterDllDirectory: Option[Path] = None) extends AbstractModule {
 
   def configure() = {}
 
@@ -31,7 +31,7 @@ final class TaskServerMainModule(dotnetDllDirectory: Option[Path] = None) extend
 
   @Provides @Singleton
   private def dotnetModuleType(): DotnetModule.Factory = {
-    val factory = dotnetDllDirectory match {
+    val factory = dotnetAdapterDllDirectory match {
       case Some(dir) if isWindows ⇒ new Jni4netModuleInstanceFactory(dir)
       case _ ⇒ DotnetModuleInstanceFactory.Unsupported
     }
