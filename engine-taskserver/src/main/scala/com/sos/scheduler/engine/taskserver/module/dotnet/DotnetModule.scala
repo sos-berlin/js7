@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.taskserver.module.dotnet
 
-import com.sos.scheduler.engine.taskserver.dotnet.api.{TaskContext, DotnetModuleReference, DotnetModuleInstanceFactory}
+import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
 import com.sos.scheduler.engine.taskserver.module.javamodule.{ApiModule, JavaModule}
-import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, ModuleLanguage, ModuleType, NamedInvocables, RawModuleArguments, Script}
+import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, ModuleFactory, ModuleLanguage, NamedInvocables, RawModuleArguments, Script}
 
 /**
   * @author Joacim Zschimmer
@@ -29,7 +29,7 @@ object DotnetModule {
     val string = "PowerShell"
   }
 
-  final class Type(factory: DotnetModuleInstanceFactory) extends ModuleType {
+  final class Factory(factory: DotnetModuleInstanceFactory) extends ModuleFactory {
     def toModuleArguments: PartialFunction[RawModuleArguments, ModuleArguments] = {
       case RawModuleArguments(PowershellModuleLanguage, None, script, None, None) ⇒
         Arguments(this, DotnetModuleReference.Powershell(script = script.string))
@@ -48,5 +48,5 @@ object DotnetModule {
     JavaModule.spooler_job(namedInvocables),
     JavaModule.spooler(namedInvocables))
 
-  final case class Arguments(val moduleType: ModuleType, reference: DotnetModuleReference) extends ModuleArguments
+  final case class Arguments(val moduleFactory: ModuleFactory, reference: DotnetModuleReference) extends ModuleArguments
 }

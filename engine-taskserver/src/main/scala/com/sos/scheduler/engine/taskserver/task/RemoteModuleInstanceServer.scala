@@ -14,7 +14,7 @@ import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.module.javamodule.ApiModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{ModuleRegister, NamedInvocables}
+import com.sos.scheduler.engine.taskserver.module.{ModuleFactoryRegister, NamedInvocables}
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
@@ -25,7 +25,7 @@ import scala.concurrent.{ExecutionContext, Future}
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
 final class RemoteModuleInstanceServer @Inject private(
-  moduleRegister: ModuleRegister,
+  moduleFactoryRegister: ModuleFactoryRegister,
   taskStartArguments: TaskStartArguments,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   taskServerMainTerminatedOption: Option[Future[Unit]])
@@ -58,10 +58,10 @@ extends HasCloser with Invocable {
       taskStartArguments.agentTaskId,
       jobName = taskArguments.jobName,
       namedInvocables,
-      taskArguments.rawMonitorArguments map { o ⇒ Monitor(moduleRegister.toModuleArguments(o.rawModuleArguments), o.name, o.ordering) },
+      taskArguments.rawMonitorArguments map { o ⇒ Monitor(moduleFactoryRegister.toModuleArguments(o.rawModuleArguments), o.name, o.ordering) },
       hasOrder = taskArguments.hasOrder,
       stdFiles)
-    val task = moduleRegister.newModule(taskArguments.rawModuleArguments) match {
+    val task = moduleFactoryRegister.newModule(taskArguments.rawModuleArguments) match {
       case module: ShellModule ⇒
         new ShellProcessTask(module, commonArguments,
           environment = taskStartArguments.environment ++ taskArguments.environment,

@@ -5,7 +5,7 @@ package com.sos.scheduler.engine.taskserver.module
   *
   * @author Joacim Zschimmer
   */
-trait ModuleType {
+trait ModuleFactory {
 
   def toModuleArguments: PartialFunction[RawModuleArguments, ModuleArguments]
 

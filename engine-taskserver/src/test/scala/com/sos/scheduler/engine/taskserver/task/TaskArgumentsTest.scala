@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFacto
 import com.sos.scheduler.engine.taskserver.module.dotnet.DotnetModule
 import com.sos.scheduler.engine.taskserver.module.javamodule.StandardJavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{ModuleRegister, Script}
+import com.sos.scheduler.engine.taskserver.module.{ModuleFactoryRegister, Script}
 import java.nio.file.Paths
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -22,11 +22,11 @@ final class TaskArgumentsTest extends FreeSpec {
   private val scriptXml = <source><source_part linenr="1">PART-A
 </source_part><source_part linenr="2">PART-B</source_part></source>
   private val scriptText = "PART-A\nPART-B"
-  private val dotnetModuleType = new DotnetModule.Type(new DotnetModuleInstanceFactory {
+  private val dotnetModuleType = new DotnetModule.Factory(new DotnetModuleInstanceFactory {
     def newInstance[A](clazz: Class[A], taskContext: TaskContext, reference: DotnetModuleReference) = throw new NotImplementedError
     def close() = throw new NotImplementedError
   })
-  private val moduleRegister = new ModuleRegister(ModuleRegister.StandardModuleTypes :+ dotnetModuleType)
+  private val moduleFactoryRegister = new ModuleFactoryRegister(ModuleFactoryRegister.StandardModuleTypes :+ dotnetModuleType)
 
   "jobName" in {
     assert(taskArguments("job=JOBNAME").jobName == "JOBNAME")
@@ -37,22 +37,22 @@ final class TaskArgumentsTest extends FreeSpec {
   }
 
   "language=shell" in {
-    assert(moduleRegister.toModuleArguments(taskArguments("language=shell", s"script=$scriptXml").rawModuleArguments) ==
+    assert(moduleFactoryRegister.toModuleArguments(taskArguments("language=shell", s"script=$scriptXml").rawModuleArguments) ==
       ShellModule.Arguments(Script(scriptText)))
   }
 
   "language=java" in {
-    assert(moduleRegister.toModuleArguments(taskArguments("language=java", "java_class=com.example.Test").rawModuleArguments) ==
+    assert(moduleFactoryRegister.toModuleArguments(taskArguments("language=java", "java_class=com.example.Test").rawModuleArguments) ==
       new StandardJavaModule.Arguments("com.example.Test"))
   }
 
   "language=PowerShell" in {
-    assert(moduleRegister.toModuleArguments(taskArguments("language=PowerShell", s"script=$scriptXml").rawModuleArguments) ==
+    assert(moduleFactoryRegister.toModuleArguments(taskArguments("language=PowerShell", s"script=$scriptXml").rawModuleArguments) ==
       DotnetModule.Arguments(dotnetModuleType, DotnetModuleReference.Powershell(scriptText)))
   }
 
   "language=dotnet" in {
-    assert(moduleRegister.toModuleArguments(taskArguments("language=dotnet", "dll=test.dll", "dotnet_class=com.example.Test").rawModuleArguments) ==
+    assert(moduleFactoryRegister.toModuleArguments(taskArguments("language=dotnet", "dll=test.dll", "dotnet_class=com.example.Test").rawModuleArguments) ==
       DotnetModule.Arguments(dotnetModuleType, DotnetModuleReference.DotnetClass(Paths.get("test.dll"), "com.example.Test")))
   }
 
@@ -88,7 +88,7 @@ final class TaskArgumentsTest extends FreeSpec {
     assert(a.rawMonitorArguments(0).ordering == 1)
     assert(a.rawMonitorArguments(1).name == "")
     assert(a.rawMonitorArguments(1).ordering == 1)
-    assert(moduleRegister.toModuleArguments(a.rawMonitorArguments(1).rawModuleArguments) == DotnetModule.Arguments(
+    assert(moduleFactoryRegister.toModuleArguments(a.rawMonitorArguments(1).rawModuleArguments) == DotnetModule.Arguments(
       dotnetModuleType,
       DotnetModuleReference.DotnetClass(Paths.get("/test-dlls/test.dll"), className = "com.example.C")))
     assert(a.rawMonitorArguments(2).name == "MONITOR-NAME")
@@ -100,7 +100,7 @@ final class TaskArgumentsTest extends FreeSpec {
       "language=shell",
       "script=" + <source><source_part linenr="100">PART-A
 </source_part><source_part linenr="200">PART-B</source_part></source>)))
-    assert(moduleRegister.toModuleArguments(a.rawModuleArguments) == ShellModule.Arguments(Script("PART-A\nPART-B")))
+    assert(moduleFactoryRegister.toModuleArguments(a.rawModuleArguments) == ShellModule.Arguments(Script("PART-A\nPART-B")))
   }
 
   "module (Java)" in {
@@ -108,7 +108,7 @@ final class TaskArgumentsTest extends FreeSpec {
       "language=java",
       "script=<source/>",
       "java_class=com.example.Job")))
-    assert(moduleRegister.toModuleArguments(a.rawModuleArguments) == new StandardJavaModule.Arguments(className = "com.example.Job"))
+    assert(moduleFactoryRegister.toModuleArguments(a.rawModuleArguments) == new StandardJavaModule.Arguments(className = "com.example.Job"))
   }
 
   private def taskArguments(arguments: String*) = TaskArguments(VariantArray(arguments.toIndexedSeq))

@@ -4,7 +4,7 @@ package com.sos.scheduler.engine.taskserver.module
   * @author Joacim Zschimmer
   */
 trait ModuleArguments {
-  def moduleType: ModuleType
+  def moduleFactory: ModuleFactory
 
-  final def newModule(): Module = moduleType.newModule(this)
+  final def newModule(): Module = moduleFactory.newModule(this)
 }

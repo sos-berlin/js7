@@ -12,7 +12,7 @@ import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.taskserver.module.ModuleRegister
+import com.sos.scheduler.engine.taskserver.module.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider
 import javax.inject.Singleton
@@ -37,7 +37,8 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
   private def taskHandlerView(o: TaskHandler): TaskHandlerView = o
 
   @Provides @Singleton
-  private def moduleRegister(): ModuleRegister = new ModuleRegister(List(ShellModule))  // Other modules via TaskServerMain
+  private def moduleFactoryRegister(): ModuleFactoryRegister =
+    new ModuleFactoryRegister(List(ShellModule))  // Other modules via TaskServerMain
 
   @Provides @Singleton
   private def timerService(actorSystem: ActorSystem, closer: Closer): TimerService =

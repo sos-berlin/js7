@@ -1,10 +1,10 @@
 package com.sos.scheduler.engine.taskserver.module.javamodule
 
-import com.sos.scheduler.engine.taskserver.module.{JavaScriptModuleLanguage, ModuleArguments, ModuleType, RawModuleArguments, Script}
+import com.sos.scheduler.engine.taskserver.module.{JavaScriptModuleLanguage, ModuleArguments, ModuleFactory, RawModuleArguments, Script}
 import sos.spooler.jobs.{ScriptAdapterJob, ScriptAdapterMonitor}
 
 /**
- * @author Andreas Liebert
+ * @author Joacim Zschimmer
  */
 final case class JavaScriptModule(val arguments: JavaScriptModule.Arguments) extends JavaModule {
 
@@ -15,7 +15,7 @@ final case class JavaScriptModule(val arguments: JavaScriptModule.Arguments) ext
   protected def newMonitorInstance() = new ScriptAdapterMonitor(scriptLanguage, script.string)
 }
 
-object JavaScriptModule extends ModuleType {
+object JavaScriptModule extends ModuleFactory {
   def toModuleArguments = {
     case args @ RawModuleArguments(JavaScriptModuleLanguage(scriptLanguage), javaClassNameOption, script, None, None) ⇒
       args.requireUnused("java_class", javaClassNameOption)
@@ -25,6 +25,6 @@ object JavaScriptModule extends ModuleType {
   def newModule(arguments: ModuleArguments) = new JavaScriptModule(arguments.asInstanceOf[Arguments])
 
   final case class Arguments(scriptLanguage: String, script: Script) extends ModuleArguments {
-    val moduleType = JavaScriptModule
+    val moduleFactory = JavaScriptModule
   }
 }

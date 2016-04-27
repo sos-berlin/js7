@@ -10,7 +10,7 @@ import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerMainModule._
 import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleInstanceFactory
-import com.sos.scheduler.engine.taskserver.module.ModuleRegister
+import com.sos.scheduler.engine.taskserver.module.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.module.dotnet.DotnetModule
 import com.typesafe.config.ConfigFactory
 import javax.inject.Singleton
@@ -24,11 +24,11 @@ final class TaskServerMainModule extends ScalaAbstractModule {
   def configure() = {}
 
   @Provides @Singleton
-  private def moduleRegister(dotnetModuleType: DotnetModule.Type): ModuleRegister =
-    new ModuleRegister(ModuleRegister.StandardModuleTypes :+ dotnetModuleType)
+  private def moduleFactoryRegister(dotnetModuleType: DotnetModule.Factory): ModuleFactoryRegister =
+    new ModuleFactoryRegister(ModuleFactoryRegister.StandardModuleTypes :+ dotnetModuleType)
 
   @Provides @Singleton
-  private def dotnetModuleType(factory: DotnetModuleInstanceFactory): DotnetModule.Type = new DotnetModule.Type(factory)
+  private def dotnetModuleType(factory: DotnetModuleInstanceFactory): DotnetModule.Factory = new DotnetModule.Factory(factory)
 
   @Provides @Singleton
   private def executionContext(o: ActorSystem): ExecutionContext = o.dispatcher

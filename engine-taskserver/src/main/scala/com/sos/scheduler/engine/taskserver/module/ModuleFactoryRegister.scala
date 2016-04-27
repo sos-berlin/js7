@@ -1,30 +1,30 @@
 package com.sos.scheduler.engine.taskserver.module
 
-import com.sos.scheduler.engine.taskserver.module.ModuleRegister._
+import com.sos.scheduler.engine.taskserver.module.ModuleFactoryRegister._
 import com.sos.scheduler.engine.taskserver.module.javamodule.{JavaScriptModule, StandardJavaModule}
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import scala.collection.immutable
 
 /**
-  * Register for the different [[ModuleType]] (JobScheduler configuration &lt;script>).
+  * Register for the different [[ModuleFactory]] (JobScheduler configuration &lt;script>).
   *
   * @author Joacim Zschimmer
   */
-final class ModuleRegister(val moduleTypes: immutable.Seq[ModuleType]) {
+final class ModuleFactoryRegister(val moduleFactories: immutable.Seq[ModuleFactory]) {
 
   def newModule(raw: RawModuleArguments): Module =
     toModuleArguments(raw).newModule()
 
   def toModuleArguments(raw: RawModuleArguments): ModuleArguments =
-    moduleType(raw).toModuleArguments(raw)
+    moduleFactory(raw).toModuleArguments(raw)
 
-  def moduleType(arguments: RawModuleArguments): ModuleType =
-    moduleTypes collectFirst { case o if o.toModuleArguments isDefinedAt arguments ⇒ o } getOrElse {
+  def moduleFactory(arguments: RawModuleArguments): ModuleFactory =
+    moduleFactories collectFirst { case o if o.toModuleArguments isDefinedAt arguments ⇒ o } getOrElse {
       throw new UnsupportedRawModuleArgumentsException(arguments.language)
     }
 }
 
-object ModuleRegister {
+object ModuleFactoryRegister {
   lazy val StandardModuleTypes = List(ShellModule, StandardJavaModule, JavaScriptModule)
 
   private[module] final class UnsupportedRawModuleArgumentsException(language: ModuleLanguage)
