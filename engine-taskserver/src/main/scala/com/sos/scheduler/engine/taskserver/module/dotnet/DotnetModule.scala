@@ -19,27 +19,22 @@ extends ApiModule {
 }
 
 object DotnetModule {
-  trait DotnetModuleLanguage extends ModuleLanguage
-
-  case object DotnetClassModuleLanguage extends DotnetModuleLanguage {
-    val string = "dotnet"
-  }
-
-  case object PowershellModuleLanguage extends DotnetModuleLanguage {
-    val string = "PowerShell"
-  }
+  final val DotnetClassLanguage = ModuleLanguage("dotnet")
+  final val PowershellLanguage = ModuleLanguage("powershell")
 
   final class Factory(factory: DotnetModuleInstanceFactory) extends ModuleFactory {
     def toModuleArguments: PartialFunction[RawModuleArguments, ModuleArguments] = {
-      case RawModuleArguments(PowershellModuleLanguage, None, script, None, None) ⇒
+      case RawModuleArguments(PowershellLanguage, None, script, None, None) ⇒
         Arguments(this, DotnetModuleReference.Powershell(script = script.string))
 
-      case RawModuleArguments(DotnetClassModuleLanguage, None, Script.Empty, Some(dll), Some(className)) ⇒
+      case RawModuleArguments(DotnetClassLanguage, None, _, Some(dll), Some(className)) ⇒
         Arguments(this, DotnetModuleReference.DotnetClass(dll = dll, className = className))
     }
 
     def newModule(arguments: ModuleArguments) =
       new DotnetModule(arguments.asInstanceOf[Arguments], factory)
+
+    override def toString = s"DotnetModule.Factory($factory)"
   }
 
   private def namedInvocablesToTaskContext(namedInvocables: NamedInvocables) = TaskContext(

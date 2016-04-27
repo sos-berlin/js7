@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.module.javamodule
 
-import com.sos.scheduler.engine.taskserver.module.{JavaModuleLanguage, ModuleArguments, ModuleFactory, RawModuleArguments}
+import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments}
 
 /**
  * @author Joacim Zschimmer
@@ -13,10 +13,13 @@ final case class StandardJavaModule(arguments: StandardJavaModule.Arguments) ext
 }
 
 object StandardJavaModule extends ModuleFactory {
+  val Language = ModuleLanguage("java")
+
   def toModuleArguments = {
-    case args @ RawModuleArguments(JavaModuleLanguage, javaClassNameOption, script, None, None) ⇒
-      new Arguments(
-        className = javaClassNameOption getOrElse { throw new IllegalArgumentException(s"language='$language' requires a class name") } )
+    case args @ RawModuleArguments(ModuleLanguage("java"), Some(javaClassName), script, None, None) ⇒
+      new Arguments(className = javaClassName)
+    case args @ RawModuleArguments(ModuleLanguage("java"), None, script, None, None) ⇒
+      throw new IllegalArgumentException(s"language='$language' requires a class name")
   }
 
   def newModule(arguments: ModuleArguments) = new StandardJavaModule(arguments.asInstanceOf[Arguments])

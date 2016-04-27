@@ -59,7 +59,7 @@ final class TaskArguments private(arguments: List[(String, String)]) {
     val argMap = args.toMap
     val javaClassNameOption = argMap.get(module.JavaClassKey) filter { _.nonEmpty }
     RawModuleArguments(
-      language = ModuleLanguage(argMap(module.LanguageKey)),
+      language = ModuleLanguage(argMap(module.LanguageKey).toLowerCase),
       javaClassNameOption = javaClassNameOption,
       dotnetClassNameOption = argMap.get(module.DotnetClassKey) filter { _.nonEmpty },
       dllOption = argMap.get(module.DllKey) filter { _.nonEmpty } map { o ⇒ Paths.get(o) },

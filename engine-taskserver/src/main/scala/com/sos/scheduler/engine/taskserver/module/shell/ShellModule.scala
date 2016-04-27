@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.module.shell
 
-import com.sos.scheduler.engine.taskserver.module.{Module, ModuleArguments, ModuleFactory, RawModuleArguments, Script, ShellModuleLanguage}
+import com.sos.scheduler.engine.taskserver.module.{Module, ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
 
 /**
  * @author Joacim Zschimmer
@@ -11,9 +11,7 @@ final case class ShellModule(arguments: ShellModule.Arguments) extends Module {
 
 object ShellModule extends ModuleFactory {
   def toModuleArguments = {
-    case args @ RawModuleArguments(ShellModuleLanguage, javaClassNameOption, script, None, None) ⇒
-      args.requireUnused("java_class", javaClassNameOption)
-      Arguments(script)
+    case RawModuleArguments(ModuleLanguage("shell"), None, script, None, None) ⇒ Arguments(script)
   }
 
   def newModule(arguments: ModuleArguments) = new ShellModule(arguments.asInstanceOf[Arguments])
