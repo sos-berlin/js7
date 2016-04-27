@@ -2,24 +2,26 @@ package com.sos.scheduler.engine.taskserver.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
-import com.google.inject.Provides
+import com.google.inject.{AbstractModule, Provides}
 import com.sos.scheduler.engine.common.ClassLoaders._
-import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerMainModule._
+import com.sos.scheduler.engine.taskserver.dotnet.Jni4netModuleInstanceFactory
 import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleInstanceFactory
 import com.sos.scheduler.engine.taskserver.module.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.module.dotnet.DotnetModule
 import com.typesafe.config.ConfigFactory
+import java.nio.file.Path
 import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
  */
-final class TaskServerMainModule extends ScalaAbstractModule {
+final class TaskServerMainModule(dotnetDllDirectory: Option[Path] = None) extends AbstractModule {
 
   def configure() = {}
 
@@ -28,7 +30,13 @@ final class TaskServerMainModule extends ScalaAbstractModule {
     new ModuleFactoryRegister(ModuleFactoryRegister.StandardModuleTypes :+ dotnetModuleType)
 
   @Provides @Singleton
-  private def dotnetModuleType(factory: DotnetModuleInstanceFactory): DotnetModule.Factory = new DotnetModule.Factory(factory)
+  private def dotnetModuleType(): DotnetModule.Factory = {
+    val factory = dotnetDllDirectory match {
+      case Some(dir) if isWindows ⇒ new Jni4netModuleInstanceFactory(dir)
+      case _ ⇒ DotnetModuleInstanceFactory.Unsupported
+    }
+    new DotnetModule.Factory(factory)
+  }
 
   @Provides @Singleton
   private def executionContext(o: ActorSystem): ExecutionContext = o.dispatcher

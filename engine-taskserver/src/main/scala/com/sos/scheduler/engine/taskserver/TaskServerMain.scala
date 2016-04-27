@@ -36,7 +36,7 @@ object TaskServerMain {
   }
 
   private def run(startArguments: TaskStartArguments): Unit = {
-    val injector = Guice.createInjector(PRODUCTION, new TaskServerMainModule)
+    val injector = Guice.createInjector(PRODUCTION, new TaskServerMainModule(dotnetDllDirectory = startArguments.dotnetDllDirectory))
     implicit val executionContext = injector.instance[ActorSystem].dispatcher
     autoClosing(injector.instance[Closer]) { closer ⇒
       autoClosing(new SimpleTaskServer(injector, startArguments, isMain = true)) { taskServer ⇒
