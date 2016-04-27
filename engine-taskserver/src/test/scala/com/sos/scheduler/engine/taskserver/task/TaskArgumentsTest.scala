@@ -37,22 +37,22 @@ final class TaskArgumentsTest extends FreeSpec {
   }
 
   "language=shell" in {
-    assert(moduleFactoryRegister.toModuleArguments(taskArguments("language=shell", s"script=$scriptXml").rawModuleArguments) ==
+    assert(moduleArguments("language=shell", s"script=$scriptXml") ==
       ShellModule.Arguments(Script(scriptText)))
   }
 
   "language=java" in {
-    assert(moduleFactoryRegister.toModuleArguments(taskArguments("language=java", "java_class=com.example.Test").rawModuleArguments) ==
-      new StandardJavaModule.Arguments("com.example.Test"))
+    assert(moduleArguments("language=java", "java_class=com.example.Test") ==
+      StandardJavaModule.Arguments("com.example.Test"))
   }
 
   "language=PowerShell" in {
-    assert(moduleFactoryRegister.toModuleArguments(taskArguments("language=PowerShell", s"script=$scriptXml").rawModuleArguments) ==
+    assert(moduleArguments("language=PowerShell", s"script=$scriptXml") ==
       DotnetModule.Arguments(dotnetModuleType, DotnetModuleReference.Powershell(scriptText)))
   }
 
   "language=dotnet" in {
-    assert(moduleFactoryRegister.toModuleArguments(taskArguments("language=dotnet", "dll=test.dll", "dotnet_class=com.example.Test").rawModuleArguments) ==
+    assert(moduleArguments("language=dotnet", "dll=test.dll", "dotnet_class=com.example.Test") ==
       DotnetModule.Arguments(dotnetModuleType, DotnetModuleReference.DotnetClass(Paths.get("test.dll"), "com.example.Test")))
   }
 
@@ -96,20 +96,20 @@ final class TaskArgumentsTest extends FreeSpec {
   }
 
   "module (shell)" in {
-    val a = TaskArguments(VariantArray(Vector(
+    assert(moduleArguments(
       "language=shell",
       "script=" + <source><source_part linenr="100">PART-A
-</source_part><source_part linenr="200">PART-B</source_part></source>)))
-    assert(moduleFactoryRegister.toModuleArguments(a.rawModuleArguments) == ShellModule.Arguments(Script("PART-A\nPART-B")))
+</source_part><source_part linenr="200">PART-B</source_part></source>) == ShellModule.Arguments(Script("PART-A\nPART-B")))
   }
 
   "module (Java)" in {
-    val a = TaskArguments(VariantArray(Vector(
-      "language=java",
-      "script=<source/>",
-      "java_class=com.example.Job")))
-    assert(moduleFactoryRegister.toModuleArguments(a.rawModuleArguments) == new StandardJavaModule.Arguments(className = "com.example.Job"))
+    assert(moduleArguments("language=java",
+          "script=<source/>",
+          "java_class=com.example.Job") == new StandardJavaModule.Arguments(className = "com.example.Job"))
   }
+
+  private def moduleArguments(arguments: String*) =
+    moduleFactoryRegister.toModuleArguments(taskArguments(arguments: _*).rawModuleArguments)
 
   private def taskArguments(arguments: String*) = TaskArguments(VariantArray(arguments.toIndexedSeq))
 }
