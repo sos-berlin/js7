@@ -10,12 +10,14 @@ import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Files.delete
 import java.nio.file.attribute.FileAttribute
-import java.nio.file.{FileAlreadyExistsException, Files, Path}
+import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths}
 import scala.annotation.tailrec
 import scala.concurrent.forkjoin.ThreadLocalRandom
 import scala.language.implicitConversions
 
 object FileUtils {
+
+  val EmptyPath = Paths.get("")
 
   /**
    * Touchs the file and deletes it when closer is closed.
