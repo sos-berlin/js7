@@ -99,11 +99,6 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.sos-berlin.jobscheduler.engine</groupId>
-            <artifactId>engine-taskserver-dotnet</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
         </dependency>
