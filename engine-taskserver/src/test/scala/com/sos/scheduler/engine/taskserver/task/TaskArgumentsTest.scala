@@ -3,9 +3,12 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.types.VariantArray
+import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
+import com.sos.scheduler.engine.taskserver.module.dotnet.DotnetModule
 import com.sos.scheduler.engine.taskserver.module.javamodule.StandardJavaModule
 import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.module.{ModuleRegister, Script}
+import java.nio.file.Paths
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -19,7 +22,11 @@ final class TaskArgumentsTest extends FreeSpec {
   private val scriptXml = <source><source_part linenr="1">PART-A
 </source_part><source_part linenr="2">PART-B</source_part></source>
   private val scriptText = "PART-A\nPART-B"
-  private val moduleRegister = ModuleRegister.Standard
+  private val dotnetModuleType = new DotnetModule.Type(new DotnetModuleInstanceFactory {
+    def newInstance[A](clazz: Class[A], taskContext: TaskContext, reference: DotnetModuleReference) = throw new NotImplementedError
+    def close() = throw new NotImplementedError
+  })
+  private val moduleRegister = new ModuleRegister(ModuleRegister.StandardModuleTypes :+ dotnetModuleType)
 
   "jobName" in {
     assert(taskArguments("job=JOBNAME").jobName == "JOBNAME")
@@ -37,6 +44,16 @@ final class TaskArgumentsTest extends FreeSpec {
   "language=java" in {
     assert(moduleRegister.toModuleArguments(taskArguments("language=java", "java_class=com.example.Test").rawModuleArguments) ==
       new StandardJavaModule.Arguments("com.example.Test"))
+  }
+
+  "language=PowerShell" in {
+    assert(moduleRegister.toModuleArguments(taskArguments("language=PowerShell", s"script=$scriptXml").rawModuleArguments) ==
+      DotnetModule.Arguments(dotnetModuleType, DotnetModuleReference.Powershell(scriptText)))
+  }
+
+  "language=dotnet" in {
+    assert(moduleRegister.toModuleArguments(taskArguments("language=dotnet", "dll=test.dll", "dotnet_class=com.example.Test").rawModuleArguments) ==
+      DotnetModule.Arguments(dotnetModuleType, DotnetModuleReference.DotnetClass(Paths.get("test.dll"), "com.example.Test")))
   }
 
   "hasOrder" in {
@@ -62,15 +79,18 @@ final class TaskArgumentsTest extends FreeSpec {
       "monitor.language=java",
       "monitor.java_class=com.example.B",
       "monitor.script=",
-      "monitor.language=java",
-      "monitor.java_class=com.example.C",
+      "monitor.language=dotNet",
+      "monitor.dll=test.dll",
+      "monitor.dotnet_class=com.example.C",
       "monitor.script=")))
     assert(a.rawMonitorArguments.size == 3)
     assert(a.rawMonitorArguments(0).name == "")
     assert(a.rawMonitorArguments(0).ordering == 1)
-    assert(moduleRegister.toModuleArguments(a.rawMonitorArguments(0).rawModuleArguments) == new StandardJavaModule.Arguments("com.example.B"))
     assert(a.rawMonitorArguments(1).name == "")
     assert(a.rawMonitorArguments(1).ordering == 1)
+    assert(moduleRegister.toModuleArguments(a.rawMonitorArguments(1).rawModuleArguments) == DotnetModule.Arguments(
+      dotnetModuleType,
+      DotnetModuleReference.DotnetClass(Paths.get("/test-dlls/test.dll"), className = "com.example.C")))
     assert(a.rawMonitorArguments(2).name == "MONITOR-NAME")
     assert(a.rawMonitorArguments(2).ordering == 7)
   }

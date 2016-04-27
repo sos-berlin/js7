@@ -35,6 +35,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.sos-berlin.jobscheduler.engine</groupId>
+            <artifactId>engine-taskserver-dotnet</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>engine-minicom</artifactId>
             <version>${project.version}</version>

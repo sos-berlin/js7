@@ -31,10 +31,10 @@ trait JavaModule extends ApiModule {
 }
 
 object JavaModule {
-  private[module] def spooler_log(o: NamedInvocables) = new sos.spooler.Log(JavaInvoker(o.spoolerLog))
-  private[module] def spooler_task(o: NamedInvocables) = new sos.spooler.Task(JavaInvoker(o.spoolerTask))
-  private[module] def spooler_job(o: NamedInvocables) = new sos.spooler.Job(JavaInvoker(o.spoolerJob))
-  private[module] def spooler(o: NamedInvocables) = new sos.spooler.Spooler(JavaInvoker(o.spooler))
+  def spooler_log(o: NamedInvocables) = new sos.spooler.Log(JavaInvoker(o.spoolerLog))
+  def spooler_task(o: NamedInvocables) = new sos.spooler.Task(JavaInvoker(o.spoolerTask))
+  def spooler_job(o: NamedInvocables) = new sos.spooler.Job(JavaInvoker(o.spoolerJob))
+  def spooler(o: NamedInvocables) = new sos.spooler.Spooler(JavaInvoker(o.spooler))
 
   trait Arguments extends ModuleArguments
 }
