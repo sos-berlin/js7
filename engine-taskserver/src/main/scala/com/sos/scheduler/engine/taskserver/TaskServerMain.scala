@@ -12,7 +12,6 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerMainModule
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
-import scala.concurrent.ExecutionContext
 import spray.json._
 
 /**
