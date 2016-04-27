@@ -68,7 +68,7 @@ extends AgentTaskFactory {
       tunnelToken = tunnelToken,
       directory = agentConfiguration.directory,
       logDirectory = agentConfiguration.logDirectory,
-      dotnetAdapterDllDirectory = agentConfiguration.dotnetAdapterDllDirectory,
+      dotnet = agentConfiguration.dotnet,
       environment = agentConfiguration.environment,
       killScriptOption = agentConfiguration.killScript,
       rpcKeepaliveDurationOption = agentConfiguration.rpcKeepaliveDuration)

@@ -26,7 +26,7 @@ final case class TaskStartArguments(
   environment: Map[String, String] = Map(),
   directory: Path,
   logDirectory: Path,
-  dotnetAdapterDllDirectory: Option[Path] = None,
+  dotnet: DotnetConfiguration = DotnetConfiguration(),
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
   logStdoutAndStderr: Boolean = false,
   killScriptOption: Option[ProcessKillScript] = None,

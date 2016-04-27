@@ -14,7 +14,7 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class DotnetModuleTest extends FreeSpec {
 
-  private val dotnetFactory = new Factory(DotnetModuleInstanceFactory.Unsupported)
+  private val dotnetFactory = new Factory(DotnetModuleInstanceFactory.Unsupported, classDllDirectory = None)
 
   "Wrong language" in {
     val raw = RawModuleArguments(ModuleLanguage("java:javascript"), None, Script("TEST-SCRIPT"), None, None)

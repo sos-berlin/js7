@@ -49,7 +49,8 @@ final class TaskStartArgumentsTest extends FreeSpec {
         },
         "masterAddress": "127.0.0.1:999999999",
         "logDirectory": "LOG-DIRECTORY",
-        "directory": "DIRECTORY"
+        "directory": "DIRECTORY",
+        "dotnet": {}
       }""".parseJson
     assert(obj.toJson == json)
     assert(obj == json.convertTo[TaskStartArguments])

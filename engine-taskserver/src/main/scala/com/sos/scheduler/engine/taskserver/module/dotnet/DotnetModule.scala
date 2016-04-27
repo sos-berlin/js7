@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.taskserver.module.dotnet
 import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
 import com.sos.scheduler.engine.taskserver.module.javamodule.{ApiModule, JavaModule}
 import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, ModuleFactory, ModuleLanguage, NamedInvocables, RawModuleArguments, Script}
+import java.nio.file.Path
 
 /**
   * @author Joacim Zschimmer
@@ -22,13 +23,14 @@ object DotnetModule {
   final val DotnetClassLanguage = ModuleLanguage("dotnet")
   final val PowershellLanguage = ModuleLanguage("powershell")
 
-  final class Factory(factory: DotnetModuleInstanceFactory) extends ModuleFactory {
+  final class Factory(factory: DotnetModuleInstanceFactory, classDllDirectory: Option[Path]) extends ModuleFactory {
     def toModuleArguments: PartialFunction[RawModuleArguments, ModuleArguments] = {
       case RawModuleArguments(PowershellLanguage, None, script, None, None) ⇒
         Arguments(this, DotnetModuleReference.Powershell(script = script.string))
 
       case RawModuleArguments(DotnetClassLanguage, None, _, Some(dll), Some(className)) ⇒
-        Arguments(this, DotnetModuleReference.DotnetClass(dll = dll, className = className))
+        val withDirectory = classDllDirectory map { _ resolve dll } getOrElse dll
+        Arguments(this, DotnetModuleReference.DotnetClass(dll = withDirectory, className = className))
     }
 
     def newModule(arguments: ModuleArguments) =

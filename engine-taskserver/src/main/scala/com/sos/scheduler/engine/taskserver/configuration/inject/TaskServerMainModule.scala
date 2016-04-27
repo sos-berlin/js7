@@ -9,19 +9,19 @@ import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerMainModule._
+import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
 import com.sos.scheduler.engine.taskserver.dotnet.Jni4netModuleInstanceFactory
 import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleInstanceFactory
 import com.sos.scheduler.engine.taskserver.module.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.module.dotnet.DotnetModule
 import com.typesafe.config.ConfigFactory
-import java.nio.file.Path
 import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
  */
-final class TaskServerMainModule(dotnetAdapterDllDirectory: Option[Path] = None) extends AbstractModule {
+final class TaskServerMainModule(dotnet: DotnetConfiguration) extends AbstractModule {
 
   def configure() = {}
 
@@ -31,11 +31,11 @@ final class TaskServerMainModule(dotnetAdapterDllDirectory: Option[Path] = None)
 
   @Provides @Singleton
   private def dotnetModuleType(): DotnetModule.Factory = {
-    val factory = dotnetAdapterDllDirectory match {
+    val factory = dotnet.adapterDllDirectory match {
       case Some(dir) if isWindows ⇒ new Jni4netModuleInstanceFactory(dir)
       case _ ⇒ DotnetModuleInstanceFactory.Unsupported
     }
-    new DotnetModule.Factory(factory)
+    new DotnetModule.Factory(factory, classDllDirectory = dotnet.classDllDirectory)
   }
 
   @Provides @Singleton

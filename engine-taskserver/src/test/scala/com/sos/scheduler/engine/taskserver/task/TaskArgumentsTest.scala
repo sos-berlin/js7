@@ -22,10 +22,13 @@ final class TaskArgumentsTest extends FreeSpec {
   private val scriptXml = <source><source_part linenr="1">PART-A
 </source_part><source_part linenr="2">PART-B</source_part></source>
   private val scriptText = "PART-A\nPART-B"
-  private val dotnetModuleType = new DotnetModule.Factory(new DotnetModuleInstanceFactory {
-    def newInstance[A](clazz: Class[A], taskContext: TaskContext, reference: DotnetModuleReference) = throw new NotImplementedError
-    def close() = throw new NotImplementedError
-  })
+  private val dotnetModuleType = {
+    val instanceFactory = new DotnetModuleInstanceFactory {
+      def newInstance[A](clazz: Class[A], taskContext: TaskContext, reference: DotnetModuleReference) = throw new NotImplementedError
+      def close() = throw new NotImplementedError
+    }
+    new DotnetModule.Factory(instanceFactory, classDllDirectory = Some(Paths.get("/TEST-DLLS")))
+  }
   private val moduleFactoryRegister = new ModuleFactoryRegister(ModuleFactoryRegister.StandardModuleTypes :+ dotnetModuleType)
 
   "jobName" in {
@@ -53,7 +56,7 @@ final class TaskArgumentsTest extends FreeSpec {
 
   "language=dotnet" in {
     assert(moduleArguments("language=dotnet", "dll=test.dll", "dotnet_class=com.example.Test") ==
-      DotnetModule.Arguments(dotnetModuleType, DotnetModuleReference.DotnetClass(Paths.get("test.dll"), "com.example.Test")))
+      DotnetModule.Arguments(dotnetModuleType, DotnetModuleReference.DotnetClass(Paths.get("/TEST-DLLS/test.dll"), "com.example.Test")))
   }
 
   "hasOrder" in {
@@ -90,7 +93,7 @@ final class TaskArgumentsTest extends FreeSpec {
     assert(a.rawMonitorArguments(1).ordering == 1)
     assert(moduleFactoryRegister.toModuleArguments(a.rawMonitorArguments(1).rawModuleArguments) == DotnetModule.Arguments(
       dotnetModuleType,
-      DotnetModuleReference.DotnetClass(Paths.get("test.dll"), className = "com.example.C")))
+      DotnetModuleReference.DotnetClass(Paths.get("/TEST-DLLS/test.dll"), className = "com.example.C")))
     assert(a.rawMonitorArguments(2).name == "MONITOR-NAME")
     assert(a.rawMonitorArguments(2).ordering == 7)
   }

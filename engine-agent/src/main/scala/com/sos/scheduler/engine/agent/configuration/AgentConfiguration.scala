@@ -13,6 +13,7 @@ import com.sos.scheduler.engine.common.tcp.TcpUtils.{parseTcpPort, requireTcpPor
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.common.utils.JavaResource
+import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
 import java.nio.file.{Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
@@ -33,7 +34,7 @@ final case class AgentConfiguration(
   uriPathPrefix: String = "",
   directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
   logDirectory: Path = temporaryDirectory,
-  dotnetAdapterDllDirectory: Option[Path] = None,
+  dotnet: DotnetConfiguration = DotnetConfiguration(),
   environment: Map[String, String] = Map(),
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
@@ -49,6 +50,8 @@ final case class AgentConfiguration(
 
   def withWebServices(classes: Iterable[Class[_ <: ExternalWebService]]) = copy(externalWebServiceClasses = externalWebServiceClasses ++ classes)
 
+  def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
+
   def crashKillScriptFile: Path = logDirectory / s"kill_tasks_after_crash_$httpPort$ShellFileExtension"
 }
 
@@ -63,6 +66,7 @@ object AgentConfiguration {
         httpInterfaceRestriction = a.optionAs[String]("-ip-address="),
         uriPathPrefix = a.as[String]("-uri-prefix=", default = ""),
         logDirectory = a.as[Path]("-log-directory=", default = temporaryDirectory).toAbsolutePath,
+        dotnet = DotnetConfiguration(classDllDirectory = a.optionAs[Path]("-dotnet-class-directory=") map { _.toAbsolutePath }),
         rpcKeepaliveDuration = a.optionAs("-rpc-keepalive=")(To(parseDuration)),
         jobJavaOptions = a.optionAs[String]("-job-java-options=").toList)
       r.copy(killScript = a.optionAs[String]("-kill-script=") match {
