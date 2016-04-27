@@ -11,7 +11,7 @@ import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
-import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
 import com.sos.scheduler.engine.taskserver.task.process.{ProcessConfiguration, RichProcess}

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.module.shell
+package com.sos.scheduler.engine.taskserver.modules.shell
 
 import com.sos.scheduler.engine.taskserver.module.{Module, ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
 

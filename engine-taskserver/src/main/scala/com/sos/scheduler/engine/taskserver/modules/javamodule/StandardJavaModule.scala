@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.module.javamodule
+package com.sos.scheduler.engine.taskserver.modules.javamodule
 
 import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments}
 

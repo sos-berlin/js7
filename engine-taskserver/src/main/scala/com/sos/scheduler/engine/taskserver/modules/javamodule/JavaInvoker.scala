@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.taskserver.module.javamodule
+package com.sos.scheduler.engine.taskserver.modules.javamodule
 
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable, InvocableIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.IDispatchInvoker
-import com.sos.scheduler.engine.taskserver.module.javamodule.JavaInvoker._
+import com.sos.scheduler.engine.taskserver.modules.javamodule.JavaInvoker._
 import scala.runtime.BoxedUnit.UNIT
 
 /**

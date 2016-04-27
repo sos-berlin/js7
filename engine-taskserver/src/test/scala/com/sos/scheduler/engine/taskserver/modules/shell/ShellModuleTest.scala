@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.module.shell
+package com.sos.scheduler.engine.taskserver.modules.shell
 
-import com.sos.scheduler.engine.taskserver.module.shell.ShellModule._
 import com.sos.scheduler.engine.taskserver.module.{ModuleLanguage, RawModuleArguments, Script}
+import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner

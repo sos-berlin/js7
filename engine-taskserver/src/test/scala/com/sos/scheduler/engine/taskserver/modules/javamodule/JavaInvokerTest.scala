@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.module.javamodule
+package com.sos.scheduler.engine.taskserver.modules.javamodule
 
 import com.sos.scheduler.engine.minicom.idispatch.{DISPATCH_METHOD, DISPATCH_PROPERTYGET, DISPATCH_PROPERTYPUT, DISPID, IDispatch}
-import com.sos.scheduler.engine.taskserver.module.javamodule.JavaInvokerTest._
+import com.sos.scheduler.engine.taskserver.modules.javamodule.JavaInvokerTest._
 import org.junit.runner.RunWith
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec

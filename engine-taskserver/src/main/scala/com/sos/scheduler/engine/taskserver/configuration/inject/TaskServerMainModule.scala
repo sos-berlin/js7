@@ -13,7 +13,8 @@ import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
 import com.sos.scheduler.engine.taskserver.dotnet.Jni4netModuleInstanceFactory
 import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleInstanceFactory
 import com.sos.scheduler.engine.taskserver.module.ModuleFactoryRegister
-import com.sos.scheduler.engine.taskserver.module.dotnet.DotnetModule
+import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
+import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule
 import com.typesafe.config.ConfigFactory
 import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
@@ -26,11 +27,11 @@ final class TaskServerMainModule(dotnet: DotnetConfiguration) extends AbstractMo
   def configure() = {}
 
   @Provides @Singleton
-  private def moduleFactoryRegister(dotnetModuleType: DotnetModule.Factory): ModuleFactoryRegister =
-    new ModuleFactoryRegister(ModuleFactoryRegister.StandardModuleTypes :+ dotnetModuleType)
+  private def moduleFactoryRegister(dotnetModuleFactory: DotnetModule.Factory): ModuleFactoryRegister =
+    new ModuleFactoryRegister(StandardModuleFactories :+ dotnetModuleFactory)
 
   @Provides @Singleton
-  private def dotnetModuleType(): DotnetModule.Factory = {
+  private def dotnetModuleFactory(): DotnetModule.Factory = {
     val factory = dotnet.adapterDllDirectory match {
       case Some(dir) if isWindows ⇒ new Jni4netModuleInstanceFactory(dir)
       case _ ⇒ DotnetModuleInstanceFactory.Unsupported

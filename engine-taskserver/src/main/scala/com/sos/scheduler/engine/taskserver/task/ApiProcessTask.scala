@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.taskserver.module.javamodule.ApiModule
+import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
 import com.sos.scheduler.engine.taskserver.task.ApiProcessTask._
 import scala.collection.mutable
 import scala.concurrent.Future
