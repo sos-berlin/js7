@@ -14,5 +14,8 @@
 
 # INTELLIJ IDEA
 /.idea/
-/out/
+/classes/
 *.iml
+
+# Old Intellij IDEA 15
+/out/
