@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.modules.javamodule
 
-import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments}
+import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments}
 
 /**
  * @author Joacim Zschimmer
@@ -24,7 +24,7 @@ object StandardJavaModule extends ModuleFactory {
 
   def newModule(arguments: ModuleArguments) = new StandardJavaModule(arguments.asInstanceOf[Arguments])
 
-  final case class Arguments(val className: String) extends JavaModule.Arguments {
+  final case class Arguments(className: String) extends JavaModule.Arguments {
     val moduleFactory = StandardJavaModule
   }
 }

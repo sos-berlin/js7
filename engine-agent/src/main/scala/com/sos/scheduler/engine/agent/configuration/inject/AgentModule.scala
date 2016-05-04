@@ -12,7 +12,7 @@ import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.taskserver.module.ModuleFactoryRegister
+import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider
 import javax.inject.Singleton

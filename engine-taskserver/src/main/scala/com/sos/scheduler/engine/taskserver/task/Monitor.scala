@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
-import com.sos.scheduler.engine.taskserver.module.ModuleArguments
+import com.sos.scheduler.engine.taskserver.moduleapi.ModuleArguments
 import com.sos.scheduler.engine.taskserver.task.Monitor._
 
 /**

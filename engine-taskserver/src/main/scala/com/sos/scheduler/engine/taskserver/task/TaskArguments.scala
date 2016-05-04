@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.types.{VariantArray, variant}
-import com.sos.scheduler.engine.taskserver.module._
+import com.sos.scheduler.engine.taskserver.moduleapi._
 import com.sos.scheduler.engine.taskserver.task.TaskArguments._
 import java.nio.file.Paths
 import scala.collection.{immutable, mutable}

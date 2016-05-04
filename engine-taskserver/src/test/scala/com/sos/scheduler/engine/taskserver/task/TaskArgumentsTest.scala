@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.types.VariantArray
 import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
-import com.sos.scheduler.engine.taskserver.module.{ModuleFactoryRegister, Script}
+import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleFactoryRegister, Script}
 import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
 import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule
 import com.sos.scheduler.engine.taskserver.modules.javamodule.StandardJavaModule

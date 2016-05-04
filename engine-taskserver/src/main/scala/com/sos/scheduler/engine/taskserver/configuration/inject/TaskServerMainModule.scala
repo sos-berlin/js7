@@ -12,7 +12,7 @@ import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerMainMo
 import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
 import com.sos.scheduler.engine.taskserver.dotnet.Jni4netModuleInstanceFactory
 import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleInstanceFactory
-import com.sos.scheduler.engine.taskserver.module.ModuleFactoryRegister
+import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
 import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule
 import com.typesafe.config.ConfigFactory

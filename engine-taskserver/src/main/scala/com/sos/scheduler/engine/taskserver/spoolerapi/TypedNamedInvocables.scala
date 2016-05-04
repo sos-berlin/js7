@@ -3,8 +3,8 @@ package com.sos.scheduler.engine.taskserver.spoolerapi
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichPairTraversable
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.minicom.idispatch.Invocable
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables._
+import com.sos.scheduler.engine.taskserver.moduleapi.NamedInvocables
+import com.sos.scheduler.engine.taskserver.moduleapi.NamedInvocables._
 
 /**
  * @author Joacim Zschimmer

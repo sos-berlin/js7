@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver.modules.dotnet
 
 import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
-import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, ModuleFactory, ModuleLanguage, NamedInvocables, RawModuleArguments}
+import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFactory, ModuleLanguage, NamedInvocables, RawModuleArguments}
 import com.sos.scheduler.engine.taskserver.modules.javamodule.{ApiModule, JavaModule}
 import java.nio.file.Path
 

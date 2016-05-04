@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.modules.javamodule
 
-import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, ModuleFactory}
+import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFactory}
 
 /**
   * @author Joacim Zschimmer

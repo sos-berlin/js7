@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.modules.javamodule
 
-import com.sos.scheduler.engine.taskserver.module.{Module, NamedInvocables}
+import com.sos.scheduler.engine.taskserver.moduleapi.{Module, NamedInvocables}
 import sos.spooler.{Job_impl, Monitor_impl}
 
 /**

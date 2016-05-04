@@ -1,12 +1,12 @@
 package com.sos.scheduler.engine.taskserver.modules.javamodule
 
-import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
+import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
 import sos.spooler.jobs.{ScriptAdapterJob, ScriptAdapterMonitor}
 
 /**
  * @author Joacim Zschimmer
  */
-final case class JavaScriptEngineModule(val arguments: JavaScriptEngineModule.Arguments) extends JavaModule {
+final case class JavaScriptEngineModule(arguments: JavaScriptEngineModule.Arguments) extends JavaModule {
 
   import arguments.{script, scriptLanguage}
 

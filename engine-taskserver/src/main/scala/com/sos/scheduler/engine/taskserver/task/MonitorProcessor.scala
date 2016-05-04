@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.taskserver.module.ModuleArguments
+import com.sos.scheduler.engine.taskserver.moduleapi.ModuleArguments
 import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
 import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, TypedNamedInvocables}
 import scala.util.control.NonFatal
