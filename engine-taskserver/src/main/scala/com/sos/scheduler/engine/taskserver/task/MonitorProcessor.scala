@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.taskserver.module.{ModuleArguments, NamedInvocables}
+import com.sos.scheduler.engine.taskserver.module.ModuleArguments
 import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
-import com.sos.scheduler.engine.taskserver.spoolerapi.SpoolerLog
+import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, TypedNamedInvocables}
 import scala.util.control.NonFatal
 
 /**
@@ -32,7 +32,7 @@ extends HasCloser {
 }
 
 object MonitorProcessor {
-  def create(monitors: Seq[Monitor], namedInvocables: NamedInvocables) = {
+  def create(monitors: Seq[Monitor], namedInvocables: TypedNamedInvocables) = {
     def newMonitorInstance(args: ModuleArguments): sos.spooler.Monitor_impl =
       args.newModule() match {
         case module: ApiModule ⇒ module.newMonitorInstance(namedInvocables)

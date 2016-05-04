@@ -16,11 +16,11 @@ import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, PublicMethodsAreInvocable}
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables.{SpoolerJobName, SpoolerLogName, SpoolerName, SpoolerTaskName}
+import com.sos.scheduler.engine.taskserver.module.NamedInvocables._
+import com.sos.scheduler.engine.taskserver.module.Script
 import com.sos.scheduler.engine.taskserver.modules.javamodule.TestJavaModule
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{NamedInvocables, Script}
-import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask}
+import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedInvocables}
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTaskTest._
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
@@ -99,7 +99,7 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
       CommonArguments(
         AgentTaskId("1-1"),
         jobName = "TEST-JOB",
-        namedInvocables = NamedInvocables(List(
+        namedInvocables = TypedNamedInvocables(List(
           SpoolerLogName → spoolerLog,
           SpoolerTaskName → TestSpoolerTask,
           SpoolerJobName → DummyInvocable,

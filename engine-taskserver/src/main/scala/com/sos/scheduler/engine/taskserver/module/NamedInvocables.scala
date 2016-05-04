@@ -1,21 +1,23 @@
 package com.sos.scheduler.engine.taskserver.module
 
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichPairTraversable
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.minicom.idispatch.Invocable
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables._
-import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask}
 
 /**
- * @author Joacim Zschimmer
- */
-final class NamedInvocables private(val toMap: Map[String, Invocable]) {
-  lazy val spoolerLog: SpoolerLog = cast[SpoolerLog](toMap(SpoolerLogName))
-  lazy val spoolerTask: SpoolerTask = cast[SpoolerTask](toMap(SpoolerTaskName))
-  lazy val spoolerJob: Invocable = toMap(SpoolerJobName)
-  lazy val spooler: Invocable = toMap(SpoolerName)
+  * @author Joacim Zschimmer
+  */
+trait NamedInvocables {
+  def spoolerLog: Invocable
+  def spoolerTask: Invocable
+  def spoolerJob: Invocable
+  def spooler: Invocable
 
-  def apply(name: String) = toMap(name)
+  /**
+    * Invocable by name.
+    *
+    * @param name "spooler_log", "spooler_task", "spooler_job" or "spooler"
+    * @return `spoolerLog`, `spoolerTask`, `spoolerJob` or `spooler`
+    */
+  def apply(name: String): Invocable
 }
 
 object NamedInvocables {
@@ -24,10 +26,4 @@ object NamedInvocables {
   val SpoolerJobName = "spooler_job"
   val SpoolerName = "spooler"
   val AllNames = Set(SpoolerLogName, SpoolerTaskName, SpoolerJobName, SpoolerName)
-
-  def apply(kv: Iterable[(String, Invocable)]): NamedInvocables = {
-    val invalidNames = (kv map { _._1 }).toSet -- AllNames
-    require(invalidNames.isEmpty, s"Invalid object names: $invalidNames")
-    new NamedInvocables(kv.uniqueToMap)
-  }
 }

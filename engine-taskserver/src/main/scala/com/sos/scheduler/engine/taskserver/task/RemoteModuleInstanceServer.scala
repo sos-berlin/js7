@@ -12,9 +12,10 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
-import com.sos.scheduler.engine.taskserver.module.{ModuleFactoryRegister, NamedInvocables}
+import com.sos.scheduler.engine.taskserver.module.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedInvocables
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
@@ -124,11 +125,11 @@ object RemoteModuleInstanceServer extends InvocableFactory {
 
   def invocableClass = classOf[RemoteModuleInstanceServer]
 
-  private def toNamedObjectMap(names: VariantArray, anys: VariantArray): NamedInvocables = {
+  private def toNamedObjectMap(names: VariantArray, anys: VariantArray): TypedNamedInvocables = {
     val nameStrings = names.as[String]
     val invocables = variantArrayToInvocable(anys)
     require(nameStrings.size == invocables.size)
-    NamedInvocables(nameStrings zip invocables)
+    TypedNamedInvocables(nameStrings zip invocables)
   }
 
   /**
