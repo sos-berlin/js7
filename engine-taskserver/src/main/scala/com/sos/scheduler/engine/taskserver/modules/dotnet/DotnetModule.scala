@@ -20,8 +20,8 @@ extends ApiModule {
 }
 
 object DotnetModule {
-  final val DotnetClassLanguage = ModuleLanguage("dotnet")
-  final val PowershellLanguage = ModuleLanguage("powershell")
+  private val DotnetClassLanguage = ModuleLanguage("dotnet")
+  private val PowershellLanguage = ModuleLanguage("powershell")
 
   final class Factory(factory: DotnetModuleInstanceFactory, classDllDirectory: Option[Path]) extends ModuleFactory {
     def toModuleArguments: PartialFunction[RawModuleArguments, ModuleArguments] = {
@@ -45,5 +45,5 @@ object DotnetModule {
     JavaModule.spooler_job(namedInvocables),
     JavaModule.spooler(namedInvocables))
 
-  final case class Arguments(val moduleFactory: ModuleFactory, reference: DotnetModuleReference) extends ModuleArguments
+  final case class Arguments(moduleFactory: ModuleFactory, reference: DotnetModuleReference) extends ModuleArguments
 }
