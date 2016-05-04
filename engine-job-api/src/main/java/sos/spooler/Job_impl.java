@@ -42,13 +42,7 @@ public class Job_impl
     }
     
     
-    public final String  spooler_api_version()  
-    { 
-        return "2.0.160.4605 (2006-11-23)"; 
-    }
-    
-    
-    /*+ Der Scheduler ruft diese Methode nach dem Konstruktor und vor {@link #spooler_open()} genau einmal auf. 
+    /*+ Der Scheduler ruft diese Methode nach dem Konstruktor und vor {@link #spooler_open()} genau einmal auf.
       * Gegenstück ist {@link #spooler_exit()}. Die Methode ist geeignet, um die Task zu initialisieren 
       * (z.B. um eine Datenbank-Verbindung aufzubauen).
       * 
