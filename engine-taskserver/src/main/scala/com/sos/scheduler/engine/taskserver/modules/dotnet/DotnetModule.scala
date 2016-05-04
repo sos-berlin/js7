@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver.modules.dotnet
 
 import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
-import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFactory, ModuleLanguage, NamedInvocables, RawModuleArguments}
+import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFactory, ModuleLanguage, NamedIDispatches, RawModuleArguments}
 import com.sos.scheduler.engine.taskserver.modules.javamodule.{ApiModule, JavaModule}
 import java.nio.file.Path
 
@@ -12,11 +12,11 @@ final class DotnetModule private[dotnet](val arguments: DotnetModule.Arguments, 
 extends ApiModule {
   import DotnetModule._
 
-  def newJobInstance(namedInvocables: NamedInvocables) =
-    factory.newInstance(classOf[sos.spooler.Job_impl], namedInvocablesToTaskContext(namedInvocables), arguments.reference)
+  def newJobInstance(namedIDispatches: NamedIDispatches) =
+    factory.newInstance(classOf[sos.spooler.Job_impl], namedIDispatchesToTaskContext(namedIDispatches), arguments.reference)
 
-  def newMonitorInstance(namedInvocables: NamedInvocables) =
-    factory.newInstance(classOf[sos.spooler.Monitor_impl], namedInvocablesToTaskContext(namedInvocables), arguments.reference)
+  def newMonitorInstance(namedIDispatches: NamedIDispatches) =
+    factory.newInstance(classOf[sos.spooler.Monitor_impl], namedIDispatchesToTaskContext(namedIDispatches), arguments.reference)
 }
 
 object DotnetModule {
@@ -39,11 +39,11 @@ object DotnetModule {
     override def toString = s"DotnetModule.Factory($factory)"
   }
 
-  private def namedInvocablesToTaskContext(namedInvocables: NamedInvocables) = TaskContext(
-    JavaModule.spooler_log(namedInvocables),
-    JavaModule.spooler_task(namedInvocables),
-    JavaModule.spooler_job(namedInvocables),
-    JavaModule.spooler(namedInvocables))
+  private def namedIDispatchesToTaskContext(namedIDispatches: NamedIDispatches) = TaskContext(
+    JavaModule.spooler_log(namedIDispatches),
+    JavaModule.spooler_task(namedIDispatches),
+    JavaModule.spooler_job(namedIDispatches),
+    JavaModule.spooler(namedIDispatches))
 
   final case class Arguments(moduleFactory: ModuleFactory, reference: DotnetModuleReference) extends ModuleArguments
 }

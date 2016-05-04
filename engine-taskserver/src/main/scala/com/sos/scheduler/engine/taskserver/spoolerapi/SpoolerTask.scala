@@ -2,13 +2,13 @@ package com.sos.scheduler.engine.taskserver.spoolerapi
 
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.minicom.idispatch.Invocable
+import com.sos.scheduler.engine.minicom.idispatch.IDispatch
 import com.sos.scheduler.engine.taskserver.spoolerapi.SpoolerTask._
 
 /**
  * @author Joacim Zschimmer
  */
-trait SpoolerTask extends Invocable {
+trait SpoolerTask extends IDispatch {
 
   def setErrorCodeAndText(code: MessageCode, text: String): Unit
 

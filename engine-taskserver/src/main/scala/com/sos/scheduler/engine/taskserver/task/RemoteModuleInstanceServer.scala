@@ -9,13 +9,13 @@ import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
+import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable, InvocableFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedInvocables
+import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
@@ -49,16 +49,16 @@ extends HasCloser with Invocable {
 
   @invocable
   def begin(objectAnys: VariantArray, objectNamesAnys: VariantArray): Boolean = {
-    val namedInvocables = toNamedObjectMap(names = objectNamesAnys, anys = objectAnys)
+    val namedIDispatches = toNamedObjectMap(names = objectNamesAnys, anys = objectAnys)
     val stdFiles = StdFiles(
       stdFileMap = taskStartArguments.stdFileMap filter { _ ⇒ taskStartArguments.logStdoutAndStderr },
       stderrLogLevel = taskArguments.stderrLogLevel,
-      log = namedInvocables.spoolerLog.log
+      log = namedIDispatches.spoolerLog.log
     )
     val commonArguments = CommonArguments(
       taskStartArguments.agentTaskId,
       jobName = taskArguments.jobName,
-      namedInvocables,
+      namedIDispatches,
       taskArguments.rawMonitorArguments map { o ⇒ Monitor(moduleFactoryRegister.toModuleArguments(o.rawModuleArguments), o.name, o.ordering) },
       hasOrder = taskArguments.hasOrder,
       stdFiles)
@@ -125,11 +125,11 @@ object RemoteModuleInstanceServer extends InvocableFactory {
 
   def invocableClass = classOf[RemoteModuleInstanceServer]
 
-  private def toNamedObjectMap(names: VariantArray, anys: VariantArray): TypedNamedInvocables = {
+  private def toNamedObjectMap(names: VariantArray, anys: VariantArray): TypedNamedIDispatches = {
     val nameStrings = names.as[String]
-    val invocables = variantArrayToInvocable(anys)
-    require(nameStrings.size == invocables.size)
-    TypedNamedInvocables(nameStrings zip invocables)
+    val iDispatches = variantArrayToIDispatches(anys)
+    require(nameStrings.size == iDispatches.size)
+    TypedNamedIDispatches(nameStrings zip iDispatches)
   }
 
   /**
@@ -138,5 +138,5 @@ object RemoteModuleInstanceServer extends InvocableFactory {
    * @return IUnknown, interpreted as Invocable
    * @throws NullPointerException when an IUnknown is null.
    */
-  private def variantArrayToInvocable(a: VariantArray) = a.indexedSeq map cast[Invocable]
+  private def variantArrayToIDispatches(a: VariantArray) = a.indexedSeq map cast[IDispatch]
 }

@@ -20,11 +20,11 @@ import scala.util.control.NonFatal
 private[task] final class ApiProcessTask(module: ApiModule, protected val commonArguments: CommonArguments)
 extends Task with HasCloser {
 
-  import commonArguments.{jobName, monitors, namedInvocables, stdFiles}
-  import namedInvocables.spoolerTask
+  import commonArguments.{jobName, monitors, namedIDispatches, stdFiles}
+  import namedIDispatches.spoolerTask
 
-  private val monitorProcessor = MonitorProcessor.create(monitors, namedInvocables).closeWithCloser
-  private val instance: sos.spooler.Job_impl = module.newJobInstance(namedInvocables)
+  private val monitorProcessor = MonitorProcessor.create(monitors, namedIDispatches).closeWithCloser
+  private val instance: sos.spooler.Job_impl = module.newJobInstance(namedIDispatches)
   private val methodIsCalled = mutable.Set[String]()
   private val concurrentStdoutStderrWell = stdFiles.nonEmpty option new ConcurrentStdoutAndStderrWell(s"Job $jobName", stdFiles).closeWithCloser
   private var closeCalled = false

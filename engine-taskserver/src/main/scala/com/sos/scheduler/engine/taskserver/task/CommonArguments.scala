@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedInvocables
+import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
 import scala.collection.immutable
 
 /**
@@ -10,7 +10,7 @@ import scala.collection.immutable
 private[task] final case class CommonArguments(
   agentTaskId: AgentTaskId,
   jobName: String,
-  namedInvocables: TypedNamedInvocables,
+  namedIDispatches: TypedNamedIDispatches,
   monitors: immutable.Seq[Monitor],
   hasOrder: Boolean,
   stdFiles: StdFiles)

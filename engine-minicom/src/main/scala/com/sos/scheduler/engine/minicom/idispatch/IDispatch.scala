@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.minicom.idispatch
 
+import org.jetbrains.annotations.TestOnly
+
 /**
  * @author Joacim Zschimmer
  */
@@ -35,5 +37,13 @@ object IDispatch {
       def invokeMethod(dispId: DISPID, arguments: Seq[Any]): Any =
         delegate.invoke(dispId, Set(DISPATCH_METHOD), arguments)
     }
+  }
+
+  @TestOnly
+  trait Stub extends IDispatch {
+    def getIdOfName(name: String) = throw new NotImplementedError
+
+    def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any], namedArguments: Seq[(DISPID, Any)]) =
+      throw new NotImplementedError
   }
 }

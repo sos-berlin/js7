@@ -39,10 +39,10 @@ private[task] final class ShellProcessTask(
   (implicit executionContext: ExecutionContext)
 extends HasCloser with Task {
 
-  import commonArguments.{agentTaskId, hasOrder, jobName, monitors, namedInvocables, stdFiles}
-  import namedInvocables.spoolerTask
+  import commonArguments.{agentTaskId, hasOrder, jobName, monitors, namedIDispatches, stdFiles}
+  import namedIDispatches.spoolerTask
 
-  private val monitorProcessor = MonitorProcessor.create(monitors, namedInvocables).closeWithCloser
+  private val monitorProcessor = MonitorProcessor.create(monitors, namedIDispatches).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
   private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, id = logFilenamePart) else Map[StdoutStderrType, Path]()
   private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",

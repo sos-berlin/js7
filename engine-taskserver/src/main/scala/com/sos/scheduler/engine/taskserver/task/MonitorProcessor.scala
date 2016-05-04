@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.taskserver.task
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleArguments
 import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
-import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, TypedNamedInvocables}
+import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, TypedNamedIDispatches}
 import scala.util.control.NonFatal
 
 /**
@@ -32,12 +32,12 @@ extends HasCloser {
 }
 
 object MonitorProcessor {
-  def create(monitors: Seq[Monitor], namedInvocables: TypedNamedInvocables) = {
+  def create(monitors: Seq[Monitor], namedIDispatches: TypedNamedIDispatches) = {
     def newMonitorInstance(args: ModuleArguments): sos.spooler.Monitor_impl =
       args.newModule() match {
-        case module: ApiModule ⇒ module.newMonitorInstance(namedInvocables)
+        case module: ApiModule ⇒ module.newMonitorInstance(namedIDispatches)
         case module ⇒ throw new IllegalArgumentException(s"Unsupported module class '${module.getClass.getSimpleName}' for a monitor")
       }
-    new MonitorProcessor(monitors.toVector map { o ⇒ newMonitorInstance(o.moduleArguments) }, namedInvocables.spoolerLog)
+    new MonitorProcessor(monitors.toVector map { o ⇒ newMonitorInstance(o.moduleArguments) }, namedIDispatches.spoolerLog)
   }
 }

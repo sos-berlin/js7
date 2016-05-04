@@ -15,12 +15,12 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.minicom.idispatch.{Invocable, PublicMethodsAreInvocable}
-import com.sos.scheduler.engine.taskserver.moduleapi.NamedInvocables._
+import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, PublicMethodsAreInvocable}
+import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches._
 import com.sos.scheduler.engine.taskserver.moduleapi.Script
 import com.sos.scheduler.engine.taskserver.modules.javamodule.TestJavaModule
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedInvocables}
+import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedIDispatches}
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTaskTest._
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
@@ -99,11 +99,11 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
       CommonArguments(
         AgentTaskId("1-1"),
         jobName = "TEST-JOB",
-        namedInvocables = TypedNamedInvocables(List(
+        namedIDispatches = TypedNamedIDispatches(List(
           SpoolerLogName → spoolerLog,
           SpoolerTaskName → TestSpoolerTask,
-          SpoolerJobName → DummyInvocable,
-          SpoolerName → DummyInvocable)),
+          SpoolerJobName → new IDispatch.Stub {},
+          SpoolerName → new IDispatch.Stub {})),
         monitors = List(
           Monitor(TestJavaModule.arguments { new TestMonitor("A", setting) }, name = "Monitor A"),
           Monitor(TestJavaModule.arguments { new TestMonitor("B", setting) }, name = "Monitor B")),
@@ -130,9 +130,7 @@ private object ShellProcessTaskTest {
       s"echo $TestString\n" +
       s"exit $exitCode")
 
-  private object DummyInvocable extends Invocable
-
-  private object TestSpoolerTask extends SpoolerTask {
+  private object TestSpoolerTask extends SpoolerTask with IDispatch.Stub {
     def setErrorCodeAndText(code: MessageCode, text: String) = throw new NotImplementedError
     def paramsXml = ""
     def paramsXml_=(o: String) = throw new NotImplementedError
@@ -140,7 +138,7 @@ private object ShellProcessTaskTest {
     def orderParamsXml_=(o: String) = throw new NotImplementedError
   }
 
-  private class TestSpoolerLog extends SpoolerLog with PublicMethodsAreInvocable {
+  private class TestSpoolerLog extends SpoolerLog with IDispatch.Stub with PublicMethodsAreInvocable {
     val infoMessages = mutable.Buffer[String]()
 
     def log(level: SchedulerLogLevel, message: String) = level match {
