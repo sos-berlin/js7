@@ -1,10 +1,9 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.idispatch.Invocable
 import com.sos.scheduler.engine.minicom.remoting.serial.variantArrayFlags._
 import com.sos.scheduler.engine.minicom.remoting.serial.variantTypes._
 import com.sos.scheduler.engine.minicom.types.HRESULT.DISP_E_BADVARTYPE
-import com.sos.scheduler.engine.minicom.types.{COMException, VariantArray}
+import com.sos.scheduler.engine.minicom.types.{COMException, IUnknown, VariantArray}
 import org.scalactic.Requirements._
 
 /**
@@ -16,7 +15,7 @@ private[remoting] trait VariantDeserializer extends BaseDeserializer {
     val vt = readInt32()
     vt match {
       case _ if (vt & VT_ARRAY) != 0 ⇒ readVariantArray()
-      case VT_UNKNOWN | VT_DISPATCH ⇒ readInvocableOrNull()  // To make any sense, VT_UNKNOWN should denote here an IDispatch
+      case VT_UNKNOWN | VT_DISPATCH ⇒ readIUnknownOrNull()  // To make any sense, VT_UNKNOWN should denote here an IDispatch
       case _ ⇒ readSimpleVariant(vt)
     }
   }
@@ -49,5 +48,5 @@ private[remoting] trait VariantDeserializer extends BaseDeserializer {
       case o ⇒ throw new COMException(DISP_E_BADVARTYPE, f"Unsupported Variant VT=$o%02x")
     }
 
-    protected def readInvocableOrNull(): Invocable
+    protected def readIUnknownOrNull(): IUnknown
 }

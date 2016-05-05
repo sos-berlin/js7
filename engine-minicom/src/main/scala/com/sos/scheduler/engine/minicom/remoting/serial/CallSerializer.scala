@@ -37,7 +37,7 @@ private final class CallSerializer(protected val proxyRegister: ProxyRegister) e
     call match {
       //      case ReleaseCall(proxyInvocable) ⇒   // TODO
       //        writeByte(MessageClass.Object)
-      //        writeInvocable(proxyInvocable.id)
+      //        writeIUnknown(proxyInvocable.id)
       //        writeByte(MessageCommand.Release)
 
       case QueryInterfaceCall(proxyId, iid) ⇒

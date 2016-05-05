@@ -14,7 +14,7 @@ private[remoting] trait RemotingIUnknownDeserializer {
   protected val remoting: ServerRemoting
 
   @Nullable
-  override final def readInvocableOrNull() = {
+  override final def readIUnknownOrNull() = {
     val proxyId = ProxyId(readInt64())
     val isNew = readBoolean()
     if (isNew) {
@@ -30,7 +30,7 @@ private[remoting] trait RemotingIUnknownDeserializer {
     else
       proxyId match {
         case ProxyId.Null ⇒ null
-        case _ ⇒ remoting.invocable(proxyId)
+        case _ ⇒ remoting.iUnknown(proxyId)
       }
   }
 }

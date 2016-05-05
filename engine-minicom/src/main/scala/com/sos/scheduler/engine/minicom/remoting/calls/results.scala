@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting.calls
 
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, IDispatch, Invocable}
+import com.sos.scheduler.engine.minicom.idispatch.{DISPID, IDispatch}
+import com.sos.scheduler.engine.minicom.types.IUnknown
 import scala.collection.immutable
 
 /**
@@ -11,7 +12,7 @@ private[remoting] trait Result
 private[remoting] object EmptyResult extends Result
 
 
-private[remoting] final case class CreateInstanceResult(invocable: Invocable)
+private[remoting] final case class CreateInstanceResult(iUnknown: IUnknown)
 extends Result
 
 

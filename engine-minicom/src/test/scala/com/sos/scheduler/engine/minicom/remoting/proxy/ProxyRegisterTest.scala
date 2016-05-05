@@ -2,10 +2,10 @@ package com.sos.scheduler.engine.minicom.remoting.proxy
 
 import com.google.inject.Guice
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
-import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable}
+import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch, Invocable}
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister.DuplicateKeyException
-import com.sos.scheduler.engine.minicom.types.COMException
+import com.sos.scheduler.engine.minicom.types.{COMException, IUnknown}
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import org.junit.runner.RunWith
 import org.mockito.Mockito._
@@ -28,8 +28,8 @@ final class ProxyRegisterTest extends FreeSpec {
     val proxy = newProxy(externalProxyId)
     proxyRegister.registerProxy(proxy)
     proxy.id shouldEqual externalProxyId
-    proxyRegister.invocableToProxyId(proxy) shouldEqual ((externalProxyId, false))
-    proxyRegister.invocable(externalProxyId) shouldEqual proxy
+    proxyRegister.iUnknownToProxyId(proxy) shouldEqual ((externalProxyId, false))
+    proxyRegister.iUnknown(externalProxyId) shouldEqual proxy
     proxyRegister.size shouldEqual 1
     intercept[DuplicateKeyException] { proxyRegister.registerProxy(newProxy(externalProxyId)) }
   }
@@ -37,21 +37,21 @@ final class ProxyRegisterTest extends FreeSpec {
   "Own IDispatch" in {
     proxyRegister.size shouldEqual 1
     val iDispatch = mock[Invocable]
-    val (proxyId, true) = proxyRegister.invocableToProxyId(iDispatch)
+    val (proxyId, true) = proxyRegister.iUnknownToProxyId(iDispatch)
     proxyId.index shouldEqual 0x40000001
-    proxyRegister.invocableToProxyId(iDispatch) shouldEqual ((proxyId, false))
-    proxyRegister.invocable(proxyId) shouldEqual iDispatch
+    proxyRegister.iUnknownToProxyId(iDispatch) shouldEqual ((proxyId, false))
+    proxyRegister.iUnknown(proxyId) shouldEqual iDispatch
     intercept[DuplicateKeyException] { proxyRegister.registerProxy(newProxy(proxyId)) }
 
     proxyRegister.size shouldEqual 2
-    val (otherProxyId, true) = proxyRegister.invocableToProxyId(mock[Invocable])
+    val (otherProxyId, true) = proxyRegister.iUnknownToProxyId(mock[Invocable])
     otherProxyId.index shouldEqual 0x40000002
     proxyRegister.size shouldEqual 3
   }
 
   "null is rejected" in {
-    intercept[COMException] { proxyRegister.invocable(ProxyId.Null) } .hResult shouldEqual E_POINTER
-    intercept[NullPointerException] { proxyRegister.invocableToProxyId(null) }
+    intercept[COMException] { proxyRegister.iUnknown(ProxyId.Null) } .hResult shouldEqual E_POINTER
+    intercept[NullPointerException] { proxyRegister.iUnknownToProxyId(null) }
   }
 
   "removeProxy" in {
@@ -66,17 +66,17 @@ final class ProxyRegisterTest extends FreeSpec {
     trait A extends IDispatch with AutoCloseable
     val a = mock[A]
     when (a.close()) thenThrow new Exception("SHOULD BE IGNORED, ONLY LOGGED") with NoStackTrace
-    val (proxyId, true) = proxyRegister.invocableToProxyId(a)
+    val (proxyId, true) = proxyRegister.iUnknownToProxyId(a)
     proxyRegister.release(proxyId)
     verify(a).close()
   }
 
-  "invocables returns Invocables of a type" in {
-    class X extends Invocable
-    assert(proxyRegister.invocables[X].isEmpty)
+  "iUnknowns returns Invocables of a type" in {
+    class X extends IUnknown
+    assert(proxyRegister.iUnknowns[X].isEmpty)
     val xs = Iterator.fill(3) { new X } .toSet
-    xs foreach proxyRegister.invocableToProxyId
-    assert((proxyRegister.invocables[X].toSet: Set[X]) == xs)
+    xs foreach proxyRegister.iUnknownToProxyId
+    assert((proxyRegister.iUnknowns[X].toSet: Set[X]) == xs)
   }
 
   private def newProxy(proxyId: ProxyId, name: String = "") = new SimpleProxyIDispatch(mock[ClientRemoting], proxyId, name)

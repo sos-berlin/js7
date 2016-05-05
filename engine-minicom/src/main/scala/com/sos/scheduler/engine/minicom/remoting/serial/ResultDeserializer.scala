@@ -23,9 +23,9 @@ extends VariantDeserializer with RemotingIUnknownDeserializer {
   def readCreateInstanceResult(): CreateInstanceResult = {
     readAnswerHeader()
     require(HRESULT(readInt32()) == S_OK)
-    val invocable = requireNonNull(readInvocableOrNull())
+    val iUnknown = requireNonNull(readIUnknownOrNull())
     requireEndOfMessage()
-    CreateInstanceResult(invocable)
+    CreateInstanceResult(iUnknown)
   }
 
   def readGetIDsOfNamesResult(n: Int): GetIDsOfNamesResult = {

@@ -72,7 +72,7 @@ extends TaskServer with HasCloser {
 
   def pidOption = (remoteModuleInstanceServers flatMap { _.pidOption }).headOption
 
-  private def remoteModuleInstanceServers = remoting.invocables[RemoteModuleInstanceServer]  // Should return one
+  private def remoteModuleInstanceServers = remoting.iUnknowns[RemoteModuleInstanceServer]  // Should return one
 }
 
 object SimpleTaskServer {

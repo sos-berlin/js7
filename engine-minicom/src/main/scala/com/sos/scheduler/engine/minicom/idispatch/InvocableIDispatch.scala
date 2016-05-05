@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.minicom.idispatch
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits.RichIDispatch
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch._
+import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, VariantArray}
 import java.lang.reflect.{InvocationTargetException, Method, ParameterizedType, Type}
@@ -18,7 +19,8 @@ import scala.collection.immutable
  *
  * @author Joacim Zschimmer
  */
-final case class InvocableIDispatch(invocable: Invocable) extends IDispatch {
+trait InvocableIDispatch extends IDispatch {
+  protected def invocable: Invocable
 
   private val (nameToDispid, methodMap) = {
     val seq: Seq[MethodMeta] =
@@ -34,7 +36,7 @@ final case class InvocableIDispatch(invocable: Invocable) extends IDispatch {
     (nameToDispid, methodMap)
   }
 
-  def call(name: String, arguments: Seq[Any] = Nil): Any =
+  final def call(name: String, arguments: Seq[Any] = Nil): Any =
     nameToDispid.get(name.toLowerCase) match {
       case Some(dispid) ⇒ invokeMethod(method(DISPATCH_METHOD, dispid), arguments)
       case None ⇒
@@ -44,7 +46,7 @@ final case class InvocableIDispatch(invocable: Invocable) extends IDispatch {
         }
     }
 
-  def getIdOfName(name: String) =
+  final def getIdOfName(name: String) =
     nameToDispid.getOrElse(name.toLowerCase,
       invocable match {
         case o: IDispatch ⇒
@@ -55,7 +57,7 @@ final case class InvocableIDispatch(invocable: Invocable) extends IDispatch {
       }
     )
 
-  def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any] = Nil, namedArguments: Seq[(DISPID, Any)] = Nil): Any = {
+  final def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any] = Nil, namedArguments: Seq[(DISPID, Any)] = Nil): Any = {
     if (isInvocableDISPID(dispId)) {
       if (dispatchTypes.size != 1) throw new COMException(DISP_E_MEMBERNOTFOUND, "Use of multiple or no DispatchType is not supported")
       val dispatchType = dispatchTypes.head
@@ -101,7 +103,7 @@ final case class InvocableIDispatch(invocable: Invocable) extends IDispatch {
 object InvocableIDispatch {
   object implicits {
     implicit class RichInvocable(val delegate: Invocable) extends AnyVal {
-      def call(methodName: String, arguments: Seq[Any]): Any = new InvocableIDispatch(delegate).call(methodName, arguments)
+      def call(methodName: String, arguments: Seq[Any]): Any = XInvocableIDispatch(delegate).call(methodName, arguments)
     }
   }
 

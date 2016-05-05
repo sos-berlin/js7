@@ -1,8 +1,9 @@
 package com.sos.scheduler.engine.taskserver.modules.dotnet
 
 import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
-import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFactory, ModuleLanguage, NamedIDispatches, RawModuleArguments}
+import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments}
 import com.sos.scheduler.engine.taskserver.modules.javamodule.{ApiModule, JavaModule}
+import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
 import java.nio.file.Path
 
 /**
@@ -12,10 +13,10 @@ final class DotnetModule private[dotnet](val arguments: DotnetModule.Arguments, 
 extends ApiModule {
   import DotnetModule._
 
-  def newJobInstance(namedIDispatches: NamedIDispatches) =
+  def newJobInstance(namedIDispatches: TypedNamedIDispatches) =
     factory.newInstance(classOf[sos.spooler.Job_impl], namedIDispatchesToTaskContext(namedIDispatches), arguments.reference)
 
-  def newMonitorInstance(namedIDispatches: NamedIDispatches) =
+  def newMonitorInstance(namedIDispatches: TypedNamedIDispatches) =
     factory.newInstance(classOf[sos.spooler.Monitor_impl], namedIDispatchesToTaskContext(namedIDispatches), arguments.reference)
 }
 
@@ -39,7 +40,7 @@ object DotnetModule {
     override def toString = s"DotnetModule.Factory($factory)"
   }
 
-  private def namedIDispatchesToTaskContext(namedIDispatches: NamedIDispatches) = TaskContext(
+  private def namedIDispatchesToTaskContext(namedIDispatches: TypedNamedIDispatches) = TaskContext(
     JavaModule.spooler_log(namedIDispatches),
     JavaModule.spooler_task(namedIDispatches),
     JavaModule.spooler_job(namedIDispatches),

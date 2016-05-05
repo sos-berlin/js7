@@ -12,10 +12,10 @@ import org.scalatest.junit.JUnitRunner
 final class TypedNamedIDispatchesTest extends FreeSpec {
 
   "spoolerLog" in {
-    val spoolerLog = new IDispatch.Stub {}
-    val spoolerTask = new IDispatch.Stub {}
-    val spoolerJob = new IDispatch.Stub {}
-    val spooler = new IDispatch.Stub {}
+    val spoolerLog = new IDispatch.Empty {}
+    val spoolerTask = new IDispatch.Empty {}
+    val spoolerJob = new IDispatch.Empty {}
+    val spooler = new IDispatch.Empty {}
     val namedIDispatches = TypedNamedIDispatches(List(
       "spooler_log" → spoolerLog,
       "spooler_task" → spoolerTask,
@@ -25,6 +25,6 @@ final class TypedNamedIDispatchesTest extends FreeSpec {
   }
 
   "invalid name" in {
-    intercept[IllegalArgumentException] { TypedNamedIDispatches(List("invalid" → new IDispatch.Stub {})) }
+    intercept[IllegalArgumentException] { TypedNamedIDispatches(List("invalid" → new IDispatch.Empty {})) }
   }
 }

@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.minicom.idispatch
 
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits.RichIDispatch
+import com.sos.scheduler.engine.minicom.idispatch.XInvocableIDispatch
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatchTest._
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
@@ -19,7 +20,7 @@ import scala.annotation.meta.{getter, setter}
 final class InvocableIDispatchTest extends FreeSpec {
 
   private val a = new A
-  private val iDispatch = InvocableIDispatch(a)
+  private val iDispatch = XInvocableIDispatch(a)
 
   "call" in {
     iDispatch.call("int", List(7)) shouldEqual 8
@@ -63,12 +64,12 @@ final class InvocableIDispatchTest extends FreeSpec {
   }
 
   "PublicMethodsAreInvocable" in {
-    InvocableIDispatch(B).call("someMethod") shouldEqual 1
+    XInvocableIDispatch(B).call("someMethod") shouldEqual 1
   }
 
   "Underlying IDispatch methods are called, when not overriden by @invocable" in {
-    InvocableIDispatch(C).call("overridden") shouldEqual "OVERRIDDEN"
-    InvocableIDispatch(C).call("notOverridden") shouldEqual "NOT OVERRIDDEN"
+    XInvocableIDispatch(C).call("overridden") shouldEqual "OVERRIDDEN"
+    XInvocableIDispatch(C).call("notOverridden") shouldEqual "NOT OVERRIDDEN"
   }
   
   "Property" in {
@@ -82,7 +83,7 @@ final class InvocableIDispatchTest extends FreeSpec {
 private object InvocableIDispatchTest {
   private val ALong = 111222333444555666L
 
-  private class A extends Invocable {
+  private class A extends AnnotatedInvocable {
     @invocable def int(o: Int) = o + 1
     @invocable def boxedInteger(o: java.lang.Integer): java.lang.Integer = o + 1
     @invocable def long(o: Long) = o + 1
@@ -107,7 +108,7 @@ private object InvocableIDispatchTest {
     def someMethod = 1
   }
 
-  private object C extends IDispatch {
+  private object C extends IDispatch with AnnotatedInvocable {
     @invocable def overridden = "OVERRIDDEN"
 
     override def getIdOfName(name: String) = name match {

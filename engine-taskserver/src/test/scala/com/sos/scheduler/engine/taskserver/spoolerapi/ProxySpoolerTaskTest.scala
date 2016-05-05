@@ -37,8 +37,8 @@ final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with Ha
     def configure() = bindInstance[TaskStartArguments](TaskStartArguments.forTest(stdFileMap = stdFileMap))
   })
 
-  private lazy val spoolerTask = InvocableIDispatch(
-    ProxySpoolerTask(injector, mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil))
+  private lazy val spoolerTask =
+    ProxySpoolerTask(injector, mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
 
   override def afterAll() = closer.close()
 

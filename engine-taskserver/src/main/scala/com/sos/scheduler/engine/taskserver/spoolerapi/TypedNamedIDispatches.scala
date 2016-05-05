@@ -12,8 +12,8 @@ import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches._
 final class TypedNamedIDispatches private(val toMap: Map[String, IDispatch]) extends NamedIDispatches {
   lazy val spoolerLog: SpoolerLog = cast[SpoolerLog](toMap(SpoolerLogName))
   lazy val spoolerTask: SpoolerTask = cast[SpoolerTask](toMap(SpoolerTaskName))
-  lazy val spoolerJob: IDispatch = toMap(SpoolerJobName)
-  lazy val spooler: IDispatch = toMap(SpoolerName)
+  lazy val spoolerJob: IDispatch = cast[IDispatch](toMap(SpoolerJobName))
+  lazy val spooler: IDispatch = cast[IDispatch](toMap(SpoolerName))
 
   def apply(name: String) = toMap(name)
 }

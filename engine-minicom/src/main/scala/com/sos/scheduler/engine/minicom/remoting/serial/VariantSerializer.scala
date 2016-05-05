@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.idispatch.Invocable
 import com.sos.scheduler.engine.minicom.remoting.IDispatchInvoker
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.serial.variantTypes._
+import com.sos.scheduler.engine.minicom.types.IUnknown
 import scala.runtime.BoxedUnit.UNIT
 
 /**
@@ -30,7 +30,7 @@ private[remoting] abstract class VariantSerializer extends BaseSerializer {
         writeString(o)
       case o: sos.spooler.Idispatch ⇒
         writeInt32(VT_DISPATCH)
-        writeInvocable(o.com_invoker.asInstanceOf[IDispatchInvoker].iDispatch)
+        writeIUnknown(o.com_invoker.asInstanceOf[IDispatchInvoker].iDispatch)
       case null ⇒
         writeNull()
       case Unit | UNIT ⇒
@@ -43,11 +43,11 @@ private[remoting] abstract class VariantSerializer extends BaseSerializer {
     writeBoolean(false)
   }
 
-  def writeInvocable(invocable: Invocable): Unit
+  def writeIUnknown(iUnknown: IUnknown): Unit
 }
 
 object VariantSerializer {
   final class WithoutIUnknown extends VariantSerializer {
-    def writeInvocable(invocable: Invocable) = throw new UnsupportedOperationException("Serialization of IUnknown is not supported")
+    def writeIUnknown(iUnknown: IUnknown) = throw new UnsupportedOperationException("Serialization of IUnknown is not supported")
   }
 }

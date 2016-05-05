@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.minicom.idispatch
 
-import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.types.IUnknown
 import java.lang.reflect.Method
 
@@ -11,9 +10,11 @@ import java.lang.reflect.Method
  * @author Joacim Zschimmer
  */
 trait Invocable extends IUnknown {
-  def invocableMethods: Seq[Method] = getClass.getMethods filter { _.getAnnotation(classOf[invocable]) != null }
+  def invocableMethods: Seq[Method]
 }
 
 object Invocable {
-  object Empty extends Invocable
+  trait Empty extends Invocable {
+    final def invocableMethods = Nil
+  }
 }

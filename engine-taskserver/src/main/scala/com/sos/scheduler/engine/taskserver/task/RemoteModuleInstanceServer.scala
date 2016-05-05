@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable, InvocableFactory}
+import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch, IUnknownFactory}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
@@ -31,7 +31,7 @@ final class RemoteModuleInstanceServer @Inject private(
   synchronizedStartProcess: RichProcessStartSynchronizer,
   taskServerMainTerminatedOption: Option[Future[Unit]])
   (implicit ec: ExecutionContext)
-extends HasCloser with Invocable {
+extends HasCloser with AnnotatedInvocable {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
 
   private var taskArguments: TaskArguments = null
@@ -118,12 +118,12 @@ extends HasCloser with Invocable {
   def pidOption: Option[Pid] = taskOnce flatMap { _.pidOption }
 }
 
-object RemoteModuleInstanceServer extends InvocableFactory {
+object RemoteModuleInstanceServer extends IUnknownFactory {
   val clsid = CLSID(UUID fromString "feee47a3-6c1b-11d8-8103-000476ee8afb")
   val iid   = IID  (UUID fromString "feee47a2-6c1b-11d8-8103-000476ee8afb")
   private val logger = Logger(getClass)
 
-  def invocableClass = classOf[RemoteModuleInstanceServer]
+  def iUnknownClass = classOf[RemoteModuleInstanceServer]
 
   private def toNamedObjectMap(names: VariantArray, anys: VariantArray): TypedNamedIDispatches = {
     val nameStrings = names.as[String]
@@ -134,7 +134,7 @@ object RemoteModuleInstanceServer extends InvocableFactory {
 
   /**
    * Expects an VariantArray with Some[IUnknown]
- *
+   *
    * @return IUnknown, interpreted as Invocable
    * @throws NullPointerException when an IUnknown is null.
    */

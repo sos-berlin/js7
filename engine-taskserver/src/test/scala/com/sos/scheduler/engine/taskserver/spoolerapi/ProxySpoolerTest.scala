@@ -27,8 +27,8 @@ final class ProxySpoolerTest extends FreeSpec with BeforeAndAfterAll {
     def configure() = bindInstance[TaskStartArguments](TaskStartArguments.forTest(directory = testDirectory))
   })
 
-  private lazy val spooler = InvocableIDispatch(
-    ProxySpooler(injector, mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil))
+  private lazy val spooler =
+    ProxySpooler(injector, mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
 
   "directory returns TaskStartArguments.directory" in {
     assert(spooler.invokeGet("directory") == s"$testDirectory${File.separator}")
