@@ -15,7 +15,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch, Invocable, InvocableAndIDispatch, PublicMethodsAreInvocable}
+import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable, InvocableIDispatch, PublicMethodsAreInvocable}
 import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches._
 import com.sos.scheduler.engine.taskserver.moduleapi.Script
 import com.sos.scheduler.engine.taskserver.modules.javamodule.TestJavaModule
@@ -138,7 +138,7 @@ private object ShellProcessTaskTest {
     def orderParamsXml_=(o: String) = throw new NotImplementedError
   }
 
-  private class TestSpoolerLog extends SpoolerLog with PublicMethodsAreInvocable with InvocableAndIDispatch {
+  private class TestSpoolerLog extends SpoolerLog with PublicMethodsAreInvocable with InvocableIDispatch {
     val infoMessages = mutable.Buffer[String]()
 
     def log(level: SchedulerLogLevel, message: String) = level match {

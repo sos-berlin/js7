@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.minicom.types.IUnknown
 import java.lang.reflect.Method
 
 /**
- * Public methods annotated with @[[com.sos.scheduler.engine.minicom.idispatch.annotation.invocable]] are callable via [[InvocableIDispatch]].
+ * Public methods annotated with @[[com.sos.scheduler.engine.minicom.idispatch.annotation.invocable]] are callable via [[OverridingInvocableIDispatch]].
  * Nearly a [[IDispatch]], but without need to implement the `IDispatch`s methods.
  *
  * @author Joacim Zschimmer

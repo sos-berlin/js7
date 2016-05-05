@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import java.lang.reflect.Method
 
 /**
-  * Methods annotated with @[[invocable]] are callable via [[InvocableIDispatch]].
+  * Methods annotated with @[[invocable]] are callable via [[OverridingInvocableIDispatch]].
   *
   * @author Joacim Zschimmer
   */

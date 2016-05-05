@@ -3,7 +3,6 @@ package com.sos.scheduler.engine.taskserver.spoolerapi
 import com.google.inject.Guice
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
-import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments

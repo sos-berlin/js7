@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, DISPID}
+import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch._
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
@@ -21,7 +21,7 @@ import java.util.UUID
  * @author Joacim Zschimmer
  */
 final class ProxySpoolerTask private(taskStartArguments: TaskStartArguments, protected val remoting: ClientRemoting, val id: ProxyId, val name: String)
-extends SpoolerTask with SpecializedProxyIDispatch with AnnotatedInvocable {
+extends SpoolerTask with SpecializedProxyIDispatch with AnnotatedInvocable with OverridingInvocableIDispatch {
 
   import ProxySpoolerTask._
 

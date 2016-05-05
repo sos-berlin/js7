@@ -4,7 +4,7 @@ import com.google.inject.Injector
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, DISPID, InvocableIDispatch, InvocableIDispatchMixin}
+import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch.forEachProperty
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
@@ -15,7 +15,7 @@ import java.util.UUID
  * @author Joacim Zschimmer
  */
 final class ProxySpoolerLog private(protected val remoting: ClientRemoting, val id: ProxyId, val name: String, initialMinimumLevel: SchedulerLogLevel)
-extends SpoolerLog with SpecializedProxyIDispatch with AnnotatedInvocable with InvocableIDispatchMixin {
+extends SpoolerLog with SpecializedProxyIDispatch with AnnotatedInvocable with OverridingInvocableIDispatch {
 
   import com.sos.scheduler.engine.taskserver.spoolerapi.ProxySpoolerLog._
 

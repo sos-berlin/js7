@@ -3,12 +3,10 @@ package com.sos.scheduler.engine.minicom.remoting
 import akka.util.ByteString
 import com.google.inject.Injector
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
-import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaUtils}
+import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits.RichIDispatch
-import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatch.implicits.RichInvocable
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch, IUnknownFactory, Invocable}
+import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch, IUnknownFactory}
 import com.sos.scheduler.engine.minicom.remoting.Remoting._
 import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, ProxyRegister, SimpleProxyIDispatch}
@@ -17,7 +15,7 @@ import com.sos.scheduler.engine.minicom.remoting.serial.CallSerializer.serialize
 import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializeError
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
 import com.sos.scheduler.engine.minicom.remoting.serial.{ResultDeserializer, ServerRemoting}
-import com.sos.scheduler.engine.minicom.types.{CLSID, COMException, IID, IUnknown}
+import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
 import java.time.{Duration, Instant}
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
@@ -109,7 +107,7 @@ extends ServerRemoting with ClientRemoting {
     case CallCall(proxyId, methodName, arguments) ⇒
       val iUnknown = proxyRegister.iUnknown(proxyId)
       val result = iUnknown match {
-        case o: Invocable ⇒ o.call(methodName, arguments)
+        //case o: Invocable ⇒ o.call(methodName, arguments)
         case o: IDispatch ⇒ o.invokeMethod(methodName, arguments)
         case o ⇒ throw new IllegalArgumentException(s"Not an IDispatch or Invocable: ${o.getClass}")
       }
