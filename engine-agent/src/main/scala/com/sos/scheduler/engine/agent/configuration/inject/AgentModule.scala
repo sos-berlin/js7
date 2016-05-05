@@ -7,12 +7,15 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.UseInternalKillScript
 import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
-import com.sos.scheduler.engine.agent.task.TaskHandler
+import com.sos.scheduler.engine.agent.task.{StandardAgentTaskFactory, TaskHandler}
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
+import com.sos.scheduler.engine.taskserver.modules
+import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
+import com.sos.scheduler.engine.taskserver.modules.javamodule.{JavaModule, StandardJavaModule}
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider
 import javax.inject.Singleton
@@ -37,8 +40,12 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
   private def taskHandlerView(o: TaskHandler): TaskHandlerView = o
 
   @Provides @Singleton
-  private def moduleFactoryRegister(): ModuleFactoryRegister =
-    new ModuleFactoryRegister(List(ShellModule))  // Other modules via TaskServerMain
+  private def moduleFactoryRegister(): ModuleFactoryRegister = {
+    val moduleFactories =
+      if (StandardAgentTaskFactory.runInProcess) StandardModuleFactories  // For in-process debugging
+      else List(ShellModule)  // Other modules get its own process via TaskServerMain
+    new ModuleFactoryRegister(moduleFactories)
+  }
 
   @Provides @Singleton
   private def timerService(actorSystem: ActorSystem, closer: Closer): TimerService =

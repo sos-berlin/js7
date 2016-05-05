@@ -72,8 +72,9 @@ extends AgentTaskFactory {
       environment = agentConfiguration.environment,
       killScriptOption = agentConfiguration.killScript,
       rpcKeepaliveDurationOption = agentConfiguration.rpcKeepaliveDuration)
-    if (sys.props contains UseThreadPropertyName) { // For debugging
-      logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")
+    if (runInProcess) {
+      // For debugging
+      logger.warn(s"Due to system property $InProcessName, task runs in Agent process")
       new SimpleTaskServer(injector, taskStartArguments)
     } else
       command match {
@@ -89,9 +90,11 @@ extends AgentTaskFactory {
     Splitter.on(Pattern.compile("\\s+")).trimResults.omitEmptyStrings.split(options).toImmutableSeq
 }
 
-private object StandardAgentTaskFactory {
+object StandardAgentTaskFactory {
   private val logger = Logger(getClass)
-  private val UseThreadPropertyName = "jobscheduler.agent.useThread"
+  private val InProcessName = "jobscheduler.agent.inProcess"
+
+  def runInProcess = sys.props contains InProcessName
 
   /**
    * Resembles the behaviour of [[com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer]]#invoke.
