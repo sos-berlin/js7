@@ -35,4 +35,12 @@ object Stopwatch {
     val singleDuration = totalDuration / n
     val perSecond = n * 1000 / totalDuration.toMillis
     override def toString = s"$perSecond $itemName/s (${totalDuration.pretty}/$n = ${singleDuration.pretty})"  }
+
+  /**
+    * Returns something like "2s/3000 items, 666µs/item, 1500 items/s"
+    */
+  def itemsPerSecondString(duration: Duration, n: Int, item: String, items: String = "") = {
+    val plural = if (items.isEmpty) s"${item}s" else items
+    s"${duration.pretty}/$n $plural, ${(duration / n).pretty}/$item, ${1000 * n / duration.toMillis} $plural/s"
+  }
 }
