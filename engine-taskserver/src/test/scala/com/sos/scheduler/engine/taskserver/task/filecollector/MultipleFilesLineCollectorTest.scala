@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempFile, delete}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import scala.util.Random
 
@@ -22,15 +21,15 @@ final class MultipleFilesLineCollectorTest extends FreeSpec  {
     withCloser { implicit closer ⇒
       val files = List.fill(2) { createTempFile("test-", ".tmp") withCloser delete }
       val writers = files map { f ⇒ new OutputStreamWriter(new FileOutputStream(f), UTF_8).closeWithCloser }
-      val fileLogger = new MultipleFilesLineCollector(List("one", "two") zip files, UTF_8).closeWithCloser
+      val fileLogger = new MultipleFilesLineCollector(List("one", "two") zip files, UTF_8, batchThreshold = 100).closeWithCloser
 
       for (_ ← 1 to 1000) {
         val testLines = List.fill(10) { randomString(100) }
         for (line ← testLines) writers(Random.nextInt(writers.size)).write(s"$line\n")
         for (w ← writers) w.flush()
-        val (files, lines) = fileLogger.nextLinesIterator.toList.unzip
-        files.toSet shouldEqual files.toSet
-        lines.toSet shouldEqual testLines.toSet
+        val (files, batches) = fileLogger.nextBatchIterator.toList.unzip
+        assert(files.toSet == files.toSet)
+        assert(batches.flatten.toSet == testLines.toSet)
       }
     }
   }

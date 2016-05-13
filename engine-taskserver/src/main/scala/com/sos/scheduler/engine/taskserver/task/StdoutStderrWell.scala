@@ -7,23 +7,28 @@ import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.taskserver.task.filecollector.MultipleFilesLineCollector
 import java.nio.charset.Charset
 import java.nio.file.Path
+import scala.collection.immutable
 
 /**
  * Reads stdout and stderr output files and outputs the arrived data then with every `apply`.
  *
  * @author Joacim Zschimmer
  */
-final class StdoutStderrWell(stdFiles: Map[StdoutStderrType, Path], fileEncoding: Charset, output: (StdoutStderrType, String) ⇒ Unit)
+final class StdoutStderrWell(
+  stdFiles: Map[StdoutStderrType, Path],
+  fileEncoding: Charset,
+  batchThreshold: Int,
+  output: (StdoutStderrType, immutable.Seq[String]) ⇒ Unit)
 extends HasCloser {
 
-  private val lineCollector = new MultipleFilesLineCollector(Nil ++ stdFiles, fileEncoding).closeWithCloser
+  private val lineCollector = new MultipleFilesLineCollector(Nil ++ stdFiles, fileEncoding, batchThreshold = batchThreshold).closeWithCloser
   private val firstLineCollector = new FirstStdoutLineCollector
   def firstStdoutLine = firstLineCollector.firstStdoutLine
 
   def apply() = synchronized {
-    lineCollector.nextLinesIterator foreach { case ((typ, file), line) ⇒
-      output(typ, line)
-      firstLineCollector.apply(file, line)
+    lineCollector.nextBatchIterator foreach { case ((typ, file), batch) ⇒
+      output(typ, batch)
+      firstLineCollector.apply(file, batch.head)
     }
   }
 

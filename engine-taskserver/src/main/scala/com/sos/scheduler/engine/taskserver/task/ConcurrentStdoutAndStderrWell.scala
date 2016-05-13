@@ -13,7 +13,7 @@ import scala.concurrent.Future
 final class ConcurrentStdoutAndStderrWell(name: String, stdFiles: StdFiles)
 extends HasCloser with ClosedFuture {
 
-  private val well = new StdoutStderrWell(stdFiles.stdFileMap, stdFiles.encoding, stdFiles.output).closeWithCloser
+  private val well = new StdoutStderrWell(stdFiles.stdFileMap, stdFiles.encoding, batchThreshold = LogBatchThreshold, stdFiles.output).closeWithCloser
   private val concurrentCaller = new ConcurrentCaller(
     pauses = Iterator continually PollPeriod,
     function = well.apply,
@@ -35,4 +35,5 @@ extends HasCloser with ClosedFuture {
 
 object ConcurrentStdoutAndStderrWell {
   private val PollPeriod = 10.s
+  private val LogBatchThreshold = 1000*1000  // Cut-off count of characters to log (and transfer) at once
 }
