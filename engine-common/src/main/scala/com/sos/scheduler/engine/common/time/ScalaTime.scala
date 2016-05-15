@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.common.time
 
+import com.sos.scheduler.engine.base.utils.Ascii
+import com.sos.scheduler.engine.base.utils.Ascii.isAsciiDigit
 import java.time.Instant.now
 import java.time._
 import java.util.concurrent.TimeUnit
@@ -88,7 +90,7 @@ object ScalaTime {
   /**
    * Parses a duration according to ISO-8601 with optional first letters PT.
    */
-  def parseDuration(string: String) = Duration parse (if (string.nonEmpty && string(0).isDigit) s"PT$string" else string)
+  def parseDuration(string: String) = Duration parse (if (string.nonEmpty && isAsciiDigit(string(0))) s"PT$string" else string)
 
   def randomDuration(maximum: Duration): Duration = Duration ofNanos (maximum.toNanos * Random.nextFloat).toLong
 
