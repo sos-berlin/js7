@@ -24,7 +24,7 @@ final class StdoutStderrWellTest extends FreeSpec {
       val collectedLines = Map(Stdout → mutable.Buffer[String](), Stderr → mutable.Buffer[String]())
       val stdFiles = Map(Stdout → createTempFile("test-", ".tmp"), Stderr → createTempFile("test-", ".tmp").withCloser(Files.delete))
       val List(out, err) = List(Stdout, Stderr) map { o ⇒ new OutputStreamWriter(new FileOutputStream(stdFiles(o)).closeWithCloser) }
-      val well = new StdoutStderrWell(stdFiles, UTF_8, (t, lines) ⇒ collectedLines(t) += lines).closeWithCloser
+      val well = new StdoutStderrWell(stdFiles, UTF_8, batchThreshold = 100, (t, batches) ⇒ collectedLines(t) ++= batches).closeWithCloser
 
       out.write("OUT\n")
       out.flush()

@@ -8,6 +8,7 @@ import com.sos.scheduler.engine.taskserver.task.StdFiles._
 import java.nio.charset.Charset
 import java.nio.file.Path
 import scala.collection.JavaConversions._
+import scala.collection.immutable
 
 /**
  * Stdout and stderr file paths, encoding, stderr SchedulerLogLevel and logging function.
@@ -22,16 +23,16 @@ private[task] final case class StdFiles(
 {
   val toLevel = Map(Stdout → SchedulerLogLevel.info, Stderr → stderrLogLevel)
 
-  def output(t: StdoutStderrType, lines: String): Unit = {
+  def output(t: StdoutStderrType, batch: immutable.Seq[String]): Unit = {
     val prefixedLines = stderrLogLevel match {
-      case SchedulerLogLevel.info ⇒ prefixLinesWithStdoutOrStderr(t, lines)
-      case _ ⇒ lines
+      case SchedulerLogLevel.info ⇒ batch map { lines ⇒ prefixLinesWithStdoutOrStderr(t, lines) }
+      case _ ⇒ batch
     }
-    log(toLevel(t), prefixedLines)
+    log(toLevel(t), prefixedLines mkString "\n")
   }
 
   def nonEmpty = !isEmpty
-  def isEmpty = stdFileMap.isEmpty  // With no files, all other arguments are not used.
+  def isEmpty = stdFileMap.isEmpty  // With no files, none of the other arguments is used.
 }
 
 object StdFiles {

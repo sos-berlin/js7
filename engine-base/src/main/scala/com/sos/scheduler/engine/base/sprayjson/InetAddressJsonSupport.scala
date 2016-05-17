@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.base.sprayjson
 
+import com.sos.scheduler.engine.base.utils.Ascii.isAsciiDigit
 import java.net.{InetAddress, InetSocketAddress}
 import spray.json.{JsString, JsValue, JsonFormat}
 
@@ -36,5 +37,5 @@ object InetAddressJsonSupport {
     }
   }
 
-  private def isIpNumber(p: String) = p.nonEmpty && (p(0).isDigit || p(0) == '[' || p(0) == ':')
+  private def isIpNumber(p: String) = p.nonEmpty && (isAsciiDigit(p(0)) || p(0) == '[' || p(0) == ':')
 }

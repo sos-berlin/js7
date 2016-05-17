@@ -142,7 +142,7 @@ private object ShellProcessTaskTest {
     val infoMessages = mutable.Buffer[String]()
 
     def log(level: SchedulerLogLevel, message: String) = level match {
-      case SchedulerLogLevel.info ⇒ infoMessages += message
+      case SchedulerLogLevel.info ⇒ infoMessages ++= message.lines
       case _ ⇒ fail()
     }
   }

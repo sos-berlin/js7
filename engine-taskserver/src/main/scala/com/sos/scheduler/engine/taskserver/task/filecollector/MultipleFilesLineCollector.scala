@@ -10,12 +10,15 @@ import scala.collection.immutable
 /**
  * @author Joacim Zschimmer
  */
-final class MultipleFilesLineCollector[Key](sources: immutable.Iterable[(Key, Path)], encoding: Charset) extends HasCloser {
+final class MultipleFilesLineCollector[Key](sources: immutable.Iterable[(Key, Path)], encoding: Charset, batchThreshold: Int)
+extends HasCloser {
 
-  private val lineCollectors = closeOnError(closer) { sources map { o ⇒ o → new FileLineCollector(o._2, encoding).closeWithCloser } }
+  private val lineCollectors = closeOnError(closer) {
+    sources map { o ⇒ o → new FileLineCollector(o._2, encoding, batchThreshold = batchThreshold).closeWithCloser }
+  }
 
-  def nextLinesIterator: Iterator[((Key, Path), String)] =
-    lineCollectors.iterator flatMap { case (source, collector) ⇒ collector.nextLinesIterator map { source → _ } }
+  def nextBatchIterator: Iterator[((Key, Path), immutable.Seq[String])] =
+    lineCollectors.iterator flatMap { case (source, collector) ⇒ collector.nextBatchIterator map { source → _ } }
 
   override def toString = s"${getClass.getSimpleName}($sources)"
 }
