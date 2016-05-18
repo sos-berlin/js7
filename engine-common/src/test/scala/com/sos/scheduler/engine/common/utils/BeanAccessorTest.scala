@@ -25,7 +25,7 @@ final class BeanAccessorTest extends FreeSpec {
     assert(a("int") == 1)
     assert(a("string") == "STRING")
 
-    a("int") = 2
+    a("int") = Integer valueOf 2
     assert(bean.int == 2)
     assert(a("int") == 2)
 
