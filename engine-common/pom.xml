@@ -169,6 +169,10 @@
         </dependency>
         <dependency>
             <groupId>io.spray</groupId>
+            <artifactId>spray-can_${scala.binaryVersion}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.spray</groupId>
             <artifactId>spray-httpx_${scala.binaryVersion}</artifactId>
         </dependency>
         <dependency>
