@@ -13,6 +13,7 @@ import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider
+import com.typesafe.config.ConfigFactory
 import javax.inject.Singleton
 import scala.collection.immutable
 
@@ -38,13 +39,20 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
     TimerService()(actorSystem.dispatcher) closeWithCloser closer
 
   @Provides @Singleton
-  private def actorSystem(closer: Closer): ActorSystem = newActorSystem("Agent")(closer)
+  private def actorSystem(closer: Closer, agentConfiguration: AgentConfiguration): ActorSystem = {
+    var config = ConfigFactory.empty
+    if (agentConfiguration.https.isDefined) {
+      config = ConfigFactory.parseString("spray.can.server.ssl-encryption = on") withFallback config
+    }
+    newActorSystem("Agent", config)(closer)
+  }
 
   @Provides @Singleton
   private def agentConfiguration(): AgentConfiguration =
     if (originalAgentConfiguration.killScript contains UseInternalKillScript) {
       // After Agent termination, leave behind the kill script, in case of regular termination after error.
-      val provider = new ProcessKillScriptProvider(httpPort = originalAgentConfiguration.httpPort)
+      val identifiyingPort = originalAgentConfiguration.https map { _.port } orElse originalAgentConfiguration.httpPort getOrElse 0
+      val provider = new ProcessKillScriptProvider(httpPort = identifiyingPort)
       val killScript = provider.provideTo(originalAgentConfiguration.logDirectory)  // logDirectory for lack of a work directory
       originalAgentConfiguration.copy(killScript = Some(killScript))
     } else
