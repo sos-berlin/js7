@@ -161,7 +161,6 @@
         <dependency>
             <groupId>io.spray</groupId>
             <artifactId>spray-can_${scala.binaryVersion}</artifactId>
-            <version>${spray.version}</version>
         </dependency>
         <dependency>
             <groupId>io.spray</groupId>
@@ -189,6 +188,11 @@
             <groupId>com.intellij</groupId>
             <artifactId>annotations</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

@@ -36,7 +36,7 @@ final class AgentWebServerTest extends FreeSpec {
 
 private object AgentWebServerTest {
   private def startAgent(httpPort: Int) = {
-    val injector = Guice.createInjector(new AgentModule(AgentConfiguration(httpPort = httpPort)))
+    val injector = Guice.createInjector(new AgentModule(AgentConfiguration(httpPort = Some(httpPort))))
     val agentStarter = injector.instance[AgentWebServer]
     val started = agentStarter.start()
     awaitResult(started, 10.s)
