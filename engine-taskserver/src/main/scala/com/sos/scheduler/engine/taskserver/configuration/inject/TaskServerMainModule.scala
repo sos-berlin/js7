@@ -31,11 +31,12 @@ final class TaskServerMainModule(dotnet: DotnetConfiguration) extends AbstractMo
     new ModuleFactoryRegister(StandardModuleFactories :+ dotnetModuleFactory)
 
   @Provides @Singleton
-  private def dotnetModuleFactory(): DotnetModule.Factory = {
+  private def dotnetModuleFactory(implicit closer: Closer): DotnetModule.Factory = {
     val factory = dotnet.adapterDllDirectory match {
       case Some(dir) if isWindows ⇒ new Jni4netModuleInstanceFactory(dir)
       case _ ⇒ DotnetModuleInstanceFactory.Unsupported
     }
+    closer.registerAutoCloseable(factory)
     new DotnetModule.Factory(factory, classDllDirectory = dotnet.classDllDirectory)
   }
 
