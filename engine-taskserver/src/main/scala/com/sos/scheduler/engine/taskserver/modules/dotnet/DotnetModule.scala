@@ -24,6 +24,11 @@ object DotnetModule {
   private val DotnetClassLanguage = ModuleLanguage("dotnet")
   private val PowershellLanguage = ModuleLanguage("powershell")
 
+  private object ScriptControlLanguage {
+    private val Prefix = "scriptcontrol:"
+    def unapply(lang: ModuleLanguage) = if (lang.string startsWith Prefix) Some(lang.string stripPrefix Prefix) else None
+  }
+
   final class Factory(factory: DotnetModuleInstanceFactory, classDllDirectory: Option[Path]) extends ModuleFactory {
     def toModuleArguments: PartialFunction[RawModuleArguments, ModuleArguments] = {
       case RawModuleArguments(PowershellLanguage, None, script, None, None) ⇒
@@ -32,6 +37,9 @@ object DotnetModule {
       case RawModuleArguments(DotnetClassLanguage, None, _, Some(dll), Some(className)) ⇒
         val withDirectory = classDllDirectory map { _ resolve dll } getOrElse dll
         Arguments(this, DotnetModuleReference.DotnetClass(dll = withDirectory, className = className))
+
+      case RawModuleArguments(ScriptControlLanguage(language), None, script, None, None) ⇒
+        Arguments(this, DotnetModuleReference.ScriptControl(language = language, script = script.string))
     }
 
     def newModule(arguments: ModuleArguments) =

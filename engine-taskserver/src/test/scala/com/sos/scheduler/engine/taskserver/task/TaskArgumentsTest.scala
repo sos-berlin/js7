@@ -55,6 +55,11 @@ final class TaskArgumentsTest extends FreeSpec {
       DotnetModule.Arguments(stubDotnetModuleFactory, DotnetModuleReference.Powershell(scriptText)))
   }
 
+  "language=ScriptControl:VBScript" in {
+    assert(moduleArguments("language=ScriptControl:VBScript", s"script=$scriptXml") ==
+      DotnetModule.Arguments(stubDotnetModuleFactory, DotnetModuleReference.ScriptControl(language = "vbscript", script = scriptText)))
+  }
+
   "language=dotnet" in {
     assert(moduleArguments("language=dotnet", "dll=test.dll", "dotnet_class=com.example.Test") ==
       DotnetModule.Arguments(stubDotnetModuleFactory, DotnetModuleReference.DotnetClass(Paths.get("/TEST-DLLS/test.dll"), "com.example.Test")))

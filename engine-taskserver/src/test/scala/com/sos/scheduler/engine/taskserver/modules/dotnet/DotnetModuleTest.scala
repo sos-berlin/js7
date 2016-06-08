@@ -21,14 +21,20 @@ final class DotnetModuleTest extends FreeSpec {
     assert(!dotnetFactory.toModuleArguments.isDefinedAt(raw))
   }
 
-  "powershell" in {
+  "powerShell" in {
     val raw = RawModuleArguments(ModuleLanguage("powershell"), None, Script("TEST-SCRIPT"), None, None)
     assert(dotnetFactory.toModuleArguments(raw) == Arguments(dotnetFactory, DotnetModuleReference.Powershell("TEST-SCRIPT")))
   }
 
-  "dotnet_class" in {
+  "dotnet" in {
     val dll = Paths.get("DLL")
     val raw = RawModuleArguments(ModuleLanguage("dotnet"), None, Script("IGNORED"), Some(dll), Some("DOTNET-CLASS"))
     assert(dotnetFactory.toModuleArguments(raw) == Arguments(dotnetFactory, DotnetModuleReference.DotnetClass(dll, "DOTNET-CLASS")))
+  }
+
+  "scriptcontrol:vbscript" in {
+    val raw = RawModuleArguments(ModuleLanguage("scriptcontrol:vbscript"), None, Script("TEST-SCRIPT"), None, None)
+    assert(dotnetFactory.toModuleArguments(raw) ==
+      Arguments(dotnetFactory, DotnetModuleReference.ScriptControl(language = "vbscript", script = "TEST-SCRIPT")))
   }
 }
