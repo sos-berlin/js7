@@ -5,8 +5,8 @@ import com.google.common.io.Resources
 import com.google.common.io.Resources.getResource
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import java.io.File
-import java.net.URL
-import java.nio.file.{DirectoryNotEmptyException, FileAlreadyExistsException, CopyOption, Files, Path}
+import java.net.{URI, URL}
+import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
 import scala.collection.immutable
 
 /**
@@ -61,6 +61,11 @@ final case class JavaResource(path: String) {
    * @throws RuntimeException, if the resource does not exists.
    */
   lazy val url: URL = getResource(path)
+
+  /**
+   * @throws RuntimeException, if the resource does not exists.
+   */
+  def uri: URI = url.toURI
 
   def /(tail: String) = JavaResource(s"${path stripSuffix "/"}/$tail")
 
