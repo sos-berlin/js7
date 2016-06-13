@@ -2,11 +2,13 @@ package com.sos.scheduler.engine.agent.web.common
 
 import akka.actor.ActorRefFactory
 import com.sos.scheduler.engine.agent.web.common.AgentWebService._
+import com.sos.scheduler.engine.common.auth.Account
 import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.collection.mutable
 import spray.http.Uri.Path
 import spray.routing.Directives._
 import spray.routing.Route
+import spray.routing.authentication._
 
 /**
  * Standard trait for Agent web services.
@@ -17,6 +19,10 @@ import spray.routing.Route
  */
 trait AgentWebService extends AgentExceptionHandler {
   protected implicit def actorRefFactory: ActorRefFactory
+  protected def authenticator: UserPassAuthenticator[Account]
+
+  implicit private def executionContext = actorRefFactory.dispatcher
+
   /**
    * URI path prefix without prefix or suffix slashes.
    */
@@ -32,7 +38,9 @@ trait AgentWebService extends AgentExceptionHandler {
   protected def addApiRoute(route: ⇒ Route): Unit =
     addJobschedulerRoute {
       pathPrefix(AgentPrefix / "api") {
-        route
+        authenticate(BasicAuth(authenticator, realm = Realm)) { account ⇒
+          route
+        }
       }
     }
 
@@ -59,6 +67,7 @@ object AgentWebService {
   val AgentPrefix = "agent"
   private val logger = Logger(getClass)
   private val PackageName = getClass.getPackage.getName
+  private val Realm = "JobScheduler Agent"
 
   private def callerMethodString: String =
     (new Exception).getStackTrace.toIterator map { _.toString } find { o ⇒ !(o contains PackageName) } getOrElse "?"

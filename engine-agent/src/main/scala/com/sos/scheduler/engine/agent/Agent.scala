@@ -33,14 +33,9 @@ final class Agent(module: Module) extends AutoCloseable {
 
   val injector = Guice.createInjector(PRODUCTION, module)
   val configuration = injector.instance[AgentConfiguration]
-  val localUri = {
-    val (scheme, port) = (configuration.https map { o ⇒ ("https", o.port) })
-      .orElse (configuration.httpPort map { o ⇒ ("http", o) })
-      .getOrElse { throw new IllegalArgumentException("Missing HTTPS or HTTP port") }
-    s"$scheme://127.0.0.1:$port/${configuration.strippedUriPathPrefix}" stripSuffix "/"
-  }
   private implicit val closer = injector.instance[Closer]
   private val webServer = injector.instance[AgentWebServer].closeWithCloser
+  val localUri = webServer.localUri.toString
   private val taskHandler = injector.instance[TaskHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
 

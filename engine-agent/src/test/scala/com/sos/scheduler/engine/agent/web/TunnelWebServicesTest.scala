@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.agent.web
 
 import akka.util.ByteString
 import com.sos.scheduler.engine.agent.web.TunnelWebServicesTest._
+import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
@@ -35,6 +36,8 @@ import spray.json.DefaultJsonProtocol._
 final class TunnelWebServicesTest extends FreeSpec with WebServiceTest with TunnelWebService {
 
   private implicit val timerService = TimerService(idleTimeout = Some(1.s))
+
+  protected val authenticator = UnknownUserPassAuthenticator
 
   protected def tunnelAccess(tunnelToken: TunnelToken) = new TunnelAccess {
     val heartbeatService = new HeartbeatService

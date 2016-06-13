@@ -26,7 +26,7 @@ import scala.reflect.ClassTag
  * @author Joacim Zschimmer
  */
 final case class AgentConfiguration(
-  dataDirectory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
+  dataDirectory: Option[Path] = None,
   https: Option[Https] = None,
   httpPort: Option[Int] = None,
   /**
@@ -47,7 +47,6 @@ final case class AgentConfiguration(
 {
   for (o ← httpPort) requireTcpPortNumber(o)
   for (o ← https) requireTcpPortNumber(o.port)
-  require(!(httpPort.isDefined && https.isDefined), "Command line option -http-port= cannot be combined with -https-port=")  // Spray would expect encrypted messages for http-port, too.
   require(directory.isAbsolute)
 
   def strippedUriPathPrefix = uriPathPrefix stripPrefix "/" stripSuffix "/"
@@ -58,38 +57,40 @@ final case class AgentConfiguration(
 
   def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
 
-  def crashKillScriptFile: Path = logDirectory / s"kill_tasks_after_crash_$httpPort$ShellFileExtension"
+  def crashKillScriptFile: Path = logDirectory / s"kill_tasks_after_crash_${https map { _.port } getOrElse httpPort.get}$ShellFileExtension"
 
-  def withHttpsPort(port: Option[Int]): AgentConfiguration =
-    port match {
-      case Some(o) ⇒ withHttpsPort(o)
-      case None ⇒ copy(https = None)
-    }
+  def withHttpsPort(port: Option[Int]): AgentConfiguration = port map withHttpsPort getOrElse copy(https = None)
 
   def withHttpsPort(port: Int): AgentConfiguration =
     copy(https = Some(Https(
       port,
       https map { _.keystoreReference } getOrElse defaultKeystoreReference)))
 
-  def defaultKeystoreReference = KeystoreReference(
-    (dataDirectory / "config/private/https.jks").toUri.toURL,
+  private def defaultKeystoreReference = KeystoreReference(
+    (privateDirectory / "https.jks").toUri.toURL,
     storePassword = Some(SecretString("jobscheduler")),
     keyPassword = SecretString("jobscheduler"))
+
+  def passwordsFile: Path = privateDirectory / "passwords.conf"
+
+  private def privateDirectory = privateDirectoryOption getOrElse sys.error("Missing dataDirectory")
+  private def privateDirectoryOption = configDirectoryOption map { _ / "private" }
+  private def configDirectoryOption = dataDirectory map { _ / "config" }
 }
 
 object AgentConfiguration {
   val UseInternalKillScript = ProcessKillScript("")   // Marker
+  private[configuration] val Default = AgentConfiguration()
   private val TaskServerLogbackResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/logback.xml")
 
   def apply(args: Seq[String]): AgentConfiguration =
     CommandLineArguments.parse(args) { a ⇒
-      val default = AgentConfiguration()
-      val r = new AgentConfiguration(
-        dataDirectory = a.as[Path]("-data-directory=", default.dataDirectory),
+      val r = AgentConfiguration(
+        dataDirectory = Some(a.as[Path]("-data-directory=")),
         httpPort = a.optionAs("-http-port=")(To(parseTcpPort)),
         httpInterfaceRestriction = a.optionAs[String]("-ip-address="),
-        uriPathPrefix = a.as[String]("-uri-prefix=", default = ""),
-        logDirectory = a.as[Path]("-log-directory=", default = temporaryDirectory).toAbsolutePath,
+        uriPathPrefix = a.as[String]("-uri-prefix=", Default.uriPathPrefix),
+        logDirectory = a.as[Path]("-log-directory=", Default.logDirectory).toAbsolutePath,
         dotnet = DotnetConfiguration(classDllDirectory = a.optionAs[Path]("-dotnet-class-directory=") map { _.toAbsolutePath }),
         rpcKeepaliveDuration = a.optionAs("-rpc-keepalive=")(To(parseDuration)),
         jobJavaOptions = a.optionAs[String]("-job-java-options=").toList)
@@ -107,4 +108,5 @@ object AgentConfiguration {
     jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
 
   final case class Https(port: Int, keystoreReference: KeystoreReference)
+
 }

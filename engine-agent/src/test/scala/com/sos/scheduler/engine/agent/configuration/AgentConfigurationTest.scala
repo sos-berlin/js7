@@ -18,15 +18,17 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class AgentConfigurationTest extends FreeSpec {
 
+
   "Empty argument list" in {
-    assert(AgentConfiguration(Nil) == AgentConfiguration())
+    intercept[NoSuchElementException] { AgentConfiguration(Nil) }
+    assert(AgentConfiguration.Default == AgentConfiguration())
   }
 
   "-https-port=" in {
-    assert(AgentConfiguration(List("-https-port=1234")).https map { _.port }  contains 1234)
-    intercept[IllegalArgumentException] { AgentConfiguration(List("-https-port=65536")) }
-    intercept[IllegalArgumentException] { AgentConfiguration() withHttpsPort 65536 }
-    assert(AgentConfiguration(List("-data-directory=/TEST/DATA", "-https-port=1234")).https contains Https(
+    assert(conf(List("-https-port=1234")).https map { _.port }  contains 1234)
+    intercept[IllegalArgumentException] { conf(List("-https-port=65536")) }
+    intercept[IllegalArgumentException] { conf(Nil) withHttpsPort 65536 }
+    assert(conf(List("-https-port=1234")).https contains Https(
       1234,
       KeystoreReference(
         url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/https.jks").toUri.toURL,
@@ -35,13 +37,9 @@ final class AgentConfigurationTest extends FreeSpec {
   }
 
   "-http-port=" in {
-    assert(AgentConfiguration(List("-http-port=1234")).httpPort contains 1234)
-    intercept[IllegalArgumentException] { AgentConfiguration(List("-http-port=65536")) }
+    assert(conf(List("-http-port=1234")).httpPort contains 1234)
+    intercept[IllegalArgumentException] { conf(List("-http-port=65536")) }
     intercept[IllegalArgumentException] { AgentConfiguration(httpPort = Some(65536)) }
-  }
-
-  "-http-port= and -https-port= cannot be combined" in {
-    intercept[IllegalArgumentException] { AgentConfiguration(List("-http-port=11111", "-https-port=22222")) }
   }
 
   "-ip-address=" in {
@@ -73,5 +71,5 @@ final class AgentConfigurationTest extends FreeSpec {
     assert(conf(List("-rpc-keepalive=5m")).rpcKeepaliveDuration == Some(5 * 60.s))
   }
 
-  private def conf(args: Seq[String]) = AgentConfiguration(args)
+  private def conf(args: List[String]) = AgentConfiguration("-data-directory=/TEST/DATA" :: args)
 }

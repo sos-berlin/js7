@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.web
 
+import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
@@ -19,6 +20,8 @@ import spray.json.JsBoolean
  */
 @RunWith(classOf[JUnitRunner])
 final class FileStatusWebServiceTest extends FreeSpec with WebServiceTest with FileStatusWebService {
+
+  protected val authenticator = UnknownUserPassAuthenticator
 
   "fileExists" in {
     withCloser { implicit closer ⇒

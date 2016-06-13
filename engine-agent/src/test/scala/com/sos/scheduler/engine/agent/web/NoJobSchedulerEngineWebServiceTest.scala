@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.web
 
+import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -11,6 +12,8 @@ import spray.http.StatusCodes.NotFound
  */
 @RunWith(classOf[JUnitRunner])
 final class NoJobSchedulerEngineWebServiceTest extends FreeSpec with WebServiceTest with NoJobSchedulerEngineWebService {
+
+  protected val authenticator = UnknownUserPassAuthenticator
 
   "/jobscheduler/engine/command" in {
     Post("/jobscheduler/engine/command", <test/>) ~> route ~> check {
