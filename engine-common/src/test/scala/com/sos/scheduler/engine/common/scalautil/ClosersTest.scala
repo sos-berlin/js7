@@ -75,4 +75,12 @@ final class ClosersTest extends FreeSpec {
     closeOrdered(a, b)
     assert(closed == List(a, b))
   }
+
+  "closeThen" in {
+    val closes = mutable.Buffer[Int]()
+    val closer = Closer.create()
+    closer.onClose { closes += 1 }
+    closer.closeThen { closes += 2 }
+    assert(closes == List(1, 2))
+  }
 }
