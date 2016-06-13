@@ -43,7 +43,7 @@ final class JavaResourceTest extends FreeSpec {
   "copyToFile" in {
     val tmp = createTempFile("test", ".tmp")
     intercept[FileAlreadyExistsException] { JavaResource(path).copyToFile(tmp) }
-    JavaResource(path).copyToFile(tmp, REPLACE_EXISTING)
+    JavaResource(path).copyToFile(tmp, REPLACE_EXISTING) should be theSameInstanceAs tmp
     assert(tmp.contentString == expectedContent)
     delete(tmp)
   }

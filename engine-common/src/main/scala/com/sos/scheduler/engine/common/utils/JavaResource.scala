@@ -22,6 +22,7 @@ final case class JavaResource(path: String) {
 
   /**
     * Copies the resource files denoted by `resourceNames` name by name to `directory`.
+    *
     * @return The created file paths
     * @throws FileAlreadyExistsException
     * if the target file exists but cannot be replaced because
@@ -48,10 +49,12 @@ final case class JavaResource(path: String) {
     * the `REPLACE_EXISTING` option is specified but the file cannot be replaced because
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
-  def copyToFile(file: Path, copyOptions: CopyOption*): Unit =
+  def copyToFile(file: Path, copyOptions: CopyOption*): Path = {
     autoClosing(url.openStream()) { in ⇒
       Files.copy(in, file, copyOptions: _*)
     }
+    file
+  }
 
   def asUTF8String = Resources.toString(url, UTF_8)
 
