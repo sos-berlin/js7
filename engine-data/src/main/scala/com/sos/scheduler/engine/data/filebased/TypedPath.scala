@@ -28,5 +28,7 @@ object TypedPath {
 
   implicit val MyJsonFormat = new IsString.MyJsonFormat[TypedPath](IsString.UnsupportedJsonDeserialization)
 
+  val extensions: Set[String] = FileBasedTypes.forFiles map { _.filenameExtension }
+
   trait Companion[A <: TypedPath] extends AbsolutePath.Companion[A]
 }
