@@ -42,10 +42,10 @@ object Https {
     r
   }
 
-  def enableTlsFor(uri: Uri, keystoreRef: KeystoreReference)(implicit actorSystem: ActorSystem): Unit =
-    enableTlsFor(uri.authority.host.address, uri.effectivePort, keystoreRef)
+  def acceptTlsCertificateFor(keystoreRef: KeystoreReference, uri: Uri)(implicit actorSystem: ActorSystem): Unit =
+    acceptTlsCertificateFor(keystoreRef, uri.authority.host.address, uri.effectivePort)
 
-  def enableTlsFor(host: String, port: Int, keystore: KeystoreReference)(implicit actorSystem: ActorSystem): Unit =
+  def acceptTlsCertificateFor(keystore: KeystoreReference, host: String, port: Int)(implicit actorSystem: ActorSystem): Unit =
     IO(Http) ! {
       implicit val myEngineProvider = newClientSSLEngineProvider(keystore)
       HostConnectorSetup(host = host, port = port, sslEncryption = true)

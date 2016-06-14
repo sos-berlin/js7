@@ -55,7 +55,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     unmarshal[AgentOverview]
 
   override protected def beforeAll() = {
-    enableTlsFor(webServer.localHttpsUriOption.get, agentConfiguration.https.get.keystoreReference)
+    acceptTlsCertificateFor(agentConfiguration.https.get.keystoreReference, webServer.localHttpsUriOption.get)
     super.beforeAll()
   }
 
