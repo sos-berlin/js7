@@ -15,13 +15,12 @@ trait AgentConfigDirectoryProvider {
   this: HasCloser ⇒
 
   final lazy val dataDirectory = createTempDirectory("TextAgentClientIT-") withCloser delete
-  private lazy val keystoreJksFile: Path = dataDirectory / "config/private/https.jks"
+  private lazy val keystoreJksFile: Path = dataDirectory / "config" / "private" / "https.jks"
   final lazy val keystoreReference = KeystoreReference(
     keystoreJksFile.toURI.toURL,
     keyPassword = SecretString("jobscheduler"),
     storePassword = Some(SecretString("jobscheduler")))
-  private val privateDir = createDirectories(dataDirectory / "config/private")
-
+  private val privateDir = createDirectories(dataDirectory / "config" / "private")
 
   closeOnError(closer) {
     dataDirectory

@@ -108,5 +108,4 @@ object AgentConfiguration {
     jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
 
   final case class Https(port: Int, keystoreReference: KeystoreReference)
-
 }

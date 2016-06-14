@@ -31,7 +31,7 @@ final class AgentConfigurationTest extends FreeSpec {
     assert(conf(List("-https-port=1234")).https contains Https(
       1234,
       KeystoreReference(
-        url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/https.jks").toUri.toURL,
+        url = (Paths.get("/TEST/DATA").toAbsolutePath / "config" / "private" / "https.jks").toUri.toURL,
         storePassword = Some(SecretString("jobscheduler")),
         keyPassword = SecretString("jobscheduler"))))
   }
