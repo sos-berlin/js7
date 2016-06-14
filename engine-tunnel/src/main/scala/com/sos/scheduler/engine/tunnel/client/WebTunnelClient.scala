@@ -23,6 +23,7 @@ import spray.httpx.encoding.Gzip
 final class WebTunnelClient(
   tunnelToken: TunnelToken,
   val tunnelUri: Uri,
+  requestTransformer: RequestTransformer,
   heartbeatRequestorOption: Option[HeartbeatRequestor])
   (implicit actorSystem: ActorSystem)
 extends AutoCloseable {
@@ -31,6 +32,7 @@ extends AutoCloseable {
   private val veryLongTimeout = Akkas.maximumTimeout(actorSystem.settings)
 
   private lazy val pipelineTrunk: HttpRequest ⇒ Future[HttpResponse] =
+    requestTransformer ~>
     addHeader(Accept(`application/octet-stream`)) ~>
     encode(Gzip) ~>
     sendReceive(actorSystem, actorSystem.dispatcher, veryLongTimeout) ~>
