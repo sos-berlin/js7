@@ -89,8 +89,8 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       setLastModifiedTime(file, FileTime.from(Timestamp))  // Sometimes, this does not take effect under Windows ???
       awaitResult(future, 5.s)
       val response = awaitResult(future, 10.s)
-      // lastModifiedTime maybe wrong on Windows ??? Anyway, JobScheduler's <file_order_source> doesn't use the timestamp.
-      val bResponse = if (!isWindows) response else response.copy(files = response.files map { _.copy(lastModifiedTime = Timestamp.toEpochMilli) })
+      // lastModifiedTime may be wrong ??? Anyway, JobScheduler's <file_order_source> doesn't use the timestamp.
+      val bResponse = response.copy(files = response.files map { _.copy(lastModifiedTime = Timestamp.toEpochMilli) })
       assert(bResponse == expectedResponse)
     }
   }
