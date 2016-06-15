@@ -15,8 +15,9 @@ import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime.MaxDuration
+import com.sos.scheduler.engine.common.time.ScalaTime.{MaxDuration, _}
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
 import scala.concurrent.Future
 
@@ -50,7 +51,7 @@ final class Agent(module: Module) extends AutoCloseable {
   }
 
   def run(): Unit = {
-    start()
+    start() await 30.s
     awaitResult(terminated, MaxDuration)
   }
 
