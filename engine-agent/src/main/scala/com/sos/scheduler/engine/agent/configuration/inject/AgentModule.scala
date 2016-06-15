@@ -57,13 +57,8 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
     TimerService()(actorSystem.dispatcher) closeWithCloser closer
 
   @Provides @Singleton
-  def actorSystem(closer: Closer, agentConfiguration: AgentConfiguration): ActorSystem = {
-    var config = ConfigFactory.empty
-    if (agentConfiguration.https.isDefined) {
-      config = ConfigFactory.parseString("spray.can.server.ssl-encryption = on") withFallback config
-    }
-    newActorSystem("Agent", config)(closer)
-  }
+  def actorSystem(closer: Closer, agentConfiguration: AgentConfiguration): ActorSystem =
+    newActorSystem("Agent")(closer)
 
   @Provides @Singleton
   def executionContext(actorSystem: ActorSystem): ExecutionContext = actorSystem.dispatcher

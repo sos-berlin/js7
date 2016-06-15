@@ -7,13 +7,16 @@ import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.test.AgentConfigDirectoryProvider
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.AgentWebServerIT._
+import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.sprayutils.https.Https._
+import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPorts
+import com.sos.scheduler.engine.common.utils.JavaResource
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
@@ -55,7 +58,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     unmarshal[AgentOverview]
 
   override protected def beforeAll() = {
-    acceptTlsCertificateFor(agentConfiguration.https.get.keystoreReference, webServer.localHttpsUriOption.get)
+    acceptTlsCertificateFor(ClientKeystoreRef, webServer.localHttpsUriOption.get)
     super.beforeAll()
   }
 
@@ -118,4 +121,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 
 private object AgentWebServerIT {
   private val OverviewPath = "jobscheduler/agent/api"
+  private val ClientKeystoreRef = KeystoreReference(
+    JavaResource("com/sos/scheduler/engine/agent/test/https.jks").url,
+    Some(SecretString("jobscheduler")))
 }

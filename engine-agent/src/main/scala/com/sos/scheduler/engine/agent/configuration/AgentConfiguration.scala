@@ -67,9 +67,9 @@ final case class AgentConfiguration(
       https map { _.keystoreReference } getOrElse defaultKeystoreReference)))
 
   private def defaultKeystoreReference = KeystoreReference(
-    (privateDirectory / "https.jks").toUri.toURL,
+    (privateDirectory / "private-https.jks").toUri.toURL,
     storePassword = Some(SecretString("jobscheduler")),
-    keyPassword = SecretString("jobscheduler"))
+    keyPassword = Some(SecretString("jobscheduler")))
 
   def passwordsFile: Path = privateDirectory / "passwords.conf"
 

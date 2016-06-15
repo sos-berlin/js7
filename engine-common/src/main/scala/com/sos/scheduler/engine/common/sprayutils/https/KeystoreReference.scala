@@ -11,7 +11,7 @@ final case class KeystoreReference(
   /** Password for .jks file, just to check integrity (may be empty) */
   storePassword: Option[SecretString] = None,
   /** PKCS#12 key password */
-  keyPassword: SecretString)
+  keyPassword: Option[SecretString] = None)
 {
   override def toString: String = s"KeystoreReference($url)"
 }
