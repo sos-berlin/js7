@@ -68,4 +68,8 @@ object ScalaUtils {
     def switchOn(body: ⇒ Unit) = if (delegate.compareAndSet(false, true)) body
     def switchOff(body: ⇒ Unit) = if (delegate.compareAndSet(true, false)) body
   }
+
+  implicit class SwitchStatement[A](val delegate: A) extends AnyVal {
+    def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.applyOrElse(delegate, (delegate: A) ⇒ ())
+  }
 }
