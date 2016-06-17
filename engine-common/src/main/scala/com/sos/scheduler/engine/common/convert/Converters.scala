@@ -18,7 +18,12 @@ object Converters {
   }
 
   implicit object StringToBoolean extends To[String, Boolean] {
-    def apply(o: String) = o.toBoolean
+    val StringToBooleanMap = Map(
+      "true" → true, "on" → true, "yes" → true,
+      "false" → false, "off" → false, "no" → false)
+
+    def apply(o: String) = StringToBooleanMap.getOrElse(o,
+      throw new IllegalArgumentException(s"Boolean value true or false expected, not: $o"))
   }
 
   implicit object StringToInt extends To[String, Int] {
