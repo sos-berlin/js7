@@ -43,7 +43,7 @@ final class ConvertiblePartialFunctionTest extends FreeSpec {
   }
 
   private def convertible[K, V](kvs: (K, V)*) =
-    new PartialFunction[K, V] with ConvertiblePartialFunction[K, V] {
+    new ConvertiblePartialFunction[K, V] {
       private val m = Map(kvs: _*)
       def isDefinedAt(key: K) = m isDefinedAt key
       def apply(key: K) = m(key)

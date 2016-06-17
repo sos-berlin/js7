@@ -8,8 +8,7 @@ import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions.wrapp
   *
   * @author Joacim Zschimmer
   */
-trait ConvertiblePartialFunction[K, V] {
-  this: PartialFunction[K, V] ⇒
+trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V] {
 
   def as[W](key: K)(implicit convert: To[V, W]): W =
     wrappedConvert(convert, renderKey(key))(apply(key))
