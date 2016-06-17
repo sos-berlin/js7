@@ -1,13 +1,12 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import ConcurrentMemoizerTest._
+import com.sos.scheduler.engine.common.scalautil.ConcurrentMemoizerTest._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -18,7 +17,7 @@ import scala.concurrent.Future
 @RunWith(classOf[JUnitRunner])
 final class ConcurrentMemoizerTest extends FreeSpec {
 
-  "ConcurrentMemoizer" in {
+  "Unary" in {
     val called = mutable.Buffer[Int]()
     def f(a: Int) = {
       called += a
@@ -35,7 +34,7 @@ final class ConcurrentMemoizerTest extends FreeSpec {
     assert(called == List(1, 2))
   }
 
-  "2-ary" in {
+  "Binary" in {
     val called = mutable.Buffer[(Int, Boolean)]()
     def f(a: Int, b: Boolean) = {
       called += ((a, b))

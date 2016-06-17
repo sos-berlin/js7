@@ -20,6 +20,10 @@ object ConcurrentMemoizer {
 
   def apply[A, B, R](f: (A, B) ⇒ R) = Function.untupled(new ConcurrentMemoizer[(A, B), R](f.tupled))
 
+  def apply[A, B, C, R](f: (A, B, C) ⇒ R) = Function.untupled(new ConcurrentMemoizer[(A, B, C), R](f.tupled))
+
+  def apply[A, B, C, D, R](f: (A, B, C, D) ⇒ R) = Function.untupled(new ConcurrentMemoizer[(A, B, C, D), R](f.tupled))
+
   /**
     * Memoizes all computed results and computes each result strictly once.
     */
@@ -32,4 +36,14 @@ object ConcurrentMemoizer {
     * Memoizes all computed results and computes each result strictly once.
     */
   def strict[A, B, R](f: (A, B) ⇒ R) = Function.untupled(strict[(A, B), R](f.tupled))
+
+  /**
+    * Memoizes all computed results and computes each result strictly once.
+    */
+  def strict[A, B, C, R](f: (A, B, C) ⇒ R) = Function.untupled(strict[(A, B, C), R](f.tupled))
+
+  /**
+    * Memoizes all computed results and computes each result strictly once.
+    */
+  def strict[A, B, C, D, R](f: (A, B, C, D) ⇒ R) = Function.untupled(strict[(A, B, C, D), R](f.tupled))
 }
