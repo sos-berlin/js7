@@ -29,12 +29,12 @@ trait AgentConfigDirectoryProvider {
       delete(dataDirectory / "config")
     }
     PrivateHttpJksResource.copyToFile(keystoreJksFile) withCloser delete
-    PasswordsResource.copyToFile(privateDir / "passwords.conf") withCloser delete
+    PasswordsResource.copyToFile(privateDir / "private.conf") withCloser delete
   }
 }
 
 object AgentConfigDirectoryProvider {
   val PrivateHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/config/private/private-https.jks")
   val PublicHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/https.jks")
-  val PasswordsResource = JavaResource("com/sos/scheduler/engine/agent/test/config/private/passwords.conf")
+  val PasswordsResource = JavaResource("com/sos/scheduler/engine/agent/test/config/private/private.conf")
 }

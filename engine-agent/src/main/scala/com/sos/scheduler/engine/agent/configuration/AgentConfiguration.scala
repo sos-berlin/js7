@@ -16,6 +16,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
+import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.{Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
@@ -71,14 +72,16 @@ final case class AgentConfiguration(
     storePassword = Some(SecretString("jobscheduler")),
     keyPassword = Some(SecretString("jobscheduler")))
 
-  def passwordsFile: Path = privateDirectory / "passwords.conf"
-
   private def privateDirectory = privateDirectoryOption getOrElse sys.error("Missing dataDirectory")
-  private def privateDirectoryOption = configDirectoryOption map { _ / "private" }
-  private def configDirectoryOption = dataDirectory map { _ / "config" }
+
+  def privateDirectoryOption = configDirectoryOption map { _ / "private" }
+
+  def configDirectoryOption = dataDirectory map { _ / "config" }
 }
 
 object AgentConfiguration {
+  private val ConfigResource = JavaResource("com/sos/scheduler/engine/agent/configuration/default.conf")
+  lazy val DefaultConfig: Config = ConfigFactory.load(getClass.getClassLoader, ConfigResource.path)
   val UseInternalKillScript = ProcessKillScript("")   // Marker
   private[configuration] val Default = AgentConfiguration()
   private val TaskServerLogbackResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/logback.xml")

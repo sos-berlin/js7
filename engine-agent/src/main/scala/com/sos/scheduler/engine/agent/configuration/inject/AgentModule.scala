@@ -10,6 +10,7 @@ import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.{StandardAgentTaskFactory, TaskHandler}
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.auth.{ConfigPasswordValidator, UserAndPassword}
+import com.sos.scheduler.engine.common.configutils.Configs._
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -18,7 +19,7 @@ import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.Config
 import javax.inject.Singleton
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext
@@ -31,8 +32,12 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
   protected def configure() = {}
 
   @Provides  // Lazy, not (eager) @Singleton. Only HTTPS needs this - and requires passwords.conf.
-  def passwordValidator(agentConfiguration: AgentConfiguration): UserAndPassword ⇒ Boolean =
-    new ConfigPasswordValidator(ConfigFactory.parseFile(agentConfiguration.passwordsFile))
+  def passwordValidator(config: Config): UserAndPassword ⇒ Boolean =
+    new ConfigPasswordValidator(config.getConfig("jobscheduler.agent.auth.users"))
+
+  @Provides @Singleton
+  def config(conf: AgentConfiguration): Config =
+    parseConfigIfExists(conf.privateDirectoryOption map { _ / "private.conf" }) withFallback AgentConfiguration.DefaultConfig
 
   @Provides @Singleton
   def extraWebServices(agentConfiguration: AgentConfiguration, injector: Injector): immutable.Seq[ExternalWebService] =
@@ -57,8 +62,8 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration) extends 
     TimerService()(actorSystem.dispatcher) closeWithCloser closer
 
   @Provides @Singleton
-  def actorSystem(closer: Closer, agentConfiguration: AgentConfiguration): ActorSystem =
-    newActorSystem("Agent")(closer)
+  def actorSystem(closer: Closer, config: Config): ActorSystem =
+    newActorSystem("Agent", config)(closer)
 
   @Provides @Singleton
   def executionContext(actorSystem: ActorSystem): ExecutionContext = actorSystem.dispatcher
