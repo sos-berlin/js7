@@ -50,6 +50,19 @@ final class CollectionsTest extends FreeSpec {
     Map[Int, Int]().countEquals shouldEqual Map()
   }
 
+  "foldFast" in {
+    def op(a: String, b: String) = s"$a+$b"
+    assert(Nil.foldFast("0")(op) == "0")
+    assert(List("1").foldFast("0")(op) == "1")
+    assert(List("1", "2").foldFast("0")(op) == "1+2")
+    assert(List("1", "2", "3").foldFast("0")(op) == "1+2+3")
+    // For comparison with fold:
+    assert(Nil.fold("0")(op) == "0")
+    assert(List("1").fold("0")(op) == "0+1")
+    assert(List("1", "2").fold("0")(op) == "0+1+2")
+    assert(List("1", "2", "3").fold("0")(op) == "0+1+2+3")
+  }
+
   "toKeyedMap" in {
     case class A(name: String, i: Int)
     List(A("eins", 1), A("zwei", 2)) toKeyedMap { _.i } shouldEqual Map(1 → A("eins", 1), 2 → A("zwei", 2))
