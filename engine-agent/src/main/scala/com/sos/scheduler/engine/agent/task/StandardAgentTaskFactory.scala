@@ -66,7 +66,7 @@ extends AgentTaskFactory {
       startMeta = command.meta getOrElse StartTask.Meta.Default,
       masterAddress = masterAddress,
       tunnelToken = tunnelToken,
-      directory = agentConfiguration.directory,
+      workingDirectory = agentConfiguration.workingDirectory,
       logDirectory = agentConfiguration.logDirectory,
       dotnet = agentConfiguration.dotnet,
       environment = agentConfiguration.environment,

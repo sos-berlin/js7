@@ -37,7 +37,7 @@ final case class AgentConfiguration(
   httpInterfaceRestriction: Option[String] = None,
   /** Prefix slash and suffix slash are striped. **/
   uriPathPrefix: String = "",
-  directory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
+  workingDirectory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
   logDirectory: Path = temporaryDirectory,
   dotnet: DotnetConfiguration = DotnetConfiguration(),
   environment: Map[String, String] = Map(),
@@ -48,7 +48,7 @@ final case class AgentConfiguration(
 {
   for (o ← httpPort) requireTcpPortNumber(o)
   for (o ← https) requireTcpPortNumber(o.port)
-  require(directory.isAbsolute)
+  require(workingDirectory.isAbsolute)
 
   def strippedUriPathPrefix = uriPathPrefix stripPrefix "/" stripSuffix "/"
 

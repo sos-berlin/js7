@@ -18,7 +18,7 @@ final class ProxySpooler private(protected val remoting: ClientRemoting, val id:
 extends SpecializedProxyIDispatch with AnnotatedInvocable with OverridingInvocableIDispatch {
 
   @invocable
-  def directory: String = (taskStartArguments.directory resolve ".").toString stripSuffix "."  // Should end with "/"
+  def directory: String = (taskStartArguments.workingDirectory resolve ".").toString stripSuffix "."  // Should end with "/"
 
   @invocable
   def include_path: String = throw new UnsupportedApiException("sos.spooler.Spooler.include_path")

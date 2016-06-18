@@ -29,7 +29,7 @@ final class TaskStartArgumentsTest extends FreeSpec {
   "JSON" in {
     val obj = TaskStartArguments.forTest().copy(
       environment = Map("a" → "A", "bb" → "BB"),
-      directory = Paths.get("DIRECTORY"),
+      workingDirectory = Paths.get("DIRECTORY"),
       logDirectory = Paths.get("LOG-DIRECTORY"))
     val json = """{
         "agentTaskId": "1-1",
@@ -49,7 +49,7 @@ final class TaskStartArgumentsTest extends FreeSpec {
         },
         "masterAddress": "127.0.0.1:999999999",
         "logDirectory": "LOG-DIRECTORY",
-        "directory": "DIRECTORY",
+        "workingDirectory": "DIRECTORY",
         "dotnet": {}
       }""".parseJson
     assert(obj.toJson == json)
