@@ -23,6 +23,9 @@ trait ConvertibleMultiPartialFunction[K, V] {
       case _ ⇒ throwNotUnique(key)
     }
 
+  def optionAs[W](key: K, default: ⇒ Option[W])(implicit convert: To[V, W]): Option[W] =
+    optionAs(key)(convert) orElse default
+
   def optionAs[W](key: K)(implicit convert: To[V, W]): Option[W] =
     seqAs(key) match {
       case Seq() ⇒ None

@@ -43,7 +43,11 @@ final class ConvertibleMultiPartialFunctionTest extends FreeSpec {
 
   "optionAs" in {
     assert(convertible[String, String]().optionAs[Int]("KEY") == None)
+    assert(convertible[String, String]().optionAs[Int]("KEY", None) == None)
+    assert(convertible[String, String]().optionAs[Int]("KEY", Some(333)) == Some(333))
     assert(convertible("KEY" → List("111")).optionAs[Int]("KEY") == Some(111))
+    assert(convertible("KEY" → List("111")).optionAs[Int]("KEY", None) == Some(111))
+    assert(convertible("KEY" → List("111")).optionAs[Int]("KEY", Some(333)) == Some(111))
     intercept[IllegalArgumentException] { convertible("KEY" → List("111", "222")).optionAs[Int]("KEY") }
       .getMessage shouldEqual "For key 'KEY', only one value is possible"
   }

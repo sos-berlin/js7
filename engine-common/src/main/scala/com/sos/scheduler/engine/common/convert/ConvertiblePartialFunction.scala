@@ -16,6 +16,9 @@ trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V] {
   def as[W](key: K, default: ⇒ W)(implicit convert: To[V, W]): W =
     optionAs[W](key) getOrElse default
 
+  def optionAs[W](key: K, default: ⇒ Option[W])(implicit convert: To[V, W]): Option[W] =
+    optionAs(key)(convert) orElse default
+
   def optionAs[W](key: K)(implicit convert: To[V, W]): Option[W] =
     lift(key) map wrappedConvert(convert, renderKey(key))
 
