@@ -14,7 +14,7 @@ object Akkas {
   private val ShutdownDuration = 5.seconds
 
   def newActorSystem(name: String, config: Config = ConfigFactory.empty)(implicit closer: Closer): ActorSystem =
-    ActorSystem(name, config withFallback AgentConfiguration.DefaultConfig) sideEffect { o ⇒
+    ActorSystem(name, config withFallback AgentConfiguration.DefaultsConfig) sideEffect { o ⇒
       closer.onClose {
         o.shutdown()
         o.awaitTermination(ShutdownDuration)

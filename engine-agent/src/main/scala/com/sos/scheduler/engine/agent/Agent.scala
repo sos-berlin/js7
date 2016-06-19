@@ -65,5 +65,5 @@ object Agent {
 
   def forTest(): Agent = forTest(httpPort = findRandomFreeTcpPort())
 
-  def forTest(httpPort: Int): Agent = new Agent(AgentConfiguration.forTest(httpPort))
+  def forTest(httpPort: Int): Agent = new Agent(AgentConfiguration.forTest(httpPort = httpPort))
 }

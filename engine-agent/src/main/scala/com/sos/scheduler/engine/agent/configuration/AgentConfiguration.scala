@@ -5,10 +5,12 @@ import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
+import com.sos.scheduler.engine.common.configutils.Configs._
 import com.sos.scheduler.engine.common.convert.Converters.To
 import com.sos.scheduler.engine.common.process.Processes.ShellFileExtension
+import com.sos.scheduler.engine.common.scalautil.FileUtils.EmptyPath
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
+import com.sos.scheduler.engine.common.scalautil.ScalaUtils.{SwitchStatement, implicitClass}
 import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
 import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
 import com.sos.scheduler.engine.common.tcp.TcpUtils.{parseTcpPort, requireTcpPortNumber}
@@ -16,10 +18,12 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
+import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.{Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
+import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.reflect.ClassTag
 
@@ -44,7 +48,8 @@ final case class AgentConfiguration(
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
   jobJavaOptions: immutable.Seq[String] = Nil,
   rpcKeepaliveDuration: Option[Duration] = None,
-  killScript: Option[ProcessKillScript] = Some(UseInternalKillScript))
+  killScript: Option[ProcessKillScript] = Some(ProcessKillScript(DelayUntilFinishFile)),
+  config: Config = DefaultsConfig)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
 {
   for (o ← httpPort) requireTcpPortNumber(o)
   for (o ← https) requireTcpPortNumber(o.port)
@@ -65,50 +70,112 @@ final case class AgentConfiguration(
   def withHttpsPort(port: Int): AgentConfiguration =
     copy(https = Some(Https(
       port,
-      https map { _.keystoreReference } getOrElse defaultKeystoreReference)))
+      https map { _.keystoreReference } getOrElse
+        KeystoreReference(
+          (privateDirectory / "private-https.jks").toUri.toURL,
+          storePassword = config.optionAs[SecretString]("jobscheduler.agent.https.keystore.password"),
+          keyPassword = Some(config.as[SecretString]("jobscheduler.agent.https.keystore.password"))))))
 
-  private def defaultKeystoreReference = KeystoreReference(
-    (privateDirectory / "private-https.jks").toUri.toURL,
-    storePassword = Some(SecretString("jobscheduler")),
-    keyPassword = Some(SecretString("jobscheduler")))
+  private def privateDirectory = dataDirectory map { _ / "config/private" } getOrElse { throw new IllegalArgumentException("Missing data") }
 
-  private def privateDirectory = privateDirectoryOption getOrElse sys.error("Missing dataDirectory")
+  lazy val authUsersConfig: Config = config.getConfig("jobscheduler.agent.auth.users")
 
-  def privateDirectoryOption = configDirectoryOption map { _ / "private" }
+  def withConfig(config: Config): AgentConfiguration = {
+    val c = config.getConfig("jobscheduler.agent")
+    var v = copy(
+        config = config,
+        httpPort = c.optionAs("http.port", httpPort)(To(parseTcpPort)),
+        httpInterfaceRestriction = c.optionAs[String]("http.ip-address", httpInterfaceRestriction),
+        uriPathPrefix = c.as[String]("http.uri-prefix", uriPathPrefix),
+        logDirectory = c.optionAs[Path]("log.directory") map { _.toAbsolutePath } getOrElse logDirectory,
+        rpcKeepaliveDuration = c.optionAs("task.rpc.keepalive.duration", rpcKeepaliveDuration)(To(parseDuration)),
+        jobJavaOptions = c.stringSeq("task.java.options", jobJavaOptions))
+      .withKillScript(c.optionAs[String]("task.kill.script"))
+    for (o ← c.optionAs("https.port")(To(parseTcpPort))) {
+      v = v.withHttpsPort(o)
+    }
+    for (o ← c.optionAs[Path]("task.dotnet.class-directory")) {
+      v = v.copy(dotnet = DotnetConfiguration(classDllDirectory = Some(o.toAbsolutePath)))
+    }
+    v
+  }
 
-  def configDirectoryOption = dataDirectory map { _ / "config" }
+  def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
+    var v = copy(
+        dataDirectory = a.optionAs[Path]("-data-directory=", dataDirectory) map { _.toAbsolutePath },
+        httpPort = a.optionAs("-http-port=", httpPort)(To(parseTcpPort)),
+        httpInterfaceRestriction = a.optionAs[String]("-ip-address=", httpInterfaceRestriction),
+        uriPathPrefix = a.as[String]("-uri-prefix=", uriPathPrefix),
+        logDirectory = a.optionAs[Path]("-log-directory=") map { _.toAbsolutePath } getOrElse logDirectory,
+        rpcKeepaliveDuration = a.optionAs("-rpc-keepalive=", rpcKeepaliveDuration)(To(parseDuration)),
+        jobJavaOptions = a.optionAs[String]("-job-java-options=") match {
+          case Some(o) ⇒ List(o)
+          case None ⇒ jobJavaOptions
+        })
+      .withKillScript(a.optionAs[String]("-kill-script="))
+    for (o ← a.optionAs("-https-port=")(To(parseTcpPort))) {
+      v = v.withHttpsPort(o)
+    }
+    for (o ← a.optionAs[Path]("-dotnet-class-directory=")) {
+      v = v.copy(dotnet = DotnetConfiguration(classDllDirectory = Some(o.toAbsolutePath)))
+    }
+    v
+  }
+
+  def withKillScript(killScriptPath: Option[String]) = killScriptPath match {
+    case None ⇒ this  // -kill-script= not given: Agent uses the internally provided kill script
+    case Some("") ⇒ copy(killScript = None)      // -kill-script= (empty argument) means: don't use any kill script
+    case Some(o) ⇒ copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
+  }
+
+  def finishAndProvideFiles: AgentConfiguration =
+    if (this.killScript contains ProcessKillScript(DelayUntilFinishFile)) {
+      // After Agent termination, leave behind the kill script, in case of regular termination after error.
+      val identifyingPort = https map { _.port } orElse httpPort getOrElse 0
+      val provider = new ProcessKillScriptProvider(httpPort = identifyingPort)
+      copy(killScript = Some(provider.provideTo(logDirectory)))  // logDirectory for lack of a work directory
+    }
+    else this
 }
 
 object AgentConfiguration {
-  private val ConfigResource = JavaResource("com/sos/scheduler/engine/agent/configuration/default.conf")
-  lazy val DefaultConfig: Config = ConfigFactory.load(getClass.getClassLoader, ConfigResource.path)
-  val UseInternalKillScript = ProcessKillScript("")   // Marker
-  private[configuration] val Default = AgentConfiguration()
-  private val TaskServerLogbackResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/logback.xml")
+  private val DelayUntilFinishFile = EmptyPath  // Marker for finish
+  private[configuration] lazy val DefaultsConfig = ConfigFactory.parseResources(getClass.getClassLoader,
+    "com/sos/scheduler/engine/agent/configuration/defaults.conf")
 
-  def apply(args: Seq[String]): AgentConfiguration =
-    CommandLineArguments.parse(args) { a ⇒
-      val r = AgentConfiguration(
-        dataDirectory = Some(a.as[Path]("-data-directory=")),
-        httpPort = a.optionAs("-http-port=")(To(parseTcpPort)),
-        httpInterfaceRestriction = a.optionAs[String]("-ip-address="),
-        uriPathPrefix = a.as[String]("-uri-prefix=", Default.uriPathPrefix),
-        logDirectory = a.as[Path]("-log-directory=", Default.logDirectory).toAbsolutePath,
-        dotnet = DotnetConfiguration(classDllDirectory = a.optionAs[Path]("-dotnet-class-directory=") map { _.toAbsolutePath }),
-        rpcKeepaliveDuration = a.optionAs("-rpc-keepalive=")(To(parseDuration)),
-        jobJavaOptions = a.optionAs[String]("-job-java-options=").toList)
-      r.copy(killScript = a.optionAs[String]("-kill-script=") match {
-        case None ⇒ r.killScript  // -kill-script= not given: Agent uses the internally provided kill script
-        case Some("") ⇒ None      // -kill-script= (empty argument) means: don't use any kill script
-        case Some(o) ⇒ Some(ProcessKillScript(Paths.get(o).toAbsolutePath))
-      })
-      .withHttpsPort(a.optionAs("-https-port=")(To(parseTcpPort)))
+  def apply(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
+    fromDataDirectory(a.optionAs[Path]("-data-directory=")) withCommandLineArguments a
+  }
+
+  def fromDataDirectory(dataDirectory: Option[Path]): AgentConfiguration = {
+    val data = dataDirectory map { _.toAbsolutePath }
+    var v = new AgentConfiguration(dataDirectory = data)
+    data switch { case Some(o) ⇒
+      v = v.copy(logDirectory = o / "logs")
     }
+    v withConfig resolvedConfig(data)
+  }
 
-  def forTest(httpPort: Int = findRandomFreeTcpPort()) = AgentConfiguration(
-    httpPort = Some(httpPort),
-    httpInterfaceRestriction = Some("127.0.0.1"),
-    jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
+  private def resolvedConfig(dataDirectory: Option[Path]): Config = {
+    val dataConfig = dataDirectory match {
+      case Some(data) ⇒ ConfigFactory
+        .parseMap(Map("jobscheduler.agent.data.directory" → data.toString))  // For substitution of ${jobscheduler.agent.data.directory}
+        .withFallback(parseConfigIfExists(data / "config/private/private.conf"))
+        .withFallback(parseConfigIfExists(data / "config/agent.conf"))
+      case None ⇒ ConfigFactory.empty
+    }
+    (dataConfig withFallback DefaultsConfig).resolve
+  }
 
   final case class Https(port: Int, keystoreReference: KeystoreReference)
+
+  object forTest {
+    private val TaskServerLogbackResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/logback.xml")
+
+    def apply(data: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort()) =
+      fromDataDirectory(data).copy(
+        httpPort = Some(httpPort),
+        httpInterfaceRestriction = Some("127.0.0.1"),
+        jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
+  }
 }

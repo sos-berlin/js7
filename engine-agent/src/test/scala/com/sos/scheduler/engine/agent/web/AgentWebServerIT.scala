@@ -40,10 +40,11 @@ import spray.httpx.encoding.Gzip
 final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfterAll with AgentConfigDirectoryProvider {
 
   private lazy val List(httpsPort, httpPort) = findRandomFreeTcpPorts(2)
-  private lazy val agentConfiguration = AgentConfiguration(
-    dataDirectory = Some(dataDirectory),
-    httpPort = Some(httpPort),
-    httpInterfaceRestriction = Some("127.0.0.1"))
+  private lazy val agentConfiguration = AgentConfiguration
+    .fromDataDirectory(Some(dataDirectory))
+    .copy(
+      httpPort = Some(httpPort),
+      httpInterfaceRestriction = Some("127.0.0.1"))
     .withHttpsPort(httpsPort)
   private lazy val webServer = Guice.createInjector(new AgentModule(agentConfiguration)).instance[AgentWebServer]
   private implicit lazy val actorSystem = ActorSystem("AgentWebServerIT") withCloser { _.shutdown() }

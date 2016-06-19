@@ -27,6 +27,8 @@ object Converters {
 
   implicit val StringToInt: To[String, Int] = stringTo(Integer.parseInt)
 
+  def toAbsolutePath: To[String, Path] = stringTo(o ⇒ StringToPath(o).toAbsolutePath)
+
   implicit val StringToPath: To[String, Path] = stringTo(Paths.get(_))
 
   implicit val StringToSecretString: To[String, SecretString] = stringTo(SecretString.apply)
