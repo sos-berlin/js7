@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.convert
 
+import com.sos.scheduler.engine.base.generic.SecretString
 import java.nio.file.{Path, Paths}
 
 /**
@@ -10,12 +11,10 @@ object Converters {
   trait To[V, W] extends (V ⇒ W)
 
   object To {
-    def apply[V, W](toW: V ⇒ W) = new To[V, W] { def apply(v: V) = toW(v) }
+    def apply[V, W](toW: V ⇒ W): To[V, W] = new To[V, W] { def apply(v: V) = toW(v) }
   }
 
-  implicit object StringTo extends To[String, String] {
-    def apply(o: String) = o
-  }
+  implicit val StringToString: To[String, String] = stringTo(identity)
 
   implicit object StringToBoolean extends To[String, Boolean] {
     val StringToBooleanMap = Map(
@@ -26,11 +25,11 @@ object Converters {
       throw new IllegalArgumentException(s"Boolean value true or false expected, not: $o"))
   }
 
-  implicit object StringToInt extends To[String, Int] {
-    def apply(o: String) = Integer.parseInt(o)
-  }
+  implicit val StringToInt: To[String, Int] = stringTo(Integer.parseInt)
 
-  implicit object StringToPath extends To[String, Path] {
-    def apply(o: String) = Paths.get(o)
-  }
+  implicit val StringToPath: To[String, Path] = stringTo(Paths.get(_))
+
+  implicit val StringToSecretString: To[String, SecretString] = stringTo(SecretString.apply)
+
+  def stringTo[A](convert: String ⇒ A) = To[String, A](convert)
 }
