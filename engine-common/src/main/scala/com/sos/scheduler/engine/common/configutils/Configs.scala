@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.configutils
 
-import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunction
+import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions.wrappedConvert
+import com.sos.scheduler.engine.common.convert.{As, ConvertiblePartialFunction}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
@@ -24,10 +25,17 @@ object Configs {
 
     def apply(path: String): String = delegate.getString(path)
 
+    def seqAs[W](path: String, default: ⇒ Iterable[W])(implicit convert: As[String, W]): immutable.Seq[W] =
+      if (delegate.hasPath(path)) seqAs(path)(convert) else default.toVector
+
+    def seqAs[W](path: String)(implicit convert: As[String, W]): immutable.Seq[W] =
+      stringSeq(path) map wrappedConvert(convert, path)
+
     def stringSeq(path: String, default: ⇒ Iterable[String]): immutable.IndexedSeq[String] =
       if (delegate.hasPath(path)) stringSeq(path) else default.toVector
 
     def stringSeq(path: String): immutable.IndexedSeq[String] = delegate.getStringList(path).toVector
+
 
     def durationOption(path: String): Option[Duration] = delegate.hasPath(path) option delegate.getDuration(path)
   }

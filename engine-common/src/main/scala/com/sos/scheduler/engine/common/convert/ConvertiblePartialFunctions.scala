@@ -22,7 +22,10 @@ object ConvertiblePartialFunctions {
       delegate.lift(key) map wrappedConvert(convert, renderKey(key))
   }
 
-  private[convert] def wrappedConvert[K, V, W](convert: V ⇒ W, keyString: ⇒ String): V ⇒ W =
+  /**
+    * Calls `convert` and wrap a possible exception with `keyString`.
+    */
+  def wrappedConvert[K, V, W](convert: V ⇒ W, keyString: ⇒ String): V ⇒ W =
     value ⇒
       try convert(value)
       catch {
