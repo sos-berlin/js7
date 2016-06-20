@@ -1,6 +1,9 @@
 package com.sos.scheduler.engine.common.convert
 
-import com.sos.scheduler.engine.common.convert.Converters._
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.convert.As._
+import java.time.Duration
+import java.time.format.DateTimeParseException
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -10,10 +13,10 @@ import org.scalatest.junit.JUnitRunner
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class ConvertersTest extends FreeSpec {
+final class AsTest extends FreeSpec {
 
-  "StringToInt" in {
-    val conv = implicitly[To[String, Int]]
+  "StringAsInt" in {
+    val conv = implicitly[As[String, Int]]
     intercept[NumberFormatException] { conv("") }
     intercept[NumberFormatException] { conv(" 1") }
     intercept[NumberFormatException] { conv("1 ") }
@@ -27,8 +30,8 @@ final class ConvertersTest extends FreeSpec {
     intercept[NumberFormatException] { conv("-2147483649") }
   }
 
-  "StringToBoolean" in {
-    val conv = implicitly[To[String, Boolean]]
+  "StringAsBoolean" in {
+    val conv = implicitly[As[String, Boolean]]
     intercept[IllegalArgumentException] { conv("") }
     intercept[IllegalArgumentException] { conv("1") } .getMessage shouldEqual "Boolean value true or false expected, not: 1"
     assert(conv("true"))
@@ -38,5 +41,14 @@ final class ConvertersTest extends FreeSpec {
     assert(!conv("off"))
     assert(!conv("no"))
     for (o ← List(true, false)) assert(conv(o.toString) == o)
+  }
+
+  "StringAsDuration" in {
+    val conv = implicitly[As[String, Duration]]
+    intercept[DateTimeParseException] { conv("") }
+    intercept[DateTimeParseException] { conv("1 s") }
+    assert(conv("1s") == 1.s)
+    assert(conv("123.456789s") == 123456789.µs)
+    assert(conv("PT1H1S") == 3601.s)
   }
 }

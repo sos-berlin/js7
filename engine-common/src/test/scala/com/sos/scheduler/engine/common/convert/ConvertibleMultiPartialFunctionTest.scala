@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.convert
 
-import com.sos.scheduler.engine.common.convert.Converters.To
 import java.nio.file.{Path, Paths}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -38,7 +37,7 @@ final class ConvertibleMultiPartialFunctionTest extends FreeSpec {
 
   "as X" in {
     case class X(s: String)
-    assert(convertible("KEY" → List("111")).as[X]("KEY")(To(X)) == X("111"))
+    assert(convertible("KEY" → List("111")).as[X]("KEY")(As(X)) == X("111"))
   }
 
   "optionAs" in {

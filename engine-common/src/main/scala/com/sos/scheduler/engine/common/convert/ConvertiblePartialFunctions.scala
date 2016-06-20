@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.convert
 
-import com.sos.scheduler.engine.common.convert.Converters.To
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 
@@ -13,13 +12,13 @@ object ConvertiblePartialFunctions {
     * Provides methods for conversion of the result of a PartialFunction (for example a Map).
     */
   implicit class ImplicitConvertablePF[K, V](val delegate: PartialFunction[K, V]) extends AnyVal {
-    def as[W](key: K)(implicit convert: To[V, W], renderKey: RenderKey): W =
+    def as[W](key: K)(implicit convert: As[V, W], renderKey: RenderKey): W =
       wrappedConvert(convert, renderKey(key))(delegate(key))
 
-    def as[W](key: K, default: ⇒ W)(implicit convert: To[V, W], renderKey: RenderKey): W =
+    def as[W](key: K, default: ⇒ W)(implicit convert: As[V, W], renderKey: RenderKey): W =
       optionAs[W](key) getOrElse default
 
-    def optionAs[W](key: K)(implicit convert: To[V, W], renderKey: RenderKey): Option[W] =
+    def optionAs[W](key: K)(implicit convert: As[V, W], renderKey: RenderKey): Option[W] =
       delegate.lift(key) map wrappedConvert(convert, renderKey(key))
   }
 
