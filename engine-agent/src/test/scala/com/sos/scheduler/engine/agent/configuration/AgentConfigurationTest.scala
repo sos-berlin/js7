@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
 import com.typesafe.config.ConfigFactory
+import java.net.InetSocketAddress
 import java.nio.file.Files.delete
 import java.nio.file.Paths
 import org.junit.runner.RunWith
@@ -29,9 +30,8 @@ final class AgentConfigurationTest extends FreeSpec {
     val c = AgentConfiguration(Nil).finishAndProvideFiles
     assert(c.copy(config = ConfigFactory.empty) == AgentConfiguration(
       dataDirectory = None,
-      httpPort = None,
+      httpAddress = None,
       https = None,
-      httpInterfaceRestriction = Some("0.0.0.0"),
       uriPathPrefix = "",
       externalWebServiceClasses = Nil,
       workingDirectory = WorkingDirectory,
@@ -48,24 +48,27 @@ final class AgentConfigurationTest extends FreeSpec {
     intercept[IllegalArgumentException] { conf(List("-https-port=1234")).https }
     intercept[IllegalArgumentException] { conf(List("-https-port=1234")).https }
     intercept[IllegalArgumentException] { conf(List("-data-directory=/TEST/DATA", "-https-port=65536")) }
-    assert(conf(List("-data-directory=/TEST/DATA", "-https-port=1234")).https contains Https(
-      1234,
+    assert(conf(List("-data-directory=/TEST/DATA", "-https-port=1234")).https == Some(Https(
+      new InetSocketAddress("0.0.0.0", 1234),
       KeystoreReference(
         url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/private-https.jks").toUri.toURL,
         storePassword = Some(SecretString("jobscheduler")),
-        keyPassword = Some(SecretString("jobscheduler")))))
+        keyPassword = Some(SecretString("jobscheduler"))))))
+    assert(conf(List("-data-directory=/TEST/DATA", "-https-port=11.22.33.44:1234")).https == Some(Https(
+      new InetSocketAddress("11.22.33.44", 1234),
+      KeystoreReference(
+        url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/private-https.jks").toUri.toURL,
+        storePassword = Some(SecretString("jobscheduler")),
+        keyPassword = Some(SecretString("jobscheduler"))))))
   }
 
   "-http-port=" in {
-    assert(conf(List("-http-port=1234")).httpPort contains 1234)
     intercept[IllegalArgumentException] { conf(List("-http-port=65536")) }
-    intercept[IllegalArgumentException] { conf(Nil).copy(httpPort = Some(65536)) }
+    assert(conf(List("-http-port=1234")).httpAddress == Some(new InetSocketAddress("0.0.0.0", 1234)))
+    assert(conf(List("-http-port=11.22.33.44:1234")).httpAddress == Some(new InetSocketAddress("11.22.33.44", 1234)))
+    assert(conf(List("-http-port=[1:2:3:4:5:6]:1234")).httpAddress == Some(new InetSocketAddress("1:2:3:4:5:6", 1234)))
+    assert(conf(List("-http-port=[::1]:1234")).httpAddress == Some(new InetSocketAddress("::1", 1234)))
   }
-
-  "-ip-address=" in {
-    assert(conf(List("-ip-address=1.2.3.4")).httpInterfaceRestriction == Some("1.2.3.4"))
-  }
-
   "-log-directory=" in {
     assert(conf(List("-data-directory=TEST/DATA")).logDirectory == Paths.get("TEST/DATA/logs").toAbsolutePath)
     assert(conf(List("-data-directory=TEST/DATA", "-log-directory=LOGS")).logDirectory == Paths.get("LOGS").toAbsolutePath)

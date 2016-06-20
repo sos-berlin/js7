@@ -17,6 +17,7 @@ import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPorts
 import com.sos.scheduler.engine.common.utils.JavaResource
+import java.net.InetSocketAddress
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
@@ -41,11 +42,10 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 
   private lazy val List(httpsPort, httpPort) = findRandomFreeTcpPorts(2)
   private lazy val agentConfiguration = AgentConfiguration
-    .fromDataDirectory(Some(dataDirectory))
+    .forTest(Some(dataDirectory))
     .copy(
-      httpPort = Some(httpPort),
-      httpInterfaceRestriction = Some("127.0.0.1"))
-    .withHttpsPort(httpsPort)
+      httpAddress = Some(new InetSocketAddress("127.0.0.1", httpPort)))
+    .withHttpsInetSocketAddress(new InetSocketAddress("127.0.0.1", httpsPort))
   private lazy val webServer = Guice.createInjector(new AgentModule(agentConfiguration)).instance[AgentWebServer]
   private implicit lazy val actorSystem = ActorSystem("AgentWebServerIT") withCloser { _.shutdown() }
 
@@ -112,7 +112,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   "WebService fails when HTTP port is not available" in {
     val webServer = Guice.createInjector(new AgentModule(agentConfiguration)).instance[AgentWebServer]
     intercept[RuntimeException] { webServer.start() await 10.s }
-      .getMessage should include (s"TCP port $httpPort")
+      .getMessage should include (s"127.0.0.1:$httpPort")
   }
 
   "close" in {

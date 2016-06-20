@@ -12,6 +12,7 @@ import com.sos.scheduler.engine.agent.web.auth.{SimpleUserPassAuthenticator, Unk
 import com.sos.scheduler.engine.common.auth.{Account, UserAndPassword}
 import com.sos.scheduler.engine.common.sprayutils.https.Https.newServerSSLEngineProvider
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.net.InetSocketAddress
 import javax.inject.{Inject, Provider, Singleton}
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -33,20 +34,21 @@ final class AgentWebServer @Inject private(
   implicit actorSystem: ActorSystem, ec: ExecutionContext)
 extends AutoCloseable {
 
-  val localHttpUriOption: Option[Uri] = conf.httpPort map toLocalUri("http")
-  val localHttpsUriOption: Option[Uri] = conf.https map { o ⇒ toLocalUri("https")(o.port) }
+  val localHttpUriOption: Option[Uri] = conf.httpAddress map toLocalUri("http")
+  val localHttpsUriOption: Option[Uri] = conf.https map { o ⇒ toLocalUri("https")(o.address) }
   val localUri: Uri = localHttpUriOption orElse localHttpsUriOption getOrElse { throw newPortNeededException }
 
-  private def toLocalUri(scheme: String)(port: Int) = {
-    val ip = conf.httpInterfaceRestriction getOrElse "127.0.0.1"
-    Uri(s"$scheme://$ip:$port/${conf.uriPathPrefix}" stripSuffix "/")
+  private def toLocalUri(scheme: String)(address: InetSocketAddress) = {
+    val host = address.getAddress.getHostAddress
+    val port = address.getPort
+    Uri(s"$scheme://$host:$port/${conf.uriPathPrefix}" stripSuffix "/")
   }
 
   /**
    * @return Future, completed when Agent has been started and is running.
    */
   def start(): Future[Unit] = {
-    val httpBound = for (port ← conf.httpPort) yield bindHttp(port)
+    val httpBound = for (port ← conf.httpAddress) yield bindHttp(port)
     val httpsBound = for (https ← conf.https) yield bindHttps(https)
     val allBound = httpBound ++ httpsBound
     if (allBound.isEmpty)
@@ -55,30 +57,29 @@ extends AutoCloseable {
       Future.sequence(allBound) map { _ ⇒ () }
   }
 
-  private def bindHttp(port: Int) =
-    bind(port, useHttps = false,
-      newWebServiceActorRef(s"AgentWebService-http-$port", UnknownUserPassAuthenticator),
+  private def bindHttp(address: InetSocketAddress) =
+    bind(address, useHttps = false,
+      newWebServiceActorRef(s"AgentWebService-http-${inetSocketAddressToName(address)}", UnknownUserPassAuthenticator),
       implicitly[ServerSSLEngineProvider])
 
   private def bindHttps(https: Https) = {
     val authenticator = new SimpleUserPassAuthenticator(passwordValidatorProvider.get())
-    bind(https.port, useHttps = true,
-      newWebServiceActorRef(s"AgentWebService-https-${https.port}", authenticator),
+    bind(https.address, useHttps = true,
+      newWebServiceActorRef(s"AgentWebService-https-${inetSocketAddressToName(https.address)}", authenticator),
       newServerSSLEngineProvider(https.keystoreReference))
   }
 
   private def newWebServiceActorRef(name: String, authenticator: UserPassAuthenticator[Account]) =
     actorSystem.actorOf(WebServiceActor.props(injector, authenticator), name)
 
-  private def bind(port: Int, useHttps: Boolean, actorRef: ActorRef, sslEngineProvider: ServerSSLEngineProvider): Future[Unit] = {
+  private def bind(address: InetSocketAddress, useHttps: Boolean, actorRef: ActorRef, sslEngineProvider: ServerSSLEngineProvider): Future[Unit] = {
     implicit val timeout: Timeout = 10.seconds
-    val interface = conf.httpInterfaceRestriction getOrElse "0.0.0.0"
     val settings = ServerSettings(actorSystem).copy(sslEncryption = useHttps)
-    (IO(Http) ? Http.Bind(actorRef, interface = interface, port = port, settings = Some(settings))(sslEngineProvider))
+    (IO(Http) ? Http.Bind(actorRef, interface = address.getAddress.getHostAddress, port = address.getPort, settings = Some(settings))(sslEngineProvider))
       .map {
         case _: Http.Bound ⇒  // good
         case failed: Tcp.CommandFailed ⇒
-          sys.error(s"Binding to TCP port $port failed: $failed. " +
+          sys.error(s"Binding to TCP port $address failed: $failed. " +
             "Port is possibly in use and not available. Switch on DEBUG-level logging for `akka.io.TcpListener` to log the cause")
             // (Akka 2.3.7) When Akka #13861 should be fixed, replace by actual exception. See https://github.com/akka/akka/issues/13861
     }
@@ -95,4 +96,6 @@ extends AutoCloseable {
 object AgentWebServer {
   private val ShutdownTimeout = 5.s
   private def newPortNeededException = new IllegalArgumentException("HTTP or HTTPS port is needed")
+
+  private def inetSocketAddressToName(o: InetSocketAddress): String = o.getAddress.getHostAddress + s":${o.getPort}"
 }
