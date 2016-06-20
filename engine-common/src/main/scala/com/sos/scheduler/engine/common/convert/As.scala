@@ -13,6 +13,8 @@ trait As[V, W] extends (V ⇒ W)
 object As {
   def apply[V, W](asW: V ⇒ W): As[V, W] = new As[V, W] { def apply(v: V) = asW(v) }
 
+  def convert[V, W](from: V)(implicit to: As[V, W]): W = to(from)
+
   implicit val StringAsString: As[String, String] = stringAs(identity)
 
   implicit object StringAsBoolean extends As[String, Boolean] {
