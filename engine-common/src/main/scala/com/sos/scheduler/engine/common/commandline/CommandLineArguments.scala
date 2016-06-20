@@ -25,7 +25,7 @@ with ConvertibleMultiPartialFunction[String, String] {
   def keylessValue(index: Int): String = {
     unusedKeylessArguments -= index
     val a = arguments("")
-    if (index >= a.size) throw new NoSuchElementException(s"To few keyless arguments: argument #${index+1} expected")
+    if (index >= a.size) throw new NoSuchElementException(s"Too few keyless arguments: argument #${index+1} expected")
     a(index).value
   }
 

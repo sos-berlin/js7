@@ -129,7 +129,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
           a.keylessValue(0)
         }
       }
-        .getMessage shouldEqual "To few keyless arguments: argument #1 expected"
+        .getMessage shouldEqual "Too few keyless arguments: argument #1 expected"
     }
   }
 
