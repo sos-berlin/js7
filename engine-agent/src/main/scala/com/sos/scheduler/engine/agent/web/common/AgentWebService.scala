@@ -53,7 +53,7 @@ trait AgentWebService extends AgentExceptionHandler {
    * Returns a route, consisting of all added routes.
    */
   final def route: Route = {
-    for (e ← allEntries) logger.info(s"Using route of ${e.callerName}")
+    for (e ← allEntries) logger.trace(s"Using route of ${e.callerName}")
     (decompressRequest() & compressResponseIfRequested(())) {
       pathPrefix(separateOnSlashes(jobschedulerPath.toString)) {
         pathPrefix(AgentPrefix / "api") {
