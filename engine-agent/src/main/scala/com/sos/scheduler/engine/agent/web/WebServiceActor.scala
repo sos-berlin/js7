@@ -69,7 +69,7 @@ with NoJobSchedulerEngineWebService
   protected def tunnelOverviews = tunnelServer.tunnelOverviews
   protected def tunnelView(tunnelId: TunnelId) = tunnelServer.tunnelView(tunnelId)
 
-  override protected def uriPathPrefix = agentConfiguration.strippedUriPathPrefix
+  override protected val uriPathPrefix = agentConfiguration.uriPathPrefix
 }
 
 private[web] object WebServiceActor {

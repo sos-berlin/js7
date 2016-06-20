@@ -39,7 +39,7 @@ extends AutoCloseable {
 
   private def toLocalUri(scheme: String)(port: Int) = {
     val ip = conf.httpInterfaceRestriction getOrElse "127.0.0.1"
-    Uri(s"$scheme://$ip:$port/${conf.strippedUriPathPrefix}" stripSuffix "/")
+    Uri(s"$scheme://$ip:$port/${conf.uriPathPrefix}" stripSuffix "/")
   }
 
   /**

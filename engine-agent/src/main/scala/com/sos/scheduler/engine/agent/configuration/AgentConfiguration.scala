@@ -32,14 +32,13 @@ import scala.reflect.ClassTag
  */
 final case class AgentConfiguration(
   dataDirectory: Option[Path] = None,
-  https: Option[Https] = None,
   httpPort: Option[Int] = None,
+  https: Option[Https] = None,
   /**
    * The IP address of the only network interface, the Agent should listen to.
    * If empty, the Agent listens to all network interfaces.
    */
   httpInterfaceRestriction: Option[String] = None,
-  /** Prefix slash and suffix slash are striped. **/
   uriPathPrefix: String = "",
   workingDirectory: Path = Paths.get(sys.props("user.dir")).toAbsolutePath,
   logDirectory: Path = temporaryDirectory,
@@ -53,9 +52,8 @@ final case class AgentConfiguration(
 {
   for (o ← httpPort) requireTcpPortNumber(o)
   for (o ← https) requireTcpPortNumber(o.port)
+  require(!(uriPathPrefix.startsWith("/") || uriPathPrefix.endsWith("/")))
   require(workingDirectory.isAbsolute)
-
-  def strippedUriPathPrefix = uriPathPrefix stripPrefix "/" stripSuffix "/"
 
   def withWebService[A <: ExternalWebService : ClassTag] = withWebServices(List(implicitClass[A]))
 
@@ -86,7 +84,7 @@ final case class AgentConfiguration(
         config = config,
         httpPort = c.optionAs("http.port", httpPort)(To(parseTcpPort)),
         httpInterfaceRestriction = c.optionAs[String]("http.ip-address", httpInterfaceRestriction),
-        uriPathPrefix = c.as[String]("http.uri-prefix", uriPathPrefix),
+        uriPathPrefix = c.as[String]("http.uri-prefix", uriPathPrefix) stripPrefix "/" stripSuffix "/",
         logDirectory = c.optionAs[Path]("log.directory") map { _.toAbsolutePath } getOrElse logDirectory,
         rpcKeepaliveDuration = c.optionAs("task.rpc.keepalive.duration", rpcKeepaliveDuration)(To(parseDuration)),
         jobJavaOptions = c.stringSeq("task.java.options", jobJavaOptions))
@@ -105,7 +103,7 @@ final case class AgentConfiguration(
         dataDirectory = a.optionAs[Path]("-data-directory=", dataDirectory) map { _.toAbsolutePath },
         httpPort = a.optionAs("-http-port=", httpPort)(To(parseTcpPort)),
         httpInterfaceRestriction = a.optionAs[String]("-ip-address=", httpInterfaceRestriction),
-        uriPathPrefix = a.as[String]("-uri-prefix=", uriPathPrefix),
+        uriPathPrefix = a.as[String]("-uri-prefix=", uriPathPrefix) stripPrefix "/" stripSuffix "/",
         logDirectory = a.optionAs[Path]("-log-directory=") map { _.toAbsolutePath } getOrElse logDirectory,
         rpcKeepaliveDuration = a.optionAs("-rpc-keepalive=", rpcKeepaliveDuration)(To(parseDuration)),
         jobJavaOptions = a.optionAs[String]("-job-java-options=") match {

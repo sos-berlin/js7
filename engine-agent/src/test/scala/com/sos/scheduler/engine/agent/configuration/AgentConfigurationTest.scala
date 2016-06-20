@@ -59,8 +59,8 @@ final class AgentConfigurationTest extends FreeSpec {
 
   "-uri-prefix=" in {
     assert(conf(Nil).uriPathPrefix == "")
-    assert(conf(List("-uri-prefix=test")).strippedUriPathPrefix == "test")
-    assert(conf(List("-uri-prefix=/test/")).strippedUriPathPrefix == "test")
+    assert(conf(List("-uri-prefix=test")).uriPathPrefix == "test")
+    assert(conf(List("-uri-prefix=/test/")).uriPathPrefix == "test")
   }
 
   "-kill-script=" in {
