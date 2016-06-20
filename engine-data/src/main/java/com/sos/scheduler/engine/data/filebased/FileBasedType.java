@@ -72,12 +72,16 @@ public enum FileBasedType {
     
     public abstract TypedPath toPath(String path);
 
+    public String internalCppName() {
+        return internalCppName;
+    }
+
     public String cppName() {
         return cppName;
     }
 
-    public String internalCppName() {
-        return internalCppName;
+    public String filenameExtension() {
+        return this == folder ? "/" : "." + cppName + ".xml";
     }
 
     @Override public String toString() {

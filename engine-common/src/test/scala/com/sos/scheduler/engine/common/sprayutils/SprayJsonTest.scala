@@ -16,17 +16,27 @@ final class SprayJsonTest extends FreeSpec {
 
   "Map JSON" in {
     implicit val jsonWriter = jsonFormat2(A.apply)
-    val obj = A(111, Map("string" → "STRING", "int" → 333))
+    val obj = A(
+      111,
+      Map(
+        "string" → "STRING",
+        "int" → 333,
+        "boolean" → true,
+        "null" → null,
+        "array" → Vector(1, "two")))
     val json =
       """{
         "int": 111,
         "map": {
           "string": "STRING",
-          "int": 333
+          "int": 333,
+          "boolean": true,
+          "null": null,
+          "array": [1, "two"]
         }
       }""".parseJson
     assert(obj.toJson == json)
-    intercept[UnsupportedOperationException] { json.convertTo[A] }
+    assert(json.convertTo[A] == obj)
   }
 }
 

@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import java.security.KeyStore
 import java.util.concurrent.atomic.AtomicBoolean
-import javax.net.ssl.{KeyManagerFactory, SSLContext, SSLEngine, TrustManagerFactory}
+import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, SSLEngine, TrustManagerFactory}
 import scala.collection.JavaConversions._
 import spray.can.Http
 import spray.can.Http.HostConnectorSetup
@@ -26,6 +26,9 @@ import spray.io.{ClientSSLEngineProvider, ServerSSLEngineProvider}
   *
   * @author Joacim Zschimmer
   * @see http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#CreateKeystore
+  *      http://spray.io/documentation/1.2.3/spray-can/http-server/#ssl-support
+  *      https://tools.ietf.org/html/rfc5246
+  *
   */
 object Https {
   private val SslContextAlgorithm = "TLS"
@@ -42,10 +45,10 @@ object Https {
     r
   }
 
-  def enableTlsFor(uri: Uri, keystoreRef: KeystoreReference)(implicit actorSystem: ActorSystem): Unit =
-    enableTlsFor(uri.authority.host.address, uri.effectivePort, keystoreRef)
+  def acceptTlsCertificateFor(keystoreRef: KeystoreReference, uri: Uri)(implicit actorSystem: ActorSystem): Unit =
+    acceptTlsCertificateFor(keystoreRef, uri.authority.host.address, uri.effectivePort)
 
-  def enableTlsFor(host: String, port: Int, keystore: KeystoreReference)(implicit actorSystem: ActorSystem): Unit =
+  def acceptTlsCertificateFor(keystore: KeystoreReference, host: String, port: Int)(implicit actorSystem: ActorSystem): Unit =
     IO(Http) ! {
       implicit val myEngineProvider = newClientSSLEngineProvider(keystore)
       HostConnectorSetup(host = host, port = port, sslEncryption = true)
@@ -81,16 +84,21 @@ object Https {
   def newSSLContext(keystoreRef: KeystoreReference): SSLContext =
     newSSLContext(loadKeyStore(keystoreRef), keyPassword = keystoreRef.keyPassword)
 
-  def newSSLContext(keystore: KeyStore, keyPassword: SecretString): SSLContext = {
-    val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerAlgorithm) sideEffect {
-      _.init(keystore, keyPassword.string.toArray)
+
+  def newSSLContext(keystore: KeyStore, keyPassword: Option[SecretString]): SSLContext = {
+    val keyManagers = keyPassword match {
+      case Some(password) ⇒
+        val keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerAlgorithm)
+        keyManagerFactory.init(keystore, password.string.toArray)
+        keyManagerFactory.getKeyManagers
+      case None ⇒ Array[KeyManager]()
     }
     val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerAlgorithm) sideEffect {
       _.init(keystore)
     }
-    val r = SSLContext.getInstance(SslContextAlgorithm)
-    r.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, null)
-    r
+    SSLContext.getInstance(SslContextAlgorithm) sideEffect {
+      _.init(keyManagers, trustManagerFactory.getTrustManagers, null)
+    }
   }
 
   private def loadKeyStore(keystoreRef: KeystoreReference): KeyStore = {

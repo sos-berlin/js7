@@ -18,6 +18,7 @@ import scala.language.implicitConversions
 object FileUtils {
 
   val EmptyPath = Paths.get("")
+  val WorkingDirectory = Paths.get(sys.props("user.dir")).toAbsolutePath
 
   /**
    * Touchs the file and deletes it when closer is closed.

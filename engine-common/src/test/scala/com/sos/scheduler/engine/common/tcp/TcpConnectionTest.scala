@@ -3,13 +3,13 @@ package com.sos.scheduler.engine.common.tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
 import java.util.concurrent.TimeoutException
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -20,7 +20,7 @@ import scala.util.Random
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfterAll with ScalaFutures {
+final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private val localhost = InetAddress.getByName("127.0.0.1")
   private var listenSocket: ServerSocket = _
@@ -54,7 +54,7 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
     for (_ ← 1 to 10) {
       val received = Future { tcpConnection.receiveMessage() }
       out.write(message)
-      assert(received.futureValue == Some(ByteString(data)))
+      assert((received await 10.s) == Some(ByteString(data)))
     }
   }
 
@@ -67,7 +67,7 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
       (receivedData, receivedLength)
     }
     tcpConnection.sendMessage(ByteString.fromArray(sentData))
-    val (receivedData, receivedLength) = received.futureValue
+    val (receivedData, receivedLength) = received await 10.s
     receivedLength shouldEqual 4 + length
     receivedData.toVector shouldEqual smallIntToBytes(length) ++ sentData.toVector
   }

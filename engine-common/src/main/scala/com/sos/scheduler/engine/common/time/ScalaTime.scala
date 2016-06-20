@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.time
 
-import com.sos.scheduler.engine.base.utils.Ascii
 import com.sos.scheduler.engine.base.utils.Ascii.isAsciiDigit
 import java.time.Instant.now
 import java.time._
@@ -22,7 +21,7 @@ object ScalaTime {
     /**
      * Duration, counted in microseconds.
      */
-    final def μs = Duration ofNanos 1000 * delegate
+    final def µs = Duration ofNanos 1000L * delegate
 
     /**
      * Duration, counted in milliseconds.
@@ -52,7 +51,7 @@ object ScalaTime {
     /**
      * Duration, counted in microseconds.
      */
-    final def μs = Duration ofNanos 1000 * delegate
+    final def µs = Duration ofNanos 1000L * delegate
 
     /**
      * Duration, counted in milliseconds.

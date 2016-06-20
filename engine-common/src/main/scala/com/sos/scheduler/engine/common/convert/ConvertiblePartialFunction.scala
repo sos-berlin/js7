@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.convert
 
-import com.sos.scheduler.engine.common.convert.Converters.To
 import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions.wrappedConvert
 
 /**
@@ -8,16 +7,18 @@ import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions.wrapp
   *
   * @author Joacim Zschimmer
   */
-trait ConvertiblePartialFunction[K, V] {
-  this: PartialFunction[K, V] ⇒
+trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V] {
 
-  def as[W](key: K)(implicit convert: To[V, W]): W =
+  def as[W](key: K)(implicit convert: As[V, W]): W =
     wrappedConvert(convert, renderKey(key))(apply(key))
 
-  def as[W](key: K, default: ⇒ W)(implicit convert: To[V, W]): W =
+  def as[W](key: K, default: ⇒ W)(implicit convert: As[V, W]): W =
     optionAs[W](key) getOrElse default
 
-  def optionAs[W](key: K)(implicit convert: To[V, W]): Option[W] =
+  def optionAs[W](key: K, default: ⇒ Option[W])(implicit convert: As[V, W]): Option[W] =
+    optionAs(key)(convert) orElse default
+
+  def optionAs[W](key: K)(implicit convert: As[V, W]): Option[W] =
     lift(key) map wrappedConvert(convert, renderKey(key))
 
   protected def renderKey(key: K) = s"key '$key'"

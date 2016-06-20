@@ -5,8 +5,8 @@ import com.google.common.io.Resources
 import com.google.common.io.Resources.getResource
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import java.io.File
-import java.net.URL
-import java.nio.file.{DirectoryNotEmptyException, FileAlreadyExistsException, CopyOption, Files, Path}
+import java.net.{URI, URL}
+import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
 import scala.collection.immutable
 
 /**
@@ -22,6 +22,7 @@ final case class JavaResource(path: String) {
 
   /**
     * Copies the resource files denoted by `resourceNames` name by name to `directory`.
+    *
     * @return The created file paths
     * @throws FileAlreadyExistsException
     * if the target file exists but cannot be replaced because
@@ -48,10 +49,12 @@ final case class JavaResource(path: String) {
     * the `REPLACE_EXISTING` option is specified but the file cannot be replaced because
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
-  def copyToFile(file: Path, copyOptions: CopyOption*): Unit =
+  def copyToFile(file: Path, copyOptions: CopyOption*): Path = {
     autoClosing(url.openStream()) { in ⇒
       Files.copy(in, file, copyOptions: _*)
     }
+    file
+  }
 
   def asUTF8String = Resources.toString(url, UTF_8)
 
@@ -61,6 +64,11 @@ final case class JavaResource(path: String) {
    * @throws RuntimeException, if the resource does not exists.
    */
   lazy val url: URL = getResource(path)
+
+  /**
+   * @throws RuntimeException, if the resource does not exists.
+   */
+  def uri: URI = url.toURI
 
   def /(tail: String) = JavaResource(s"${path stripSuffix "/"}/$tail")
 

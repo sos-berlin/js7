@@ -116,7 +116,8 @@ object TcpHttpTcpTunnelIT {
           val uri = ClientSide.this.uri withPath Path("/test/tunnel")
           uri withPath (uri.path / tunnelToken.id.string)
         },
-        heartbeatRequestorOption = None))
+        heartbeatRequestorOption = None,
+        requestTransformer = identity))
 
     tcpHttpBridge.start()
     val tcp = clientSideListener.accept()

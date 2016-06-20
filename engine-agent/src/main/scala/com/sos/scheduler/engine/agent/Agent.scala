@@ -15,8 +15,9 @@ import com.sos.scheduler.engine.agent.web.AgentWebServer
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime.MaxDuration
+import com.sos.scheduler.engine.common.time.ScalaTime.{MaxDuration, _}
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
 import scala.concurrent.Future
 
@@ -33,14 +34,9 @@ final class Agent(module: Module) extends AutoCloseable {
 
   val injector = Guice.createInjector(PRODUCTION, module)
   val configuration = injector.instance[AgentConfiguration]
-  val localUri = {
-    val (scheme, port) = (configuration.https map { o ⇒ ("https", o.port) })
-      .orElse (configuration.httpPort map { o ⇒ ("http", o) })
-      .getOrElse { throw new IllegalArgumentException("Missing HTTPS or HTTP port") }
-    s"$scheme://127.0.0.1:$port/${configuration.strippedUriPathPrefix}" stripSuffix "/"
-  }
   private implicit val closer = injector.instance[Closer]
   private val webServer = injector.instance[AgentWebServer].closeWithCloser
+  val localUri = webServer.localUri.toString
   private val taskHandler = injector.instance[TaskHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
 
@@ -55,7 +51,7 @@ final class Agent(module: Module) extends AutoCloseable {
   }
 
   def run(): Unit = {
-    start()
+    start() await 30.s
     awaitResult(terminated, MaxDuration)
   }
 
@@ -69,5 +65,5 @@ object Agent {
 
   def forTest(): Agent = forTest(httpPort = findRandomFreeTcpPort())
 
-  def forTest(httpPort: Int): Agent = new Agent(AgentConfiguration.forTest(httpPort))
+  def forTest(httpPort: Int): Agent = new Agent(AgentConfiguration.forTest(httpPort = httpPort))
 }
