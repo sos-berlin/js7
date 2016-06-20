@@ -7,6 +7,7 @@ import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.configutils.Configs._
 import com.sos.scheduler.engine.common.convert.As
+import com.sos.scheduler.engine.common.convert.As.asAbsolutePath
 import com.sos.scheduler.engine.common.process.Processes.ShellFileExtension
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
@@ -32,21 +33,21 @@ import scala.reflect.ClassTag
 final case class AgentConfiguration(
   dataDirectory: Option[Path],
   httpPort: Option[Int],
-  https: Option[Https] = None,
+  https: Option[Https],
   /**
    * The IP address of the only network interface, the Agent should listen to.
    * If empty, the Agent listens to all network interfaces.
    */
   httpInterfaceRestriction: Option[String],
   uriPathPrefix: String,
-  externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]] = Nil,
+  externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]],
   workingDirectory: Path = WorkingDirectory,
   logDirectory: Path,
-  environment: Map[String, String] = Map(),
+  environment: Map[String, String],
   jobJavaOptions: immutable.Seq[String],
-  dotnet: DotnetConfiguration = DotnetConfiguration(),
+  dotnet: DotnetConfiguration,
   rpcKeepaliveDuration: Option[Duration],
-  killScript: Option[ProcessKillScript] = Some(ProcessKillScript(DelayUntilFinishFile)),
+  killScript: Option[ProcessKillScript],
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
 {
   for (o ← httpPort) requireTcpPortNumber(o)
@@ -60,15 +61,12 @@ final case class AgentConfiguration(
       https = a.optionAs("-https-port=")(As(parseTcpPort)) map portToHttps orElse https,
       httpInterfaceRestriction = a.optionAs[String]("-ip-address=", httpInterfaceRestriction),
       uriPathPrefix = a.as[String]("-uri-prefix=", uriPathPrefix) stripPrefix "/" stripSuffix "/",
-        logDirectory = a.optionAs[Path]("-log-directory=") map { _.toAbsolutePath } getOrElse logDirectory,
-        jobJavaOptions = a.optionAs[String]("-job-java-options=") match {
-          case Some(o) ⇒ List(o)
-          case None ⇒ jobJavaOptions
-        },
-        rpcKeepaliveDuration = a.optionAs[Duration]("-rpc-keepalive=", rpcKeepaliveDuration))
-      .withKillScript(a.optionAs[String]("-kill-script="))
-    for (o ← a.optionAs[Path]("-dotnet-class-directory=")) {
-      v = v.copy(dotnet = DotnetConfiguration(classDllDirectory = Some(o.toAbsolutePath)))
+      logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
+      jobJavaOptions = a.optionAs[String]("-job-java-options=") map { o ⇒ List(o) } getOrElse jobJavaOptions,
+      rpcKeepaliveDuration = a.optionAs[Duration]("-rpc-keepalive=", rpcKeepaliveDuration))
+    v = v withKillScript a.optionAs[String]("-kill-script=")
+    for (o ← a.optionAs("-dotnet-class-directory=")(asAbsolutePath)) {
+      v = v.copy(dotnet = DotnetConfiguration(classDllDirectory = Some(o)))
     }
     v
   }
@@ -129,20 +127,22 @@ object AgentConfiguration {
     val config = resolvedConfig(data)
     val c = config.getConfig("jobscheduler.agent")
     var v = new AgentConfiguration(
-        dataDirectory = data,
-        httpPort = c.optionAs("http.port")(As(parseTcpPort)),
-        httpInterfaceRestriction = c.optionAs[String]("http.ip-address"),
-        uriPathPrefix = c.as[String]("http.uri-prefix") stripPrefix "/" stripSuffix "/",
-        logDirectory = c.optionAs[Path]("log.directory") orElse (data map { _ / "logs" }) map { _.toAbsolutePath } getOrElse temporaryDirectory,
-        rpcKeepaliveDuration = c.durationOption("task.rpc.keepalive.duration"),
-        jobJavaOptions = c.stringSeq("task.java.options"),
-        config = config)
-      .withKillScript(c.optionAs[String]("task.kill.script"))
+      dataDirectory = data,
+      httpPort = c.optionAs("http.port")(As(parseTcpPort)),
+      https = None,  // Changed below
+      httpInterfaceRestriction = c.optionAs[String]("http.ip-address"),
+      externalWebServiceClasses = Nil,
+      uriPathPrefix = c.as[String]("http.uri-prefix") stripPrefix "/" stripSuffix "/",
+      logDirectory = c.optionAs("log.directory")(asAbsolutePath) orElse (data map { _ / "logs" }) getOrElse temporaryDirectory,
+      environment = Map(),
+      dotnet = DotnetConfiguration(classDllDirectory = c.optionAs("task.dotnet.class-directory")(asAbsolutePath)),
+      rpcKeepaliveDuration = c.durationOption("task.rpc.keepalive.duration"),
+      jobJavaOptions = c.stringSeq("task.java.options"),
+      killScript = Some(ProcessKillScript(DelayUntilFinishFile)),  // Changed below
+      config = config)
+    v = v.withKillScript(c.optionAs[String]("task.kill.script"))
     for (o ← c.optionAs("https.port")(As(parseTcpPort))) {
-      v = v.withHttpsPort(o)
-    }
-    for (o ← c.optionAs[Path]("task.dotnet.class-directory")) {
-      v = v.copy(dotnet = DotnetConfiguration(classDllDirectory = Some(o.toAbsolutePath)))
+      v = v withHttpsPort o
     }
     v
   }
