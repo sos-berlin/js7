@@ -2,8 +2,10 @@ package com.sos.scheduler.engine.common.configutils
 
 import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunction
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions}
 import java.nio.file.Path
+import java.time.Duration
 import scala.collection.JavaConversions._
 import scala.collection.immutable
 
@@ -26,5 +28,7 @@ object Configs {
       if (delegate.hasPath(path)) stringSeq(path) else default.toVector
 
     def stringSeq(path: String): immutable.IndexedSeq[String] = delegate.getStringList(path).toVector
+
+    def durationOption(path: String): Option[Duration] = delegate.hasPath(path) option delegate.getDuration(path)
   }
 }
