@@ -11,6 +11,8 @@ import java.time.Duration
 final class Stopwatch {
   private val start = nanoTime()
 
+  def itemsPerSecondString(n: Int, item: String, items: String = "") = Stopwatch.itemsPerSecondString(duration, n, item, items)
+
   def elapsedMs: Long = duration.toMillis
 
   def duration: Duration = Duration.ofNanos(nanoTime() - start)
