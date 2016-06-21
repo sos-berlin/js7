@@ -2,7 +2,6 @@ package com.sos.scheduler.engine.agent.web.views
 
 import com.sos.scheduler.engine.agent.command.{CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate}
-import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import java.time.Instant
 import org.junit.runner.RunWith
@@ -21,7 +20,6 @@ import spray.json._
 final class CommandViewServiceTest extends FreeSpec with WebServiceTest with CommandViewWebService {
 
   override protected val uriPathPrefix = "test"
-  protected val authenticator = UnknownUserPassAuthenticator
 
   protected def commandHandlerOverview = new CommandHandlerOverview {
     def totalCommandCount = 1111

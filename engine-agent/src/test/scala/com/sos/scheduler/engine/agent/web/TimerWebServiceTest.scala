@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.agent.web
 
-import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.time.ScalaTime._
@@ -24,7 +23,6 @@ final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerW
 
   protected def executionContext = actorRefFactory.dispatcher
   protected lazy val timerService = TimerService(Some(5.s)).closeWithCloser
-  protected val authenticator = UnknownUserPassAuthenticator
 
   "timerService (empty)" in {
     Get("/jobscheduler/agent/api/timer") ~> Accept(`application/json`) ~> route ~> check {

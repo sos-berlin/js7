@@ -3,7 +3,6 @@ package com.sos.scheduler.engine.agent.web.views
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
-import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
 import com.sos.scheduler.engine.tunnel.data.TunnelId
@@ -46,8 +45,6 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
         javaClassName = Some("JAVA.CLASS"),
         monitorCount = 3)))
   }
-
-  protected val authenticator = UnknownUserPassAuthenticator
 
   "task" in {
     Get("/jobscheduler/agent/api/task") ~> Accept(`application/json`) ~> route ~> check {

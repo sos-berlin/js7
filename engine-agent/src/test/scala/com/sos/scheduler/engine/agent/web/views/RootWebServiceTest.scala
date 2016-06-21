@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.agent.web.views
 
 import com.sos.scheduler.engine.agent.views.AgentOverview
-import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.common.sprayutils.JsArrayMarshallers._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils
@@ -18,8 +17,6 @@ import spray.json._
  */
 @RunWith(classOf[JUnitRunner])
 final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWebService {
-  protected val authenticator = UnknownUserPassAuthenticator
-
 
   IntelliJUtils.intelliJuseImports(JsArrayMarshaller)
 

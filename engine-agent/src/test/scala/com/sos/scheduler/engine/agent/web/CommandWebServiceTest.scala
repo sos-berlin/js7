@@ -28,7 +28,6 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
 
   protected implicit def executionContext = actorRefFactory.dispatcher
   override protected val uriPathPrefix = "test"
-  protected val authenticator = UnknownUserPassAuthenticator
 
   protected def executeCommand(command: Command, meta: CommandMeta) =
     Future.successful {
