@@ -116,9 +116,9 @@ object AgentConfiguration {
     fromDataDirectory(a.optionAs[Path]("-data-directory=")) withCommandLineArguments a
   }
 
-  def fromDataDirectory(dataDirectory: Option[Path]): AgentConfiguration = {
+  def fromDataDirectory(dataDirectory: Option[Path], extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
     val data = dataDirectory map { _.toAbsolutePath }
-    val config = resolvedConfig(data)
+    val config = resolvedConfig(data, extraDefaultConfig)
     val c = config.getConfig("jobscheduler.agent")
     var v = new AgentConfiguration(
       dataDirectory = data,
@@ -140,9 +140,9 @@ object AgentConfiguration {
     v
   }
 
-  private def resolvedConfig(dataDirectory: Option[Path]): Config = {
+  private def resolvedConfig(dataDirectory: Option[Path], extraDefaultConfig: Config): Config = {
     val dataConfig = dataDirectory map dataDirectoryConfig getOrElse ConfigFactory.empty
-    (dataConfig withFallback DefaultsConfig).resolve
+    (dataConfig withFallback extraDefaultConfig withFallback DefaultsConfig).resolve
   }
 
   private def dataDirectoryConfig(dataDirectory: Path): Config =
@@ -156,8 +156,8 @@ object AgentConfiguration {
   object forTest {
     private val TaskServerLogbackResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/logback.xml")
 
-    def apply(data: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort()) =
-      fromDataDirectory(data).copy(
+    def apply(data: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
+      fromDataDirectory(data, config).copy(
         httpAddress = Some(new InetSocketAddress("127.0.0.1", httpPort)),
         jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
   }
