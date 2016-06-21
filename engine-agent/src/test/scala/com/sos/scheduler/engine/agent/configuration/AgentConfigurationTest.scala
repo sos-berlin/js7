@@ -12,7 +12,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
-import java.nio.file.Files.delete
+import java.nio.file.Files.{createTempDirectory, delete}
 import java.nio.file.Paths
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -40,7 +40,7 @@ final class AgentConfigurationTest extends FreeSpec {
       jobJavaOptions = Nil,
       dotnet = DotnetConfiguration(),
       rpcKeepaliveDuration = None,
-      killScript = Some(ProcessKillScript(temporaryDirectory / s"jobscheduler_agent_0_kill_task.$shellExt")),
+      killScript = Some(ProcessKillScript(temporaryDirectory / s"kill_task.$shellExt")),
       ConfigFactory.empty))
   }
 
@@ -80,14 +80,50 @@ final class AgentConfigurationTest extends FreeSpec {
     assert(conf(List("-uri-prefix=/test/")).uriPathPrefix == "test")
   }
 
-  "-kill-script=" in {
-    val generatedFile = conf(Nil).logDirectory / s"jobscheduler_agent_11111_kill_task.$shellExt"
-    assert(AgentConfiguration(List("-http-port=11111")).finishAndProvideFiles.killScript == Some(ProcessKillScript(generatedFile)))
-    delete(generatedFile)
-    assert(conf(List("-data-directory=TEST/DATA", "-kill-script=")).finishAndProvideFiles.killScript == None)
+  "-kill-script= is missing (default)" - {
+    "Without -data-directory" in {
+      assert(conf(Nil).logDirectory == conf(Nil).temporaryDirectory)
+      assert(conf(Nil).logDirectory == temporaryDirectory)
+      val generatedFile = conf(Nil).logDirectory / s"kill_task.$shellExt"
+      assert(AgentConfiguration(List("-http-port=11111")).finishAndProvideFiles.killScript == Some(ProcessKillScript(generatedFile)))
+      delete(generatedFile)
+    }
 
-    val killScript = Paths.get("kill-script")
-    assert(conf(List("-data-directory=TEST/DATA", s"-kill-script=$killScript")).killScript == Some(ProcessKillScript(killScript.toAbsolutePath)))
+    "With -data-directory" in {
+      val data = createTempDirectory("AgentConfigurationTest-")
+      val expectedFile = data / s"tmp/kill_task.$shellExt"
+      val myConf = conf(List(s"-data-directory=$data")).finishAndProvideFiles
+      assert(myConf.killScript == Some(ProcessKillScript(expectedFile)))
+      delete(expectedFile)
+      delete(data / "logs")
+      delete(data / "tmp")
+      delete(data)
+    }
+  }
+
+  "-kill-script= (empty)" - {
+    "Without -data-directory" in {
+      val myConf = conf(List("-kill-script=")).finishAndProvideFiles
+      assert(myConf.killScript == None)
+    }
+
+    "With -data-directory" in {
+      val data = createTempDirectory("AgentConfigurationTest-")
+      val myConf = conf(List(s"-data-directory=$data", "-kill-script=")).finishAndProvideFiles
+      assert(myConf.killScript == None)
+      delete(data / "logs")
+      delete(data / "tmp")
+      delete(data)
+    }
+  }
+
+  "-kill-script=FILE" - {
+    val data = createTempDirectory("AgentConfigurationTest-")
+    val myConf = conf(List(s"-data-directory=$data", "-kill-script=/my/kill/script")).finishAndProvideFiles
+    assert(myConf.killScript == Some(ProcessKillScript(Paths.get("/my/kill/script").toAbsolutePath)))
+    delete(data / "logs")
+    delete(data / "tmp")
+    delete(data)
   }
 
   "-rpc-keepalive=" in {

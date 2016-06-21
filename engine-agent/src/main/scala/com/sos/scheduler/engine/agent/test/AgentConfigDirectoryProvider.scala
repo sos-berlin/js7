@@ -1,9 +1,10 @@
 package com.sos.scheduler.engine.agent.test
 
-import com.sos.scheduler.engine.agent.test.AgentConfigDirectoryProvider.{PrivateConfResource, PrivateHttpJksResource}
+import com.sos.scheduler.engine.agent.test.AgentConfigDirectoryProvider._
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.closeOnError
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
+import com.sos.scheduler.engine.common.scalautil.FileUtils._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
@@ -14,24 +15,17 @@ import java.nio.file.Path
 trait AgentConfigDirectoryProvider {
   this: HasCloser ⇒
 
-  final lazy val dataDirectory = createTempDirectory("TextAgentClientIT-") withCloser delete
+  final lazy val dataDirectory = createTempDirectory("TextAgentClientIT-") withCloser deleteDirectoryRecursively
   private lazy val keystoreJksFile: Path = dataDirectory / "config/private/private-https.jks"
   final lazy val keystoreReference = KeystoreReference(
     keystoreJksFile.toURI.toURL,
     storePassword = Some(SecretString("jobscheduler")),
     keyPassword = Some(SecretString("jobscheduler")))
-  private val privateDir = createDirectories(dataDirectory / "config/private")
 
   closeOnError(closer) {
     dataDirectory
-    val logDir = dataDirectory / "logs"
-    createDirectory(logDir)
-    onClose {
-      logDir.pathSet foreach delete
-      delete(logDir)
-      delete(privateDir)
-      delete(dataDirectory / "config")
-    }
+    val privateDir = createDirectories(dataDirectory / "config/private")
+    createDirectory(dataDirectory / "logs")
     PrivateHttpJksResource.copyToFile(keystoreJksFile) withCloser delete
     PrivateConfResource.copyToFile(privateDir / "private.conf") withCloser delete
   }

@@ -20,6 +20,7 @@ import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
 import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
+import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
@@ -91,18 +92,37 @@ final case class AgentConfiguration(
   }
 
   private[configuration] def finishAndProvideFiles: AgentConfiguration =
+    provideDataSubdirectories()
+      .provideKillScript()
+
+  private def provideDataSubdirectories(): AgentConfiguration = {
+    for (data ← dataDirectory) {
+      if (logDirectory == defaultLogDirectory(data) && !exists(logDirectory)) {
+        createDirectory(logDirectory)
+      }
+      if (!exists(temporaryDirectory)) {
+        assert(temporaryDirectory == data / "tmp")
+        createDirectory(temporaryDirectory)
+      }
+    }
+    this
+  }
+
+  private def provideKillScript(): AgentConfiguration = {
     killScript match {
       case Some(ProcessKillScript(DelayUntilFinishFile)) ⇒
-        // After Agent termination, leave behind the kill script, in case of regular termination after error.
-        val identifyingPort = anyPort getOrElse 0
-        val provider = new ProcessKillScriptProvider(httpPort = identifyingPort)
-        copy(killScript = Some(provider.provideTo(logDirectory)))  // logDirectory for lack of a work directory
+        val provider = new ProcessKillScriptProvider  //.closeWithCloser  After Agent termination, leave behind the kill script, in case of regular termination after error.
+        copy(killScript = Some(provider.provideTo(temporaryDirectory)))  // logDirectory for lack of a work directory
       case _ ⇒ this
     }
+  }
+  def crashKillScriptFile: Path = temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"
 
-  def crashKillScriptFile: Path = logDirectory / s"kill_tasks_after_crash_${anyPort getOrElse 0}$ShellFileExtension"
-
-  private def anyPort: Option[Int] = ((https map { _.address }) ++ httpAddress).headOption map { _.getPort }
+  lazy val temporaryDirectory: Path =
+    dataDirectory match {
+      case Some(data) ⇒ data / "tmp"
+      case None ⇒ logDirectory  // Usage of logDirectory is compatible with v1.10.4
+  }
 
   lazy val authUsersConfig: Config = config.getConfig("jobscheduler.agent.auth.users")
 }
@@ -126,7 +146,7 @@ object AgentConfiguration {
       https = None,  // Changed below
       externalWebServiceClasses = Nil,
       uriPathPrefix = c.as[String]("http.uri-prefix") stripPrefix "/" stripSuffix "/",
-      logDirectory = c.optionAs("log.directory")(asAbsolutePath) orElse (data map { _ / "logs" }) getOrElse temporaryDirectory,
+      logDirectory = c.optionAs("log.directory")(asAbsolutePath) orElse (data map defaultLogDirectory) getOrElse temporaryDirectory,
       environment = Map(),
       dotnet = DotnetConfiguration(classDllDirectory = c.optionAs("task.dotnet.class-directory")(asAbsolutePath)),
       rpcKeepaliveDuration = c.durationOption("task.rpc.keepalive.duration"),
@@ -152,6 +172,8 @@ object AgentConfiguration {
       .withFallback(parseConfigIfExists(dataDirectory / "config/agent.conf"))
 
   final case class Https(address: InetSocketAddress, keystoreReference: KeystoreReference)
+
+  private def defaultLogDirectory(data: Path) = data / "logs"
 
   object forTest {
     private val TaskServerLogbackResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/logback.xml")

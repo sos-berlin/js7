@@ -68,7 +68,7 @@ final class ProcessKillScriptTest extends FreeSpec {
   }
 
   private def runKillScript(agentTaskId: AgentTaskId, pidOption: Option[Pid]): Unit = {
-    autoClosing(new ProcessKillScriptProvider(httpPort = TestPort)) { provider ⇒
+    autoClosing(new ProcessKillScriptProvider) { provider ⇒
       val killScript = provider.provideTo(temporaryDirectory)
       val args = killScript.toCommandArguments(agentTaskId, pidOption)
       val killProcess = new ProcessBuilder(args).start()
@@ -82,7 +82,6 @@ final class ProcessKillScriptTest extends FreeSpec {
 private object ProcessKillScriptTest {
   private val logger = Logger(getClass)
   private val TestAgentTaskId = AgentTaskId("1-TEST")
-  private val TestPort = 99999
   private def Script =
     (if (isWindows) JavaResource("com/sos/scheduler/engine/taskserver/task/process/scripts/windows/test.cmd")
                else JavaResource("com/sos/scheduler/engine/taskserver/task/process/scripts/unix/test.sh"))

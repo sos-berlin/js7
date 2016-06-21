@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import java.io.File
 import java.nio.charset.Charset
-import java.nio.file.Files.delete
+import java.nio.file.Files.{delete, isSymbolicLink}
 import java.nio.file.attribute.FileAttribute
 import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths}
 import scala.annotation.tailrec
@@ -109,5 +109,12 @@ object FileUtils {
         delete(file)
       }
       body(file)
+  }
+
+  def deleteDirectoryRecursively(dir: Path): Unit = {
+    for (f ← dir.pathSet) {
+      if (f.isDirectory && !isSymbolicLink(f)) deleteDirectoryRecursively(f)
+      delete(f)
+    }
   }
 }
