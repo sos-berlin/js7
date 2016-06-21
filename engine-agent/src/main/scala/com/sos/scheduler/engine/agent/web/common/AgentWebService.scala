@@ -7,9 +7,10 @@ import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichSeq
 import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.collection.mutable
 import spray.http.Uri.Path
+import spray.routing.AuthenticationFailedRejection.CredentialsRejected
 import spray.routing.Directives._
-import spray.routing.Route
 import spray.routing.authentication._
+import spray.routing.{AuthenticationFailedRejection, RejectionHandler, Route}
 
 /**
  * Standard trait for Agent web services.
@@ -34,11 +35,15 @@ trait AgentWebService extends AgentExceptionHandler {
   private val rawRouteEntries = mutable.Buffer[Entry]()
   private val jobschedulerStandardRouteEntries = mutable.Buffer[Entry]()
   private val apiRouteEntries = mutable.Buffer[Entry]()
+  private val unauthenticatedApiRouteEntries = mutable.Buffer[Entry]()
 
   private def allEntries = rawRouteEntries ++ jobschedulerStandardRouteEntries ++ apiRouteEntries
 
   protected def addApiRoute(route: ⇒ Route): Unit =
     apiRouteEntries += Entry.of(route, "addApiRoute")
+
+  protected def addUnauthenticatedApiRoute(route: ⇒ Route): Unit =
+    unauthenticatedApiRouteEntries += Entry.of(route, "addUnauthenticatedApiRoute")
 
   /**
    * All added routes are combined by method `route`.
@@ -57,9 +62,12 @@ trait AgentWebService extends AgentExceptionHandler {
     (decompressRequest() & compressResponseIfRequested(())) {
       pathPrefix(separateOnSlashes(jobschedulerPath.toString)) {
         pathPrefix(AgentPrefix / "api") {
-          authenticate(BasicAuth(authenticator, realm = Realm)) { _ ⇒
-            toRoute(apiRouteEntries)
-          }
+          handleRejections(failOnCredentialsRejected) {
+            authenticate(BasicAuth(authenticator, realm = Realm)) { _ ⇒
+              toRoute(apiRouteEntries)
+            }
+          } ~
+            toRoute(unauthenticatedApiRouteEntries)
         } ~
           toRoute(jobschedulerStandardRouteEntries)
       }
@@ -87,4 +95,8 @@ object AgentWebService {
   }
 
   private def toRoute(entries: Seq[Entry]): Route = entries.map(_.route()).foldFast(reject)(_ ~ _)
+
+  private def failOnCredentialsRejected = RejectionHandler {
+    case rejections @ AuthenticationFailedRejection(CredentialsRejected, _) :: _ ⇒ RejectionHandler.Default(rejections)
+  }
 }
