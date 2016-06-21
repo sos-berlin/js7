@@ -8,13 +8,13 @@ import com.sos.scheduler.engine.agent.data.views.TaskHandlerOverview
 import com.sos.scheduler.engine.agent.test.AgentConfigDirectoryProvider
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.AgentWebServerIT._
+import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers.JsObjectUnmarshaller
 import com.sos.scheduler.engine.common.sprayutils.https.Https._
 import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
 import com.sos.scheduler.engine.common.time.ScalaTime._
@@ -23,6 +23,7 @@ import com.sos.scheduler.engine.common.time.timer.TimerServiceOverview
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPorts
 import com.sos.scheduler.engine.common.utils.JavaResource
 import java.net.InetSocketAddress
+import java.time.Instant.now
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
@@ -40,7 +41,6 @@ import spray.httpx.SprayJsonSupport._
 import spray.httpx.UnsuccessfulResponseException
 import spray.httpx.encoding.Gzip
 import spray.httpx.unmarshalling.FromResponseUnmarshaller
-import spray.json.JsObject
 
 /**
  * @author Joacim Zschimmer
@@ -97,10 +97,12 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     }
 
     "Unauthorized due to wrong credentials" in {
-      intercept[UnsuccessfulResponseException] {
+      val t = now
+      val e = intercept[UnsuccessfulResponseException] {
         pipeline[AgentOverview](Some("WRONG-PASSWORD")).apply(Get(uri)) await 10.s
       }
-      .response.status shouldEqual Unauthorized
+      assert(now - t > AgentWebService.InvalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
+      e.response.status shouldEqual Unauthorized
     }
 
     "Authorized" in {

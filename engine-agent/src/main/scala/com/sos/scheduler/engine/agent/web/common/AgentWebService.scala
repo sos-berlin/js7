@@ -5,7 +5,9 @@ import com.sos.scheduler.engine.agent.web.common.AgentWebService._
 import com.sos.scheduler.engine.common.auth.Account
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichSeq
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import scala.collection.mutable
+import scala.concurrent.blocking
 import spray.http.Uri.Path
 import spray.routing.AuthenticationFailedRejection.CredentialsRejected
 import spray.routing.Directives._
@@ -62,7 +64,7 @@ trait AgentWebService extends AgentExceptionHandler {
     (decompressRequest() & compressResponseIfRequested(())) {
       pathPrefix(separateOnSlashes(jobschedulerPath.toString)) {
         pathPrefix(AgentPrefix / "api") {
-          handleRejections(failOnCredentialsRejected) {
+          handleRejections(failIfCredentialsRejected) {
             authenticate(BasicAuth(authenticator, realm = Realm)) { _ ⇒
               toRoute(apiRouteEntries)
             }
@@ -74,10 +76,22 @@ trait AgentWebService extends AgentExceptionHandler {
     } ~
       toRoute(rawRouteEntries)
   }
+
+  private def failIfCredentialsRejected = RejectionHandler {
+    case rejections @ AuthenticationFailedRejection(CredentialsRejected, headers) :: _ ⇒
+      detach(()) {
+        logger.warn(s"HTTP request with invalid authentication rejected")
+        blocking {
+          sleep(InvalidAuthenticationDelay)
+        }
+        RejectionHandler.Default(rejections)
+      }
+  }
 }
 
 object AgentWebService {
   val AgentPrefix = "agent"
+  val InvalidAuthenticationDelay = 1.s
   private val logger = Logger(getClass)
   private val PackageName = getClass.getPackage.getName
   private val Realm = "JobScheduler Agent"
@@ -95,8 +109,4 @@ object AgentWebService {
   }
 
   private def toRoute(entries: Seq[Entry]): Route = entries.map(_.route()).foldFast(reject)(_ ~ _)
-
-  private def failOnCredentialsRejected = RejectionHandler {
-    case rejections @ AuthenticationFailedRejection(CredentialsRejected, _) :: _ ⇒ RejectionHandler.Default(rejections)
-  }
 }
