@@ -10,15 +10,15 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-object JsArrayMarshallers {
+object JsObjectMarshallers {
   // Needed for AgentWebServiceTest.
   // Spray does not include these methods ???
 
-  implicit val JsArrayMarshaller = Marshaller.of[JsObject](`application/json`) { (value, contentType, ctx) ⇒
+  implicit val JsObjectMarshaller = Marshaller.of[JsObject](`application/json`) { (value, contentType, ctx) ⇒
     ctx.marshalTo(HttpEntity(`application/json`, value.compactPrint.getBytes(UTF_8)))
   }
 
-  implicit val JsArrayUnmarshaller = Unmarshaller[JsObject](`application/json`) {
+  implicit val JsObjectUnmarshaller = Unmarshaller[JsObject](`application/json`) {
     case HttpEntity.NonEmpty(contentType, data) ⇒ data.asString(UTF_8).parseJson.asJsObject
   }
 

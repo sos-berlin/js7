@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.sprayutils
 
-import com.sos.scheduler.engine.common.sprayutils.JsArrayMarshallers._
+import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
 import java.nio.charset.StandardCharsets._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -15,7 +15,7 @@ import spray.json._
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class JsArrayMarshallersTest extends FreeSpec {
+final class JsObjectMarshallersTest extends FreeSpec {
 
   private val jsObject = JsObject("a" → JsString("Ä"))
   private val entity = HttpEntity(`application/json`, jsObject.compactPrint.getBytes(UTF_8))
