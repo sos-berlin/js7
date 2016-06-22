@@ -52,12 +52,12 @@ final class ConcurrentMemoizerTest extends FreeSpec {
   }
 
   "Concurrency" in {
-    val calls = testConcurreny { (f: Int ⇒ String) ⇒ ConcurrentMemoizer(f) }
-    assert(calls > Arguments.size && calls < ParallelCount * Arguments.size)   // Assuming more than one thread
+    val calls = testConcurreny { f ⇒ ConcurrentMemoizer(f) }
+    assert(calls >= Arguments.size && calls < ParallelCount * Arguments.size)
   }
 
   "strict" in {
-    val calls = testConcurreny { (f: Int ⇒ String) ⇒ ConcurrentMemoizer.strict(f) }
+    val calls = testConcurreny { f ⇒ ConcurrentMemoizer.strict(f) }
     assert(calls == Arguments.size)
   }
 
