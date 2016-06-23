@@ -4,6 +4,9 @@ import com.google.common.base.Charsets._
 import com.google.common.io.Resources
 import com.google.common.io.Resources.getResource
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
+import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.scheduler.engine.common.utils.JavaResource._
 import java.io.File
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
@@ -63,7 +66,8 @@ final case class JavaResource(path: String) {
   /**
    * @throws RuntimeException, if the resource does not exists.
    */
-  lazy val url: URL = getResource(path)
+  lazy val url: URL =
+    getResource(path) sideEffect { u ⇒ logger.trace(s"Using Resource $u") }
 
   /**
    * @throws RuntimeException, if the resource does not exists.
@@ -76,5 +80,7 @@ final case class JavaResource(path: String) {
 }
 
 object JavaResource {
+  private val logger = Logger(getClass)
+
   def apply(o: Package) = new JavaResource(o.getName.replace('.', '/'))
 }
