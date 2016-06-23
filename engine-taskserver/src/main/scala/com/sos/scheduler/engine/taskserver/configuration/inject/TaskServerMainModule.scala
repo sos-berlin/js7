@@ -60,5 +60,5 @@ final class TaskServerMainModule(dotnet: DotnetConfiguration) extends AbstractMo
 }
 
 object TaskServerMainModule {
-  private val ConfigurationResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/TaskServerMain-akka.conf")
+  private val ConfigurationResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/TaskServerMain-defaults.conf")
 }
