@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.common
+package com.sos.scheduler.engine.common.utils
 
-import com.sos.scheduler.engine.agent.common.BeanPropertyReader._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
+import com.sos.scheduler.engine.common.utils.BeanPropertyReader._
 import scala.reflect.ClassTag
 
 /**
@@ -30,5 +30,8 @@ object BeanPropertyReader {
 
   def apply[A : ClassTag](nameToConverter: NameToConverter) = new BeanPropertyReader(implicitClass[A], nameToConverter)
 
-  def toMap[A : ClassTag](bean: A)(nameToConverter: NameToConverter) = new BeanPropertyReader[A](bean.getClass, nameToConverter).toMap(bean)
+  def beanToMap[A : ClassTag](bean: A): Map[String, Any] = toMap[A](bean) { case _ ⇒ Keep }
+
+  def toMap[A : ClassTag](bean: A)(nameToConverter: NameToConverter): Map[String, Any] =
+    new BeanPropertyReader[A](bean.getClass, nameToConverter).toMap(bean)
 }

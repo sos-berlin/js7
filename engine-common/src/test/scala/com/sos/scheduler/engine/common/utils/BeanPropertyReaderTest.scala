@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.common
+package com.sos.scheduler.engine.common.utils
 
-import com.sos.scheduler.engine.agent.common.BeanPropertyReader.Keep
+import com.sos.scheduler.engine.common.utils.BeanPropertyReader.Keep
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -10,7 +10,8 @@ import org.scalatest.junit.JUnitRunner
  */
 @RunWith(classOf[JUnitRunner])
 final class BeanPropertyReaderTest extends FreeSpec {
-  "BeanPropertyReader" in {
+
+  "toMap" in {
     class Bean {
       def getInt = 7
       def getString = "STRING"
@@ -21,5 +22,14 @@ final class BeanPropertyReaderTest extends FreeSpec {
       case "string" ⇒ { case v ⇒ s"*$v*" }
     }
     assert(m == Map("int" → 7, "string" → "*STRING*"))
+  }
+
+  "beanToMap" in {
+    class Bean {
+      def getInt = 7
+      def getString = "STRING"
+    }
+    val m = BeanPropertyReader.beanToMap(new Bean)
+    assert(m == Map("class" → classOf[Bean], "int" → 7, "string" → "STRING"))
   }
 }

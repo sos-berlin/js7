@@ -1,12 +1,12 @@
 package com.sos.scheduler.engine.agent.views
 
 import com.google.inject.ProvidedBy
-import com.sos.scheduler.engine.agent.common.BeanPropertyReader
-import com.sos.scheduler.engine.agent.common.BeanPropertyReader.ConditionalConverter
 import com.sos.scheduler.engine.agent.views.AgentOverview._
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 import com.sos.scheduler.engine.common.system.OperatingSystem
+import com.sos.scheduler.engine.common.utils.BeanPropertyReader.ConditionalConverter
+import com.sos.scheduler.engine.common.utils.BeanPropertyReader
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.lang.management.OperatingSystemMXBean
 import java.time.Instant
