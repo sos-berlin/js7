@@ -2,7 +2,8 @@ package com.sos.scheduler.engine.common.utils
 
 import com.google.common.io.Resources.getResource
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import java.nio.file.{Files, FileAlreadyExistsException}
+import java.nio.charset.StandardCharsets
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import org.junit.runner.RunWith
@@ -18,7 +19,7 @@ final class JavaResourceTest extends FreeSpec {
 
   private val dirPath = "com/sos/scheduler/engine/common/utils"
   private val path = "com/sos/scheduler/engine/common/utils/test.txt"
-  private val expectedContent = "TEST CONTENT IN → UTF-8\n"
+  private val expectedString = "TEST CONTENT IN → UTF-8\n"
   private val nonExistentPath = "com/sos/scheduler/engine/common/utils/non-existent"
 
   "simpleName" in {
@@ -37,14 +38,18 @@ final class JavaResourceTest extends FreeSpec {
   }
 
   "asUtf8String" in {
-    assert(JavaResource(path).asUTF8String == expectedContent)
+    assert(JavaResource(path).asUTF8String == expectedString)
+  }
+
+  "contentBytes" in {
+    assert(JavaResource(path).contentBytes sameElements expectedString.getBytes(StandardCharsets.UTF_8.name))
   }
 
   "copyToFile" in {
     val tmp = createTempFile("test", ".tmp")
     intercept[FileAlreadyExistsException] { JavaResource(path).copyToFile(tmp) }
     JavaResource(path).copyToFile(tmp, REPLACE_EXISTING) should be theSameInstanceAs tmp
-    assert(tmp.contentString == expectedContent)
+    assert(tmp.contentString == expectedString)
     delete(tmp)
   }
 
@@ -52,7 +57,7 @@ final class JavaResourceTest extends FreeSpec {
     val dir = createTempDirectory("test")
     val files = JavaResource(dirPath).copyToFiles(List("test.txt", "test-2.txt"), dir)
     assert(files == List(dir / "test.txt", dir / "test-2.txt"))
-    assert(files(0).contentString == expectedContent)
+    assert(files(0).contentString == expectedString)
     assert(files(1).contentString == "TEST 2\n")
     files foreach delete
     delete(dir)

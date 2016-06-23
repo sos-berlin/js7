@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.common.utils
 
 import com.google.common.base.Charsets._
-import com.google.common.io.Resources
+import com.google.common.io.ByteStreams.toByteArray
+import com.google.common.io.{ByteStreams, Resources}
 import com.google.common.io.Resources.getResource
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -59,6 +60,8 @@ final case class JavaResource(path: String) {
     file
   }
 
+  def contentBytes: Array[Byte] = autoClosing(url.openStream())(toByteArray)
+
   def asUTF8String = Resources.toString(url, UTF_8)
 
   def simpleName = new File(path).getName
@@ -77,6 +80,7 @@ final case class JavaResource(path: String) {
   def /(tail: String) = JavaResource(s"${path stripSuffix "/"}/$tail")
 
   override def toString = path
+
 }
 
 object JavaResource {
