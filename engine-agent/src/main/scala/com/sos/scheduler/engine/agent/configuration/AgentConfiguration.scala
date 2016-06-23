@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
+import com.sos.scheduler.engine.common.configutils.Configs
 import com.sos.scheduler.engine.common.configutils.Configs._
 import com.sos.scheduler.engine.common.convert.As.asAbsolutePath
 import com.sos.scheduler.engine.common.internet.IP._
@@ -116,6 +117,7 @@ final case class AgentConfiguration(
       case _ ⇒ this
     }
   }
+
   def crashKillScriptFile: Path = temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"
 
   lazy val temporaryDirectory: Path =
@@ -129,8 +131,8 @@ final case class AgentConfiguration(
 
 object AgentConfiguration {
   private val DelayUntilFinishFile = EmptyPath  // Marker for finish
-  private[configuration] lazy val DefaultsConfig = ConfigFactory.parseResources(getClass.getClassLoader,
-    "com/sos/scheduler/engine/agent/configuration/defaults.conf")
+  private[configuration] lazy val DefaultsConfig = Configs.loadResource(
+    JavaResource("com/sos/scheduler/engine/agent/configuration/defaults.conf"))
 
   def apply(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
     fromDataDirectory(a.optionAs[Path]("-data-directory=")) withCommandLineArguments a

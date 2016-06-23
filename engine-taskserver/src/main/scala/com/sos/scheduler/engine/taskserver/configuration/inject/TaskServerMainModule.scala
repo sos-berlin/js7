@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.taskserver.configuration.inject
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.scheduler.engine.common.ClassLoaders._
+import com.sos.scheduler.engine.common.configutils.Configs
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
@@ -15,7 +15,6 @@ import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleInstanceFactor
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
 import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule
-import com.typesafe.config.ConfigFactory
 import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
 
@@ -48,7 +47,7 @@ final class TaskServerMainModule(dotnet: DotnetConfiguration) extends AbstractMo
 
   @Provides @Singleton
   private def actorSystem(closer: Closer): ActorSystem = {
-    ActorSystem("TaskServerMain", ConfigFactory.load(currentClassLoader, ConfigurationResource.path)) sideEffect  { o ⇒
+    ActorSystem("TaskServerMain", Configs.loadResource(ConfigurationResource)) sideEffect  { o ⇒
       closer.onClose {
         o.shutdown()
         //We want to terminate immediately: o.awaitTermination(ShutdownDuration)
