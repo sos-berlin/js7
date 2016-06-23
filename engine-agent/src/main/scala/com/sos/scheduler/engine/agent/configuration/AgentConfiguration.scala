@@ -112,7 +112,7 @@ final case class AgentConfiguration(
     killScript match {
       case Some(ProcessKillScript(DelayUntilFinishFile)) ⇒
         val provider = new ProcessKillScriptProvider  //.closeWithCloser  After Agent termination, leave behind the kill script, in case of regular termination after error.
-        copy(killScript = Some(provider.provideTo(temporaryDirectory)))  // logDirectory for lack of a work directory
+        copy(killScript = Some(provider.provideTo(temporaryDirectory)))
       case _ ⇒ this
     }
   }

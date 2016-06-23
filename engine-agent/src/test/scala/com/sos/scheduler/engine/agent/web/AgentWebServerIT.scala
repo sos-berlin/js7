@@ -58,7 +58,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   private implicit lazy val actorSystem = ActorSystem("AgentWebServerIT") withCloser { _.shutdown() }
 
   private def pipeline[A: FromResponseUnmarshaller](password: Option[String]): HttpRequest ⇒ Future[A] =
-    (password map { o ⇒ addCredentials(BasicHttpCredentials("SHA512-USER", o)) } getOrElse identity: RequestTransformer) ~>
+    (password map { o ⇒ addCredentials(BasicHttpCredentials("SHA512-USER", o)) } getOrElse identity[HttpRequest] _) ~>
     addHeader(Accept(`application/json`)) ~>
     addHeader(`Cache-Control`(`no-cache`, `no-store`)) ~>
     encode(Gzip) ~>
