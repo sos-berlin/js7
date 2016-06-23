@@ -10,6 +10,8 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.Https
 import com.sos.scheduler.engine.agent.web.AgentWebServer._
 import com.sos.scheduler.engine.agent.web.auth.{SimpleUserPassAuthenticator, UnknownUserPassAuthenticator}
 import com.sos.scheduler.engine.common.auth.{Account, UserAndPassword}
+import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.scalautil.ScalaUtils.RichAny
 import com.sos.scheduler.engine.common.sprayutils.https.Https.newServerSSLEngineProvider
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.net.InetSocketAddress
@@ -39,7 +41,7 @@ extends AutoCloseable {
   val localUri: Uri = localHttpUriOption orElse localHttpsUriOption getOrElse { throw newPortNeededException }
 
   private def toLocalUri(scheme: String)(address: InetSocketAddress) = {
-    val host = address.getAddress.getHostAddress
+    val host = address.getAddress.getHostAddress.substitute("0.0.0.0", "127.0.0.1")
     val port = address.getPort
     Uri(s"$scheme://$host:$port/${conf.uriPathPrefix}" stripSuffix "/")
   }
@@ -64,6 +66,7 @@ extends AutoCloseable {
 
   private def bindHttps(https: Https) = {
     val authenticator = new SimpleUserPassAuthenticator(passwordValidatorProvider.get())
+    logger.info(s"Using HTTPS certificate in ${https.keystoreReference.url}")
     bind(https.address, useHttps = true,
       newWebServiceActorRef(s"AgentWebService-https-${inetSocketAddressToName(https.address)}", authenticator),
       newServerSSLEngineProvider(https.keystoreReference))
@@ -95,6 +98,8 @@ extends AutoCloseable {
 
 object AgentWebServer {
   private val ShutdownTimeout = 5.s
+  private val logger = Logger(getClass)
+
   private def newPortNeededException = new IllegalArgumentException("HTTP or HTTPS port is needed")
 
   private def inetSocketAddressToName(o: InetSocketAddress): String = o.getAddress.getHostAddress + s":${o.getPort}"
