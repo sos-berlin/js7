@@ -55,8 +55,11 @@ object Https {
     }
 
   def newClientSSLEngineProvider(keystore: KeystoreReference): ClientSSLEngineProvider = {
-    implicit lazy val sslContext = newSSLContext(keystore)
-    ClientSSLEngineProvider(identity)
+    implicit val sslContext = newSSLContext(keystore)
+    ClientSSLEngineProvider { sslEngine ⇒
+      //logger.debug(s"SSLEngine peer=${sslEngine.getPeerHost}:${sslEngine.getPeerPort}")
+      sslEngine
+    }
   }
 
   def newServerSSLEngineProvider(keystoreRef: KeystoreReference): ServerSSLEngineProvider = {
@@ -65,7 +68,7 @@ object Https {
   }
 
   private def enableThingsInSSLEngine(engine: SSLEngine): SSLEngine = {
-//    //FIXME When used by ClientSSLEngineProvider, exception here let Spray endlessly retry the HTTP request
+//    !!! When used by ClientSSLEngineProvider, exception here let Spray endlessly retry the HTTP request
 //    try engine.setEnabledCipherSuites(Array("TLS_RSA_WITH_AES_256_CBC_SHA"))  // Needs "Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files 8"
 //    catch {
 //      case NonFatal(t) ⇒

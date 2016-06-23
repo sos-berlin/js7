@@ -33,6 +33,6 @@ trait AgentConfigDirectoryProvider {
 
 object AgentConfigDirectoryProvider {
   val PrivateHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/config/private/private-https.jks")
-  val PublicHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/https.jks")
+  val PublicHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/agent-https.jks")
   val PrivateConfResource = JavaResource("com/sos/scheduler/engine/agent/test/config/private/private.conf")
 }
