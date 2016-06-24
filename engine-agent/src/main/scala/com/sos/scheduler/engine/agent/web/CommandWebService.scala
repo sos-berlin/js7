@@ -19,7 +19,7 @@ trait CommandWebService extends AgentWebService {
   protected def executeCommand(command: Command, meta: CommandMeta): Future[Response]
   protected implicit def executionContext: ExecutionContext
 
-  addApiRoute {
+  routeBuilder.addApiRoute {
     (path("command") & post) {
       optionalHeaderValueByName(LicenseKeyHeaderName) { licenseKeys ⇒
         (clientIP | provide[RemoteAddress](RemoteAddress.Unknown)) { clientIp ⇒  // Requires Spray configuration spray.can.remote-address-header = on

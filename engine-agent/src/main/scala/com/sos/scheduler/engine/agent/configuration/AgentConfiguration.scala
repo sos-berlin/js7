@@ -15,6 +15,7 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.{EmptyPath, WorkingDi
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
 import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
@@ -130,6 +131,7 @@ final case class AgentConfiguration(
 }
 
 object AgentConfiguration {
+  val InvalidAuthenticationDelay = 1.s
   private val DelayUntilFinishFile = EmptyPath  // Marker for finish
   private[configuration] lazy val DefaultsConfig = Configs.loadResource(
     JavaResource("com/sos/scheduler/engine/agent/configuration/defaults.conf"))

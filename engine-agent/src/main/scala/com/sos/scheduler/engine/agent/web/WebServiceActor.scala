@@ -20,7 +20,7 @@ import java.time.Duration
 import javax.inject.{Inject, Provider, Singleton}
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext
-import spray.routing.HttpServiceActor
+import spray.routing._
 import spray.routing.authentication.UserPassAuthenticator
 
 /**
@@ -49,16 +49,7 @@ with TaskWebService
 with CommandViewWebService
 with NoJobSchedulerEngineWebService
 {
-  private lazy val addWebServices = for (o ← extraWebServices) {
-    logger.debug(s"Adding extra web service $o")
-    addRawRoute(o.route)  // The route is already wrapped, so add it raw, not wrapping it again with agentStandard
-  }
-
-  def receive = {
-    addWebServices
-    runRoute(route)
-  }
-
+  protected val uriPathPrefix = agentConfiguration.uriPathPrefix
   protected def commandHandlerOverview = commandHandler
   protected def commandRunOverviews = commandHandler.commandRuns
   protected def executeCommand(command: Command, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
@@ -69,7 +60,16 @@ with NoJobSchedulerEngineWebService
   protected def tunnelOverviews = tunnelServer.tunnelOverviews
   protected def tunnelView(tunnelId: TunnelId) = tunnelServer.tunnelView(tunnelId)
 
-  override protected val uriPathPrefix = agentConfiguration.uriPathPrefix
+  private lazy val lazyInit = for (o ← extraWebServices) {
+    logger.debug(s"Adding extra route $o")
+    routeBuilder ++= o.routeBuilder
+  }
+  lazyInit
+
+  def receive = {
+    lazyInit
+    runRoute(buildRoute(authenticator))
+  }
 }
 
 private[web] object WebServiceActor {

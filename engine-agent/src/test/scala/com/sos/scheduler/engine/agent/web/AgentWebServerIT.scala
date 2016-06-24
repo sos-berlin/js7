@@ -3,12 +3,12 @@ package com.sos.scheduler.engine.agent.web
 import akka.actor.ActorSystem
 import com.google.inject.Guice
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
 import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerOverview
 import com.sos.scheduler.engine.agent.test.AgentConfigDirectoryProvider
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.AgentWebServerIT._
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
@@ -101,7 +101,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
       val e = intercept[UnsuccessfulResponseException] {
         pipeline[AgentOverview](Some("WRONG-PASSWORD")).apply(Get(uri)) await 10.s
       }
-      assert(now - t > AgentWebService.InvalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
+      assert(now - t > InvalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
       e.response.status shouldEqual Unauthorized
     }
 

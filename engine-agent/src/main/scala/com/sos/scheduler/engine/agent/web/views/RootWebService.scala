@@ -14,7 +14,7 @@ trait RootWebService extends AgentWebService {
 
   protected def agentOverview: AgentOverview
 
-  addApiRoute {
+  routeBuilder.addApiRoute {
     (pathEndOrSingleSlash | path("overview")) {
       get {
         respondWithHeader(`Cache-Control`(`max-age`(0))) {
