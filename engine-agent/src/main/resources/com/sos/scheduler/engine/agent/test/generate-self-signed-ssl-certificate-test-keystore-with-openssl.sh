@@ -7,9 +7,6 @@ exit 1
 
 # Origin: https://stackoverflow.com/questions/17695297/importing-the-private-key-public-certificate-pair-in-the-java-keystore
 # This script file is expected in src/main/scripts.
-dir="$(dirname "$0")/../../../src/main/resources/com/sos/scheduler/engine/agent/test/config/private"
-mkdir --parents "$dir"
-cd $dir
 if [ -d tmp ]; then
   rm --force tmp/*
   rmdir tmp

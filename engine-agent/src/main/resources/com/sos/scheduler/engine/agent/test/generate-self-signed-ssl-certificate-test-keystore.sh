@@ -2,11 +2,8 @@
 # Generates a test TLS certificate
 set -e
 
-dir="$(dirname "$0")/../../../src/main/resources/com/sos/scheduler/engine/agent/test"
-mkdir --parents "$dir"
-cd $dir
-
 distinguishedName="CN=localhost, O=Test"
+days=3660
 privateKeystore="config/private/private-https.jks"
 publicKeystore="agent-https.jks"
 alias=agent-https
@@ -14,12 +11,38 @@ keyPassword="jobscheduler"
 storePassword="jobscheduler"
 publicCertFile="agent-https.pem"
 
+for arg in "$@"; do
+    case $arg in
+        -distinguished-name=*)
+            distinguishedName="${arg#*=}"
+            shift
+            ;;
+        -data-directory=*)
+            cd "${arg#*=}"
+            shift
+            ;;
+        -resources)
+            # Generate test code files (to be called manually)
+            cd "$(dirname "$0")"
+            shift
+            ;;
+        -days=*)
+            days="${arg#*=}"
+            shift
+            ;;
+        *)
+            echo Unknown argument: $arg
+            exit 1
+            ;;
+    esac
+done
+
 rm -v --force "$privateKeystore" "$publicKeystore" "$publicCertFile"
 
 keytool -genkey \
   -alias "$alias" \
   -dname "$distinguishedName" \
-  -validity 3660 \
+  -validity "$days" \
   -keyalg RSA \
   -keysize 1024 \
   -keypass "$keyPassword" \
