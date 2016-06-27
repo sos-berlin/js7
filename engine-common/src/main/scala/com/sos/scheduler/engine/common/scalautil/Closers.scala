@@ -34,6 +34,16 @@ object Closers {
 
       final def onClose(body: ⇒ Unit): Unit =
         delegate.register(guavaCloseable(body))
+
+      /**
+        * Closes the `Closer`, then "finally" (nonwithstanding any NonFatal exception) call `body`.
+        */
+      final def closeThen(body: ⇒ Unit) = {
+        val c = Closer.create()
+        c onClose body
+        c.registerAutoCloseable(delegate)
+        c.close()
+      }
     }
 
     implicit class RichClosersAutoCloseable[A <: AutoCloseable](val delegate: A) extends AnyVal {
@@ -70,5 +80,9 @@ object Closers {
     val closer = Closer.create()
     closeables.reverseIterator foreach closer.registerAutoCloseable
     closer.close()
+  }
+
+  object EmptyAutoCloseable extends AutoCloseable {
+    def close() = {}
   }
 }

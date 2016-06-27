@@ -1,8 +1,11 @@
 package com.sos.scheduler.engine.agent.fileordersource
 
+import com.google.inject.Guice
 import com.sos.scheduler.engine.agent.data.commandresponses.FileOrderSourceContent
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.fileordersource.RequestFileOrderSourceContentExecutorTest._
+import com.sos.scheduler.engine.common.guice.GuiceImplicits._
+import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -19,6 +22,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.Futures
 import org.scalatest.junit.JUnitRunner
+import scala.concurrent.ExecutionContext
 import scala.util.matching.Regex
 
 /**
@@ -28,6 +32,11 @@ import scala.util.matching.Regex
   */
 @RunWith(classOf[JUnitRunner])
 final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futures {
+
+  private lazy val injector = Guice.createInjector(new ScalaAbstractModule {
+    def configure() = bindInstance[ExecutionContext](ExecutionContext.global)
+  })
+  private lazy val exec = injector.instance[RequestFileOrderSourceContentExecutor]
 
   "RequestFileOrderSourceContent" in {
     withCloser { implicit closer ⇒
@@ -49,7 +58,7 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       touchAndDeleteWithCloser(knownFile)
       touchAndDeleteWithCloser(dir / "ignored-file")
 
-      val future = RequestFileOrderSourceContentExecutor.apply(RequestFileOrderSourceContent(
+      val future = exec(RequestFileOrderSourceContent(
         directory = dir.toString,
         regex = Regex.quote(MatchingString),
         duration = Duration.ofMillis(Long.MaxValue),
@@ -65,7 +74,7 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       val file = dir / s"$MatchingString-TEST"
       val knownFile = dir / s"$MatchingString-known"
       val expectedResponse = FileOrderSourceContent(List(FileOrderSourceContent.Entry(file.toString, Timestamp.toEpochMilli)))
-      val future = RequestFileOrderSourceContentExecutor.apply(RequestFileOrderSourceContent(
+      val future = exec(RequestFileOrderSourceContent(
         directory = dir.toString,
         regex = Regex.quote(MatchingString),
         duration = Duration.ofMillis(Long.MaxValue),
@@ -80,8 +89,8 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       setLastModifiedTime(file, FileTime.from(Timestamp))  // Sometimes, this does not take effect under Windows ???
       awaitResult(future, 5.s)
       val response = awaitResult(future, 10.s)
-      // lastModifiedTime maybe wrong on Windows ??? Anyway, JobScheduler's <file_order_source> doesn't use the timestamp.
-      val bResponse = if (!isWindows) response else response.copy(files = response.files map { _.copy(lastModifiedTime = Timestamp.toEpochMilli) })
+      // lastModifiedTime may be wrong ??? Anyway, JobScheduler's <file_order_source> doesn't use the timestamp.
+      val bResponse = response.copy(files = response.files map { _.copy(lastModifiedTime = Timestamp.toEpochMilli) })
       assert(bResponse == expectedResponse)
     }
   }

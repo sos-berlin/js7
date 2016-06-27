@@ -19,8 +19,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, Promise, blocking}
+import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -28,6 +27,7 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 class RichProcess protected[process](val processConfiguration: ProcessConfiguration, process: Process)
+  (implicit exeuctionContext: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
   val pidOption = processToPidOption(process)
@@ -108,7 +108,9 @@ object RichProcess {
   private val WaitForProcessPeriod = 100.ms
   private val logger = Logger(getClass)
 
-  def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil): RichProcess = {
+  def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
+      (implicit exeuctionContext: ExecutionContext): RichProcess =
+  {
     val process = startProcessBuilder(processConfiguration, file, arguments) { _.start() }
     new RichProcess(processConfiguration, process)
   }

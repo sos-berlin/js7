@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.web
 
+import akka.actor.Props
 import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.command.{AgentCommandHandler, CommandExecutor, CommandMeta}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
@@ -9,21 +10,25 @@ import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
+import com.sos.scheduler.engine.common.auth.Account
+import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
 import java.time.Duration
-import javax.inject.{Inject, Provider}
+import javax.inject.{Inject, Provider, Singleton}
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext
-import spray.routing.HttpServiceActor
+import spray.routing._
+import spray.routing.authentication.UserPassAuthenticator
 
 /**
  * @author Joacim Zschimmer
  */
-// An Actor must not be a singleton!
-final class WebServiceActor @Inject private(
+// An Actor must not be a @Singleton!
+final private class WebServiceActor private(
+  injector: Injector,
   commandExecutor: CommandExecutor,
   tunnelServer: TunnelServer,
   agentOverviewProvider: Provider[AgentOverview],
@@ -32,7 +37,8 @@ final class WebServiceActor @Inject private(
   protected val timerService: TimerService,
   extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,
-  injector: Injector)
+  implicit protected val executionContext: ExecutionContext,
+  protected val authenticator: UserPassAuthenticator[Account])
 extends HttpServiceActor
 with TimerWebService
 with CommandWebService
@@ -43,19 +49,9 @@ with TaskWebService
 with CommandViewWebService
 with NoJobSchedulerEngineWebService
 {
-  private lazy val addWebServices = for (o ← extraWebServices) {
-    logger.debug(s"Adding extra web service $o")
-    addRawRoute(o.route)  // The route is already wrapped, so add it raw, not wrapping it again with agentStandard
-  }
-
-  def receive = {
-    addWebServices
-    runRoute(route)
-  }
-
+  protected val uriPathPrefix = agentConfiguration.uriPathPrefix
   protected def commandHandlerOverview = commandHandler
   protected def commandRunOverviews = commandHandler.commandRuns
-  protected def executionContext: ExecutionContext = context.dispatcher
   protected def executeCommand(command: Command, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
   protected def agentOverview = agentOverviewProvider.get()
   protected def tunnelAccess(tunnelToken: TunnelToken) = tunnelServer.tunnelAccess(tunnelToken)
@@ -64,9 +60,49 @@ with NoJobSchedulerEngineWebService
   protected def tunnelOverviews = tunnelServer.tunnelOverviews
   protected def tunnelView(tunnelId: TunnelId) = tunnelServer.tunnelView(tunnelId)
 
-  override protected def uriPathPrefix = agentConfiguration.strippedUriPathPrefix
+  private lazy val lazyInit = for (o ← extraWebServices) {
+    logger.debug(s"Adding extra route $o")
+    routeBuilder ++= o.routeBuilder
+  }
+  lazyInit
+
+  def receive = {
+    lazyInit
+    runRoute(buildRoute(authenticator))
+  }
 }
 
-object WebServiceActor {
+private[web] object WebServiceActor {
   private val logger = Logger(getClass)
+
+  private[web] def props(injector: Injector, authenticator: UserPassAuthenticator[Account]) =
+    Props { injector.instance[Factory].apply(authenticator) }
+
+  @Singleton
+  private class Factory @Inject private(
+    injector: Injector,
+    commandExecutor: CommandExecutor,
+    tunnelServer: TunnelServer,
+    agentOverviewProvider: Provider[AgentOverview],
+    taskHandlerView: TaskHandlerView,
+    commandHandler: AgentCommandHandler,
+    timerService: TimerService,
+    extraWebServices: immutable.Seq[ExternalWebService],
+    agentConfiguration: AgentConfiguration,
+    executionContext: ExecutionContext)
+  {
+      def apply(authenticator: UserPassAuthenticator[Account]) =
+        new WebServiceActor(
+          injector,
+          commandExecutor,
+          tunnelServer,
+          agentOverviewProvider,
+          taskHandlerView,
+          commandHandler,
+          timerService,
+          extraWebServices,
+          agentConfiguration,
+          executionContext,
+          authenticator)
+  }
 }

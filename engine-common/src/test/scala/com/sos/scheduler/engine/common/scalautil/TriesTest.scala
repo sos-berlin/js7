@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.common.scalautil.TriesTest._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
 /**

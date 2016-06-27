@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.time
 
-import com.sos.scheduler.engine.base.utils.Ascii
 import com.sos.scheduler.engine.base.utils.Ascii.isAsciiDigit
 import java.time.Instant.now
 import java.time._
@@ -8,8 +7,8 @@ import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
-import scala.util.Random
 import scala.math.abs
+import scala.util.Random
 
 object ScalaTime {
   val MaxDuration = Duration.ofSeconds(Long.MaxValue, 999999999)
@@ -22,7 +21,7 @@ object ScalaTime {
     /**
      * Duration, counted in microseconds.
      */
-    final def μs = Duration ofNanos 1000 * delegate
+    final def µs = Duration ofNanos 1000L * delegate
 
     /**
      * Duration, counted in milliseconds.
@@ -52,7 +51,7 @@ object ScalaTime {
     /**
      * Duration, counted in microseconds.
      */
-    final def μs = Duration ofNanos 1000 * delegate
+    final def µs = Duration ofNanos 1000L * delegate
 
     /**
      * Duration, counted in milliseconds.

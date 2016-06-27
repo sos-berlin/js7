@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.common.async.synchronizer
 import akka.actor.ActorSystem
 import com.sos.scheduler.engine.common.scalautil.Closers._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFututes
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutures
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

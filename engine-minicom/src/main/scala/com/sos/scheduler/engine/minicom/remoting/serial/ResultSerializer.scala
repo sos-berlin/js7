@@ -16,7 +16,7 @@ private final class ResultSerializer(protected val proxyRegister: ProxyRegister)
       case CreateInstanceResult(invocable) ⇒
         writeInt32(S_OK.value)
         writeInt32(S_OK.value)  // For IID
-        writeInvocable(invocable)
+        writeIUnknown(invocable)
       case InvokeResult(value) ⇒
         writeInt32(S_OK.value)
         writeVariant(value)

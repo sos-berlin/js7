@@ -4,13 +4,14 @@ import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
+import com.sos.scheduler.engine.common.scalautil.FileUtils.EmptyPath
 import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.tcp.TcpUtils.parseTcpPort
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments.toInetSocketAddress
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import java.time.Duration
 import spray.json.DefaultJsonProtocol._
 
@@ -23,8 +24,9 @@ final case class TaskStartArguments(
   masterAddress: String,
   tunnelToken: TunnelToken,
   environment: Map[String, String] = Map(),
-  directory: Path,
+  workingDirectory: Path,
   logDirectory: Path,
+  dotnet: DotnetConfiguration = DotnetConfiguration(),
   stdFileMap: Map[StdoutStderrType, Path] = Map(),
   logStdoutAndStderr: Boolean = false,
   killScriptOption: Option[ProcessKillScript] = None,
@@ -35,18 +37,17 @@ final case class TaskStartArguments(
 }
 
 object TaskStartArguments {
-
   private val HostPortRegex = "(.*):(\\d+)".r
 
   def forTest(
     tcpPort: Int = 999999999,
-    directory: Path = Paths.get(""),
+    directory: Path = EmptyPath,
     stdFileMap: Map[StdoutStderrType, Path] = Map())
   = new TaskStartArguments(
       masterAddress = s"127.0.0.1:$tcpPort",
       startMeta = StartTask.Meta.Default,
       tunnelToken = TunnelToken(TunnelId("TEST-TUNNEL"), TunnelToken.Secret("TUNNEL-SECRET")),
-      directory = directory,
+      workingDirectory = directory,
       logDirectory = temporaryDirectory,
       stdFileMap = stdFileMap,
       agentTaskId = AgentTaskId("1-1"),
@@ -57,5 +58,5 @@ object TaskStartArguments {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }
 
-  implicit val MyJsonFormat = jsonFormat11(apply)
+  implicit val MyJsonFormat = jsonFormat12(apply)
 }

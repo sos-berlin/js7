@@ -4,7 +4,6 @@ import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 import scala.collection.{TraversableLike, immutable, mutable}
-import scala.util.control.NonFatal
 import scala.language.implicitConversions
 
 object Collections {
@@ -26,6 +25,19 @@ object Collections {
         delegate.toTraversable groupBy identity map { case (k, v) ⇒ k → v.size }
 
       def compareElementWise(other: TraversableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
+    }
+
+    implicit class RichSeq[A](val delegate: Seq[A]) extends AnyVal {
+      /**
+        * Like `fold` but uses `neutral` only when `operation` cannot be applied, that is size &lt; 2.
+        *
+        * @param neutral is assumed to be a real neutral element
+        */
+      def foldFast(neutral: A)(operation: (A, A) ⇒ A): A = delegate match {
+        case Nil ⇒ neutral
+        case Seq(a) ⇒ a
+        case seq ⇒ seq reduce operation
+      }
     }
 
     implicit class RichArray[A](val delegate: Array[A]) extends AnyVal {

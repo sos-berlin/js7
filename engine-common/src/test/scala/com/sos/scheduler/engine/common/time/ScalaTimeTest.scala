@@ -13,12 +13,13 @@ import scala.concurrent.duration.{DurationInt, DurationLong}
 final class ScalaTimeTest extends FreeSpec {
 
   "Duration" - {
-    "Int.μs" in {
-      (7.μs: Duration).toNanos shouldEqual 7000
+    "Int.µs" in {
+      (7.µs: Duration).toNanos shouldEqual 7000
+      (123456789.µs: Duration).toNanos shouldEqual 123456789000L
     }
 
-    "Long.μs" in {
-      (7L.μs: Duration).toNanos shouldEqual 7000
+    "Long.µs" in {
+      (7L.µs: Duration).toNanos shouldEqual 7000
     }
 
     "Int.ms" in {
@@ -27,6 +28,7 @@ final class ScalaTimeTest extends FreeSpec {
 
     "Long.ms" in {
       (7L.ms: Duration).toMillis shouldEqual 7
+      (123456789L.µs: Duration).toNanos shouldEqual 123456789000L
     }
 
     "Int.s" in {

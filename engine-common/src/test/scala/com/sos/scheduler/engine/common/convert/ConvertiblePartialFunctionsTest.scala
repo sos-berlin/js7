@@ -19,7 +19,7 @@ final class ConvertiblePartialFunctionsTest extends FreeSpec {
     intercept[NoSuchElementException] { pf.as[Int]("unknown") }
       .getMessage shouldEqual "key not found: unknown"
     intercept[IllegalArgumentException] { pf.as[Boolean]("KEY") }
-      .getMessage shouldEqual """Invalid key 'KEY': java.lang.IllegalArgumentException: For input string: "111""""
+      .getMessage shouldEqual """Invalid key 'KEY': java.lang.IllegalArgumentException: Boolean value true or false expected, not: 111"""
   }
 
   "as with default" in {

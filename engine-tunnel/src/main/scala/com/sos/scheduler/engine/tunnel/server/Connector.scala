@@ -111,13 +111,13 @@ extends Actor with FSM[State, Data] {
   when(ExpectingMessageFromTcp)(handleHeartbeat)
 
   when(ExpectingRequest) {
-    case Event(m @ Request(message, responsePromise, timeout), NoData) ⇒
+    case Event(Request(message, responsePromise, timeout), NoData) ⇒
       messageTcpBridge ! MessageTcpBridge.SendMessage(message)
       inactivityWatchdog.restart(timeout)
       goto(ExpectingMessageFromTcp) using Respond(responsePromise)
 
-    case Event(m @ MessageTcpBridge.PeerClosed, NoData) ⇒
-      logger.trace(s"$m")
+    case Event(MessageTcpBridge.PeerClosed, NoData) ⇒
+      logger.trace("MessageTcpBridge.PeerClosed")
       stop()
   }
 

@@ -34,6 +34,7 @@ import spray.json.DefaultJsonProtocol._
 @RunWith(classOf[JUnitRunner])
 final class TunnelWebServicesTest extends FreeSpec with WebServiceTest with TunnelWebService {
 
+  protected implicit def executionContext = actorRefFactory.dispatcher
   private implicit val timerService = TimerService(idleTimeout = Some(1.s))
 
   protected def tunnelAccess(tunnelToken: TunnelToken) = new TunnelAccess {

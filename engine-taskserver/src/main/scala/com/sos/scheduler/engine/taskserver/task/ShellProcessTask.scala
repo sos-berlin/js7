@@ -11,7 +11,7 @@ import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
-import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
 import com.sos.scheduler.engine.taskserver.task.process.{ProcessConfiguration, RichProcess}
@@ -19,9 +19,8 @@ import java.nio.file.Files._
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration.Inf
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
  * @author Joacim Zschimmer
@@ -37,12 +36,13 @@ private[task] final class ShellProcessTask(
   killScriptOption: Option[ProcessKillScript],
   synchronizedStartProcess: RichProcessStartSynchronizer,
   taskServerMainTerminatedOption: Option[Future[Unit]] = None)
+  (implicit executionContext: ExecutionContext)
 extends HasCloser with Task {
 
-  import commonArguments.{agentTaskId, hasOrder, jobName, monitors, namedInvocables, stdFiles}
-  import namedInvocables.spoolerTask
+  import commonArguments.{agentTaskId, hasOrder, jobName, monitors, namedIDispatches, stdFiles}
+  import namedIDispatches.spoolerTask
 
-  private val monitorProcessor = new MonitorProcessor(monitors, namedInvocables, jobName = jobName).closeWithCloser
+  private val monitorProcessor = MonitorProcessor.create(monitors, namedIDispatches).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
   private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, id = logFilenamePart) else Map[StdoutStderrType, Path]()
   private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",
@@ -50,7 +50,7 @@ extends HasCloser with Task {
   private var startCalled = false
   private val richProcessOnce = new SetOnce[RichProcess]
   private val logger = Logger.withPrefix(getClass, toString)
-  private var sigtermForwarder: JavaShutdownHook = null
+  private var sigtermForwarder: Option[JavaShutdownHook] = None
 
   def start() = {
     requireState(!startCalled)
@@ -68,12 +68,11 @@ extends HasCloser with Task {
   }
 
   private def startProcess() = {
-    for (terminated ← taskServerMainTerminatedOption) {
-      sigtermForwarder = JavaShutdownHook.add(ShellProcessTask.getClass.getName) {
+    sigtermForwarder = for (terminated ← taskServerMainTerminatedOption) yield
+      JavaShutdownHook.add(ShellProcessTask.getClass.getName) {
         sendProcessSignal(SIGTERM)
         Await.ready(terminated, Inf)  // Delay until TaskServer has been terminated
       }
-    }
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
       val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
@@ -107,7 +106,7 @@ extends HasCloser with Task {
         <process.result spooler_process_result="false" exit_code="999888999"/>.toString()
       case Some(richProcess) ⇒
         val rc = richProcess.waitForTermination()
-        if (sigtermForwarder != null) sigtermForwarder.close()
+        for (o ← sigtermForwarder) o.close()
         concurrentStdoutStderrWell.finish()
         transferReturnValuesToMaster()
         val success = monitorProcessor.postStep(rc.isSuccess)

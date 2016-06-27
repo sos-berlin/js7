@@ -62,9 +62,9 @@ with HasKey {
     arguments = taskArgumentsFuture.value collect {
       case Success(a) ⇒
         TaskOverview.Arguments(
-          language = a.moduleLanguage.string,
-          javaClassName = a.javaClassNameOption,
-          monitorCount = a.monitors.size)
+          language = a.rawModuleArguments.language.string,
+          javaClassName = a.rawModuleArguments.javaClassNameOption,
+          monitorCount = a.rawMonitorArguments.size)
     })
 
   private[task] final def tunnelToken = tunnel.tunnelToken

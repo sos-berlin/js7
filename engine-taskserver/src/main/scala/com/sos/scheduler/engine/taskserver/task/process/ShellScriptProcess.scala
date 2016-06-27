@@ -6,13 +6,13 @@ import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration.Encoding
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
 import java.nio.file.Path
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContext, Promise}
 import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
-final class ShellScriptProcess(
+final class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
   process: Process,
   private[process] val temporaryScriptFile: Path)
@@ -33,7 +33,8 @@ object ShellScriptProcess {
   def startShellScript(
     processConfiguration: ProcessConfiguration = ProcessConfiguration(),
     name: String = "shell-script",
-    scriptString: String): ShellScriptProcess =
+    scriptString: String)
+    (implicit exeuctionContext: ExecutionContext): ShellScriptProcess =
   {
     val shellFile = newTemporaryShellFile(name)
     try {

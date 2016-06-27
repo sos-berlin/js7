@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.common.process
 
 import com.sos.scheduler.engine.common.process.Processes._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFututes
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutures
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import java.nio.file.Files.delete

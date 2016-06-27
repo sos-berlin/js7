@@ -15,18 +15,20 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.minicom.idispatch.{Invocable, PublicMethodsAreInvocable}
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables.{SpoolerJobName, SpoolerLogName, SpoolerName, SpoolerTaskName}
-import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
-import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.module.{JavaModuleLanguage, NamedInvocables, Script}
-import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask}
+import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable, InvocableIDispatch, PublicMethodsAreInvocable}
+import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches._
+import com.sos.scheduler.engine.taskserver.moduleapi.Script
+import com.sos.scheduler.engine.taskserver.modules.javamodule.TestJavaModule
+import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedIDispatches}
 import com.sos.scheduler.engine.taskserver.task.ShellProcessTaskTest._
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Joacim Zschimmer
@@ -91,20 +93,20 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
     }
   }
 
-  private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting) =
+  private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) =
     new ShellProcessTask(
-      ShellModule(testScript(setting.exitCode)),
+      new ShellModule(ShellModule.Arguments(testScript(setting.exitCode))),
       CommonArguments(
         AgentTaskId("1-1"),
         jobName = "TEST-JOB",
-        namedInvocables = NamedInvocables(List(
+        namedIDispatches = TypedNamedIDispatches(List(
           SpoolerLogName → spoolerLog,
-          SpoolerTaskName → TestSpoolerTask,
-          SpoolerJobName → DummyInvocable,
-          SpoolerName → DummyInvocable)),
+          SpoolerTaskName → StubSpoolerTask,
+          SpoolerJobName → new IDispatch.Empty {},
+          SpoolerName → new IDispatch.Empty {})),
         monitors = List(
-          Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("A", setting) }, name="Monitor A"),
-          Monitor(new TestModule { def newMonitorInstance() = new TestMonitor("B", setting) }, name="Monitor B")),
+          Monitor(TestJavaModule.arguments { new TestMonitor("A", setting) }, name = "Monitor A"),
+          Monitor(TestJavaModule.arguments { new TestMonitor("B", setting) }, name = "Monitor B")),
         hasOrder = false,
         stdFiles = StdFiles(stdFileMap = Map(), stderrLogLevel = SchedulerLogLevel.info, log = (_, lines) ⇒ spoolerLog.info(lines))),
       environment = Map(TestName → TestValue),
@@ -128,9 +130,7 @@ private object ShellProcessTaskTest {
       s"echo $TestString\n" +
       s"exit $exitCode")
 
-  private object DummyInvocable extends Invocable
-
-  private object TestSpoolerTask extends SpoolerTask {
+  private object StubSpoolerTask extends SpoolerTask with IDispatch.Empty with Invocable.Empty {
     def setErrorCodeAndText(code: MessageCode, text: String) = throw new NotImplementedError
     def paramsXml = ""
     def paramsXml_=(o: String) = throw new NotImplementedError
@@ -138,7 +138,7 @@ private object ShellProcessTaskTest {
     def orderParamsXml_=(o: String) = throw new NotImplementedError
   }
 
-  private class TestSpoolerLog extends SpoolerLog with PublicMethodsAreInvocable {
+  private class TestSpoolerLog extends SpoolerLog with PublicMethodsAreInvocable with InvocableIDispatch {
     val infoMessages = mutable.Buffer[String]()
 
     def log(level: SchedulerLogLevel, message: String) = level match {
@@ -156,11 +156,6 @@ private object ShellProcessTaskTest {
     s"A $PreStepMessage", s"B $PreStepMessage",
     s"B $PostStepMessage", s"A $PostStepMessage",
     s"B $PostTaskMessage", s"A $PostTaskMessage")
-
-  private trait TestModule extends JavaModule {
-    def moduleLanguage = JavaModuleLanguage
-    def newJobInstance() = throw new NotImplementedError
-  }
 
   private class TestMonitor(name: String, setting: Setting) extends sos.spooler.Monitor_impl {
     override def spooler_task_before: Boolean = {

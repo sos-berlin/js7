@@ -15,7 +15,6 @@ import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoole
 import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
 import com.sos.scheduler.engine.tunnel.data.TunnelConnectionMessage
 import java.nio.channels.AsynchronousCloseException
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.util.{Failure, Success}
 import spray.json._
@@ -25,7 +24,7 @@ import spray.json._
  *
  * @author Joacim Zschimmer
  */
-final class SimpleTaskServer(val taskStartArguments: TaskStartArguments, isMain: Boolean = false)(injector: Injector)
+final class SimpleTaskServer(injector: Injector, val taskStartArguments: TaskStartArguments, isMain: Boolean = false)(implicit ec: ExecutionContext)
 extends TaskServer with HasCloser {
 
   private val logger = Logger.withPrefix(getClass, taskStartArguments.agentTaskId.toString)
@@ -40,6 +39,7 @@ extends TaskServer with HasCloser {
     name = taskStartArguments.agentTaskId.toString,
     returnAfterReleaseOf = _.isInstanceOf[RemoteModuleInstanceServer],
     keepaliveDurationOption = taskStartArguments.rpcKeepaliveDurationOption)
+
   def terminated = terminatedPromise.future
 
   def start(): Unit =
@@ -72,7 +72,7 @@ extends TaskServer with HasCloser {
 
   def pidOption = (remoteModuleInstanceServers flatMap { _.pidOption }).headOption
 
-  private def remoteModuleInstanceServers = remoting.invocables[RemoteModuleInstanceServer]  // Should return one
+  private def remoteModuleInstanceServers = remoting.iUnknowns[RemoteModuleInstanceServer]  // Should return one
 }
 
 object SimpleTaskServer {

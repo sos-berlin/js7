@@ -15,7 +15,7 @@ import spray.routing.Directives._
  */
 trait FileStatusWebService extends AgentWebService {
 
-  addApiRoute {
+  routeBuilder.addApiRoute {
     (path("fileExists") & get) {
       parameter("file") { path ⇒
         respondWithHeader(`Cache-Control`(`max-age`(0), `no-store`, `no-cache`)) {

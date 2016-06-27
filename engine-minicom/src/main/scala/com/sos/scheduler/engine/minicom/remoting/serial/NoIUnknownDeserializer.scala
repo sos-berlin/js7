@@ -1,10 +1,10 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.idispatch.Invocable
+import com.sos.scheduler.engine.minicom.types.IUnknown
 
 /**
  * @author Joacim Zschimmer
  */
 private[remoting] trait NoIUnknownDeserializer {
-  protected def readInvocableOrNull(): Invocable = throw new UnsupportedOperationException("readInvocableOption is not implemented")  // Method is overridden
+  protected def readIUnknownOrNull(): IUnknown = throw new UnsupportedOperationException("readIUnknownOption is not implemented")  // Method is overridden
 }

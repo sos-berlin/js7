@@ -66,17 +66,19 @@ extends AgentTaskFactory {
       startMeta = command.meta getOrElse StartTask.Meta.Default,
       masterAddress = masterAddress,
       tunnelToken = tunnelToken,
-      directory = agentConfiguration.directory,
+      workingDirectory = agentConfiguration.workingDirectory,
       logDirectory = agentConfiguration.logDirectory,
+      dotnet = agentConfiguration.dotnet,
       environment = agentConfiguration.environment,
       killScriptOption = agentConfiguration.killScript,
       rpcKeepaliveDurationOption = agentConfiguration.rpcKeepaliveDuration)
-    if (sys.props contains UseThreadPropertyName) { // For debugging
-      logger.warn(s"Due to system property $UseThreadPropertyName, task does not use an own process")
-      new SimpleTaskServer(taskStartArguments)(injector)
+    if (runInProcess) {
+      // For debugging
+      logger.warn(s"Due to system property $InProcessName, task runs in Agent process")
+      new SimpleTaskServer(injector, taskStartArguments)
     } else
       command match {
-        case _: StartNonApiTask ⇒ new SimpleTaskServer(taskStartArguments)(injector)
+        case _: StartNonApiTask ⇒ new SimpleTaskServer(injector, taskStartArguments)
         case o: StartApiTask ⇒ new OwnProcessTaskServer(
           taskStartArguments,
           javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
@@ -88,9 +90,11 @@ extends AgentTaskFactory {
     Splitter.on(Pattern.compile("\\s+")).trimResults.omitEmptyStrings.split(options).toImmutableSeq
 }
 
-private object StandardAgentTaskFactory {
+object StandardAgentTaskFactory {
   private val logger = Logger(getClass)
-  private val UseThreadPropertyName = "jobscheduler.agent.useThread"
+  private val InProcessName = "jobscheduler.agent.inProcess"
+
+  def runInProcess = sys.props contains InProcessName
 
   /**
    * Resembles the behaviour of [[com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer]]#invoke.

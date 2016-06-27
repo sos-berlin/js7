@@ -12,7 +12,7 @@ final class SecretStringTest extends FreeSpec {
 
   "toString does not disclose the secret" in {
     val secret = SecretString("TEST-SECRET")
-    assert(secret.toString == "(secret)")
-    assert(s"$secret" == "(secret)")
+    assert(secret.toString == "SecretString")
+    assert(s"$secret" == "SecretString")
   }
 }

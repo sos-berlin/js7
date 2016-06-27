@@ -27,21 +27,21 @@ final class FutureCompletionTest extends FreeSpec with OneInstancePerTest {
     val call = futureTimedCall(now() + 500.ms) { "Hej!" }
     queue.add(call)
     val future = call.future
-    (future.isCompleted, future.value) shouldBe (false, None)
+    (future.isCompleted, future.value) shouldBe ((false, None))
     dispatcher.executeMatureCalls()
-    (future.isCompleted, future.value) shouldBe (false, None)
+    (future.isCompleted, future.value) shouldBe ((false, None))
     sleep(520.ms)
     dispatcher.executeMatureCalls()
-    (future.isCompleted, future.value) shouldBe (true, Some(Success("Hej!")))
+    (future.isCompleted, future.value) shouldBe ((true, Some(Success("Hej!"))))
   }
 
   "Failure" in {
     val call = futureTimedCall(now() + 500.ms) { throw new TestException }
     queue.add(call)
     val future = call.future
-    (future.isCompleted, future.value) shouldBe (false, None)
+    (future.isCompleted, future.value) shouldBe ((false, None))
     dispatcher.executeMatureCalls()
-    (future.isCompleted, future.value) shouldBe (false, None)
+    (future.isCompleted, future.value) shouldBe ((false, None))
     sleep(501.ms)
     dispatcher.executeMatureCalls()
     future.isCompleted shouldBe true
@@ -59,16 +59,16 @@ final class FutureCompletionTest extends FreeSpec with OneInstancePerTest {
     val call = futureCall { "Hej!" }
     queue.add(call)
     val future = call.future
-    (future.isCompleted, future.value) shouldBe (false, None)
+    (future.isCompleted, future.value) shouldBe ((false, None))
     dispatcher.executeMatureCalls()
-    (future.isCompleted, future.value) shouldBe (true, Some(Success("Hej!")))
+    (future.isCompleted, future.value) shouldBe ((true, Some(Success("Hej!"))))
   }
 
   "ShortTermCall Failure" in {
     val call = futureCall { throw new TestException }
     queue.add(call)
     val future = call.future
-    (future.isCompleted, future.value) shouldBe (false, None)
+    (future.isCompleted, future.value) shouldBe ((false, None))
     dispatcher.executeMatureCalls()
     future.isCompleted shouldBe true
     intercept[TestException] { future.value.get.get }
@@ -77,7 +77,7 @@ final class FutureCompletionTest extends FreeSpec with OneInstancePerTest {
   "callFuture" in {
     implicit val implicitQueue = queue
     val future = callFuture { throw new TestException }
-    (future.isCompleted, future.value) shouldBe (false, None)
+    (future.isCompleted, future.value) shouldBe ((false, None))
     dispatcher.executeMatureCalls()
     future.isCompleted shouldBe true
     intercept[TestException] { future.value.get.get }

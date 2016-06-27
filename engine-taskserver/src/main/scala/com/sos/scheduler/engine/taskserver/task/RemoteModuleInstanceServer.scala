@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.common.process.Processes
 import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
@@ -10,26 +9,29 @@ import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.idispatch.{Invocable, InvocableFactory}
+import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch, IUnknownFactory, InvocableIDispatch}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
-import com.sos.scheduler.engine.taskserver.module.NamedInvocables
-import com.sos.scheduler.engine.taskserver.module.javamodule.JavaModule
-import com.sos.scheduler.engine.taskserver.module.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
+import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
+import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
 import java.util.UUID
 import javax.inject.Inject
 import org.scalactic.Requirements._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * @author Joacim Zschimmer
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
 final class RemoteModuleInstanceServer @Inject private(
+  moduleFactoryRegister: ModuleFactoryRegister,
   taskStartArguments: TaskStartArguments,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   taskServerMainTerminatedOption: Option[Future[Unit]])
-extends HasCloser with Invocable {
+  (implicit ec: ExecutionContext)
+extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
 
   private var taskArguments: TaskArguments = null
@@ -47,20 +49,20 @@ extends HasCloser with Invocable {
 
   @invocable
   def begin(objectAnys: VariantArray, objectNamesAnys: VariantArray): Boolean = {
-    val namedInvocables = toNamedObjectMap(names = objectNamesAnys, anys = objectAnys)
+    val namedIDispatches = toNamedObjectMap(names = objectNamesAnys, anys = objectAnys)
     val stdFiles = StdFiles(
       stdFileMap = taskStartArguments.stdFileMap filter { _ ⇒ taskStartArguments.logStdoutAndStderr },
       stderrLogLevel = taskArguments.stderrLogLevel,
-      log = namedInvocables.spoolerLog.log
+      log = namedIDispatches.spoolerLog.log
     )
     val commonArguments = CommonArguments(
       taskStartArguments.agentTaskId,
       jobName = taskArguments.jobName,
-      namedInvocables,
-      taskArguments.monitors,
+      namedIDispatches,
+      taskArguments.rawMonitorArguments map { o ⇒ Monitor(moduleFactoryRegister.toModuleArguments(o.rawModuleArguments), o.name, o.ordering) },
       hasOrder = taskArguments.hasOrder,
       stdFiles)
-    val task = taskArguments.module match {
+    val task = moduleFactoryRegister.newModule(taskArguments.rawModuleArguments) match {
       case module: ShellModule ⇒
         new ShellProcessTask(module, commonArguments,
           environment = taskStartArguments.environment ++ taskArguments.environment,
@@ -70,8 +72,8 @@ extends HasCloser with Invocable {
           killScriptOption = taskStartArguments.killScriptOption,
           synchronizedStartProcess,
           taskServerMainTerminatedOption = taskServerMainTerminatedOption)
-      case module: JavaModule ⇒
-        new JavaProcessTask(module, commonArguments)
+      case module: ApiModule ⇒
+        new ApiProcessTask(module, commonArguments)
     }
     closer.registerAutoCloseable(task)
     taskOnce := task
@@ -116,25 +118,25 @@ extends HasCloser with Invocable {
   def pidOption: Option[Pid] = taskOnce flatMap { _.pidOption }
 }
 
-object RemoteModuleInstanceServer extends InvocableFactory {
+object RemoteModuleInstanceServer extends IUnknownFactory {
   val clsid = CLSID(UUID fromString "feee47a3-6c1b-11d8-8103-000476ee8afb")
   val iid   = IID  (UUID fromString "feee47a2-6c1b-11d8-8103-000476ee8afb")
   private val logger = Logger(getClass)
 
-  def invocableClass = classOf[RemoteModuleInstanceServer]
+  def iUnknownClass = classOf[RemoteModuleInstanceServer]
 
-  private def toNamedObjectMap(names: VariantArray, anys: VariantArray): NamedInvocables = {
+  private def toNamedObjectMap(names: VariantArray, anys: VariantArray): TypedNamedIDispatches = {
     val nameStrings = names.as[String]
-    val invocables = variantArrayToInvocable(anys)
-    require(nameStrings.size == invocables.size)
-    NamedInvocables(nameStrings zip invocables)
+    val iDispatches = variantArrayToIDispatches(anys)
+    require(nameStrings.size == iDispatches.size)
+    TypedNamedIDispatches(nameStrings zip iDispatches)
   }
 
   /**
    * Expects an VariantArray with Some[IUnknown]
- *
+   *
    * @return IUnknown, interpreted as Invocable
    * @throws NullPointerException when an IUnknown is null.
    */
-  private def variantArrayToInvocable(a: VariantArray) = a.indexedSeq map cast[Invocable]
+  private def variantArrayToIDispatches(a: VariantArray) = a.indexedSeq map cast[IDispatch]
 }

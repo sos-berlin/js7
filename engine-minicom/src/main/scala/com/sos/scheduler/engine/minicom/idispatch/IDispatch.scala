@@ -1,9 +1,13 @@
 package com.sos.scheduler.engine.minicom.idispatch
 
+import com.sos.scheduler.engine.minicom.types.HRESULT.DISP_E_UNKNOWNNAME
+import com.sos.scheduler.engine.minicom.types.{COMException, HRESULT, IUnknown}
+import org.jetbrains.annotations.TestOnly
+
 /**
  * @author Joacim Zschimmer
  */
-trait IDispatch extends Invocable {
+trait IDispatch extends IUnknown {
 
   def getIdOfName(name: String): DISPID
 
@@ -35,5 +39,13 @@ object IDispatch {
       def invokeMethod(dispId: DISPID, arguments: Seq[Any]): Any =
         delegate.invoke(dispId, Set(DISPATCH_METHOD), arguments)
     }
+  }
+
+  trait Empty extends IDispatch {
+    def getIdOfName(name: String): DISPID =
+      throw new COMException(DISP_E_UNKNOWNNAME, s"Unknown name '$name'in $getClass")
+
+    def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any], namedArguments: Seq[(DISPID, Any)]): Any =
+      throw new COMException(DISP_E_UNKNOWNNAME, s"Unknown DISPID $dispId in $getClass")
   }
 }

@@ -274,6 +274,11 @@ public class Order extends Idispatch implements HasBean<OrderBean>
         return (String)com_call("<history_id");
     }
 
+    @SchedulerGetter
+    public String last_error() {
+        return (String)com_call("<last_error");
+    }
+
     public final OrderBean toBean() {
         return new OrderBean(this);
     }

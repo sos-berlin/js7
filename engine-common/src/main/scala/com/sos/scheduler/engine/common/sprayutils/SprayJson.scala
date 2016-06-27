@@ -20,6 +20,8 @@ object SprayJson {
       case v: Double ⇒ JsNumber(v)
       case null ⇒ JsNull
       case v: Map[_, _] ⇒ mapToJsObject(v.asInstanceOf[Map[String, Any]])
+      case v: Array[_] ⇒ new JsArray((v map valueToJsValue).toVector)
+      case v: Iterable[_] ⇒ new JsArray((v map valueToJsValue).toVector)
       case v: JsValue ⇒ v
       case v: java.math.BigDecimal ⇒ JsNumber(v)
       case v: java.lang.Iterable[_] ⇒ JsArray((v map valueToJsValue).toVector)
@@ -29,10 +31,26 @@ object SprayJson {
   def mapToJsObject(m: java.util.Map[String, Any]): JsObject =
     JsObject(m.entrySet.toSeq map { e ⇒ e.getKey → valueToJsValue(e.getValue) }: _*)
 
+  def jsValueToAny(jsValue: JsValue): Any =
+    jsValue match {
+      case JsString(o) ⇒ o: String
+      case JsBoolean(o) ⇒ o: Boolean
+      case JsNull ⇒ null
+      case JsNumber(o) ⇒ o: BigDecimal
+      case JsArray(o) ⇒ o map jsValueToAny
+      case o: JsObject ⇒ jsObjectToMap(o)
+    }
+
+  def jsObjectToMap(jsObject: JsObject): Map[String, Any] =
+    (jsObject.fields map { case (k, v) ⇒ k → jsValueToAny(v) }).toMap
+
   object implicits {
     implicit object AnyMapJsonFormat extends RootJsonFormat[Map[String, Any]] {
       def write(o: Map[String, Any]): JsObject = mapToJsObject(o)
-      def read(json: JsValue) = throw new UnsupportedOperationException("Map[String, Any] is not deserializable")  // So AnyMapJsonFormat can be used in jsonFormat()
+      def read(json: JsValue) = json match {
+        case o: JsObject ⇒ jsObjectToMap(o)
+        case _ ⇒ throw new UnsupportedOperationException("Map[String, Any] is not deserializable")  // So AnyMapJsonFormat can be used in jsonFormat()
+      }
     }
 
     implicit object PathJsonFormat extends JsonFormat[Path] {

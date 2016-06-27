@@ -62,8 +62,8 @@ extends Actor {
           }
       }
 
-    case m @ Tcp.PeerClosed ⇒
-      logger.debug(s"$m")
+    case Tcp.PeerClosed ⇒
+      logger.debug("Tcp.PeerClosed")
       parent ! PeerClosed
       stop(self)
 

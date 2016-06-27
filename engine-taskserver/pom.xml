@@ -6,12 +6,12 @@
     <parent>
         <groupId>com.sos-berlin.jobscheduler.engine</groupId>
         <artifactId>engine</artifactId>
-        <version>1.10.5-SNAPSHOT</version>
+        <version>1.11.0-SNAPSHOT</version>
     </parent>
     
     <name>${project.artifactId}</name>
-    <inceptionYear>2012</inceptionYear>
-    <description>Data classes of the JobScheduler Engine</description>
+    <inceptionYear>2015</inceptionYear>
+    <description>Agent's Task Server</description>
     <organization>
         <name>SOS Software GmbH, Berlin</name>
         <url>http://www.sos-berlin.com</url>
@@ -34,6 +34,16 @@
     </build>
 
     <dependencies>
+        <dependency>
+            <groupId>com.sos-berlin.jobscheduler.engine</groupId>
+            <artifactId>engine-taskserver-moduleapi</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sos-berlin.jobscheduler.engine</groupId>
+            <artifactId>engine-taskserver-dotnet</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>engine-minicom</artifactId>

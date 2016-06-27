@@ -3,11 +3,10 @@ package com.sos.scheduler.engine.minicom.remoting.proxy
 import com.google.common.collect.HashBiMap
 import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.minicom.idispatch.Invocable
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister._
-import com.sos.scheduler.engine.minicom.types.COMException
 import com.sos.scheduler.engine.minicom.types.HRESULT.E_POINTER
+import com.sos.scheduler.engine.minicom.types.{COMException, IUnknown}
 import org.scalactic.Requirements._
 import scala.collection.JavaConversions._
 import scala.collection.immutable
@@ -18,34 +17,34 @@ import scala.util.control.NonFatal
  * @author Joacim Zschimmer
  */
 private[remoting] final class ProxyRegister {
-  private val proxyIdToInvocable = HashBiMap.create[ProxyId, Invocable]()
-  private val invocableToProxyId = proxyIdToInvocable.inverse
+  private val proxyIdToIUnknown = HashBiMap.create[ProxyId, IUnknown]()
+  private val iUnknownToProxyId = proxyIdToIUnknown.inverse
   private val proxyIdGenerator = ProxyId.newGenerator()
 
   def registerProxy(proxy: ProxyIDispatch): Unit = add(proxy.id, proxy)
 
-  def invocableToProxyId(invocable: Invocable): (ProxyId, Boolean) = {
-    requireNonNull(invocable)
+  def iUnknownToProxyId(iUnknown: IUnknown): (ProxyId, Boolean) = {
+    requireNonNull(iUnknown)
     synchronized {
-      invocableToProxyId.get(invocable) match {
+      iUnknownToProxyId.get(iUnknown) match {
         case null ⇒
           val proxyId = proxyIdGenerator.next()
-          add(proxyId, invocable)
+          add(proxyId, iUnknown)
           (proxyId, true)
         case o ⇒ (o, false)
       }
     }
   }
 
-  private def add(proxyId: ProxyId, invocable: Invocable): Unit =
+  private def add(proxyId: ProxyId, iUnknown: IUnknown): Unit =
     synchronized {
-      if (proxyIdToInvocable containsKey proxyId) throw new DuplicateKeyException(s"$proxyId already registered")
-      if (invocableToProxyId containsKey invocable) throw new DuplicateKeyException(s"IUnknown '$invocable' already registered")
-      proxyIdToInvocable.put(proxyId, invocable)
+      if (proxyIdToIUnknown containsKey proxyId) throw new DuplicateKeyException(s"$proxyId already registered")
+      if (iUnknownToProxyId containsKey iUnknown) throw new DuplicateKeyException(s"IUnknown '$iUnknown' already registered")
+      proxyIdToIUnknown.put(proxyId, iUnknown)
     }
 
   def release(proxyId: ProxyId): Unit =
-    synchronized { proxyIdToInvocable.remove(proxyId) }
+    synchronized { proxyIdToIUnknown.remove(proxyId) }
     match {
       case o: AutoCloseable ⇒
         try o.close()
@@ -53,22 +52,22 @@ private[remoting] final class ProxyRegister {
       case _ ⇒
     }
 
-  def invocable(proxyId: ProxyId): Invocable = {
+  def iUnknown(proxyId: ProxyId): IUnknown = {
     if (proxyId == ProxyId.Null) throw new COMException(E_POINTER)
-    synchronized { proxyIdToInvocable(proxyId) }
+    synchronized { proxyIdToIUnknown(proxyId) }
   }
 
   override def toString = s"${getClass.getSimpleName}($size proxies)"
 
   /**
-   * Returns all invocables implementing the erased type A.
+   * Returns all iUnknowns implementing the erased type A.
    */
-  def invocables[A : ClassTag]: immutable.Iterable[A] =
+  def iUnknowns[A <: IUnknown: ClassTag]: immutable.Iterable[A] =
     synchronized {
-      (proxyIdToInvocable.valuesIterator collect assignableFrom[A]).toVector
+      (proxyIdToIUnknown.valuesIterator collect assignableFrom[A]).toVector
     }
 
-  def size = proxyIdToInvocable.size
+  def size = proxyIdToIUnknown.size
 }
 
 private[remoting] object ProxyRegister {

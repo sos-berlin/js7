@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.web
 
+import akka.actor.ActorRefFactory
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.tunnel.data.TunnelView._
@@ -8,7 +9,7 @@ import com.sos.scheduler.engine.tunnel.server.TunnelAccess
 import com.sos.scheduler.engine.tunnel.web.TunnelWebServices._
 import java.time.Duration
 import scala.collection.immutable
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import spray.http.CacheDirectives.`max-age`
 import spray.http.HttpHeaders.`Cache-Control`
 import spray.routing.Directives._
@@ -18,15 +19,15 @@ import spray.routing.Directives._
  */
 trait TunnelWebService extends AgentWebService {
 
+  protected implicit def actorRefFactory: ActorRefFactory
+  protected implicit def executionContext: ExecutionContext
   protected def tunnelAccess(tunnelToken: TunnelToken): TunnelAccess
   protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration): Unit
   protected def tunnelHandlerOverview: Future[TunnelHandlerOverview]
   protected def tunnelOverviews: Future[immutable.Iterable[TunnelOverview]]
   protected def tunnelView(tunnelId: TunnelId): Future[TunnelView]
 
-  private implicit val executionContext = actorRefFactory.dispatcher
-
-  addApiRoute {
+  routeBuilder.addApiRoute {
     pathPrefix("tunnel") {
       path(Segment) { idString ⇒
         post {

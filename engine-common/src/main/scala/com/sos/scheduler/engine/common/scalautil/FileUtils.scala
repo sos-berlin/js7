@@ -2,18 +2,23 @@ package com.sos.scheduler.engine.common.scalautil
 
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.{Closer, Files ⇒ GuavaFiles}
+import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import java.io.File
 import java.nio.charset.Charset
-import java.nio.file.Files.delete
+import java.nio.file.Files.{delete, isSymbolicLink}
 import java.nio.file.attribute.FileAttribute
-import java.nio.file.{FileAlreadyExistsException, Files, Path}
+import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths}
 import scala.annotation.tailrec
 import scala.concurrent.forkjoin.ThreadLocalRandom
 import scala.language.implicitConversions
 
 object FileUtils {
+
+  val EmptyPath = Paths.get("")
+  val WorkingDirectory = Paths.get(sys.props("user.dir")).toAbsolutePath
 
   /**
    * Touchs the file and deletes it when closer is closed.
@@ -49,6 +54,11 @@ object FileUtils {
       def append(o: String, encoding: Charset = UTF_8): Unit = file.append(o, encoding)
 
       private def file = delegate.toFile
+
+      /**
+        * Returns the content of the directory denoted by `this`.
+        */
+      def pathSet: Set[Path] = autoClosing(Files.list(delegate)) { _.toSet }
     }
 
     implicit class RichFile(val delegate: File) extends AnyVal {
@@ -99,5 +109,12 @@ object FileUtils {
         delete(file)
       }
       body(file)
+  }
+
+  def deleteDirectoryRecursively(dir: Path): Unit = {
+    for (f ← dir.pathSet) {
+      if (f.isDirectory && !isSymbolicLink(f)) deleteDirectoryRecursively(f)
+      delete(f)
+    }
   }
 }

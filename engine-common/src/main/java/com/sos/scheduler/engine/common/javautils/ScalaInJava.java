@@ -13,6 +13,8 @@ public class ScalaInJava {
      */
     @SafeVarargs
     public static <A> scala.collection.immutable.Set<A> toScalaSet(A... o) {
-        return ScalaInJavaHelper$.MODULE$.toScalaSet(o);
+        @SuppressWarnings("varargs")
+        scala.collection.immutable.Set<A> result = ScalaInJavaHelper$.MODULE$.toScalaSet(o);
+        return result;
     }
 }

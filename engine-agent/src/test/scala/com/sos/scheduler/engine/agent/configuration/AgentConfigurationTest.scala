@@ -1,12 +1,18 @@
 package com.sos.scheduler.engine.agent.configuration
 
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.{Https, UseInternalKillScript}
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.Https
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.base.generic.SecretString
+import com.sos.scheduler.engine.common.scalautil.FileUtils._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
-import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
+import com.sos.scheduler.engine.common.system.FileUtils._
+import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
+import com.typesafe.config.ConfigFactory
+import java.net.InetSocketAddress
+import java.nio.file.Files.{createTempDirectory, delete}
 import java.nio.file.Paths
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -18,60 +24,111 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class AgentConfigurationTest extends FreeSpec {
 
+  private val shellExt = if (isWindows) "cmd" else "sh"
+
   "Empty argument list" in {
-    assert(AgentConfiguration(Nil) == AgentConfiguration())
+    val c = AgentConfiguration(Nil).finishAndProvideFiles
+    assert(c.copy(config = ConfigFactory.empty) == AgentConfiguration(
+      dataDirectory = None,
+      httpAddress = None,
+      https = None,
+      uriPathPrefix = "",
+      externalWebServiceClasses = Nil,
+      workingDirectory = WorkingDirectory,
+      logDirectory = temporaryDirectory,
+      environment = Map(),
+      jobJavaOptions = Nil,
+      dotnet = DotnetConfiguration(),
+      rpcKeepaliveDuration = None,
+      killScript = Some(ProcessKillScript(temporaryDirectory / s"kill_task.$shellExt")),
+      ConfigFactory.empty))
   }
 
   "-https-port=" in {
-    assert(AgentConfiguration(List("-https-port=1234")).https map { _.port }  contains 1234)
-    intercept[IllegalArgumentException] { AgentConfiguration(List("-https-port=65536")) }
-    intercept[IllegalArgumentException] { AgentConfiguration() withHttpsPort 65536 }
-    assert(AgentConfiguration(List("-data-directory=/TEST/DATA", "-https-port=1234")).https contains Https(
-      1234,
+    intercept[IllegalArgumentException] { conf(List("-https-port=1234")).https }
+    intercept[IllegalArgumentException] { conf(List("-https-port=1234")).https }
+    intercept[IllegalArgumentException] { conf(List("-data-directory=/TEST/DATA", "-https-port=65536")) }
+    assert(conf(List("-data-directory=/TEST/DATA", "-https-port=1234")).https == Some(Https(
+      new InetSocketAddress("0.0.0.0", 1234),
       KeystoreReference(
-        url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/https.jks").toUri.toURL,
+        url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/private-https.jks").toUri.toURL,
         storePassword = Some(SecretString("jobscheduler")),
-        keyPassword = SecretString("jobscheduler"))))
+        keyPassword = Some(SecretString("jobscheduler"))))))
+    assert(conf(List("-data-directory=/TEST/DATA", "-https-port=11.22.33.44:1234")).https == Some(Https(
+      new InetSocketAddress("11.22.33.44", 1234),
+      KeystoreReference(
+        url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/private-https.jks").toUri.toURL,
+        storePassword = Some(SecretString("jobscheduler")),
+        keyPassword = Some(SecretString("jobscheduler"))))))
   }
 
   "-http-port=" in {
-    assert(AgentConfiguration(List("-http-port=1234")).httpPort contains 1234)
-    intercept[IllegalArgumentException] { AgentConfiguration(List("-http-port=65536")) }
-    intercept[IllegalArgumentException] { AgentConfiguration(httpPort = Some(65536)) }
+    intercept[IllegalArgumentException] { conf(List("-http-port=65536")) }
+    assert(conf(List("-http-port=1234")).httpAddress == Some(new InetSocketAddress("0.0.0.0", 1234)))
+    assert(conf(List("-http-port=11.22.33.44:1234")).httpAddress == Some(new InetSocketAddress("11.22.33.44", 1234)))
+    assert(conf(List("-http-port=[1:2:3:4:5:6]:1234")).httpAddress == Some(new InetSocketAddress("1:2:3:4:5:6", 1234)))
+    assert(conf(List("-http-port=[::1]:1234")).httpAddress == Some(new InetSocketAddress("::1", 1234)))
   }
-
-  "-http-port= and -https-port= cannot be combined" in {
-    intercept[IllegalArgumentException] { AgentConfiguration(List("-http-port=11111", "-https-port=22222")) }
-  }
-
-  "-ip-address=" in {
-    assert(conf(Nil).httpInterfaceRestriction.isEmpty)
-    assert(conf(List("-ip-address=1.2.3.4")).httpInterfaceRestriction == Some("1.2.3.4"))
-  }
-
   "-log-directory=" in {
-    assert(conf(Nil).uriPathPrefix == "")
-    assert(conf(Nil).logDirectory == temporaryDirectory)
+    assert(conf(List("-data-directory=TEST/DATA")).logDirectory == Paths.get("TEST/DATA/logs").toAbsolutePath)
+    assert(conf(List("-data-directory=TEST/DATA", "-log-directory=LOGS")).logDirectory == Paths.get("LOGS").toAbsolutePath)
     assert(conf(List("-log-directory=test")).logDirectory == Paths.get("test").toAbsolutePath)
   }
 
   "-uri-prefix=" in {
-    assert(conf(Nil).uriPathPrefix == "")
-    assert(conf(List("-uri-prefix=test")).strippedUriPathPrefix == "test")
-    assert(conf(List("-uri-prefix=/test/")).strippedUriPathPrefix == "test")
+    assert(conf(List("-uri-prefix=test")).uriPathPrefix == "test")
+    assert(conf(List("-uri-prefix=/test/")).uriPathPrefix == "test")
   }
 
-  "-kill-script=" in {
-    assert(conf(Nil).killScript == Some(UseInternalKillScript))
-    assert(conf(List(s"-kill-script=")).killScript == None)
-    val killScript = Paths.get("kill-script")
-    assert(conf(List(s"-kill-script=$killScript")).killScript == Some(ProcessKillScript(killScript.toAbsolutePath)))
+  "-kill-script= is missing (default)" - {
+    "Without -data-directory" in {
+      assert(conf(Nil).logDirectory == conf(Nil).temporaryDirectory)
+      assert(conf(Nil).logDirectory == temporaryDirectory)
+      val generatedFile = conf(Nil).logDirectory / s"kill_task.$shellExt"
+      assert(AgentConfiguration(List("-http-port=11111")).finishAndProvideFiles.killScript == Some(ProcessKillScript(generatedFile)))
+      delete(generatedFile)
+    }
+
+    "With -data-directory" in {
+      val data = createTempDirectory("AgentConfigurationTest-")
+      val expectedFile = data / s"tmp/kill_task.$shellExt"
+      val myConf = conf(List(s"-data-directory=$data")).finishAndProvideFiles
+      assert(myConf.killScript == Some(ProcessKillScript(expectedFile)))
+      delete(expectedFile)
+      delete(data / "logs")
+      delete(data / "tmp")
+      delete(data)
+    }
+  }
+
+  "-kill-script= (empty)" - {
+    "Without -data-directory" in {
+      val myConf = conf(List("-kill-script=")).finishAndProvideFiles
+      assert(myConf.killScript == None)
+    }
+
+    "With -data-directory" in {
+      val data = createTempDirectory("AgentConfigurationTest-")
+      val myConf = conf(List(s"-data-directory=$data", "-kill-script=")).finishAndProvideFiles
+      assert(myConf.killScript == None)
+      delete(data / "logs")
+      delete(data / "tmp")
+      delete(data)
+    }
+  }
+
+  "-kill-script=FILE" - {
+    val data = createTempDirectory("AgentConfigurationTest-")
+    val myConf = conf(List(s"-data-directory=$data", "-kill-script=/my/kill/script")).finishAndProvideFiles
+    assert(myConf.killScript == Some(ProcessKillScript(Paths.get("/my/kill/script").toAbsolutePath)))
+    delete(data / "logs")
+    delete(data / "tmp")
+    delete(data)
   }
 
   "-rpc-keepalive=" in {
-    assert(conf(Nil).rpcKeepaliveDuration == None)
     assert(conf(List("-rpc-keepalive=5m")).rpcKeepaliveDuration == Some(5 * 60.s))
   }
 
-  private def conf(args: Seq[String]) = AgentConfiguration(args)
+  private def conf(args: List[String]) = AgentConfiguration(args)
 }

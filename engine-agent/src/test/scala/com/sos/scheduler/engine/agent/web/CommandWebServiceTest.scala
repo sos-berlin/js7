@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate, _}
 import com.sos.scheduler.engine.agent.web.CommandWebServiceTest._
+import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.common.time.ScalaTime._
@@ -25,6 +26,7 @@ import spray.json._
 @RunWith(classOf[JUnitRunner])
 final class CommandWebServiceTest extends FreeSpec with WebServiceTest with CommandWebService {
 
+  protected implicit def executionContext = actorRefFactory.dispatcher
   override protected val uriPathPrefix = "test"
 
   protected def executeCommand(command: Command, meta: CommandMeta) =

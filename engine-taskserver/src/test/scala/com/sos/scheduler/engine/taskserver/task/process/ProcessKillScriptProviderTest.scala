@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
 import com.google.common.io.Files.touch
-import com.sos.scheduler.engine.common.process.Processes
 import com.sos.scheduler.engine.common.process.Processes.ShellFileExtension
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.system.FileUtils._
@@ -23,16 +22,15 @@ import org.scalatest.junit.JUnitRunner
 final class ProcessKillScriptProviderTest extends FreeSpec {
 
   private lazy val tmp = temporaryDirectory
-  private val port = 99999
-  private val expectedFile = tmp / s"jobscheduler_agent_${port}_kill_task$ShellFileExtension"
+  private val expectedFile = tmp / s"kill_task$ShellFileExtension"
 
   "Do nothing" in {
-    val provider = new ProcessKillScriptProvider(httpPort = port)
+    val provider = new ProcessKillScriptProvider
     provider.close()
   }
 
   "Provide script and delete it later" in {
-    val provider = new ProcessKillScriptProvider(httpPort = port)
+    val provider = new ProcessKillScriptProvider
     deleteIfExists(expectedFile)
     val killScript = provider.provideTo(tmp)
     assert(killScript.file == expectedFile)
@@ -46,7 +44,7 @@ final class ProcessKillScriptProviderTest extends FreeSpec {
 
   "Existing file is overwritten" in {
     touch(expectedFile)
-    val provider = new ProcessKillScriptProvider(httpPort = port)
+    val provider = new ProcessKillScriptProvider
     provider.provideTo(tmp)
     assert(exists(expectedFile))
     provider.close()

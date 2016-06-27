@@ -14,7 +14,6 @@ import org.scalatest.junit.JUnitRunner
 import scala.collection.immutable
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.`application/json`
-import spray.http.Uri
 import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
@@ -48,7 +47,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
   }
 
   "task" in {
-    Get(Uri("/jobscheduler/agent/api/task")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/jobscheduler/agent/api/task") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TaskHandlerOverview] == taskHandlerView.overview)
       assert(responseAs[JsObject] == JsObject(
         "currentTaskCount" → JsNumber(777),
@@ -57,7 +56,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
   }
 
   "task/" in {
-    Get(Uri("/jobscheduler/agent/api/task/")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/jobscheduler/agent/api/task/") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[immutable.Seq[TaskOverview]] == taskHandlerView.taskOverviews)
       assert(responseAs[JsArray] == JsArray(
         JsObject(
@@ -77,7 +76,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
   }
 
   "task/1-123" in {
-    Get(Uri("/jobscheduler/agent/api/task/1-123")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/jobscheduler/agent/api/task/1-123") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TaskOverview] == taskHandlerView.taskOverview(testAgentTaskId))
       assert(responseAs[JsObject] == JsObject(
           "id" → JsString("1-123"),

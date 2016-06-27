@@ -16,7 +16,8 @@ import com.sos.scheduler.engine.data.order.OrderSuspendedEvent;
 import com.sos.scheduler.engine.data.order.OrderTouchedEvent;
 
 public final class EventList {
-    public static final ImmutableList<Class<? extends Event>> eventClassList = ImmutableList.<Class<? extends Event>>of(
+    @SuppressWarnings("varargs")
+    private static final ImmutableList<Class<? extends Event>> eventClassList = ImmutableList.<Class<? extends Event>>of(
             FileBasedActivatedEvent.class,
             FileBasedRemovedEvent.class,
             TaskStartedEvent.class,

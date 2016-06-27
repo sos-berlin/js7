@@ -244,6 +244,7 @@ private object TaskHandlerTest {
 
     def configure() = {
       bindInstance[TimerService](TimerService(idleTimeout = Some(1.s))(ExecutionContext.global))
+      bindInstance[ExecutionContext](ExecutionContext.global)
     }
 
     @Provides @Singleton
@@ -263,6 +264,6 @@ private object TaskHandlerTest {
       AgentTaskIds.synchronized { AgentTaskIds.iterator.next }
 
     @Provides @Singleton
-    private def agentConfiguration: AgentConfiguration = AgentConfiguration.forTest()
+    private def agentConfiguration(): AgentConfiguration = AgentConfiguration.forTest()
   }
 }

@@ -5,7 +5,6 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import spray.http.StatusCodes.NotFound
-import spray.http.Uri
 
 /**
  * @author Joacim Zschimmer
@@ -14,14 +13,14 @@ import spray.http.Uri
 final class NoJobSchedulerEngineWebServiceTest extends FreeSpec with WebServiceTest with NoJobSchedulerEngineWebService {
 
   "/jobscheduler/engine/command" in {
-    Post(Uri("/jobscheduler/engine/command"), <test/>) ~> route ~> check {
+    Post("/jobscheduler/engine/command", <test/>) ~> route ~> check {
       assert(status == NotFound)
       assert(entity.asString contains NoJobSchedulerEngineWebService.Message)
     }
   }
 
   "/jobscheduler/engine" in {
-    Get(Uri("/jobscheduler/engine")) ~> route ~> check {
+    Get("/jobscheduler/engine") ~> route ~> check {
       assert(status == NotFound)
       assert(entity.asString contains NoJobSchedulerEngineWebService.Message)
     }

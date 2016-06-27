@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver
 
+import akka.actor.ActorSystem
 import com.google.common.io.{ByteStreams, Closer}
 import com.google.inject.Guice
 import com.google.inject.Stage._
@@ -35,9 +36,10 @@ object TaskServerMain {
   }
 
   private def run(startArguments: TaskStartArguments): Unit = {
-    val injector = Guice.createInjector(PRODUCTION, new TaskServerMainModule)
+    val injector = Guice.createInjector(PRODUCTION, new TaskServerMainModule(startArguments.dotnet))
+    implicit val executionContext = injector.instance[ActorSystem].dispatcher
     autoClosing(injector.instance[Closer]) { closer ⇒
-      autoClosing(new SimpleTaskServer(startArguments, isMain = true)(injector)) { taskServer ⇒
+      autoClosing(new SimpleTaskServer(injector, startArguments, isMain = true)) { taskServer ⇒
         taskServer.start()
         awaitResult(taskServer.terminated, MaxDuration)
       }

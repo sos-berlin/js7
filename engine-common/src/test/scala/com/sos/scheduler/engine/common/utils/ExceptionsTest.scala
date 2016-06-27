@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.utils
 
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.Exceptions._
 import com.sos.scheduler.engine.common.utils.ExceptionsTest._
 import java.io.IOException
@@ -8,8 +9,7 @@ import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import scala.util.{Try, Success}
+import scala.util.{Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -44,7 +44,7 @@ final class ExceptionsTest extends FreeSpec {
     val t = ignoreException(onException) {
       throw exception
     }
-    assert(ignored == (s"Ignoring exception $exception", exception))
+    assert(ignored == ((s"Ignoring exception $exception", exception)))
     assert(t.isFailure)
     assert(t.failed.get.getMessage == "TEST")
   }
@@ -71,7 +71,7 @@ final class ExceptionsTest extends FreeSpec {
         throw exception
       }
     }
-    assert(logged == (exception.toString, exception))
+    assert(logged == ((exception.toString, exception)))
   }
 
   "toStringWithCauses" in {

@@ -23,14 +23,17 @@ import java.util.NoSuchElementException
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
  * @author Joacim Zschimmer
  */
 @Singleton
-final class TaskHandler @Inject private(newAgentTask: AgentTaskFactory, agentConfiguration: AgentConfiguration, timerService: TimerService)
+final class TaskHandler @Inject private(
+  newAgentTask: AgentTaskFactory,
+  agentConfiguration: AgentConfiguration,
+  timerService: TimerService)
+  (implicit ec: ExecutionContext)
 extends TaskHandlerView {
 
   private val terminating = new AtomicBoolean

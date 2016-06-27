@@ -35,35 +35,35 @@ final class SimpleTypeSprayJsonSupportTest extends FreeSpec with ScalatestRouteT
     path("String") { complete { TestString } }
 
   "Boolean" in {
-    Get(Uri(s"/Boolean")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/Boolean") ~> Accept(`application/json`) ~> route ~> check {
       assert(contentType == ContentTypes.`application/json`)
       assert(responseAs[JsBoolean] == JsTrue)
     }
   }
 
   "Int" in {
-    Get(Uri(s"/Int")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/Int") ~> Accept(`application/json`) ~> route ~> check {
       assert(contentType == ContentTypes.`application/json`)
       assert(responseAs[JsNumber] == TestInt)
     }
   }
 
   "Long" in {
-    Get(Uri(s"/Long")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/Long") ~> Accept(`application/json`) ~> route ~> check {
       assert(contentType == ContentTypes.`application/json`)
       assert(responseAs[JsNumber] == TestLong)
     }
   }
 
   "BigDecimal" in {
-    Get(Uri(s"/BigDecimal")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/BigDecimal") ~> Accept(`application/json`) ~> route ~> check {
       assert(contentType == ContentTypes.`application/json`)
       assert(responseAs[JsNumber] == TestBigDecimal)
     }
   }
 
   "String" in {
-    Get(Uri(s"/String")) ~> Accept(`application/json`) ~> route ~> check {
+    Get("/String") ~> Accept(`application/json`) ~> route ~> check {
       assert(contentType == ContentTypes.`application/json`)
       assert(responseAs[JsString] == TestString)
     }
