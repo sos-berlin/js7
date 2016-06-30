@@ -18,6 +18,7 @@ object JavaTimeJsonFormats {
 
       def read(jsValue: JsValue) = jsValue match {
         case JsString(string) ⇒ Instant.from(formatter parse string)
+        case JsNumber(number) ⇒ bigDecimalToInstant(number.bigDecimal)
         case _ ⇒ sys.error(s"Instant string expected instead of ${jsValue.getClass.getSimpleName}")
       }
     }
@@ -39,4 +40,9 @@ object JavaTimeJsonFormats {
   }
 
   private def durationToBigDecimal(o: Duration) = BigDecimal(o.getSeconds) + BigDecimal(o.getNano, scale = 9)
+
+  private def bigDecimalToInstant(o: BigDecimal) = {
+    val (seconds, nanos) = o /% 1
+    Instant.ofEpochSecond(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
+  }
 }
