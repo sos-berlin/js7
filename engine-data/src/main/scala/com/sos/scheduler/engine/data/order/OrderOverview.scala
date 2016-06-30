@@ -18,8 +18,7 @@ final case class OrderOverview(
   setbackUntil: Option[Instant] = None,
   taskId: Option[TaskId] = None,
   isOnBlacklist: Boolean = false,
-  isSuspended: Boolean = false
-)
+  isSuspended: Boolean = false)
 extends FileBasedOverview
 
 object OrderOverview {
