@@ -22,9 +22,10 @@ extends AbsolutePath {
 
 
 object TypedPath {
-  implicit def ordering[A <: TypedPath]: Ordering[A] with Object {def compare(a: A, b: A): Int} = new Ordering[A] {
-    def compare(a: A, b: A) = a.string compare b.string
-  }
+  implicit def ordering[A <: TypedPath]: Ordering[A] =
+    new Ordering[A] {
+      def compare(a: A, b: A) = a.string compare b.string
+    }
 
   implicit val MyJsonFormat = new IsString.MyJsonFormat[TypedPath](IsString.UnsupportedJsonDeserialization)
 
