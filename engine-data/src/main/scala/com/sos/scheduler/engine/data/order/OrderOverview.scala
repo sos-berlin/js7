@@ -19,7 +19,10 @@ final case class OrderOverview(
   taskId: Option[TaskId] = None,
   isOnBlacklist: Boolean = false,
   isSuspended: Boolean = false)
-extends FileBasedOverview
+extends FileBasedOverview {
+
+  def orderKey: OrderKey = path
+}
 
 object OrderOverview {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
