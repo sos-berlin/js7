@@ -11,10 +11,19 @@ final case class TaskId(@(ForCpp @getter) value: Int) extends GenericInt {
 
   override def toString = s"TaskId $value"
 
+  def +(n: Int) = TaskId(value + n)
+
+  def -(n: Int) = TaskId(value - n)
+
   def string = value.toString
 }
 
 object TaskId {
+  val Null = TaskId(0)
+  // TaskId(1) is not used
+  val SchedulerStart = TaskId(2)  // Misused for JobScheduler start database record. This number only with a new database.
+  val First = TaskId(3)  // TaskId of the first Task with a new database
+
   @JsonCreator def jsonCreator(taskId: Int) = new TaskId(taskId)
 
   implicit object MyJsonFormat extends JsonFormat[TaskId] {
