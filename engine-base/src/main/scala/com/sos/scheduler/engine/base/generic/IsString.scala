@@ -45,4 +45,8 @@ object IsString {
 
     implicit val MyJsonFormat = new IsString.MyJsonFormat(apply)
   }
+
+  trait Companion[A <: IsString] extends HasJsonFormat[A] {
+    implicit val ordering: Ordering[A] = Ordering by { _.string }
+  }
 }

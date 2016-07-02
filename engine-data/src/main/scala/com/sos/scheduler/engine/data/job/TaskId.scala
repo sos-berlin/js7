@@ -18,7 +18,7 @@ final case class TaskId(@(ForCpp @getter) value: Int) extends GenericInt {
   def string = value.toString
 }
 
-object TaskId {
+object TaskId extends GenericInt.Companion[TaskId] {
   val Null = TaskId(0)
   // TaskId(1) is not used
   val SchedulerStart = TaskId(2)  // Misused for JobScheduler start database record. This number only with a new database.

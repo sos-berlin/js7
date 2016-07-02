@@ -27,4 +27,6 @@ extends FileBasedOverview {
 object OrderOverview {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
   implicit val MyJsonFormat = jsonFormat8(apply)
+
+  implicit val ordering: Ordering[OrderOverview] = Ordering by { _.orderKey }
 }
