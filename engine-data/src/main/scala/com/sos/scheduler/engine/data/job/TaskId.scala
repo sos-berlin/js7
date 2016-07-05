@@ -7,15 +7,15 @@ import scala.annotation.meta.getter
 import spray.json.{JsNumber, JsString, JsValue, JsonFormat}
 
 @ForCpp
-final case class TaskId(@(ForCpp @getter) value: Int) extends GenericInt {
+final case class TaskId(@(ForCpp @getter) number: Int) extends GenericInt {
 
-  override def toString = s"TaskId $value"
+  override def toString = s"TaskId $number"
 
-  def +(n: Int) = TaskId(value + n)
+  def +(n: Int) = TaskId(number + n)
 
-  def -(n: Int) = TaskId(value - n)
+  def -(n: Int) = TaskId(number - n)
 
-  def string = value.toString
+  def string = number.toString
 }
 
 object TaskId extends GenericInt.Companion[TaskId] {
