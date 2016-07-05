@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.sprayutils
 
 import scala.language.implicitConversions
+import spray.http.ContentType
 import spray.http.ContentTypes.{`application/json`, `text/plain(UTF-8)`, `text/plain`}
 import spray.httpx.SprayJsonSupport
 import spray.httpx.marshalling.Marshaller
@@ -25,11 +26,13 @@ object SprayJsonOrYamlSupport {
     sprayJsonOrYamlMarshaller[T](writer)
 
   implicit def sprayJsonOrYamlMarshaller[T](implicit writer: RootJsonWriter[T]) =
-    Marshaller.delegate[T, String](`text/plain`, `application/json`) { (value, contentType) ⇒
-      val json = writer.write(value)
-      contentType match {
-        case `text/plain` | `text/plain(UTF-8)` ⇒ YamlPrinter(json)
-        case _ ⇒ CompactPrinter(json)
-      }
+    Marshaller.delegate[T, String](`text/plain`, `application/json`) { (value, contentType) ⇒ jsonOrYamlToString(value, contentType) }
+
+  private[sprayutils] def jsonOrYamlToString[A: RootJsonWriter](value: A, contentType: ContentType): String = {
+    val jsValue = implicitly[RootJsonWriter[A]].write(value)
+    contentType match {
+      case `text/plain` | `text/plain(UTF-8)` ⇒ YamlPrinter(jsValue)
+      case `application/json` ⇒ CompactPrinter(jsValue)
     }
+  }
 }
