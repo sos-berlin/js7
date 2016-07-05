@@ -39,4 +39,10 @@ public enum FileBasedState {
     }
 
     public static final JsonFormat<FileBasedState> MyJsonFormat = new JavaEnumJsonFormat<>(FileBasedState.class);
+
+    /** Experimental. */
+    public boolean isOkay() {
+        return this == notInitialized ||  // For non file-based "ad-hoc" orders
+            this == active;
+    }
 }
