@@ -28,4 +28,8 @@ public class ScalaInJava {
     public static <A> Optional<A> toJavaOptional(scala.Option<A> scalaOption) {
         return scalaOption.isDefined() ? Optional.of(scalaOption.get()) : Optional.empty();
     }
+
+    public static <A> scala.Option<A> toScalaOption(Optional<A> optional) {
+        return optional.isPresent() ? new scala.Some<>(optional.get()) : scala.None$.empty();
+    }
 }
