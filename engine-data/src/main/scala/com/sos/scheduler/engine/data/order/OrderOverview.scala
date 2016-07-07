@@ -13,20 +13,24 @@ import spray.json.DefaultJsonProtocol._
 final case class OrderOverview(
   path: OrderKey,
   fileBasedState: FileBasedState,
+  sourceType: OrderSourceType,
   orderState: OrderState,
   nextStepAt: Option[Instant] = None,
   setbackUntil: Option[Instant] = None,
   taskId: Option[TaskId] = None,
-  isOnBlacklist: Boolean = false,
+  isBlacklisted: Boolean = false,
   isSuspended: Boolean = false)
-extends FileBasedOverview {
+extends FileBasedOverview with QueryableOrder {
 
   def orderKey: OrderKey = path
+
+  def isSetback = setbackUntil.isDefined
 }
 
 object OrderOverview {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat8(apply)
+  private implicit val OrderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
+  implicit val MyJsonFormat = jsonFormat9(apply)
 
   implicit val ordering: Ordering[OrderOverview] = Ordering by { _.orderKey }
 }

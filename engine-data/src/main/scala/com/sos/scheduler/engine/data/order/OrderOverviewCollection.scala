@@ -10,5 +10,5 @@ final case class OrderOverviewCollection(orderOverviews: immutable.Seq[OrderOver
   def size = orderOverviews.size
   lazy val inProcessCount = orderOverviews count { _.taskId.isDefined }
   lazy val suspendedCount = orderOverviews count { _.isSuspended }
-  lazy val blacklistedCount = orderOverviews count { _.isOnBlacklist }
+  lazy val blacklistedCount = orderOverviews count { _.isBlacklisted }
 }
