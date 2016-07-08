@@ -67,7 +67,7 @@ object Futures {
         }
       }
 
-      def await(duration: Duration) = Await.result(delegate, duration.toFiniteDuration)
+      def await(duration: Duration) = Await.ready(delegate, duration.toFiniteDuration).successValue
 
       def awaitWithStackTrace(duration: Duration) =
         Await.ready(delegate, duration.toFiniteDuration).successValue
