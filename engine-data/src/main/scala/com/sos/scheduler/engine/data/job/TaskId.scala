@@ -7,14 +7,23 @@ import scala.annotation.meta.getter
 import spray.json.{JsNumber, JsString, JsValue, JsonFormat}
 
 @ForCpp
-final case class TaskId(@(ForCpp @getter) value: Int) extends GenericInt {
+final case class TaskId(@(ForCpp @getter) number: Int) extends GenericInt {
 
-  override def toString = s"TaskId $value"
+  override def toString = s"TaskId $number"
 
-  def string = value.toString
+  def +(n: Int) = TaskId(number + n)
+
+  def -(n: Int) = TaskId(number - n)
+
+  def string = number.toString
 }
 
-object TaskId {
+object TaskId extends GenericInt.Companion[TaskId] {
+  val Null = TaskId(0)
+  // TaskId(1) is not used
+  val SchedulerStart = TaskId(2)  // Misused for JobScheduler start database record. This number only with a new database.
+  val First = TaskId(3)  // TaskId of the first Task with a new database
+
   @JsonCreator def jsonCreator(taskId: Int) = new TaskId(taskId)
 
   implicit object MyJsonFormat extends JsonFormat[TaskId] {

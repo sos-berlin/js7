@@ -12,24 +12,18 @@ trait IsString extends SerializableIsString {
 
   final def nonEmpty = string.nonEmpty
 
-  override def equals(o: Any) = o match {
-    case o: IsString => (getClass eq o.getClass) && string == o.string
-    case _ => false
-  }
-
-  final override def hashCode = string.hashCode
+  final override def hashCode = string.hashCode ^ getClass.hashCode
 
   override def toString = string
 }
 
-
 object IsString {
   /** Für &lt;elememt attribute={stringValue}/>. */
-  implicit def toXmlText(o: StringValue): xml.Text = new xml.Text(o.string)
+  implicit def toXmlText(o: IsString): xml.Text = new xml.Text(o.string)
 
   @Nullable def stringOrNull[A <: IsString](o: Option[A]): String = o match {
-    case Some(a) => a.string
-    case None => null
+    case Some(a) ⇒ a.string
+    case None ⇒ null
   }
 
   val UnsupportedJsonDeserialization = (o: String) ⇒
@@ -42,7 +36,7 @@ object IsString {
   final class MyJsonFormat[A <: IsString](construct: String => A) extends MyJsonWriter[A] with JsonFormat[A] {
     def read(jsValue: JsValue): A = jsValue match {
       case JsString(string) ⇒ construct(string)
-      case _ => sys.error(s"String expected instead of ${jsValue.getClass.getSimpleName}")
+      case _ ⇒ sys.error(s"String expected instead of ${jsValue.getClass.getSimpleName}")
     }
   }
 
@@ -50,5 +44,9 @@ object IsString {
     def apply(o: String): A
 
     implicit val MyJsonFormat = new IsString.MyJsonFormat(apply)
+  }
+
+  trait Companion[A <: IsString] extends HasJsonFormat[A] {
+    implicit val ordering: Ordering[A] = Ordering by { _.string }
   }
 }

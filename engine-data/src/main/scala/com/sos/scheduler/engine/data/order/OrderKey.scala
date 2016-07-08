@@ -23,9 +23,11 @@ with TypedPath {
 object OrderKey extends TypedPath.Companion[OrderKey] {
   private val Separator = ','
 
+  override implicit val ordering: Ordering[OrderKey] = Ordering by { o ⇒ (o.jobChainPath, o.id) }
+
   def apply(o: String): OrderKey = {
     val i = o indexOf ','
-    require(i > 0, "OrderKey TypedPath needs comma ',' to separate job chain path from order key")
+    require(i > 0, "OrderKey TypedPath needs comma ',' to separate JobChainPath from OrderId")
     apply(o.substring(0, i), o.substring(i + 1))
   }
 

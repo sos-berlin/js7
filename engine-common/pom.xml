@@ -178,7 +178,6 @@
         <dependency>
             <groupId>io.spray</groupId>
             <artifactId>spray-routing_${scala.binaryVersion}</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.spray</groupId>

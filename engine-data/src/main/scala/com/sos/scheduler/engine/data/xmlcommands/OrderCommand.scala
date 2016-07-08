@@ -1,12 +1,15 @@
 package com.sos.scheduler.engine.data.xmlcommands
 
 import com.sos.scheduler.engine.data.order.{OrderKey, OrderState}
+import com.sos.scheduler.engine.data.time.SchedulerDateTime
+import java.time.Instant
 
 final case class OrderCommand(
     orderKey: OrderKey,
     state: Option[OrderState] = None,
-    title: Option[String] = None,
+    at: Option[Instant] = None,
     suspended: Option[Boolean] = None,
+    title: Option[String] = None,
     parameters: Map[String, String] = Map(),
     xmlChildren: xml.NodeSeq = Nil)
 extends XmlCommand {
@@ -19,7 +22,11 @@ extends XmlCommand {
         job_chain={orderKey.jobChainPath.string}
         id={orderKey.id.string}
         state={(state map { _.string }).orNull}
+        at={(at map SchedulerDateTime.formatUtc).orNull}
         suspended={(suspended map { _.toString }).orNull}
-        title={title.orNull}>{parameterElem}{xmlChildren}</order>
+        title={title.orNull}>{
+      parameterElem}{
+      xmlChildren
+    }</order>
   }
 }

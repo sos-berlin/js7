@@ -60,16 +60,12 @@ with NoJobSchedulerEngineWebService
   protected def tunnelOverviews = tunnelServer.tunnelOverviews
   protected def tunnelView(tunnelId: TunnelId) = tunnelServer.tunnelView(tunnelId)
 
-  private lazy val lazyInit = for (o ← extraWebServices) {
+  for (o ← extraWebServices) {
     logger.debug(s"Adding extra route $o")
     routeBuilder ++= o.routeBuilder
   }
-  lazyInit
 
-  def receive = {
-    lazyInit
-    runRoute(buildRoute(authenticator))
-  }
+  def receive = runRoute(buildRoute(authenticator))
 }
 
 private[web] object WebServiceActor {

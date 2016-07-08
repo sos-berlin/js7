@@ -78,7 +78,7 @@ object AbsolutePath {
   private def stripTrailingSlash(a: String): String =
     if (a endsWith "/") a.substring(0, a.length - 1) else a
 
-  trait Companion[A <: AbsolutePath] extends IsString.HasJsonFormat[A] {
+  trait Companion[A <: AbsolutePath] extends IsString.Companion[A] {
     def apply(o: String): A
 
     /**

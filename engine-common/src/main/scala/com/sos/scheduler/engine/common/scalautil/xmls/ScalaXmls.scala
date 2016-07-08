@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
+import akka.util.ByteString
 import com.google.common.base.Charsets.UTF_8
 import java.io.File
 import java.nio.charset.Charset
@@ -18,15 +19,15 @@ object ScalaXmls {
     }
 
     implicit class RichElem(val delegate: xml.Elem) extends AnyVal {
-      def toBytes: Array[Byte] = toBytes(xmlDecl = true)
+      def toByteString: ByteString = toByteString(xmlDecl = true)
 
-      def toBytes(encoding: Charset = UTF_8, xmlDecl: Boolean = true): Array[Byte] = {
+      def toByteString(encoding: Charset = UTF_8, xmlDecl: Boolean = true): ByteString = {
         val b = new StringBuilder
         if (xmlDecl) {
           b.append(s"<?xml version='1.0' encoding='${ encoding.name }'?>")
         }
         xml.Utility.serialize(delegate, sb = b)
-        b.toString().getBytes(encoding)
+        ByteString(b.toString().getBytes(encoding))
       }
     }
   }

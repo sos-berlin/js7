@@ -4,6 +4,8 @@ import com.sos.scheduler.engine.base.sprayjson.JavaEnumJsonFormat;
 import spray.json.JsonFormat;
 
 public enum FileBasedState {
+    // Same order as FileBaseState in Java !
+
     /** Fehler in XML-Definition */
     undefined("undefined"),
 
@@ -39,4 +41,10 @@ public enum FileBasedState {
     }
 
     public static final JsonFormat<FileBasedState> MyJsonFormat = new JavaEnumJsonFormat<>(FileBasedState.class);
+
+    /** Experimental. */
+    public boolean isOkay() {
+        return this == notInitialized ||  // For non file-based "ad-hoc" orders
+            this == active;
+    }
 }

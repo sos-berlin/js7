@@ -3,8 +3,8 @@ package com.sos.scheduler.engine.taskserver
 import akka.util.ByteString
 import com.google.inject.Injector
 import com.sos.scheduler.engine.base.process.ProcessSignal
+import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
