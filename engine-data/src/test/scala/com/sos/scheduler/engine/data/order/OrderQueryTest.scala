@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.order
 
-import com.sos.scheduler.engine.data.jobchain.JobChainPath
+import com.sos.scheduler.engine.data.jobchain.{JobChainPath, JobChainQuery}
 import com.sos.scheduler.engine.data.order.OrderSourceType._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -14,42 +14,42 @@ final class OrderQueryTest extends FreeSpec {
 
   private val orderKey = JobChainPath("/a/jobChain") orderKey "1"
 
-  "jobChains" in {
+  "jobChainQuery" in {
     val order = QueryableOrder.ForTest(orderKey)
-    assert(OrderQuery()(order))
-    assert(OrderQuery(jobChains = "/")(order))
-    assert(OrderQuery(jobChains = "/a/")(order))
-    assert(!OrderQuery(jobChains = "/a")(order))
-    assert(!OrderQuery(jobChains = "/other/")(order))
+    assert(OrderQuery().matches(order))
+    assert(OrderQuery(jobChainQuery = JobChainQuery("/")) matches order)
+    assert(OrderQuery(jobChainQuery = JobChainQuery("/a/")) matches order)
+    assert(!(OrderQuery(jobChainQuery = JobChainQuery("/a")) matches order))
+    assert(!(OrderQuery(jobChainQuery = JobChainQuery("/other/")) matches order))
   }
 
   "isSuspended" in {
     val order = QueryableOrder.ForTest(orderKey, isSuspended = true)
-    assert(OrderQuery()(order))
-    assert(OrderQuery(isSuspended = Some(true))(order))
-    assert(!OrderQuery(isSuspended = Some(false))(order))
+    assert(OrderQuery().matches(order))
+    assert(OrderQuery(isSuspended = Some(true)) matches order)
+    assert(!(OrderQuery(isSuspended = Some(false)) matches order))
   }
 
   "isSetback" in {
     val order = QueryableOrder.ForTest(orderKey, isSetback = true)
-    assert(OrderQuery()(order))
-    assert(OrderQuery(isSetback = Some(true))(order))
-    assert(!OrderQuery(isSetback = Some(false))(order))
+    assert(OrderQuery().matches(order))
+    assert(OrderQuery(isSetback = Some(true)) matches order)
+    assert(!(OrderQuery(isSetback = Some(false)) matches order))
   }
 
   "isBlacklisted" in {
     val order = QueryableOrder.ForTest(orderKey, isBlacklisted = true)
-    assert(OrderQuery()(order))
-    assert(OrderQuery(isBlacklisted = Some(true))(order))
-    assert(!OrderQuery(isBlacklisted = Some(false))(order))
+    assert(OrderQuery().matches(order))
+    assert(OrderQuery(isBlacklisted = Some(true)) matches order)
+    assert(!(OrderQuery(isBlacklisted = Some(false)) matches order))
   }
 
   "isSourceType" in {
     val order = QueryableOrder.ForTest(orderKey, sourceType = adHoc)
-    assert(OrderQuery()(order))
-    assert(!OrderQuery(isSourceType = Some(Set()))(order))
-    assert(!OrderQuery(isSourceType = Some(Set(fileBased)))(order))
-    assert(OrderQuery(isSourceType = Some(Set(adHoc, fileBased)))(order))
-    assert(OrderQuery(isSourceType = Some(Set(adHoc, fileBased)))(order))
+    assert(OrderQuery() matches order)
+    assert(!(OrderQuery(isSourceType = Some(Set())) matches order))
+    assert(!(OrderQuery(isSourceType = Some(Set(fileBased))) matches order))
+    assert(OrderQuery(isSourceType = Some(Set(adHoc, fileBased))) matches order)
+    assert(OrderQuery(isSourceType = Some(Set(adHoc, fileBased))) matches order)
   }
 }
