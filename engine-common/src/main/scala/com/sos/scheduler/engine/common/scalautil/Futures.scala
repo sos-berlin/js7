@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.Tries.{ModifiedStackTraceTry, extendStackTraceWith, newStackTrace}
+import com.sos.scheduler.engine.common.scalautil.Tries.{extendStackTraceWith, newStackTrace}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
 import java.util.concurrent.TimeoutException
@@ -70,7 +70,7 @@ object Futures {
       def await(duration: Duration) = Await.result(delegate, duration.toFiniteDuration)
 
       def awaitWithStackTrace(duration: Duration) =
-        Await.ready(delegate, duration.toFiniteDuration).value.get.withThisStackTrace.get
+        Await.ready(delegate, duration.toFiniteDuration).successValue
     }
 
     implicit class RichFutures[A](val delegate: Iterable[Future[A]]) extends AnyVal {
