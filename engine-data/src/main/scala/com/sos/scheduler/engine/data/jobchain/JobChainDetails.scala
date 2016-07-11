@@ -12,7 +12,7 @@ final case class JobChainDetails(
   path: JobChainPath,
   fileBasedState: FileBasedState,
   file: Option[File],
-  fileModificationInstant: Option[Instant],
+  fileModifiedAt: Option[Instant],
   sourceXml: Option[String],
   nodes: immutable.Seq[NodeOverview] )
 extends FileBasedDetails

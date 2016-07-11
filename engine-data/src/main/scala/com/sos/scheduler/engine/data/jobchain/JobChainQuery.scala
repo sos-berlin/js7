@@ -24,8 +24,6 @@ final case class JobChainQuery(string: String) extends IsString {
     if (matchesAll) JobChainQuery.All
     else if (string endsWith "/") FolderPath(string stripSuffix "/")
     else JobChainPath(string)
-
-  private[engine] def uriPath = string  // For now, JobChainQuery can only be a FolderPath + "/" or a JobChainPath
 }
 
 object JobChainQuery extends IsString.Companion[JobChainQuery] {
@@ -34,6 +32,4 @@ object JobChainQuery extends IsString.Companion[JobChainQuery] {
   def apply(folder: FolderPath) = new JobChainQuery((folder.string stripSuffix "/") + "/")
 
   def apply(jobChainPath: JobChainPath) = new JobChainQuery(jobChainPath.string)
-
-  def fromUriPath(path: String) = new JobChainQuery(path)
 }

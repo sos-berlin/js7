@@ -8,6 +8,6 @@ import java.time.Instant
  */
 trait FileBasedDetails extends FileBasedOverview {
   def file: Option[File]
-  def fileModificationInstant: Option[Instant]
+  def fileModifiedAt: Option[Instant]
   def sourceXml: Option[String]
 }
