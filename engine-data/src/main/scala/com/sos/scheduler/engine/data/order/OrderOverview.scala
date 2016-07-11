@@ -32,5 +32,5 @@ object OrderOverview {
   private implicit val OrderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
   implicit val MyJsonFormat = jsonFormat9(apply)
 
-  implicit val ordering: Ordering[OrderOverview] = Ordering by { _.orderKey }
+  implicit val ordering: Ordering[OrderOverview] = Ordering by { o ⇒ (o.orderKey.jobChainPath, o.orderState, o.orderKey.id) }
 }
