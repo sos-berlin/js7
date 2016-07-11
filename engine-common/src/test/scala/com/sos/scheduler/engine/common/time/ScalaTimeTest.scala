@@ -141,7 +141,7 @@ final class ScalaTimeTest extends FreeSpec {
     }
 
     "pretty" in {
-      Long.MaxValue.s.pretty shouldEqual s"${Long.MaxValue}s"   // No overflow
+      Long.MaxValue.s.pretty shouldEqual s"${Long.MaxValue / (366*24*60*60)}~years"   // No overflow
       0.s.pretty shouldEqual "0s"
       1.s.pretty shouldEqual "1s"
       1200.ms.pretty shouldEqual "1.2s"
@@ -151,6 +151,18 @@ final class ScalaTimeTest extends FreeSpec {
       1.ms.pretty shouldEqual "0.001s"
       (-10).ms.pretty shouldEqual "-0.01s"
       (-1).s.pretty shouldEqual "-1s"
+      179.s.pretty shouldEqual "179s"
+      180.s.pretty shouldEqual "3min"
+      (5*60+1).s.pretty shouldEqual "5min"
+      (-5*60-1).s.pretty shouldEqual "-5min"
+      (5*60*60).s.pretty shouldEqual "5h"
+      (-5*60*60).s.pretty shouldEqual "-5h"
+      (5*24*60*60).s.pretty shouldEqual "5d"
+      (-5*24*60*60).s.pretty shouldEqual "-5d"
+      (366*24*60*60).s.pretty shouldEqual "12~months"
+      (-366*24*60*60).s.pretty shouldEqual "-12~months"
+      (12*366*24*60*60).s.pretty shouldEqual "12~years"
+      (-12*366*24*60*60).s.pretty shouldEqual "-12~years"
       Duration.ofNanos(1000000).pretty shouldEqual "0.001s"
       Duration.ofNanos(1000001).pretty shouldEqual "0.001s"
       Duration.ofNanos(1001000).pretty shouldEqual "1001µs"
