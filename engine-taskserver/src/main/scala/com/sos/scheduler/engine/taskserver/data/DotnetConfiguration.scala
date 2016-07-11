@@ -1,8 +1,9 @@
 package com.sos.scheduler.engine.taskserver.data
 
+import com.sos.scheduler.engine.base.sprayjson.SprayJson
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits._
 import java.nio.file.Path
 import spray.json.DefaultJsonProtocol._
-import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
 
 /**
   * @author Joacim Zschimmer

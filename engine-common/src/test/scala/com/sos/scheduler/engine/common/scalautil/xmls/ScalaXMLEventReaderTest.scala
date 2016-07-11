@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
-import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions
+import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.utils.ScalaUtils._
 import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions._
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReaderTest._
 import org.junit.runner.RunWith
@@ -214,7 +214,7 @@ private object ScalaXMLEventReaderTest {
         val x = attributeMap("x")
         val o = attributeMap.getOrElse("optional", "DEFAULT")
         val ds = parseEachRepeatingElement("D") { D() }
-        C(x, o, ds.to[immutable.Seq])
+        C(x, o, ds)
       }
 
     parseElement("A") {

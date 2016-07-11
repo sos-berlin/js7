@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.taskserver.modules.javamodule
 
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
+import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
 
 /**
   * For a Java class which may be a [[sos.spooler.Job_impl]] or [[sos.spooler.Monitor_impl]].

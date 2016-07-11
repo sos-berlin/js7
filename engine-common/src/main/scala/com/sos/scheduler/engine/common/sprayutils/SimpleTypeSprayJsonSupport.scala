@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.sprayutils
 
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
+import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 

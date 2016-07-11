@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.common.time.timer
 
+import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.utils.ScalaUtils.someUnless
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.someUnless
 import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion.ToYamlString
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.Timer.nowMillis

@@ -1,11 +1,12 @@
 package com.sos.scheduler.engine.common.utils
 
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
+import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.utils.ScalaUtils._
 import com.sos.scheduler.engine.common.utils.BeanPropertyReader._
 import scala.reflect.ClassTag
 
 /**
- * A mapper providing the bean properties of 
+ * A mapper providing the bean properties of
  * @author Joacim Zschimmer
  */
 final class BeanPropertyReader[A](clas: Class[_ <: A], nameToConverter: NameToConverter) {
