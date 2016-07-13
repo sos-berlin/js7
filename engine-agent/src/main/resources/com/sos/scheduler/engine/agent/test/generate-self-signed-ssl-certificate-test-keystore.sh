@@ -2,6 +2,7 @@
 # Generates a test TLS certificate
 set -e
 
+directory=""
 distinguishedName="CN=localhost, O=Test"
 days=3660
 privateKeystore="config/private/private-https.jks"
@@ -18,12 +19,12 @@ for arg in "$@"; do
             shift
             ;;
         -data-directory=*)
-            cd "${arg#*=}"
+            directory="${arg#*=}"
             shift
             ;;
         -resources)
             # Generate test code files (to be called manually)
-            cd "$(dirname "$0")"
+            directory="$(dirname "$0")"
             shift
             ;;
         -days=*)
@@ -36,6 +37,12 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+[ -n "$directory" ] || {
+    echo Missing argument for -data-directory=
+    exit 1
+}
+cd "$directory"
 
 rm -v --force "$privateKeystore" "$publicKeystore" "$publicCertFile"
 

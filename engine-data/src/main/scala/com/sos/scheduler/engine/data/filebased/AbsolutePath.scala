@@ -11,7 +11,7 @@ trait AbsolutePath extends IsString {
   final def parent: FolderPath =
     string lastIndexOf '/' match {
       case 0 if string == "/" ⇒ throw new IllegalStateException("Root path has not parent folder")
-      case 0 ⇒ FolderPath("/")
+      case 0 ⇒ FolderPath.Root
       case n ⇒ FolderPath(string.substring(0, n))
     }
 
@@ -78,7 +78,7 @@ object AbsolutePath {
   private def stripTrailingSlash(a: String): String =
     if (a endsWith "/") a.substring(0, a.length - 1) else a
 
-  trait Companion[A <: AbsolutePath] extends IsString.HasJsonFormat[A] {
+  trait Companion[A <: AbsolutePath] extends IsString.Companion[A] {
     def apply(o: String): A
 
     /**

@@ -10,10 +10,11 @@ import com.sos.scheduler.engine.agent.test.AgentConfigDirectoryProvider
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.AgentWebServerIT._
 import com.sos.scheduler.engine.base.generic.SecretString
+import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.sprayutils.https.Https._
 import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference

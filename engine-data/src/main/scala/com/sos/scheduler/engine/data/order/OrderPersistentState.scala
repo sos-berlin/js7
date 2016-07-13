@@ -27,8 +27,8 @@ extends HasKey {
   type Key = OrderKey
 
   def key = OrderKey(jobChainPath, orderId)
-  //Compiles, but is wrongly typed (Joda vs Java Time): def isOnBlacklist = distributedNextTimeOption contains BlacklistDatabaseDistributedNextTime
-  def isOnBlacklist = distributedNextTimeOption map { _.toEpochMilli } contains BlacklistDatabaseDistributedNextTime.toEpochMilli
+  //Compiles, but is wrongly typed (Joda vs Java Time): def isBlacklisted = distributedNextTimeOption contains BlacklistDatabaseDistributedNextTime
+  def isBlacklisted = distributedNextTimeOption map { _.toEpochMilli } contains BlacklistDatabaseDistributedNextTime.toEpochMilli
 }
 
 object OrderPersistentState {

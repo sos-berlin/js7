@@ -19,7 +19,7 @@ final class JavaTimeJsonFormatsTest extends FreeSpec {
     case class A(instant: Instant)
     implicit val aJsonFormat = jsonFormat1(A.apply)
 
-    "Instant" in {
+    "No second fraction" in {
       val t = "2015-06-09T12:22:33Z"
       val a = A(Instant.parse(t))
       val j = JsObject("instant" → JsString(t))
@@ -27,7 +27,7 @@ final class JavaTimeJsonFormatsTest extends FreeSpec {
       assert(a == j.convertTo[A])
     }
 
-    "Instant with milliseconds" in {
+    "With milliseconds" in {
       val t = "2015-06-09T12:22:33.987Z"
       val a = A(Instant.parse(t))
       val j = JsObject("instant" → JsString(t))
@@ -36,7 +36,7 @@ final class JavaTimeJsonFormatsTest extends FreeSpec {
       assert(a == j.convertTo[A])
     }
 
-    "Instant with microseconds" in {
+    "With microseconds" in {
       val t = "2015-06-09T12:22:33.987654Z"
       val a = A(Instant.parse(t))
       val j = JsObject("instant" → JsString(t))
@@ -45,13 +45,25 @@ final class JavaTimeJsonFormatsTest extends FreeSpec {
       assert(a == j.convertTo[A])
     }
 
-    "Instant with nanoseconds" in {
+    "With nanoseconds" in {
       val t = "2015-06-09T12:22:33.987654321Z"
       val a = A(Instant.parse(t))
       val j = JsObject("instant" → JsString(t))
       assert(a.instant.getNano == 987654321)
       assert(a.toJson == j)
       assert(a == j.convertTo[A])
+    }
+
+    "Numeric" in {
+      def check(bigDecimal: BigDecimal, instant: Instant) = {
+        val json = JsObject("instant" → JsNumber(bigDecimal))
+        assert(json.convertTo[A].instant == instant)
+        //assert(A(instant).toJson == json)
+      }
+      val instant = Instant.parse("2016-06-29T11:22:33Z")
+      check(instant.getEpochSecond, instant)
+      check(instant.getEpochSecond + BigDecimal("0.987654321"), instant plusNanos 987654321)
+      intercept[ArithmeticException] { JsObject("instant" → JsNumber(BigDecimal("0.0000000009"))).convertTo[A] }
     }
   }
 

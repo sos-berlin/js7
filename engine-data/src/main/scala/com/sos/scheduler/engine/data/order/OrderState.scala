@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.base.generic.IsString
 
 final case class OrderState(string: String) extends IsString
 
-object OrderState extends IsString.HasJsonFormat[OrderState] {
+object OrderState extends IsString.Companion[OrderState] {
   @JsonCreator def jsonCreator(o: String) =
     new OrderState(o)
 }

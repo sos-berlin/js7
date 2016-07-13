@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.scheduler.engine.base.utils
 
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec

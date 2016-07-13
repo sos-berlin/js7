@@ -23,6 +23,14 @@ final class Stopwatch {
 object Stopwatch {
   private val logger = Logger(getClass)
 
+  def measureTime[A](message: String)(body: ⇒ A): A = {
+    val start = nanoTime()
+    val result = body
+    val duration = Duration.ofNanos(nanoTime() - start)
+    logger.info(s"$message ${duration.pretty}")
+    result
+  }
+
   def measureTime(n: Int, itemName: String)(body: ⇒ Unit): Result = {
     body  // Warm-up
     val start = nanoTime()

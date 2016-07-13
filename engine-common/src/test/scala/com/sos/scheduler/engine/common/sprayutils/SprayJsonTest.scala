@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.sprayutils
 
-import com.sos.scheduler.engine.common.sprayutils.SprayJson.implicits._
+import com.sos.scheduler.engine.base.sprayjson.SprayJson
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits._
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonTest._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

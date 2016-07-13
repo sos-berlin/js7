@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.base.generic.JavaJsonFormats._
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits._
 import com.sos.scheduler.engine.data.filebased.{FileBasedDetails, FileBasedState}
-import java.io.File
+import java.nio.file.Path
 import java.time.Instant
 import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._
@@ -11,8 +11,8 @@ import spray.json.DefaultJsonProtocol._
 final case class JobChainDetails(
   path: JobChainPath,
   fileBasedState: FileBasedState,
-  file: Option[File],
-  fileModificationInstant: Option[Instant],
+  file: Option[Path],
+  fileModifiedAt: Option[Instant],
   sourceXml: Option[String],
   nodes: immutable.Seq[NodeOverview] )
 extends FileBasedDetails

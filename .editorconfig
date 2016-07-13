@@ -1,0 +1,20 @@
+# http://editorconfig.org
+
+[*]
+charset = utf-8
+indent_style = space
+end_of_line = lf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{bat,cmd}]
+charset = latin1
+
+[*.{elm,html,scala,ts}]
+indent_size = 2
+
+[*.{md,java,less,md,xml}]
+indent_size = 4
+
+[*.java]
+indent_size = 4

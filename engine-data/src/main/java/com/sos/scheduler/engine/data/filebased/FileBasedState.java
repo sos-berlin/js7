@@ -4,39 +4,36 @@ import com.sos.scheduler.engine.base.sprayjson.JavaEnumJsonFormat;
 import spray.json.JsonFormat;
 
 public enum FileBasedState {
+    // Same order as FileBaseState in Java !
+
     /** Fehler in XML-Definition */
-    undefined("undefined"),
+    undefined,
 
     /** on_initialized() gescheitert, Objekt ist nicht im Folder. */
-    notInitialized("not_initialized"),
+    not_initialized,
 
     /** on_initialized() ok, Objekt sieht gut aus. */
-    initialized("initialized"),
+    initialized,
 
     /** Mit Daten gefüllt: bei Jobs die Task-Warteschlange, bei Jobketten die Auftragswarteschlangen */
-    loaded("loaded"),
+    loaded,
 
     /** Requisite fehlt (beim Versuch zu aktivieren)- */
-    incomplete("incomplete"),
+    incomplete,
 
-    /** */
-    active("active"),
+    active,
 
-    /** */
-    closed("closed");
-
-
-    private final String cppName;
-
-    FileBasedState(String cppName) {
-        this.cppName = cppName;
-    }
+    closed;
 
     public static FileBasedState ofCppName(String name) {
-        for (FileBasedState s: values())
-            if (s.cppName.equals(name)) return s;
-        throw new IllegalArgumentException(name);
+        return valueOf(name);
     }
 
     public static final JsonFormat<FileBasedState> MyJsonFormat = new JavaEnumJsonFormat<>(FileBasedState.class);
+
+    /** Experimental. */
+    public boolean isOkay() {
+        return this == not_initialized ||  // For non file-based "ad-hoc" orders
+            this == active;
+    }
 }

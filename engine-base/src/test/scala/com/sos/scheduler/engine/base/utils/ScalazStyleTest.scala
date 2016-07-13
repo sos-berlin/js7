@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.scheduler.engine.base.utils
 
+import com.sos.scheduler.engine.base.utils.ScalazStyle._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import ScalazStyle._
 import org.scalatest.junit.JUnitRunner
 
 /**

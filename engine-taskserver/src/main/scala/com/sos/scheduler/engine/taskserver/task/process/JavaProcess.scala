@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
+import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.utils.ScalaUtils.RichAny
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.RichAny
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import java.io.File
 import scala.concurrent.ExecutionContext

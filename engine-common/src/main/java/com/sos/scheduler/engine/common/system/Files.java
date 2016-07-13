@@ -135,5 +135,6 @@ public final class Files {
         } catch (IOException x) {
             throw new RuntimeException("copyURLToFile(): "+x+", from="+source+" to="+destination, x);
         }
+        logger.info("copyURLToFile " + source + ", " + destination + " okay");
     }
 }

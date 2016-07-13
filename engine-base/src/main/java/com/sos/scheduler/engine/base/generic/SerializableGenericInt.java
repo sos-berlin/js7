@@ -6,5 +6,5 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
  (class java.lang.RuntimeException/Scala class file does not contain Scala annotation) */
 @JsonSerialize(using = GenericIntSerializer.class)
 interface SerializableGenericInt {
-    int value();
+    int number();
 }

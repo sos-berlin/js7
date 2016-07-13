@@ -1,5 +1,8 @@
 package com.sos.scheduler.engine.common.javautils;
 
+import java.util.Optional;
+import java.util.concurrent.Future;
+
 /**
  * Public functions for use of Scala in Java.
  *
@@ -16,5 +19,17 @@ public class ScalaInJava {
         @SuppressWarnings("varargs")
         scala.collection.immutable.Set<A> result = ScalaInJavaHelper$.MODULE$.toScalaSet(o);
         return result;
+    }
+
+    public static <A> Future<A> asJavaFuture(scala.concurrent.Future<A> scalaFuture) {
+        return new ScalaInJavaFuture<>(scalaFuture);
+    }
+
+    public static <A> Optional<A> toJavaOptional(scala.Option<A> scalaOption) {
+        return scalaOption.isDefined() ? Optional.of(scalaOption.get()) : Optional.empty();
+    }
+
+    public static <A> scala.Option<A> toScalaOption(Optional<A> optional) {
+        return optional.isPresent() ? new scala.Some<>(optional.get()) : scala.None$.empty();
     }
 }

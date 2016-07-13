@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.scheduler.engine.base.utils
 
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicits._
+import com.sos.scheduler.engine.base.utils.ScalaUtils._
+import com.sos.scheduler.engine.base.utils.ScalaUtils.implicits._
 import java.util.concurrent.atomic.AtomicBoolean
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec

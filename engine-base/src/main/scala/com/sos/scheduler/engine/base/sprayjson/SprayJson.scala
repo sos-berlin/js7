@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.scheduler.engine.base.sprayjson
 
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils._
+import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
 import java.nio.file.{Path, Paths}
 import scala.collection.JavaConversions._
 import spray.json._
@@ -42,7 +42,7 @@ object SprayJson {
     }
 
   def jsObjectToMap(jsObject: JsObject): Map[String, Any] =
-    (jsObject.fields map { case (k, v) ⇒ k → jsValueToAny(v) }).toMap
+    jsObject.fields map { case (k, v) ⇒ k → jsValueToAny(v) }
 
   object implicits {
     implicit object AnyMapJsonFormat extends RootJsonFormat[Map[String, Any]] {

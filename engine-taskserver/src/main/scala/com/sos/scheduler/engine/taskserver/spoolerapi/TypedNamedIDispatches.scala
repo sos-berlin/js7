@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
+import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichPairTraversable
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch
 import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches
 import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches._

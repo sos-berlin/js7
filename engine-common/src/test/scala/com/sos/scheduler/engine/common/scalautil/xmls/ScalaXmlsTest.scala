@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
+import akka.util.ByteString
 import com.google.common.base.Charsets.{ISO_8859_1, UTF_8}
 import com.google.common.io.Files
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXmls.implicits._
@@ -25,11 +26,11 @@ final class ScalaXmlsTest extends FreeSpec {
     finally f.delete()
   }
 
-  ".toBytes" in {
-    <å/>.toBytes shouldEqual "<?xml version='1.0' encoding='UTF-8'?><å/>".getBytes(UTF_8)
+  ".toByteString" in {
+    <å/>.toByteString shouldEqual ByteString("<?xml version='1.0' encoding='UTF-8'?><å/>")
   }
 
-  ".toBytes xmlDecl=false" in {
-    <å/>.toBytes(xmlDecl = false, encoding = ISO_8859_1) shouldEqual """<å/>""".getBytes(ISO_8859_1)
+  ".toByteString xmlDecl=false" in {
+    <å/>.toByteString(xmlDecl = false, encoding = ISO_8859_1) shouldEqual ByteString("""<å/>""", ISO_8859_1.name)
   }
 }

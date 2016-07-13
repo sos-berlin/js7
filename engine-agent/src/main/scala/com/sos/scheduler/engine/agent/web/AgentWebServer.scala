@@ -9,9 +9,10 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.Https
 import com.sos.scheduler.engine.agent.web.AgentWebServer._
 import com.sos.scheduler.engine.agent.web.auth.{SimpleUserPassAuthenticator, UnknownUserPassAuthenticator}
+import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.utils.ScalaUtils.RichAny
 import com.sos.scheduler.engine.common.auth.{Account, UserAndPassword}
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.scalautil.ScalaUtils.RichAny
 import com.sos.scheduler.engine.common.sprayutils.https.Https.newServerSSLEngineProvider
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.net.InetSocketAddress

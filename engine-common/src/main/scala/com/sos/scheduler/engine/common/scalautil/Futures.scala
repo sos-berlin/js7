@@ -67,7 +67,10 @@ object Futures {
         }
       }
 
-      def await(duration: Duration) = Await.result(delegate, duration.toFiniteDuration)
+      def await(duration: Duration) = Await.ready(delegate, duration.toFiniteDuration).successValue
+
+      def awaitWithStackTrace(duration: Duration) =
+        Await.ready(delegate, duration.toFiniteDuration).successValue
     }
 
     implicit class RichFutures[A](val delegate: Iterable[Future[A]]) extends AnyVal {

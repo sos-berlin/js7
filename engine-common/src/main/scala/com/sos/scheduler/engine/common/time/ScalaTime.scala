@@ -109,16 +109,23 @@ object ScalaTime {
     override def toString = pretty  // For ScalaTest
 
     def pretty =
-      if (delegate == Duration.ZERO) millisToPretty(0)
-      else
-      if (delegate.getSeconds > 1000000) s"${delegate.getSeconds}s"
+      if (delegate == Duration.ZERO) "0s"
       else {
-        val millis = delegate.toMillis
-        val nanos = delegate.toNanos
-        if (abs(millis) >= 10 || millis >= 1 && nanos / 1000 % 1000 == 0) millisToPretty(millis)
+        val seconds = delegate.getSeconds
+        val absSeconds = abs(seconds)
+        if (absSeconds >= 3*366*24*60*60) s"${seconds / (366*24*60*60)}~years"
+        else if (absSeconds >= 366*24*60*60) s"${seconds / (30*24*60*60)}~months"
+        else if (absSeconds >= 3*24*60*60) s"${seconds / (24*60*60)}d"
+        else if (absSeconds >= 3*60*60) s"${seconds / (60*60)}h"
+        else if (absSeconds >= 3*60) s"${seconds / 60}min"
         else {
-          if (abs(nanos) > 10000) s"${delegate.toNanos / 1000}µs"
-          else s"${delegate.toNanos}ns"
+          val millis = delegate.toMillis
+          val nanos = delegate.toNanos
+          if (abs(millis) >= 10 || millis >= 1 && nanos / 1000 % 1000 == 0) millisToPretty(millis)
+          else {
+            if (abs(nanos) > 10000) s"${delegate.toNanos / 1000}µs"
+            else s"${delegate.toNanos}ns"
+          }
         }
       }
 
