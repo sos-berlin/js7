@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.filebased
 
-trait FileBasedOverview {
+trait FileBasedOverview extends HasPath {
   def path: TypedPath
   def fileBasedState: FileBasedState
 }
