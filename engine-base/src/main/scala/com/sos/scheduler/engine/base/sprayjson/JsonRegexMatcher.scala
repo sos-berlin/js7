@@ -14,7 +14,7 @@ object JsonRegexMatcher {
   /** Wirft eine Exception, falls json nicht dem Muster entspricht. */
   def testRegexJson(json: String, patternMap: Map[String, Any]): Unit = {
     val jsObject = json.parseJson.asJsObject
-    require(patternMap.keySet == jsObject.fields.keySet, "")
+    require(jsObject.fields.keySet == patternMap.keySet, s"Fields ${jsObject.fields.keySet} does not match expected ${patternMap.keySet}")
     for ((name, expectedValue) ← patternMap) {
       try {
         (jsObject.fields(name), expectedValue) match {
