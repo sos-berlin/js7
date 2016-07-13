@@ -11,7 +11,7 @@ trait AbsolutePath extends IsString {
   final def parent: FolderPath =
     string lastIndexOf '/' match {
       case 0 if string == "/" ⇒ throw new IllegalStateException("Root path has not parent folder")
-      case 0 ⇒ FolderPath("/")
+      case 0 ⇒ FolderPath.Root
       case n ⇒ FolderPath(string.substring(0, n))
     }
 

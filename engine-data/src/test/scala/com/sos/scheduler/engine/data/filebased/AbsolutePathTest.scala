@@ -21,7 +21,7 @@ final class AbsolutePathTest extends FreeSpec {
     assert(TestPath.makeAbsolute(FolderPath("/default"), "a") == TestPath("/default/a"))
     assert(TestPath.makeAbsolute(FolderPath("/default"), "/a") == TestPath("/a"))
     assert(TestPath.makeAbsolute(FolderPath("/default"), "./a") == TestPath("/default/a"))
-    assert(TestPath.makeAbsolute(FolderPath("/"), "./a") == TestPath("/a"))
+    assert(TestPath.makeAbsolute(FolderPath.Root, "./a") == TestPath("/a"))
     assert(TestPath.makeAbsolute(FolderPath("/default/"), "/a") == TestPath("/a"))
     assert(TestPath.makeAbsolute(FolderPath("/default/"), "a") == TestPath("/default/a"))
     assert(TestPath.makeAbsolute(FolderPath("/default/"), "./a") == TestPath("/default/a"))
@@ -54,7 +54,7 @@ final class AbsolutePathTest extends FreeSpec {
   }
 
   "folder" in {
-    assert(TestPath("/a").parent == FolderPath("/"))
+    assert(TestPath("/a").parent == FolderPath.Root)
     assert(TestPath("/a/").parent == FolderPath("/a"))
     assert(TestPath("/folder/a").parent == FolderPath("/folder"))
     assert(TestPath("/x/folder/a").parent == FolderPath("/x/folder"))
