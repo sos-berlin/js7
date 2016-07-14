@@ -69,6 +69,21 @@ object Collections {
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
       def duplicates[K](key: A ⇒ K) =
         delegate groupBy key filter { _._2.size > 1 }
+
+      /**
+        * Like `groupBy`, but returns a ListMap retaining the original key order (of every first occurrence),
+        */
+      def retainOrderGroupBy[K](toKey: A ⇒ K): immutable.ListMap[K, immutable.Seq[A]] = {
+        val m = mutable.LinkedHashMap[K, immutable.VectorBuilder[A]]()
+        for (elem ← delegate) {
+          m.getOrElseUpdate(toKey(elem), new immutable.VectorBuilder[A]) += elem
+        }
+        val b = immutable.ListMap.newBuilder[K, immutable.Seq[A]]
+        for ((k, vectorBuilder) ← m) {
+          b += ((k, vectorBuilder.result))
+        }
+        b.result
+      }
     }
 
     implicit class RichPairTraversable[A, B](val delegate: Traversable[(A, B)]) extends AnyVal {

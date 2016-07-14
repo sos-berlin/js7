@@ -69,6 +69,18 @@ final class CollectionsTest extends FreeSpec {
     intercept[DuplicateKeyException] { List(1 → "eins", 1 → "ett") toKeyedMap { _._1 } }
   }
 
+  "retainOrderGroupBy" in {
+    case class A(name: String, i: Int)
+    val list = List(A("eins", 1), A("zwei a", 2), A("drei", 3), A("vier", 4), A("fünf", 5), A("zwei b", 2))
+    (list retainOrderGroupBy { _.i }).toVector shouldEqual Vector(
+      1 → Vector(A("eins", 1)),
+      2 → Vector(A("zwei a", 2), A("zwei b", 2)),
+      3 → Vector(A("drei", 3)),
+      4 → Vector(A("vier", 4)),
+      5 → Vector(A("fünf", 5)))
+    intercept[DuplicateKeyException] { List(1 → "eins", 1 → "ett") toKeyedMap { _._1 } }
+  }
+
   "duplicateKeys" in {
     def dup(o: Seq[A]) = o duplicates { _.i }
 
