@@ -6,23 +6,28 @@ import org.jetbrains.annotations.TestOnly
 
 trait AbsolutePath extends IsString {
 
-  final def name: String = string.substring(string.lastIndexOf('/') + 1)
+  final lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
 
-  final def parent: FolderPath =
+  final lazy val parent: FolderPath =
     string lastIndexOf '/' match {
       case 0 if string == "/" ⇒ throw new IllegalStateException("Root path has not parent folder")
       case 0 ⇒ FolderPath.Root
       case n ⇒ FolderPath(string.substring(0, n))
     }
 
+  lazy val nesting = string stripSuffix "/" count { _ == '/' }
+
   final def withTrailingSlash: String = if (string endsWith "/") string else s"$string/"
 
   final def withoutStartingSlash: String = string stripPrefix "/"
 
   /** Has to be called in every implementing constructor. */
-  protected def requireIsAbsolute(): Unit = require(string startsWith "/", s"Absolute path expected: $toString")
+  protected def validate(): Unit = {
+    require(string startsWith "/", s"Absolute path expected: $toString")
+    if (string != "/") require(!string.endsWith("/"), s"Trailing slash not allowed: $toString")
+    require(!string.contains("//"), s"Double slash not allowed: $toString")
+  }
 }
-
 
 object AbsolutePath {
 
@@ -81,6 +86,8 @@ object AbsolutePath {
   trait Companion[A <: AbsolutePath] extends IsString.Companion[A] {
     def apply(o: String): A
 
+    val NameOrdering: Ordering[A] = Ordering by { _.name }
+
     /**
      * Interprets a path as absolute.
      *
@@ -96,6 +103,6 @@ object AbsolutePath {
   }
 
   private case class UntypedPath(string: String) extends AbsolutePath {
-    requireIsAbsolute()
+    validate()
   }
 }

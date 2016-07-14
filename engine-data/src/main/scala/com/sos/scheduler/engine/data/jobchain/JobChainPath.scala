@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.data.order.{OrderId, OrderKey}
 final case class JobChainPath(string: String)
 extends TypedPath {
 
-  requireIsAbsolute()
+  validate()
 
   def fileBasedType = FileBasedType.jobChain
 

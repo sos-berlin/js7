@@ -11,6 +11,14 @@ import org.scalatest.FreeSpec
 @SuppressWarnings(Array("deprecated"))
 final class AbsolutePathTest extends FreeSpec {
 
+  "validate" in {
+    intercept[IllegalArgumentException] { TestPath("") }
+    intercept[IllegalArgumentException] { TestPath("x") }
+    intercept[IllegalArgumentException] { TestPath("/x/") }
+    intercept[IllegalArgumentException] { TestPath("x/") }
+    intercept[IllegalArgumentException] { TestPath("/x//y") }
+  }
+
   "makeAbsolute" in {
     assert(TestPath.makeAbsolute("a") == TestPath("/a"))
     assert(TestPath.makeAbsolute("a/b") == TestPath("/a/b"))
@@ -22,9 +30,6 @@ final class AbsolutePathTest extends FreeSpec {
     assert(TestPath.makeAbsolute(FolderPath("/default"), "/a") == TestPath("/a"))
     assert(TestPath.makeAbsolute(FolderPath("/default"), "./a") == TestPath("/default/a"))
     assert(TestPath.makeAbsolute(FolderPath.Root, "./a") == TestPath("/a"))
-    assert(TestPath.makeAbsolute(FolderPath("/default/"), "/a") == TestPath("/a"))
-    assert(TestPath.makeAbsolute(FolderPath("/default/"), "a") == TestPath("/default/a"))
-    assert(TestPath.makeAbsolute(FolderPath("/default/"), "./a") == TestPath("/default/a"))
     assert(TestPath.makeAbsolute(FolderPath("/default/x"), "/a/b") == TestPath("/a/b"))
     assert(TestPath.makeAbsolute(FolderPath("/default/x"), "a/b") == TestPath("/default/x/a/b"))
     assert(TestPath.makeAbsolute(FolderPath("/default/x"), "./a/b") == TestPath("/default/x/a/b"))
@@ -37,9 +42,6 @@ final class AbsolutePathTest extends FreeSpec {
     assert(makeCompatibleAbsolute("/base", "a") == "/a")
     assert(makeCompatibleAbsolute("/base", "./a") == "/base/a")
     assert(makeCompatibleAbsolute("/", "./a") == "/a")
-    assert(makeCompatibleAbsolute("/base/", "/a") == "/a")
-    assert(makeCompatibleAbsolute("/base/", "a") == "/a")
-    assert(makeCompatibleAbsolute("/base/", "./a") == "/base/a")
     assert(makeCompatibleAbsolute("/base/x", "/a/b") == "/a/b")
     assert(makeCompatibleAbsolute("/base/x", "a/b") == "/a/b")
     assert(makeCompatibleAbsolute("/base/x", "./a/b") == "/base/x/a/b")
@@ -55,26 +57,31 @@ final class AbsolutePathTest extends FreeSpec {
 
   "folder" in {
     assert(TestPath("/a").parent == FolderPath.Root)
-    assert(TestPath("/a/").parent == FolderPath("/a"))
     assert(TestPath("/folder/a").parent == FolderPath("/folder"))
     assert(TestPath("/x/folder/a").parent == FolderPath("/x/folder"))
     intercept[IllegalStateException] { TestPath("/").parent }
   }
 
+  "nesting" in {
+    assert(TestPath("/").nesting == 0)
+    assert(TestPath("/a").nesting == 1)
+    assert(TestPath("/a/b").nesting == 2)
+  }
+
   "withoutStartingSlash" in {
     assert(TestPath("/a").withoutStartingSlash == "a")
+    assert(TestPath("/").withoutStartingSlash == "")
   }
 
   "withTrailingSlash" in {
     assert(TestPath("/a").withTrailingSlash == "/a/")
-    assert(TestPath("/a/").withTrailingSlash == "/a/")
     assert(TestPath("/").withTrailingSlash == "/")
   }
 }
 
 object AbsolutePathTest {
   private case class TestPath(string: String) extends AbsolutePath {
-    requireIsAbsolute()
+    validate()
   }
 
   private object TestPath extends AbsolutePath.Companion[TestPath]

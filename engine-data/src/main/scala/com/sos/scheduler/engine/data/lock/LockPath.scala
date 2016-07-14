@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.data.lock
 import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
 
 final case class LockPath(string: String) extends TypedPath {
-  requireIsAbsolute()
+  validate()
 
   def fileBasedType = FileBasedType.lock
 }

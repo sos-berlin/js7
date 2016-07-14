@@ -10,28 +10,13 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class FolderPathTest extends FreeSpec {
 
-  "lastName" in {
-    assert(FolderPath("/").lastName == "")
-    assert(FolderPath("/a").lastName == "a")
-    assert(FolderPath("/a/").lastName == "a")
-    assert(FolderPath("/a/b").lastName == "b")
-  }
-
-  "nesting" in {
-    assert(FolderPath("/").nesting == 0)
-    assert(FolderPath("/a").nesting == 1)
-    assert(FolderPath("/a/").nesting == 1)
-    assert(FolderPath("/a/b").nesting == 2)
-  }
-
-  "slash" in {
-    assert(FolderPath("/") / "x" == FolderPath("/x"))
-    assert(FolderPath("/a") / "x" == FolderPath("/a/x"))
-    assert(FolderPath("/a/") / "x" == FolderPath("/a/x"))
-    assert(FolderPath("/a/b") / "x" == FolderPath("/a/b/x"))
-    intercept[IllegalArgumentException] { FolderPath("/") / "/" }
-    intercept[IllegalArgumentException] { FolderPath("/") / "/x" }
-    intercept[IllegalArgumentException] { FolderPath("/") / "x/" }
-    intercept[IllegalArgumentException] { FolderPath("/") / "x/y" }
+  "subfolder" in {
+    assert(FolderPath("/").subfolder("x") == FolderPath("/x"))
+    assert(FolderPath("/a").subfolder("x") == FolderPath("/a/x"))
+    assert(FolderPath("/a/b").subfolder("x") == FolderPath("/a/b/x"))
+    intercept[IllegalArgumentException] { FolderPath("/") subfolder "/" }
+    intercept[IllegalArgumentException] { FolderPath("/") subfolder "/x" }
+    intercept[IllegalArgumentException] { FolderPath("/") subfolder "x/" }
+    intercept[IllegalArgumentException] { FolderPath("/") subfolder "x/y" }
   }
 }
