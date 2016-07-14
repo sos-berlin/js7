@@ -7,15 +7,13 @@ import spray.json.DefaultJsonProtocol._
 
 final case class SchedulerOverview(
   version: String,
-  versionCommitHash: String,
-  startInstant: Instant,
-  instant: Instant,
+  startedAt: Instant,
   schedulerId: SchedulerId,
-  tcpPort: Option[Int],
+  httpPort: Option[Int],
   udpPort: Option[Int],
   pid: Int,
   state: SchedulerState)
 
 object SchedulerOverview {
-  implicit val MyJsonFormat = jsonFormat9(apply)
+  implicit val MyJsonFormat = jsonFormat7(apply)
 }

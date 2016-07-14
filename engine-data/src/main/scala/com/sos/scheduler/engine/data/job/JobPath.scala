@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
 final case class JobPath(string: String)
 extends TypedPath {
 
-  requireIsAbsolute()
+  validate()
 
   def fileBasedType = FileBasedType.job
 }

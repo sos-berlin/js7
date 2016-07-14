@@ -10,7 +10,7 @@ extends SerializableOrderKey
 with TypedPath {
   import com.sos.scheduler.engine.data.order.OrderKey._
 
-  requireIsAbsolute()
+  validate()
 
   def fileBasedType = FileBasedType.order
 

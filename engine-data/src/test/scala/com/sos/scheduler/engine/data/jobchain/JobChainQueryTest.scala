@@ -30,8 +30,8 @@ final class JobChainQueryTest extends FreeSpec {
 
   "Single FolderPath" in {
     val q = JobChainQuery(FolderPath("/a"))
-    assert(q == JobChainQuery(FolderPath("/a/")))   // FolderPath allows trailing slash ?
     assert(q == JobChainQuery("/a/"))
+    intercept[IllegalArgumentException] { JobChainQuery(FolderPath("/a/")) }
     assert(q.reduce == FolderPath("/a"))
     assert(!(q matches JobChainPath("/a")))
     assert(!(q matches JobChainPath("/x")))

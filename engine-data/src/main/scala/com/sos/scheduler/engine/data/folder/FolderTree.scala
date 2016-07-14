@@ -17,13 +17,13 @@ final case class FolderTree[A](
 object FolderTree {
   private val PathSplitter = Splitter.on('/')
 
-  def apply[A <: HasPath](root: FolderPath, hasPaths: Iterable[A]): FolderTree[A] =
-    apply(root, hasPaths, _.path)
+  def fromHasPaths[A <: HasPath](root: FolderPath, hasPaths: Iterable[A]): FolderTree[A] =
+    fromAny(root, hasPaths, _.path)
 
-  def apply[A](root: FolderPath, objects: Iterable[A], toPath: A ⇒ TypedPath): FolderTree[A] =
+  def fromAny[A](root: FolderPath, objects: Iterable[A], toPath: A ⇒ TypedPath): FolderTree[A] =
     fromNameSeqs(root, objects map { o ⇒ (split(toPath(o)) drop root.nesting) → o })
 
-  implicit def ordering[A]: Ordering[FolderTree[A]] = Ordering by { _.path.lastName }
+  implicit def ordering[A]: Ordering[FolderTree[A]] = Ordering.by((o: FolderTree[A]) ⇒ o.path)
 
   private[folder] def split(path: AbsolutePath): Vector[String] =
     PathSplitter.split(path.string stripPrefix "/").toVector
@@ -32,7 +32,7 @@ object FolderTree {
     val (leafPaths, folderPaths) = paths partition { case (nameSeq, obj) ⇒ nameSeq.tail.isEmpty }
     val leafs = for ((nameSeq, obj) ← leafPaths) yield Leaf(nameSeq.head, obj)
     val subfolders = for ((name, paths) ← folderPaths groupBy { case (nameSeq, obj) ⇒ nameSeq.head })
-      yield fromNameSeqs(folderPath / name, for ((nameSeq, obj) ← paths) yield nameSeq.tail → obj)
+      yield fromNameSeqs(folderPath subfolder name, for ((nameSeq, obj) ← paths) yield nameSeq.tail → obj)
     new FolderTree(folderPath, leafs.toVector, subfolders.toVector)
   }
 

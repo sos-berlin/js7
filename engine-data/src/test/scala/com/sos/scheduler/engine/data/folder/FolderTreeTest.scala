@@ -21,45 +21,53 @@ final class FolderTreeTest extends FreeSpec {
   }
 
   "FolderTree of root" in {
-    assert(FolderTree(FolderPath.Root, Paths, toPath _) == RootFolder)
+    assert(FolderTree.fromAny(FolderPath.Root, Paths, toPath) == RootFolder)
   }
 
   "FolderTree of subfolder" in {
-    assert(FolderTree(FolderPath("/x"), SubfolderPaths, toPath _) == SubFolder)
+    assert(FolderTree.fromAny(FolderPath("/x"), SubfolderPaths, toPath) == SubFolder)
+  }
+
+  "ordering" in {
+    val a = FolderTree(FolderPath("/a/a"), Nil, Nil)
+    val b = FolderTree(FolderPath("/a/b"), Nil, Nil)
+    val c = FolderTree(FolderPath("/a/c"), Nil, Nil)
+    val d = FolderTree(FolderPath("/a/d"), Nil, Nil)
+    assert(Vector(c, a, d, b).sorted == Vector(a, b, c, d))
   }
 }
 
 object FolderTreeTest {
 
-  private case class J(string: String)
+  private case class A(string: String)
 
-  private def toPath(j: J) = JobPath(j.string)
+  private def toPath(a: A) = JobPath(a.string)
 
   private val SubfolderPaths = List(
-    J("/x/x-a"),
-    J("/x/x-b"),
-    J("/x/x-y/x-y-a"))
+    A("/x/x-a"),
+    A("/x/x-b"),
+    A("/x/x-y/x-y-a"))
 
   private val Paths =
-    J("/a") ::
-    J("/b") ::
+    A("/a") ::
+    A("/b") ::
     SubfolderPaths
 
   private val SubFolder =
     FolderTree(FolderPath("/x"),
       leafs = List(
-        Leaf("x-a", J("/x/x-a")),
-        Leaf("x-b", J("/x/x-b"))),
+        Leaf("x-a", A("/x/x-a")),
+        Leaf("x-b", A("/x/x-b"))),
       subfolders = List(
         FolderTree(FolderPath("/x/x-y"),
           leafs = List(
-            Leaf("x-y-a", J("/x/x-y/x-y-a"))),
+            Leaf("x-y-a", A("/x/x-y/x-y-a"))),
           subfolders = Nil)))
 
   private val RootFolder =
     FolderTree(FolderPath("/"),
       leafs = List(
-        Leaf("a", J("/a")),
-        Leaf("b", J("/b"))),
+        Leaf("a", A("/a")),
+        Leaf("b", A("/b"))),
       subfolders = List(SubFolder))
 }
