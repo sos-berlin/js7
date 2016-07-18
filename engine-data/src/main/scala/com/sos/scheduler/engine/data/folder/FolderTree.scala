@@ -25,6 +25,8 @@ object FolderTree {
 
   implicit def ordering[A]: Ordering[FolderTree[A]] = Ordering.by((o: FolderTree[A]) ⇒ o.path)
 
+  val nameOrdering: Ordering[FolderTree[_]] = Ordering.by((o: FolderTree[_]) ⇒ o.path.name)
+
   private[folder] def split(path: AbsolutePath): Vector[String] =
     PathSplitter.split(path.string stripPrefix "/").toVector
 
