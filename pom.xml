@@ -300,7 +300,7 @@
                             <jvmArg>-Xss1M</jvmArg>
                         </jvmArgs>
                         <args>
-                            <arg>-deprecation</arg>
+                            <!--arg>-deprecation</arg-->
                             <arg>-feature</arg>
                             <arg>-Xlint</arg>
                         </args>
