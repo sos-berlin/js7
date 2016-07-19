@@ -9,14 +9,14 @@ import java.util.concurrent.atomic.AtomicReference
  * @author Joacim Zschimmer
  */
 class SetOnce[A] {
-  private val ref = new AtomicReference[A]
+  protected[this] val ref = new AtomicReference[A]
 
   /**
    * The value of the set variable.
    *
    * @throws IllegalStateException
    */
-  final def apply() = getOrElse { throw new IllegalStateException("Value is not yet set") }
+  def apply() = getOrElse { throw new IllegalStateException("Value is not yet set") }
 
   final override def toString = toStringOr("(not yet set)")
 
