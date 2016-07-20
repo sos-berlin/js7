@@ -1,11 +1,12 @@
 package com.sos.scheduler.engine.common.async
 
-import TimedCall._
+import com.sos.scheduler.engine.base.utils.ScalaUtils.SwitchStatement
+import com.sos.scheduler.engine.common.async.TimedCall._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import java.util.concurrent.Callable
 import java.time.Instant
+import java.util.concurrent.Callable
 import scala.util.control.NonFatal
-import scala.util.{Success, Try, Failure}
+import scala.util.{Failure, Success, Try}
 
 trait TimedCall[A] extends Callable[A] {
 
@@ -17,11 +18,11 @@ trait TimedCall[A] extends Callable[A] {
 
   private[async] final def onApply(): Unit = {
     logger.trace(s"Calling $toString")
-    val result = Try(call()) match {
-      case Failure(t) if t.getClass.getName == "org.scalatest.exceptions.TestFailedException" ⇒ throw t
-      case o ⇒ o
-    }
+    val result = Try(call())
     callOnComplete(result)
+    result switch {
+      case Failure(t) if t.getClass.getName == "org.scalatest.exceptions.TestFailedException" ⇒ throw t  // Return this exception to C++ code, too
+    }
   }
 
   private[async] final def onCancel(): Unit = {
