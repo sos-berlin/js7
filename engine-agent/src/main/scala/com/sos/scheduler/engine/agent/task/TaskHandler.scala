@@ -39,7 +39,8 @@ extends TaskHandlerView {
   private val terminating = new AtomicBoolean
   private val terminatedPromise = Promise[Unit]()
   private val tasks = new TaskRegister
-  private val crashKillScriptOption = agentConfiguration.killScript map { o ⇒ new CrashKillScript(o, agentConfiguration.crashKillScriptFile) }
+  private val crashKillScriptOption = for (script ← agentConfiguration.killScript if agentConfiguration.crashKillScriptEnabled)
+    yield new CrashKillScript(script, agentConfiguration.crashKillScriptFile)
 
   def isTerminating = terminating.get
   def terminated = terminatedPromise.future

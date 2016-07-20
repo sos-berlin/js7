@@ -120,6 +120,8 @@ final case class AgentConfiguration(
     }
   }
 
+  def crashKillScriptEnabled = dataDirectory.isDefined   // Suppressed when using a standard temporary directory to allow concurrent runs (and tests)
+
   def crashKillScriptFile: Path = temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"
 
   lazy val temporaryDirectory: Path =
