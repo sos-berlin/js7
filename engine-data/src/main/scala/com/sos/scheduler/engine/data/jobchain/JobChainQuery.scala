@@ -10,11 +10,11 @@ final case class JobChainQuery(string: String) extends IsString {
   require((string startsWith "/") && !(string contains "/.."), "Invalid jobChain pattern")
 
   def matches(jobChainPath: JobChainPath): Boolean =
-    matchesAll || ( // Fewer calls to slow OrderC.job_chain_path
+    matchesAll || (
       if (string endsWith "/") jobChainPath.string startsWith string
       else jobChainPath.string == string)
 
-  def matchesAll = string == "/"
+  val matchesAll = string == "/"
 
   /**
     * For query optimization, returns a reduces type.
