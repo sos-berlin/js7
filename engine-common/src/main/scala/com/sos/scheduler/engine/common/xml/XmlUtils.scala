@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.xml
 
+import akka.util.ByteString
 import com.google.common.base.MoreObjects.firstNonNull
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalaThreadLocal._
@@ -119,7 +120,7 @@ import scala.util.matching.Regex
     removeXmlProlog(result)
   }
 
-  private def removeXmlProlog(xml: String) =
+  def removeXmlProlog(xml: String) =
     if (xml startsWith "<?") xml.replaceFirst("^<[?][xX][mM][lL].+[?][>]\\w*", "") else xml
 
   def writeXmlTo(n: Node, o: OutputStream, encoding: Charset, indent: Boolean): Unit = {
@@ -275,6 +276,9 @@ import scala.util.matching.Regex
       }
     "\""+ result +"\""
   }
+
+  def xmlByteStringToString(byteString: ByteString): String =
+    xmlBytesToString(byteString.toArray)
 
   def xmlBytesToString(bytes: Array[Byte]): String =
     SafeXML.load(new ByteArrayInputStream(bytes)).toString()
