@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.common.sprayutils
 
-import java.nio.charset.StandardCharsets.UTF_8
-import spray.http.HttpCharsets.`UTF-8`
-import spray.http.HttpEntity
+import com.sos.scheduler.engine.common.xml.XmlUtils.xmlByteStringToString
+import spray.http.HttpCharsets._
 import spray.http.MediaTypes._
+import spray.http.{ContentType, HttpEntity}
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
 
@@ -13,21 +13,26 @@ import spray.httpx.unmarshalling.Unmarshaller
 final case class XmlString(string: String)
 
 object XmlString {
-  implicit val marshaller = Marshaller.of[XmlString](`application/xml`, `text/xml`) {
-    (value, contentType, ctx) ⇒
-      val data = value.string.getBytes(UTF_8)
-      val entity = (contentType.mediaType: @unchecked) match {
-        case `application/xml` ⇒ HttpEntity(`application/xml`, data)
-        case `text/xml` ⇒ HttpEntity(`text/xml` withCharset `UTF-8`, data)
-      }
-      ctx.marshalTo(entity)
+  implicit val marshaller: Marshaller[XmlString] = Marshaller.of[XmlString](`application/xml`, `text/xml`) {
+    (value, requestedContentType, ctx) ⇒
+      val contentType =
+        if (requestedContentType.definedCharset.isDefined)
+          requestedContentType
+        else
+          requestedContentType withCharset `UTF-8`  // Original contentType.charset defaults to ISO-8859-1. For sending, we prefer UTF-8
+      ctx.marshalTo(HttpEntity(contentType, value.string.getBytes(contentType.charset.nioCharset)))
   }
 
-  implicit val unmarshaller = Unmarshaller[XmlString](`application/xml`, `text/xml`) {
-    case HttpEntity.NonEmpty(contentType, data) ⇒
-      (contentType.mediaType: @unchecked) match {
-        case `application/xml` ⇒ XmlString(data.asString(UTF_8))
-        case `text/xml` ⇒ XmlString(data.asString(contentType.charset.nioCharset))
-      }
+  implicit val unmarshaller: Unmarshaller[XmlString] = Unmarshaller[XmlString](`application/xml`, `text/xml`) {
+    case HttpEntity.NonEmpty(contentType @ ContentType(`text/xml`, _), data) ⇒
+      // Using given or default text/xml charset
+      XmlString(data.asString(contentType.charset.nioCharset))
+
+    case HttpEntity.NonEmpty(ContentType(`application/xml`, Some(charset)), data) ⇒
+      XmlString(data.asString(charset))
+
+    case HttpEntity.NonEmpty(ContentType(`application/xml`, None), data) ⇒
+      // No charset given. The encoding has to be extracted from XML document itself.
+      XmlString(xmlByteStringToString(data.toByteString))
   }
 }
