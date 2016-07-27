@@ -4,16 +4,17 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration._
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.base.utils.ScalaUtils
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.configutils.Configs
 import com.sos.scheduler.engine.common.configutils.Configs._
+import com.sos.scheduler.engine.common.convert.As
 import com.sos.scheduler.engine.common.convert.As.asAbsolutePath
 import com.sos.scheduler.engine.common.internet.IP._
 import com.sos.scheduler.engine.common.process.Processes.ShellFileExtension
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
+import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
 import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
 import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
 import com.sos.scheduler.engine.common.time.ScalaTime._
@@ -36,8 +37,8 @@ import scala.reflect.ClassTag
  */
 final case class AgentConfiguration(
   dataDirectory: Option[Path],
-  httpAddress: Option[InetSocketAddress],
-  https: Option[Https],
+  http: Option[WebServerBinding.Http],
+  https: Option[WebServerBinding.Https],
   uriPathPrefix: String,
   externalWebServiceClasses: immutable.Seq[Class[_ <: ExternalWebService]],
   workingDirectory: Path = WorkingDirectory,
@@ -54,7 +55,7 @@ final case class AgentConfiguration(
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
     var v = copy(
-      httpAddress = a.optionAs("-http-port=", httpAddress)(StringToServerInetSocketAddress),
+      http = a.optionAs("-http-port=", http)(As(o ⇒ WebServerBinding.Http(StringToServerInetSocketAddress(o)))),
       https = a.optionAs("-https-port=")(StringToServerInetSocketAddress) map { o ⇒ inetSocketAddressToHttps(o) } orElse https,
       uriPathPrefix = a.as[String]("-uri-prefix=", uriPathPrefix) stripPrefix "/" stripSuffix "/",
       logDirectory = a.optionAs("-log-directory=")(asAbsolutePath) getOrElse logDirectory,
@@ -75,7 +76,7 @@ final case class AgentConfiguration(
 
   def withHttpsInetSocketAddress(addr: InetSocketAddress) = copy(https = Some(inetSocketAddressToHttps(addr)))
 
-  private def inetSocketAddressToHttps(addr: InetSocketAddress) = Https(
+  private def inetSocketAddressToHttps(addr: InetSocketAddress) = WebServerBinding.Https(
     addr,
     https map { _.keystoreReference } getOrElse
       KeystoreReference(
@@ -149,7 +150,7 @@ object AgentConfiguration {
     val c = config.getConfig("jobscheduler.agent")
     var v = new AgentConfiguration(
       dataDirectory = data,
-      httpAddress = c.optionAs("http.port")(StringToServerInetSocketAddress),
+      http = c.optionAs("http.port")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       https = None,  // Changed below
       externalWebServiceClasses = Nil,
       uriPathPrefix = c.as[String]("http.uri-prefix") stripPrefix "/" stripSuffix "/",
@@ -178,8 +179,6 @@ object AgentConfiguration {
       .withFallback(parseConfigIfExists(dataDirectory / "config/private/private.conf"))
       .withFallback(parseConfigIfExists(dataDirectory / "config/agent.conf"))
 
-  final case class Https(address: InetSocketAddress, keystoreReference: KeystoreReference)
-
   private def defaultLogDirectory(data: Path) = data / "logs"
 
   object forTest {
@@ -187,7 +186,7 @@ object AgentConfiguration {
 
     def apply(data: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
       fromDataDirectory(data, config).copy(
-        httpAddress = Some(new InetSocketAddress("127.0.0.1", httpPort)),
+        http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))),
         jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
   }
 }
