@@ -95,7 +95,7 @@ extends Actor with FSM[State, Data] {
       goto(ExpectingRequest) using NoData
 
     case Event(MessageTcpBridge.PeerClosed, Respond(responsePromise)) ⇒
-      responsePromise.failure(new ConnectionClosedException(s"$toString: Peer has closed the connection while expecting a response"))
+      responsePromise.failure(new TunnelConnectionClosedException(s"$toString: Peer has closed the connection while expecting a response"))
       stop()
 
     case Event(MessageTcpBridge.Failed(throwable), Respond(responsePromise)) ⇒
@@ -103,7 +103,7 @@ extends Actor with FSM[State, Data] {
       goto(ExpectingRequest) using NoData
 
     case Event(Close, Respond(responsePromise)) ⇒
-      responsePromise.failure(new ConnectionClosedException(s"$toString: Connection to peer has been closed by command"))
+      responsePromise.failure(new TunnelConnectionClosedException(s"$toString: Connection to peer has been closed by command"))
       closeBridge()
       goto(Closing) using NoData
   }
@@ -143,7 +143,7 @@ extends Actor with FSM[State, Data] {
 
     case Event(closed: Tcp.ConnectionClosed, data) ⇒
       logger.debug(s"$closed")
-      val exception = new ConnectionClosedException(s"$toString: Connection has unexpectedly been closed: $closed")
+      val exception = new TunnelConnectionClosedException(s"$toString: Connection has unexpectedly been closed: $closed")
       data match {
         case Respond(responsePromise) ⇒
           responsePromise.failure(exception)
