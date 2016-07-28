@@ -24,10 +24,10 @@ trait CommandWebService extends AgentWebService {
       optionalHeaderValueByName(LicenseKeyHeaderName) { licenseKeys ⇒
         (clientIP | provide[RemoteAddress](RemoteAddress.Unknown)) { clientIp ⇒  // Requires Spray configuration spray.can.remote-address-header = on
           entity(as[Command]) { command ⇒
-            val future = executeCommand(command, CommandMeta(
+            val response: Future[Response] = executeCommand(command, CommandMeta(
               clientIp.toOption,
               LicenseKeyBunch(licenseKeys getOrElse "")))
-            onSuccess(future) { response: Response ⇒ complete(response) }
+            complete(response)
           }
         }
       }

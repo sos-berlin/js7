@@ -13,7 +13,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.net.InetSocketAddress
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.Success
 import spray.can.Http
 import spray.can.Http.Unbind
 import spray.can.server.ServerSettings
@@ -70,14 +70,17 @@ trait SprayWebServer extends AutoCloseable {
   }
 
   def close() = {
+    logger.debug("close")
     implicit val timeout = Timeout(ShutdownTimeout.toFiniteDuration)
-    val future = for (_ ← IO(Http) ? Unbind(ShutdownTimeout.toConcurrent);
-                      _ ← IO(Http) ? Http.CloseAll) yield ()
+    val future = for (_ ← { logger.debug("Unbind"); IO(Http) ? Unbind(ShutdownTimeout.toConcurrent) };
+                      _ ← { logger.debug("CloseAll"); IO(Http) ? Http.CloseAll }) yield ()
     future onComplete {
       case Success(_) ⇒ logger.debug("WebService terminated")
-      case Failure(t) ⇒ logger.debug(s"$t", t)
+      case _ ⇒
+//      case Failure(t: AskTimeoutException) ⇒ logger.debug(s"close (ignored): $t")
+//      case Failure(t) ⇒ logger.debug(s"close (ignored): $t", t)
     }
-    // Does not terminate in time !!!  awaitResult(future, ShutdownTimeout)
+    // May not terminate in time: awaitResult(future, ShutdownTimeout)
   }
 }
 
