@@ -1,10 +1,14 @@
 package com.sos.scheduler.engine.data.folder
 
 import com.google.common.base.Splitter
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.lazyRootFormat
 import com.sos.scheduler.engine.data.filebased.{AbsolutePath, HasPath, TypedPath}
 import com.sos.scheduler.engine.data.folder.FolderTree._
 import scala.collection.JavaConversions._
 import scala.collection.immutable
+import scala.reflect.ClassTag
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -15,28 +19,37 @@ final case class FolderTree[A](
   subfolders: immutable.Seq[FolderTree[A]])
 
 object FolderTree {
-  private val PathSplitter = Splitter.on('/')
 
-  def fromHasPaths[A <: HasPath](root: FolderPath, hasPaths: Iterable[A]): FolderTree[A] =
-    fromAny(root, hasPaths, _.path)
+  final case class Leaf[A](name: String, value: A)
 
-  def fromAny[A](root: FolderPath, objects: Iterable[A], toPath: A ⇒ TypedPath): FolderTree[A] =
-    fromNameSeqs(root, objects map { o ⇒ (split(toPath(o)) drop root.nesting) → o })
+  object Leaf {
+    implicit def leafJsonFormat[A: JsonFormat] = jsonFormat2((name: String, value: A) ⇒ Leaf(name, value))
+  }
 
-  implicit def ordering[A]: Ordering[FolderTree[A]] = Ordering.by((o: FolderTree[A]) ⇒ o.path)
+  implicit def myJsonFormat[A: JsonFormat]: RootJsonFormat[FolderTree[A]] = lazyRootFormat(jsonFormat3(apply))
 
   val nameOrdering: Ordering[FolderTree[_]] = Ordering.by((o: FolderTree[_]) ⇒ o.path.name)
+  private val PathSplitter = Splitter.on('/')
+
+  implicit def ordering[A]: Ordering[FolderTree[A]] = Ordering by { _.path }
+
+  def fromHasPaths[A <: HasPath](root: FolderPath, hasPaths: immutable.Seq[A]): FolderTree[A] =
+    fromAny(root, hasPaths, _.path)
+
+  def fromAny[A, P <: TypedPath: ClassTag](root: FolderPath, objects: immutable.Seq[A], toPath: A ⇒ P): FolderTree[A] =
+    fromAny2[A](root, objects map { o ⇒ (split(toPath(o)) drop root.nesting) → o })
+
+  private def fromAny2[A](root: FolderPath, allPathValues: immutable.Seq[(Iterable[String], A)]): FolderTree[A] = {
+    def fromNameSeqs(folderPath: FolderPath, subpathValues: immutable.Seq[(Iterable[String], A)]): FolderTree[A] = {
+      val (leafPaths, folderPaths) = subpathValues partition { case (nameSeq, obj) ⇒ nameSeq.tail.isEmpty }
+      val leafs = leafPaths map { case (nameSeq, obj) ⇒ Leaf(nameSeq.head, obj) }
+      val subfolders = for ((name, paths) ← folderPaths groupBy { case (nameSeq, obj) ⇒ nameSeq.head })
+        yield fromNameSeqs(folderPath subfolder name, for ((nameSeq, obj) ← paths) yield nameSeq.tail → obj)
+      new FolderTree(folderPath, leafs, subfolders.toVector)
+    }
+    fromNameSeqs(root, allPathValues)
+  }
 
   private[folder] def split(path: AbsolutePath): Vector[String] =
     PathSplitter.split(path.string stripPrefix "/").toVector
-
-  private def fromNameSeqs[A](folderPath: FolderPath, paths: Iterable[(Iterable[String], A)]): FolderTree[A] = {
-    val (leafPaths, folderPaths) = paths partition { case (nameSeq, obj) ⇒ nameSeq.tail.isEmpty }
-    val leafs = for ((nameSeq, obj) ← leafPaths) yield Leaf(nameSeq.head, obj)
-    val subfolders = for ((name, paths) ← folderPaths groupBy { case (nameSeq, obj) ⇒ nameSeq.head })
-      yield fromNameSeqs(folderPath subfolder name, for ((nameSeq, obj) ← paths) yield nameSeq.tail → obj)
-    new FolderTree(folderPath, leafs.toVector, subfolders.toVector)
-  }
-
-  final case class Leaf[A](name: String, obj: A)
 }

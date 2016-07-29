@@ -4,9 +4,13 @@ import com.sos.scheduler.engine.data.folder.FolderTree.Leaf
 import com.sos.scheduler.engine.data.folder.FolderTreeTest._
 import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
+import java.time.Instant.now
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import org.slf4j.LoggerFactory
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -35,13 +39,58 @@ final class FolderTreeTest extends FreeSpec {
     val d = FolderTree(FolderPath("/a/d"), Nil, Nil)
     assert(Vector(c, a, d, b).sorted == Vector(a, b, c, d))
   }
+
+  "JSON" in {
+    implicit def aJsonFormat = jsonFormat1(A)
+    // JSON object fields are unordered. So we use an array of key/value pairs for the leafs
+    val json = """{
+      "path": "/",
+      "leafs": [
+        { "name": "a", "value": { "content": "/a" } },
+        { "name": "b", "value": { "content": "/b" } }
+      ],
+      "subfolders": [
+        {
+          "path": "/x",
+          "leafs": [
+            { "name": "x-a", "value": { "content": "/x/x-a" } },
+            { "name": "x-b", "value": { "content": "/x/x-b" } }
+          ],
+          "subfolders": [
+            {
+              "path": "/x/x-y",
+              "leafs": [
+                { "name": "x-y-a", "value": { "content": "/x/x-y/x-y-a" } }
+              ],
+              "subfolders": []
+            }
+          ]
+
+        }
+      ]
+    }""".parseJson.asJsObject
+    assert(RootFolder.toJson == json)
+    assert(RootFolder == json.convertTo[FolderTree[A]])
+  }
+
+  if (false)
+  "Speed" in {
+    for (_ ← 1 to 3) {
+      val start = now
+      val n = 100000
+      for (_ ← 1 to n) FolderTree.fromAny(FolderPath.Root, Paths, toPath)
+      val duration = now.toEpochMilli - start.toEpochMilli
+      logger.info(s"${duration}ms ${n * 1000L / duration}/s")
+    }
+  }
 }
 
 object FolderTreeTest {
+  private val logger = LoggerFactory.getLogger(classOf[FolderTreeTest])
 
-  private case class A(string: String)
+  private case class A(content: String)
 
-  private def toPath(a: A) = JobPath(a.string)
+  private def toPath(a: A) = JobPath(a.content)
 
   private val SubfolderPaths = List(
     A("/x/x-a"),
