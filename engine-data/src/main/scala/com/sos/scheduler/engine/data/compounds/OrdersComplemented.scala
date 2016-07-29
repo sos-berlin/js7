@@ -8,12 +8,12 @@ import spray.json.DefaultJsonProtocol._
 /**
   * @author Joacim Zschimmer
   */
-final case class OrdersFullOverview(
+final case class OrdersComplemented(
   orders: immutable.Seq[OrderOverview],
   usedTasks: immutable.Seq[TaskOverview],
   usedJobs: immutable.Seq[JobOverview],
   usedProcessClasses: immutable.Seq[ProcessClassOverview])
 
-object OrdersFullOverview {
+object OrdersComplemented {
   implicit val MyJsonFormat = jsonFormat4(apply)
 }
