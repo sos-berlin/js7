@@ -9,6 +9,7 @@ import spray.json._
  * @author Joacim Zschimmer
  */
 object SprayJson {
+
   def valueToJsValue(value: Any): JsValue =
     value match {
       case v: String ⇒ JsString(v)
@@ -58,5 +59,14 @@ object SprayJson {
 
       def read(o: JsValue) = Paths.get(cast[JsString](o).value)
     }
+  }
+
+  /**
+    * Spray implements only lazyFormat.
+    */
+  def lazyRootFormat[T](format: ⇒ JsonFormat[T]) = new RootJsonFormat[T] {
+    lazy val delegate = format
+    def write(x: T) = delegate.write(x)
+    def read(value: JsValue) = delegate.read(value)
   }
 }

@@ -27,6 +27,8 @@ final case class OrderQuery(
   def withIsSetback(o: Boolean) = copy(isSetback = Some(o))
   def withIsBlacklisted(o: Boolean) = copy(isBlacklisted = Some(o))
   def withSourceTypes(o: java.util.List[OrderSourceType]) = copy(isSourceType = Some(o.toSet))
+
+  def folderPath = jobChainQuery.folderPath
 }
 
 object OrderQuery {

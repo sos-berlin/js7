@@ -16,6 +16,12 @@ final case class JobChainQuery(string: String) extends IsString {
 
   val matchesAll = string == "/"
 
+  def folderPath: FolderPath = reduce match {
+    case o: FolderPath ⇒ o
+    case o: JobChainPath ⇒ o.parent
+    case _ ⇒ FolderPath.Root
+  }
+
   /**
     * For query optimization, returns a reduces type.
     * @return `All`, `JobChainPath`, `FolderPath` or some other type.

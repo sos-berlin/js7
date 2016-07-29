@@ -17,6 +17,7 @@ final class JobChainQueryTest extends FreeSpec {
     assert(q.reduce == JobChainQuery.All)
     assert(q matches JobChainPath("/a"))
     assert(q matches JobChainPath("/a/b"))
+    assert(q.folderPath == FolderPath.Root)
   }
 
   "Single JobChainPath" in {
@@ -26,6 +27,7 @@ final class JobChainQueryTest extends FreeSpec {
     assert(!(q matches JobChainPath("/a")))
     assert(q matches JobChainPath("/a/b"))
     assert(!(q matches JobChainPath("/a/b/c")))
+    assert(q.folderPath == FolderPath("/a"))
   }
 
   "Single FolderPath" in {
@@ -38,5 +40,6 @@ final class JobChainQueryTest extends FreeSpec {
     assert(!(q matches JobChainPath("/x/a")))
     assert(q matches JobChainPath("/a/b"))
     assert(q matches JobChainPath("/a/b/c"))
+    assert(q.folderPath == FolderPath("/a"))
   }
 }
