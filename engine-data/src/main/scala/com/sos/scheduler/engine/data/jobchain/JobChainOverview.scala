@@ -8,10 +8,11 @@ import spray.json.DefaultJsonProtocol._
   */
 final case class JobChainOverview(
   path: JobChainPath,
-  fileBasedState: FileBasedState
-) extends FileBasedOverview
+  fileBasedState: FileBasedState,
+  isDistributed: Boolean
+) extends FileBasedOverview with QueryableJobChain
 
 object JobChainOverview {
   private implicit val fileBasedStateJsonFormat = FileBasedState.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat2(apply)
+  implicit val MyJsonFormat = jsonFormat3(apply)
 }

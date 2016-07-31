@@ -107,10 +107,10 @@ object AbsolutePath {
     final def makeAbsolute(defaultFolder: FolderPath, path: String) = apply(absoluteString(defaultFolder, path))
   }
 
-  private[filebased] final case class Untyped(string: String) extends AbsolutePath {
+  private[data] final case class Untyped(string: String) extends AbsolutePath {
     validate()
     def companion = Untyped
   }
 
-  private[filebased] object Untyped extends Companion[Untyped]
+  private[data] object Untyped extends Companion[Untyped]
 }
