@@ -12,7 +12,8 @@ with TypedPath {
 
   validate()
 
-  def fileBasedType = FileBasedType.order
+  def companion = OrderKey
+
 
   def string = jobChainPath.string + Separator + id
 
@@ -21,6 +22,10 @@ with TypedPath {
 
 
 object OrderKey extends TypedPath.Companion[OrderKey] {
+
+  // 'def' due to mutual singleton dependency of this and FileBasedType
+  def fileBasedType = FileBasedType.order
+
   private val Separator = ','
 
   override implicit val ordering: Ordering[OrderKey] = Ordering by { o ⇒ (o.jobChainPath, o.id) }

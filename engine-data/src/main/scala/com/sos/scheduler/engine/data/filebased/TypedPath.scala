@@ -1,12 +1,15 @@
 package com.sos.scheduler.engine.data.filebased
 
 import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.scheduler.engine.data.filebased.TypedPath._
 import java.io.File
 
 trait TypedPath
 extends AbsolutePath {
 
-  def fileBasedType: FileBasedType
+  def companion: Companion[_ <: TypedPath]
+
+  def fileBasedType: FileBasedType = companion.fileBasedType
 
   def file(baseDirectory: File): File =
     new File(baseDirectory, relativeFilePath)
@@ -31,5 +34,11 @@ object TypedPath {
 
   val extensions: Set[String] = FileBasedTypes.forFiles map { _.filenameExtension }
 
-  trait Companion[A <: TypedPath] extends AbsolutePath.Companion[A]
+  type AnyCompanion = Companion[_ <: TypedPath]
+
+  trait Companion[A <: TypedPath] extends AbsolutePath.Companion[A] {
+    implicit val implicitCompanion = this
+
+    def fileBasedType: FileBasedType
+  }
 }

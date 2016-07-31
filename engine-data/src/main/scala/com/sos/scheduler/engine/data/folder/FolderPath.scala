@@ -3,9 +3,12 @@ package com.sos.scheduler.engine.data.folder
 import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
 
 final case class FolderPath(string: String) extends TypedPath {
-  validate()
 
-  def fileBasedType = FileBasedType.folder
+  if (string != "/") {
+    validate()
+  }
+
+  def companion = FolderPath
 
   def subfolder(name: String): FolderPath = {
     require(!name.contains('/'), "Name must not contain a slash '/'")
@@ -14,5 +17,9 @@ final case class FolderPath(string: String) extends TypedPath {
 }
 
 object FolderPath extends TypedPath.Companion[FolderPath] {
+
   val Root = FolderPath("/")
+
+  // 'def' due to mutual singleton dependency of this and FileBasedType
+  def fileBasedType = FileBasedType.folder
 }

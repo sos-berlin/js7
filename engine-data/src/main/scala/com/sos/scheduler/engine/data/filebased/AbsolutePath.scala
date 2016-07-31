@@ -1,10 +1,13 @@
 package com.sos.scheduler.engine.data.filebased
 
 import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.scheduler.engine.data.filebased.AbsolutePath._
 import com.sos.scheduler.engine.data.folder.FolderPath
 import org.jetbrains.annotations.TestOnly
 
 trait AbsolutePath extends IsString {
+
+  def companion: Companion[_ <: AbsolutePath]
 
   final lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
 
@@ -24,7 +27,7 @@ trait AbsolutePath extends IsString {
   /** Has to be called in every implementing constructor. */
   protected def validate(): Unit = {
     require(string startsWith "/", s"Absolute path expected: $toString")
-    if (string != "/") require(!string.endsWith("/"), s"Trailing slash not allowed: $toString")
+    require(!string.endsWith("/"), s"Trailing slash not allowed: $toString")
     require(!string.contains("//"), s"Double slash not allowed: $toString")
   }
 }
@@ -44,7 +47,7 @@ object AbsolutePath {
    * @param path ist absolut oder relativ zur Wurzel.
    */
   @Deprecated
-  def of(path: String): AbsolutePath = UntypedPath(absoluteString(path))
+  def of(path: String): AbsolutePath = Untyped(absoluteString(path))
 
   /**
    * Interprets a path as absolute.
@@ -65,7 +68,7 @@ object AbsolutePath {
   @TestOnly
   //@deprecated("New policy for paths without starting slash: it should be considered be relative", "1.9")
   private[filebased] def makeCompatibleAbsolute(defaultFolder: String, path: String): String = {
-    val defaultPath = UntypedPath(defaultFolder)
+    val defaultPath = Untyped(defaultFolder)
     if (path startsWith "./") s"${defaultPath.withTrailingSlash}${path.substring(2)}"
     else if (path startsWith "/") path
     else s"/$path"
@@ -84,9 +87,11 @@ object AbsolutePath {
     if (a endsWith "/") a.substring(0, a.length - 1) else a
 
   trait Companion[A <: AbsolutePath] extends IsString.Companion[A] {
-    def apply(o: String): A
 
+    val name = getClass.getSimpleName stripSuffix "$"
     val NameOrdering: Ordering[A] = Ordering by { _.name }
+
+    def apply(o: String): A
 
     /**
      * Interprets a path as absolute.
@@ -102,7 +107,10 @@ object AbsolutePath {
     final def makeAbsolute(defaultFolder: FolderPath, path: String) = apply(absoluteString(defaultFolder, path))
   }
 
-  private case class UntypedPath(string: String) extends AbsolutePath {
+  private[filebased] final case class Untyped(string: String) extends AbsolutePath {
     validate()
+    def companion = Untyped
   }
+
+  private[filebased] object Untyped extends Companion[Untyped]
 }

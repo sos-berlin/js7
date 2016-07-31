@@ -1,76 +1,41 @@
 package com.sos.scheduler.engine.data.filebased;
 
 import com.sos.scheduler.engine.base.sprayjson.JavaEnumJsonFormat;
-import com.sos.scheduler.engine.data.folder.FolderPath;
-import com.sos.scheduler.engine.data.job.JobPath;
-import com.sos.scheduler.engine.data.jobchain.JobChainPath;
-import com.sos.scheduler.engine.data.lock.LockPath;
-import com.sos.scheduler.engine.data.monitor.MonitorPath;
-import com.sos.scheduler.engine.data.order.OrderKey;
-import com.sos.scheduler.engine.data.processclass.ProcessClassPath;
-import com.sos.scheduler.engine.data.schedule.SchedulePath;
+import com.sos.scheduler.engine.data.folder.FolderPath$;
+import com.sos.scheduler.engine.data.job.JobPath$;
+import com.sos.scheduler.engine.data.jobchain.JobChainPath$;
+import com.sos.scheduler.engine.data.lock.LockPath$;
+import com.sos.scheduler.engine.data.monitor.MonitorPath$;
+import com.sos.scheduler.engine.data.order.OrderKey$;
+import com.sos.scheduler.engine.data.processclass.ProcessClassPath$;
+import com.sos.scheduler.engine.data.schedule.SchedulePath$;
 import spray.json.JsonFormat;
 
 public enum FileBasedType {
-    folder("Folder", "folder", "Folder") {
-        public FolderPath toPath(String o) {
-            return new FolderPath(o);
-        }
-    },
-    
-    job("Job", "job", "Job") {
-        public JobPath toPath(String o) {
-            return new JobPath(o);
-        }
-    },
+    folder(FolderPath$.MODULE$, "Folder", "folder", "Folder"),
+    job(JobPath$.MODULE$, "Job", "job", "Job"),
+    jobChain(JobChainPath$.MODULE$, "Job_chain", "job_chain", "JobChain"),
+    lock(LockPath$.MODULE$, "Lock", "lock", "Lock"),
+    monitor(MonitorPath$.MODULE$, "Monitor", "monitor", "Monitor"),
+    order(OrderKey$.MODULE$, "Standing_order", "order", "Order"),
+    processClass(ProcessClassPath$.MODULE$, "Process_class", "process_class", "ProcessClass"),
+    schedule(SchedulePath$.MODULE$, "Schedule", "schedule", "Schedule");
 
-    jobChain("Job_chain", "job_chain", "JobChain") {
-        public JobChainPath toPath(String o) {
-            return new JobChainPath(o);
-        }
-    },
-    
-    lock("Lock", "lock", "Lock") {
-        public LockPath toPath(String o) {
-            return new LockPath(o);
-        }
-    },
-    
-    monitor("Monitor", "monitor", "Monitor") {
-        public MonitorPath toPath(String o) {
-            return new MonitorPath(o);
-        }
-    },
-
-    order("Standing_order", "order", "Order") {
-        public OrderKey toPath(String o) {
-            return OrderKey.apply(o);
-        }
-    },
-    
-    processClass("Process_class", "process_class", "ProcessClass") {
-        public ProcessClassPath toPath(String o) {
-            return new ProcessClassPath(o);
-        }
-    },
-    
-    schedule("Schedule", "schedule", "Schedule") {
-        public SchedulePath toPath(String o) {
-            return new SchedulePath(o);
-        }
-    };
-
+    private final TypedPath.Companion<?> companion;
     private final String internalCppName;
     private final String cppName;
     private final String printName;
 
-    FileBasedType(String internalCppName, String cppName, String printName) {
+    FileBasedType(TypedPath.Companion<?> companion, String internalCppName, String cppName, String printName) {
+        this.companion = companion;
         this.internalCppName = internalCppName;
         this.cppName = cppName;
         this.printName = printName;
     }
-    
-    public abstract TypedPath toPath(String path);
+
+    public final TypedPath toPath(String path) {
+        return (TypedPath)companion.apply(path);
+    }
 
     public String internalCppName() {
         return internalCppName;
