@@ -1,5 +1,6 @@
-package com.sos.scheduler.engine.data.order
+package com.sos.scheduler.engine.data.queries
 
+import com.sos.scheduler.engine.data.order.{OrderKey, OrderSourceType}
 import org.jetbrains.annotations.TestOnly
 
 /**

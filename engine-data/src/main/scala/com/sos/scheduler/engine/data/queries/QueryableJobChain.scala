@@ -1,5 +1,6 @@
-package com.sos.scheduler.engine.data.jobchain
+package com.sos.scheduler.engine.data.queries
 
+import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import org.jetbrains.annotations.TestOnly
 
 /**

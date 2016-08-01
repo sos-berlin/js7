@@ -2,7 +2,6 @@ package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.order.OrderSourceType._
-import com.sos.scheduler.engine.data.order.QueryableOrder
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner

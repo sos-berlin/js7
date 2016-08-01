@@ -1,7 +1,5 @@
 package com.sos.scheduler.engine.data.queries
 
-import com.sos.scheduler.engine.data.jobchain.QueryableJobChain
-
 /**
   * @author Joacim Zschimmer
   */

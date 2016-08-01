@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data.jobchain
 
 import com.sos.scheduler.engine.data.filebased.{FileBasedOverview, FileBasedState}
+import com.sos.scheduler.engine.data.queries.QueryableJobChain
 import spray.json.DefaultJsonProtocol._
 
 /**

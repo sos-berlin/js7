@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.folder.FolderPath
-import com.sos.scheduler.engine.data.jobchain.{JobChainPath, QueryableJobChain}
+import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner

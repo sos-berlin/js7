@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.data.order
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.data.filebased.{FileBasedOverview, FileBasedState}
 import com.sos.scheduler.engine.data.job.TaskId
+import com.sos.scheduler.engine.data.queries.QueryableOrder
 import java.time.Instant
 import scala.collection.immutable
 import scala.language.implicitConversions

@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.queries
 
-import com.sos.scheduler.engine.data.order.{OrderSourceType, QueryableOrder}
+import com.sos.scheduler.engine.data.order.OrderSourceType
 
 /**
   * @author Joacim Zschimmer
