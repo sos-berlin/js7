@@ -1,45 +1,59 @@
 package com.sos.scheduler.engine.data.queries
 
-import com.sos.scheduler.engine.base.generic.IsString
-import com.sos.scheduler.engine.data.filebased.{AbsolutePath, TypedPath}
+import com.sos.scheduler.engine.data.filebased.TypedPath
 import com.sos.scheduler.engine.data.folder.FolderPath
+import com.sos.scheduler.engine.data.job.JobPath
 
 /**
   * @author Joacim Zschimmer
   */
-final case class PathQuery(string: String) extends IsString {
-  require(string.nonEmpty, "PathQuery must not be empty")
-  require((string startsWith "/") && !(string contains "/.."), s"Invalid PathQuery: $string")
+sealed trait PathQuery {
 
-  val matchesAll = string == "/"
+  def patternString: String
 
-  def matches(path: TypedPath): Boolean =
-    matchesAll || (
-      if (string endsWith "/") path.string startsWith string
-      else path.string == string)
+  /** Not type-safe - the type is ignored. */
+  def matches[P <: TypedPath: TypedPath.Companion](path: P): Boolean
 
-  def folderPath: FolderPath = reduceToAbsolutePath match {
-    case o: FolderPath ⇒ o
-    case o: AbsolutePath ⇒ o.parent
-    case _ ⇒ FolderPath.Root
-  }
+  def matchesAll = false
 
-  private[engine] def reduce[A <: TypedPath: TypedPath.Companion]: IsString =
-    reduceToAbsolutePath match {
-      case path: AbsolutePath.Untyped ⇒ implicitly[TypedPath.Companion[A]].apply(path.string)
-      case o ⇒ o
-    }
-
-  private def reduceToAbsolutePath =
-    if (matchesAll) PathQuery.All
-    else if (string endsWith "/") FolderPath(string stripSuffix "/")
-    else AbsolutePath.Untyped(string)
+  def folderPath: FolderPath
 }
 
-object PathQuery extends IsString.Companion[PathQuery] {
-  val All = PathQuery("/")
+object PathQuery {
+//  import spray.json._
+//  implicit val MyJsonFormat = new JsonFormat[PathQuery] {
+//    def read(json: JsValue) = PathQuery(json.asInstanceOf[JsString].value)
+//    def write(o: PathQuery) = JsString(o.patternString)
+//  }
 
-  def apply(folderPath: FolderPath) = new PathQuery((folderPath.string stripSuffix "/") + "/")
+  def apply(pattern: String): PathQuery =
+    if (pattern == "/")
+      All
+    else if (pattern endsWith "/")
+      Folder(FolderPath(pattern stripSuffix "/"))
+    else
+      SinglePath(pattern)
 
-  def apply(path: TypedPath) = new PathQuery(path.string)
+  def apply(path: FolderPath) = Folder(path)
+
+  def apply(path: TypedPath) = SinglePath(path.string)
+
+  case object All extends PathQuery {
+    def patternString = "/"
+    def folderPath = FolderPath.Root
+    def matches[P <: TypedPath: TypedPath.Companion](path: P) = true
+    override def matchesAll = true
+  }
+
+  final case class Folder(folderPath: FolderPath) extends PathQuery {
+    def patternString = folderPath.withTrailingSlash
+    def matches[P <: TypedPath: TypedPath.Companion](path: P) = folderPath isParentOf path
+  }
+
+  final case class SinglePath(pathString: String) extends PathQuery {
+    def patternString = pathString
+    val folderPath = JobPath(pathString).parent  // JobPath or any other type
+    def matches[P <: TypedPath: TypedPath.Companion](path: P) = path == as[P]
+    def as[P <: TypedPath: TypedPath.Companion]: P = implicitly[TypedPath.Companion[P]].apply(pathString)
+  }
 }

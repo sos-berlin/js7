@@ -15,8 +15,8 @@ final class PathQueryTest extends FreeSpec {
 
   "All" in {
     val q = PathQuery.All
-    assert(q == PathQuery("/"))
-    assert(q.reduce[JobPath] == PathQuery.All)
+    assert(q.patternString == "/")
+    assert(q == PathQuery.All)
     assert(q matches JobPath("/a"))
     assert(q matches JobPath("/a/b"))
     assert(q.folderPath == FolderPath.Root)
@@ -24,9 +24,8 @@ final class PathQueryTest extends FreeSpec {
 
   "Single JobPath" in {
     val q = PathQuery(JobPath("/a/b"))
-    assert(q == PathQuery("/a/b"))
-    assert(q.reduce[JobPath] == JobPath("/a/b"))
-    assert(q.reduce[JobChainPath] == JobChainPath("/a/b"))
+    assert(q.patternString == "/a/b")
+    assert(q == PathQuery.SinglePath("/a/b"))
     assert(!(q matches JobPath("/a")))
     assert(q matches JobPath("/a/b"))
     assert(!(q matches JobPath("/a/b/c")))
@@ -35,19 +34,18 @@ final class PathQueryTest extends FreeSpec {
 
   "PathQuery is not type-safe" in {
     val q = PathQuery(JobPath("/a"))
+    assert(q.patternString == "/a")
     assert(q matches JobPath("/a"))
     assert(q matches JobChainPath("/a"))
     assert(q matches FolderPath("/a"))
-    assert(q.reduce[JobPath] == JobPath("/a"))
-    assert(q.reduce[JobChainPath] == JobChainPath("/a"))
-    assert(q.reduce[FolderPath] == FolderPath("/a"))
+    assert(q == PathQuery.SinglePath("/a"))
   }
 
   "Single FolderPath" in {
     val q = PathQuery(FolderPath("/a"))
     assert(q == PathQuery("/a/"))
     intercept[IllegalArgumentException] { PathQuery(FolderPath("/a/")) }
-    assert(q.reduce[JobPath] == FolderPath("/a"))
+    assert(q == PathQuery.Folder(FolderPath("/a")))
     assert(!(q matches JobPath("/a")))
     assert(!(q matches JobPath("/x")))
     assert(!(q matches JobPath("/x/a")))
