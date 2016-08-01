@@ -14,6 +14,8 @@ final case class FolderPath(string: String) extends TypedPath {
     require(!name.contains('/'), "Name must not contain a slash '/'")
     FolderPath(s"${string stripSuffix "/"}/$name")
   }
+
+  def isParentOf(path: TypedPath): Boolean = path.string startsWith withTrailingSlash
 }
 
 object FolderPath extends TypedPath.Companion[FolderPath] {
