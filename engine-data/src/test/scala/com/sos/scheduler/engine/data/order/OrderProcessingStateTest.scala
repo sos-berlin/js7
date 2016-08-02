@@ -41,7 +41,7 @@ final class OrderProcessingStateTest extends FreeSpec {
     addTest(Setback(Instant.parse("2016-08-01T11:22:33.444Z")),
       """{
         "type": "Setback",
-        "at": "2016-08-01T11:22:33.444Z"
+        "until": "2016-08-01T11:22:33.444Z"
       }""")
     addTest(Blacklisted,
       """{

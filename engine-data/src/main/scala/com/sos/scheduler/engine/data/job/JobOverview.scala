@@ -14,7 +14,8 @@ final case class JobOverview(
   state: JobState,
   isInPeriod: Boolean,
   taskLimit: Int,
-  usedTaskCount: Int)
+  usedTaskCount: Int,
+  obstacles: Set[JobObstacle])
 extends FileBasedOverview {
 
   def taskLimitReached = usedTaskCount >= taskLimit
@@ -24,5 +25,5 @@ object JobOverview {
   implicit val ordering: Ordering[JobOverview] = Ordering by { _.path }
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
   private implicit val JobStateJsonFormat = JobState.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat7(apply)
+  implicit val MyJsonFormat = jsonFormat8(apply)
 }

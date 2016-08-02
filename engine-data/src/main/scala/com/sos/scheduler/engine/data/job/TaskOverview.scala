@@ -9,7 +9,7 @@ import spray.json.DefaultJsonProtocol._
   */
 final case class TaskOverview(
   id: TaskId,
-  job: JobPath,
+  jobPath: JobPath,
   state: TaskState,
   processClass: ProcessClassPath,
   agent: Option[AgentAddress] = None)
