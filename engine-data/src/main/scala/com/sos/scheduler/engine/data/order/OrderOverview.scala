@@ -17,8 +17,8 @@ final case class OrderOverview(
   sourceType: OrderSourceType,
   orderState: OrderState,
   processingState: OrderProcessingState,
-  nextStepAt: Option[Instant] = None,
-  isSuspended: Boolean = false)
+  obstacles: Set[OrderObstacle] = Set(),
+  nextStepAt: Option[Instant] = None)
 extends FileBasedOverview with QueryableOrder {
 
   def orderKey: OrderKey = path
@@ -26,6 +26,8 @@ extends FileBasedOverview with QueryableOrder {
   def isSetback = processingState.isInstanceOf[OrderProcessingState.Setback]
 
   def isBlacklisted = processingState == OrderProcessingState.Blacklisted
+
+  def isSuspended = obstacles(OrderObstacle.Suspended)
 }
 
 object OrderOverview {

@@ -7,6 +7,7 @@ import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import scala.collection.immutable.ListSet
 import spray.json._
 
 /**
@@ -22,6 +23,7 @@ final class OrderOverviewTest extends FreeSpec {
       OrderSourceType.adHoc,
       OrderState("100"),
       OrderProcessingState.InTaskProcess(TaskId(123)),
+      ListSet(OrderObstacle.Suspended, OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z"))),
       nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z")))
     val jsValue = """{
       "path": "/a,1",
@@ -32,8 +34,16 @@ final class OrderOverviewTest extends FreeSpec {
         "type": "InTaskProcess",
         "taskId": "123"
       },
-      "nextStepAt": "2016-07-18T12:00:00Z",
-      "isSuspended": false
+      "obstacles": [
+        {
+          "type": "Suspended"
+        },
+        {
+          "type": "Setback",
+          "until": "2016-08-02T11:22:33.444Z"
+        }
+      ],
+      "nextStepAt": "2016-07-18T12:00:00Z"
     }""".parseJson
     assert(obj.toJson == jsValue)
     assert(obj == jsValue.convertTo[OrderOverview])

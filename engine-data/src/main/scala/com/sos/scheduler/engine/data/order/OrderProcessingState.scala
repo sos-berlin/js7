@@ -18,7 +18,7 @@ object OrderProcessingState {
   final case class Planned(at: Instant)
   extends OrderProcessingState
 
-  final case class Late(at: Instant)
+  final case class Pending(at: Instant)
   extends OrderProcessingState
 
   sealed trait InTask
@@ -49,7 +49,7 @@ object OrderProcessingState {
     private val typeFieldName = "type"
     private val NotPlannedName = JsString("NotPlanned")
     private val PlannedName = JsString("Planned")
-    private val LateName = JsString("Late")
+    private val PendingName = JsString("Pending")
     private val InTaskWaitingName = JsString("WaitingInTask")
     private val InTaskProcessName = JsString("InTaskProcess")
     private val SetbackName = JsString("Setback")
@@ -61,7 +61,7 @@ object OrderProcessingState {
       o match {
         case NotPlanned ⇒ JsObject(typeFieldName → NotPlannedName)
         case Planned(at) ⇒ JsObject(typeFieldName → PlannedName, "at" → at.toJson)
-        case Late(at) ⇒ JsObject(typeFieldName → LateName, "at" → at.toJson)
+        case Pending(at) ⇒ JsObject(typeFieldName → PendingName, "at" → at.toJson)
         case WaitingInTask(taskId) ⇒ JsObject(typeFieldName → InTaskWaitingName, "taskId" → taskId.toJson)
         case InTaskProcess(taskId) ⇒ JsObject(typeFieldName → InTaskProcessName, "taskId" → taskId.toJson)
         case Blacklisted ⇒ JsObject(typeFieldName → BlacklistedName)
@@ -75,7 +75,7 @@ object OrderProcessingState {
       fields(typeFieldName) match {
         case NotPlannedName ⇒ NotPlanned
         case PlannedName ⇒ Planned(fields("at").convertTo[Instant])
-        case LateName ⇒ Late(fields("at").convertTo[Instant])
+        case PendingName ⇒ Pending(fields("at").convertTo[Instant])
         case InTaskWaitingName ⇒ WaitingInTask(fields("taskId").convertTo[TaskId])
         case InTaskProcessName ⇒ InTaskProcess(fields("taskId").convertTo[TaskId])
         case SetbackName ⇒ Setback(fields("until").convertTo[Instant])
