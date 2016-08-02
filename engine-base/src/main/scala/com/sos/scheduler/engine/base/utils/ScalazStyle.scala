@@ -26,10 +26,17 @@ object ScalazStyle {
     final def list[A](a: ⇒ A): List[A] = if (delegate) List(a) else Nil
 
     /**
-      * Conditional `Option`.
+      * Conditional `Vector`.
       * <p>`(true option a) == Vector(a)`
       * <br>`(false option a) == Vector()`
       */
     final def vector[A](a: ⇒ A): Vector[A] = if (delegate) Vector(a) else Vector()
+
+    /**
+      * Conditional `Set`.
+      * <p>`(true option a) == Set(a)`
+      * <br>`(false option a) == Set()`
+      */
+    final def set[A](a: ⇒ A): Set[A] = if (delegate) Set(a) else Set()
   }
 }

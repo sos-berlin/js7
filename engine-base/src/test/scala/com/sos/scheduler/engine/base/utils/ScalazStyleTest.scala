@@ -25,4 +25,9 @@ final class ScalazStyleTest extends FreeSpec {
     assert((true vector 7: Vector[Int]) == Vector(7))
     assert((false vector 7: Vector[Int]) == Vector())
   }
+
+  "Boolean.set" in {
+    assert((true set 7: Set[Int]) == Set(7))
+    assert((false set 7: Set[Int]) == Set())
+  }
 }
