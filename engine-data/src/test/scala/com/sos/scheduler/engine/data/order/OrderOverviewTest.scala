@@ -21,17 +21,19 @@ final class OrderOverviewTest extends FreeSpec {
       FileBasedState.active,
       OrderSourceType.adHoc,
       OrderState("100"),
-      nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z")),
-      taskId = Some(TaskId(123)))
+      OrderProcessingState.InTaskProcess(TaskId(123)),
+      nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z")))
     val jsValue = """{
       "path": "/a,1",
       "fileBasedState": "active",
       "sourceType": "adHoc",
       "orderState": "100",
+      "processingState": {
+        "type": "InTaskProcess",
+        "taskId": "123"
+      },
       "nextStepAt": "2016-07-18T12:00:00Z",
-      "isSuspended": false,
-      "isBlacklisted": false,
-      "taskId": "123"
+      "isSuspended": false
     }""".parseJson
     assert(obj.toJson == jsValue)
     assert(obj == jsValue.convertTo[OrderOverview])
