@@ -1,12 +1,10 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.data.order.OrderState
 import spray.json._
 
 trait NodeOverview {
-  def orderState: OrderState
+  def nodeKey: NodeKey
 }
-
 
 object NodeOverview {
   private val TypeName = "$TYPE"

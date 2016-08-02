@@ -5,14 +5,13 @@ import com.sos.scheduler.engine.data.order.OrderState
 import spray.json.DefaultJsonProtocol._
 
 final case class SimpleJobNodeOverview(
-  orderState: OrderState,
+  nodeKey: NodeKey,
   nextState: OrderState,
   errorState: OrderState,
-  action: JobChainNodeAction,
   jobPath: JobPath,
+  action: JobChainNodeAction = JobChainNodeAction.process,
   orderCount: Int)
 extends JobNodeOverview
-
 
 object SimpleJobNodeOverview {
   private implicit val OrderStateJsonFormat = OrderState.MyJsonFormat

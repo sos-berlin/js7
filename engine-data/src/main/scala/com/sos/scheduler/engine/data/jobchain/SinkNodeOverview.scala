@@ -5,14 +5,13 @@ import com.sos.scheduler.engine.data.order.OrderState
 import spray.json.DefaultJsonProtocol._
 
 final case class SinkNodeOverview(
-  orderState: OrderState,
+  nodeKey: NodeKey,
   nextState: OrderState,
   errorState: OrderState,
   action: JobChainNodeAction,
   jobPath: JobPath,
   orderCount: Int)
 extends JobNodeOverview
-
 
 object SinkNodeOverview {
   private implicit val OrderStateJsonFormat = OrderState.MyJsonFormat

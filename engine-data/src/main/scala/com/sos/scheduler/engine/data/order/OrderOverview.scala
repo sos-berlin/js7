@@ -2,7 +2,6 @@ package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.data.filebased.{FileBasedOverview, FileBasedState}
-import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.jobchain.NodeKey
 import com.sos.scheduler.engine.data.queries.QueryableOrder
 import java.time.Instant
@@ -20,7 +19,6 @@ final case class OrderOverview(
   orderState: OrderState,
   processingState: OrderProcessingState,
   obstacles: Set[OrderObstacle] = Set(),
-  jobPath: Option[JobPath] = None,
   nextStepAt: Option[Instant] = None)
 extends FileBasedOverview with QueryableOrder {
 
@@ -39,7 +37,7 @@ object OrderOverview {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
   private implicit val OrderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
 
-  implicit val MyJsonFormat = jsonFormat8(apply)
+  implicit val MyJsonFormat = jsonFormat7(apply)
 
   implicit val ordering: Ordering[OrderOverview] = Ordering by { o ⇒ (o.orderKey.jobChainPath, o.orderState, o.orderKey.id) }
 
