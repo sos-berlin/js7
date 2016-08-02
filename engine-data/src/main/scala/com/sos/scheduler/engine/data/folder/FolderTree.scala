@@ -15,16 +15,10 @@ import spray.json._
   */
 final case class FolderTree[A](
   path: FolderPath,
-  leafs: immutable.Seq[Leaf[A]],
+  leafs: immutable.Seq[A],
   subfolders: immutable.Seq[FolderTree[A]])
 
 object FolderTree {
-
-  final case class Leaf[A](name: String, value: A)
-
-  object Leaf {
-    implicit def leafJsonFormat[A: JsonFormat] = jsonFormat2((name: String, value: A) ⇒ Leaf(name, value))
-  }
 
   implicit def myJsonFormat[A: JsonFormat]: RootJsonFormat[FolderTree[A]] = lazyRootFormat(jsonFormat3(apply))
 
@@ -42,7 +36,7 @@ object FolderTree {
   private def fromAny2[A](root: FolderPath, allPathValues: immutable.Seq[(Iterable[String], A)]): FolderTree[A] = {
     def fromNameSeqs(folderPath: FolderPath, subpathValues: immutable.Seq[(Iterable[String], A)]): FolderTree[A] = {
       val (leafPaths, folderPaths) = subpathValues partition { case (nameSeq, obj) ⇒ nameSeq.tail.isEmpty }
-      val leafs = leafPaths map { case (nameSeq, obj) ⇒ Leaf(nameSeq.head, obj) }
+      val leafs = leafPaths map { case (_, obj) ⇒ obj }
       val subfolders = for ((name, paths) ← folderPaths groupBy { case (nameSeq, obj) ⇒ nameSeq.head })
         yield fromNameSeqs(folderPath subfolder name, for ((nameSeq, obj) ← paths) yield nameSeq.tail → obj)
       new FolderTree(folderPath, leafs, subfolders.toVector)

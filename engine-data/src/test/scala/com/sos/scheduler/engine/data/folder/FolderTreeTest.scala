@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.data.folder
 
-import com.sos.scheduler.engine.data.folder.FolderTree.Leaf
 import com.sos.scheduler.engine.data.folder.FolderTreeTest._
 import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
@@ -46,26 +45,25 @@ final class FolderTreeTest extends FreeSpec {
     val json = """{
       "path": "/",
       "leafs": [
-        { "name": "a", "value": { "content": "/a" } },
-        { "name": "b", "value": { "content": "/b" } }
+        { "content": "/a" },
+        { "content": "/b" }
       ],
       "subfolders": [
         {
           "path": "/x",
           "leafs": [
-            { "name": "x-a", "value": { "content": "/x/x-a" } },
-            { "name": "x-b", "value": { "content": "/x/x-b" } }
+            { "content": "/x/x-a" },
+            { "content": "/x/x-b" }
           ],
           "subfolders": [
             {
               "path": "/x/x-y",
               "leafs": [
-                { "name": "x-y-a", "value": { "content": "/x/x-y/x-y-a" } }
+                { "content": "/x/x-y/x-y-a" }
               ],
               "subfolders": []
             }
           ]
-
         }
       ]
     }""".parseJson.asJsObject
@@ -105,18 +103,18 @@ object FolderTreeTest {
   private val SubFolder =
     FolderTree(FolderPath("/x"),
       leafs = List(
-        Leaf("x-a", A("/x/x-a")),
-        Leaf("x-b", A("/x/x-b"))),
+        A("/x/x-a"),
+        A("/x/x-b")),
       subfolders = List(
         FolderTree(FolderPath("/x/x-y"),
           leafs = List(
-            Leaf("x-y-a", A("/x/x-y/x-y-a"))),
+            A("/x/x-y/x-y-a")),
           subfolders = Nil)))
 
   private val RootFolder =
     FolderTree(FolderPath("/"),
       leafs = List(
-        Leaf("a", A("/a")),
-        Leaf("b", A("/b"))),
+        A("/a"),
+        A("/b")),
       subfolders = List(SubFolder))
 }
