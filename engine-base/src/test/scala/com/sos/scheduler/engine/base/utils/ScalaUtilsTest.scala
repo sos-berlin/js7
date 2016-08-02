@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.base.utils
 
+import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.utils.ScalaUtils._
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicits._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -39,6 +40,19 @@ final class ScalaUtilsTest extends FreeSpec {
 
   "Throwable.rootCause" in {
     new Exception("A", new Exception("B", new Exception("ROOT"))).rootCause.getMessage shouldEqual "ROOT"
+  }
+
+  "Throwable.toStringWithCauses" in {
+    assert(new RuntimeException("TEST").toStringWithCauses == "java.lang.RuntimeException: TEST")
+    assert(new RuntimeException("TEST", new IllegalStateException("STATE")).toStringWithCauses ==
+      "java.lang.RuntimeException: TEST, caused by java.lang.IllegalStateException: STATE")
+  }
+
+  "Throwable.toSimplifiedString" in {
+    assert(new RuntimeException("ERROR").toSimplifiedString == "ERROR")
+    assert(new IllegalArgumentException("ERROR").toSimplifiedString == "ERROR")
+    assert(new StandardPublicException("ERROR").toSimplifiedString == "ERROR")
+    assert(new IllegalStateException("ERROR").toSimplifiedString == "java.lang.IllegalStateException: ERROR")
   }
 
   "cast" in {

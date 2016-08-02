@@ -1,7 +1,9 @@
 package com.sos.scheduler.engine.base.utils
 
+import com.sos.scheduler.engine.base.exceptions.PublicException
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 object ScalaUtils {
@@ -45,6 +47,30 @@ object ScalaUtils {
         }
       cause(delegate)
     }
+
+    def toStringWithCauses: String = {
+      val throwables = mutable.Buffer[Throwable]()
+      var t: Throwable = delegate
+      while (t != null) {
+        throwables += t
+        t = t.getCause
+      }
+      throwables mkString ", caused by "
+    }
+
+    def toSimplifiedString: String = {
+      lazy val msg = delegate.getMessage
+      if ((RichThrowable.isIgnorableClass(delegate.getClass) || delegate.isInstanceOf[PublicException]) && msg != null && msg != "")
+        msg
+      else
+        delegate.toString
+    }
+  }
+
+  private object RichThrowable {
+    private val isIgnorableClass = Set[Class[_ <: Throwable]](
+      classOf[IllegalArgumentException],
+      classOf[RuntimeException])
   }
 
   def cast[A : ClassTag](o: Any): A = {

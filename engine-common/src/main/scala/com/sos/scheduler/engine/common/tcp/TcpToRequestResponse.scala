@@ -4,10 +4,10 @@ import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
+import com.sos.scheduler.engine.base.utils.ScalaUtils.RichThrowable
 import com.sos.scheduler.engine.common.scalautil.Futures.catchInFuture
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.TcpToRequestResponse._
-import com.sos.scheduler.engine.common.utils.Exceptions.toStringWithCauses
 import java.net.InetSocketAddress
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
@@ -79,7 +79,7 @@ extends AutoCloseable {
             bridge ! MessageTcpBridge.SendMessage(response)
           case Failure(t) ⇒
             t match {
-              case _ if t.getClass.getName == "com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestor$HttpRequestTimeoutException" ⇒ logger.error(toStringWithCauses(t))
+              case _ if t.getClass.getName == "com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestor$HttpRequestTimeoutException" ⇒ logger.error(t.toStringWithCauses)
               case _ ⇒ logger.error(s"$t", t)
             }
             bridge ! MessageTcpBridge.Close // 2015-06-29 Tcp.Abort does not close the connection when peer is C++ JobScheduler
