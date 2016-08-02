@@ -8,13 +8,28 @@ package com.sos.scheduler.engine.base.utils
  * @see https://github.com/scalaz/scalaz
  */
 object ScalazStyle {
+
   implicit class OptionRichBoolean(val delegate: Boolean) extends AnyVal {
 
     /**
-     * Conditional `Option`.
-     * <p>
-     * `true.option(a)` == `Some(a)`, `false.option(a)` == `None`
-     */
+      * Conditional `Option`.
+      * <p>`(true option a) == Some(a)`
+      * <br>`(false option a) == None`
+      */
     final def option[A](a: ⇒ A): Option[A] = if (delegate) Some(a) else None
+
+    /**
+      * Conditional `List`.
+      * <p>`(true option a) == List(a)`
+      * <br>`(false option a) == Nil`
+      */
+    final def list[A](a: ⇒ A): List[A] = if (delegate) List(a) else Nil
+
+    /**
+      * Conditional `Option`.
+      * <p>`(true option a) == Vector(a)`
+      * <br>`(false option a) == Vector()`
+      */
+    final def vector[A](a: ⇒ A): Vector[A] = if (delegate) Vector(a) else Vector()
   }
 }

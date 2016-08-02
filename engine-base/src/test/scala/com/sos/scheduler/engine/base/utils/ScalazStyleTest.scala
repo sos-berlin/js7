@@ -12,7 +12,17 @@ import org.scalatest.junit.JUnitRunner
 final class ScalazStyleTest extends FreeSpec {
 
   "Boolean.option" in {
-    assert(true.option(7) == Some(7))
-    assert(false.option(7) == None)
+    assert((true option 7: Option[Int]) == Some(7))
+    assert((false option 7: Option[Int]) == None)
+  }
+
+  "Boolean.list" in {
+    assert((true list 7: List[Int]) == List(7))
+    assert((false list 7: List[Int]) == Nil)
+  }
+
+  "Boolean.vector" in {
+    assert((true vector 7: Vector[Int]) == Vector(7))
+    assert((false vector 7: Vector[Int]) == Vector())
   }
 }
