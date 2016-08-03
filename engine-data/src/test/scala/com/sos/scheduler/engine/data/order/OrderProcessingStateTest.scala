@@ -1,7 +1,9 @@
 package com.sos.scheduler.engine.data.order
 
+import com.sos.scheduler.engine.data.agent.AgentAddress
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.order.OrderProcessingState._
+import com.sos.scheduler.engine.data.processclass.ProcessClassPath
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -28,15 +30,20 @@ final class OrderProcessingStateTest extends FreeSpec {
         "type": "Pending",
         "at": "2016-08-01T11:22:33.444Z"
       }""")
-    addTest(WaitingInTask(TaskId(123)),
+    addTest(WaitingInTask(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678"))),
       """{
         "type": "WaitingInTask",
-        "taskId": "123"
+        "taskId": "123",
+        "processClassPath": "/TEST",
+        "agentUri": "http://1.2.3.4:5678"
       }""")
-    addTest(InTaskProcess(TaskId(123)),
+    addTest(InTaskProcess(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678")), Instant.parse("2016-08-01T01:02:03.044Z")),
       """{
         "type": "InTaskProcess",
-        "taskId": "123"
+        "taskId": "123",
+        "processClassPath": "/TEST",
+        "agentUri": "http://1.2.3.4:5678",
+        "since": "2016-08-01T01:02:03.044Z"
       }""")
     addTest(Setback(Instant.parse("2016-08-01T11:22:33.444Z")),
       """{

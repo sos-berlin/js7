@@ -1,7 +1,9 @@
 package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.scheduler.engine.data.agent.AgentAddress
 import com.sos.scheduler.engine.data.job.TaskId
+import com.sos.scheduler.engine.data.processclass.ProcessClassPath
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._
 import spray.json._
@@ -19,21 +21,30 @@ object OrderProcessingState {
   final case class Planned(at: Instant)
   extends OrderProcessingState
 
-  final case class Pending(at: Instant)
+  sealed trait Waiting
   extends OrderProcessingState
+
+  final case class Pending(at: Instant)
+  extends Waiting
 
   sealed trait InTask
   extends OrderProcessingState {
     def taskId: TaskId
+    def processClassPath: ProcessClassPath
+    def agentUri: Option[AgentAddress]
   }
 
-  sealed trait Waiting
-  extends OrderProcessingState
-
-  final case class WaitingInTask(taskId: TaskId)
+  final case class WaitingInTask(
+    taskId: TaskId,
+    processClassPath: ProcessClassPath,
+    agentUri: Option[AgentAddress])
   extends InTask with Waiting
 
-  final case class InTaskProcess(taskId: TaskId)
+  final case class InTaskProcess(
+    taskId: TaskId,
+    processClassPath: ProcessClassPath,
+    agentUri: Option[AgentAddress],
+    since: Instant)
   extends InTask
 
   final case class Setback(until: Instant)
@@ -51,8 +62,8 @@ object OrderProcessingState {
     private implicit val NotPlannedJsonFormat = jsonFormat0(() ⇒ NotPlanned)
     private implicit val PlannedJsonFormat = jsonFormat1(Planned)
     private implicit val PendingJsonFormat = jsonFormat1(Pending)
-    private implicit val WaitingInTaskJsonFormat = jsonFormat1(WaitingInTask)
-    private implicit val InTaskProcessJsonFormat = jsonFormat1(InTaskProcess)
+    private implicit val WaitingInTaskJsonFormat = jsonFormat3(WaitingInTask)
+    private implicit val InTaskProcessJsonFormat = jsonFormat4(InTaskProcess)
     private implicit val SetbackJsonFormat = jsonFormat1(Setback)
     private implicit val BlacklistedJsonFormat = jsonFormat0(() ⇒ Blacklisted)
     private implicit val SuspendedJsonFormat = jsonFormat0(() ⇒ Suspended)
