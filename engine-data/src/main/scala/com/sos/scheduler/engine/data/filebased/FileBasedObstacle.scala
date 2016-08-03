@@ -16,7 +16,7 @@ object FileBasedObstacle {
   case object Missing
   extends FileBasedObstacle
 
-  final case class BadState(State: FileBasedState, message: Option[String])
+  final case class BadState(state: FileBasedState, message: Option[String])
   extends FileBasedObstacle
 
   //case object ToBeChanged ?

@@ -33,18 +33,16 @@ final class OrderOverviewTest extends FreeSpec {
       "sourceType": "adHoc",
       "orderState": "100",
       "processingState": {
-        "type": "InTaskProcess",
+        "TYPE": "InTaskProcess",
         "taskId": "123",
         "since": "2016-08-01T01:02:03.044Z",
         "processClassPath": "/TEST",
         "agentUri": "http://1.2.3.4:5678"
       },
       "obstacles": [
+        "Suspended",
         {
-          "type": "Suspended"
-        },
-        {
-          "type": "Setback",
+          "TYPE": "Setback",
           "until": "2016-08-02T11:22:33.444Z"
         }
       ],

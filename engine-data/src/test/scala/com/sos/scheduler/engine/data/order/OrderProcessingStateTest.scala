@@ -17,29 +17,27 @@ import spray.json._
 final class OrderProcessingStateTest extends FreeSpec {
 
   "JSON" - {
-    addTest(NotPlanned, """{
-        "type": "NotPlanned"
-      }""")
+    addTest(NotPlanned, """"NotPlanned"""")
     addTest(Planned(Instant.parse("2016-08-01T11:22:33.444Z")),
       """{
-        "type": "Planned",
+        "TYPE": "Planned",
         "at": "2016-08-01T11:22:33.444Z"
       }""")
     addTest(Pending(Instant.parse("2016-08-01T11:22:33.444Z")),
       """{
-        "type": "Pending",
+        "TYPE": "Pending",
         "at": "2016-08-01T11:22:33.444Z"
       }""")
     addTest(WaitingInTask(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678"))),
       """{
-        "type": "WaitingInTask",
+        "TYPE": "WaitingInTask",
         "taskId": "123",
         "processClassPath": "/TEST",
         "agentUri": "http://1.2.3.4:5678"
       }""")
     addTest(InTaskProcess(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678")), Instant.parse("2016-08-01T01:02:03.044Z")),
       """{
-        "type": "InTaskProcess",
+        "TYPE": "InTaskProcess",
         "taskId": "123",
         "processClassPath": "/TEST",
         "agentUri": "http://1.2.3.4:5678",
@@ -47,28 +45,19 @@ final class OrderProcessingStateTest extends FreeSpec {
       }""")
     addTest(Setback(Instant.parse("2016-08-01T11:22:33.444Z")),
       """{
-        "type": "Setback",
+        "TYPE": "Setback",
         "until": "2016-08-01T11:22:33.444Z"
       }""")
-    addTest(Blacklisted,
-      """{
-        "type": "Blacklisted"
-      }""")
-    addTest(Suspended,
-      """{
-        "type": "Suspended"
-      }""")
-    addTest(WaitingForOther,
-      """{
-        "type": "WaitingForOther"
-      }""")
+    addTest(Blacklisted, """"Blacklisted"""")
+    addTest(Suspended, """"Suspended"""")
+    addTest(WaitingForOther, """"WaitingForOther"""")
   }
 
   private def addTest(processingState: OrderProcessingState, json: String): Unit = {
     s"$processingState" in {
-      val jsObject = json.parseJson.asJsObject
-      assert(processingState.toJson == jsObject)
-      assert(jsObject.convertTo[OrderProcessingState] == processingState)
+      val jsValue = json.parseJson
+      assert(processingState.toJson == jsValue)
+      assert(jsValue.convertTo[OrderProcessingState] == processingState)
     }
   }
 }

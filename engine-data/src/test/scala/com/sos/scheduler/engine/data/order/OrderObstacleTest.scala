@@ -14,26 +14,20 @@ import spray.json._
 final class OrderObstacleTest extends FreeSpec {
 
   "JSON" - {
-    addTest(Suspended,
-      """{
-        "type": "Suspended"
-      }""")
-    addTest(Blacklisted,
-      """{
-        "type": "Blacklisted"
-      }""")
+    addTest(Suspended, """"Suspended"""")
+    addTest(Blacklisted, """"Blacklisted"""")
     addTest(Setback(Instant.parse("2016-08-01T11:22:33.444Z")),
       """{
-        "type": "Setback",
+        "TYPE": "Setback",
         "until": "2016-08-01T11:22:33.444Z"
       }""")
   }
 
   private def addTest(obstacle: OrderObstacle, json: String): Unit = {
     s"$obstacle" in {
-      val jsObject = json.parseJson.asJsObject
-      assert(obstacle.toJson == jsObject)
-      assert(jsObject.convertTo[OrderObstacle] == obstacle)
+      val jsValue = json.parseJson
+      assert(obstacle.toJson == jsValue)
+      assert(jsValue.convertTo[OrderObstacle] == obstacle)
     }
   }
 }

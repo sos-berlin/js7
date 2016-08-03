@@ -21,21 +21,21 @@ final class TypedJsonFormatTest extends FreeSpec {
 
   "case object" in {
     val a: A = A0
-    val json = """{ "type": "A0" } """.parseJson
+    val json = """"A0"""".parseJson
     assert(a.toJson == json)
     assert(a == json.convertTo[A])
   }
 
   "case class 1" in {
     val a: A = A1("one")
-    val json = """{ "type": "A1", "string": "one" } """.parseJson
+    val json = """{ "TYPE": "A1", "string": "one" } """.parseJson
     assert(a.toJson == json)
     assert(a == json.convertTo[A])
   }
 
   "case class 2" in {
     val a: A = A2(2, "two")
-    val json = """{ "type": "A2", "int": 2, "string": "two" }""".parseJson
+    val json = """{ "TYPE": "A2", "int": 2, "string": "two" }""".parseJson
     assert(a.toJson == json)
     assert(a == json.convertTo[A])
   }

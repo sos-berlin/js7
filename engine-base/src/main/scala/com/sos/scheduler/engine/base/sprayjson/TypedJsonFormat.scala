@@ -25,24 +25,30 @@ extends RootJsonFormat[Sub] {
         throw new NoSuchElementException(s"${o.getClass} is not serializable as subclass of ${commonSuperClass.getName}"))
       WriteEntry(e.getJsonWriter(), e.typeField)
     })
-    JsObject(w.jsonWriter.write(o).asJsObject.fields + w.typeField)
+    val serializedFields = w.jsonWriter.write(o).asJsObject.fields
+    if (serializedFields.isEmpty)
+      w.typeField._2   // To be short, typename-only values are serialized as simple string "typename"
+    else
+      JsObject(serializedFields + w.typeField)
   }
 
   def read(jsValue: JsValue) = {
-    val fields = jsValue.asJsObject.fields
-    val typeName = fields(TypeFieldName).asInstanceOf[JsString].value
-    val jsObject = JsObject(fields - TypeFieldName)
+    val (typeName, fields) = jsValue match {
+      case o: JsString ⇒ (o.value, Map.empty[String, JsValue])
+      case o: JsObject ⇒ (o.fields(TypeFieldName).asInstanceOf[JsString].value, o.fields - TypeFieldName)
+      case o ⇒ throw new IllegalArgumentException(s"Expected JSON string or object for type ${commonSuperClass.getSimpleName}")
+    }
     val reader = typeToReader.computeIfAbsent(typeName, { typeName: String ⇒
       val getReader = typeToLazyReader.getOrElse(typeName,
         throw new NoSuchElementException(s"""JSON $TypeFieldName="$typeName" denotes an unknown subtype of ${commonSuperClass.getSimpleName}"""))
       getReader()
     })
-    reader.read(jsObject).asInstanceOf[Sub]
+    reader.read(JsObject(fields)).asInstanceOf[Sub]
   }
 }
 
 object TypedJsonFormat {
-  val TypeFieldName = "type"
+  val TypeFieldName = "TYPE"
 
   def apply[A: ClassTag](formats: Subtype[_ <: A]*) =
     new TypedJsonFormat[A, A](
@@ -62,7 +68,6 @@ object TypedJsonFormat {
     def apply[A : ClassTag](typeName: String, jsonFormat: ⇒ RootJsonFormat[A]): Subtype[A] =
       Subtype(implicitClass[A], typeName, () ⇒ jsonFormat)
   }
-
 
   final case class LazyWriteEntry(getJsonWriter: () ⇒ RootJsonWriter[Any], typeField: (String, JsString))
 
