@@ -29,12 +29,19 @@ object ScalaUtils {
     }
 
   object implicits {
+    import scala.language.implicitConversions
+
     implicit class ToStringFunction1[A, R](val delegate: A ⇒ R) {
       def withToString(string: String) = new (A ⇒ R) {
         def apply(a: A) = delegate(a)
         override def toString() = string
       }
     }
+
+    implicit def toJavaFunction[A, B](function: A ⇒ B): java.util.function.Function[A, B] =
+      new java.util.function.Function[A, B] {
+        def apply(a: A) = function(a)
+      }
   }
 
   implicit class RichThrowable[A <: Throwable](val delegate: A) extends AnyVal {
