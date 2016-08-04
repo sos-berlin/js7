@@ -14,14 +14,12 @@ final class TypedJsonFormat[Super, Sub <: Super] private(
   commonSuperClass: Class[Super],
   classToLazyWriter: Map[Class[_ <: Sub], LazyWriteEntry],
   typeToLazyReader: Map[String, () ⇒ RootJsonReader[_]],
-  typeFieldName: String = DefaultTypeFieldName)
+  typeFieldName: String,
+  shortenTypeOnlyValue: Boolean)
 extends RootJsonFormat[Sub] {
 
   private val classToWriter = new ConcurrentHashMap[Class[_ <: Sub], WriteEntry]
   private val typeToReader = new ConcurrentHashMap[String, RootJsonReader[_]]
-
-  def withTypeFieldName(name: String) =
-    new TypedJsonFormat[Super, Sub](commonSuperClass, classToLazyWriter, typeToLazyReader, typeFieldName = name)
 
   def write(o: Sub) = {
     val w: WriteEntry = classToWriter.computeIfAbsent(o.getClass, { clazz: Class[_ <: Sub] ⇒
@@ -30,7 +28,7 @@ extends RootJsonFormat[Sub] {
       WriteEntry(e.getJsonWriter(), typeFieldName → JsString(e.typeName))
     })
     val serializedFields = w.jsonWriter.write(o).asJsObject.fields
-    if (serializedFields.isEmpty)
+    if (shortenTypeOnlyValue && serializedFields.isEmpty)
       w.typeField._2   // To be short, typename-only values are serialized as simple string "typename"
     else
       JsObject(serializedFields + w.typeField)
@@ -53,30 +51,49 @@ extends RootJsonFormat[Sub] {
 
 object TypedJsonFormat {
   private val DefaultTypeFieldName = "TYPE"
+  private val DefaultShortenTypeOnlyValue = true
 
-  def apply[A: ClassTag](formats: Subtype[_ <: A]*) =
+  // On compile error using TypedJsonFormat(), check if every Subtype really denotes a subtype of A.
+  def apply[A: ClassTag](subtypes: Subtype[_ <: A]*): TypedJsonFormat[A, A] =
+    _apply[A](subtypes = subtypes)
+
+  // On compile error using TypedJsonFormat(), check if every Subtype really denotes a subtype of A.
+  def apply[A: ClassTag](
+    typeField: String = DefaultTypeFieldName,
+    shortenTypeOnlyValue: Boolean = DefaultShortenTypeOnlyValue)
+    (subtypes: Subtype[_ <: A]*): TypedJsonFormat[A, A]
+  =
+    _apply[A](typeFieldName = typeField, shortenTypeOnlyValue = shortenTypeOnlyValue, subtypes = subtypes)
+
+  private def _apply[A: ClassTag](
+    typeFieldName: String = DefaultTypeFieldName,
+    shortenTypeOnlyValue: Boolean = DefaultShortenTypeOnlyValue,
+    subtypes: Seq[Subtype[_ <: A]]): TypedJsonFormat[A, A]
+  =
     new TypedJsonFormat[A, A](
       implicitClass[A],
-      (formats map { o ⇒ o.clazz → LazyWriteEntry(() ⇒ o.lazyJsonFormat().asInstanceOf[RootJsonWriter[Any]], o.typeName) }).toMap,
-      (formats map { o ⇒ o.typeName → (() ⇒ o.lazyJsonFormat()) }).toMap)
+      (subtypes map { o ⇒ o.clazz → LazyWriteEntry(() ⇒ o.lazyJsonFormat().asInstanceOf[RootJsonWriter[Any]], o.typeName) }).toMap,
+      (subtypes map { o ⇒ o.typeName → (() ⇒ o.lazyJsonFormat()) }).toMap,
+      typeFieldName = typeFieldName,
+      shortenTypeOnlyValue = shortenTypeOnlyValue)
 
   /**
     * @param lazyJsonFormat lazy to allow recursive tree structure with not yet initialized implicit commonSuperClass jsonFormat.
     */
-  final case class Subtype[A](clazz: Class[A], typeName: String, lazyJsonFormat: () ⇒ RootJsonFormat[A])
+  final case class Subtype[A](clazz: Class[A], lazyJsonFormat: () ⇒ RootJsonFormat[A], typeName: String)
 
   object Subtype {
     def apply[A: ClassTag: RootJsonFormat]: Subtype[A] =
       Subtype[A](implicitly[RootJsonFormat[A]])
 
     def apply[A: ClassTag: RootJsonFormat](typeName: String): Subtype[A] =
-      new Subtype(implicitClass[A], typeName, () ⇒ implicitly[RootJsonFormat[A]])
+      new Subtype(implicitClass[A], () ⇒ implicitly[RootJsonFormat[A]], typeName)
 
     def apply[A: ClassTag](jsonFormat: ⇒ RootJsonFormat[A]): Subtype[A] =
-      new Subtype(implicitClass[A], implicitClass[A].getSimpleName stripSuffix "$", () ⇒ jsonFormat)
+      new Subtype(implicitClass[A], () ⇒ jsonFormat, implicitClass[A].getSimpleName stripSuffix "$")
 
-    def apply[A: ClassTag](typeName: String, jsonFormat: ⇒ RootJsonFormat[A]): Subtype[A] =
-      new Subtype(implicitClass[A], typeName, () ⇒ jsonFormat)
+    def apply[A: ClassTag](jsonFormat: ⇒ RootJsonFormat[A], typeName: String): Subtype[A] =
+      new Subtype(implicitClass[A], () ⇒ jsonFormat, typeName)
   }
 
   final case class LazyWriteEntry(getJsonWriter: () ⇒ RootJsonWriter[Any], typeName: String)

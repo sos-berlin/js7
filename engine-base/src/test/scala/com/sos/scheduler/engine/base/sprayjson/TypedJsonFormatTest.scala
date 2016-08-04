@@ -17,6 +17,7 @@ final class TypedJsonFormatTest extends FreeSpec {
   private implicit val typedJsonFormat = TypedJsonFormat[A](
     Subtype(jsonFormat0(() ⇒ A0)),
     Subtype(jsonFormat1(A1)),
+    //Subtype(jsonFormat0(Alien)),  // Must not not compile
     Subtype(jsonFormat2(A2)))
 
   "case object" in {
@@ -46,4 +47,5 @@ object TypedJsonFormatTest {
   private case object A0 extends A
   private case class A1(string: String) extends A
   private case class A2(int: Int, string: String) extends A
+  private case class Alien()
 }
