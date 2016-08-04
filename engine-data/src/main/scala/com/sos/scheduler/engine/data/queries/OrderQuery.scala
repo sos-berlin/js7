@@ -14,10 +14,10 @@ final case class OrderQuery(
   isSetback: Option[Boolean] = None,
   isBlacklisted: Option[Boolean] = None,
   isOrderSourceType: Option[Set[OrderSourceType]] = None,
-  limitPerNode: Option[Int] = None)
+  notInTaskLimitPerNode: Option[Int] = None)
 extends OnlyOrderQuery with JobChainQuery {
 
-  for (limit ← limitPerNode) require(limit >= 1, s"Invalid limitPerNode=$limitPerNode")
+  for (limit ← notInTaskLimitPerNode) require(limit >= 0, s"Invalid notInTaskLimitPerNode=$notInTaskLimitPerNode")
 
   def withJobChainPathQuery(q: PathQuery) = copy(jobChainPathQuery = q)
   def withIsDistributed(o: Boolean) = copy(isDistributed = Some(o))
@@ -25,7 +25,7 @@ extends OnlyOrderQuery with JobChainQuery {
   def withIsSetback(o: Boolean) = copy(isSetback = Some(o))
   def withIsBlacklisted(o: Boolean) = copy(isBlacklisted = Some(o))
   def withOrderSourceTypes(o: java.util.List[OrderSourceType]) = copy(isOrderSourceType = Some(o.toSet))
-  def withLimitPerNode(o: Int) = copy(limitPerNode = Some(o))
+  def withLimitPerNode(o: Int) = copy(notInTaskLimitPerNode = Some(o))
 
   def withoutPathToMap: Map[String, String] = Map() ++
     (isSuspended map { o ⇒ SuspendedName → o.toString }) ++
@@ -33,7 +33,7 @@ extends OnlyOrderQuery with JobChainQuery {
     (isBlacklisted map { o ⇒ BlacklistedName → o.toString}) ++
     (isOrderSourceType map ( o ⇒ SourceTypeName → (o mkString ","))) ++
     (isDistributed map { o ⇒ DistributedName → o.toString }) ++
-    (limitPerNode map { o ⇒ LimitPerNodeName → o.toString })
+    (notInTaskLimitPerNode map { o ⇒ LimitPerNodeName → o.toString })
 }
 
 object OrderQuery {
@@ -44,5 +44,5 @@ object OrderQuery {
   val BlacklistedName = "blacklisted"
   val SourceTypeName = "sourceType"
   val DistributedName = "distributed"
-  val LimitPerNodeName = "limitPerNode"
+  val LimitPerNodeName = "notInTaskLimitPerNode"
 }

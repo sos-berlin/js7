@@ -15,7 +15,11 @@ import spray.json._
 final case class FolderTree[A](
   path: FolderPath,
   leafs: immutable.Seq[A],
-  subfolders: immutable.Seq[FolderTree[A]])
+  subfolders: immutable.Seq[FolderTree[A]]) {
+
+  def nonEmpty = !isEmpty
+  def isEmpty = leafs.isEmpty && subfolders.isEmpty
+}
 
 object FolderTree {
 

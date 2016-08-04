@@ -12,7 +12,11 @@ import spray.json.DefaultJsonProtocol._
 /**
   * @author Joacim Zschimmer
   */
-sealed trait OrderProcessingState
+sealed trait OrderProcessingState {
+  def isWaiting = false
+  def isInTask = false
+  def isInProcess = false
+}
 
 object OrderProcessingState {
 
@@ -23,13 +27,16 @@ object OrderProcessingState {
   extends OrderProcessingState
 
   sealed trait Waiting
-  extends OrderProcessingState
+  extends OrderProcessingState {
+    override def isWaiting = true
+  }
 
   final case class Pending(at: Instant)
   extends Waiting
 
   sealed trait InTask
   extends OrderProcessingState {
+    override def isInTask = true
     def taskId: TaskId
     def processClassPath: ProcessClassPath
     def agentUri: Option[AgentAddress]
@@ -46,7 +53,9 @@ object OrderProcessingState {
     processClassPath: ProcessClassPath,
     agentUri: Option[AgentAddress],
     since: Instant)
-  extends InTask
+  extends InTask {
+    override def isInProcess = true
+  }
 
   final case class Setback(until: Instant)
   extends Waiting
