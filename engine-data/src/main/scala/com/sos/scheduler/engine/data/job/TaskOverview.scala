@@ -11,7 +11,7 @@ final case class TaskOverview(
   taskId: TaskId,
   jobPath: JobPath,
   state: TaskState,
-  processClass: ProcessClassPath,
+  processClassPath: ProcessClassPath,
   agent: Option[AgentAddress] = None)
 
 object TaskOverview {

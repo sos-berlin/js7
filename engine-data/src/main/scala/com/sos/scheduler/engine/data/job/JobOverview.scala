@@ -10,7 +10,7 @@ import spray.json.DefaultJsonProtocol._
 final case class JobOverview(
   path: JobPath,
   fileBasedState: FileBasedState,
-  defaultProcessClass: Option[ProcessClassPath],
+  defaultProcessClassPath: Option[ProcessClassPath],
   state: JobState,
   isInPeriod: Boolean,
   taskLimit: Int,
