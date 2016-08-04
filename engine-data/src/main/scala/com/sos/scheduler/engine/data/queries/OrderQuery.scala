@@ -28,21 +28,21 @@ extends OnlyOrderQuery with JobChainQuery {
   def withLimitPerNode(o: Int) = copy(notInTaskLimitPerNode = Some(o))
 
   def withoutPathToMap: Map[String, String] = Map() ++
-    (isSuspended map { o ⇒ SuspendedName → o.toString }) ++
-    (isSetback map { o ⇒ SetbackName → o.toString }) ++
-    (isBlacklisted map { o ⇒ BlacklistedName → o.toString}) ++
-    (isOrderSourceType map ( o ⇒ SourceTypeName → (o mkString ","))) ++
-    (isDistributed map { o ⇒ DistributedName → o.toString }) ++
-    (notInTaskLimitPerNode map { o ⇒ LimitPerNodeName → o.toString })
+    (isDistributed map { o ⇒ IsDistributedName → o.toString }) ++
+    (isSuspended map { o ⇒ IsSuspendedName → o.toString }) ++
+    (isSetback map { o ⇒ IsSetbackName → o.toString }) ++
+    (isBlacklisted map { o ⇒ IsBlacklistedName → o.toString}) ++
+    (isOrderSourceType map ( o ⇒ IsOrderSourceTypeName → (o mkString ","))) ++
+    (notInTaskLimitPerNode map { o ⇒ NotInTaskLimitPerNode → o.toString })
 }
 
 object OrderQuery {
   val All = OrderQuery()
 
-  val SuspendedName = "suspended"
-  val SetbackName = "setback"
-  val BlacklistedName = "blacklisted"
-  val SourceTypeName = "sourceType"
-  val DistributedName = "distributed"
-  val LimitPerNodeName = "notInTaskLimitPerNode"
+  val IsDistributedName = "isDistributed"
+  val IsSuspendedName = "isSuspended"
+  val IsSetbackName = "isSetback"
+  val IsBlacklistedName = "isBlacklisted"
+  val IsOrderSourceTypeName = "isOrderSourceType"
+  val NotInTaskLimitPerNode = "notInTaskLimitPerNode"
 }
