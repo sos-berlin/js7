@@ -72,7 +72,7 @@ final class CollectionsTest extends FreeSpec {
   "retainOrderGroupBy" in {
     case class A(name: String, i: Int)
     val list = List(A("eins", 1), A("zwei a", 2), A("drei", 3), A("vier", 4), A("fünf", 5), A("zwei b", 2))
-    (list retainOrderGroupBy { _.i }).toVector shouldEqual Vector(
+    (list retainOrderGroupBy { _.i }) shouldEqual Vector(
       1 → Vector(A("eins", 1)),
       2 → Vector(A("zwei a", 2), A("zwei b", 2)),
       3 → Vector(A("drei", 3)),
@@ -166,6 +166,20 @@ final class CollectionsTest extends FreeSpec {
     assert((Iterator(1, 2, 3) compareElementWise Iterator(1, 2, 3, 4)) < 0)
     assert((Iterator(3, 2, 3) compareElementWise Iterator(1, 2, 3)) > 0)
     assert((Iterator(0, 2, 3) compareElementWise Iterator(1, 2, 3)) < 0)
+  }
+
+  "limitPerNode" in {
+    intercept[IllegalArgumentException] { Iterator[(Int, Int)]().limitPerKey(_._1)(0) }
+    assert(Iterator[(Int, Int)]().limitPerKey(_._1)(1).toList == Nil)
+    assert(Iterator(1 → 10).limitPerKey(_._1)(1).toList == List(1 → 10))
+    assert(Iterator(1 → 10, 1 → 11).limitPerKey(_._1)(1).toList == List(1 → 10))
+    assert(Iterator(1 → 10, 1 → 11, 1 → 12, 1 → 13).limitPerKey(_._1)(1).toList == List(1 → 10))
+    assert(Iterator(1 → 10, 1 → 11, 1 → 12, 1 → 13, 2 → 20).limitPerKey(_._1)(1).toList ==
+               List(1 → 10,                         2 → 20))
+    assert(Iterator(1 → 10, 1 → 11, 1 → 12, 1 → 13, 1 → 14, 2 → 20, 2 → 21, 2 → 22).limitPerKey(_._1)(2).toList ==
+               List(1 → 10, 1 → 11,                         2 → 20, 2 → 21))
+    assert(Iterator(1 → 10, 1 → 11, 1 → 12, 1 → 13, 1 → 14, 2 → 20, 2 → 21, 2 → 22, 2 → 23, 2 → 24).limitPerKey(_._1)(3).toList ==
+               List(1 → 10, 1 → 11, 1 → 12,                 2 → 20, 2 → 21, 2 → 22))
   }
 }
 

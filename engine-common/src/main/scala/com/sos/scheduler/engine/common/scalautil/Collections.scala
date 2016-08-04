@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.common.scalautil
 import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
-import scala.collection.{TraversableLike, immutable, mutable}
+import scala.collection.{AbstractIterable, AbstractIterator, TraversableLike, immutable, mutable}
 import scala.language.implicitConversions
 
 object Collections {
@@ -71,14 +71,15 @@ object Collections {
         delegate groupBy key filter { _._2.size > 1 }
 
       /**
-        * Like `groupBy`, but returns a ListMap retaining the original key order (of every first occurrence),
+        * Like `groupBy`, but returns a `Vector[(K, Vector[A])] ` retaining the original key order (of every first occurrence),
         */
-      def retainOrderGroupBy[K](toKey: A ⇒ K): immutable.ListMap[K, immutable.Seq[A]] = {
+      def retainOrderGroupBy[K](toKey: A ⇒ K): Vector[(K, Vector[A])] = {
         val m = mutable.LinkedHashMap[K, immutable.VectorBuilder[A]]()
         for (elem ← delegate) {
           m.getOrElseUpdate(toKey(elem), new immutable.VectorBuilder[A]) += elem
         }
-        val b = immutable.ListMap.newBuilder[K, immutable.Seq[A]]
+        val b = Vector.newBuilder[(K, Vector[A])]
+        b.sizeHint(m.size)
         for ((k, vectorBuilder) ← m) {
           b += ((k, vectorBuilder.result))
         }
@@ -94,6 +95,67 @@ object Collections {
 
       def toSeqMultiMap: Map[A, immutable.Seq[B]] =
         delegate groupBy { _._1 } map { case (key, seq) ⇒ key → (seq map { _._2 }).toImmutableSeq }
+    }
+
+    implicit class RichIterator[A](val delegate: Iterator[A]) extends AnyVal {
+      def limitPerKey[K](toKey: A ⇒ K)(limit: Int): Iterator[A] = {
+        if (limit <= 0) throw new IllegalArgumentException(s"Invalid limit=$limit for limitPerKey")
+        new AbstractIterator[A] {
+          private var _count = 0
+          private var _key: K = _
+          private var _hasNext = false
+          private var _next: A = _
+
+          def hasNext = {
+            fetch()
+            _hasNext
+          }
+
+          def next() = {
+            fetch()
+            _hasNext = false
+            _next
+          }
+
+          private def fetch(): Unit = {
+            if (!_hasNext) {
+              if (_count < limit) {
+                fetchNext()
+              } else {
+                skipEquals()
+              }
+            }
+          }
+
+          private def fetchNext(): Unit = {
+            if (delegate.hasNext) {
+              val a = delegate.next()
+              val k = toKey(a)
+              if (_count > 0 && k != _key) {
+                _count = 1
+              } else {
+                _count += 1
+              }
+              _key = k
+              _hasNext = true
+              _next = a
+            }
+          }
+
+          private def skipEquals(): Unit = {
+            while (!_hasNext && delegate.hasNext) {
+              val a = delegate.next()
+              val k = toKey(a)
+              if (k != _key) {
+                _key = k
+                _hasNext = true
+                _next = a
+                _count = 1
+              }
+            }
+          }
+        }
+      }
     }
 
     implicit class InsertableMutableMap[K, V](val delegate: mutable.Map[K, V]) extends AnyVal {
