@@ -3,7 +3,6 @@ package com.sos.scheduler.engine.data.folder
 import com.google.common.base.Splitter
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.lazyRootFormat
 import com.sos.scheduler.engine.data.filebased.{AbsolutePath, HasPath, TypedPath}
-import com.sos.scheduler.engine.data.folder.FolderTree._
 import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.reflect.ClassTag
@@ -37,9 +36,9 @@ object FolderTree {
     def fromNameSeqs(folderPath: FolderPath, subpathValues: immutable.Seq[(Iterable[String], A)]): FolderTree[A] = {
       val (leafPaths, folderPaths) = subpathValues partition { case (nameSeq, obj) ⇒ nameSeq.tail.isEmpty }
       val leafs = leafPaths map { case (_, obj) ⇒ obj }
-      val subfolders = for ((name, paths) ← folderPaths groupBy { case (nameSeq, obj) ⇒ nameSeq.head })
+      val subfolders = for ((name, paths) ← (folderPaths groupBy { case (nameSeq, obj) ⇒ nameSeq.head }).toVector.sortBy { _._1 })
         yield fromNameSeqs(folderPath subfolder name, for ((nameSeq, obj) ← paths) yield nameSeq.tail → obj)
-      new FolderTree(folderPath, leafs, subfolders.toVector)
+      new FolderTree(folderPath, leafs, subfolders)
     }
     fromNameSeqs(root, allPathValues)
   }
