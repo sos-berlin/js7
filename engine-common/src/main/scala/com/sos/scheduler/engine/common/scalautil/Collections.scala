@@ -97,67 +97,6 @@ object Collections {
         delegate groupBy { _._1 } map { case (key, seq) ⇒ key → (seq map { _._2 }).toImmutableSeq }
     }
 
-    implicit class RichIterator[A](val delegate: Iterator[A]) extends AnyVal {
-      def limitPerKey[K](toKey: A ⇒ K)(limit: Int): Iterator[A] = {
-        if (limit <= 0) throw new IllegalArgumentException(s"Invalid limit=$limit for limitPerKey")
-        new AbstractIterator[A] {
-          private var _count = 0
-          private var _key: K = _
-          private var _hasNext = false
-          private var _next: A = _
-
-          def hasNext = {
-            fetch()
-            _hasNext
-          }
-
-          def next() = {
-            fetch()
-            _hasNext = false
-            _next
-          }
-
-          private def fetch(): Unit = {
-            if (!_hasNext) {
-              if (_count < limit) {
-                fetchNext()
-              } else {
-                skipEquals()
-              }
-            }
-          }
-
-          private def fetchNext(): Unit = {
-            if (delegate.hasNext) {
-              val a = delegate.next()
-              val k = toKey(a)
-              if (_count > 0 && k != _key) {
-                _count = 1
-              } else {
-                _count += 1
-              }
-              _key = k
-              _hasNext = true
-              _next = a
-            }
-          }
-
-          private def skipEquals(): Unit = {
-            while (!_hasNext && delegate.hasNext) {
-              val a = delegate.next()
-              val k = toKey(a)
-              if (k != _key) {
-                _key = k
-                _hasNext = true
-                _next = a
-                _count = 1
-              }
-            }
-          }
-        }
-      }
-    }
-
     implicit class InsertableMutableMap[K, V](val delegate: mutable.Map[K, V]) extends AnyVal {
       def insert(kv: (K, V)): Unit = {
         if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already known in ${delegate.stringPrefix}")
