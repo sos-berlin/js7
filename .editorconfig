@@ -10,7 +10,7 @@ insert_final_newline = true
 [*.{bat,cmd,ps1}]
 charset = latin1
 
-[*.{elm,html,js,json,scala,ts}]
+[*.{css,elm,html,js,json,scala,ts}]
 indent_size = 2
 
 [*.{java,less,md,xml}]
