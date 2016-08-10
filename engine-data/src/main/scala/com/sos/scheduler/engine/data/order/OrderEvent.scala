@@ -9,22 +9,21 @@ trait OrderEvent extends KeyedEvent {
 
   type Key = OrderKey
 
-  final def key =
-    orderKey
+  final def key = orderKey
 
   def orderKey: OrderKey
 }
 
 object OrderEvent {
   implicit val OrderEventJsonFormat = TypedJsonFormat[OrderEvent](
-    Subtype(jsonFormat2(OrderFinishedEvent      ), "OrderFinished"),
-    Subtype(jsonFormat1(OrderNestedFinishedEvent), "OrderNestedFinished"),
-    Subtype(jsonFormat1(OrderNestedTouchedEvent ), "OrderNestedTouched"),
-    Subtype(jsonFormat1(OrderResumedEvent       ), "OrderResumed"),
-    Subtype(jsonFormat2(OrderSetBackEvent       ), "OrderSetBack"),
-    Subtype(jsonFormat3(OrderStateChangedEvent  ), "OrderStateChanged"),
-    Subtype(jsonFormat2(OrderStepEndedEvent     ), "OrderStepEnded"),
-    Subtype(jsonFormat3(OrderStepStartedEvent   ), "OrderStepStarted"),
-    Subtype(jsonFormat1(OrderSuspendedEvent     ), "OrderSuspended"),
-    Subtype(jsonFormat1(OrderTouchedEvent       ), "OrderTouched"))
+    Subtype(jsonFormat2(OrderFinished)),
+    Subtype(jsonFormat1(OrderNestedFinished)),
+    Subtype(jsonFormat1(OrderNestedStarted)),
+    Subtype(jsonFormat1(OrderResumed)),
+    Subtype(jsonFormat2(OrderSetBack)),
+    Subtype(jsonFormat3(OrderNodeChanged)),
+    Subtype(jsonFormat2(OrderStepEnded)),
+    Subtype(jsonFormat3(OrderStepStarted)),
+    Subtype(jsonFormat1(OrderSuspended)),
+    Subtype(jsonFormat1(OrderStarted)))
 }

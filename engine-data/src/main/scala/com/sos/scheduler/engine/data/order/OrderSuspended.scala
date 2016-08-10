@@ -1,4 +1,4 @@
 package com.sos.scheduler.engine.data.order
 
-final case class OrderResumedEvent(orderKey: OrderKey)
+final case class OrderSuspended(orderKey: OrderKey)
 extends OrderEvent

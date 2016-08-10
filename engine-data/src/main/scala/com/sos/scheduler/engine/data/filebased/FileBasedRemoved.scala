@@ -1,4 +1,4 @@
 package com.sos.scheduler.engine.data.filebased
 
-final case class FileBasedRemovedEvent(typedPath: TypedPath)
+final case class FileBasedRemoved(typedPath: TypedPath)
 extends FileBasedEvent
