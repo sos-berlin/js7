@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.data.order
 import com.sos.scheduler.engine.data.agent.AgentAddress
 import com.sos.scheduler.engine.data.filebased.FileBasedState
 import com.sos.scheduler.engine.data.job.TaskId
-import com.sos.scheduler.engine.data.jobchain.JobChainPath
+import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
 import java.time.Instant
 import org.junit.runner.RunWith
@@ -23,7 +23,7 @@ final class OrderOverviewTest extends FreeSpec {
       JobChainPath("/a") orderKey "1",
       FileBasedState.active,
       OrderSourceType.adHoc,
-      OrderState("100"),
+      NodeId("100"),
       OrderProcessingState.InTaskProcess(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678")), Instant.parse("2016-08-01T01:02:03.044Z")),
       ListSet(OrderObstacle.Suspended, OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z"))),
       nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z")))
@@ -31,7 +31,7 @@ final class OrderOverviewTest extends FreeSpec {
       "path": "/a,1",
       "fileBasedState": "active",
       "sourceType": "adHoc",
-      "orderState": "100",
+      "nodeId": "100",
       "processingState": {
         "TYPE": "InTaskProcess",
         "taskId": "123",

@@ -1,15 +1,14 @@
 package com.sos.scheduler.engine.data.jobchain
 
 import com.sos.scheduler.engine.data.job.JobPath
-import com.sos.scheduler.engine.data.order.OrderState
 import spray.json._
 
 /**
  * @author Joacim Zschimmer
  */
 trait JobNodeOverview extends NodeOverview {
-  def nextState: OrderState
-  def errorState: OrderState
+  def nextNodeId: NodeId
+  def errorNodeId: NodeId
   def jobPath: JobPath
   def action: JobChainNodeAction
   def orderCount: Int

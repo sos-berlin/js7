@@ -22,7 +22,7 @@ final class OrderNodeTransitionTest extends FreeSpec {
       OrderNodeTransition.ofCppInternalValue(i) shouldEqual OrderNodeTransition.Error(ReturnCode(i))
   }
 
-  "keep state" in {
+  "keep NodeId" in {
     OrderNodeTransition.ofCppInternalValue(Long.MaxValue) shouldEqual OrderNodeTransition.Keep
   }
 

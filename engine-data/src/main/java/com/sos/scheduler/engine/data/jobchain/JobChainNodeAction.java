@@ -6,7 +6,7 @@ import spray.json.JsonFormat;
 public enum JobChainNodeAction {
     process("process"),
     stop("stop"),
-    nextState("next_state");
+    nextNode("next_state");
 
     private final String cppName;
 

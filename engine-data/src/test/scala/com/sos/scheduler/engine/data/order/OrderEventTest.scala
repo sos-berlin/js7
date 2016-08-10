@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.data.job.TaskId
-import com.sos.scheduler.engine.data.jobchain.JobChainPath
+import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -16,11 +16,11 @@ final class OrderEventTest extends FreeSpec {
   private val orderKey = JobChainPath("/JOB-CHAIN") orderKey "ORDER-ID"
 
   "OrderFinished" in {
-    check(OrderFinished(orderKey, OrderState("END")),
+    check(OrderFinished(orderKey, NodeId("END")),
       """{
         "TYPE": "OrderFinished",
         "orderKey": "/JOB-CHAIN,ORDER-ID",
-        "state": "END"
+        "nodeId": "END"
       }""")
   }
 
@@ -49,21 +49,21 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderSetBack" in {
-    check(OrderSetBack(orderKey, OrderState("100")),
+    check(OrderSetBack(orderKey, NodeId("100")),
       """{
         "TYPE": "OrderSetBack",
         "orderKey": "/JOB-CHAIN,ORDER-ID",
-        "state": "100"
+        "nodeId": "100"
       }""")
   }
 
   "OrderNodeChanged" in {
-    check(OrderNodeChanged(orderKey, OrderState("50"), OrderState("100")),
+    check(OrderNodeChanged(orderKey, NodeId("50"), NodeId("100")),
       """{
         "TYPE": "OrderNodeChanged",
         "orderKey": "/JOB-CHAIN,ORDER-ID",
-        "state": "100",
-        "previousState": "50"
+        "nodeId": "100",
+        "fromNodeId": "50"
       }""")
   }
 
@@ -72,16 +72,16 @@ final class OrderEventTest extends FreeSpec {
       """{
         "TYPE": "OrderStepEnded",
         "orderKey": "/JOB-CHAIN,ORDER-ID",
-        "stateTransition": "Success"
+        "nodeTransition": "Success"
       }""")
   }
 
   "OrderStepStarted" in {
-    check(OrderStepStarted(orderKey, OrderState("100"), TaskId(123)),
+    check(OrderStepStarted(orderKey, NodeId("100"), TaskId(123)),
       """{
         "TYPE": "OrderStepStarted",
         "orderKey": "/JOB-CHAIN,ORDER-ID",
-        "state": "100",
+        "nodeId": "100",
         "taskId": "123"
       }""")
   }

@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.data.filebased.{FileBasedOverview, FileBasedState}
-import com.sos.scheduler.engine.data.jobchain.NodeKey
+import com.sos.scheduler.engine.data.jobchain.{NodeId, NodeKey}
 import com.sos.scheduler.engine.data.queries.QueryableOrder
 import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
 import java.time.Instant
@@ -17,7 +17,7 @@ final case class OrderOverview(
   path: OrderKey,
   fileBasedState: FileBasedState,
   sourceType: OrderSourceType,
-  orderState: OrderState,
+  nodeId: NodeId,
   processingState: OrderProcessingState,
   obstacles: Set[OrderObstacle] = Set(),
   nextStepAt: Option[Instant] = None,
@@ -26,7 +26,7 @@ extends FileBasedOverview with QueryableOrder {
 
   def orderKey: OrderKey = path
 
-  def nodeKey: NodeKey = NodeKey(orderKey.jobChainPath, orderState)
+  def nodeKey: NodeKey = NodeKey(orderKey.jobChainPath, nodeId)
 
   def isSetback = processingState.isInstanceOf[OrderProcessingState.Setback]
 
@@ -41,7 +41,7 @@ object OrderOverview {
 
   implicit val MyJsonFormat = jsonFormat8(apply)
 
-  implicit val ordering: Ordering[OrderOverview] = Ordering by { o ⇒ (o.orderKey.jobChainPath, o.orderState, o.orderKey.id) }
+  implicit val ordering: Ordering[OrderOverview] = Ordering by { o ⇒ (o.orderKey.jobChainPath, o.nodeId, o.orderKey.id) }
 
   final class Statistics(val orderOverviews: immutable.Seq[OrderOverview]) {
     def count = orderOverviews.size
