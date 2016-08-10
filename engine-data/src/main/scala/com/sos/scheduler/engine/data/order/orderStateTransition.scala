@@ -1,6 +1,9 @@
 package com.sos.scheduler.engine.data.order
 
+import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat
+import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat.Subtype
 import com.sos.scheduler.engine.data.job.ReturnCode
+import spray.json.DefaultJsonProtocol._
 
 /**
  * @author Joacim Zschimmer
@@ -8,6 +11,11 @@ import com.sos.scheduler.engine.data.job.ReturnCode
 sealed trait OrderStateTransition
 
 object OrderStateTransition {
+
+  implicit val OrderStateTransitionJsonFormat = TypedJsonFormat[OrderStateTransition](
+    Subtype(jsonFormat0(() ⇒ KeepOrderStateTransition)),
+    Subtype(jsonFormat1(ErrorOrderStateTransition.apply)),
+    Subtype(jsonFormat0(() ⇒ SuccessOrderStateTransition)))
 
   def ofCppInternalValue(internalValue: Long) = internalValue match {
     case Long.MaxValue ⇒
