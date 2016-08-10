@@ -68,11 +68,11 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderStepEnded" in {
-    check(OrderStepEnded(orderKey, SuccessOrderStateTransition),
+    check(OrderStepEnded(orderKey, OrderNodeTransition.Success),
       """{
         "TYPE": "OrderStepEnded",
         "orderKey": "/JOB-CHAIN,ORDER-ID",
-        "stateTransition": "SuccessOrderStateTransition"
+        "stateTransition": "Success"
       }""")
   }
 
