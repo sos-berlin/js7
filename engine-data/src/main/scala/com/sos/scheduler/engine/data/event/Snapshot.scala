@@ -1,23 +1,24 @@
-package com.sos.scheduler.engine.data.compounds
+package com.sos.scheduler.engine.data.event
 
-import com.sos.scheduler.engine.data.event.EventId
 import spray.json._
 
 /**
+  * A value with an EventId.
+  *
   * @author Joacim Zschimmer
   */
-final case class SchedulerResponse[+A](content: A)(val eventId: EventId) {
-  def map[B](f: A ⇒ B): SchedulerResponse[B] = SchedulerResponse(f(content))(eventId)
+final case class Snapshot[+A](value: A)(val eventId: EventId) {
+  def map[B](f: A ⇒ B): Snapshot[B] = Snapshot(f(value))(eventId)
 }
 
-object SchedulerResponse {
+object Snapshot {
   val EventIdJsonName = "eventId"
   val ContentJsonName = "schedulerResponseContent"
 
-  implicit def jsonFormat[A: RootJsonFormat] = new RootJsonFormat[SchedulerResponse[A]] {
+  implicit def jsonFormat[A: RootJsonFormat] = new RootJsonFormat[Snapshot[A]] {
 
-    def write(o: SchedulerResponse[A]) = {
-      val contentFields = implicitly[RootJsonFormat[A]].write(o.content) match {
+    def write(o: Snapshot[A]) = {
+      val contentFields = implicitly[RootJsonFormat[A]].write(o.value) match {
         case JsObject(fields) ⇒ fields
         case array: JsArray ⇒ Map(ContentJsonName → array)
         case x ⇒ sys.error(s"Unexpected ${x.getClass}")
@@ -29,7 +30,7 @@ object SchedulerResponse {
       val jsObject = jsValue.asJsObject
       val eventId = EventId.fromJsValue(jsObject.fields(EventIdJsonName))
       val content = jsObject.fields.getOrElse(ContentJsonName, jsObject)
-      SchedulerResponse(content.convertTo[A])(eventId)
+      Snapshot(content.convertTo[A])(eventId)
     }
   }
 
