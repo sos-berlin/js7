@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.data.scheduler
 
+import com.sos.scheduler.engine.base.system.SystemInformation
+import com.sos.scheduler.engine.data.system.JavaInformation
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -20,7 +22,9 @@ final class SchedulerOverviewTest extends FreeSpec {
       httpPort = Some(4444),
       udpPort = Some(5555),
       pid = 77,
-      SchedulerState.running)
+      SchedulerState.running,
+      system = SystemInformation(hostname = "TEST-HOSTNAME"),
+      java = JavaInformation(systemProperties = Map("test" → "TEST")))
     val json = """{
       "version": "0.0",
       "startedAt": "2016-07-13T01:02:03.004Z",
@@ -28,7 +32,16 @@ final class SchedulerOverviewTest extends FreeSpec {
       "httpPort": 4444,
       "udpPort": 5555,
       "pid": 77,
-      "state": "running"
+      "state": "running",
+      "java": {
+        "systemProperties": {
+          "test": "TEST"
+        }
+      },
+      "system": {
+        "hostname": "TEST-HOSTNAME",
+        "mxBeans": {}
+       }
     }""".parseJson
     assert(overview.toJson == json)
     assert(overview == json.convertTo[SchedulerOverview])
