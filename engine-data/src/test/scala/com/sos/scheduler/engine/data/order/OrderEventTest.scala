@@ -58,7 +58,7 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderNodeChanged" in {
-    check(OrderNodeChanged(orderKey, NodeId("50"), NodeId("100")),
+    check(OrderNodeChanged(orderKey, NodeId("100"), fromNodeId = NodeId("50")),
       """{
         "TYPE": "OrderNodeChanged",
         "orderKey": "/JOB-CHAIN,ORDER-ID",
