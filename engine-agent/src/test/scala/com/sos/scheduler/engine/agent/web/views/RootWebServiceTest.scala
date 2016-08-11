@@ -2,7 +2,9 @@ package com.sos.scheduler.engine.agent.web.views
 
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
+import com.sos.scheduler.engine.base.system.SystemInformation
 import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
+import com.sos.scheduler.engine.data.system.JavaInformation
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -23,8 +25,8 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
     currentTaskCount = 777,
     totalTaskCount = 999,
     isTerminating = false,
-    system = AgentOverview.SystemInformation(hostname = "TEST-HOSTNAME"),
-    java = AgentOverview.JavaInformation(systemProperties = Map("test" → "TEST")))
+    system = SystemInformation(hostname = "TEST-HOSTNAME"),
+    java = JavaInformation(systemProperties = Map("test" → "TEST")))
 
   private def expectedOverviewJsObject = JsObject(
     "startedAt" → JsString("2015-06-01T12:00:00Z"),
