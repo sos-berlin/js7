@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data
 
 import java.time.Instant
+import spray.json.{JsNumber, JsValue}
 
 /**
   * @author Joacim Zschimmer
@@ -15,6 +16,12 @@ package object event {
 
     def apply(eventId: String) = eventId.toLong
 
-    def eventIdToInstant(id: EventId) = Instant ofEpochMilli id / 1000 plusNanos id % 1000 * 1000
+    def apply(eventId: Long) = eventId
+
+    def toInstant(id: EventId) = Instant ofEpochMilli id / 1000 plusNanos id % 1000 * 1000
+
+    def toJsValue(eventId: EventId) = JsNumber(eventId)
+
+    def fromJsValue(o: JsValue) = o.asInstanceOf[JsNumber].value.toLongExact
   }
 }

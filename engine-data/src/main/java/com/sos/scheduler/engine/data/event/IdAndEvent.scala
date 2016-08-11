@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.data.event
 
 import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat
-import com.sos.scheduler.engine.data.event.EventId.eventIdToInstant
 import com.sos.scheduler.engine.data.events.EventJsonFormat
 import java.time.Instant
 import spray.json._
@@ -14,7 +13,7 @@ final case class IdAndEvent(eventId: EventId, event: Event) {
   /**
     * Unique and nearly accurate timestamp.
     */
-  def eventInstant: Instant = eventIdToInstant(eventId)
+  def eventInstant: Instant = EventId.toInstant(eventId)
 }
 
 object IdAndEvent {
