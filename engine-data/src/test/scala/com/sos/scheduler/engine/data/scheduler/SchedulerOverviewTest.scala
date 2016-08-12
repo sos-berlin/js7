@@ -24,7 +24,9 @@ final class SchedulerOverviewTest extends FreeSpec {
       pid = 77,
       SchedulerState.running,
       system = SystemInformation(hostname = "TEST-HOSTNAME"),
-      java = JavaInformation(systemProperties = Map("test" → "TEST")))
+      java = JavaInformation(
+        systemProperties = Map("test" → "TEST"),
+        JavaInformation.Memory(maximum = 3, total = 2, free = 1)))
     val json = """{
       "version": "0.0",
       "startedAt": "2016-07-13T01:02:03.004Z",
@@ -36,6 +38,11 @@ final class SchedulerOverviewTest extends FreeSpec {
       "java": {
         "systemProperties": {
           "test": "TEST"
+        },
+        "memory": {
+          "maximum": 3,
+          "total": 2,
+          "free": 1
         }
       },
       "system": {

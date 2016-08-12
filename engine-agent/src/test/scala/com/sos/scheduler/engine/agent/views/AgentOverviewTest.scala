@@ -22,7 +22,9 @@ final class AgentOverviewTest extends FreeSpec {
       totalTaskCount = 222,
       isTerminating = false,
       system = SystemInformation(hostname = "TEST-HOSTNAME"),
-      java = JavaInformation(systemProperties = Map("test" → "TEST")))
+      java = JavaInformation(
+        systemProperties = Map("test" → "TEST"),
+        JavaInformation.Memory(maximum = 3, total = 2, free = 1)))
     val json =
       s"""{
         "startedAt": "2015-06-01T12:00:00Z",
@@ -33,6 +35,11 @@ final class AgentOverviewTest extends FreeSpec {
         "java": {
           "systemProperties": {
             "test": "TEST"
+          },
+          "memory": {
+            "maximum": 3,
+            "total": 2,
+            "free": 1
           }
         },
         "system": {

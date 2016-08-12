@@ -21,6 +21,6 @@ final class AgentOverviewProvider @Inject private(taskHandler: TaskHandler) exte
       totalTaskCount = taskView.totalTaskCount,
       isTerminating = taskHandler.isTerminating,
       system = systemInformation(),
-      java = JavaInformation.Singleton)
+      java = JavaInformation())
   }
 }
