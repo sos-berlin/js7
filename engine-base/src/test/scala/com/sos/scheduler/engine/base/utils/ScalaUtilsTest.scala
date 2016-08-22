@@ -100,4 +100,23 @@ final class ScalaUtilsTest extends FreeSpec {
     f(22)
     assert(r == 11)
   }
+
+  "PartialFunction.getOrElse" in {
+    val pf: PartialFunction[Int, String] = {
+      case 1 ⇒ "1"
+    }
+    assert(pf.getOrElse(1, "1") == "1")
+    assert(pf.getOrElse(2, "-") == "-")
+  }
+
+  "PartialFunction.callIfDefined" in {
+    var x = 0
+    val pf: PartialFunction[Int, Unit] = {
+      case 1 ⇒ x = 1
+    }
+    pf.callIfDefined(2)
+    assert(x == 0)
+    pf.callIfDefined(1)
+    assert(x == 1)
+  }
 }

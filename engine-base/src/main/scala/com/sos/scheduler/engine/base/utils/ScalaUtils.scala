@@ -102,7 +102,15 @@ object ScalaUtils {
     def switchOff(body: ⇒ Unit) = if (delegate.compareAndSet(true, false)) body
   }
 
+  implicit class RichPartialFunction[A, B](val delegate: PartialFunction[A, B]) extends AnyVal {
+    def getOrElse[BB >: B](key: A, default: ⇒ BB): BB = delegate.applyOrElse(key, (_: A) ⇒ default)
+  }
+
+  implicit class RichUnitPartialFunction[A](val delegate: PartialFunction[A, Unit]) extends AnyVal {
+    def callIfDefined(a: A): Unit = delegate.getOrElse(a, ())
+  }
+
   implicit class SwitchStatement[A](val delegate: A) extends AnyVal {
-    def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.applyOrElse(delegate, (delegate: A) ⇒ ())
+    def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.callIfDefined(delegate)
   }
 }
