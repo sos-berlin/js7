@@ -23,5 +23,5 @@ object FolderPath extends TypedPath.Companion[FolderPath] {
   val Root = FolderPath("/")
 
   // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.folder
+  def fileBasedType = FileBasedType.Folder
 }

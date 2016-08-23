@@ -11,5 +11,5 @@ final case class SchedulePath(string: String) extends TypedPath {
 object SchedulePath extends TypedPath.Companion[SchedulePath] {
 
   // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.schedule
+  def fileBasedType = FileBasedType.Schedule
 }

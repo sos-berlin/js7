@@ -17,12 +17,12 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class FileBasedTypeTest extends FreeSpec {
   "path" in {
-    assert(FileBasedType.folder.toPath("/a") == FolderPath("/a"))
-    assert(FileBasedType.job.toPath("/a") == JobPath("/a"))
-    assert(FileBasedType.jobChain.toPath("/a") == JobChainPath("/a"))
-    assert(FileBasedType.lock.toPath("/a") == LockPath("/a"))
-    assert(FileBasedType.processClass.toPath("/a") == ProcessClassPath("/a"))
-    assert(FileBasedType.order.toPath("/a,1") == OrderKey("/a", "1"))
-    assert(FileBasedType.schedule.toPath("/a") == SchedulePath("/a"))
+    assert(FileBasedType.Folder.toPath("/a") == FolderPath("/a"))
+    assert(FileBasedType.Job.toPath("/a") == JobPath("/a"))
+    assert(FileBasedType.JobChain.toPath("/a") == JobChainPath("/a"))
+    assert(FileBasedType.Lock.toPath("/a") == LockPath("/a"))
+    assert(FileBasedType.ProcessClass.toPath("/a") == ProcessClassPath("/a"))
+    assert(FileBasedType.Order.toPath("/a,1") == OrderKey("/a", "1"))
+    assert(FileBasedType.Schedule.toPath("/a") == SchedulePath("/a"))
   }
 }

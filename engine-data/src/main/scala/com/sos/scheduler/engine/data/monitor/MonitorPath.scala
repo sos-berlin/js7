@@ -14,5 +14,5 @@ final case class MonitorPath(string: String) extends TypedPath {
 object MonitorPath extends TypedPath.Companion[MonitorPath] {
 
   // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.monitor
+  def fileBasedType = FileBasedType.Monitor
 }

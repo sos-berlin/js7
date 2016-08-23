@@ -24,7 +24,7 @@ with TypedPath {
 object OrderKey extends TypedPath.Companion[OrderKey] {
 
   // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.order
+  def fileBasedType = FileBasedType.Order
 
   private val Separator = ','
 

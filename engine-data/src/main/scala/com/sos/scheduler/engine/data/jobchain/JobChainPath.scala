@@ -23,5 +23,5 @@ object JobChainPath extends TypedPath.Companion[JobChainPath] {
   @JsonCreator def valueOf(absolutePath: String) = new JobChainPath(absolutePath)
 
   // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.jobChain
+  def fileBasedType = FileBasedType.JobChain
 }

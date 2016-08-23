@@ -11,5 +11,5 @@ final case class LockPath(string: String) extends TypedPath {
 object LockPath extends TypedPath.Companion[LockPath] {
 
   // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.lock
+  def fileBasedType = FileBasedType.Lock
 }

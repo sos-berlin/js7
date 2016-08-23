@@ -12,14 +12,14 @@ import com.sos.scheduler.engine.data.schedule.SchedulePath$;
 import spray.json.JsonFormat;
 
 public enum FileBasedType {
-    folder(FolderPath$.MODULE$, "Folder", "folder", "Folder"),
-    job(JobPath$.MODULE$, "Job", "job", "Job"),
-    jobChain(JobChainPath$.MODULE$, "Job_chain", "job_chain", "JobChain"),
-    lock(LockPath$.MODULE$, "Lock", "lock", "Lock"),
-    monitor(MonitorPath$.MODULE$, "Monitor", "monitor", "Monitor"),
-    order(OrderKey$.MODULE$, "Standing_order", "order", "Order"),
-    processClass(ProcessClassPath$.MODULE$, "Process_class", "process_class", "ProcessClass"),
-    schedule(SchedulePath$.MODULE$, "Schedule", "schedule", "Schedule");
+    Folder(FolderPath$.MODULE$, "Folder", "folder", "Folder"),
+    Job(JobPath$.MODULE$, "Job", "job", "Job"),
+    JobChain(JobChainPath$.MODULE$, "Job_chain", "job_chain", "JobChain"),
+    Lock(LockPath$.MODULE$, "Lock", "lock", "Lock"),
+    Monitor(MonitorPath$.MODULE$, "Monitor", "monitor", "Monitor"),
+    Order(OrderKey$.MODULE$, "Standing_order", "order", "Order"),
+    ProcessClass(ProcessClassPath$.MODULE$, "Process_class", "process_class", "ProcessClass"),
+    Schedule(SchedulePath$.MODULE$, "Schedule", "schedule", "Schedule");
 
     private final TypedPath.Companion<?> companion;
     private final String internalCppName;
@@ -46,7 +46,7 @@ public enum FileBasedType {
     }
 
     public String filenameExtension() {
-        return this == folder ? "/" : "." + cppName + ".xml";
+        return this == Folder? "/" : "." + cppName + ".xml";
     }
 
     @Override public String toString() {

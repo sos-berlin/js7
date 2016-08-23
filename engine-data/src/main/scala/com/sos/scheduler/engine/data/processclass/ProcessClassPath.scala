@@ -14,7 +14,7 @@ final case class ProcessClassPath(string: String) extends TypedPath {
 object ProcessClassPath extends TypedPath.Companion[ProcessClassPath] {
 
   // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.processClass
+  def fileBasedType = FileBasedType.ProcessClass
 
   val Default = ProcessClassPath("")
 }
