@@ -18,7 +18,7 @@ object QueryableOrder {
   @TestOnly
   final case class ForTest(
     orderKey: OrderKey,
-    sourceType: OrderSourceType = OrderSourceType.adHoc,
+    sourceType: OrderSourceType = OrderSourceType.AdHoc,
     isSetback: Boolean = false,
     isBlacklisted: Boolean = false,
     isSuspended: Boolean = false)

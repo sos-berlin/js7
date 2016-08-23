@@ -7,9 +7,9 @@ import spray.json.JsonFormat;
  * @author Joacim Zschimmer
  */
 public enum OrderSourceType {
-    adHoc,
-    fileOrderSource,
-    fileBased;
+    AdHoc,
+    FileOrder,
+    Permanent;
 
     public static final JsonFormat<OrderSourceType> MyJsonFormat = new JavaEnumJsonFormat<>(OrderSourceType.class);
 }

@@ -37,11 +37,11 @@ final class OnlyOrderQueryTest extends FreeSpec {
   }
 
   "isOrderSourceType" in {
-    val order = QueryableOrder.ForTest(orderKey, sourceType = adHoc)
+    val order = QueryableOrder.ForTest(orderKey, sourceType = AdHoc)
     assert(q.copy() matchesOrder order)
     assert(!(q.copy(isOrderSourceType = Some(Set())) matchesOrder order))
-    assert(!(q.copy(isOrderSourceType = Some(Set(fileBased))) matchesOrder order))
-    assert(q.copy(isOrderSourceType = Some(Set(adHoc, fileBased))) matchesOrder order)
-    assert(q.copy(isOrderSourceType = Some(Set(adHoc, fileBased))) matchesOrder order)
+    assert(!(q.copy(isOrderSourceType = Some(Set(Permanent))) matchesOrder order))
+    assert(q.copy(isOrderSourceType = Some(Set(AdHoc, Permanent))) matchesOrder order)
+    assert(q.copy(isOrderSourceType = Some(Set(AdHoc, Permanent))) matchesOrder order)
   }
 }
