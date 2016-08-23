@@ -1,8 +1,7 @@
 package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat.Subtype
+import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.scheduler.engine.data.agent.AgentAddress
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
@@ -63,8 +62,6 @@ object OrderProcessingState {
   case object Blacklisted
   extends OrderProcessingState
 
-  case object Suspended extends Waiting
-
   case object WaitingForOther extends Waiting
 
   implicit val OrderProcessingStateJsonFormat = TypedJsonFormat[OrderProcessingState](
@@ -75,6 +72,5 @@ object OrderProcessingState {
     Subtype(jsonFormat4(InTaskProcess)),
     Subtype(jsonFormat1(Setback)),
     Subtype(jsonFormat0(() ⇒ Blacklisted)),
-    Subtype(jsonFormat0(() ⇒ Suspended)),
     Subtype(jsonFormat0(() ⇒ WaitingForOther)))
 }

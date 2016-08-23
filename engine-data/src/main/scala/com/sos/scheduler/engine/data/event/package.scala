@@ -24,4 +24,6 @@ package object event {
 
     def fromJsValue(o: JsValue) = o.asInstanceOf[JsNumber].value.toLongExact
   }
+
+  type AnyKeyedEvent = KeyedEvent[Event]
 }

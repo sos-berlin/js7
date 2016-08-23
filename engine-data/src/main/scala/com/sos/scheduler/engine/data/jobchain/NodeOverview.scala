@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat.Subtype
+import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 
 trait NodeOverview {
   def nodeKey: NodeKey

@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.data
 
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat.Subtype
-import com.sos.scheduler.engine.data.event.Event
+import com.sos.scheduler.engine.data.event.KeyedEvent.{KeyedSubtype, KeyedTypedEventJsonFormat}
+import com.sos.scheduler.engine.data.event.{KeyedEvent, Event}
+import com.sos.scheduler.engine.data.log.LogEvent
 import com.sos.scheduler.engine.data.order.OrderEvent
 
 /**
@@ -10,6 +10,8 @@ import com.sos.scheduler.engine.data.order.OrderEvent
   */
 package object events {
 
-  implicit val EventJsonFormat = TypedJsonFormat[Event](
-    Subtype[OrderEvent])
+  implicit val EventJsonFormat: KeyedTypedEventJsonFormat[Event] =
+    KeyedEvent.typedJsonFormat[Event](
+      KeyedSubtype[LogEvent],
+      KeyedSubtype[OrderEvent])
 }

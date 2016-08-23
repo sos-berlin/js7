@@ -14,10 +14,9 @@ with TypedPath {
 
   def companion = OrderKey
 
+  lazy val string = jobChainPath.string + Separator + id.string
 
-  def string = jobChainPath.string + Separator + id
-
-  override def toString = s"${jobChainPath.string}:$id"
+  override def toString = string
 }
 
 

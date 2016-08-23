@@ -1,8 +1,7 @@
 package com.sos.scheduler.engine.data.job
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat.Subtype
+import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.scheduler.engine.data.filebased.FileBasedObstacle
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._

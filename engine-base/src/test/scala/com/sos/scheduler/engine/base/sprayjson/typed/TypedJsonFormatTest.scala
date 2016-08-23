@@ -1,8 +1,7 @@
-package com.sos.scheduler.engine.base.sprayjson
+package com.sos.scheduler.engine.base.sprayjson.typed
 
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.lazyRootFormat
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormat._
-import com.sos.scheduler.engine.base.sprayjson.TypedJsonFormatTest._
+import com.sos.scheduler.engine.base.sprayjson.typed.TypedJsonFormatTest._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -81,20 +80,26 @@ final class TypedJsonFormatTest extends FreeSpec {
     implicit lazy val xJsonFormat: TypedJsonFormat.AsLazy[X] =
       TypedJsonFormat.asLazy(
         TypedJsonFormat[X](
-          typeField = "TYPETYPE")(
             Subtype[A],
             Subtype(jsonFormat2(B1))))
 
-    "case object" in {
+    "case object A0" in {
       val x: X = A0
       val json = """"A0"""".parseJson
       assert(x.toJson == json)
       assert(x == json.convertTo[X])
     }
 
-    "case class 1b" in {
+    "case class 1" in {
+      val a: X = A1("one")
+      val json = """{ "TYPE": "A1", "string": "one" } """.parseJson
+      assert(a.toJson == json)
+      assert(a == json.convertTo[X])
+    }
+
+    "case class B1" in {
       val x: X = B1("b one", Some(A0))
-      val json = """{ "TYPETYPE": "B1", "b1String": "b one", "recursive": "A0" }""".parseJson
+      val json = """{ "TYPE": "B1", "b1String": "b one", "recursive": "A0" }""".parseJson
       assert(x.toJson == json)
       assert(x == json.convertTo[X])
     }

@@ -49,7 +49,6 @@ final class OrderProcessingStateTest extends FreeSpec {
         "until": "2016-08-01T11:22:33.444Z"
       }""")
     addTest(Blacklisted, """"Blacklisted"""")
-    addTest(Suspended, """"Suspended"""")
     addTest(WaitingForOther, """"WaitingForOther"""")
   }
 

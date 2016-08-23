@@ -8,7 +8,12 @@ import spray.json._
   * @author Joacim Zschimmer
   */
 final case class Snapshot[+A](value: A)(val eventId: EventId) {
+
   def map[B](f: A ⇒ B): Snapshot[B] = Snapshot(f(value))(eventId)
+
+  def instant = EventId.toInstant(eventId)
+
+  override def toString = s"Snapshot($instant $value)"
 }
 
 object Snapshot {

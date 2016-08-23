@@ -1,5 +1,8 @@
 package com.sos.scheduler.engine.data.log;
 
+import com.sos.scheduler.engine.base.sprayjson.JavaEnumJsonFormat;
+import spray.json.JsonFormat;
+
 public enum SchedulerLogLevel {
     none(-10, "none"),
     debug9(-9, "debug9"),
@@ -50,4 +53,6 @@ public enum SchedulerLogLevel {
             if (o.cppNumber == cppLogLevel) return o;
         throw new RuntimeException("Unknown C++ log_level: "+cppLogLevel);
     }
+
+    public static final JsonFormat<SchedulerLogLevel> MyJsonFormat = new JavaEnumJsonFormat<>(SchedulerLogLevel.class);
 }

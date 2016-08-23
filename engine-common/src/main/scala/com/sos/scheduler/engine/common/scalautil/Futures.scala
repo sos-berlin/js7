@@ -41,6 +41,8 @@ object Futures {
     def ready(atMost: duration.Duration)(implicit permit: CanAwait) = throw new TimeoutException("NoFuture")
   }
 
+  private type LogFunction = (⇒ String, Throwable) ⇒ Unit
+
   object implicits {
 
     implicit class SuccessFuture[A](val delegate: Future[A]) extends AnyVal {
@@ -71,6 +73,13 @@ object Futures {
 
       def awaitWithStackTrace(duration: Duration) =
         Await.ready(delegate, duration.toFiniteDuration).successValue
+
+        //def logFailure(log: LogFunction)(implicit ec: ExecutionContext): delegate.type = {
+        //  delegate.onFailure {
+        //    case t ⇒ log(s"$t", t)
+        //  }
+        //  delegate
+        //}
     }
 
     implicit class RichFutures[A](val delegate: Iterable[Future[A]]) extends AnyVal {
