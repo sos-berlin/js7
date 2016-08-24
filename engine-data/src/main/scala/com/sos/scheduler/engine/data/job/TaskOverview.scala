@@ -12,7 +12,10 @@ final case class TaskOverview(
   jobPath: JobPath,
   state: TaskState,
   processClassPath: ProcessClassPath,
-  agent: Option[AgentAddress] = None)
+  agent: Option[AgentAddress] = None) {
+
+  def taskKey = TaskKey(jobPath, taskId)
+}
 
 object TaskOverview {
   implicit val ordering: Ordering[TaskOverview] = Ordering by { _.taskId }

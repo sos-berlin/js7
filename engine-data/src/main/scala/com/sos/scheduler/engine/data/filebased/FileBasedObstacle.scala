@@ -15,7 +15,7 @@ object FileBasedObstacle {
   case object Missing
   extends FileBasedObstacle
 
-  final case class BadState(state: FileBasedState, message: Option[String])
+  final case class BadState(state: FileBasedState, message: Option[String] = None)
   extends FileBasedObstacle {
     override def toString = (List(state) ++ message).mkString("BadState(", " ", ")")
   }
