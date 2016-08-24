@@ -6,7 +6,9 @@ import com.sos.scheduler.engine.data.event.Event
   * @author Joacim Zschimmer
   */
 sealed trait FileBasedEvent
-extends Event { type Key = TypedPath }
+extends Event {
+  type Key = TypedPath
+}
 
 case object FileBasedActivated
 extends FileBasedEvent

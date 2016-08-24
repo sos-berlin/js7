@@ -9,16 +9,14 @@ import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._
 
 final case class JobChainDetails(
-  path: JobChainPath,
-  fileBasedState: FileBasedState,
+  overview: JobChainOverview,
   file: Option[Path],
   fileModifiedAt: Option[Instant],
   sourceXml: Option[String],
   nodes: immutable.Seq[NodeOverview] )
 extends FileBasedDetails
 
-
 object JobChainDetails {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat6(apply)
+  implicit val MyJsonFormat = jsonFormat5(apply)
 }

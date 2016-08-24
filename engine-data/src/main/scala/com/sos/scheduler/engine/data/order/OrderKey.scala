@@ -31,7 +31,7 @@ object OrderKey extends TypedPath.Companion[OrderKey] {
 
   def apply(o: String): OrderKey = {
     val i = o indexOf ','
-    require(i > 0, "OrderKey TypedPath needs comma ',' to separate JobChainPath from OrderId")
+    require(i > 0, s"OrderKey TypedPath needs comma ',' to separate JobChainPath from OrderId: OrderKey($o)")
     apply(o.substring(0, i), o.substring(i + 1))
   }
 

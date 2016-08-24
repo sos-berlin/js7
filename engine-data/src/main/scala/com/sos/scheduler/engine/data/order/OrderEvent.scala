@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.data.event.{Event, ModifiableSourceEvent}
+import com.sos.scheduler.engine.data.event.Event
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.jobchain.NodeId
 import spray.json.DefaultJsonProtocol._
@@ -48,13 +48,13 @@ extends OrderEvent {
 }
 
 final case class OrderStepEnded(nodeTransition: OrderNodeTransition)
-extends OrderEvent with ModifiableSourceEvent
+extends OrderEvent
 
 final case class OrderStepStarted(nodeId: NodeId, taskId: TaskId)
-extends OrderEvent with ModifiableSourceEvent
+extends OrderEvent
 
 case object OrderSuspended
 extends OrderEvent
 
 case object OrderStarted
-extends OrderEvent with ModifiableSourceEvent
+extends OrderEvent
