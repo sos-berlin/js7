@@ -74,7 +74,9 @@ final class OrderEventTest extends FreeSpec {
       """{
         "TYPE": "OrderStepEnded",
         "key": "/JOB-CHAIN,ORDER-ID",
-        "nodeTransition": "Success"
+        "nodeTransition": {
+          "TYPE": "Success"
+        }
       }""")
   }
 

@@ -14,7 +14,7 @@ import spray.json._
 @RunWith(classOf[JUnitRunner])
 final class TypedJsonFormatTest extends FreeSpec {
 
-  private implicit val aJsonFormat = TypedJsonFormat[A](
+  private implicit val aJsonFormat = TypedJsonFormat[A](shortenTypeOnlyValue = true)(
     Subtype(jsonFormat0(() ⇒ A0)),
     Subtype(jsonFormat1(A1)),
     //Subtype(jsonFormat0(Alien)),  // Must not not compile
@@ -44,7 +44,7 @@ final class TypedJsonFormatTest extends FreeSpec {
   "Nested TypedJsonFormat" - {
     implicit lazy val xJsonFormat: RootJsonFormat[X] =
       lazyRootFormat(
-        TypedJsonFormat[X](
+        TypedJsonFormat[X](shortenTypeOnlyValue = true)(
           Subtype[A],
           Subtype(jsonFormat2(B1))))
 
@@ -79,7 +79,7 @@ final class TypedJsonFormatTest extends FreeSpec {
   "fallbackJsonWriter and recursive data structure" - {
     implicit lazy val xJsonFormat: TypedJsonFormat.AsLazy[X] =
       TypedJsonFormat.asLazy(
-        TypedJsonFormat[X](
+        TypedJsonFormat[X](shortenTypeOnlyValue = true)(
             Subtype[A],
             Subtype(jsonFormat2(B1))))
 

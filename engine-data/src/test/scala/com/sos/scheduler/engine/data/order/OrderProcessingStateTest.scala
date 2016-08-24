@@ -17,7 +17,10 @@ import spray.json._
 final class OrderProcessingStateTest extends FreeSpec {
 
   "JSON" - {
-    addTest(NotPlanned, """"NotPlanned"""")
+    addTest(NotPlanned,
+      """{
+        "TYPE": "NotPlanned"
+      }""")
     addTest(Planned(Instant.parse("2016-08-01T11:22:33.444Z")),
       """{
         "TYPE": "Planned",
@@ -48,8 +51,14 @@ final class OrderProcessingStateTest extends FreeSpec {
         "TYPE": "Setback",
         "until": "2016-08-01T11:22:33.444Z"
       }""")
-    addTest(Blacklisted, """"Blacklisted"""")
-    addTest(WaitingForOther, """"WaitingForOther"""")
+    addTest(Blacklisted,
+      """{
+        "TYPE": "Blacklisted"
+      }""")
+    addTest(WaitingForOther,
+      """{
+        "TYPE": "WaitingForOther"
+      }""")
   }
 
   private def addTest(processingState: OrderProcessingState, json: String): Unit = {

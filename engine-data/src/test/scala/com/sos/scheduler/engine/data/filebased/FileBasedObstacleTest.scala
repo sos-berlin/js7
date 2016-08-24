@@ -14,7 +14,9 @@ final class FileBasedObstacleTest extends FreeSpec {
 
   "Missing" in {
     val o: FileBasedObstacle = Missing
-    val json = """"Missing"""".parseJson
+    val json = """{
+      "TYPE": "Missing"
+    }""".parseJson
     assert(o.toJson == json)
     assert(o == json.convertTo[FileBasedObstacle])
   }

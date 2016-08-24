@@ -33,7 +33,10 @@ final class OrderNodeTransitionTest extends FreeSpec {
 
   "JSON" - {
     "Success" in {
-      check(OrderNodeTransition.Success, """"Success"""")
+      check(OrderNodeTransition.Success,
+        """{
+          "TYPE": "Success"
+        }""")
     }
 
     "Error" in {
@@ -44,7 +47,10 @@ final class OrderNodeTransitionTest extends FreeSpec {
     }
 
     "Proceeding 0" in {
-      check(OrderNodeTransition.Proceeding(ReturnCode(0)), """"Success"""")
+      check(OrderNodeTransition.Proceeding(ReturnCode(0)),
+        """{
+          "TYPE": "Success"
+        }""")
     }
 
     "Proceeding 1" in {
@@ -55,7 +61,10 @@ final class OrderNodeTransitionTest extends FreeSpec {
     }
 
     "Keep" in {
-      check(OrderNodeTransition.Keep, """"Keep"""")
+      check(OrderNodeTransition.Keep,
+        """{
+          "TYPE": "Keep"
+        }""")
     }
   }
 

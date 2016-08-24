@@ -51,7 +51,9 @@ final class OrderDetailsTest extends FreeSpec {
           "agentUri": "http://1.2.3.4:5678"
         },
         "obstacles": [
-          "Suspended",
+          {
+            "TYPE": "Suspended"
+          },
           {
             "TYPE": "Setback",
             "until": "2016-08-02T11:22:33.444Z"

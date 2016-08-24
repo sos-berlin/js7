@@ -18,7 +18,7 @@ trait TypedJsonFormat[A] extends RootJsonFormat[A] with HasOwnTypeField[A] {
 
 object TypedJsonFormat {
   val DefaultTypeFieldName = "TYPE"
-  private val DefaultShortenTypeOnlyValue = true
+  private val DefaultShortenTypeOnlyValue = false
 
   /**
     * A RootJsonType for polymorphic types.
