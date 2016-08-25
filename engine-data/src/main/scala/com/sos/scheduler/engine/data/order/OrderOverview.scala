@@ -27,7 +27,7 @@ final case class OrderOverview(
   nextStepAt: Option[Instant] = None,
   occupyingClusterMemberId: Option[ClusterMemberId] = None,
   liveChanged: Option[LiveChanged] = None)
-extends FileBasedOverview with QueryableOrder {
+extends OrderView with FileBasedOverview with QueryableOrder {
 
   def orderKey: OrderKey = path
 
@@ -40,7 +40,7 @@ extends FileBasedOverview with QueryableOrder {
   def isSuspended = obstacles contains OrderObstacle.Suspended
 }
 
-object OrderOverview {
+object OrderOverview extends OrderView.Companion[OrderOverview] {
   sealed trait LiveChanged
   final case class Replaced(overview: OrderOverview) extends LiveChanged
   case object Removed extends LiveChanged
@@ -52,7 +52,7 @@ object OrderOverview {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
   private implicit val OrderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
 
-  implicit val MyJsonFormat: RootJsonFormat[OrderOverview] = lazyRootFormat(jsonFormat9(apply))
+  implicit val jsonFormat: RootJsonFormat[OrderOverview] = lazyRootFormat(jsonFormat9(apply))
 
   implicit val ordering: Ordering[OrderOverview] = Ordering by { o ⇒ (o.orderKey.jobChainPath, o.nodeId, o.orderKey.id) }
 

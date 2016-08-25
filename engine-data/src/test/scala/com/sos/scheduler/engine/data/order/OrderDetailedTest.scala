@@ -17,10 +17,10 @@ import spray.json._
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class OrderDetailsTest extends FreeSpec {
+final class OrderDetailedTest extends FreeSpec {
 
   "JSON" in {
-    val obj = OrderDetails(
+    val obj = OrderDetailed(
       OrderOverview(
         JobChainPath("/a") orderKey "1",
         FileBasedState.active,
@@ -70,6 +70,6 @@ final class OrderDetailsTest extends FreeSpec {
       }
     }""".parseJson
     assert(obj.toJson == jsValue)
-    assert(obj == jsValue.convertTo[OrderDetails])
+    assert(obj == jsValue.convertTo[OrderDetailed])
   }
 }
