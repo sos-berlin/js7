@@ -7,11 +7,11 @@ import spray.json.DefaultJsonProtocol._
 /**
   * @author Joacim Zschimmer
   */
-final case class TaskDetails(
+final case class TaskDetailed(
   overview: TaskOverview,
   variables: Map[String, String],
   stdoutFile: Path)
 
-object TaskDetails {
+object TaskDetailed {
   implicit val MyJsonFormat = jsonFormat3(apply)
 }

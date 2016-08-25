@@ -6,7 +6,7 @@ import java.time.Instant
 /**
  * @author Joacim Zschimmer
  */
-trait FileBasedDetails extends HasPath {
+trait FileBasedDetailed extends HasPath {
 
   def overview: FileBasedOverview
   def file: Option[Path]

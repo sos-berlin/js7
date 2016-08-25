@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits.InstantJsonFormat
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.PathJsonFormat
-import com.sos.scheduler.engine.data.filebased.FileBasedDetails
+import com.sos.scheduler.engine.data.filebased.FileBasedDetailed
 import java.nio.file.Path
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._
@@ -16,7 +16,7 @@ final case class OrderDetailed(
   fileModifiedAt: Option[Instant],
   sourceXml: Option[String],
   variables: Map[String, String])
-extends OrderView with FileBasedDetails {
+extends OrderView with FileBasedDetailed {
   def orderKey = overview.orderKey
 
   private[engine] def occupyingClusterMemberId = overview.occupyingClusterMemberId

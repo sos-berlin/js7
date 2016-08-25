@@ -7,6 +7,6 @@ import scala.collection.immutable
  * @author Joacim Zschimmer
  */
 @ImplementedBy(classOf[AgentCommandHandler])
-trait CommandHandlerDetails  {
+trait CommandHandlerDetailed  {
   def commandRuns: immutable.Iterable[CommandRunOverview]
 }
