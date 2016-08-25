@@ -9,7 +9,7 @@ trait AbsolutePath extends IsString {
 
   def companion: Companion[_ <: AbsolutePath]
 
-  final lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
+  lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
 
   final lazy val parent: FolderPath =
     string lastIndexOf '/' match {

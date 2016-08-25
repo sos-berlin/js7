@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
+import com.sos.scheduler.engine.data.order.OrderId
 import com.sos.scheduler.engine.data.order.OrderSourceType._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -14,6 +15,13 @@ final class OnlyOrderQueryTest extends FreeSpec {
 
   private val orderKey = JobChainPath("/a/jobChain") orderKey "1"
   private val q = OnlyOrderQuery.Standard()
+
+  "orderId" in {
+    val order = QueryableOrder.ForTest(orderKey)
+    assert(q.matchesOrder(order))
+    assert(q.copy(orderIdQuery = OrderIdQuery(Some(OrderId("1")))) matchesOrder order)
+    assert(!(q.copy(orderIdQuery = OrderIdQuery(Some(OrderId("2")))) matchesOrder order))
+  }
 
   "isSuspended" in {
     val order = QueryableOrder.ForTest(orderKey, isSuspended = true)

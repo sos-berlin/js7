@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.data.queries
 import com.sos.scheduler.engine.data.filebased.TypedPath
 import com.sos.scheduler.engine.data.folder.FolderPath
 import com.sos.scheduler.engine.data.job.JobPath
+import com.sos.scheduler.engine.data.order.OrderKey
 
 /**
   * @author Joacim Zschimmer
@@ -36,7 +37,17 @@ object PathQuery {
 
   def apply(path: FolderPath) = Folder(path)
 
-  def apply(path: TypedPath) = SinglePath(path.string)
+  def apply(path: TypedPath): SinglePath =
+    path match {
+      case orderKey: OrderKey ⇒ apply(orderKey)
+      case _ ⇒ new SinglePath(path.string)
+    }
+
+  /**
+    * Comma in path leads to Exception when tried as other TypedPath.
+    */
+  def apply(path: OrderKey): Nothing =
+    throw new IllegalArgumentException("OrderKey is not applicable for PathQuery")
 
   case object All extends PathQuery {
     def patternString = "/"
