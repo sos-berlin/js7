@@ -19,8 +19,8 @@ final class OnlyOrderQueryTest extends FreeSpec {
   "orderId" in {
     val order = QueryableOrder.ForTest(orderKey)
     assert(q.matchesOrder(order))
-    assert(q.copy(orderIdQuery = OrderIdQuery(Some(OrderId("1")))) matchesOrder order)
-    assert(!(q.copy(orderIdQuery = OrderIdQuery(Some(OrderId("2")))) matchesOrder order))
+    assert(q.copy(orderId = Some(OrderId("1"))) matchesOrder order)
+    assert(!(q.copy(orderId = Some(OrderId("2"))) matchesOrder order))
   }
 
   "isSuspended" in {

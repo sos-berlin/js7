@@ -29,9 +29,4 @@ object JobChainQuery {
     def withJobChainPathQuery(q: PathQuery) = copy(jobChainPathQuery = q)
     def withIsDistributed(o: Boolean) = copy(isDistributed = Some(o))
   }
-
-//  import spray.json.DefaultJsonProtocol._
-//  object Standard {
-//    implicit val MyJsonFormat = jsonFormat2(apply)
-//  }
 }
