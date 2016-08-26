@@ -12,10 +12,10 @@ import spray.json.DefaultJsonProtocol._
   */
 final case class OrderDetailed(
   overview: OrderOverview,
-  file: Option[Path],
-  fileModifiedAt: Option[Instant],
-  sourceXml: Option[String],
-  variables: Map[String, String])
+  file: Option[Path] = None,
+  fileModifiedAt: Option[Instant] = None,
+  sourceXml: Option[String] = None,
+  variables: Map[String, String] = Map())
 extends OrderView with FileBasedDetailed {
   def orderKey = overview.orderKey
 
