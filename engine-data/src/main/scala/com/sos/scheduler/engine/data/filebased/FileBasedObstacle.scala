@@ -1,14 +1,12 @@
 package com.sos.scheduler.engine.data.filebased
 
 import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.data.common.Obstacle
 import spray.json.DefaultJsonProtocol._
 
 /**
   * @author Joacim Zschimmer
   */
 sealed trait FileBasedObstacle
-extends Obstacle
 
 object FileBasedObstacle {
 
