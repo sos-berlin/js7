@@ -26,9 +26,13 @@ trait AbsolutePath extends IsString {
 
   /** Has to be called in every implementing constructor. */
   protected def validate(): Unit = {
-    require(string startsWith "/", s"Absolute path expected: $toString")
-    require(!string.endsWith("/"), s"Trailing slash not allowed: $toString")
-    require(!string.contains("//"), s"Double slash not allowed: $toString")
+    require(companion.isEmptyAllowed || string.nonEmpty, "$name must not be the empty string")
+    require(string.isEmpty || string.startsWith("/"), s"Absolute path expected in $name '$string'")
+    if (!(companion.isSingleSlashAllowed && string == "/")) {
+      require(!string.endsWith("/"), s"Trailing slash not allowed in $name '$string'")
+    }
+    require(!string.contains("//"), s"Double slash not allowed in $name '$string'")
+    require(companion.isCommaAllowed || !string.contains(","), s"Comma not allowed in $name: '$string'")
   }
 }
 
@@ -105,6 +109,10 @@ object AbsolutePath {
      * A relative `path` not starting with "/" is used relative to `defaultFolder`.
      */
     final def makeAbsolute(defaultFolder: FolderPath, path: String) = apply(absoluteString(defaultFolder, path))
+
+    protected[engine] def isEmptyAllowed = false
+    protected[engine] def isSingleSlashAllowed = false
+    protected[engine] def isCommaAllowed = true
   }
 
   private[data] final case class Untyped(string: String) extends AbsolutePath {

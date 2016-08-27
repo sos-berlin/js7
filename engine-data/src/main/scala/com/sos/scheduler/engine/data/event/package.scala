@@ -26,4 +26,5 @@ package object event {
   }
 
   type AnyKeyedEvent = KeyedEvent[Event]
+  type AnyEvent = Event { type Key = Any }
 }

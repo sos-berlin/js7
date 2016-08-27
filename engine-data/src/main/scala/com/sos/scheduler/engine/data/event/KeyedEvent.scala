@@ -32,15 +32,12 @@ object KeyedEvent {
   extends RootJsonFormat[KeyedEvent[E]] {
 
     private val typedJsonFormat: TypedJsonFormat[E] = TypedJsonFormat[E]()(keyedSubtypes map { _.toSubtype }: _*).asJsObjectJsonFormat
+    private val eventClassToJsonFormat: Map[Class[_ <: E], JsonFormat[_]] = (keyedSubtypes map { o ⇒ o.eventClass → o.keyJsonFormat }).toMap
 
-    private object classToKeyJsonFormat {
-      private val toJsonFormat: Map[Class[_ <: E], JsonFormat[_]] = (keyedSubtypes map { o ⇒ o.eventClass → o.keyJsonFormat }).toMap
-
-      def apply(c: Class[_ <: E]) = {
-        toJsonFormat find { _._1 isAssignableFrom c } match {
-          case Some((_, jsonFormat)) ⇒ jsonFormat.asInstanceOf[JsonFormat[E#Key]]
-          case _ ⇒ sys.error(s"Unkown KeyedEvent[${c.getClass.getName}]")
-        }
+    private def classToKeyJsonFormat(c: Class[_ <: E]): JsonFormat[E#Key] = {
+      eventClassToJsonFormat find { _._1 isAssignableFrom c } match {
+        case Some((_, jsonFormat)) ⇒ jsonFormat.asInstanceOf[JsonFormat[E#Key]]
+        case _ ⇒ sys.error(s"Unkown KeyedEvent[${c.getClass.getName}]")
       }
     }
 
@@ -66,15 +63,18 @@ object KeyedEvent {
       else
         KeyedEvent[E](jsValue.asJsObject.fields(KeyFieldName).convertTo[E#Key](keyJsonFormat), event)
     }
+
+    implicit val eventTypedJsonFormat: TypedJsonFormat[E] = TypedJsonFormat()(keyedSubtypes map { _.toSubtype }: _*)
+    implicit val anyEventJsonFormat = eventTypedJsonFormat.asInstanceOf[TypedJsonFormat[AnyEvent]]
   }
 
-  final case class KeyedSubtype[E <: Event: ClassTag](
-    keyJsonFormat: JsonFormat[E#Key],
+  final class KeyedSubtype[E <: Event: ClassTag] private(
+    private[KeyedEvent] val keyJsonFormat: JsonFormat[E#Key],
     eventJsonFormat: RootJsonFormat[E]) {
 
-    def eventClass = implicitClass[E]
+    private[KeyedEvent] def eventClass = implicitClass[E]
 
-    def toSubtype =
+    private[KeyedEvent] def toSubtype =
       eventJsonFormat match {
         case o: TypedJsonFormat[E @unchecked] ⇒ new MultipleSubtype[E](classes = o.classes, jsonFormat = o)
         case _ ⇒ Subtype[E](eventJsonFormat)

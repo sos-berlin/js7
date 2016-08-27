@@ -4,9 +4,7 @@ import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
 
 final case class FolderPath(string: String) extends TypedPath {
 
-  if (string != "/") {
-    validate()
-  }
+  validate()
 
   def companion = FolderPath
 
@@ -24,4 +22,7 @@ object FolderPath extends TypedPath.Companion[FolderPath] {
 
   // 'def' due to mutual singleton dependency of this and FileBasedType
   def fileBasedType = FileBasedType.Folder
+
+  override protected[engine] def isSingleSlashAllowed = true
+  override protected[engine] def isCommaAllowed = false
 }

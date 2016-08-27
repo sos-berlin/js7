@@ -19,7 +19,8 @@ public enum FileBasedType {
     Monitor(MonitorPath$.MODULE$, "Monitor", "monitor", "Monitor"),
     Order(OrderKey$.MODULE$, "Standing_order", "order", "Order"),
     ProcessClass(ProcessClassPath$.MODULE$, "Process_class", "process_class", "ProcessClass"),
-    Schedule(SchedulePath$.MODULE$, "Schedule", "schedule", "Schedule");
+    Schedule(SchedulePath$.MODULE$, "Schedule", "schedule", "Schedule"),
+    Unknown(UnknownTypedPath$.MODULE$, "Unknown", "unknown", "Unknown");
 
     private final TypedPath.Companion<?> companion;
     private final String internalCppName;

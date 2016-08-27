@@ -13,7 +13,7 @@ import spray.json._
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class EventJsonFormatTest extends FreeSpec {
+final class KeyedEventJsonFormatTest extends FreeSpec {
 
   "InfoLogEvent" in {
     checkJson(KeyedEvent(InfoLogEvent("MESSAGE-1 text")),
@@ -34,9 +34,9 @@ final class EventJsonFormatTest extends FreeSpec {
   }
 
   private def checkJson(event: AnyKeyedEvent, json: String): Unit = {
-    assert(EventJsonFormat canSerialize event)
+    assert(SchedulerKeyedEventJsonFormat canSerialize event)
     val jsValue = json.parseJson
-    assert(event.toJson(EventJsonFormat) == jsValue)
+    assert(event.toJson(SchedulerKeyedEventJsonFormat) == jsValue)
     assert(event == jsValue.convertTo[AnyKeyedEvent] )
   }
 }

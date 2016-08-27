@@ -42,4 +42,6 @@ object OrderKey extends TypedPath.Companion[OrderKey] {
 
   def of(jobChainPath: String, id: String): OrderKey =
     OrderKey(JobChainPath(jobChainPath), OrderId(id))
+
+  override protected[engine] def isCommaAllowed = true
 }

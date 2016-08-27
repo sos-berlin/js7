@@ -19,6 +19,14 @@ extends AbsolutePath {
     if (fileBasedType eq FileBasedType.Folder) string + "/"
     else string + "." + fileBasedType.cppName + ".xml"
 
+  def asTyped[A <: TypedPath: TypedPath.Companion]: A = {
+    val c = implicitly[TypedPath.Companion[A]]
+    if (c == companion)
+      this.asInstanceOf[A]
+    else
+      c.apply(string)
+  }
+
   override def toString =
     s"$fileBasedType ${super.toString}"
 }
@@ -30,7 +38,7 @@ object TypedPath {
       def compare(a: A, b: A) = a.string compare b.string
     }
 
-  implicit val MyJsonFormat = new IsString.MyJsonFormat[TypedPath](IsString.UnsupportedJsonDeserialization)
+  implicit val MyJsonFormat = new IsString.MyJsonFormat[TypedPath](UnknownTypedPath.apply)
 
   val extensions: Set[String] = FileBasedTypes.forFiles map { _.filenameExtension }
 
