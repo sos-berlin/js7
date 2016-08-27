@@ -43,7 +43,7 @@ final class PathQueryTest extends FreeSpec {
 
   "Single FolderPath" in {
     val q = PathQuery(FolderPath("/a"))
-    assert(q == PathQuery("/a/"))
+    assert(q == PathQuery[JobPath]("/a/"))
     intercept[IllegalArgumentException] { PathQuery(FolderPath("/a/")) }
     assert(q == PathQuery.Folder(FolderPath("/a")))
     assert(!(q matches JobPath("/a")))

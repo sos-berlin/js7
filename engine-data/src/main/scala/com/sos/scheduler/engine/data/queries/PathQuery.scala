@@ -27,27 +27,25 @@ object PathQuery {
 //    def write(o: PathQuery) = JsString(o.patternString)
 //  }
 
-  def apply(pattern: String): PathQuery =
-    if (pattern == "/")
-      All
-    else if (pattern endsWith "/")
-      Folder(FolderPath(pattern stripSuffix "/"))
-    else
-      SinglePath(pattern)
+  def apply[A <: TypedPath: TypedPath.Companion](pattern: String): PathQuery =
+    apply(toTypedPath(pattern))
 
   def apply(path: FolderPath) = Folder(path)
 
-  def apply(path: TypedPath): SinglePath =
+  def apply(path: TypedPath): PathQuery =
     path match {
-      case orderKey: OrderKey ⇒ apply(orderKey)
-      case _ ⇒ new SinglePath(path.string)
+      case FolderPath.Root ⇒ All
+      case o: FolderPath ⇒ Folder(o)
+      case o: TypedPath ⇒ SinglePath(o.string)
     }
 
-  /**
-    * Comma in path leads to Exception when tried as other TypedPath.
-    */
-  def apply(path: OrderKey): Nothing =
-    throw new IllegalArgumentException("OrderKey is not applicable for PathQuery")
+  private def toTypedPath[A <: TypedPath: TypedPath.Companion](path: String): TypedPath =
+    if (path == "/")
+      FolderPath(path)
+    else if (path endsWith "/")
+      FolderPath(path stripSuffix "/")
+    else
+      implicitly[TypedPath.Companion[A]].apply(path)
 
   case object All extends PathQuery {
     def patternString = "/"

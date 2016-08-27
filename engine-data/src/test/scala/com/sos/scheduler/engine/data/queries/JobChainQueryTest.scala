@@ -14,14 +14,14 @@ final class JobChainQueryTest extends FreeSpec {
 
   "All" in {
     val q = JobChainQuery.All
-    assert(q == JobChainQuery.Standard(PathQuery("/")))
+    assert(q == JobChainQuery.Standard(PathQuery[JobChainPath]("/")))
     assert(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a")))
     assert(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a/b")))
   }
 
   "Single JobChainPath" in {
     val q = JobChainQuery.Standard(PathQuery(JobChainPath("/a/b")))
-    assert(q == JobChainQuery.Standard(PathQuery("/a/b")))
+    assert(q == JobChainQuery.Standard(PathQuery[JobChainPath]("/a/b")))
     assert(!(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a"))))
     assert(!(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a/b/c"))))
     assert(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))

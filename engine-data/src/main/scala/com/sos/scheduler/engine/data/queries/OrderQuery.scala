@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.order.{OrderId, OrderKey, OrderSourceType}
 import com.sos.scheduler.engine.data.queries.OrderQuery._
 import scala.collection.JavaConversions._
@@ -73,7 +74,7 @@ object OrderQuery {
       val fields = json.asJsObject.fields
       OrderQuery(
         jobChainPathQuery = fields.get(PathName) match {
-          case Some(path) ⇒ PathQuery(path.asInstanceOf[JsString].value)
+          case Some(path) ⇒ PathQuery[JobChainPath](path.asInstanceOf[JsString].value)
           case None ⇒ PathQuery.All
         },
         orderId               = fields.get(OrderIdName          ) map { o ⇒ OrderId(o.asInstanceOf[JsString].value) },

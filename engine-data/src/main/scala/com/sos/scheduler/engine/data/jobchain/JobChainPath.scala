@@ -8,7 +8,7 @@ final case class JobChainPath(string: String)
 extends TypedPath {
 
   validate()
-  require(!(name contains ","), "JobChainPath must not contain a comma (because this denotes an OrderKey)")
+  require(!(name contains ","), "JobChainPath must not contain a comma (comma is reserved for OrderKey)")
 
   def companion = JobChainPath
 
