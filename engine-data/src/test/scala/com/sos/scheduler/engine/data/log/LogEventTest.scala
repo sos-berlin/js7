@@ -29,8 +29,8 @@ final class LogEventTest extends FreeSpec {
     LogEvent(SchedulerLogLevel.info, "ABC-123  Error\nxx").codeOption shouldEqual Some(MessageCode("ABC-123"))
   }
 
-  "JSON InfoLogEvent" in {
-    checkJson(KeyedEvent(InfoLogEvent("MESSAGE-1 text")),
+  "JSON InfoLogged" in {
+    checkJson(KeyedEvent(InfoLogged("MESSAGE-1 text")),
       """{
         "TYPE": "Logged",
         "level": "info",
@@ -38,8 +38,8 @@ final class LogEventTest extends FreeSpec {
       }""")
   }
 
-  "JSON WarningLogEvent" in {
-    checkJson(KeyedEvent(WarningLogEvent("MESSAGE-1 text")),
+  "JSON WarningLogged" in {
+    checkJson(KeyedEvent(WarningLogged("MESSAGE-1 text")),
       """{
         "TYPE": "Logged",
         "level": "warning",
@@ -47,8 +47,8 @@ final class LogEventTest extends FreeSpec {
       }""")
   }
 
-  "JSON ErrorLogEvent" in {
-    checkJson(KeyedEvent(ErrorLogEvent("MESSAGE-1 text")),
+  "JSON ErrorLogged" in {
+    checkJson(KeyedEvent(ErrorLogged("MESSAGE-1 text")),
       """{
         "TYPE": "Logged",
         "level": "error",

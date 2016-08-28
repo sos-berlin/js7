@@ -8,7 +8,7 @@ import scala.PartialFunction.condOpt
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
-abstract sealed class LogEvent extends NoKeyEvent {
+sealed trait LogEvent extends NoKeyEvent {
 
   def level: SchedulerLogLevel
   def message: String
@@ -18,21 +18,21 @@ abstract sealed class LogEvent extends NoKeyEvent {
 
 sealed trait InfoOrHigherLogged extends LogEvent
 
-final case class InfoLogEvent(message: String) extends InfoOrHigherLogged {
+final case class InfoLogged(message: String) extends InfoOrHigherLogged {
   def level = SchedulerLogLevel.info
 }
 
 sealed trait WarningOrHigherLogged extends InfoOrHigherLogged
 
-final case class WarningLogEvent(message: String) extends WarningOrHigherLogged {
+final case class WarningLogged(message: String) extends WarningOrHigherLogged {
   def level = SchedulerLogLevel.warning
 }
 
-final case class ErrorLogEvent(message: String) extends WarningOrHigherLogged {
+final case class ErrorLogged(message: String) extends WarningOrHigherLogged {
   def level = SchedulerLogLevel.error
 }
 
-private case class OtherLogEvent(level: SchedulerLogLevel, message: String)
+private case class OtherLevelLogged(level: SchedulerLogLevel, message: String)
 extends LogEvent
 
 object LogEvent {
@@ -45,29 +45,29 @@ object LogEvent {
 
   def apply(level: SchedulerLogLevel, line: String): LogEvent =
     level match {
-      case SchedulerLogLevel.info ⇒ InfoLogEvent(line)
-      case SchedulerLogLevel.warning ⇒ WarningLogEvent(line)
-      case SchedulerLogLevel.error ⇒ ErrorLogEvent(line)
-      case _ ⇒ OtherLogEvent(level, line)
+      case SchedulerLogLevel.info ⇒ InfoLogged(line)
+      case SchedulerLogLevel.warning ⇒ WarningLogged(line)
+      case SchedulerLogLevel.error ⇒ ErrorLogged(line)
+      case _ ⇒ OtherLevelLogged(level, line)
     }
 
   implicit object LogEventJsonFormat extends SimpleTypedJsonFormat[LogEvent] {
     protected def typeField = TypedJsonFormat.DefaultTypeFieldName → JsString("Logged")
 
     protected val subclasses = Set[Class[_ <: LogEvent]](
-      classOf[InfoLogEvent],
-      classOf[WarningLogEvent],
-      classOf[ErrorLogEvent],
-      classOf[OtherLogEvent])
+      classOf[InfoLogged],
+      classOf[WarningLogged],
+      classOf[ErrorLogged],
+      classOf[OtherLevelLogged])
 
     private implicit def levelJsonFormat = SchedulerLogLevel.MyJsonFormat
-    private val transferJsonFormat = jsonFormat2(OtherLogEvent)  // Here, we (mis)use OtherLogEvent as a transfer class
+    private val transferJsonFormat = jsonFormat2(OtherLevelLogged)  // Here, we (mis)use OtherLevelLogged as a transfer class
 
     protected def typelessWrite(o: LogEvent) =
-      transferJsonFormat.write(OtherLogEvent(o.level, o.message)).asJsObject
+      transferJsonFormat.write(OtherLevelLogged(o.level, o.message)).asJsObject
 
     def read(jsValue: JsValue) = {
-      val OtherLogEvent(level, message) = transferJsonFormat.read(jsValue)
+      val OtherLevelLogged(level, message) = transferJsonFormat.read(jsValue)
       LogEvent(level, message)
     }
   }

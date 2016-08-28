@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.data.events
 
 import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, KeyedEvent}
 import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
-import com.sos.scheduler.engine.data.log.InfoLogEvent
+import com.sos.scheduler.engine.data.log.InfoLogged
 import com.sos.scheduler.engine.data.order.OrderFinished
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -15,8 +15,8 @@ import spray.json._
 @RunWith(classOf[JUnitRunner])
 final class KeyedEventJsonFormatTest extends FreeSpec {
 
-  "InfoLogEvent" in {
-    checkJson(KeyedEvent(InfoLogEvent("MESSAGE-1 text")),
+  "InfoLogged" in {
+    checkJson(KeyedEvent(InfoLogged("MESSAGE-1 text")),
       """{
         "TYPE": "Logged",
         "level": "info",
