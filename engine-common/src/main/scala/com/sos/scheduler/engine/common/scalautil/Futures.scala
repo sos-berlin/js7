@@ -13,6 +13,8 @@ import scala.util.{Failure, Success, Try}
  */
 object Futures {
 
+  private val logger = Logger(getClass)
+
   /**
    * Like [[Await]]`.result` - in case of exception, own stack trace is added.
    */
@@ -83,4 +85,9 @@ object Futures {
   }
 
   class FutureNotSucceededException extends NoSuchElementException("Future has not been succeeded")
+
+  object SynchronousExecutionContext extends ExecutionContext {
+    def execute(runnable: Runnable) = runnable.run()
+    def reportFailure(cause: Throwable) = logger.error(s"$cause", cause)
+  }
 }
