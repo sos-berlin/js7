@@ -13,20 +13,20 @@ import spray.json._
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class LogEventTest extends FreeSpec {
+final class LoggedTest extends FreeSpec {
 
   "codeOption" in {
-    LogEvent(SchedulerLogLevel.info, "").codeOption shouldBe None
-    LogEvent(SchedulerLogLevel.info, " ABC-123 xx").codeOption shouldBe None
-    LogEvent(SchedulerLogLevel.info, "ABC-123 ").codeOption shouldEqual Some(MessageCode("ABC-123"))
-    LogEvent(SchedulerLogLevel.info, "ABC-123 xx").codeOption shouldEqual Some(MessageCode("ABC-123"))
-    LogEvent(SchedulerLogLevel.info, "ABC-123  xx").codeOption shouldEqual Some(MessageCode("ABC-123"))
-    LogEvent(SchedulerLogLevel.info, "ABC-123").codeOption shouldEqual Some(MessageCode("ABC-123"))
-    LogEvent(SchedulerLogLevel.info, "ABC-X123-Y123 ").codeOption shouldEqual Some(MessageCode("ABC-X123-Y123"))
-    LogEvent(SchedulerLogLevel.info, "ABC-123 x").codeOption shouldEqual Some(MessageCode("ABC-123"))
-    LogEvent(SchedulerLogLevel.info, "ABC-123 xx XXX-999 yy").codeOption shouldEqual Some(MessageCode("ABC-123"))
-    LogEvent(SchedulerLogLevel.info, "ABC-123  Error").codeOption shouldEqual Some(MessageCode("ABC-123"))
-    LogEvent(SchedulerLogLevel.info, "ABC-123  Error\nxx").codeOption shouldEqual Some(MessageCode("ABC-123"))
+    Logged(SchedulerLogLevel.info, "").codeOption shouldBe None
+    Logged(SchedulerLogLevel.info, " ABC-123 xx").codeOption shouldBe None
+    Logged(SchedulerLogLevel.info, "ABC-123 ").codeOption shouldEqual Some(MessageCode("ABC-123"))
+    Logged(SchedulerLogLevel.info, "ABC-123 xx").codeOption shouldEqual Some(MessageCode("ABC-123"))
+    Logged(SchedulerLogLevel.info, "ABC-123  xx").codeOption shouldEqual Some(MessageCode("ABC-123"))
+    Logged(SchedulerLogLevel.info, "ABC-123").codeOption shouldEqual Some(MessageCode("ABC-123"))
+    Logged(SchedulerLogLevel.info, "ABC-X123-Y123 ").codeOption shouldEqual Some(MessageCode("ABC-X123-Y123"))
+    Logged(SchedulerLogLevel.info, "ABC-123 x").codeOption shouldEqual Some(MessageCode("ABC-123"))
+    Logged(SchedulerLogLevel.info, "ABC-123 xx XXX-999 yy").codeOption shouldEqual Some(MessageCode("ABC-123"))
+    Logged(SchedulerLogLevel.info, "ABC-123  Error").codeOption shouldEqual Some(MessageCode("ABC-123"))
+    Logged(SchedulerLogLevel.info, "ABC-123  Error\nxx").codeOption shouldEqual Some(MessageCode("ABC-123"))
   }
 
   "JSON InfoLogged" in {
@@ -56,8 +56,8 @@ final class LogEventTest extends FreeSpec {
       }""")
   }
 
-  "JSON OtherLogEvent" in {
-    checkJson(KeyedEvent(LogEvent(SchedulerLogLevel.debug3, "MESSAGE-1 text")),
+  "JSON OtherLevelLogged" in {
+    checkJson(KeyedEvent(Logged(SchedulerLogLevel.debug3, "MESSAGE-1 text")),
       """{
         "TYPE": "Logged",
         "level": "debug3",
@@ -67,7 +67,7 @@ final class LogEventTest extends FreeSpec {
 
   private def checkJson(event: AnyKeyedEvent, json: String): Unit = {
     implicit val jsonFormat = KeyedEvent.typedJsonFormat[Event](
-      KeyedSubtype[LogEvent])
+      KeyedSubtype[Logged])
     assert(jsonFormat canSerialize event)
     val jsValue = json.parseJson
     assert (event.toJson == jsValue)
