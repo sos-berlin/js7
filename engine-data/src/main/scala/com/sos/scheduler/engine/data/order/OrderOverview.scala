@@ -25,6 +25,7 @@ final case class OrderOverview(
   processingState: OrderProcessingState,
   historyId: Option[OrderHistoryId] = None,
   obstacles: Set[OrderObstacle] = Set(),
+  startedAt: Option[Instant] = None,
   nextStepAt: Option[Instant] = None,
   occupyingClusterMemberId: Option[ClusterMemberId] = None,
   liveChanged: Option[LiveChanged] = None)
@@ -53,7 +54,7 @@ object OrderOverview extends OrderView.Companion[OrderOverview] {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
   private implicit val OrderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
 
-  implicit val jsonFormat: RootJsonFormat[OrderOverview] = lazyRootFormat(jsonFormat10(apply))
+  implicit val jsonFormat: RootJsonFormat[OrderOverview] = lazyRootFormat(jsonFormat11(apply))
 
   implicit val ordering: Ordering[OrderOverview] = Ordering by { o ⇒ (o.orderKey.jobChainPath, o.nodeId, o.orderKey.id) }
 

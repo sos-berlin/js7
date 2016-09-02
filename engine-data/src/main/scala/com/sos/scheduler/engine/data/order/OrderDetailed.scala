@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits.InstantJsonFormat
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.PathJsonFormat
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats.PathJsonFormat
 import com.sos.scheduler.engine.data.filebased.FileBasedDetailed
 import java.nio.file.Path
 import java.time.Instant

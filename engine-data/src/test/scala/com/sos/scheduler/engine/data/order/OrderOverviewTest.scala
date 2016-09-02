@@ -28,6 +28,7 @@ final class OrderOverviewTest extends FreeSpec {
       OrderProcessingState.InTaskProcess(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678")), Instant.parse("2016-08-01T01:02:03.044Z")),
       Some(OrderHistoryId(22)),
       ListSet(OrderObstacle.Suspended, OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z"))),
+      startedAt = Some(Instant.parse("2016-07-18T11:11:11Z")),
       nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z")),
       liveChanged = Some(OrderOverview.Replaced(OrderOverview(
         orderKey,
@@ -57,6 +58,7 @@ final class OrderOverviewTest extends FreeSpec {
           "until": "2016-08-02T11:22:33.444Z"
         }
       ],
+      "startedAt": "2016-07-18T11:11:11Z",
       "nextStepAt": "2016-07-18T12:00:00Z",
       "liveChanged": {
         "TYPE": "Replaced",
