@@ -57,7 +57,6 @@ final class KeyedEventTest extends FreeSpec {
       Subtype(jsonFormat1(StringEvent)),
       Subtype(jsonFormat1(IntEvent)),
       Subtype(jsonFormat0(() ⇒ SimpleEvent)))
-    implicit val keyedEventJsonFormat = KeyedEvent.keyedEventJsonFormat[TestEvent]
     val jsValue = json.parseJson
     assert (event.toJson == jsValue)
     assert (event == jsValue.convertTo[KeyedEvent[TestEvent]] )
@@ -73,7 +72,6 @@ final class KeyedEventTest extends FreeSpec {
   private def checkSingletonKey(event: KeyedEvent[AEvent.type], json: String): Unit = {
     implicit val testEventJsonFormat = TypedJsonFormat[AEvent.type](
       Subtype(jsonFormat0(() ⇒ AEvent)))
-    implicit val keyedEventJsonFormat = KeyedEvent.keyedEventJsonFormat[AEvent.type]
     val jsValue = json.parseJson
     assert (event.toJson == jsValue)
     assert (event == jsValue.convertTo[KeyedEvent[AEvent.type]] )

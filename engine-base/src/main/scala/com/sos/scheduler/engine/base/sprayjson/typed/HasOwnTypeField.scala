@@ -10,4 +10,6 @@ trait HasOwnTypeField[A] {
   def classToJsonWriter: Map[Class[_], RootJsonWriter[_]]
 
   def typeToJsonReader: Map[String, RootJsonReader[_]]
+
+  def typeToClass: Map[String, Class[_ <: A]]
 }

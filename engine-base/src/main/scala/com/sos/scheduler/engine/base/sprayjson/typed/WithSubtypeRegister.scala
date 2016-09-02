@@ -7,6 +7,7 @@ import spray.json._
   */
 private[typed] class WithSubtypeRegister[A](
   val superclass: Class[A],
+  val typeToClass: Map[String, Class[_ <: A]],
   val classToJsonWriter: Map[Class[_], RootJsonWriter[_]],
   val typeToJsonReader: Map[String, RootJsonReader[_]],
   typeFieldName: String,
@@ -14,7 +15,7 @@ private[typed] class WithSubtypeRegister[A](
 extends TypedJsonFormat[A] {
 
   override def asJsObjectJsonFormat =
-    new WithSubtypeRegister[A](superclass, classToJsonWriter, typeToJsonReader, typeFieldName, shortenTypeOnlyValue = false)
+    new WithSubtypeRegister[A](superclass, typeToClass, classToJsonWriter, typeToJsonReader, typeFieldName, shortenTypeOnlyValue = false)
 
   override def canSerialize(a: A): Boolean =
     classToJsonWriter.get(a.getClass) match {

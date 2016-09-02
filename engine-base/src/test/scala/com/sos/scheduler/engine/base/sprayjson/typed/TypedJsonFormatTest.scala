@@ -20,6 +20,14 @@ final class TypedJsonFormatTest extends FreeSpec {
     //Subtype(jsonFormat0(Alien)),  // Must not not compile
     Subtype(jsonFormat2(A2)))
 
+  "typeToClass" in {
+    assert(aJsonFormat.typeToClass == Map(
+      "A" → classOf[A],
+      "A0" → A0.getClass,
+      "A1" → classOf[A1],
+      "A2" → classOf[A2]))
+  }
+
   "case object" in {
     val a: A = A0
     val json = """"A0"""".parseJson
@@ -80,8 +88,18 @@ final class TypedJsonFormatTest extends FreeSpec {
     implicit lazy val xJsonFormat: TypedJsonFormat.AsLazy[X] =
       TypedJsonFormat.asLazy(
         TypedJsonFormat[X](shortenTypeOnlyValue = true)(
-            Subtype[A],
-            Subtype(jsonFormat2(B1))))
+          Subtype[A],
+          Subtype(jsonFormat2(B1))))
+
+    "typeToClass" in {
+      assert(xJsonFormat.typeToClass == Map(
+        "X" → classOf[X],
+        "A" → classOf[A],
+        "A0" → A0.getClass,
+        "A1" → classOf[A1],
+        "A2" → classOf[A2],
+        "B1" → classOf[B1]))
+    }
 
     "case object A0" in {
       val x: X = A0

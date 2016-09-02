@@ -40,6 +40,7 @@ object TypedJsonFormat {
     * @return
     */
   def apply[A: ClassTag](
+
     typeField: String = DefaultTypeFieldName,
     shortenTypeOnlyValue: Boolean = DefaultShortenTypeOnlyValue)
     (subtypes: Subtype[_]*)
@@ -50,13 +51,17 @@ object TypedJsonFormat {
     typeFieldName: String = DefaultTypeFieldName,
     shortenTypeOnlyValue: Boolean = DefaultShortenTypeOnlyValue,
     subtypes: Seq[Subtype[_]]): TypedJsonFormat[A]
-  =
+  = {
+    val superclassName = implicitClass[A].getSimpleName   // This name is only for users of typeToClass, like "Event"
     new WithSubtypeRegister[A](
       implicitClass[A],
-      (subtypes flatMap { _.toClassToJsonWriter(typeFieldName) }).toMap,
-      (subtypes flatMap { _.toTypeToReader(typeFieldName) }).toMap,
+      typeToClass = Map(superclassName → implicitClass[A]) ++
+        (subtypes flatMap { _.nameToClass mapValues { _.asInstanceOf[Class[_ <: A]] }}).toMap,
+      classToJsonWriter = (subtypes flatMap { _.toClassToJsonWriter(typeFieldName) }).toMap,
+      typeToJsonReader = (subtypes flatMap { _.toTypeToReader(typeFieldName) }).toMap,
       typeFieldName = typeFieldName,
       shortenTypeOnlyValue = shortenTypeOnlyValue)
+  }
 
   /**
     * For recursive structures.
@@ -69,6 +74,7 @@ object TypedJsonFormat {
   sealed trait AsLazy[A] extends RootJsonFormat[A] with CanSerialize[A] {
     def delegate: TypedJsonFormat[A]
     final def canSerialize(a: A) = delegate canSerialize a
+    final def typeToClass = delegate.typeToClass
     final def write(x: A) = delegate.write(x)
     final def read(value: JsValue) = delegate.read(value)
   }
