@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.log
 
-import com.sos.scheduler.engine.data.event.KeyedEvent.KeyedSubtype
+import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
 import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import com.sos.scheduler.engine.data.message.MessageCode
 import org.junit.runner.RunWith

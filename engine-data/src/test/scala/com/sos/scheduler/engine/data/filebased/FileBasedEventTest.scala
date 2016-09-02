@@ -6,7 +6,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import spray.json._
-import com.sos.scheduler.engine.data.events.SchedulerKeyedEventJsonFormat
+import com.sos.scheduler.engine.data.events.schedulerKeyedEventJsonFormat
 
 /**
   * @author Joacim Zschimmer
