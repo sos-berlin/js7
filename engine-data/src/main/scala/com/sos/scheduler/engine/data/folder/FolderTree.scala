@@ -19,6 +19,9 @@ final case class FolderTree[A](
 
   def nonEmpty = !isEmpty
   def isEmpty = leafs.isEmpty && subfolders.isEmpty
+
+  def mapLeafs[AA >: A, B](transform: AA ⇒ B): FolderTree[B] =
+    copy(leafs = leafs map transform, subfolders = subfolders map { _ mapLeafs transform })
 }
 
 object FolderTree {

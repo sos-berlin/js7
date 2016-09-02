@@ -39,6 +39,26 @@ final class FolderTreeTest extends FreeSpec {
     assert(Vector(c, a, d, b).sorted == Vector(a, b, c, d))
   }
 
+  "mapLeafs" in {
+    assert((RootFolder mapLeafs { a: A ⇒ s"-${a.content}" }) ==
+      FolderTree(FolderPath("/"),
+        leafs = List(
+          "-/a",
+          "-/b"),
+        subfolders = List(
+          FolderTree(FolderPath("/x"),
+            leafs = List(
+              "-/x/x-a",
+              "-/x/x-b"),
+            subfolders = List(
+              FolderTree(FolderPath("/x/x-y"),
+                leafs = List(
+                  "-/x/x-y/x-y-a"),
+                subfolders = Nil)))
+        ))
+      )
+  }
+
   "JSON" in {
     implicit def aJsonFormat = jsonFormat1(A)
     // JSON object fields are unordered. So we use an array of key/value pairs for the leafs
