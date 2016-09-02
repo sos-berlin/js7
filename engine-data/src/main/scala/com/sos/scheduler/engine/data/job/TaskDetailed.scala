@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.job
 
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits._
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
 import java.nio.file.Path
 import spray.json.DefaultJsonProtocol._
 

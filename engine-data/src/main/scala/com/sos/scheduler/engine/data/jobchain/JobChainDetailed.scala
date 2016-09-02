@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.jobchain
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits._
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
 import com.sos.scheduler.engine.data.filebased.{FileBasedDetailed, FileBasedState}
 import java.nio.file.Path
 import java.time.Instant

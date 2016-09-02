@@ -3,8 +3,7 @@ package com.sos.scheduler.engine.taskserver.data
 import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.base.sprayjson.SprayJson
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits._
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
 import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.common.scalautil.FileUtils.EmptyPath
 import com.sos.scheduler.engine.common.system.FileUtils._
