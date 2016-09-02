@@ -26,6 +26,7 @@ final class OrderOverviewTest extends FreeSpec {
       OrderSourceType.AdHoc,
       NodeId("100"),
       OrderProcessingState.InTaskProcess(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678")), Instant.parse("2016-08-01T01:02:03.044Z")),
+      Some(OrderHistoryId(22)),
       ListSet(OrderObstacle.Suspended, OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z"))),
       nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z")),
       liveChanged = Some(OrderOverview.Replaced(OrderOverview(
@@ -37,6 +38,7 @@ final class OrderOverviewTest extends FreeSpec {
     val jsValue = """{
       "path": "/a,1",
       "fileBasedState": "active",
+      "historyId": 22,
       "sourceType": "AdHoc",
       "nodeId": "100",
       "processingState": {

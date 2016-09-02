@@ -31,7 +31,7 @@ final class OrderDetailedTest extends FreeSpec {
           ProcessClassPath("/TEST"),
           Some(AgentAddress("http://1.2.3.4:5678")),
           Instant.parse("2016-08-01T01:02:03.044Z")),
-        ListSet(OrderObstacle.Suspended, OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z"))),
+        obstacles = ListSet(OrderObstacle.Suspended, OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z"))),
         nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z"))),
       file = Some(Paths.get("FILE")),
       fileModifiedAt = Some(Instant.parse("2016-08-24T01:02:03.044Z")),
