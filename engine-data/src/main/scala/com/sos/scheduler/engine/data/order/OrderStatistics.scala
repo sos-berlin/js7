@@ -6,14 +6,21 @@ import spray.json.DefaultJsonProtocol._
   * @author Joacim Zschimmer
   */
 final case class OrderStatistics(
-  plannedOrPending: Int,
+  total: Int,
+  notPlanned: Int,
+  planned: Int,
+  pending: Int,
   running: Int,
-  suspended: Int,
+  inTask: Int,
+  inProcess: Int,
   setback: Int,
-  blacklisted: Int)
+  suspended: Int,
+  blacklisted: Int,
+  permanent: Int,
+  fileOrder: Int)
 
 object OrderStatistics {
-  implicit val MyJsonFormat = jsonFormat5(apply)
+  implicit val MyJsonFormat = jsonFormat12(apply)
 }
 
 // JOC2 dashboard: Pending, Running, Suspended, Setback, Waiting for Resource, Blacklist
