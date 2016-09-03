@@ -28,6 +28,8 @@ object As {
 
   implicit val StringAsInt: As[String, Int] = stringAs(Integer.parseInt)
 
+  implicit val StringAsLong: As[String, Long] = stringAs(java.lang.Long.parseLong)
+
   def asAbsolutePath: As[String, Path] = stringAs(o ⇒ StringAsPath(o).toAbsolutePath)
 
   implicit val StringAsPath: As[String, Path] = stringAs(Paths.get(_))
