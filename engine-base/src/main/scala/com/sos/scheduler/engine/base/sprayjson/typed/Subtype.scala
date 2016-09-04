@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.base.sprayjson.typed
 
 import com.sos.scheduler.engine.base.utils.ScalaUtils._
+import scala.language.existentials
 import scala.reflect.ClassTag
 import spray.json.{JsString, RootJsonFormat, RootJsonReader, RootJsonWriter}
 
@@ -17,23 +18,21 @@ object Subtype {
   def apply[A: ClassTag: RootJsonFormat]: Subtype[A] =
     Subtype[A](implicitly[RootJsonFormat[A]])
 
-  def apply[A: ClassTag: RootJsonFormat](typeName: String): Subtype[A] =
-    new SingleSubtype[A](
-      implicitClass[A],
-      typeName,
-      jsonFormat = implicitly[RootJsonFormat[A]])
+  def apply[A: ClassTag: RootJsonFormat](name: String): Subtype[A] =
+    Subtype(implicitly[RootJsonFormat[A]], name = name)
 
   def apply[A: ClassTag](jsonFormat: ⇒ RootJsonFormat[A]): Subtype[A] =
-    new SingleSubtype[A](
-      implicitClass[A],
-      name = implicitClass[A].getSimpleName stripSuffix "$",
-      jsonFormat)
+    Subtype(jsonFormat, name = implicitClass[A].getSimpleName stripSuffix "$")
 
-  def apply[A: ClassTag](jsonFormat: ⇒ RootJsonFormat[A], typeName: String): Subtype[A] =
-    new SingleSubtype[A](
-      implicitClass[A],
-      typeName,
-      jsonFormat)
+  def apply[A: ClassTag](lazyJsonFormat: ⇒ RootJsonFormat[A], name: String): Subtype[A] = {
+    val jsonFormat = lazyJsonFormat
+    jsonFormat match {
+      case jsonFormat: TypedJsonFormat[A] ⇒
+        new MultipleSubtype[A](jsonFormat.classes, jsonFormat)
+      case _ ⇒
+        new SingleSubtype[A](implicitClass[A], name, jsonFormat)
+    }
+  }
 }
 
 final case class SingleSubtype[A](clazz: Class[_ <: A], name: String, jsonFormat: RootJsonFormat[A])

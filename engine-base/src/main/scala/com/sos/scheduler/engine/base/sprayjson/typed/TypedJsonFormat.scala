@@ -71,10 +71,12 @@ object TypedJsonFormat {
       lazy val delegate = lazyTypedJsonFormat
     }
 
-  sealed trait AsLazy[A] extends RootJsonFormat[A] with CanSerialize[A] {
+  sealed trait AsLazy[A] extends RootJsonFormat[A] with TypedJsonFormat[A] {
     def delegate: TypedJsonFormat[A]
-    final def canSerialize(a: A) = delegate canSerialize a
+    final def classToJsonWriter = delegate.classToJsonWriter
+    final def typeToJsonReader = delegate.typeToJsonReader
     final def typeToClass = delegate.typeToClass
+    final def canSerialize(a: A) = delegate canSerialize a
     final def write(x: A) = delegate.write(x)
     final def read(value: JsValue) = delegate.read(value)
   }
