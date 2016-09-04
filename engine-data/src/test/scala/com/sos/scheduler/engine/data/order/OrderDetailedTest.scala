@@ -36,6 +36,10 @@ final class OrderDetailedTest extends FreeSpec {
       file = Some(Paths.get("FILE")),
       fileModifiedAt = Some(Instant.parse("2016-08-24T01:02:03.044Z")),
       sourceXml = Some("<XML/>"),
+      priority = 7,
+      initialNodeId = Some(NodeId("INITIAL")),
+      endNodeId = Some(NodeId("END")),
+      title = "TITLE",
       variables = Map("a" → "A", "b" → "B"))
     val jsValue = """{
       "overview": {
@@ -64,6 +68,10 @@ final class OrderDetailedTest extends FreeSpec {
       "file" : "FILE",
       "fileModifiedAt": "2016-08-24T01:02:03.044Z",
       "sourceXml": "<XML/>",
+      "priority": 7,
+      "initialNodeId": "INITIAL",
+      "endNodeId": "END",
+      "title": "TITLE",
       "variables": {
         "a": "A",
         "b": "B"
