@@ -42,7 +42,7 @@ final class SnapshotTest extends FreeSpec {
     val o = Snapshot(List(111, 222))(EventId(777))
     val json = """{
       "eventId": 777,
-      "value": [111, 222]
+      "elements": [111, 222]
     }""".parseJson
     assert(o.toJson == json)
     assert(o == json.convertTo[Snapshot[immutable.Seq[Int]]])

@@ -19,14 +19,14 @@ final case class Snapshot[+A](value: A)(val eventId: EventId) {
 
 object Snapshot {
   val EventIdJsonName = "eventId"
-  val ValueJsonName = "value"
+  val ElementsJsonName = "elements"
 
   implicit def jsonFormat[A: RootJsonFormat] = new RootJsonFormat[Snapshot[A]] {
 
     def write(o: Snapshot[A]) = {
       val contentFields = implicitly[RootJsonFormat[A]].write(o.value) match {
         case JsObject(fields) ⇒ fields
-        case array: JsArray ⇒ Map(ValueJsonName → array)
+        case array: JsArray ⇒ Map(ElementsJsonName → array)
         case x ⇒ sys.error(s"Unexpected ${x.getClass}")
       }
       JsObject(Map(EventIdJsonName → EventId.toJsValue(o.eventId)) ++ contentFields)   // eventId in content overrides
@@ -35,10 +35,10 @@ object Snapshot {
     def read(jsValue: JsValue) = {
       val jsObject = jsValue.asJsObject
       val eventId = EventId.fromJsValue(jsObject.fields(EventIdJsonName))
-      val content = jsObject.fields.getOrElse(ValueJsonName, jsObject)
+      val content = jsObject.fields.getOrElse(ElementsJsonName, jsObject)
       Snapshot(content.convertTo[A])(eventId)
     }
   }
 
-  def unwrapJsArray(jsObject: JsObject): JsArray = jsObject.fields(ValueJsonName).asJsArray
+  def unwrapJsArray(jsObject: JsObject): JsArray = jsObject.fields(ElementsJsonName).asJsArray
 }
