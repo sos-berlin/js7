@@ -61,7 +61,7 @@ object KeyedTypedEventJsonFormat {
 
     private[KeyedTypedEventJsonFormat] def toSubtype =
       eventJsonFormat match {
-        case o: TypedJsonFormat[E @unchecked] ⇒ new MultipleSubtype[E](classes = o.classes, jsonFormat = o)
+        case o: TypedJsonFormat[E] ⇒ new MultipleSubtype[E](classes = o.classes, jsonFormat = o)
         case _ ⇒ Subtype[E](eventJsonFormat)
       }
   }

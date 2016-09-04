@@ -18,11 +18,22 @@ object FileBasedObstacle {
     override def toString = (List(state) ++ message).mkString("BadState(", " ", ")")
   }
 
-  //case object ToBeChanged ?
-  //case object ToBeRemoved ?
+  sealed trait LiveChanged
+  extends FileBasedObstacle
+
+  case object Replaced
+  extends LiveChanged
+
+  case object Removed
+  extends LiveChanged
+
+  implicit val LiveChangedJsonFormat = TypedJsonFormat[LiveChanged](
+    Subtype(jsonFormat0(() ⇒ Replaced)),
+    Subtype(jsonFormat0(() ⇒ Removed)))
 
   implicit private val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
   implicit val FileBasedJsonFormat = TypedJsonFormat[FileBasedObstacle](
     Subtype(jsonFormat0(() ⇒ Missing)),
-    Subtype(jsonFormat2(BadState)))
+    Subtype(jsonFormat2(BadState)),
+    Subtype[LiveChanged])
 }

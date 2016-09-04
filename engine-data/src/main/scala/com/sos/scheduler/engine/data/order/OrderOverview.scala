@@ -2,10 +2,8 @@ package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.lazyRootFormat
-import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.scheduler.engine.data.filebased.{FileBasedOverview, FileBasedState}
 import com.sos.scheduler.engine.data.jobchain.{NodeId, NodeKey}
-import com.sos.scheduler.engine.data.order.OrderOverview._
 import com.sos.scheduler.engine.data.queries.QueryableOrder
 import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
 import java.time.Instant
@@ -27,8 +25,7 @@ final case class OrderOverview(
   obstacles: Set[OrderObstacle] = Set(),
   startedAt: Option[Instant] = None,
   nextStepAt: Option[Instant] = None,
-  occupyingClusterMemberId: Option[ClusterMemberId] = None,
-  liveChanged: Option[LiveChanged] = None)
+  occupyingClusterMemberId: Option[ClusterMemberId] = None)
 extends OrderView with FileBasedOverview with QueryableOrder {
 
   def orderKey: OrderKey = path
@@ -43,18 +40,10 @@ extends OrderView with FileBasedOverview with QueryableOrder {
 }
 
 object OrderOverview extends OrderView.Companion[OrderOverview] {
-  sealed trait LiveChanged
-  final case class Replaced(overview: OrderOverview) extends LiveChanged
-  case object Removed extends LiveChanged
-
-  private implicit val ConfigurationJsonType = TypedJsonFormat.asLazy(
-    TypedJsonFormat[LiveChanged](
-    Subtype(jsonFormat1(Replaced)),
-    Subtype(jsonFormat0(() ⇒ Removed))))
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
   private implicit val OrderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
 
-  implicit val jsonFormat: RootJsonFormat[OrderOverview] = lazyRootFormat(jsonFormat11(apply))
+  implicit val jsonFormat: RootJsonFormat[OrderOverview] = lazyRootFormat(jsonFormat10(apply))
 
   implicit val ordering: Ordering[OrderOverview] = Ordering by { o ⇒ (o.orderKey.jobChainPath, o.nodeId, o.orderKey.id) }
 

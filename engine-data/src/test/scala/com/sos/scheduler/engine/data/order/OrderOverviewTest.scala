@@ -1,9 +1,10 @@
 package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.data.agent.AgentAddress
-import com.sos.scheduler.engine.data.filebased.FileBasedState
+import com.sos.scheduler.engine.data.filebased.{FileBasedObstacle, FileBasedState}
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
+import com.sos.scheduler.engine.data.order.OrderObstacle.FileBasedObstacles
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
 import java.time.Instant
 import org.junit.runner.RunWith
@@ -27,15 +28,12 @@ final class OrderOverviewTest extends FreeSpec {
       NodeId("100"),
       OrderProcessingState.InTaskProcess(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678")), Instant.parse("2016-08-01T01:02:03.044Z")),
       Some(OrderHistoryId(22)),
-      ListSet(OrderObstacle.Suspended, OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z"))),
+      ListSet(
+        OrderObstacle.Suspended,
+        OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z")),
+        FileBasedObstacles(Set(FileBasedObstacle.Replaced))),
       startedAt = Some(Instant.parse("2016-07-18T11:11:11Z")),
-      nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z")),
-      liveChanged = Some(OrderOverview.Replaced(OrderOverview(
-        orderKey,
-        FileBasedState.initialized,
-        OrderSourceType.Permanent,
-        NodeId(""),
-        OrderProcessingState.Pending(Instant.ofEpochMilli(0))))))
+      nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z")))
     val jsValue = """{
       "path": "/a,1",
       "fileBasedState": "active",
@@ -56,24 +54,18 @@ final class OrderOverviewTest extends FreeSpec {
         {
           "TYPE": "Setback",
           "until": "2016-08-02T11:22:33.444Z"
+        },
+        {
+          "TYPE": "FileBasedObstacles",
+          "fileBasedObstacles": [
+            {
+              "TYPE": "Replaced"
+            }
+          ]
         }
       ],
       "startedAt": "2016-07-18T11:11:11Z",
-      "nextStepAt": "2016-07-18T12:00:00Z",
-      "liveChanged": {
-        "TYPE": "Replaced",
-        "overview": {
-          "sourceType": "Permanent",
-          "path": "/a,1",
-          "processingState": {
-            "at": "1970-01-01T00:00:00Z",
-            "TYPE": "Pending"
-          },
-          "fileBasedState": "initialized",
-          "obstacles": [],
-          "nodeId":""
-        }
-      }
+      "nextStepAt": "2016-07-18T12:00:00Z"
     }""".parseJson
     assert(obj.toJson == jsValue)
     assert(obj == jsValue.convertTo[OrderOverview])
