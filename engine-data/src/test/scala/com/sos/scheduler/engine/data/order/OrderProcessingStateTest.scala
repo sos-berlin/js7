@@ -31,12 +31,11 @@ final class OrderProcessingStateTest extends FreeSpec {
         "TYPE": "Pending",
         "at": "2016-08-01T11:22:33.444Z"
       }""")
-    addTest(WaitingInTask(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678"))),
+    addTest(WaitingInTask(TaskId(123), ProcessClassPath("/TEST")),
       """{
         "TYPE": "WaitingInTask",
         "taskId": "123",
-        "processClassPath": "/TEST",
-        "agentUri": "http://1.2.3.4:5678"
+        "processClassPath": "/TEST"
       }""")
     addTest(InTaskProcess(TaskId(123), ProcessClassPath("/TEST"), Some(AgentAddress("http://1.2.3.4:5678")), Instant.parse("2016-08-01T01:02:03.044Z")),
       """{

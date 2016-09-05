@@ -38,13 +38,11 @@ object OrderProcessingState {
     override def isInTask = true
     def taskId: TaskId
     def processClassPath: ProcessClassPath
-    def agentUri: Option[AgentAddress]
   }
 
   final case class WaitingInTask(
     taskId: TaskId,
-    processClassPath: ProcessClassPath,
-    agentUri: Option[AgentAddress])
+    processClassPath: ProcessClassPath)
   extends InTask with Waiting
 
   final case class InTaskProcess(
@@ -68,7 +66,7 @@ object OrderProcessingState {
     Subtype(jsonFormat0(() ⇒ NotPlanned)),
     Subtype(jsonFormat1(Planned)),
     Subtype(jsonFormat1(Pending)),
-    Subtype(jsonFormat3(WaitingInTask)),
+    Subtype(jsonFormat2(WaitingInTask)),
     Subtype(jsonFormat4(InTaskProcess)),
     Subtype(jsonFormat1(Setback)),
     Subtype(jsonFormat0(() ⇒ Blacklisted)),
