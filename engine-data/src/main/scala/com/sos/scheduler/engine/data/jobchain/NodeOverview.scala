@@ -4,6 +4,10 @@ import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 
 trait NodeOverview {
   def nodeKey: NodeKey
+
+  final def jobChainPath = nodeKey.jobChainPath
+
+  final def nodeId = nodeKey.nodeId
 }
 
 object NodeOverview {

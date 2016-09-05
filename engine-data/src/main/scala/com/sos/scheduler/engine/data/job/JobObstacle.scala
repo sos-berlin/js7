@@ -16,6 +16,9 @@ object JobObstacle {
   final case class FileBasedObstacles(fileBasedObstacles: Set[FileBasedObstacle])
   extends JobObstacle
 
+  case object Stopped
+  extends JobObstacle
+
   final case class BadState(jobState: JobState)
   extends JobObstacle
 
@@ -31,6 +34,7 @@ object JobObstacle {
   implicit private val JobStateJsonFormat = JobState.MyJsonFormat
   implicit val JobObstacleJsonFormat = TypedJsonFormat[JobObstacle](
     Subtype(jsonFormat1(FileBasedObstacles)),
+    Subtype(jsonFormat0(() ⇒ Stopped)),
     Subtype(jsonFormat1(BadState)),
     Subtype(jsonFormat1(NoRuntime)),
     Subtype(jsonFormat1(TaskLimitReached)))
