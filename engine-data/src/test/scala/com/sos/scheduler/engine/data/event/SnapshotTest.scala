@@ -15,13 +15,13 @@ final class SnapshotTest extends FreeSpec {
 
   "map" in {
     val eventId = EventId(100)
-    assert((Snapshot(3)(eventId) map { _.toString }) == Snapshot("3")(eventId))
+    assert((Snapshot(eventId, 3) map { _.toString }) == Snapshot(eventId, "3"))
   }
 
   "Pattern matching ignores EventId" in {
     assertResult(3) {
-      Snapshot(3)(EventId(100)) match {
-        case Snapshot(o) ⇒ o
+      Snapshot(EventId(100), 3) match {
+        case Snapshot(_, o) ⇒ o
       }
     }
   }
@@ -29,7 +29,7 @@ final class SnapshotTest extends FreeSpec {
   "JSON with object" in {
     case class A(number: Int)
     implicit val aJsonFormat = jsonFormat1(A)
-    val o = Snapshot(A(111))(EventId(777))
+    val o = Snapshot(EventId(777), A(111))
     val json = """{
       "eventId": 777,
       "number": 111
@@ -39,7 +39,7 @@ final class SnapshotTest extends FreeSpec {
   }
 
   "JSON with array" in {
-    val o = Snapshot(List(111, 222))(EventId(777))
+    val o = Snapshot(EventId(777), List(111, 222))
     val json = """{
       "eventId": 777,
       "elements": [111, 222]

@@ -8,9 +8,9 @@ import spray.json._
   *
   * @author Joacim Zschimmer
   */
-final case class Snapshot[+A](value: A)(val eventId: EventId) {
+final case class Snapshot[+A](eventId: EventId, value: A) {
 
-  def map[B](f: A ⇒ B): Snapshot[B] = Snapshot(f(value))(eventId)
+  def map[B](f: A ⇒ B): Snapshot[B] = Snapshot(eventId, f(value))
 
   def instant = EventId.toInstant(eventId)
 
@@ -36,7 +36,7 @@ object Snapshot {
       val jsObject = jsValue.asJsObject
       val eventId = EventId.fromJsValue(jsObject.fields(EventIdJsonName))
       val content = jsObject.fields.getOrElse(ElementsJsonName, jsObject)
-      Snapshot(content.convertTo[A])(eventId)
+      Snapshot(eventId, content.convertTo[A])
     }
   }
 
