@@ -12,6 +12,7 @@ trait JobNodeOverview extends NodeOverview {
   def jobPath: JobPath
   def action: JobChainNodeAction
   def orderCount: Int
+  def obstacles: Set[NodeObstacle]
 }
 
 object JobNodeOverview {

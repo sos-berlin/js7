@@ -9,11 +9,12 @@ final case class SimpleJobNodeOverview(
   errorNodeId: NodeId,
   jobPath: JobPath,
   action: JobChainNodeAction = JobChainNodeAction.process,
-  orderCount: Int)
+  orderCount: Int,
+  obstacles: Set[NodeObstacle] = Set())
 extends JobNodeOverview
 
 object SimpleJobNodeOverview {
   private implicit val OrderStateJsonFormat = NodeId.MyJsonFormat
   private implicit val JobChainNodeActionJsonFormat = JobChainNodeAction.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat6(apply)
+  implicit val MyJsonFormat = jsonFormat7(apply)
 }

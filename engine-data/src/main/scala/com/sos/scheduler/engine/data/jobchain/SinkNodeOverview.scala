@@ -9,11 +9,12 @@ final case class SinkNodeOverview(
   errorNodeId: NodeId,
   action: JobChainNodeAction,
   jobPath: JobPath,
-  orderCount: Int)
+  orderCount: Int,
+  obstacles: Set[NodeObstacle])
 extends JobNodeOverview
 
 object SinkNodeOverview {
   private implicit val OrderStateJsonFormat = NodeId.MyJsonFormat
   private implicit val JobChainNodeActionJsonFormat = JobChainNodeAction.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat6(apply)
+  implicit val MyJsonFormat = jsonFormat7(apply)
 }

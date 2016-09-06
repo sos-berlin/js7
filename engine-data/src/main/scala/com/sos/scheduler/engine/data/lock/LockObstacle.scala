@@ -7,9 +7,10 @@ import spray.json.DefaultJsonProtocol._
 /**
   * @author Joacim Zschimmer
   */
-sealed trait LockObstacle
+// NOT YET USED
+private sealed trait LockObstacle
 
-object LockObstacle {
+private object LockObstacle {
   final case class FileBasedObstacles(fileBasedObstacles: Set[FileBasedObstacle])
   extends LockObstacle
 
