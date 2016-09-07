@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.data.filebased.FileBasedState
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
-import java.nio.file.Paths
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -33,9 +32,6 @@ final class OrderDetailedTest extends FreeSpec {
           Instant.parse("2016-08-01T01:02:03.044Z")),
         obstacles = ListSet(OrderObstacle.Suspended, OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z"))),
         nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z"))),
-      file = Some(Paths.get("FILE")),
-      fileModifiedAt = Some(Instant.parse("2016-08-24T01:02:03.044Z")),
-      sourceXml = Some("<XML/>"),
       priority = 7,
       initialNodeId = Some(NodeId("INITIAL")),
       endNodeId = Some(NodeId("END")),
@@ -65,9 +61,6 @@ final class OrderDetailedTest extends FreeSpec {
         ],
         "nextStepAt": "2016-07-18T12:00:00Z"
       },
-      "file" : "FILE",
-      "fileModifiedAt": "2016-08-24T01:02:03.044Z",
-      "sourceXml": "<XML/>",
       "priority": 7,
       "initialNodeId": "INITIAL",
       "endNodeId": "END",

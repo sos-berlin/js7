@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.data.filebased.{FileBasedOverview, FileBasedState}
+import com.sos.scheduler.engine.data.filebased.FileBasedState
 import com.sos.scheduler.engine.data.queries.QueryableJobChain
 import spray.json.DefaultJsonProtocol._
 
@@ -12,7 +12,7 @@ final case class JobChainOverview(
   fileBasedState: FileBasedState,
   isDistributed: Boolean = false,
   obstacles: Set[JobChainObstacle] = Set())
-extends FileBasedOverview with QueryableJobChain
+extends QueryableJobChain
 
 object JobChainOverview {
   private implicit val fileBasedStateJsonFormat = FileBasedState.MyJsonFormat

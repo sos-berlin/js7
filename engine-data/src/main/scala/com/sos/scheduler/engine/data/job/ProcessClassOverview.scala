@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.job
 
-import com.sos.scheduler.engine.data.filebased.{FileBasedOverview, FileBasedState}
+import com.sos.scheduler.engine.data.filebased.FileBasedState
 import com.sos.scheduler.engine.data.processclass.{ProcessClassObstacle, ProcessClassPath}
 import spray.json.DefaultJsonProtocol._
 
@@ -12,8 +12,7 @@ final case class ProcessClassOverview(
   fileBasedState: FileBasedState,
   processLimit: Int,
   usedProcessCount: Int,
-  obstacles: Set[ProcessClassObstacle] = Set())
-extends FileBasedOverview {
+  obstacles: Set[ProcessClassObstacle] = Set()) {
 
   def processLimitReached = usedProcessCount >= processLimit
 }

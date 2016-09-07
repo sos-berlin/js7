@@ -1,17 +1,26 @@
 package com.sos.scheduler.engine.data.filebased
 
+import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
 import java.nio.file.Path
 import java.time.Instant
+import spray.json.DefaultJsonProtocol._
 
 /**
  * @author Joacim Zschimmer
  */
-trait FileBasedDetailed extends HasPath {
+final case class FileBasedDetailed(
+  overview: FileBasedOverview,
+  file: Option[Path],
+  fileModifiedAt: Option[Instant],
+  sourceXml: Option[String])
+{
+  def path = overview.path
 
-  def overview: FileBasedOverview
-  def file: Option[Path]
-  def fileModifiedAt: Option[Instant]
-  def sourceXml: Option[String]
+  def asTyped[P <: TypedPath: TypedPath.Companion] = copy(overview = overview.asTyped[P])
+}
 
-  final def path = overview.path
+object FileBasedDetailed {
+  private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
+  implicit val MyJsonFormat = jsonFormat4(apply)
 }

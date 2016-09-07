@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.lazyRootFormat
-import com.sos.scheduler.engine.data.filebased.{FileBasedOverview, FileBasedState}
+import com.sos.scheduler.engine.data.filebased.FileBasedState
 import com.sos.scheduler.engine.data.jobchain.{NodeId, NodeKey}
 import com.sos.scheduler.engine.data.queries.QueryableOrder
 import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
@@ -26,7 +26,7 @@ final case class OrderOverview(
   startedAt: Option[Instant] = None,
   nextStepAt: Option[Instant] = None,
   occupyingClusterMemberId: Option[ClusterMemberId] = None)
-extends OrderView with FileBasedOverview with QueryableOrder {
+extends OrderView with QueryableOrder {
 
   def orderKey: OrderKey = path
 

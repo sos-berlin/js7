@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.job
 
-import com.sos.scheduler.engine.data.filebased.{FileBasedOverview, FileBasedState}
+import com.sos.scheduler.engine.data.filebased.FileBasedState
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
 import spray.json.DefaultJsonProtocol._
 
@@ -15,8 +15,7 @@ final case class JobOverview(
   isInPeriod: Boolean,
   taskLimit: Int,
   usedTaskCount: Int,
-  obstacles: Set[JobObstacle])
-extends FileBasedOverview {
+  obstacles: Set[JobObstacle]) {
 
   def taskLimitReached = usedTaskCount >= taskLimit
 }

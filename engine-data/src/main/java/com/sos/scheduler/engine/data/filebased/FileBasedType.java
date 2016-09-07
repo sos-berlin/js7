@@ -12,30 +12,36 @@ import com.sos.scheduler.engine.data.schedule.SchedulePath$;
 import spray.json.JsonFormat;
 
 public enum FileBasedType {
-    Folder(FolderPath$.MODULE$, "Folder", "folder", "Folder"),
-    Job(JobPath$.MODULE$, "Job", "job", "Job"),
-    JobChain(JobChainPath$.MODULE$, "Job_chain", "job_chain", "JobChain"),
-    Lock(LockPath$.MODULE$, "Lock", "lock", "Lock"),
-    Monitor(MonitorPath$.MODULE$, "Monitor", "monitor", "Monitor"),
-    Order(OrderKey$.MODULE$, "Standing_order", "order", "Order"),
-    ProcessClass(ProcessClassPath$.MODULE$, "Process_class", "process_class", "ProcessClass"),
-    Schedule(SchedulePath$.MODULE$, "Schedule", "schedule", "Schedule"),
-    Unknown(UnknownTypedPath$.MODULE$, "Unknown", "unknown", "Unknown");
+    Folder      (FolderPath$      .MODULE$, "Folder"        , "folder"       , "Folder"      ),
+    Job         (JobPath$         .MODULE$, "Job"           , "job"          , "Job"         ),
+    JobChain    (JobChainPath$    .MODULE$, "Job_chain"     , "job_chain"    , "JobChain"    ),
+    Lock        (LockPath$        .MODULE$, "Lock"          , "lock"         , "Lock"        ),
+    Monitor     (MonitorPath$     .MODULE$, "Monitor"       , "monitor"      , "Monitor"     ),
+    Order       (OrderKey$        .MODULE$, "Standing_order", "order"        , "Order"       ),
+    ProcessClass(ProcessClassPath$.MODULE$, "Process_class" , "process_class", "ProcessClass"),
+    Schedule    (SchedulePath$    .MODULE$, "Schedule"      , "schedule"     , "Schedule"    ),
+    Unknown     (UnknownTypedPath$.MODULE$, "Unknown"       , "unknown"      , "Unknown"     );
 
-    private final TypedPath.Companion<?> companion;
+    private final TypedPath.Companion<? extends TypedPath> companion;
     private final String internalCppName;
     private final String cppName;
-    private final String printName;
+    private final String camelName;
+    private final String lowerCaseCamelName;
 
-    FileBasedType(TypedPath.Companion<?> companion, String internalCppName, String cppName, String printName) {
+    FileBasedType(TypedPath.Companion<? extends TypedPath> companion, String internalCppName, String cppName, String camelName) {
         this.companion = companion;
         this.internalCppName = internalCppName;
         this.cppName = cppName;
-        this.printName = printName;
+        this.camelName = camelName;
+        this.lowerCaseCamelName = camelName.substring(0, 1).toLowerCase() + camelName.substring(1);
     }
 
     public final TypedPath toPath(String path) {
         return (TypedPath)companion.apply(path);
+    }
+
+    public TypedPath.Companion<? extends TypedPath> companion() {
+        return companion;
     }
 
     public String internalCppName() {
@@ -50,8 +56,16 @@ public enum FileBasedType {
         return this == Folder? "/" : "." + cppName + ".xml";
     }
 
+    public String camelName() {
+        return camelName;
+    }
+
+    public String lowerCaseCamelName() {
+        return lowerCaseCamelName;
+    }
+
     @Override public String toString() {
-        return printName;
+        return camelName;
     }
 
     public static FileBasedType fromCppName(String name) {
