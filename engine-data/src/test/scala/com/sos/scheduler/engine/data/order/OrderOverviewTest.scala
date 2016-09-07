@@ -31,7 +31,7 @@ final class OrderOverviewTest extends FreeSpec {
       ListSet(
         OrderObstacle.Suspended,
         OrderObstacle.Setback(Instant.parse("2016-08-02T11:22:33.444Z")),
-        FileBasedObstacles(Set(FileBasedObstacle.Replaced))),
+        FileBasedObstacles(Set(FileBasedObstacle.Replaced()))),
       startedAt = Some(Instant.parse("2016-07-18T11:11:11Z")),
       nextStepAt = Some(Instant.parse("2016-07-18T12:00:00Z")))
     val jsValue = """{

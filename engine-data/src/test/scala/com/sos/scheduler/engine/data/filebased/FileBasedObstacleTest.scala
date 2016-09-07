@@ -12,14 +12,14 @@ import spray.json._
 @RunWith(classOf[JUnitRunner])
 final class FileBasedObstacleTest extends FreeSpec {
 
-  "Missing" in {
-    val o: FileBasedObstacle = Missing
-    val json = """{
-      "TYPE": "Missing"
-    }""".parseJson
-    assert(o.toJson == json)
-    assert(o == json.convertTo[FileBasedObstacle])
-  }
+//  "Missing" in {
+//    val o: FileBasedObstacle = Missing
+//    val json = """{
+//      "TYPE": "Missing"
+//    }""".parseJson
+//    assert(o.toJson == json)
+//    assert(o == json.convertTo[FileBasedObstacle])
+//  }
 
   "BadState" in {
     val o: FileBasedObstacle = BadState(FileBasedState.not_initialized, message = Some("MESSAGE"))

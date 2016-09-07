@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.data.filebased.FileBasedObstacle
+import com.sos.scheduler.engine.data.filebased.{FileBasedObstacle, FileBasedState}
 import com.sos.scheduler.engine.data.jobchain.JobChainObstacle._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -14,12 +14,13 @@ import spray.json._
 final class JobChainObstacleTest extends FreeSpec {
 
   "FileBasedObstacle" in {
-    val o: JobChainObstacle = FileBasedObstacles(Set(FileBasedObstacle.Missing))
+    val o: JobChainObstacle = FileBasedObstacles(Set(FileBasedObstacle.BadState(FileBasedState.not_initialized)))
     val json = """{
         "TYPE":"FileBasedObstacles",
         "fileBasedObstacles": [
          {
-           "TYPE": "Missing"
+           "TYPE": "BadState",
+           "state": "not_initialized"
          }
         ]
       }""".parseJson
