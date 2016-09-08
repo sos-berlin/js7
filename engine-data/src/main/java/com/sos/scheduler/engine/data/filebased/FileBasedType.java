@@ -82,5 +82,12 @@ public enum FileBasedType {
         throw new RuntimeException("Unknown file based type '"+name+"'");
     }
 
+    public static FileBasedType fromCamelName(String name) {
+        for (FileBasedType o: values())
+            if (o.camelName.equals(name))
+                return o;
+        throw new RuntimeException("Unknown file based type '"+name+"'");
+    }
+
     public static final JsonFormat<FileBasedType> MyJsonFormat = new JavaEnumJsonFormat<>(FileBasedType.class);
 }
