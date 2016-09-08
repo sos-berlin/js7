@@ -10,9 +10,9 @@ sealed trait FileBasedObstacle
 
 object FileBasedObstacle {
 
-  final case class BadState(state: FileBasedState, message: Option[String] = None)
+  final case class BadState(state: FileBasedState, error: Option[String] = None)
   extends FileBasedObstacle {
-    override def toString = (List(state) ++ message).mkString("BadState(", " ", ")")
+    override def toString = (List(state) ++ error).mkString("BadState(", " ", ")")
   }
 
   sealed trait LiveChanged
@@ -24,6 +24,14 @@ object FileBasedObstacle {
   case object Removed
   extends LiveChanged
 
+  final case class MissingRequisites(paths: Set[TypedPath])
+  extends FileBasedObstacle
+
+  object MissingRequisites {
+    private implicit def typedPathJsonFormat = TypedPath.WithCompanionJsonFormat
+    implicit val MyJsonFormat = jsonFormat1(apply)
+  }
+
   implicit val LiveChangedJsonFormat = TypedJsonFormat[LiveChanged](
     Subtype(jsonFormat1(Replaced)),
     Subtype(jsonFormat0(() ⇒ Removed)))
@@ -31,5 +39,6 @@ object FileBasedObstacle {
   implicit private val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
   implicit val FileBasedJsonFormat = TypedJsonFormat[FileBasedObstacle](
     Subtype(jsonFormat2(BadState)),
-    Subtype[LiveChanged])
+    Subtype[LiveChanged],
+    Subtype[MissingRequisites])
 }
