@@ -18,39 +18,19 @@ sealed trait OrderProcessingState {
 
 object OrderProcessingState {
 
-  //private val Companions = List(NotPlanned, Planned, Pending, WaitingInTask, InTaskProcess, Setback, WaitingForOther, Blacklisted)
-
-  sealed trait Companion {
-    def name = getClass.getSimpleName stripSuffix "$"
-  }
-
-  // NotPlanned
-
   case object NotPlanned
-  extends OrderProcessingState with Companion
+  extends OrderProcessingState
 
   final case class Planned(at: Instant)
   extends OrderProcessingState
-
-  // Planned
-
-  case object Planned extends Companion
-
-  // Waiting
 
   sealed trait Waiting
   extends OrderProcessingState {
     override def isWaiting = true
   }
 
-  // Pending
-
   final case class Pending(at: Instant)
   extends Waiting
-
-  case object Pending extends Companion
-
-  // InTask
 
   sealed trait InTask
   extends OrderProcessingState {
@@ -58,18 +38,10 @@ object OrderProcessingState {
     def processClassPath: ProcessClassPath
   }
 
-  case object InTask extends Companion
-
-  // WaintingInTask
-
   final case class WaitingInTask(
     taskId: TaskId,
     processClassPath: ProcessClassPath)
   extends InTask with Waiting
-
-  case object WaitingInTask extends Companion
-
-  // InTaskProcess
 
   final case class InTaskProcess(
     taskId: TaskId,
@@ -80,25 +52,13 @@ object OrderProcessingState {
     override def isInProcess = true
   }
 
-  case object InTaskProcess extends Companion
-
-  // Setback
-
   final case class Setback(until: Instant)
   extends Waiting
 
-  case object Setback extends Companion
-
-  // WaitingForOther
-
-  case object WaitingForOther extends Waiting with Companion
-
-  // Blacklisted
+  case object WaitingForOther extends Waiting
 
   case object Blacklisted
-  extends OrderProcessingState with Companion
-
-  //
+  extends OrderProcessingState
 
   implicit val typedJsonFormat = TypedJsonFormat[OrderProcessingState](
     Subtype(jsonFormat0(() ⇒ NotPlanned)),
