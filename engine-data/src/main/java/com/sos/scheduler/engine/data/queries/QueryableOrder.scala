@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.queries
 
-import com.sos.scheduler.engine.data.order.{OrderKey, OrderSourceType}
+import com.sos.scheduler.engine.data.order.{OrderKey, OrderProcessingState, OrderSourceType}
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -12,6 +12,7 @@ trait QueryableOrder {
   def isSuspended: Boolean
   def isSetback: Boolean
   def isBlacklisted: Boolean
+  def processingStateClass: Class[_ <: OrderProcessingState]
 }
 
 object QueryableOrder {
@@ -21,6 +22,7 @@ object QueryableOrder {
     sourceType: OrderSourceType = OrderSourceType.AdHoc,
     isSetback: Boolean = false,
     isBlacklisted: Boolean = false,
-    isSuspended: Boolean = false)
+    isSuspended: Boolean = false,
+    processingStateClass: Class[_ <: OrderProcessingState] = OrderProcessingState.NotPlanned.getClass)
   extends QueryableOrder
 }

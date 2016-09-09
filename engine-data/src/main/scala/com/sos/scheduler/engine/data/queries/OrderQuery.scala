@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
-import com.sos.scheduler.engine.data.order.{OrderId, OrderKey, OrderSourceType}
+import com.sos.scheduler.engine.data.order.{OrderId, OrderKey, OrderProcessingState, OrderSourceType}
 import com.sos.scheduler.engine.data.queries.OrderQuery._
 import scala.collection.JavaConversions._
 import spray.json.DefaultJsonProtocol._
@@ -19,6 +19,7 @@ final case class OrderQuery(
   isSetback: Option[Boolean] = None,
   isBlacklisted: Option[Boolean] = None,
   isOrderSourceType: Option[Set[OrderSourceType]] = None,
+  isOrderProcessingState: Option[Set[Class[_ <: OrderProcessingState]]] = None,
   notInTaskLimitPerNode: Option[Int] = None)
 extends OnlyOrderQuery with JobChainQuery {
 
@@ -42,6 +43,7 @@ extends OnlyOrderQuery with JobChainQuery {
     (isSetback map { o ⇒ IsSetbackName → o.toString }) ++
     (isBlacklisted map { o ⇒ IsBlacklistedName → o.toString}) ++
     (isOrderSourceType map ( o ⇒ IsOrderSourceTypeName → (o mkString ","))) ++
+    (isOrderProcessingState map ( o ⇒ IsOrderProcessingStateName → ((o map OrderProcessingState.typedJsonFormat.classToTypeName) mkString ","))) ++
     (notInTaskLimitPerNode map { o ⇒ NotInTaskLimitPerNode → o.toString })
 }
 
@@ -55,9 +57,11 @@ object OrderQuery {
   val IsSetbackName = "isSetback"
   val IsBlacklistedName = "isBlacklisted"
   val IsOrderSourceTypeName = "isOrderSourceType"
+  val IsOrderProcessingStateName = "isOrderProcessingState"
   val NotInTaskLimitPerNode = "notInTaskLimitPerNode"
 
   implicit val OrderQueryJsonFormat = new RootJsonFormat[OrderQuery] {
+    import OrderProcessingState.typedJsonFormat.classJsonFormat
     private implicit def orderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
 
     def write(q: OrderQuery) = JsObject((
@@ -68,6 +72,7 @@ object OrderQuery {
         (q.isSetback map { o ⇒ IsSetbackName → JsBoolean(o) }) ++
         (q.isBlacklisted map { o ⇒ IsBlacklistedName → JsBoolean(o) }) ++
         (q.isOrderSourceType map { o ⇒ IsOrderSourceTypeName → o.toJson }) ++
+        (q.isOrderProcessingState map { o ⇒ IsOrderProcessingStateName → o.toJson }) ++
         (q.notInTaskLimitPerNode map { o ⇒ NotInTaskLimitPerNode → JsNumber(o) })).toMap)
 
     def read(json: JsValue) = {
@@ -77,13 +82,14 @@ object OrderQuery {
           case Some(path) ⇒ PathQuery[JobChainPath](path.asInstanceOf[JsString].value)
           case None ⇒ PathQuery.All
         },
-        orderId               = fields.get(OrderIdName          ) map { o ⇒ OrderId(o.asInstanceOf[JsString].value) },
-        isDistributed         = fields.get(IsDistributedName    ) map { _.asInstanceOf[JsBoolean].value },
-        isSuspended           = fields.get(IsSuspendedName      ) map { _.asInstanceOf[JsBoolean].value },
-        isSetback             = fields.get(IsSetbackName        ) map { _.asInstanceOf[JsBoolean].value },
-        isBlacklisted         = fields.get(IsBlacklistedName    ) map { _.asInstanceOf[JsBoolean].value },
-        isOrderSourceType     = fields.get(IsOrderSourceTypeName) map { _.convertTo[Set[OrderSourceType] ]},
-        notInTaskLimitPerNode = fields.get(NotInTaskLimitPerNode) map { _.asInstanceOf[JsNumber].value.toIntExact })
+        orderId                = fields.get(OrderIdName               ) map { o ⇒ OrderId(o.asInstanceOf[JsString].value) },
+        isDistributed          = fields.get(IsDistributedName         ) map { _.asInstanceOf[JsBoolean].value },
+        isSuspended            = fields.get(IsSuspendedName           ) map { _.asInstanceOf[JsBoolean].value },
+        isSetback              = fields.get(IsSetbackName             ) map { _.asInstanceOf[JsBoolean].value },
+        isBlacklisted          = fields.get(IsBlacklistedName         ) map { _.asInstanceOf[JsBoolean].value },
+        isOrderSourceType      = fields.get(IsOrderSourceTypeName     ) map { _.convertTo[Set[OrderSourceType] ]},
+        isOrderProcessingState = fields.get(IsOrderProcessingStateName) map { _.convertTo[Set[Class[_ <: OrderProcessingState]]] },
+        notInTaskLimitPerNode  = fields.get(NotInTaskLimitPerNode     ) map { _.asInstanceOf[JsNumber].value.toIntExact })
     }
   }
 }

@@ -16,6 +16,8 @@ trait OrderView extends HasPath {
   private[engine] def processingState: OrderProcessingState
 
   private[engine] def nodeKey: NodeKey
+
+  final def processingStateClass = processingState.getClass
 }
 
 object OrderView {

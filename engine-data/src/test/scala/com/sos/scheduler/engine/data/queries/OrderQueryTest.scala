@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.folder.FolderPath
+import com.sos.scheduler.engine.data.order.OrderProcessingState.{NotPlanned, Setback}
 import com.sos.scheduler.engine.data.order.{OrderId, OrderSourceType}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -26,6 +27,7 @@ final class OrderQueryTest extends FreeSpec {
       isSetback = Some(false),
       isBlacklisted = Some(false),
       isOrderSourceType = Some(Set(OrderSourceType.FileOrder)),
+      isOrderProcessingState = Some(Set(NotPlanned.getClass, classOf[Setback])),
       notInTaskLimitPerNode = Some(1000)),
       """{
         "path": "/FOLDER/",
@@ -35,6 +37,7 @@ final class OrderQueryTest extends FreeSpec {
         "isSetback": false,
         "isBlacklisted": false,
         "isOrderSourceType": [ "FileOrder" ],
+        "isOrderProcessingState": [ "NotPlanned", "Setback" ],
         "notInTaskLimitPerNode": 1000
       }""")
   }

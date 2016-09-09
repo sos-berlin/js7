@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
-import com.sos.scheduler.engine.data.order.OrderId
 import com.sos.scheduler.engine.data.order.OrderSourceType._
+import com.sos.scheduler.engine.data.order.{OrderId, OrderProcessingState}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -44,12 +44,21 @@ final class OnlyOrderQueryTest extends FreeSpec {
     assert(!(q.copy(isBlacklisted = Some(false)) matchesOrder order))
   }
 
+  "isOrderProcessingState" in {
+    import OrderProcessingState._
+    val order = QueryableOrder.ForTest(orderKey, processingStateClass = classOf[OrderProcessingState.Setback])
+    assert(q.copy() matchesOrder order)
+    assert(!(q.copy(isOrderProcessingState = Some(Set())) matchesOrder order))
+    assert(!(q.copy(isOrderProcessingState = Some(Set(NotPlanned.getClass))) matchesOrder order))
+    assert(q.copy(isOrderProcessingState = Some(Set(classOf[Setback]))) matchesOrder order)
+    assert(q.copy(isOrderProcessingState = Some(Set(NotPlanned.getClass, classOf[Setback]))) matchesOrder order)
+  }
+
   "isOrderSourceType" in {
     val order = QueryableOrder.ForTest(orderKey, sourceType = AdHoc)
     assert(q.copy() matchesOrder order)
     assert(!(q.copy(isOrderSourceType = Some(Set())) matchesOrder order))
     assert(!(q.copy(isOrderSourceType = Some(Set(Permanent))) matchesOrder order))
-    assert(q.copy(isOrderSourceType = Some(Set(AdHoc, Permanent))) matchesOrder order)
     assert(q.copy(isOrderSourceType = Some(Set(AdHoc, Permanent))) matchesOrder order)
   }
 }
