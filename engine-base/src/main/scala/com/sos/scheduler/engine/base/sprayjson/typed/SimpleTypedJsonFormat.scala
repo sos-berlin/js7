@@ -17,7 +17,7 @@ trait SimpleTypedJsonFormat[A] extends TypedJsonFormat[A] {
 
   final lazy val classToJsonWriter = (subclasses map { _ → this }).toMap[Class[_], RootJsonWriter[_]]
 
-  final def typeToJsonReader = Map(typeName → this)
+  final def typeNameToJsonReader = Map(typeName → this)
 
   final def typeName: String = typeField._2.value
 

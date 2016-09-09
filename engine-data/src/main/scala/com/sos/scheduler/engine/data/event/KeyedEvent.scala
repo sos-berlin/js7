@@ -36,11 +36,11 @@ object KeyedEvent {
 
     private val eJsonFormat = implicitly[TypedJsonFormat[E]].asJsObjectJsonFormat
 
-    val classToJsonWriter = Map[Class[_], RootJsonWriter[_]](classOf[KeyedEvent[_]] → this)
+    def classToJsonWriter = Map[Class[_], RootJsonWriter[_]](classOf[KeyedEvent[_]] → this)
 
-    val typeToJsonReader = eJsonFormat.typeToJsonReader
+    def typeNameToJsonReader = eJsonFormat.typeNameToJsonReader
 
-    val typeToClass = eJsonFormat.typeToClass
+    def typeNameToClass = eJsonFormat.typeNameToClass
 
     def canSerialize(o: KeyedEvent[E]) = eJsonFormat canSerialize o.event
 

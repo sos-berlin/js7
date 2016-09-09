@@ -7,15 +7,15 @@ import spray.json._
   */
 private[typed] class WithSubtypeRegister[A](
   val superclass: Class[A],
-  val typeToClass: Map[String, Class[_ <: A]],
+  val typeNameToClass: Map[String, Class[_ <: A]],
   val classToJsonWriter: Map[Class[_], RootJsonWriter[_]],
-  val typeToJsonReader: Map[String, RootJsonReader[_]],
+  val typeNameToJsonReader: Map[String, RootJsonReader[_]],
   typeFieldName: String,
   shortenTypeOnlyValue: Boolean)
 extends TypedJsonFormat[A] {
 
   override def asJsObjectJsonFormat =
-    new WithSubtypeRegister[A](superclass, typeToClass, classToJsonWriter, typeToJsonReader, typeFieldName, shortenTypeOnlyValue = false)
+    new WithSubtypeRegister[A](superclass, typeNameToClass, classToJsonWriter, typeNameToJsonReader, typeFieldName, shortenTypeOnlyValue = false)
 
   override def canSerialize(a: A): Boolean =
     classToJsonWriter.get(a.getClass) match {
@@ -42,7 +42,7 @@ extends TypedJsonFormat[A] {
       case o: JsObject ⇒ (o.fields(typeFieldName).asInstanceOf[JsString].value, o.fields /*- typeFieldName*/)
       case o ⇒ sys.error(s"Expected JSON string or object for type ${superclass.getSimpleName}")
     }
-    val reader = typeToJsonReader.getOrElse(typeName,
+    val reader = typeNameToJsonReader.getOrElse(typeName,
       sys.error(s"""JSON $typeFieldName="$typeName" does not denote a subtype of ${superclass.getSimpleName}"""))
     reader.read(JsObject(fields)).asInstanceOf[A]
   }

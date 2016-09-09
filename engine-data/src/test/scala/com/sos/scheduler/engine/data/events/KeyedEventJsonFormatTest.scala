@@ -41,7 +41,7 @@ final class KeyedEventJsonFormatTest extends FreeSpec {
     assert(event == jsValue.convertTo[AnyKeyedEvent] )
   }
 
-  "SchedulerAnyKeyedEventJsonFormat.typeToClass" in {
+  "SchedulerAnyKeyedEventJsonFormat.typeNameToClass" in {
     assert(SchedulerAnyKeyedEventJsonFormat.typeToClass == Map(
       "Event" → classOf[Event],
         "FileBasedEvent" → classOf[FileBasedEvent],

@@ -20,8 +20,8 @@ final class TypedJsonFormatTest extends FreeSpec {
     //Subtype(jsonFormat0(Alien)),  // Must not not compile
     Subtype(jsonFormat2(A2)))
 
-  "typeToClass" in {
-    assert(aJsonFormat.typeToClass == Map(
+  "typeNameToClass" in {
+    assert(aJsonFormat.typeNameToClass == Map(
       "A" → classOf[A],
       "A0" → A0.getClass,
       "A1" → classOf[A1],
@@ -47,6 +47,27 @@ final class TypedJsonFormatTest extends FreeSpec {
     val json = """{ "TYPE": "A2", "int": 2, "string": "two" }""".parseJson
     assert(a.toJson == json)
     assert(a == json.convertTo[A])
+  }
+
+  "classJsonFormat" - {
+    type C = Class[_ <: A]
+    implicit val jsonFormat: JsonFormat[C] = aJsonFormat.classJsonFormat
+
+    "case object" in {
+      val a: C = A0.getClass.asInstanceOf[C]
+      val json = JsString("A0")
+      assert(jsonFormat.write(a) == json)
+      // Cannot find JsonWriter or JsonFormat type class for Class[_$1]: assert(a.toJson == json)
+      assert(json.convertTo[C] == a)
+    }
+
+    "case class" in {
+      val a: C = classOf[A1]
+      val json = JsString("A1")
+      assert(jsonFormat.write(a) == json)
+      // Cannot find JsonWriter or JsonFormat type class for Class[_$1]: assert(a.toJson == json)
+      assert(json.convertTo[C] == a)
+    }
   }
 
   "Nested TypedJsonFormat" - {
@@ -91,8 +112,8 @@ final class TypedJsonFormatTest extends FreeSpec {
           Subtype[A],
           Subtype(jsonFormat2(B1))))
 
-    "typeToClass" in {
-      assert(xJsonFormat.typeToClass == Map(
+    "typeNameToClass" in {
+      assert(xJsonFormat.typeNameToClass == Map(
         "X" → classOf[X],
         "A" → classOf[A],
         "A0" → A0.getClass,

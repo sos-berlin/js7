@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.base.sprayjson.typed
 
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 import spray.json._
@@ -14,6 +15,14 @@ trait TypedJsonFormat[A] extends RootJsonFormat[A] with HasOwnTypeField[A] {
   def canSerialize(a: A): Boolean
 
   final lazy val classes: Set[Class[_ <: A]] = classToJsonWriter.keySet map { _.asInstanceOf[Class[_ <: A]] }
+
+  implicit final lazy val classJsonFormat = new JsonFormat[Class[_ <: A]] {
+    private val toClass: Map[String, Class[_ <: A]] = (classes map { o ⇒ classToTypeName(o) → o }).toMap
+
+    def write(o: Class[_ <: A]) = JsString(classToTypeName(o))
+
+    def read(json: JsValue) = toClass(json.asJsString.value)
+  }
 }
 
 object TypedJsonFormat {
@@ -52,13 +61,13 @@ object TypedJsonFormat {
     shortenTypeOnlyValue: Boolean = DefaultShortenTypeOnlyValue,
     subtypes: Seq[Subtype[_]]): TypedJsonFormat[A]
   = {
-    val superclassName = implicitClass[A].getSimpleName   // This name is only for users of typeToClass, like "Event"
+    val superclassName = implicitClass[A].getSimpleName   // This name is only for users of typeNameToClass, like "Event"
     new WithSubtypeRegister[A](
       implicitClass[A],
-      typeToClass = Map(superclassName → implicitClass[A]) ++
+      typeNameToClass = Map(superclassName → implicitClass[A]) ++
         (subtypes flatMap { _.nameToClass mapValues { _.asInstanceOf[Class[_ <: A]] }}).toMap,
       classToJsonWriter = (subtypes flatMap { _.toClassToJsonWriter(typeFieldName) }).toMap,
-      typeToJsonReader = (subtypes flatMap { _.toTypeToReader(typeFieldName) }).toMap,
+      typeNameToJsonReader = (subtypes flatMap { _.toTypeToReader(typeFieldName) }).toMap,
       typeFieldName = typeFieldName,
       shortenTypeOnlyValue = shortenTypeOnlyValue)
   }
@@ -74,8 +83,8 @@ object TypedJsonFormat {
   sealed trait AsLazy[A] extends RootJsonFormat[A] with TypedJsonFormat[A] {
     def delegate: TypedJsonFormat[A]
     final def classToJsonWriter = delegate.classToJsonWriter
-    final def typeToJsonReader = delegate.typeToJsonReader
-    final def typeToClass = delegate.typeToClass
+    final def typeNameToJsonReader = delegate.typeNameToJsonReader
+    final def typeNameToClass = delegate.typeNameToClass
     final def canSerialize(a: A) = delegate canSerialize a
     final def write(x: A) = delegate.write(x)
     final def read(value: JsValue) = delegate.read(value)

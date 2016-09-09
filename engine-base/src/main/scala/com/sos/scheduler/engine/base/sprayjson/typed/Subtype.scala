@@ -43,7 +43,7 @@ extends Subtype[A] {
       (jsonFormat match {
         case o: WithSubtypeRegister[A @unchecked] ⇒  // Recursive TypedJsonFormat
           require(o.superclass isAssignableFrom clazz)
-          o.typeToClass
+          o.typeNameToClass
         case _ ⇒
           Map()
       })
@@ -62,9 +62,9 @@ extends Subtype[A] {
     jsonFormat match {
       case o: WithSubtypeRegister[A @unchecked] ⇒
         require(o.superclass isAssignableFrom clazz)
-        o.typeToJsonReader
+        o.typeNameToJsonReader
       case o: HasOwnTypeField[A @unchecked] ⇒
-        o.typeToJsonReader mapValues { _ ⇒ jsonFormat }
+        o.typeNameToJsonReader mapValues { _ ⇒ jsonFormat }
       case _ ⇒
         Map(name → jsonFormat)
     }
@@ -77,7 +77,7 @@ extends Subtype[A] {
     jsonFormat match {
       case o: WithSubtypeRegister[A @unchecked] ⇒  // Recursive TypedJsonFormat
         require(classes forall o.superclass.isAssignableFrom)
-        o.typeToClass
+        o.typeNameToClass
       case _ ⇒
         Map()
     }
@@ -96,8 +96,8 @@ extends Subtype[A] {
     jsonFormat match {
       case o: WithSubtypeRegister[A @unchecked] ⇒
         require(classes forall o.superclass.isAssignableFrom)
-        o.typeToJsonReader
+        o.typeNameToJsonReader
       case o: HasOwnTypeField[A @unchecked] ⇒
-        o.typeToJsonReader mapValues { _ ⇒ jsonFormat }
+        o.typeNameToJsonReader mapValues { _ ⇒ jsonFormat }
     }
 }
