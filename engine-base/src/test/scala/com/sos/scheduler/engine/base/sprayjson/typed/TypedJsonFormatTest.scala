@@ -28,6 +28,10 @@ final class TypedJsonFormatTest extends FreeSpec {
       "A2" → classOf[A2]))
   }
 
+  "subtypeNames in original order" in {
+    assert(aJsonFormat.subtypeNames == List("A0", "A1", "A2"))
+  }
+
   "case object" in {
     val a: A = A0
     val json = """"A0"""".parseJson

@@ -38,6 +38,8 @@ object KeyedEvent {
 
     def classToJsonWriter = Map[Class[_], RootJsonWriter[_]](classOf[KeyedEvent[_]] → this)
 
+    def subtypeNames = eJsonFormat.subtypeNames
+
     def typeNameToJsonReader = eJsonFormat.typeNameToJsonReader
 
     def typeNameToClass = eJsonFormat.typeNameToClass

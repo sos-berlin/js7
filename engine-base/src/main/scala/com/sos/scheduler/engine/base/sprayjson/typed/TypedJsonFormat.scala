@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.base.sprayjson.typed
 
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
+import scala.collection.immutable
 import scala.reflect.ClassTag
 import spray.json._
 
@@ -49,7 +50,6 @@ object TypedJsonFormat {
     * @return
     */
   def apply[A: ClassTag](
-
     typeField: String = DefaultTypeFieldName,
     shortenTypeOnlyValue: Boolean = DefaultShortenTypeOnlyValue)
     (subtypes: Subtype[_]*)
@@ -62,12 +62,13 @@ object TypedJsonFormat {
     subtypes: Seq[Subtype[_]]): TypedJsonFormat[A]
   = {
     val superclassName = implicitClass[A].getSimpleName   // This name is only for users of typeNameToClass, like "Event"
+    val typeNamesAndClasses = subtypes flatMap { _.nameToClass mapValues { _.asInstanceOf[Class[_ <: A]] }}
     new WithSubtypeRegister[A](
       implicitClass[A],
-      typeNameToClass = Map(superclassName → implicitClass[A]) ++
-        (subtypes flatMap { _.nameToClass mapValues { _.asInstanceOf[Class[_ <: A]] }}).toMap,
       classToJsonWriter = (subtypes flatMap { _.toClassToJsonWriter(typeFieldName) }).toMap,
+      typeNameToClass = (Vector(superclassName → implicitClass[A]) ++ typeNamesAndClasses).toMap,
       typeNameToJsonReader = (subtypes flatMap { _.toTypeToReader(typeFieldName) }).toMap,
+      (typeNamesAndClasses map { _._1 }).toVector,
       typeFieldName = typeFieldName,
       shortenTypeOnlyValue = shortenTypeOnlyValue)
   }
@@ -85,6 +86,7 @@ object TypedJsonFormat {
     final def classToJsonWriter = delegate.classToJsonWriter
     final def typeNameToJsonReader = delegate.typeNameToJsonReader
     final def typeNameToClass = delegate.typeNameToClass
+    final def subtypeNames = delegate.subtypeNames
     final def canSerialize(a: A) = delegate canSerialize a
     final def write(x: A) = delegate.write(x)
     final def read(value: JsValue) = delegate.read(value)

@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.base.sprayjson.typed
 
+import scala.collection.immutable
 import spray.json._
 
 /**
@@ -7,15 +8,18 @@ import spray.json._
   */
 private[typed] class WithSubtypeRegister[A](
   val superclass: Class[A],
-  val typeNameToClass: Map[String, Class[_ <: A]],
   val classToJsonWriter: Map[Class[_], RootJsonWriter[_]],
+  val typeNameToClass: Map[String, Class[_ <: A]],
   val typeNameToJsonReader: Map[String, RootJsonReader[_]],
+  val subtypeNames: immutable.Seq[String],
   typeFieldName: String,
   shortenTypeOnlyValue: Boolean)
 extends TypedJsonFormat[A] {
 
   override def asJsObjectJsonFormat =
-    new WithSubtypeRegister[A](superclass, typeNameToClass, classToJsonWriter, typeNameToJsonReader, typeFieldName, shortenTypeOnlyValue = false)
+    new WithSubtypeRegister[A](superclass, classToJsonWriter,
+      typeNameToClass, typeNameToJsonReader, subtypeNames, typeFieldName,
+      shortenTypeOnlyValue = false)
 
   override def canSerialize(a: A): Boolean =
     classToJsonWriter.get(a.getClass) match {

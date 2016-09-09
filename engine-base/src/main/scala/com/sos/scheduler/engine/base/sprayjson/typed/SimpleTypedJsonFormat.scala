@@ -7,11 +7,12 @@ import spray.json.{JsObject, JsString, RootJsonWriter}
   */
 trait SimpleTypedJsonFormat[A] extends TypedJsonFormat[A] {
 
+  protected def typeName: String
   protected def subclasses: Set[Class[_ <: A]]
 
-  protected def typeField: (String, JsString)
-
   protected def typelessWrite(a: A): JsObject
+
+  protected val typeField = TypedJsonFormat.DefaultTypeFieldName → JsString(typeName)
 
   final def canSerialize(e: A) = subclasses contains e.getClass
 
@@ -19,7 +20,9 @@ trait SimpleTypedJsonFormat[A] extends TypedJsonFormat[A] {
 
   final def typeNameToJsonReader = Map(typeName → this)
 
-  final def typeName: String = typeField._2.value
+  final val typeNameToClass: Map[String, Class[_ <: A]] = Map()
+
+  final val subtypeNames = Nil
 
   final def write(a: A) = {
     val jsObject = typelessWrite(a)

@@ -52,8 +52,7 @@ object Logged {
     }
 
   implicit object LoggedJsonFormat extends SimpleTypedJsonFormat[Logged] {
-    protected def typeField = TypedJsonFormat.DefaultTypeFieldName → JsString("Logged")
-    def typeNameToClass = Map() //? Map("Logged" → classOf[Logged])
+    protected def typeName = "Logged"
 
     protected val subclasses = Set[Class[_ <: Logged]](
       classOf[InfoLogged],

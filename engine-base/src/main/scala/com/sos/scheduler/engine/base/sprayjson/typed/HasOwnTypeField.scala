@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.base.sprayjson.typed
 
+import scala.collection.immutable
 import spray.json.{RootJsonReader, RootJsonWriter}
 
 /**
@@ -13,6 +14,10 @@ trait HasOwnTypeField[A] {
 
   def typeNameToClass: Map[String, Class[_ <: A]]
 
+  /**
+    * Typenames in original ordering.
+    */
+  def subtypeNames: immutable.Seq[String]
+
   final lazy val classToTypeName: Map[Class[_ <: A], String] = typeNameToClass map { _.swap }
-  final lazy val typeNames: Set[String] = typeNameToClass.keySet
 }
