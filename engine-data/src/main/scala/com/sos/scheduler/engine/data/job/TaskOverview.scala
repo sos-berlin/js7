@@ -11,7 +11,7 @@ final case class TaskOverview(
   taskId: TaskId,
   jobPath: JobPath,
   state: TaskState,
-  processClassPath: ProcessClassPath,
+  processClassPath: Option[ProcessClassPath],
   agent: Option[AgentAddress] = None) {
 
   def taskKey = TaskKey(jobPath, taskId)
