@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.base.sprayjson.SprayJson.lazyRootFormat
 import com.sos.scheduler.engine.data.filebased.FileBasedState
 import com.sos.scheduler.engine.data.jobchain.{NodeId, NodeKey}
 import com.sos.scheduler.engine.data.queries.QueryableOrder
-import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
 import java.time.Instant
 import scala.collection.immutable
 import scala.language.implicitConversions
@@ -24,8 +23,7 @@ final case class OrderOverview(
   historyId: Option[OrderHistoryId] = None,
   obstacles: Set[OrderObstacle] = Set(),
   startedAt: Option[Instant] = None,
-  nextStepAt: Option[Instant] = None,
-  occupyingClusterMemberId: Option[ClusterMemberId] = None)
+  nextStepAt: Option[Instant] = None)
 extends OrderView with QueryableOrder {
 
   def orderKey: OrderKey = path
@@ -37,12 +35,17 @@ extends OrderView with QueryableOrder {
   def isBlacklisted = processingStateClass == OrderProcessingState.Blacklisted.getClass
 
   def isSuspended = obstacles contains OrderObstacle.Suspended
+
+  def occupyingClusterMemberId = processingState match {
+    case o: OrderProcessingState.InTaskProcess ⇒ o.occupyingClusterMemberId
+    case _ ⇒ None
+  }
 }
 
 object OrderOverview extends OrderView.Companion[OrderOverview] {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
   private implicit val OrderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
-  implicit val jsonFormat: RootJsonFormat[OrderOverview] = lazyRootFormat(jsonFormat10(apply))
+  implicit val jsonFormat: RootJsonFormat[OrderOverview] = lazyRootFormat(jsonFormat9(apply))
 
   implicit val ordering: Ordering[OrderOverview] = Ordering by { o ⇒ (o.orderKey.jobChainPath, o.nodeId, o.orderKey.id) }
 

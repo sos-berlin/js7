@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.scheduler.engine.data.agent.AgentAddress
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
+import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._
 
@@ -36,18 +37,21 @@ object OrderProcessingState {
   extends OrderProcessingState {
     def taskId: TaskId
     def processClassPath: ProcessClassPath
+    def occupyingClusterMemberId: Option[ClusterMemberId]
   }
 
   final case class WaitingInTask(
     taskId: TaskId,
-    processClassPath: ProcessClassPath)
+    processClassPath: ProcessClassPath,
+    occupyingClusterMemberId: Option[ClusterMemberId] = None)
   extends InTask with Waiting
 
   final case class InTaskProcess(
     taskId: TaskId,
     processClassPath: ProcessClassPath,
-    agentUri: Option[AgentAddress],
-    since: Instant)
+    occupyingClusterMemberId: Option[ClusterMemberId] = None,
+    since: Instant,
+    agentUri: Option[AgentAddress])
   extends InTask {
     override def isInProcess = true
   }
@@ -64,8 +68,8 @@ object OrderProcessingState {
     Subtype(jsonFormat0(() ⇒ NotPlanned)),
     Subtype(jsonFormat1(Planned.apply)),
     Subtype(jsonFormat1(Pending.apply)),
-    Subtype(jsonFormat2(WaitingInTask.apply)),
-    Subtype(jsonFormat4(InTaskProcess.apply)),
+    Subtype(jsonFormat3(WaitingInTask.apply)),
+    Subtype(jsonFormat5(InTaskProcess.apply)),
     Subtype(jsonFormat1(Setback.apply)),
     Subtype(jsonFormat0(() ⇒ WaitingForOther)),
     Subtype(jsonFormat0(() ⇒ Blacklisted)))
