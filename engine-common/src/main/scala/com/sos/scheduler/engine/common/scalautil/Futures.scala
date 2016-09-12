@@ -79,6 +79,10 @@ object Futures {
       def await(duration: Duration)(implicit ec: ExecutionContext) = Await.result(Future.sequence(delegate), duration.toFiniteDuration)
     }
 
+    implicit class RichFutureFuture[A](val delegate: Future[Future[A]]) extends AnyVal {
+      def flatten: Future[A] = delegate.flatMap(identity)(SynchronousExecutionContext)
+    }
+
     implicit class SuccessPromise[A](val delegate: Promise[A]) extends AnyVal {
       def successValue: A = delegate.future.successValue
     }

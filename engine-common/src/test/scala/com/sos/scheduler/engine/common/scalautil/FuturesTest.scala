@@ -1,13 +1,12 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import java.util.concurrent.TimeoutException
-import org.scalatest.Matchers._
-import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures.{FutureNotSucceededException, NoFuture, catchInFuture}
-import java.time.Instant.now
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.util.concurrent.TimeoutException
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
+import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -68,6 +67,11 @@ final class FuturesTest extends FreeSpec {
     intercept[TimeoutException] {
       Future { sleep(100.ms) } await 1.ms shouldBe true
     }
+  }
+
+  "future.flatten" in {
+    val a = Future { Future { 77 } }
+    assert((a.flatten await 100.ms) == 77)
   }
 
   "NoFuture" in {
