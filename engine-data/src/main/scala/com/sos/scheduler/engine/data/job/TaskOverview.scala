@@ -12,7 +12,8 @@ final case class TaskOverview(
   jobPath: JobPath,
   state: TaskState,
   processClassPath: Option[ProcessClassPath],
-  agent: Option[AgentAddress] = None) {
+  agent: Option[AgentAddress] = None,
+  obstacles: Set[TaskObstacle] = Set()) {
 
   def taskKey = TaskKey(jobPath, taskId)
 }
@@ -20,5 +21,5 @@ final case class TaskOverview(
 object TaskOverview {
   implicit val ordering: Ordering[TaskOverview] = Ordering by { _.taskId }
   implicit private val TaskStateJsonFormat = TaskState.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat5(apply)
+  implicit val MyJsonFormat = jsonFormat6(apply)
 }
