@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.lazyRootFormat
 import com.sos.scheduler.engine.data.filebased.FileBasedState
 import com.sos.scheduler.engine.data.jobchain.{NodeId, NodeKey}
+import com.sos.scheduler.engine.data.order.OrderProcessingState.OccupiedByClusterMember
 import com.sos.scheduler.engine.data.queries.QueryableOrder
 import java.time.Instant
 import scala.collection.immutable
@@ -37,7 +38,7 @@ extends OrderView with QueryableOrder {
   def isSuspended = obstacles contains OrderObstacle.Suspended
 
   def occupyingClusterMemberId = processingState match {
-    case o: OrderProcessingState.InTaskProcess ⇒ o.occupyingClusterMemberId
+    case o: OccupiedByClusterMember ⇒ Some(o.clusterMemberId)
     case _ ⇒ None
   }
 }

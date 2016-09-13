@@ -6,7 +6,6 @@ import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import com.sos.scheduler.engine.data.order.OrderObstacle.FileBasedObstacles
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
-import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -27,7 +26,7 @@ final class OrderOverviewTest extends FreeSpec {
       FileBasedState.active,
       OrderSourceType.AdHoc,
       NodeId("100"),
-      OrderProcessingState.InTaskProcess(TaskId(123), ProcessClassPath("/TEST"), Some(ClusterMemberId("CLUSTER-MEMBER-ID")),
+      OrderProcessingState.InTaskProcess(TaskId(123), ProcessClassPath("/TEST"),
         Instant.parse("2016-08-01T01:02:03.044Z"), Some(AgentAddress("http://1.2.3.4:5678"))),
       Some(OrderHistoryId(22)),
       ListSet(
@@ -46,7 +45,6 @@ final class OrderOverviewTest extends FreeSpec {
         "TYPE": "InTaskProcess",
         "taskId": "123",
         "processClassPath": "/TEST",
-        "occupyingClusterMemberId": "CLUSTER-MEMBER-ID",
         "since": "2016-08-01T01:02:03.044Z",
         "agentUri": "http://1.2.3.4:5678"
       },

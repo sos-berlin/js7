@@ -32,22 +32,25 @@ final class OrderProcessingStateTest extends FreeSpec {
         "TYPE": "Pending",
         "at": "2016-08-01T11:22:33.444Z"
       }""")
-    addTest(WaitingInTask(TaskId(123), ProcessClassPath("/TEST"), Some(ClusterMemberId("CLUSTER-MEMBER-ID"))),
+    addTest(WaitingInTask(TaskId(123), ProcessClassPath("/TEST")),
       """{
         "TYPE": "WaitingInTask",
         "taskId": "123",
-        "processClassPath": "/TEST",
-        "occupyingClusterMemberId": "CLUSTER-MEMBER-ID"
+        "processClassPath": "/TEST"
       }""")
-    addTest(InTaskProcess(TaskId(123), ProcessClassPath("/TEST"), Some(ClusterMemberId("CLUSTER-MEMBER-ID")),
+    addTest(InTaskProcess(TaskId(123), ProcessClassPath("/TEST"),
       Instant.parse("2016-08-01T01:02:03.044Z"), Some(AgentAddress("http://1.2.3.4:5678"))),
       """{
         "TYPE": "InTaskProcess",
         "taskId": "123",
         "processClassPath": "/TEST",
         "since": "2016-08-01T01:02:03.044Z",
-        "occupyingClusterMemberId": "CLUSTER-MEMBER-ID",
         "agentUri": "http://1.2.3.4:5678"
+      }""")
+    addTest(OccupiedByClusterMember(ClusterMemberId("CLUSTER-MEMBER-ID")),
+      """{
+        "TYPE": "OccupiedByClusterMember",
+        "clusterMemberId": "CLUSTER-MEMBER-ID"
       }""")
     addTest(Setback(Instant.parse("2016-08-01T11:22:33.444Z")),
       """{
