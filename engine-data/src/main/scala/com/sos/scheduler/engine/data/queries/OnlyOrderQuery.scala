@@ -12,6 +12,8 @@ trait OnlyOrderQuery {
   def isBlacklisted: Option[Boolean]
   def isOrderSourceType: Option[Set[OrderSourceType]]
   def isOrderProcessingState: Option[Set[Class[_ <: OrderProcessingState]]]
+  /** Or-ed with `isOrderProcessingState`, such that `suspended` can be seen as a `OrderProcessingState`. */
+  def orIsSuspended: Boolean
 
   final def matchesOrder(o: QueryableOrder) =
     (orderId forall { _ == o.orderKey.id }) &&
@@ -19,7 +21,8 @@ trait OnlyOrderQuery {
     (isSetback forall { _ == o.isSetback }) &&
     (isBlacklisted forall { _ == o.isBlacklisted }) &&
     (isOrderSourceType forall { _ contains o.sourceType }) &&
-    (isOrderProcessingState forall { _ exists { _ isAssignableFrom o.processingStateClass }})
+    ((isOrderProcessingState forall { _ exists { _ isAssignableFrom o.processingStateClass }})
+      || orIsSuspended && o.isSuspended)
 }
 
 object OnlyOrderQuery {
@@ -33,6 +36,7 @@ object OnlyOrderQuery {
     isSetback: Option[Boolean] = None,
     isBlacklisted: Option[Boolean] = None,
     isOrderSourceType: Option[Set[OrderSourceType]] = None,
-    isOrderProcessingState: Option[Set[Class[_ <: OrderProcessingState]]] = None)
+    isOrderProcessingState: Option[Set[Class[_ <: OrderProcessingState]]] = None,
+    orIsSuspended: Boolean = false)
   extends OnlyOrderQuery
 }

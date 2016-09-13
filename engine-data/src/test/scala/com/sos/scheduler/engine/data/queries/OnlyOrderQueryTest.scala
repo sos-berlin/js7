@@ -46,12 +46,27 @@ final class OnlyOrderQueryTest extends FreeSpec {
 
   "isOrderProcessingState" in {
     import OrderProcessingState._
-    val order = QueryableOrder.ForTest(orderKey, processingStateClass = classOf[OrderProcessingState.Setback])
+    val order = QueryableOrder.ForTest(orderKey, processingStateClass = classOf[Setback])
     assert(q.copy() matchesOrder order)
     assert(!(q.copy(isOrderProcessingState = Some(Set())) matchesOrder order))
     assert(!(q.copy(isOrderProcessingState = Some(Set(NotPlanned.getClass))) matchesOrder order))
     assert(q.copy(isOrderProcessingState = Some(Set(classOf[Setback]))) matchesOrder order)
     assert(q.copy(isOrderProcessingState = Some(Set(NotPlanned.getClass, classOf[Setback]))) matchesOrder order)
+  }
+
+  "orIsSuspended" in {
+    import OrderProcessingState._
+    val setbackOrder = QueryableOrder.ForTest(orderKey, processingStateClass = classOf[Setback])
+    val suspendedOrder = QueryableOrder.ForTest(orderKey, processingStateClass = classOf[Planned], isSuspended = true)
+    val suspendedSetbackOrder = QueryableOrder.ForTest(orderKey, processingStateClass = classOf[Setback], isSuspended = true)
+    val otherOrder = QueryableOrder.ForTest(orderKey, processingStateClass = NotPlanned.getClass)
+    val orders = List(setbackOrder, suspendedOrder, suspendedSetbackOrder, otherOrder)
+
+    val orIsSuspendedQuery = q.copy(isOrderProcessingState = Some(Set(classOf[Setback])), orIsSuspended = true)
+    assert((orders filter orIsSuspendedQuery.matchesOrder) == List(setbackOrder, suspendedOrder, suspendedSetbackOrder))
+
+    val isSuspendedQuery = q.copy(isOrderProcessingState = Some(Set(classOf[Setback])), isSuspended = Some(true))
+    assert((orders filter isSuspendedQuery.matchesOrder) == List(suspendedSetbackOrder))
   }
 
   "isOrderSourceType" in {

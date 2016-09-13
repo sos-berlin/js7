@@ -19,6 +19,7 @@ final case class OrderQuery(
   isBlacklisted: Option[Boolean] = None,
   isOrderSourceType: Option[Set[OrderSourceType]] = None,
   isOrderProcessingState: Option[Set[Class[_ <: OrderProcessingState]]] = None,
+  orIsSuspended: Boolean = false,
   notInTaskLimitPerNode: Option[Int] = None)
 extends OnlyOrderQuery with JobChainQuery {
 
@@ -51,6 +52,7 @@ object OrderQuery {
   val IsBlacklistedName = "isBlacklisted"
   val IsOrderSourceTypeName = "isOrderSourceType"
   val IsOrderProcessingStateName = "isOrderProcessingState"
+  val OrIsSuspendedName = "orIsSuspended"
   val NotInTaskLimitPerNode = "notInTaskLimitPerNode"
 
   implicit val OrderQueryJsonFormat = new RootJsonFormat[OrderQuery] {
@@ -66,6 +68,7 @@ object OrderQuery {
         (q.isBlacklisted map { o ⇒ IsBlacklistedName → JsBoolean(o) }) ++
         (q.isOrderSourceType map { o ⇒ IsOrderSourceTypeName → o.toJson }) ++
         (q.isOrderProcessingState map { o ⇒ IsOrderProcessingStateName → o.toJson }) ++
+        (q.orIsSuspended option { OrIsSuspendedName → JsTrue }) ++
         (q.notInTaskLimitPerNode map { o ⇒ NotInTaskLimitPerNode → JsNumber(o) })).toMap)
 
     def read(json: JsValue) = {
@@ -82,6 +85,7 @@ object OrderQuery {
         isBlacklisted          = fields.get(IsBlacklistedName         ) map { _.asInstanceOf[JsBoolean].value },
         isOrderSourceType      = fields.get(IsOrderSourceTypeName     ) map { _.convertTo[Set[OrderSourceType] ]},
         isOrderProcessingState = fields.get(IsOrderProcessingStateName) map { _.convertTo[Set[Class[_ <: OrderProcessingState]]] },
+        orIsSuspended          = fields.get(OrIsSuspendedName         ) map { _.convertTo[Boolean] } getOrElse false,
         notInTaskLimitPerNode  = fields.get(NotInTaskLimitPerNode     ) map { _.asInstanceOf[JsNumber].value.toIntExact })
     }
   }

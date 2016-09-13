@@ -42,6 +42,14 @@ final class OrderQueryTest extends FreeSpec {
       }""")
   }
 
+  "OrderQuery.orIsSuspended JSON" in {
+    check(
+      OrderQuery(orIsSuspended = true),
+      """{
+        "orIsSuspended": true
+      }""")
+  }
+
   private def check(q: OrderQuery, json: String) = {
     assert(q.toJson == json.parseJson)
     assert(json.parseJson.convertTo[OrderQuery] == q)
