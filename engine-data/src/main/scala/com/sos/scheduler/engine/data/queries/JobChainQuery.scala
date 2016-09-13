@@ -8,7 +8,6 @@ trait JobChainQuery {
   def isDistributed: Option[Boolean]
 
   def withJobChainPathQuery(q: PathQuery): JobChainQuery
-  def withIsDistributed(o: Boolean): JobChainQuery
 
   final def matchesAllJobChains = jobChainPathQuery.matchesAll && isDistributed.isEmpty
 

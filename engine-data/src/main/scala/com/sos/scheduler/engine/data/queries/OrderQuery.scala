@@ -4,7 +4,6 @@ import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.order.{OrderId, OrderKey, OrderProcessingState, OrderSourceType}
 import com.sos.scheduler.engine.data.queries.OrderQuery._
-import scala.collection.JavaConversions._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
@@ -29,12 +28,6 @@ extends OnlyOrderQuery with JobChainQuery {
   def withOrderKey(orderKey: OrderKey) = copy(
     jobChainPathQuery = PathQuery(orderKey.jobChainPath),
     orderId = Some(orderKey.id))
-  def withIsDistributed(o: Boolean) = copy(isDistributed = Some(o))
-  def withIsSuspended(o: Boolean) = copy(isSuspended = Some(o))
-  def withIsSetback(o: Boolean) = copy(isSetback = Some(o))
-  def withIsBlacklisted(o: Boolean) = copy(isBlacklisted = Some(o))
-  def withOrderSourceTypes(o: java.util.List[OrderSourceType]) = copy(isOrderSourceType = Some(o.toSet))
-  def withLimitPerNode(o: Int) = copy(notInTaskLimitPerNode = Some(o))
 
   def withoutPathToMap: Map[String, String] = Map() ++
     (orderId map { o ⇒ OrderIdName → o.string }) ++
