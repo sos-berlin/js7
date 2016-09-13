@@ -12,24 +12,24 @@ import spray.json._
 final class TaskObstacleTest extends FreeSpec {
   import TaskObstacle._
 
-  "LockUnavailable" in {
-    check(LockUnavailable,
+  "WaitingForLock" in {
+    check(WaitingForLock,
       """{
-        "TYPE": "LockUnavailable"
+        "TYPE": "WaitingForLock"
       }""")
   }
 
-  "ProcessClassUnavailable" in {
-    check(ProcessClassUnavailable,
+  "WaitingForProcessClass" in {
+    check(WaitingForProcessClass,
       """{
-        "TYPE": "ProcessClassUnavailable"
+        "TYPE": "WaitingForProcessClass"
       }""")
   }
 
-  "AgentUnavailable" in {
-    check(AgentUnavailable,
+  "WaitingForAgent" in {
+    check(WaitingForAgent,
       """{
-        "TYPE": "AgentUnavailable"
+        "TYPE": "WaitingForAgent"
       }""")
   }
 

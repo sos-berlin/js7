@@ -9,13 +9,13 @@ import spray.json.DefaultJsonProtocol._
 sealed trait TaskObstacle
 
 object TaskObstacle {
-  case object LockUnavailable
+  case object WaitingForLock
   extends TaskObstacle
 
-  case object ProcessClassUnavailable
+  case object WaitingForProcessClass
   extends TaskObstacle
 
-  case object AgentUnavailable
+  case object WaitingForAgent
   extends TaskObstacle
 
   case object Delayed
@@ -25,9 +25,9 @@ object TaskObstacle {
   extends TaskObstacle
 
   implicit val MyJsonFormat = TypedJsonFormat[TaskObstacle](
-    Subtype(jsonFormat0(() ⇒ LockUnavailable)),
-    Subtype(jsonFormat0(() ⇒ ProcessClassUnavailable)),
-    Subtype(jsonFormat0(() ⇒ AgentUnavailable)),
+    Subtype(jsonFormat0(() ⇒ WaitingForLock)),
+    Subtype(jsonFormat0(() ⇒ WaitingForProcessClass)),
+    Subtype(jsonFormat0(() ⇒ WaitingForAgent)),
     Subtype(jsonFormat0(() ⇒ Delayed)),
     Subtype(jsonFormat0(() ⇒ Suspended)))
 }

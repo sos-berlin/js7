@@ -21,7 +21,7 @@ final class TaskOverviewTest extends FreeSpec {
         TaskState.running,
         Some(ProcessClassPath("/PROCESS-CLASS")),
         Some(AgentAddress("http://AGENT")),
-        Set(TaskObstacle.ProcessClassUnavailable, TaskObstacle.Suspended)),  // (No real combination)
+        Set(TaskObstacle.WaitingForProcessClass, TaskObstacle.Suspended)),  // (No real combination)
       """{
         "taskId": "111",
         "jobPath": "/JOB",
@@ -30,7 +30,7 @@ final class TaskOverviewTest extends FreeSpec {
         "agent": "http://AGENT",
         "obstacles": [
           {
-            "TYPE": "ProcessClassUnavailable"
+            "TYPE": "WaitingForProcessClass"
           },
           {
             "TYPE": "Suspended"
