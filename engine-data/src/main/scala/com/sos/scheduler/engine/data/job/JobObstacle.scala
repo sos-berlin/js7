@@ -30,10 +30,7 @@ object JobObstacle {
   final case class TaskLimitReached(limit: Int)
   extends JobObstacle
 
-  case object NonOrderJob
-  extends JobObstacle
-
-  final case class LockUnavailable(lockPath: LockPath)
+  final case class WaitingForLocks(lockPaths: Set[LockPath])
   extends JobObstacle
 
   final case class ProcessClassObstacles(processClassObstacles: Set[ProcessClassObstacle])
@@ -46,6 +43,6 @@ object JobObstacle {
     Subtype(jsonFormat1(BadState)),
     Subtype(jsonFormat1(NoRuntime)),
     Subtype(jsonFormat1(TaskLimitReached)),
-    Subtype(jsonFormat1(LockUnavailable)),
+    Subtype(jsonFormat1(WaitingForLocks)),
     Subtype(jsonFormat1(ProcessClassObstacles)))
 }
