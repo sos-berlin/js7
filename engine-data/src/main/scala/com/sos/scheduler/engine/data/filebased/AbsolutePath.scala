@@ -26,13 +26,13 @@ trait AbsolutePath extends IsString {
 
   /** Has to be called in every implementing constructor. */
   protected def validate(): Unit = {
-    require(companion.isEmptyAllowed || string.nonEmpty, "$name must not be the empty string")
-    require(string.isEmpty || string.startsWith("/"), s"Absolute path expected in $name '$string'")
+    require(companion.isEmptyAllowed || string.nonEmpty, s"Name '$name' must not be the empty string in '$toString'")
+    require(string.isEmpty || string.startsWith("/"), s"Absolute path expected in $name '$toString'")
     if (!(companion.isSingleSlashAllowed && string == "/")) {
-      require(!string.endsWith("/"), s"Trailing slash not allowed in $name '$string'")
+      require(!string.endsWith("/"), s"Trailing slash not allowed in $name '$toString'")
     }
-    require(!string.contains("//"), s"Double slash not allowed in $name '$string'")
-    require(companion.isCommaAllowed || !string.contains(","), s"Comma not allowed in $name: '$string'")
+    require(!string.contains("//"), s"Double slash not allowed in $name '$toString'")
+    require(companion.isCommaAllowed || !string.contains(","), s"Comma not allowed in $name: '$toString'")
   }
 }
 
