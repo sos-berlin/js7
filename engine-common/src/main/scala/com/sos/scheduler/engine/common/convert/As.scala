@@ -15,7 +15,7 @@ object As {
 
   def convert[V, W](from: V)(implicit to: As[V, W]): W = to(from)
 
-  implicit val StringAsString: As[String, String] = stringAs(identity)
+  implicit val StringAsString: As[String, String] = As(identity)
 
   implicit object StringAsBoolean extends As[String, Boolean] {
     val StringToBooleanMap = Map(
@@ -26,17 +26,15 @@ object As {
       throw new IllegalArgumentException(s"Boolean value true or false expected, not: $o"))
   }
 
-  implicit val StringAsInt: As[String, Int] = stringAs(Integer.parseInt)
+  implicit val StringAsInt: As[String, Int] = As(Integer.parseInt)
 
-  implicit val StringAsLong: As[String, Long] = stringAs(java.lang.Long.parseLong)
+  implicit val StringAsLong: As[String, Long] = As(java.lang.Long.parseLong)
 
-  def asAbsolutePath: As[String, Path] = stringAs(o ⇒ StringAsPath(o).toAbsolutePath)
+  def asAbsolutePath: As[String, Path] = As(o ⇒ StringAsPath(o).toAbsolutePath)
 
-  implicit val StringAsPath: As[String, Path] = stringAs(Paths.get(_))
+  implicit val StringAsPath: As[String, Path] = As(Paths.get(_))
 
-  implicit val StringAsSecretString: As[String, SecretString] = stringAs(SecretString.apply)
+  implicit val StringAsSecretString: As[String, SecretString] = As(SecretString.apply)
 
-  implicit val StringAsDuration: As[String, Duration] = stringAs(parseDuration)
-
-  def stringAs[A](convert: String ⇒ A) = As[String, A](convert)
+  implicit val StringAsDuration: As[String, Duration] = As(parseDuration)
 }
