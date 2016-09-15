@@ -15,6 +15,15 @@ import spray.json._
 @RunWith(classOf[JUnitRunner])
 final class OrderQueryTest extends FreeSpec {
 
+  "orderKeyOption" in {
+    assert(OrderQuery().orderKeyOption == None)
+    assert(OrderQuery(orderIds = Some(Set(OrderId("1")))).orderKeyOption == None)
+    assert(OrderQuery(PathQuery(JobChainPath("/A"))).orderKeyOption == None)
+    assert(OrderQuery(PathQuery(JobChainPath("/A")), orderIds = Some(Set(OrderId("1")))).orderKeyOption ==
+      Some(JobChainPath("/A") orderKey "1"))
+    assert(OrderQuery(PathQuery(JobChainPath("/A")), orderIds = Some(Set(OrderId("1"), OrderId("2")))).orderKeyOption == None)
+  }
+
   "JSON" - {
     "OrderQuery.All" in {
       check(OrderQuery.All, "{}")
@@ -23,7 +32,7 @@ final class OrderQueryTest extends FreeSpec {
     "OrderQuery" in {
       check(OrderQuery(
         jobChainPathQuery = PathQuery(FolderPath("/FOLDER")),
-        orderId = Some(OrderId("ORDER-ID")),
+        orderIds = Some(Set(OrderId("A-ORDER-ID"), OrderId("B-ORDER-ID"))),
         isDistributed = Some(true),
         isSuspended = Some(true),
         isSetback = Some(false),
@@ -33,7 +42,10 @@ final class OrderQueryTest extends FreeSpec {
         notInTaskLimitPerNode = Some(1000)),
         """{
           "path": "/FOLDER/",
-          "orderId": "ORDER-ID",
+          "orderId": [
+            "A-ORDER-ID",
+            "B-ORDER-ID"
+          ],
           "isDistributed": true,
           "isSuspended": true,
           "isSetback": false,

@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.data.order.{OrderId, OrderProcessingState, Order
   * @author Joacim Zschimmer
   */
 trait OnlyOrderQuery {
-  def orderId: Option[OrderId]
+  def orderIds: Option[Set[OrderId]]
   def isSuspended: Option[Boolean]
   def isSetback: Option[Boolean]
   def isBlacklisted: Option[Boolean]
@@ -16,7 +16,7 @@ trait OnlyOrderQuery {
   def orIsSuspended: Boolean
 
   final def matchesOrder(o: QueryableOrder) =
-    (orderId forall { _ == o.orderKey.id }) &&
+    (orderIds forall { _ contains o.orderKey.id }) &&
     (isSuspended forall { _ == o.isSuspended }) &&
     (isSetback forall { _ == o.isSetback }) &&
     (isBlacklisted forall { _ == o.isBlacklisted }) &&
@@ -31,7 +31,7 @@ object OnlyOrderQuery {
   private implicit val OrderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
 
   final case class Standard(
-    orderId: Option[OrderId] = None,
+    orderIds: Option[Set[OrderId]] = None,
     isSuspended: Option[Boolean] = None,
     isSetback: Option[Boolean] = None,
     isBlacklisted: Option[Boolean] = None,
