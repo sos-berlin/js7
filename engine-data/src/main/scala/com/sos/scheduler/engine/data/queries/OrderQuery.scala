@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.order.{OrderId, OrderKey, OrderProcessingState, OrderSourceType}
 import com.sos.scheduler.engine.data.queries.OrderQuery._
@@ -15,6 +16,7 @@ import spray.json._
 final case class OrderQuery(
   jobChainPathQuery: PathQuery = PathQuery.All,
   orderIds: Option[Set[OrderId]] = None,
+  jobPaths: Option[Set[JobPath]] = None,
   isDistributed: Option[Boolean] = None,
   isSuspended: Option[Boolean] = None,
   isSetback: Option[Boolean] = None,
@@ -37,7 +39,8 @@ extends OnlyOrderQuery with JobChainQuery {
     (jobChainPathQuery.patternString, withoutPathToMap)
 
   private def withoutPathToMap: Map[String, String] = Map() ++
-    toNamedCommaSeparated(OrderIdName, orderIds)(_.string) ++
+    toNamedCommaSeparated(OrderIdsName, orderIds)(_.string) ++
+    toNamedCommaSeparated(JobPathsName, jobPaths)(_.string) ++
     (isDistributed map { o ⇒ IsDistributedName → o.toString }) ++
     (isSuspended map { o ⇒ IsSuspendedName → o.toString }) ++
     (isSetback map { o ⇒ IsSetbackName → o.toString }) ++
@@ -59,7 +62,8 @@ object OrderQuery {
   val All = OrderQuery()
 
   private val PathName = "path"
-  val OrderIdName = "orderId"
+  val OrderIdsName = "orderIds"
+  val JobPathsName = "jobPaths"
   val IsDistributedName = "isDistributed"
   val IsSuspendedName = "isSuspended"
   val IsSetbackName = "isSetback"
@@ -75,7 +79,8 @@ object OrderQuery {
 
     def write(q: OrderQuery) = JsObject((
       (q.jobChainPathQuery != PathQuery.All option (PathName → JsString(q.jobChainPathQuery.patternString))) ++
-        (q.orderIds map { o ⇒ OrderIdName → o.toJson }) ++
+        (q.orderIds map { o ⇒ OrderIdsName → o.toJson }) ++
+        (q.jobPaths map { o ⇒ JobPathsName → o.toJson }) ++
         (q.isDistributed map { o ⇒ IsDistributedName → JsBoolean(o) }) ++
         (q.isSuspended map { o ⇒ IsSuspendedName → JsBoolean(o) }) ++
         (q.isSetback map { o ⇒ IsSetbackName → JsBoolean(o) }) ++
@@ -92,7 +97,8 @@ object OrderQuery {
           case Some(path) ⇒ PathQuery[JobChainPath](path.asInstanceOf[JsString].value)
           case None ⇒ PathQuery.All
         },
-        orderIds               = fields.get(OrderIdName               ) map { _.convertTo[Set[OrderId]] },
+        orderIds               = fields.get(OrderIdsName              ) map { _.convertTo[Set[OrderId]] },
+        jobPaths               = fields.get(JobPathsName              ) map { _.convertTo[Set[JobPath]] },
         isDistributed          = fields.get(IsDistributedName         ) map { _.asInstanceOf[JsBoolean].value },
         isSuspended            = fields.get(IsSuspendedName           ) map { _.asInstanceOf[JsBoolean].value },
         isSetback              = fields.get(IsSetbackName             ) map { _.asInstanceOf[JsBoolean].value },

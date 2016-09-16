@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.folder.FolderPath
+import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.order.OrderProcessingState.{NotPlanned, Setback}
 import com.sos.scheduler.engine.data.order.{OrderId, OrderSourceType}
@@ -33,6 +34,7 @@ final class OrderQueryTest extends FreeSpec {
       check(OrderQuery(
         jobChainPathQuery = PathQuery(FolderPath("/FOLDER")),
         orderIds = Some(Set(OrderId("A-ORDER-ID"), OrderId("B-ORDER-ID"))),
+        jobPaths = Some(Set(JobPath("/A"), JobPath("/B"))),
         isDistributed = Some(true),
         isSuspended = Some(true),
         isSetback = Some(false),
@@ -42,9 +44,13 @@ final class OrderQueryTest extends FreeSpec {
         notInTaskLimitPerNode = Some(1000)),
         """{
           "path": "/FOLDER/",
-          "orderId": [
+          "orderIds": [
             "A-ORDER-ID",
             "B-ORDER-ID"
+          ],
+          "jobPaths": [
+            "/A",
+            "/B"
           ],
           "isDistributed": true,
           "isSuspended": true,

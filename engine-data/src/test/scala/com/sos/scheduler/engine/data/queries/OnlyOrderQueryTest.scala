@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.queries
 
+import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.order.OrderSourceType._
 import com.sos.scheduler.engine.data.order.{OrderId, OrderProcessingState}
@@ -64,10 +65,10 @@ final class OnlyOrderQueryTest extends FreeSpec {
     val orders = List(setbackOrder, suspendedOrder, suspendedSetbackOrder, otherOrder)
 
     val orIsSuspendedQuery = q.copy(isOrderProcessingState = Some(Set(classOf[Setback])), orIsSuspended = true)
-    assert((orders filter orIsSuspendedQuery.matchesOrder) == List(setbackOrder, suspendedOrder, suspendedSetbackOrder))
+    assert((orders filter { o ⇒ orIsSuspendedQuery.matchesOrder(o) }) == List(setbackOrder, suspendedOrder, suspendedSetbackOrder))
 
     val isSuspendedQuery = q.copy(isOrderProcessingState = Some(Set(classOf[Setback])), isSuspended = Some(true))
-    assert((orders filter isSuspendedQuery.matchesOrder) == List(suspendedSetbackOrder))
+    assert((orders filter { o ⇒ isSuspendedQuery.matchesOrder(o) }) == List(suspendedSetbackOrder))
   }
 
   "isOrderSourceType" in {
@@ -76,5 +77,18 @@ final class OnlyOrderQueryTest extends FreeSpec {
     assert(!(q.copy(isOrderSourceType = Some(Set())) matchesOrder order))
     assert(!(q.copy(isOrderSourceType = Some(Set(Permanent))) matchesOrder order))
     assert(q.copy(isOrderSourceType = Some(Set(AdHoc, Permanent))) matchesOrder order)
+  }
+
+  "jobPaths" in {
+    val aJobPath = JobPath("/A")
+    val bJobPath = JobPath("/B")
+    val cJobPath = JobPath("/C")
+    val order = QueryableOrder.ForTest(orderKey, isSuspended = true)
+    assert(q.matchesOrder(order))
+    assert(q.copy(jobPaths = Some(Set(aJobPath, bJobPath))).matchesOrder(order, Some(aJobPath)))
+    assert(q.copy(jobPaths = Some(Set(aJobPath, bJobPath))).matchesOrder(order, Some(bJobPath)))
+    assert(!q.copy(jobPaths = Some(Set(aJobPath, bJobPath))).matchesOrder(order))
+    assert(!q.copy(jobPaths = Some(Set(aJobPath, bJobPath))).matchesOrder(order, Some(cJobPath)))
+    assert(!q.copy(jobPaths = Some(Set(aJobPath, bJobPath)), isSuspended = Some(false)).matchesOrder(order, Some(aJobPath)))
   }
 }
