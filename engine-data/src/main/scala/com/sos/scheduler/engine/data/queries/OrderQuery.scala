@@ -33,7 +33,10 @@ extends OnlyOrderQuery with JobChainQuery {
     jobChainPathQuery = PathQuery(orderKey.jobChainPath),
     orderIds = Some(Set(orderKey.id)))
 
-  def withoutPathToMap: Map[String, String] = Map() ++
+  def toUriPathAndMap: (String, Map[String, String]) =
+    (jobChainPathQuery.patternString, withoutPathToMap)
+
+  private def withoutPathToMap: Map[String, String] = Map() ++
     toNamedCommaSeparated(OrderIdName, orderIds)(_.string) ++
     (isDistributed map { o ⇒ IsDistributedName → o.toString }) ++
     (isSuspended map { o ⇒ IsSuspendedName → o.toString }) ++

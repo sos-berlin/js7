@@ -95,5 +95,6 @@ final class OrderQueryTest extends FreeSpec {
       assert(json.parseJson.convertTo[OrderQuery] == q)
     }
   }
-}
 
+  //"withoutPathToMap" in { Please see OrderQueryHttpTest }
+}

@@ -40,6 +40,8 @@ object PathQuery {
       case o: TypedPath ⇒ SinglePath(o.string)
     }
 
+  def fromUriPath[A <: TypedPath: TypedPath.Companion](path: String): PathQuery = apply[A](path)
+
   private def toTypedPath[P <: TypedPath: TypedPath.Companion](path: String): TypedPath =
     if (path == "/")
       FolderPath(path)
