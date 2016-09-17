@@ -11,10 +11,11 @@ final case class JobChainOverview(
   path: JobChainPath,
   fileBasedState: FileBasedState,
   isDistributed: Boolean = false,
+  orderLimit: Option[Int] = None,
   obstacles: Set[JobChainObstacle] = Set())
 extends QueryableJobChain
 
 object JobChainOverview {
   private implicit val fileBasedStateJsonFormat = FileBasedState.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat4(apply)
+  implicit val MyJsonFormat = jsonFormat5(apply)
 }
