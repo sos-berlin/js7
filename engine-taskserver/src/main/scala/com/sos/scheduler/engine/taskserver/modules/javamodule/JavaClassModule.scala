@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.taskserver.modules.javamodule
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils
 import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
 
 /**
