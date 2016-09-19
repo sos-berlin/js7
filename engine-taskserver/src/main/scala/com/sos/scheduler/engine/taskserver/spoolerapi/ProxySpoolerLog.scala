@@ -37,25 +37,25 @@ extends SpoolerLog with SpecializedProxyIDispatch with AnnotatedInvocable with O
   def debug1(message: String) = log(SchedulerLogLevel.debug1, message)
 
   @invocable
-  def debug2(message: String) = log(SchedulerLogLevel.legacyDebug2, message)
+  def debug2(message: String) = log(SchedulerLogLevel.debug2, message)
 
   @invocable
   def debug3(message: String) = log(SchedulerLogLevel.debug3, message)
 
   @invocable
-  def debug4(message: String) = log(SchedulerLogLevel.legacyDebug4, message)
+  def debug4(message: String) = log(SchedulerLogLevel.debug4, message)
 
   @invocable
-  def debug5(message: String) = log(SchedulerLogLevel.legacyDebug5, message)
+  def debug5(message: String) = log(SchedulerLogLevel.debug5, message)
 
   @invocable
-  def debug6(message: String) = log(SchedulerLogLevel.legacyDebug6, message)
+  def debug6(message: String) = log(SchedulerLogLevel.debug6, message)
 
   @invocable
-  def debug7(message: String) = log(SchedulerLogLevel.legacyDebug7, message)
+  def debug7(message: String) = log(SchedulerLogLevel.debug7, message)
 
   @invocable
-  def debug8(message: String) = log(SchedulerLogLevel.legacyDebug8, message)
+  def debug8(message: String) = log(SchedulerLogLevel.debug8, message)
 
   @invocable
   def debug9(message: String) = log(SchedulerLogLevel.debug9, message)

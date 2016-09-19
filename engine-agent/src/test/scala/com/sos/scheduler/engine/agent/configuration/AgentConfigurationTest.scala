@@ -1,10 +1,10 @@
 package com.sos.scheduler.engine.agent.configuration
 
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.Https
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.scalautil.FileUtils._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
 import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
@@ -30,7 +30,7 @@ final class AgentConfigurationTest extends FreeSpec {
     val c = AgentConfiguration(Nil).finishAndProvideFiles
     assert(c.copy(config = ConfigFactory.empty) == AgentConfiguration(
       dataDirectory = None,
-      httpAddress = None,
+      http = None,
       https = None,
       uriPathPrefix = "",
       externalWebServiceClasses = Nil,
@@ -48,13 +48,13 @@ final class AgentConfigurationTest extends FreeSpec {
     intercept[IllegalArgumentException] { conf(List("-https-port=1234")).https }
     intercept[IllegalArgumentException] { conf(List("-https-port=1234")).https }
     intercept[IllegalArgumentException] { conf(List("-data-directory=/TEST/DATA", "-https-port=65536")) }
-    assert(conf(List("-data-directory=/TEST/DATA", "-https-port=1234")).https == Some(Https(
+    assert(conf(List("-data-directory=/TEST/DATA", "-https-port=1234")).https == Some(WebServerBinding.Https(
       new InetSocketAddress("0.0.0.0", 1234),
       KeystoreReference(
         url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/private-https.jks").toUri.toURL,
         storePassword = Some(SecretString("jobscheduler")),
         keyPassword = Some(SecretString("jobscheduler"))))))
-    assert(conf(List("-data-directory=/TEST/DATA", "-https-port=11.22.33.44:1234")).https == Some(Https(
+    assert(conf(List("-data-directory=/TEST/DATA", "-https-port=11.22.33.44:1234")).https == Some(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeystoreReference(
         url = (Paths.get("/TEST/DATA").toAbsolutePath / "config/private/private-https.jks").toUri.toURL,
@@ -64,10 +64,10 @@ final class AgentConfigurationTest extends FreeSpec {
 
   "-http-port=" in {
     intercept[IllegalArgumentException] { conf(List("-http-port=65536")) }
-    assert(conf(List("-http-port=1234")).httpAddress == Some(new InetSocketAddress("0.0.0.0", 1234)))
-    assert(conf(List("-http-port=11.22.33.44:1234")).httpAddress == Some(new InetSocketAddress("11.22.33.44", 1234)))
-    assert(conf(List("-http-port=[1:2:3:4:5:6]:1234")).httpAddress == Some(new InetSocketAddress("1:2:3:4:5:6", 1234)))
-    assert(conf(List("-http-port=[::1]:1234")).httpAddress == Some(new InetSocketAddress("::1", 1234)))
+    assert(conf(List("-http-port=1234"              )).http == Some(WebServerBinding.Http(new InetSocketAddress("0.0.0.0", 1234))))
+    assert(conf(List("-http-port=11.22.33.44:1234"  )).http == Some(WebServerBinding.Http(new InetSocketAddress("11.22.33.44", 1234))))
+    assert(conf(List("-http-port=[1:2:3:4:5:6]:1234")).http == Some(WebServerBinding.Http(new InetSocketAddress("1:2:3:4:5:6", 1234))))
+    assert(conf(List("-http-port=[::1]:1234"        )).http == Some(WebServerBinding.Http(new InetSocketAddress("::1", 1234))))
   }
   "-log-directory=" in {
     assert(conf(List("-data-directory=TEST/DATA")).logDirectory == Paths.get("TEST/DATA/logs").toAbsolutePath)

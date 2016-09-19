@@ -41,6 +41,11 @@ final class ScalaConcurrentHashMapTest extends FreeSpec {
     assert(m.get(2) == Some("zwei"))
   }
 
+  "getOrElse" in {
+    assert(m.getOrElse(1, 33) == 33)
+    assert(m.getOrElse(2, sys.error("")) == "zwei")
+  }
+
   "apply" in {
     intercept[NoSuchElementException] { m(1) }
     assert(m(2) == "zwei")

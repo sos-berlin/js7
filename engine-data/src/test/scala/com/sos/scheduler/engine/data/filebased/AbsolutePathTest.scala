@@ -82,6 +82,7 @@ final class AbsolutePathTest extends FreeSpec {
 object AbsolutePathTest {
   private case class TestPath(string: String) extends AbsolutePath {
     validate()
+    def companion = TestPath
   }
 
   private object TestPath extends AbsolutePath.Companion[TestPath]

@@ -11,6 +11,8 @@ import java.nio.file.Files.{delete, exists, setPosixFilePermissions}
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.{OWNER_EXECUTE, OWNER_READ}
 import scala.collection.JavaConversions._
+import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
+import com.sos.scheduler.engine.common.time.ScalaTime._
 
 /**
  * @author Joacim Zschimmer
@@ -21,7 +23,7 @@ final class ProcessKillScriptProvider extends HasCloser {
     val resource = if (isWindows) WindowsScriptResource else UnixScriptResource
     val file = directory / resource.simpleName
     val content = resource.contentBytes
-    if (!exists(file) || !file.contentBytes.sameElements(content)) {
+    if (!isOkay(file, content)) {
       file.contentBytes = content
       onClose {
         ignoreException(logger.error) { delete(file) }
@@ -32,6 +34,14 @@ final class ProcessKillScriptProvider extends HasCloser {
     }
 
     ProcessKillScript(file)
+  }
+
+  /**
+    * For parallel running integration tests.
+    */
+  private def isOkay(file: Path, content: Array[Byte]): Boolean = {
+    waitForCondition(1.s, 100.ms) { !exists(file) || file.contentBytes.sameElements(content)}
+    exists(file) && file.contentBytes.sameElements(content)
   }
 }
 

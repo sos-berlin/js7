@@ -72,7 +72,7 @@ final class CollectionsTest extends FreeSpec {
   "retainOrderGroupBy" in {
     case class A(name: String, i: Int)
     val list = List(A("eins", 1), A("zwei a", 2), A("drei", 3), A("vier", 4), A("fünf", 5), A("zwei b", 2))
-    (list retainOrderGroupBy { _.i }).toVector shouldEqual Vector(
+    (list retainOrderGroupBy { _.i }) shouldEqual Vector(
       1 → Vector(A("eins", 1)),
       2 → Vector(A("zwei a", 2), A("zwei b", 2)),
       3 → Vector(A("drei", 3)),

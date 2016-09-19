@@ -10,6 +10,8 @@ import spray.json._
 object JsonRegexMatcher {
   val AnyIsoTimestamp = """\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d(.\d+)?Z""".r
   case object AnyInt
+  case object AnyLong
+  case object AnyString
 
   /** Wirft eine Exception, falls json nicht dem Muster entspricht. */
   def testRegexJson(json: String, patternMap: Map[String, Any]): Unit = {
@@ -23,8 +25,12 @@ object JsonRegexMatcher {
               sys.error(s"JsString '$string' does not match regular expression $regex")
           case (JsNumber(n), AnyInt) ⇒
             if (!n.isValidInt) sys.error(s"Not an Int: $n")
+          case (JsNumber(n), AnyLong) ⇒
+            if (!n.isValidLong) sys.error(s"Not a Long: $n")
           case (JsString(string), expected: String) if string == expected ⇒
+          case (JsString(string), AnyString) ⇒
           case (JsNumber(number), expected: Number) if number == expected ⇒
+          case (JsObject(number), AnyRef) ⇒
           case (expected, jsonValue) if jsonValue != expected ⇒
             sys.error(s"Not as expected: json=$jsonValue, expected=$expected")
         }

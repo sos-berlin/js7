@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil
 
+import java.util.Objects.requireNonNull
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -8,14 +9,14 @@ import java.util.concurrent.atomic.AtomicReference
  * @author Joacim Zschimmer
  */
 class SetOnce[A] {
-  private val ref = new AtomicReference[A]
+  protected[this] val ref = new AtomicReference[A]
 
   /**
    * The value of the set variable.
    *
    * @throws IllegalStateException
    */
-  final def apply() = getOrElse { throw new IllegalStateException("Value is not yet set") }
+  def apply() = getOrElse { throw new IllegalStateException("Value is not yet set") }
 
   final override def toString = toStringOr("(not yet set)")
 
@@ -29,6 +30,14 @@ class SetOnce[A] {
     ref.get() match {
       case null ⇒ els
       case o ⇒ o
+    }
+
+  final def getOrUpdate(value: ⇒ A) =
+    if (ref.get != null)
+      ref.get
+    else {
+      trySet(value)   // When concurrently called, the value is discarded
+      ref.get
     }
 
   final def get = toOption
@@ -49,9 +58,12 @@ class SetOnce[A] {
    * @throws IllegalStateException
    */
   final def :=(value: A): Unit = {
-    val ok = ref.compareAndSet(null.asInstanceOf[A], value)
+    val ok = trySet(value)
     if (!ok) throw new IllegalStateException(s"SetOnce[${ref.get.getClass.getName}] has already been set")
   }
+
+  final def trySet(value: A): Boolean =
+    ref.compareAndSet(null.asInstanceOf[A], requireNonNull(value))   // Returns false on concurrent execution. Then value is discarded
 }
 
 object SetOnce {

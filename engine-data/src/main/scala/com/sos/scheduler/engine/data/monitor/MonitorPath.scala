@@ -8,7 +8,11 @@ import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
 final case class MonitorPath(string: String) extends TypedPath {
   validate()
 
-  def fileBasedType = FileBasedType.monitor
+  def companion = MonitorPath
 }
 
-object MonitorPath extends TypedPath.Companion[MonitorPath]
+object MonitorPath extends TypedPath.Companion[MonitorPath] {
+
+  // 'def' due to mutual singleton dependency of this and FileBasedType
+  def fileBasedType = FileBasedType.Monitor
+}

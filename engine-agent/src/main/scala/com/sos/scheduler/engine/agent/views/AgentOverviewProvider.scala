@@ -2,6 +2,8 @@ package com.sos.scheduler.engine.agent.views
 
 import com.google.inject.Provider
 import com.sos.scheduler.engine.agent.task.TaskHandler
+import com.sos.scheduler.engine.common.system.SystemInformations.systemInformation
+import com.sos.scheduler.engine.data.system.JavaInformation
 import javax.inject.{Inject, Singleton}
 
 /**
@@ -18,7 +20,7 @@ final class AgentOverviewProvider @Inject private(taskHandler: TaskHandler) exte
       currentTaskCount = taskView.currentTaskCount,
       totalTaskCount = taskView.totalTaskCount,
       isTerminating = taskHandler.isTerminating,
-      system = AgentOverview.SystemInformation(),
-      java = AgentOverview.JavaInformation.Singleton)
+      system = systemInformation(),
+      java = JavaInformation())
   }
 }

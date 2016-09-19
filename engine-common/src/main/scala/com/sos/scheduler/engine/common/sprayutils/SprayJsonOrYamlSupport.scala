@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.sprayutils
 
+import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.language.implicitConversions
 import spray.http.ContentType
 import spray.http.ContentTypes.{`application/json`, `text/plain(UTF-8)`, `text/plain`}
@@ -15,6 +16,7 @@ import spray.json._
  * @author Joacim Zschimmer
  */
 object SprayJsonOrYamlSupport {
+  private val logger = Logger(getClass)
 
   implicit def sprayJsonOrYamlUnmarshallerConverter[T](reader: RootJsonReader[T]): Unmarshaller[T] =
     sprayJsonOrYamlUnmarshaller(reader)
@@ -29,10 +31,16 @@ object SprayJsonOrYamlSupport {
     Marshaller.delegate[T, String](`text/plain`, `application/json`) { (value, contentType) ⇒ jsonOrYamlToString(value, contentType) }
 
   private[sprayutils] def jsonOrYamlToString[A: RootJsonWriter](value: A, contentType: ContentType): String = {
-    val jsValue = implicitly[RootJsonWriter[A]].write(value)
-    contentType match {
-      case `text/plain` | `text/plain(UTF-8)` ⇒ YamlPrinter(jsValue)
-      case `application/json` ⇒ CompactPrinter(jsValue)
+    try {
+      val jsValue = implicitly[RootJsonWriter[A]].write(value)
+      contentType match {
+        case `text/plain` | `text/plain(UTF-8)` ⇒ YamlPrinter(jsValue)
+        case `application/json` ⇒ CompactPrinter(jsValue)
+      }
+    } catch {
+      case e: OutOfMemoryError ⇒
+        logger.error(e.toString)
+        throw new RuntimeException(e.toString, e)  // Too avoid termination of Akka
     }
   }
 }

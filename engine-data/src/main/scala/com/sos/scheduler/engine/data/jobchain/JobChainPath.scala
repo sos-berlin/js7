@@ -9,7 +9,7 @@ extends TypedPath {
 
   validate()
 
-  def fileBasedType = FileBasedType.jobChain
+  def companion = JobChainPath
 
   def orderKey(o: String): OrderKey = orderKey(OrderId(o))
 
@@ -20,4 +20,9 @@ extends TypedPath {
 object JobChainPath extends TypedPath.Companion[JobChainPath] {
 
   @JsonCreator def valueOf(absolutePath: String) = new JobChainPath(absolutePath)
+
+  // 'def' due to mutual singleton dependency of this and FileBasedType
+  def fileBasedType = FileBasedType.JobChain
+
+  override protected[engine] def isCommaAllowed = false
 }

@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.agent.views
 
+import com.sos.scheduler.engine.base.system.SystemInformation
+import com.sos.scheduler.engine.data.system.JavaInformation
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -11,6 +13,7 @@ import spray.json._
  */
 @RunWith(classOf[JUnitRunner])
 final class AgentOverviewTest extends FreeSpec {
+
   "JSON" in {
     val obj = AgentOverview(
       startedAt = Instant.parse("2015-06-01T12:00:00Z"),
@@ -18,8 +21,10 @@ final class AgentOverviewTest extends FreeSpec {
       currentTaskCount = 111,
       totalTaskCount = 222,
       isTerminating = false,
-      system = AgentOverview.SystemInformation(hostname = "TEST-HOSTNAME"),
-      java = AgentOverview.JavaInformation(systemProperties = Map("test" → "TEST")))
+      system = SystemInformation(hostname = "TEST-HOSTNAME"),
+      java = JavaInformation(
+        systemProperties = Map("test" → "TEST"),
+        JavaInformation.Memory(maximum = 3, total = 2, free = 1)))
     val json =
       s"""{
         "startedAt": "2015-06-01T12:00:00Z",
@@ -30,6 +35,11 @@ final class AgentOverviewTest extends FreeSpec {
         "java": {
           "systemProperties": {
             "test": "TEST"
+          },
+          "memory": {
+            "maximum": 3,
+            "total": 2,
+            "free": 1
           }
         },
         "system": {

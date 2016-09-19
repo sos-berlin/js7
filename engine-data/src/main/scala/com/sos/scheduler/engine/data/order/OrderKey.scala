@@ -12,22 +12,25 @@ with TypedPath {
 
   validate()
 
-  def fileBasedType = FileBasedType.order
+  def companion = OrderKey
 
-  def string = jobChainPath.string + Separator + id
+  lazy val string = jobChainPath.string + Separator + id.string
 
-  override def toString = s"${jobChainPath.string}:$id"
+  override lazy val name = jobChainPath.name + Separator + id.string
 }
 
-
 object OrderKey extends TypedPath.Companion[OrderKey] {
+
+  // 'def' due to mutual singleton dependency of this and FileBasedType
+  def fileBasedType = FileBasedType.Order
+
   private val Separator = ','
 
   override implicit val ordering: Ordering[OrderKey] = Ordering by { o ⇒ (o.jobChainPath, o.id) }
 
   def apply(o: String): OrderKey = {
     val i = o indexOf ','
-    require(i > 0, "OrderKey TypedPath needs comma ',' to separate JobChainPath from OrderId")
+    require(i > 0, s"OrderKey TypedPath needs comma ',' to separate JobChainPath from OrderId: OrderKey($o)")
     apply(o.substring(0, i), o.substring(i + 1))
   }
 
@@ -39,4 +42,6 @@ object OrderKey extends TypedPath.Companion[OrderKey] {
 
   def of(jobChainPath: String, id: String): OrderKey =
     OrderKey(JobChainPath(jobChainPath), OrderId(id))
+
+  override protected[engine] def isCommaAllowed = true
 }

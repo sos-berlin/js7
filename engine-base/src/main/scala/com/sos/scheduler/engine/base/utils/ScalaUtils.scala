@@ -1,7 +1,9 @@
 package com.sos.scheduler.engine.base.utils
 
+import com.sos.scheduler.engine.base.exceptions.PublicException
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 object ScalaUtils {
@@ -27,12 +29,19 @@ object ScalaUtils {
     }
 
   object implicits {
+    import scala.language.implicitConversions
+
     implicit class ToStringFunction1[A, R](val delegate: A ⇒ R) {
       def withToString(string: String) = new (A ⇒ R) {
         def apply(a: A) = delegate(a)
         override def toString() = string
       }
     }
+
+    implicit def toJavaFunction[A, B](function: A ⇒ B): java.util.function.Function[A, B] =
+      new java.util.function.Function[A, B] {
+        def apply(a: A) = function(a)
+      }
   }
 
   implicit class RichThrowable[A <: Throwable](val delegate: A) extends AnyVal {
@@ -45,6 +54,30 @@ object ScalaUtils {
         }
       cause(delegate)
     }
+
+    def toStringWithCauses: String = {
+      val throwables = mutable.Buffer[Throwable]()
+      var t: Throwable = delegate
+      while (t != null) {
+        throwables += t
+        t = t.getCause
+      }
+      throwables mkString ", caused by "
+    }
+
+    def toSimplifiedString: String = {
+      lazy val msg = delegate.getMessage
+      if ((RichThrowable.isIgnorableClass(delegate.getClass) || delegate.isInstanceOf[PublicException]) && msg != null && msg != "")
+        msg
+      else
+        delegate.toString
+    }
+  }
+
+  private object RichThrowable {
+    private val isIgnorableClass = Set[Class[_ <: Throwable]](
+      classOf[IllegalArgumentException],
+      classOf[RuntimeException])
   }
 
   def cast[A : ClassTag](o: Any): A = {
@@ -69,7 +102,15 @@ object ScalaUtils {
     def switchOff(body: ⇒ Unit) = if (delegate.compareAndSet(true, false)) body
   }
 
+  implicit class RichPartialFunction[A, B](val delegate: PartialFunction[A, B]) extends AnyVal {
+    def getOrElse[BB >: B](key: A, default: ⇒ BB): BB = delegate.applyOrElse(key, (_: A) ⇒ default)
+  }
+
+  implicit class RichUnitPartialFunction[A](val delegate: PartialFunction[A, Unit]) extends AnyVal {
+    def callIfDefined(a: A): Unit = delegate.getOrElse(a, ())
+  }
+
   implicit class SwitchStatement[A](val delegate: A) extends AnyVal {
-    def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.applyOrElse(delegate, (delegate: A) ⇒ ())
+    def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.callIfDefined(delegate)
   }
 }

@@ -34,6 +34,13 @@ class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]{
 
   override final def contains(key: K) = delegate containsKey key
 
+  override final def getOrElse[V1 >: V](key: K, default: ⇒ V1): V1 =
+    delegate.get(key) match {
+      case null ⇒ default
+      case v ⇒ v
+    }
+
+
   override final def isEmpty = delegate.isEmpty
 
   override final def keysIterator = delegate.keySet.iterator

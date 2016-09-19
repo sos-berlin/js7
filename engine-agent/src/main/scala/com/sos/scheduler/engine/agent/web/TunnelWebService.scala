@@ -48,7 +48,7 @@ trait TunnelWebService extends AgentWebService {
         path(Segment) { idString ⇒
           val tunnelId = TunnelId(idString)
           (pathEnd & get) {
-              onSuccess(tunnelView(tunnelId)) { result ⇒ complete(result) }
+            complete(tunnelView(tunnelId): Future[TunnelView])
           }
         }
       }

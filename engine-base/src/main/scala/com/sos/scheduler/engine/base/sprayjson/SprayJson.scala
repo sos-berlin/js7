@@ -9,6 +9,7 @@ import spray.json._
  * @author Joacim Zschimmer
  */
 object SprayJson {
+
   def valueToJsValue(value: Any): JsValue =
     value match {
       case v: String ⇒ JsString(v)
@@ -44,7 +45,7 @@ object SprayJson {
   def jsObjectToMap(jsObject: JsObject): Map[String, Any] =
     jsObject.fields map { case (k, v) ⇒ k → jsValueToAny(v) }
 
-  object implicits {
+  object JsonFormats {
     implicit object AnyMapJsonFormat extends RootJsonFormat[Map[String, Any]] {
       def write(o: Map[String, Any]): JsObject = mapToJsObject(o)
       def read(json: JsValue) = json match {
@@ -58,5 +59,39 @@ object SprayJson {
 
       def read(o: JsValue) = Paths.get(cast[JsString](o).value)
     }
+  }
+
+  object implicits {
+    implicit class RichJsObject(val delegate: JsObject) extends AnyVal {
+      def apply(key: String): JsValue = delegate.fields(key)
+
+      def mapValues(transform: JsValue ⇒ JsValue) = JsObject(delegate.fields mapValues transform)
+    }
+
+    implicit class RichJsArray(val delegate: JsArray) extends AnyVal {
+      def map(transform: JsValue ⇒ JsValue) = JsArray(delegate.elements map transform)
+    }
+
+    implicit class RichJsValue(val delegate: JsValue) extends AnyVal {
+      def asJsArray = delegate.asInstanceOf[JsArray]
+      def asJsNumber = delegate.asInstanceOf[JsNumber]
+      def asJsString = delegate.asInstanceOf[JsString]
+
+      def deepMapJsObjects(transform: JsObject ⇒ JsValue): JsValue =
+        delegate match {
+          case o: JsObject ⇒ transform(o mapValues { _ deepMapJsObjects transform })
+          case o: JsArray ⇒ o map { _ deepMapJsObjects transform }
+          case o ⇒ o
+        }
+    }
+  }
+
+  /**
+    * Spray implements only lazyFormat.
+    */
+  def lazyRootFormat[T](format: ⇒ JsonFormat[T]) = new RootJsonFormat[T] {
+    lazy val delegate = format
+    def write(x: T) = delegate.write(x)
+    def read(value: JsValue) = delegate.read(value)
   }
 }

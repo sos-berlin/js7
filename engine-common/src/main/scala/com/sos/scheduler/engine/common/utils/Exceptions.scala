@@ -41,14 +41,4 @@ object Exceptions {
         log(t.toString, t)
         throw t
     }
-
-  def toStringWithCauses(throwable: Throwable): String = {
-    val throwables = mutable.Buffer[Throwable]()
-    var t = throwable
-    while (t != null) {
-      throwables += t
-      t = t.getCause
-    }
-    throwables mkString ", caused by "
-  }
 }

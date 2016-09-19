@@ -10,11 +10,11 @@ public enum SchedulerState {
     stopped("stopped"),
     loading("loading"),
     starting("starting"),
-    waitingForActivation("waiting_for_activation"),
+    waiting_for_activation("waiting_for_activation"),
     running("running"),
     paused("paused"),
     stopping("stopping"),
-    stoppingLetRun("stopping_let_run");
+    stopping_let_run("stopping_let_run");
 
     private final String cppName;
 

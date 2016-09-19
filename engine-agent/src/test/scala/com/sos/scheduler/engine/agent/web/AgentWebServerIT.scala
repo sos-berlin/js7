@@ -10,12 +10,12 @@ import com.sos.scheduler.engine.agent.test.AgentConfigDirectoryProvider
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.AgentWebServerIT._
 import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.base.utils.ScalaUtils
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
+import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
 import com.sos.scheduler.engine.common.sprayutils.https.Https._
 import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
 import com.sos.scheduler.engine.common.time.ScalaTime._
@@ -53,7 +53,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   private lazy val agentConfiguration = AgentConfiguration
     .forTest(Some(dataDirectory)) //, config = ConfigFactory.parseMap(Map("spray.can.server.pipelining-limit" → "100", "spray.can.host-connector.pipelining" → "on")))
     .copy(
-      httpAddress = Some(new InetSocketAddress("127.0.0.1", httpPort)))
+      http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
     .withHttpsInetSocketAddress(new InetSocketAddress("127.0.0.1", httpsPort))
   private lazy val webServer = Guice.createInjector(new AgentModule(agentConfiguration)).instance[AgentWebServer]
   private implicit lazy val actorSystem = ActorSystem("AgentWebServerIT") withCloser { _.shutdown() }

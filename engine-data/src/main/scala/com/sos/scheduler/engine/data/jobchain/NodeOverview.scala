@@ -1,44 +1,19 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.data.order.OrderState
-import spray.json._
+import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 
 trait NodeOverview {
-  def orderState: OrderState
+  def nodeKey: NodeKey
+
+  final def jobChainPath = nodeKey.jobChainPath
+
+  final def nodeId = nodeKey.nodeId
 }
 
-
 object NodeOverview {
-  private val TypeName = "$TYPE"
-  private val SimpleJobTypeName = JsString("SimpleJob")
-  private val SinkTypeName = JsString("Sink")
-  private val NestedJobChainTypeName = JsString("NestedJobChain")
-  private val EndTypeName = JsString("End")
-
-  implicit object MyJsonFormat extends RootJsonFormat[NodeOverview]{
-    def write(o: NodeOverview) =
-      o match {
-        case o: SimpleJobNodeOverview      ⇒ typed(o.toJson, SimpleJobTypeName)
-        case o: SinkNodeOverview           ⇒ typed(o.toJson, SinkTypeName)
-        case o: NestedJobChainNodeOverview ⇒ typed(o.toJson, NestedJobChainTypeName)
-        case o: EndNodeOverview            ⇒ typed(o.toJson, EndTypeName)
-      }
-
-    def read(json: JsValue) = {
-      val fields = json.asJsObject.fields
-      val untyped = JsObject(fields - TypeName)
-      fields(TypeName) match {
-        case SimpleJobTypeName      ⇒ untyped.convertTo[SimpleJobNodeOverview]
-        case SinkTypeName           ⇒ untyped.convertTo[SinkNodeOverview]
-        case NestedJobChainTypeName ⇒ untyped.convertTo[NestedJobChainNodeOverview]
-        case EndTypeName            ⇒ untyped.convertTo[EndNodeOverview]
-        case typ ⇒ throw new IllegalArgumentException(s"Unknown $$TYPE='$typ' for NodeOverview")
-      }
-    }
-  }
-
-  private def typed(jsValue: JsValue, typ: JsString): JsObject = {
-    val o = jsValue.asJsObject
-    o.copy(fields = o.fields + (TypeName → typ))
-  }
+  implicit val MyJsonFormat = TypedJsonFormat[NodeOverview](
+    Subtype[SimpleJobNodeOverview]("SimpleJob"),
+    Subtype[SinkNodeOverview]("Sink"),
+    Subtype[NestedJobChainNodeOverview]("NestedJobChain"),
+    Subtype[EndNodeOverview]("End"))
 }

@@ -1,12 +1,15 @@
 package com.sos.scheduler.engine.data.folder
 
-import com.sos.scheduler.engine.data.folder.FolderTree.Leaf
 import com.sos.scheduler.engine.data.folder.FolderTreeTest._
 import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
+import java.time.Instant.now
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import org.slf4j.LoggerFactory
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -35,13 +38,77 @@ final class FolderTreeTest extends FreeSpec {
     val d = FolderTree(FolderPath("/a/d"), Nil, Nil)
     assert(Vector(c, a, d, b).sorted == Vector(a, b, c, d))
   }
+
+  "mapLeafs" in {
+    assert((RootFolder mapLeafs { a: A ⇒ s"-${a.content}" }) ==
+      FolderTree(FolderPath("/"),
+        leafs = List(
+          "-/a",
+          "-/b"),
+        subfolders = List(
+          FolderTree(FolderPath("/x"),
+            leafs = List(
+              "-/x/x-a",
+              "-/x/x-b"),
+            subfolders = List(
+              FolderTree(FolderPath("/x/x-y"),
+                leafs = List(
+                  "-/x/x-y/x-y-a"),
+                subfolders = Nil)))
+        ))
+      )
+  }
+
+  "JSON" in {
+    implicit def aJsonFormat = jsonFormat1(A)
+    // JSON object fields are unordered. So we use an array of key/value pairs for the leafs
+    val json = """{
+      "path": "/",
+      "leafs": [
+        { "content": "/a" },
+        { "content": "/b" }
+      ],
+      "subfolders": [
+        {
+          "path": "/x",
+          "leafs": [
+            { "content": "/x/x-a" },
+            { "content": "/x/x-b" }
+          ],
+          "subfolders": [
+            {
+              "path": "/x/x-y",
+              "leafs": [
+                { "content": "/x/x-y/x-y-a" }
+              ],
+              "subfolders": []
+            }
+          ]
+        }
+      ]
+    }""".parseJson.asJsObject
+    assert(RootFolder.toJson == json)
+    assert(RootFolder == json.convertTo[FolderTree[A]])
+  }
+
+  if (false)
+  "Speed" in {
+    for (_ ← 1 to 3) {
+      val start = now
+      val n = 100000
+      for (_ ← 1 to n) FolderTree.fromAny(FolderPath.Root, Paths, toPath)
+      val duration = now.toEpochMilli - start.toEpochMilli
+      logger.info(s"${duration}ms ${n * 1000L / duration}/s")
+    }
+  }
 }
 
 object FolderTreeTest {
+  private val logger = LoggerFactory.getLogger(classOf[FolderTreeTest])
 
-  private case class A(string: String)
+  private case class A(content: String)
 
-  private def toPath(a: A) = JobPath(a.string)
+  private def toPath(a: A) = JobPath(a.content)
 
   private val SubfolderPaths = List(
     A("/x/x-a"),
@@ -56,18 +123,18 @@ object FolderTreeTest {
   private val SubFolder =
     FolderTree(FolderPath("/x"),
       leafs = List(
-        Leaf("x-a", A("/x/x-a")),
-        Leaf("x-b", A("/x/x-b"))),
+        A("/x/x-a"),
+        A("/x/x-b")),
       subfolders = List(
         FolderTree(FolderPath("/x/x-y"),
           leafs = List(
-            Leaf("x-y-a", A("/x/x-y/x-y-a"))),
+            A("/x/x-y/x-y-a")),
           subfolders = Nil)))
 
   private val RootFolder =
     FolderTree(FolderPath("/"),
       leafs = List(
-        Leaf("a", A("/a")),
-        Leaf("b", A("/b"))),
+        A("/a"),
+        A("/b")),
       subfolders = List(SubFolder))
 }

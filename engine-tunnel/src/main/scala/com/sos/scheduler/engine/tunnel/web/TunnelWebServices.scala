@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.scheduler.engine.tunnel.data.Http.SecretHeaderName
 import com.sos.scheduler.engine.tunnel.data._
-import com.sos.scheduler.engine.tunnel.server.{ConnectionClosedException ⇒ TunnelConnectionClosedException, TunnelAccess}
+import com.sos.scheduler.engine.tunnel.server.{TunnelAccess, TunnelException}
 import java.time.Duration
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,21 +34,21 @@ object TunnelWebServices {
     (pathEndOrSingleSlash & post) {
       headerValueByName(SecretHeaderName) { secret ⇒
         val tunnelToken = TunnelToken(tunnelId, TunnelToken.Secret(secret))
-        val tunnel = tunnelAccess(tunnelToken)
-        tunnel.heartbeatService.continueHeartbeat(onClientHeartbeat = onHeartbeat(tunnelToken, _)) ~
-        entity(as[ByteString]) { request ⇒
-          handleExceptions(connectionClosedExceptionHandler) {
-            tunnel.heartbeatService.startHeartbeat(onHeartbeat = timeout ⇒ onHeartbeat(tunnelToken, timeout)) {
-              timeout ⇒ tunnel.execute(request, timeout)
+        handleExceptions(tunnelExceptionHandler) {
+          val tunnel = tunnelAccess(tunnelToken)
+          tunnel.heartbeatService.continueHeartbeat(onClientHeartbeat = onHeartbeat(tunnelToken, _)) ~
+            entity(as[ByteString]) { tunnelRequest ⇒
+              tunnel.heartbeatService.startHeartbeat(onHeartbeat = timeout ⇒ onHeartbeat(tunnelToken, timeout)) {
+                timeout ⇒ tunnel.execute(tunnelRequest, timeout)
+              }
             }
-          }
         }
       }
     }
   }
 
-  private val connectionClosedExceptionHandler = ExceptionHandler {
-    case t: TunnelConnectionClosedException ⇒
+  private val tunnelExceptionHandler = ExceptionHandler {
+    case t: TunnelException ⇒
       logger.error(s"$t")
       complete(Gone)
   }

@@ -2,7 +2,9 @@ package com.sos.scheduler.engine.agent.web.views
 
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
+import com.sos.scheduler.engine.base.system.SystemInformation
 import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
+import com.sos.scheduler.engine.data.system.JavaInformation
 import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -23,21 +25,32 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
     currentTaskCount = 777,
     totalTaskCount = 999,
     isTerminating = false,
-    system = AgentOverview.SystemInformation(hostname = "TEST-HOSTNAME"),
-    java = AgentOverview.JavaInformation(systemProperties = Map("test" → "TEST")))
+    system = SystemInformation(hostname = "TEST-HOSTNAME"),
+    java = JavaInformation(
+      systemProperties = Map("test" → "TEST"),
+      JavaInformation.Memory(maximum = 3, total = 2, free = 1)))
 
-  private def expectedOverviewJsObject = JsObject(
-    "startedAt" → JsString("2015-06-01T12:00:00Z"),
-    "version" → JsString("TEST-VERSION"),
-    "currentTaskCount" → JsNumber(777),
-    "totalTaskCount" → JsNumber(999),
-    "isTerminating" → JsBoolean(false),
-    "system" → JsObject(
-      "hostname" → JsString("TEST-HOSTNAME"),
-      "mxBeans" → JsObject()),
-    "java" → JsObject(
-      "systemProperties" → JsObject(
-        "test" → JsString("TEST"))))
+  private def expectedOverviewJsObject = """{
+    "startedAt": "2015-06-01T12:00:00Z",
+    "version": "TEST-VERSION",
+    "currentTaskCount": 777,
+    "totalTaskCount": 999,
+    "isTerminating": false,
+    "system": {
+      "hostname": "TEST-HOSTNAME",
+      "mxBeans": {}
+    },
+    "java": {
+      "systemProperties": {
+        "test": "TEST"
+      },
+      "memory": {
+        "maximum": 3,
+        "total": 2,
+        "free": 1
+      }
+    }
+  }""".parseJson
 
   "overview" - {
     "Accept: application/json returns compact JSON" in {

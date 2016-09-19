@@ -250,8 +250,13 @@
                     <version>3.2</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>2.4.3</version>
+                </plugin>
+                <plugin>
                     <artifactId>maven-assembly-plugin</artifactId>
-                    <version>2.5.1</version>
+                    <version>2.5.3</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -300,7 +305,7 @@
                             <jvmArg>-Xss1M</jvmArg>
                         </jvmArgs>
                         <args>
-                            <arg>-deprecation</arg>
+                            <!--arg>-deprecation</arg-->
                             <arg>-feature</arg>
                             <arg>-Xlint</arg>
                         </args>
@@ -854,6 +859,11 @@
             <dependency>
                 <groupId>io.spray</groupId>
                 <artifactId>spray-httpx_${scala.binaryVersion}</artifactId>
+                <version>${spray.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.spray</groupId>
+                <artifactId>spray-caching_${scala.binaryVersion}</artifactId>
                 <version>${spray.version}</version>
             </dependency>
             <dependency>

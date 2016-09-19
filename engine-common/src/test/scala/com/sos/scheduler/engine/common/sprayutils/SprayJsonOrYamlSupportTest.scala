@@ -26,6 +26,11 @@ final class SprayJsonOrYamlSupportTest extends FreeSpec with ScalatestRouteTest 
 
   private def route = complete { expectedJsObject }
 
+  override protected def afterAll() = {
+    actorRefFactory.shutdown()
+    super.afterAll()
+  }
+
   "Response is compact, application/json " - {
     "Accept: application/json" in {
       Get("/") ~> Accept(`application/json`) ~> route ~> check {

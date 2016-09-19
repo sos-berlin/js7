@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.common.scalautil
 import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
-import scala.collection.{TraversableLike, immutable, mutable}
+import scala.collection.{AbstractIterable, AbstractIterator, TraversableLike, immutable, mutable}
 import scala.language.implicitConversions
 
 object Collections {
@@ -71,14 +71,15 @@ object Collections {
         delegate groupBy key filter { _._2.size > 1 }
 
       /**
-        * Like `groupBy`, but returns a ListMap retaining the original key order (of every first occurrence),
+        * Like `groupBy`, but returns a `Vector[(K, Vector[A])] ` retaining the original key order (of every first occurrence),
         */
-      def retainOrderGroupBy[K](toKey: A ⇒ K): immutable.ListMap[K, immutable.Seq[A]] = {
+      def retainOrderGroupBy[K](toKey: A ⇒ K): Vector[(K, Vector[A])] = {
         val m = mutable.LinkedHashMap[K, immutable.VectorBuilder[A]]()
         for (elem ← delegate) {
           m.getOrElseUpdate(toKey(elem), new immutable.VectorBuilder[A]) += elem
         }
-        val b = immutable.ListMap.newBuilder[K, immutable.Seq[A]]
+        val b = Vector.newBuilder[(K, Vector[A])]
+        b.sizeHint(m.size)
         for ((k, vectorBuilder) ← m) {
           b += ((k, vectorBuilder.result))
         }

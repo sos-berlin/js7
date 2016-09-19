@@ -8,14 +8,18 @@ import spray.json.DefaultJsonProtocol._
   * @author Joacim Zschimmer
   */
 final case class TaskOverview(
-  id: TaskId,
-  job: JobPath,
+  taskId: TaskId,
+  jobPath: JobPath,
   state: TaskState,
-  processClass: ProcessClassPath,
-  agent: Option[AgentAddress] = None)
+  processClassPath: Option[ProcessClassPath],
+  agent: Option[AgentAddress] = None,
+  obstacles: Set[TaskObstacle] = Set()) {
+
+  def taskKey = TaskKey(jobPath, taskId)
+}
 
 object TaskOverview {
-  implicit val ordering: Ordering[TaskOverview] = Ordering by { _.id }
+  implicit val ordering: Ordering[TaskOverview] = Ordering by { _.taskId }
   implicit private val TaskStateJsonFormat = TaskState.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat5(apply)
+  implicit val MyJsonFormat = jsonFormat6(apply)
 }

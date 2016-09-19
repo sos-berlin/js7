@@ -28,9 +28,9 @@ final class SimpleTaskServer(injector: Injector, val taskStartArguments: TaskSta
 extends TaskServer with HasCloser {
 
   private val logger = Logger.withPrefix(getClass, taskStartArguments.agentTaskId.toString)
-  private lazy val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val terminatedPromise = Promise[Unit]()
   private val childInjector = injector.createChildInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
+  private val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val remoting = new Remoting(
     childInjector,
     new DialogConnection(master),

@@ -8,9 +8,12 @@ extends TypedPath {
 
   validate()
 
-  def fileBasedType = FileBasedType.job
+  def companion = JobPath
 }
 
 object JobPath extends TypedPath.Companion[JobPath] {
   @JsonCreator def valueOf(absolutePath: String) = new JobPath(absolutePath)
+
+  // 'def' due to mutual singleton dependency of this and FileBasedType
+  def fileBasedType = FileBasedType.Job
 }

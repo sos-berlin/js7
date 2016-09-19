@@ -66,19 +66,23 @@ extends Task with HasCloser {
     }
 
   /** Behaves as C++ Module_instance::step&#95;&#95;end. */
-  def step() =
-    if (monitorProcessor.isEmpty)
-      instance.spooler_process()
-    else
-      monitorProcessor.preStep() && {
-        val result = try instance.spooler_process()
-        catch {
-          case NonFatal(t) ⇒
-            spoolerTask.setErrorCodeAndText(StandardJavaErrorCode, s"$StandardJavaErrorCode  $t")  // Without Z-JAVA-105 description "Java exception $1, method=$2"
-            false
+  def step() = {
+    val postResult =
+      if (monitorProcessor.isEmpty)
+        instance.spooler_process()
+      else
+        monitorProcessor.preStep() && {
+          val result = try instance.spooler_process()
+          catch {
+            case NonFatal(t) ⇒
+              spoolerTask.setErrorCodeAndText(StandardJavaErrorCode, s"$StandardJavaErrorCode  $t")  // Without Z-JAVA-105 description "Java exception $1, method=$2"
+              false
+          }
+          monitorProcessor.postStep(result)
         }
-        monitorProcessor.postStep(result)
-      }
+    for (o ← concurrentStdoutStderrWell) o.flush()
+    postResult
+  }
 
   /** Behaves as C++ Module_instance::end&#95;&#95;end. */
   def end() = {

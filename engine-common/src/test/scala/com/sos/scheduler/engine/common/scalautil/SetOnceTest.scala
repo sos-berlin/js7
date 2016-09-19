@@ -33,6 +33,13 @@ final class SetOnceTest extends FreeSpec {
     assert(r == 0)
   }
 
+  "getOrUpdate" in {
+    val a = new SetOnce[Int]
+    assert((a getOrUpdate 1) == 1)
+    assert((a getOrUpdate 2) == 1)
+    assert((a getOrUpdate sys.error("")) == 1)
+  }
+
   "SetOnce with Implicit" in {
     val a = new SetOnce[Int] with SetOnce.Implicit
     intercept[IllegalStateException] { a: Int }

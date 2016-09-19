@@ -18,7 +18,7 @@ object ConvertiblePartialFunctions {
     def as[W](key: K, default: ⇒ W)(implicit convert: As[V, W], renderKey: RenderKey): W =
       optionAs[W](key) getOrElse default
 
-    def optionAs[W](key: K)(implicit convert: As[V, W], renderKey: RenderKey): Option[W] =
+    def optionAs[W](key: K)(implicit convert: As[V, W], renderKey: RenderKey = renderKey): Option[W] =
       delegate.lift(key) map wrappedConvert(convert, renderKey(key))
   }
 

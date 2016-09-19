@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data.xmlcommands
 
-import com.sos.scheduler.engine.data.order.{OrderKey, OrderState}
+import com.sos.scheduler.engine.data.jobchain.NodeId
+import com.sos.scheduler.engine.data.order.OrderKey
 import com.sos.scheduler.engine.data.xmlcommands.ModifyOrderCommand._
 
 final case class ModifyOrderCommand(
@@ -9,7 +10,7 @@ final case class ModifyOrderCommand(
     at: Option[At] = None,
     title: Option[String] = None,
     suspended: Option[Boolean] = None,
-    state: Option[OrderState] = None)
+    nodeId: Option[NodeId] = None)
 extends XmlCommand {
 
   def xmlElem = <modify_order
@@ -19,7 +20,7 @@ extends XmlCommand {
     at={(at map { _.string }).orNull}
     title={title.orNull}
     suspended={(suspended map { _.toString}).orNull}
-    state={(state map { _.string }).orNull}
+    state={(nodeId map { _.string }).orNull}
     />
 }
 

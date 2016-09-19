@@ -28,6 +28,8 @@ extends HasCloser with ClosedFuture {
     close()
   }
 
+  def flush(): Unit = well.apply()
+
   def terminated: Future[Unit] = concurrentCaller.terminated
 
   def firstStdoutLine = well.firstStdoutLine

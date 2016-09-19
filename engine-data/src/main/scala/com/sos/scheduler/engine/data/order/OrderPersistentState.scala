@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.utils.HasKey
-import com.sos.scheduler.engine.data.jobchain.JobChainPath
+import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import com.sos.scheduler.engine.data.order.OrderPersistentState._
 import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
 import java.time.Instant
@@ -13,8 +13,8 @@ final case class OrderPersistentState(
   occupyingClusterIdOption: Option[ClusterMemberId],
   priority: Int,
   ordering: Int,
-  stateOption: Option[OrderState],
-  initialStateOption: Option[OrderState],
+  nodeIdOption: Option[NodeId],
+  initialNodeIdOption: Option[NodeId],
   title: String,
   creationTimestampOption: Option[Instant],
   modificationTimestampOption: Option[Instant],

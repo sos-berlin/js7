@@ -73,12 +73,6 @@ final class ExceptionsTest extends FreeSpec {
     }
     assert(logged == ((exception.toString, exception)))
   }
-
-  "toStringWithCauses" in {
-    assert(toStringWithCauses(new RuntimeException("TEST")) == "java.lang.RuntimeException: TEST")
-    assert(toStringWithCauses(new RuntimeException("TEST", new IllegalStateException("STATE"))) ==
-      "java.lang.RuntimeException: TEST, caused by java.lang.IllegalStateException: STATE")
-  }
 }
 
 object ExceptionsTest {

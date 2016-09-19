@@ -3,10 +3,13 @@ package com.sos.scheduler.engine.data.jobchain;
 import com.sos.scheduler.engine.base.sprayjson.JavaEnumJsonFormat;
 import spray.json.JsonFormat;
 
+/**
+ * Original C++ and XML names for a job chain node action.
+ */
 public enum JobChainNodeAction {
     process("process"),
     stop("stop"),
-    nextState("next_state");
+    next_state("next_state");
 
     private final String cppName;
 

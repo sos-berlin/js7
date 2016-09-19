@@ -27,7 +27,7 @@ private[tunnel] final class ConnectorHandler private(implicit timerService: Time
 
   override def supervisorStrategy = stoppingStrategy
 
-  private val register = mutable.Map[TunnelId, Handle]() withDefault { id ⇒ throw new NoSuchElementException(s"Unknown $id") }
+  private val register = mutable.Map[TunnelId, Handle]() withDefault { id ⇒ throw new NoSuchTunnelException(id) }
   private val tcpAddressOnce = new SetOnce[InetSocketAddress]
 
   TunnelToken.newSecret()  // Check random generator
@@ -194,7 +194,7 @@ private[tunnel] object ConnectorHandler {
 
   private[tunnel] def props(implicit timerService: TimerService) = Props { new ConnectorHandler }
 
-  sealed trait Command
+  private[tunnel] sealed trait Command
 
   private[tunnel] case object Start extends Command
 

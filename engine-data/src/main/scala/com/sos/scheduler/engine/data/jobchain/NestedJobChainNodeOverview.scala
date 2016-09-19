@@ -1,15 +1,13 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.data.order.OrderState
 import spray.json.DefaultJsonProtocol._
 
 final case class NestedJobChainNodeOverview(
-  orderState: OrderState,
-  nextState: OrderState,
-  errorState: OrderState,
+  nodeKey: NodeKey,
+  nextNodeId: NodeId,
+  errorNodeId: NodeId,
   nestedJobChainPath: JobChainPath)
 extends NodeOverview
-
 
 object NestedJobChainNodeOverview {
   implicit val MyJsonFormat = jsonFormat4(apply)

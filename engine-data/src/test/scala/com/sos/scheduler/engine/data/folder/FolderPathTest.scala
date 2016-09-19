@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.folder
 
+import com.sos.scheduler.engine.data.job.JobPath
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -18,5 +19,13 @@ final class FolderPathTest extends FreeSpec {
     intercept[IllegalArgumentException] { FolderPath("/") subfolder "/x" }
     intercept[IllegalArgumentException] { FolderPath("/") subfolder "x/" }
     intercept[IllegalArgumentException] { FolderPath("/") subfolder "x/y" }
+  }
+
+  "isParentOf" in {
+    assert(!FolderPath("/a").isParentOf(JobPath("/x")))
+    assert(!FolderPath("/a/b").isParentOf(JobPath("/a")))
+    assert(!FolderPath("/a/b").isParentOf(JobPath("/a/b")))
+    assert(FolderPath("/") isParentOf JobPath("/x"))
+    assert(FolderPath("/a/b") isParentOf JobPath("/a/b/c"))
   }
 }

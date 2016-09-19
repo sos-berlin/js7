@@ -25,7 +25,7 @@ final class AgentCommandHandler @Inject private(
   (implicit ec: ExecutionContext)
 extends CommandExecutor
 with CommandHandlerOverview
-with CommandHandlerDetails {
+with CommandHandlerDetailed {
 
   private val nextId = new AtomicLong(0)
   private val totalCounter = new AtomicInteger(0)
