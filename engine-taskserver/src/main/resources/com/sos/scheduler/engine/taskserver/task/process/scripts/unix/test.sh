@@ -1,128 +1,26 @@
-#! /bin/sh
+#! /bin/bash
 set -e
 
 sh <<< '
     set -e
     sh <<< "
         echo TEST-3=\$$
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
-        echo HANG-3 pid=\$$; sleep 1
+        for i in {1..100}; do
+            echo HANG-3 pid=\$$ $i
+            sleep 1
+        done
     " &
     echo TEST-2=$$
-    n=12
-    while [ $n -gt 0 ]; do
-        n=`expr $n - 1`
-        echo HANG-2 pid=$$ $n
+    for i in {1..12}; do
+        echo HANG-2 pid=$$ $i
         sleep 1
     done
 ' &
 
 echo TEST-1=$$
 hang() {
-    n=12
-    while [ $n -gt 0 ]; do
-        n=`expr $n - 1`
-        echo HANG-1 pid=$$ $n
+    for i in {1..12}; do
+        echo HANG-1 pid=$$ $i
         sleep 1
     done
 }
