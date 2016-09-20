@@ -3,7 +3,9 @@ set -e
 
 sh <<< '
     set -e
+    sleep 0.2s
     sh <<< "
+        sleep 0.2s
         echo TEST-3=\$$
         for i in {1..100}; do
             echo HANG-3 pid=\$$ $i
