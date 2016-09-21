@@ -50,7 +50,7 @@ final class ProcessKillScriptTest extends FreeSpec {
       assert(beforeKill contains "TEST-3=")
     }
     sleep(2.s)
-    logger.info("All processes should been kill now")
+    logger.info("All processes should been killed now")
     logProcessTree()
     val grown = out.contentString stripPrefix beforeKill
     assert(grown == "", "Stdout file must not grow after kill script")

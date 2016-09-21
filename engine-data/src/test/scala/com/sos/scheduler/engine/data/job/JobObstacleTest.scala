@@ -70,6 +70,14 @@ final class JobObstacleTest extends FreeSpec {
       }""")
   }
 
+  "WaitingForProcessClass" in {
+    check(
+      WaitingForProcessClass,
+      """{
+        "TYPE": "WaitingForProcessClass"
+      }""")
+  }
+
   "NoRunTime" in {
     check(
       NoRuntime(Some(Instant.parse("2016-09-13T11:22:33Z"))),

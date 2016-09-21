@@ -35,19 +35,19 @@ extends OnlyOrderQuery with JobChainQuery {
     jobChainPathQuery = PathQuery(orderKey.jobChainPath),
     orderIds = Some(Set(orderKey.id)))
 
-  def toUriPathAndMap: (String, Map[String, String]) =
-    (jobChainPathQuery.patternString, withoutPathToMap)
-
-  private def withoutPathToMap: Map[String, String] = Map() ++
-    toNamedCommaSeparated(OrderIdsName, orderIds)(_.string) ++
-    toNamedCommaSeparated(JobPathsName, jobPaths)(_.string) ++
-    (isDistributed map { o ⇒ IsDistributedName → o.toString }) ++
-    (isSuspended map { o ⇒ IsSuspendedName → o.toString }) ++
-    (isSetback map { o ⇒ IsSetbackName → o.toString }) ++
-    (isBlacklisted map { o ⇒ IsBlacklistedName → o.toString}) ++
-    toNamedCommaSeparated(IsOrderSourceTypeName, isOrderSourceType)(_.toString) ++
-    toNamedCommaSeparated(IsOrderProcessingStateName, isOrderProcessingState)(OrderProcessingState.typedJsonFormat.classToTypeName) ++
-    (notInTaskLimitPerNode map { o ⇒ NotInTaskLimitPerNode → o.toString })
+  override def toUriPathAndParameters: (String, Map[String, String]) = {
+    val (path, jobChainParameters) = super.toUriPathAndParameters
+    val parameters = jobChainParameters ++
+      toNamedCommaSeparated(OrderIdsName, orderIds)(_.string) ++
+      toNamedCommaSeparated(JobPathsName, jobPaths)(_.string) ++
+      (isSuspended map { o ⇒ IsSuspendedName → o.toString }) ++
+      (isSetback map { o ⇒ IsSetbackName → o.toString }) ++
+      (isBlacklisted map { o ⇒ IsBlacklistedName → o.toString}) ++
+      toNamedCommaSeparated(IsOrderSourceTypeName, isOrderSourceType)(_.toString) ++
+      toNamedCommaSeparated(IsOrderProcessingStateName, isOrderProcessingState)(OrderProcessingState.typedJsonFormat.classToTypeName) ++
+      (notInTaskLimitPerNode map { o ⇒ NotInTaskLimitPerNode → o.toString })
+    (path, parameters)
+  }
 
   def orderKeyOption: Option[OrderKey] =
     (jobChainPathQuery, orderIds) match {
@@ -61,10 +61,8 @@ extends OnlyOrderQuery with JobChainQuery {
 object OrderQuery {
   val All = OrderQuery()
 
-  private val PathName = "path"
   val OrderIdsName = "orderIds"
   val JobPathsName = "jobPaths"
-  val IsDistributedName = "isDistributed"
   val IsSuspendedName = "isSuspended"
   val IsSetbackName = "isSetback"
   val IsBlacklistedName = "isBlacklisted"
@@ -77,29 +75,26 @@ object OrderQuery {
     import OrderProcessingState.typedJsonFormat.classJsonFormat
     private implicit def orderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
 
-    def write(q: OrderQuery) = JsObject((
-      (q.jobChainPathQuery != PathQuery.All option (PathName → JsString(q.jobChainPathQuery.patternString))) ++
+    def write(q: OrderQuery) = JsObject(
+      JobChainQuery.jsonFormat.write(q).fields ++
         (q.orderIds map { o ⇒ OrderIdsName → o.toJson }) ++
         (q.jobPaths map { o ⇒ JobPathsName → o.toJson }) ++
-        (q.isDistributed map { o ⇒ IsDistributedName → JsBoolean(o) }) ++
         (q.isSuspended map { o ⇒ IsSuspendedName → JsBoolean(o) }) ++
         (q.isSetback map { o ⇒ IsSetbackName → JsBoolean(o) }) ++
         (q.isBlacklisted map { o ⇒ IsBlacklistedName → JsBoolean(o) }) ++
         (q.isOrderSourceType map { o ⇒ IsOrderSourceTypeName → o.toJson }) ++
         (q.isOrderProcessingState map { o ⇒ IsOrderProcessingStateName → o.toJson }) ++
         (q.orIsSuspended option { OrIsSuspendedName → JsTrue }) ++
-        (q.notInTaskLimitPerNode map { o ⇒ NotInTaskLimitPerNode → JsNumber(o) })).toMap)
+        (q.notInTaskLimitPerNode map { o ⇒ NotInTaskLimitPerNode → JsNumber(o) }))
 
     def read(json: JsValue) = {
       val fields = json.asJsObject.fields
+      val jobChainQuery = json.convertTo[JobChainQuery]
       OrderQuery(
-        jobChainPathQuery = fields.get(PathName) match {
-          case Some(path) ⇒ PathQuery[JobChainPath](path.asInstanceOf[JsString].value)
-          case None ⇒ PathQuery.All
-        },
+        jobChainPathQuery = jobChainQuery.jobChainPathQuery,
+        isDistributed = jobChainQuery.isDistributed,
         orderIds               = fields.get(OrderIdsName              ) map { _.convertTo[Set[OrderId]] },
         jobPaths               = fields.get(JobPathsName              ) map { _.convertTo[Set[JobPath]] },
-        isDistributed          = fields.get(IsDistributedName         ) map { _.asInstanceOf[JsBoolean].value },
         isSuspended            = fields.get(IsSuspendedName           ) map { _.asInstanceOf[JsBoolean].value },
         isSetback              = fields.get(IsSetbackName             ) map { _.asInstanceOf[JsBoolean].value },
         isBlacklisted          = fields.get(IsBlacklistedName         ) map { _.asInstanceOf[JsBoolean].value },

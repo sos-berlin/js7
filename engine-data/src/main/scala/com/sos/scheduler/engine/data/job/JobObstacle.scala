@@ -30,6 +30,9 @@ object JobObstacle {
   final case class TaskLimitReached(limit: Int)
   extends JobObstacle
 
+  case object WaitingForProcessClass
+  extends JobObstacle
+
   final case class WaitingForLocks(lockPaths: Set[LockPath])
   extends JobObstacle
 
@@ -43,6 +46,7 @@ object JobObstacle {
     Subtype(jsonFormat1(BadState)),
     Subtype(jsonFormat1(NoRuntime)),
     Subtype(jsonFormat1(TaskLimitReached)),
+    Subtype(jsonFormat0(() ⇒ WaitingForProcessClass)),
     Subtype(jsonFormat1(WaitingForLocks)),
     Subtype(jsonFormat1(ProcessClassObstacles)))
 }

@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -29,8 +30,55 @@ final class JobChainQueryTest extends FreeSpec {
   }
 
   "isDistributed" in {
-    val q = JobChainQuery.Standard(PathQuery(FolderPath("/a")), isDistributed = Some(false))
+    val q = JobChainQuery(PathQuery(FolderPath("/a")), isDistributed = Some(false))
     assert(q matchesJobChain new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))
     assert(!q.matchesJobChain(new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = true)))
+  }
+
+  "JSON" - {
+    "JobChainQuery.All" in {
+      check(JobChainQuery.All, "{}")
+    }
+
+    "JobChainQuery" in {
+      check(JobChainQuery.Standard(
+        jobChainPathQuery = PathQuery(FolderPath("/FOLDER")),
+        isDistributed = Some(true)),
+        """{
+          "path": "/FOLDER/",
+          "isDistributed": true
+        }""")
+    }
+
+    "jobChainPathQuery" - {
+      "Single JobChainPath" in {
+        check(
+          JobChainQuery(jobChainPathQuery = PathQuery(JobChainPath("/FOLDER/JOBCHAIN"))),
+          """{
+            "path": "/FOLDER/JOBCHAIN"
+          }""")
+      }
+
+      "Folder, recursive" in {
+        check(
+          JobChainQuery(jobChainPathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = true)),
+          """{
+            "path": "/FOLDER/"
+          }""")
+      }
+
+      "Folder, not recursive" in {
+        check(
+          JobChainQuery(jobChainPathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = false)),
+          """{
+            "path": "/FOLDER/*"
+          }""")
+      }
+    }
+
+    def check(q: JobChainQuery, json: String) = {
+      assert(q.toJson == json.parseJson)
+      assert(json.parseJson.convertTo[JobChainQuery] == q)
+    }
   }
 }

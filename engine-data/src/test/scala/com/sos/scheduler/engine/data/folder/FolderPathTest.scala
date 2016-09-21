@@ -28,4 +28,11 @@ final class FolderPathTest extends FreeSpec {
     assert(FolderPath("/") isParentOf JobPath("/x"))
     assert(FolderPath("/a/b") isParentOf JobPath("/a/b/c"))
   }
+
+  "fromTrailingSlash" in {
+    intercept[IllegalArgumentException] { FolderPath.fromTrailingSlash("") }
+    intercept[IllegalArgumentException] { FolderPath.fromTrailingSlash("/a") }
+    assert(FolderPath.fromTrailingSlash("/") == FolderPath.Root)
+    assert(FolderPath.fromTrailingSlash("/a/") == FolderPath("/a"))
+  }
 }

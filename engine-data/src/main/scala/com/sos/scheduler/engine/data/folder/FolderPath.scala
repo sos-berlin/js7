@@ -20,6 +20,11 @@ object FolderPath extends TypedPath.Companion[FolderPath] {
 
   val Root = FolderPath("/")
 
+  def fromTrailingSlash(string: String) = {
+    require(string endsWith "/", "Trailing slash required for FolderPath")
+    FolderPath(if (string == "/") string else string stripSuffix "/")
+  }
+
   // 'def' due to mutual singleton dependency of this and FileBasedType
   def fileBasedType = FileBasedType.Folder
 

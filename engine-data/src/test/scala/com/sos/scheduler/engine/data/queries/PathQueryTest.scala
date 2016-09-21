@@ -19,6 +19,7 @@ final class PathQueryTest extends FreeSpec {
   "All" in {
     val q = PathQuery.All
     assert(q.patternString == "/")
+    assert(q.toUriPath == "/")
     assert(q == PathQuery.All)
     assert(q matches AnyPath("/a"))
     assert(q matches AnyPath("/a/b"))
@@ -28,6 +29,7 @@ final class PathQueryTest extends FreeSpec {
   "Single JobPath" in {
     val q = PathQuery(AnyPath("/a/b"))
     assert(q.patternString == "/a/b")
+    assert(q.toUriPath == "/a/b")
     assert(q == PathQuery.SinglePath("/a/b"))
     assert(!(q matches AnyPath("/a")))
     assert(q matches AnyPath("/a/b"))
@@ -38,6 +40,7 @@ final class PathQueryTest extends FreeSpec {
   "PathQuery may apply to any TypedPath" in {
     val q = PathQuery(AnyPath("/a"))
     assert(q.patternString == "/a")
+    assert(q.toUriPath == "/a")
     assert(q matches JobPath("/a"))
     assert(q matches JobChainPath("/a"))
     assert(q matches FolderPath("/a"))
@@ -47,6 +50,7 @@ final class PathQueryTest extends FreeSpec {
   "FolderPath" in {
     val q: PathQuery.Folder = PathQuery(FolderPath("/a"), isRecursive = true)
     assert(q.patternString == "/a/")
+    assert(q.toUriPath == "/a/")
     assert(q == PathQuery(FolderPath("/a")))
     assert(q == PathQuery[AnyPath]("/a/"))
     assert(q == PathQuery.FolderTree(FolderPath("/a")))
@@ -59,6 +63,7 @@ final class PathQueryTest extends FreeSpec {
   "FolderPath, not recursive" in {
     val q = PathQuery(FolderPath("/a"), isRecursive = false)
     assert(q.patternString == "/a/*")
+    assert(q.toUriPath == "/a/*")
     assert(q == PathQuery.FolderOnly(FolderPath("/a")))
     checkFolderQuery(q)
     assert(!(q matches AnyPath("/a/b/c")))
@@ -68,6 +73,7 @@ final class PathQueryTest extends FreeSpec {
     // Special handling for pattern "/*", because FolderPath.Root is "/", not "".
     val q = PathQuery[AnyPath]("/*")
     assert(q.patternString == "/*")
+    assert(q.toUriPath == "/*")
     assert(q == PathQuery.FolderOnly(FolderPath.Root))
   }
 
