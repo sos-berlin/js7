@@ -21,12 +21,13 @@ final class FolderPathTest extends FreeSpec {
     intercept[IllegalArgumentException] { FolderPath("/") subfolder "x/y" }
   }
 
-  "isParentOf" in {
-    assert(!FolderPath("/a").isParentOf(JobPath("/x")))
-    assert(!FolderPath("/a/b").isParentOf(JobPath("/a")))
-    assert(!FolderPath("/a/b").isParentOf(JobPath("/a/b")))
-    assert(FolderPath("/") isParentOf JobPath("/x"))
-    assert(FolderPath("/a/b") isParentOf JobPath("/a/b/c"))
+  "isAncestorOf" in {
+    assert(!FolderPath("/a").isAncestorOf(JobPath("/x")))
+    assert(!FolderPath("/a/b").isAncestorOf(JobPath("/a")))
+    assert(!FolderPath("/a/b").isAncestorOf(JobPath("/a/b")))
+    assert(FolderPath("/") isAncestorOf JobPath("/x"))
+    assert(FolderPath("/a/b") isAncestorOf JobPath("/a/b/c"))
+    assert(FolderPath("/a/b") isAncestorOf JobPath("/a/b/c/d"))
   }
 
   "fromTrailingSlash" in {
