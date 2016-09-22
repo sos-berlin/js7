@@ -17,6 +17,8 @@ sealed trait PathQuery {
 
   def matchesAll = false
 
+  def typedPath[P <: TypedPath: TypedPath.Companion]: TypedPath
+
   def folderPath: FolderPath
 
   def toUriPath: String = patternString
@@ -57,13 +59,15 @@ object PathQuery {
     def patternString = folderPath.withTrailingSlash
     def isRecursive = true
     override val matchesAll = folderPath == FolderPath.Root
-    def matches[P <: TypedPath: TypedPath.Companion](path: P) = matchesAll || (folderPath isParentOf path)
+    def matches[P <: TypedPath: TypedPath.Companion](path: P) = matchesAll || (folderPath isAncestorOf path)
+    def typedPath[Ignored <: TypedPath: TypedPath.Companion] = folderPath
   }
 
   final case class FolderOnly(folderPath: FolderPath) extends Folder {
     def patternString = folderPath.withTrailingSlash + "*"
     def isRecursive = false
     def matches[P <: TypedPath: TypedPath.Companion](path: P) = folderPath == path.parent
+    def typedPath[Ignored <: TypedPath: TypedPath.Companion] = folderPath
   }
 
   final case class SinglePath(pathString: String) extends PathQuery {
@@ -71,6 +75,7 @@ object PathQuery {
     def isRecursive = false
     val folderPath = UnknownTypedPath(pathString).parent
     def matches[P <: TypedPath: TypedPath.Companion](path: P) = path == as[P]
+    def typedPath[P <: TypedPath: TypedPath.Companion]: TypedPath = as[P]
     def as[P <: TypedPath: TypedPath.Companion]: P = implicitly[TypedPath.Companion[P]].apply(pathString)
   }
 }
