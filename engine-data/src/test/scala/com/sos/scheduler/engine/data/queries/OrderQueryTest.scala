@@ -19,10 +19,10 @@ final class OrderQueryTest extends FreeSpec {
   "orderKeyOption" in {
     assert(OrderQuery().orderKeyOption == None)
     assert(OrderQuery(orderIds = Some(Set(OrderId("1")))).orderKeyOption == None)
-    assert(OrderQuery(PathQuery(JobChainPath("/A"))).orderKeyOption == None)
-    assert(OrderQuery(PathQuery(JobChainPath("/A")), orderIds = Some(Set(OrderId("1")))).orderKeyOption ==
+    assert(OrderQuery(JobChainQuery(PathQuery(JobChainPath("/A")))).orderKeyOption == None)
+    assert(OrderQuery(JobChainQuery(PathQuery(JobChainPath("/A"))), orderIds = Some(Set(OrderId("1")))).orderKeyOption ==
       Some(JobChainPath("/A") orderKey "1"))
-    assert(OrderQuery(PathQuery(JobChainPath("/A")), orderIds = Some(Set(OrderId("1"), OrderId("2")))).orderKeyOption == None)
+    assert(OrderQuery(JobChainQuery(PathQuery(JobChainPath("/A"))), orderIds = Some(Set(OrderId("1"), OrderId("2")))).orderKeyOption == None)
   }
 
   "JSON" - {
@@ -32,10 +32,11 @@ final class OrderQueryTest extends FreeSpec {
 
     "OrderQuery" in {
       check(OrderQuery(
-        jobChainPathQuery = PathQuery(FolderPath("/FOLDER")),
+        jobChainQuery = JobChainQuery(
+          pathQuery = PathQuery(FolderPath("/FOLDER")),
+          isDistributed = Some(true)),
         orderIds = Some(Set(OrderId("A-ORDER-ID"), OrderId("B-ORDER-ID"))),
         jobPaths = Some(Set(JobPath("/A"), JobPath("/B"))),
-        isDistributed = Some(true),
         isSuspended = Some(true),
         isSetback = Some(false),
         isBlacklisted = Some(false),
@@ -62,10 +63,10 @@ final class OrderQueryTest extends FreeSpec {
         }""")
     }
 
-    "jobChainPathQuery" - {
+    "pathQuery" - {
       "Single JobChainPath" in {
         check(
-          OrderQuery(jobChainPathQuery = PathQuery(JobChainPath("/FOLDER/JOBCHAIN"))),
+          OrderQuery(JobChainQuery(pathQuery = PathQuery(JobChainPath("/FOLDER/JOBCHAIN")))),
           """{
             "path": "/FOLDER/JOBCHAIN"
           }""")
@@ -73,7 +74,7 @@ final class OrderQueryTest extends FreeSpec {
 
       "Folder, recursive" in {
         check(
-          OrderQuery(jobChainPathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = true)),
+          OrderQuery(JobChainQuery(pathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = true))),
           """{
             "path": "/FOLDER/"
           }""")
@@ -81,7 +82,7 @@ final class OrderQueryTest extends FreeSpec {
 
       "Folder, not recursive" in {
         check(
-          OrderQuery(jobChainPathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = false)),
+          OrderQuery(JobChainQuery(pathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = false))),
           """{
             "path": "/FOLDER/*"
           }""")

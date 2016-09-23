@@ -15,24 +15,24 @@ final class JobChainQueryTest extends FreeSpec {
 
   "All" in {
     val q = JobChainQuery.All
-    assert(q == JobChainQuery.Standard(PathQuery[JobChainPath]("/")))
-    assert(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a")))
-    assert(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a/b")))
+    assert(q == JobChainQuery(PathQuery[JobChainPath]("/")))
+    assert(q matches QueryableJobChain.ForTest(JobChainPath("/a")))
+    assert(q matches QueryableJobChain.ForTest(JobChainPath("/a/b")))
   }
 
   "Single JobChainPath" in {
-    val q = JobChainQuery.Standard(PathQuery(JobChainPath("/a/b")))
-    assert(q == JobChainQuery.Standard(PathQuery[JobChainPath]("/a/b")))
-    assert(!(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a"))))
-    assert(!(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a/b/c"))))
-    assert(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))
-    assert(q matchesJobChain QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = true))
+    val q = JobChainQuery(PathQuery(JobChainPath("/a/b")))
+    assert(q == JobChainQuery(PathQuery[JobChainPath]("/a/b")))
+    assert(!(q matches QueryableJobChain.ForTest(JobChainPath("/a"))))
+    assert(!(q matches QueryableJobChain.ForTest(JobChainPath("/a/b/c"))))
+    assert(q matches QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))
+    assert(q matches QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = true))
   }
 
   "isDistributed" in {
     val q = JobChainQuery(PathQuery(FolderPath("/a")), isDistributed = Some(false))
-    assert(q matchesJobChain new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))
-    assert(!q.matchesJobChain(new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = true)))
+    assert(q matches new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))
+    assert(!q.matches(new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = true)))
   }
 
   "JSON" - {
@@ -41,8 +41,8 @@ final class JobChainQueryTest extends FreeSpec {
     }
 
     "JobChainQuery" in {
-      check(JobChainQuery.Standard(
-        jobChainPathQuery = PathQuery(FolderPath("/FOLDER")),
+      check(JobChainQuery(
+        pathQuery = PathQuery(FolderPath("/FOLDER")),
         isDistributed = Some(true)),
         """{
           "path": "/FOLDER/",
@@ -50,10 +50,10 @@ final class JobChainQueryTest extends FreeSpec {
         }""")
     }
 
-    "jobChainPathQuery" - {
+    "pathQuery" - {
       "Single JobChainPath" in {
         check(
-          JobChainQuery(jobChainPathQuery = PathQuery(JobChainPath("/FOLDER/JOBCHAIN"))),
+          JobChainQuery(pathQuery = PathQuery(JobChainPath("/FOLDER/JOBCHAIN"))),
           """{
             "path": "/FOLDER/JOBCHAIN"
           }""")
@@ -61,7 +61,7 @@ final class JobChainQueryTest extends FreeSpec {
 
       "Folder, recursive" in {
         check(
-          JobChainQuery(jobChainPathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = true)),
+          JobChainQuery(pathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = true)),
           """{
             "path": "/FOLDER/"
           }""")
@@ -69,7 +69,7 @@ final class JobChainQueryTest extends FreeSpec {
 
       "Folder, not recursive" in {
         check(
-          JobChainQuery(jobChainPathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = false)),
+          JobChainQuery(pathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = false)),
           """{
             "path": "/FOLDER/*"
           }""")
