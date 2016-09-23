@@ -28,7 +28,7 @@ trait AbsolutePath extends IsString {
   protected def validate(): Unit = {
     require(companion.isEmptyAllowed || string.nonEmpty, s"Name '$name' must not be the empty string in '$toString'")
     require(string.isEmpty || string.startsWith("/"), s"Absolute path expected in $name '$toString'")
-    if (!(companion.isSingleSlashAllowed && string == "/")) {
+    if (!companion.isSingleSlashAllowed || string != "/") {
       require(!string.endsWith("/"), s"Trailing slash not allowed in $name '$toString'")
     }
     require(!string.contains("//"), s"Double slash not allowed in $name '$toString'")
@@ -64,19 +64,6 @@ object AbsolutePath {
       require(!(path startsWith "./"), s"Relative path is not possible here: $path")
       s"/$path"
     }
-
-  /** NOT USED (delete this code at some time).
-   * A `path` starting with "./" is prefixed with `defaultFolder` (while removing "./").
-   * Other paths are assumed to be absolute already, even if the starting slash is missing.
-   */
-  @TestOnly
-  //@deprecated("New policy for paths without starting slash: it should be considered be relative", "1.9")
-  private[filebased] def makeCompatibleAbsolute(defaultFolder: String, path: String): String = {
-    val defaultPath = Untyped(defaultFolder)
-    if (path startsWith "./") s"${defaultPath.withTrailingSlash}${path.substring(2)}"
-    else if (path startsWith "/") path
-    else s"/$path"
-  }
 
   @Deprecated
   def of(parentPath: AbsolutePath, subpath: String): AbsolutePath = {

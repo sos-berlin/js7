@@ -3,12 +3,15 @@ package com.sos.scheduler.engine.data.filebased
 import com.sos.scheduler.engine.data.filebased.AbsolutePath._
 import com.sos.scheduler.engine.data.filebased.AbsolutePathTest._
 import com.sos.scheduler.engine.data.folder.FolderPath
+import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
+import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
 @SuppressWarnings(Array("deprecated"))
+@RunWith(classOf[JUnitRunner])
 final class AbsolutePathTest extends FreeSpec {
 
   "validate" in {
@@ -37,45 +40,33 @@ final class AbsolutePathTest extends FreeSpec {
     intercept[Exception] { TestPath.makeAbsolute(FolderPath("x"), "./a") }
   }
 
-  "makeCompatibleAbsolute (deprecated)" in {
-    assert(makeCompatibleAbsolute("/base", "/a") == "/a")
-    assert(makeCompatibleAbsolute("/base", "a") == "/a")
-    assert(makeCompatibleAbsolute("/base", "./a") == "/base/a")
-    assert(makeCompatibleAbsolute("/", "./a") == "/a")
-    assert(makeCompatibleAbsolute("/base/x", "/a/b") == "/a/b")
-    assert(makeCompatibleAbsolute("/base/x", "a/b") == "/a/b")
-    assert(makeCompatibleAbsolute("/base/x", "./a/b") == "/base/x/a/b")
-    intercept[Exception] { makeCompatibleAbsolute("", "./a") }
-    intercept[Exception] { makeCompatibleAbsolute("x", "./a") }
-  }
-
   "name" in {
     assert(TestPath("/name").name == "name")
     assert(TestPath("/a/b/name").name == "name")
-    assert(TestPath("/").name == "")
+    assert(FolderPath("/").name == "")
   }
 
   "folder" in {
     assert(TestPath("/a").parent == FolderPath.Root)
     assert(TestPath("/folder/a").parent == FolderPath("/folder"))
     assert(TestPath("/x/folder/a").parent == FolderPath("/x/folder"))
-    intercept[IllegalStateException] { TestPath("/").parent }
+    intercept[IllegalStateException] { FolderPath("/").parent }
   }
 
   "nesting" in {
-    assert(TestPath("/").nesting == 0)
+    assert(FolderPath("/").nesting == 0)
     assert(TestPath("/a").nesting == 1)
     assert(TestPath("/a/b").nesting == 2)
   }
 
   "withoutStartingSlash" in {
     assert(TestPath("/a").withoutStartingSlash == "a")
-    assert(TestPath("/").withoutStartingSlash == "")
+    assert(FolderPath("/").withoutStartingSlash == "")
   }
 
   "withTrailingSlash" in {
     assert(TestPath("/a").withTrailingSlash == "/a/")
-    assert(TestPath("/").withTrailingSlash == "/")
+    assert(FolderPath("/").withTrailingSlash == "/")
   }
 }
 
