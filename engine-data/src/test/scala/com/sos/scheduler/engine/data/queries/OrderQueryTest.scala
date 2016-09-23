@@ -103,5 +103,21 @@ final class OrderQueryTest extends FreeSpec {
     }
   }
 
+  "commaSplittedAsSet" in {
+    val asInts = OrderQuery.commaSplittedAsSet(_.toInt)
+    assert(asInts("") == Set())
+    assert(asInts("1") == Set(1))
+    assert(asInts("1") == Set(1))
+    assert(asInts("1") == Set(1))
+    assert(asInts("1,22,333") == Set(1,22,333))
+    assert(asInts("1,22,333") == Set(1,22,333))
+    intercept[IllegalArgumentException] { asInts(" ") }
+    intercept[IllegalArgumentException] { asInts(",") }
+    intercept[IllegalArgumentException] { asInts(" 1") }
+    intercept[IllegalArgumentException] { asInts("1 ") }
+    intercept[IllegalArgumentException] { asInts("1,") }
+    intercept[IllegalArgumentException] { asInts("1, 2") }
+  }
+
   //"withoutPathToMap" in { Please see OrderQueryHttpTest }
 }

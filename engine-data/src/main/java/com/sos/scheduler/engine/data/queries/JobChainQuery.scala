@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.data.queries
 
+import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions._
+import com.sos.scheduler.engine.base.serial.PathAndParameterSerializable
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.queries.JobChainQuery._
@@ -12,7 +14,7 @@ final case class JobChainQuery(
   pathQuery: PathQuery = PathQuery.All,
   isDistributed: Option[Boolean] = None) {
 
-  def toUriPathAndParameters: (String, Map[String, String]) =
+  def toPathAndParameters: (String, Map[String, String]) =
     (pathQuery.toUriPath, (isDistributed map { o ⇒ IsDistributedName → o.toString }).toMap)
 
   def matchesAll = pathQuery.matchesAll && isDistributed.isEmpty
@@ -43,6 +45,17 @@ object JobChainQuery {
           case None ⇒ PathQuery.All
         },
         isDistributed = fields.get(IsDistributedName) map { _.asInstanceOf[JsBoolean].value })
+    }
+  }
+
+  implicit object pathAndParameterSerializable extends PathAndParameterSerializable[JobChainQuery] {
+    def toPathAndParameters(q: JobChainQuery) = q.toPathAndParameters
+
+    def fromPathAndParameters(pathAndParameters: (String, Map[String, String])) = {
+      val (path, parameters) = pathAndParameters
+      JobChainQuery(
+        pathQuery = PathQuery[JobChainPath](path),
+        isDistributed = parameters.optionAs[Boolean](IsDistributedName))
     }
   }
 }
