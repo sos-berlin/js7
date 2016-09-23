@@ -1,8 +1,5 @@
-package com.sos.scheduler.engine.common.convert
+package com.sos.scheduler.engine.base.convert
 
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import java.time.Duration
-import java.time.format.DateTimeParseException
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -40,14 +37,5 @@ final class AsTest extends FreeSpec {
     assert(!conv("off"))
     assert(!conv("no"))
     for (o ← List(true, false)) assert(conv(o.toString) == o)
-  }
-
-  "StringAsDuration" in {
-    val conv = implicitly[As[String, Duration]]
-    intercept[DateTimeParseException] { conv("") }
-    intercept[DateTimeParseException] { conv("1 s") }
-    assert(conv("1s") == 1.s)
-    assert(conv("123.456789s") == 123456789.µs)
-    assert(conv("PT1H1S") == 3601.s)
   }
 }

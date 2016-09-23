@@ -1,8 +1,7 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions._
 import com.sos.scheduler.engine.base.utils.ScalaUtils._
-import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReaderTest._
 import org.junit.runner.RunWith

@@ -1,8 +1,7 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunction
 import com.sos.scheduler.engine.base.utils.ScalaUtils.{cast, implicitClass}
-import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunction
 import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._

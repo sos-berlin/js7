@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.time
 
+import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.base.utils.Ascii.isAsciiDigit
 import java.time.Instant.now
 import java.time._
@@ -85,6 +86,8 @@ object ScalaTime {
     val (seconds, nanos) = o /% 1
     Duration.ofSeconds(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
   }
+
+  implicit val StringAsDuration: As[String, Duration] = As(parseDuration)
 
   /**
    * Parses a duration according to ISO-8601 with optional first letters PT.

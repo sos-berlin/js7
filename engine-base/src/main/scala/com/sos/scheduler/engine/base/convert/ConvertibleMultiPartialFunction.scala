@@ -1,8 +1,7 @@
-package com.sos.scheduler.engine.common.convert
+package com.sos.scheduler.engine.base.convert
 
 import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions.wrappedConvert
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
-import scala.collection.immutable
+import scala.collection._
 
 /**
   * Provides methods for convertion of the Iterable result of a PartialFunction (for example a Map).
@@ -39,7 +38,7 @@ trait ConvertibleMultiPartialFunction[K, V] {
       case None ⇒ Nil  // Missing is equivalent to empty
       case Some(seq) ⇒
         val c = wrappedConvert(convert, renderKey(key))
-        seq.toImmutableSeq map c
+        seq.map(c)(breakOut): Vector[W]
     }
 
   protected def renderKey(key: K) = s"key '$key'"

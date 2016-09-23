@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.internet
 
-import com.sos.scheduler.engine.common.convert.As.convert
+import com.sos.scheduler.engine.base.convert.As.convert
 import com.sos.scheduler.engine.common.internet.IP._
 import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
 import org.junit.runner.RunWith

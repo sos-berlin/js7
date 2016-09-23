@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.time
 
+import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalTime}
@@ -210,6 +211,15 @@ final class ScalaTimeTest extends FreeSpec {
       assert(2.s >= 2.s)
       assert(!(7.s < 7.s))
       assert(7.s <= 7.s)
+    }
+
+    "StringAsDuration" in {
+      val conv = implicitly[As[String, Duration]]
+      intercept[DateTimeParseException] { conv("") }
+      intercept[DateTimeParseException] { conv("1 s") }
+      assert(conv("1s") == 1.s)
+      assert(conv("123.456789s") == 123456789.µs)
+      assert(conv("PT1H1S") == 3601.s)
     }
   }
 
