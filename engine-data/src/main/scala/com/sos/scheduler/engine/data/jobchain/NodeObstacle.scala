@@ -28,8 +28,12 @@ object NodeObstacle {
   final case class MissingJob(jobPath: JobPath)
   extends NodeObstacle
 
+  case object WaitingForJob
+  extends NodeObstacle
+
   implicit val NodeObstacleJsonFormat = TypedJsonFormat[NodeObstacle](
     Subtype(jsonFormat0(() ⇒ Stopping)),
     Subtype(jsonFormat1(Delaying)),
-    Subtype(jsonFormat1(MissingJob)))
+    Subtype(jsonFormat1(MissingJob)),
+    Subtype(jsonFormat0(() ⇒ WaitingForJob)))
 }
