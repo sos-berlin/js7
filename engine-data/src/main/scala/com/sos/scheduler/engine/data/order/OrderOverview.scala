@@ -20,7 +20,7 @@ final case class OrderOverview(
   fileBasedState: FileBasedState,
   sourceType: OrderSourceType,
   nodeId: NodeId,
-  processingState: OrderProcessingState,
+  orderProcessingState: OrderProcessingState,
   historyId: Option[OrderHistoryId] = None,
   obstacles: Set[OrderObstacle] = Set(),
   startedAt: Option[Instant] = None,
@@ -37,7 +37,7 @@ extends OrderView with QueryableOrder {
 
   def isSuspended = obstacles contains OrderObstacle.Suspended
 
-  def occupyingClusterMemberId = processingState match {
+  def occupyingClusterMemberId = orderProcessingState match {
     case o: OccupiedByClusterMember ⇒ Some(o.clusterMemberId)
     case _ ⇒ None
   }

@@ -41,7 +41,7 @@ final class OrderOverviewTest extends FreeSpec {
       "historyId": 22,
       "sourceType": "AdHoc",
       "nodeId": "100",
-      "processingState": {
+      "orderProcessingState": {
         "TYPE": "InTaskProcess",
         "taskId": "123",
         "processClassPath": "/TEST",
