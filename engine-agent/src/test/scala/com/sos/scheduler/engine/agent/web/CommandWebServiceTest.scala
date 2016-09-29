@@ -2,9 +2,8 @@ package com.sos.scheduler.engine.agent.web
 
 import com.sos.scheduler.engine.agent.command.CommandMeta
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
-import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate, _}
+import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.web.CommandWebServiceTest._
-import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.common.time.ScalaTime._
