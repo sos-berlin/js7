@@ -12,7 +12,7 @@ trait NodeOverview {
 
 object NodeOverview {
   implicit val MyJsonFormat = TypedJsonFormat[NodeOverview](
-    Subtype[SimpleJobNodeOverview]("SimpleJob"),
+    Subtype[SimpleJobNodeOverview]("Job"),
     Subtype[SinkNodeOverview]("Sink"),
     Subtype[NestedJobChainNodeOverview]("NestedJobChain"),
     Subtype[EndNodeOverview]("End"))

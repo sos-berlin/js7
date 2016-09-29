@@ -7,8 +7,8 @@ final case class SinkNodeOverview(
   nodeKey: NodeKey,
   nextNodeId: NodeId,
   errorNodeId: NodeId,
-  action: JobChainNodeAction,
   jobPath: JobPath,
+  action: JobChainNodeAction,
   orderCount: Int,
   obstacles: Set[NodeObstacle])
 extends JobNodeOverview
