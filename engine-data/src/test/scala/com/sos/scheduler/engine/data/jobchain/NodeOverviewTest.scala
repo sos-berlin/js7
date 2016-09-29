@@ -16,7 +16,8 @@ final class NodeOverviewTest extends FreeSpec {
   "Job" in {
     check(
       SimpleJobNodeOverview(
-        nodeKey = NodeKey(JobChainPath("/JOB-CHAIN"), NodeId("NODE-ID")),
+        JobChainPath("/JOB-CHAIN"),
+        NodeId("NODE-ID"),
         nextNodeId = NodeId("NEXT"),
         errorNodeId = NodeId("ERROR"),
         jobPath = JobPath("/JOB"),
@@ -25,10 +26,8 @@ final class NodeOverviewTest extends FreeSpec {
         obstacles = Set(MissingJob(JobPath("/JOB")))),
       """{
         "TYPE": "Job",
-        "nodeKey": {
-          "jobChainPath": "/JOB-CHAIN",
-          "nodeId": "NODE-ID"
-        },
+        "jobChainPath": "/JOB-CHAIN",
+        "nodeId": "NODE-ID",
         "nextNodeId": "NEXT",
         "errorNodeId": "ERROR",
         "jobPath": "/JOB",
@@ -46,7 +45,8 @@ final class NodeOverviewTest extends FreeSpec {
   "Sink" in {
     check(
       SinkNodeOverview(
-        nodeKey = NodeKey(JobChainPath("/JOB-CHAIN"), NodeId("NODE-ID")),
+        JobChainPath("/JOB-CHAIN"),
+        NodeId("NODE-ID"),
         nextNodeId = NodeId("NEXT"),
         errorNodeId = NodeId("ERROR"),
         jobPath = JobPath("/SINK"),
@@ -55,10 +55,8 @@ final class NodeOverviewTest extends FreeSpec {
         obstacles = Set()),
       """{
         "TYPE": "Sink",
-        "nodeKey": {
-          "jobChainPath": "/JOB-CHAIN",
-          "nodeId": "NODE-ID"
-        },
+        "jobChainPath": "/JOB-CHAIN",
+        "nodeId": "NODE-ID",
         "nextNodeId": "NEXT",
         "errorNodeId": "ERROR",
         "jobPath": "/SINK",
@@ -71,16 +69,15 @@ final class NodeOverviewTest extends FreeSpec {
   "NestedJobChain" in {
     check(
       NestedJobChainNodeOverview(
-        nodeKey = NodeKey(JobChainPath("/JOB-CHAIN"), NodeId("NODE-ID")),
+        JobChainPath("/JOB-CHAIN"),
+        NodeId("NODE-ID"),
         nextNodeId = NodeId("NEXT"),
         errorNodeId = NodeId("ERROR"),
         nestedJobChainPath = JobChainPath("/NESTED")),
       """{
         "TYPE": "NestedJobChain",
-        "nodeKey": {
-          "jobChainPath": "/JOB-CHAIN",
-          "nodeId": "NODE-ID"
-        },
+        "jobChainPath": "/JOB-CHAIN",
+        "nodeId": "NODE-ID",
         "nextNodeId": "NEXT",
         "errorNodeId": "ERROR",
         "nestedJobChainPath": "/NESTED"
@@ -90,13 +87,12 @@ final class NodeOverviewTest extends FreeSpec {
   "End" in {
     check(
       EndNodeOverview(
-        nodeKey = NodeKey(JobChainPath("/JOB-CHAIN"), NodeId("END"))),
+        JobChainPath("/JOB-CHAIN"),
+        NodeId("END")),
       """{
         "TYPE": "End",
-        "nodeKey": {
-          "jobChainPath": "/JOB-CHAIN",
-          "nodeId": "END"
-        }
+        "jobChainPath": "/JOB-CHAIN",
+        "nodeId": "END"
       }""")
   }
 

@@ -19,9 +19,8 @@ final class JobChainDetailedTest extends FreeSpec {
         FileBasedState.active),
       List(
         EndNodeOverview(
-          NodeKey(
-            JobChainPath("/TEST"),
-            NodeId("100")))))
+          JobChainPath("/TEST"),
+          NodeId("100"))))
     val json = """{
         "overview": {
           "path": "/TEST",
@@ -32,10 +31,8 @@ final class JobChainDetailedTest extends FreeSpec {
         "nodes": [
           {
             "TYPE": "End",
-            "nodeKey": {
-              "jobChainPath": "/TEST",
-              "nodeId": "100"
-            }
+            "jobChainPath": "/TEST",
+            "nodeId": "100"
           }
         ]
       }""".parseJson
