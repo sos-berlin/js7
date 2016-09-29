@@ -61,9 +61,9 @@ final class OrderProcessingStateTest extends FreeSpec {
       """{
         "TYPE": "Blacklisted"
       }""")
-    addTest(WaitingForOther,
+    addTest(WaitingForResource,
       """{
-        "TYPE": "WaitingForOther"
+        "TYPE": "WaitingForResource"
       }""")
   }
 

@@ -59,7 +59,7 @@ object OrderProcessingState {
   final case class Setback(until: Instant)
   extends Waiting
 
-  case object WaitingForOther extends Waiting
+  case object WaitingForResource extends Waiting
 
   case object Blacklisted
   extends OrderProcessingState
@@ -72,6 +72,6 @@ object OrderProcessingState {
     Subtype(jsonFormat4(InTaskProcess.apply)),
     Subtype(jsonFormat1(OccupiedByClusterMember.apply)),
     Subtype(jsonFormat1(Setback.apply)),
-    Subtype(jsonFormat0(() ⇒ WaitingForOther)),
+    Subtype(jsonFormat0(() ⇒ WaitingForResource)),
     Subtype(jsonFormat0(() ⇒ Blacklisted)))
 }
