@@ -30,7 +30,7 @@ object OrderProcessingState {
     override def isWaiting = true
   }
 
-  final case class Pending(at: Instant)
+  final case class Due(at: Instant)
   extends Waiting
 
   sealed trait InTask
@@ -67,7 +67,7 @@ object OrderProcessingState {
   implicit val typedJsonFormat = TypedJsonFormat[OrderProcessingState](
     Subtype(jsonFormat0(() ⇒ NotPlanned)),
     Subtype(jsonFormat1(Planned.apply)),
-    Subtype(jsonFormat1(Pending.apply)),
+    Subtype(jsonFormat1(Due.apply)),
     Subtype(jsonFormat2(WaitingInTask.apply)),
     Subtype(jsonFormat4(InTaskProcess.apply)),
     Subtype(jsonFormat1(OccupiedByClusterMember.apply)),
