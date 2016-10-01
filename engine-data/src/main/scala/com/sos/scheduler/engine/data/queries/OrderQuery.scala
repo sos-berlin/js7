@@ -1,17 +1,12 @@
 package com.sos.scheduler.engine.data.queries
 
-import com.google.common.base.Splitter
-import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions._
 import com.sos.scheduler.engine.base.serial.PathAndParameterSerializable
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.order.{OrderId, OrderKey, OrderProcessingState, OrderSourceType}
+import com.sos.scheduler.engine.data.queries.CommaSeparated._
 import com.sos.scheduler.engine.data.queries.OrderQuery._
-import scala.collection.JavaConversions._
-import scala.reflect.ClassTag
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
@@ -19,9 +14,8 @@ import spray.json._
   * @author Joacim Zschimmer
   */
 final case class OrderQuery(
-  jobChainQuery: JobChainQuery = JobChainQuery.All,
+  nodeQuery: JobChainNodeQuery = JobChainNodeQuery.All,
   orderIds: Option[Set[OrderId]] = None,
-  jobPaths: Option[Set[JobPath]] = None,
   isSuspended: Option[Boolean] = None,
   isSetback: Option[Boolean] = None,
   isBlacklisted: Option[Boolean] = None,
@@ -33,26 +27,36 @@ extends OnlyOrderQuery {
 
   for (limit ← notInTaskLimitPerNode) require(limit >= 0, s"Invalid notInTaskLimitPerNode=$notInTaskLimitPerNode")
 
+  def nodeIds = nodeQuery.nodeIds
+
+  def jobPaths = nodeQuery.jobPaths
+
+  def jobChainQuery: JobChainQuery = nodeQuery.jobChainQuery
+
   def withOrderKey(orderKey: OrderKey) = copy(
-    jobChainQuery.copy(pathQuery = PathQuery(orderKey.jobChainPath)),
+    nodeQuery.copy(jobChainQuery = nodeQuery.jobChainQuery.copy(pathQuery = PathQuery(orderKey.jobChainPath))),
     orderIds = Some(Set(orderKey.id)))
 
+  def withPathQuery(q: PathQuery) = withJobChainQuery(jobChainQuery.copy(pathQuery = q))
+
+  def withJobChainQuery(q: JobChainQuery) = copy(nodeQuery = nodeQuery.copy(jobChainQuery = q))
+
   def toPathAndParameters: (String, Map[String, String]) = {
-    val (path, jobChainParameters) = jobChainQuery.toPathAndParameters
+    val (path, jobChainParameters) = nodeQuery.toPathAndParameters
     val parameters = jobChainParameters ++
       toNamedCommaSeparated(OrderIdsName, orderIds)(_.string) ++
-      toNamedCommaSeparated(JobPathsName, jobPaths)(_.string) ++
       (isSuspended map { o ⇒ IsSuspendedName → o.toString }) ++
       (isSetback map { o ⇒ IsSetbackName → o.toString }) ++
       (isBlacklisted map { o ⇒ IsBlacklistedName → o.toString}) ++
       toNamedCommaSeparated(IsOrderSourceTypeName, isOrderSourceType)(_.toString) ++
       toNamedCommaSeparated(IsOrderProcessingStateName, isOrderProcessingState)(OrderProcessingState.typedJsonFormat.classToTypeName) ++
+      (orIsSuspended option ("orIsSuspended" → "true")) ++
       (notInTaskLimitPerNode map { o ⇒ NotInTaskLimitPerNode → o.toString })
     (path, parameters)
   }
 
   def orderKeyOption: Option[OrderKey] =
-    (jobChainQuery.pathQuery, orderIds) match {
+    (nodeQuery.jobChainQuery.pathQuery, orderIds) match {
       case (singlePath: PathQuery.SinglePath, Some(ids)) if ids.size == 1 ⇒
         Some(singlePath.as[JobChainPath] orderKey ids.head)
       case _ ⇒
@@ -64,7 +68,6 @@ object OrderQuery {
   val All = OrderQuery()
 
   val OrderIdsName = "orderIds"
-  val JobPathsName = "jobPaths"
   val IsSuspendedName = "isSuspended"
   val IsSetbackName = "isSetback"
   val IsBlacklistedName = "isBlacklisted"
@@ -73,21 +76,13 @@ object OrderQuery {
   val OrIsSuspendedName = "orIsSuspended"
   val NotInTaskLimitPerNode = "notInTaskLimitPerNode"
 
-  private val CommaSplitter = Splitter.on(',')
-
-  private[queries] def commaSplittedAsSet[A](to: String ⇒ A) = As[String, Set[A]] {
-    case "" ⇒ Set()
-    case o ⇒ (CommaSplitter split o map to).toSet
-  }
-
   implicit val OrderQueryJsonFormat = new RootJsonFormat[OrderQuery] {
     import OrderProcessingState.typedJsonFormat.classJsonFormat
     private implicit def orderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
 
     def write(q: OrderQuery) = JsObject(
-      q.jobChainQuery.toJson.asJsObject.fields ++
+      q.nodeQuery.toJson.asJsObject.fields ++
       (q.orderIds map { o ⇒ OrderIdsName → o.toJson }) ++
-      (q.jobPaths map { o ⇒ JobPathsName → o.toJson }) ++
       (q.isSuspended map { o ⇒ IsSuspendedName → JsBoolean(o) }) ++
       (q.isSetback map { o ⇒ IsSetbackName → JsBoolean(o) }) ++
       (q.isBlacklisted map { o ⇒ IsBlacklistedName → JsBoolean(o) }) ++
@@ -99,9 +94,8 @@ object OrderQuery {
     def read(json: JsValue) = {
       val fields = json.asJsObject.fields
       OrderQuery(
-        jobChainQuery          = json.convertTo[JobChainQuery],
+        nodeQuery      = json.convertTo[JobChainNodeQuery],
         orderIds               = fields.get(OrderIdsName              ) map { _.convertTo[Set[OrderId]] },
-        jobPaths               = fields.get(JobPathsName              ) map { _.convertTo[Set[JobPath]] },
         isSuspended            = fields.get(IsSuspendedName           ) map { _.asInstanceOf[JsBoolean].value },
         isSetback              = fields.get(IsSetbackName             ) map { _.asInstanceOf[JsBoolean].value },
         isBlacklisted          = fields.get(IsBlacklistedName         ) map { _.asInstanceOf[JsBoolean].value },
@@ -118,9 +112,8 @@ object OrderQuery {
     def fromPathAndParameters(pathAndParameters: (String, Map[String, String])) = {
       val (path, parameters) = pathAndParameters
       OrderQuery(
-        jobChainQuery = PathAndParameterSerializable.fromPathAndParameters[JobChainQuery]((path, parameters)),
+        nodeQuery = PathAndParameterSerializable.fromPathAndParameters[JobChainNodeQuery]((path, parameters)),
         orderIds = parameters.optionAs(OrderIdsName)(commaSplittedAsSet(OrderId.apply)),
-        jobPaths = parameters.optionAs(JobPathsName)(commaSplittedAsSet(JobPath.apply)),
         isSuspended = parameters.optionAs[Boolean](IsSuspendedName),
         isSetback = parameters.optionAs[Boolean](IsSetbackName),
         isBlacklisted = parameters.optionAs[Boolean](IsBlacklistedName),
@@ -130,14 +123,4 @@ object OrderQuery {
         orIsSuspended = parameters.as[Boolean](OrIsSuspendedName, false))
     }
   }
-
-  private def toNamedCommaSeparated[A: ClassTag](name: String, elementsOption: Option[Iterable[A]])(toString: A ⇒ String): Option[(String, String)] =
-    for (elements ← elementsOption) yield name → toCommaSeparated(toString)(elements)
-
-  private def toCommaSeparated[A: ClassTag](toString: A ⇒ String)(elements: Iterable[A]): String =
-    (for (o ← elements) yield {
-      val string = toString(o)
-      require(!string.contains(','), s"For this serialization, a ${implicitClass[A]} must not contain a comma ',': '$o'")
-      string
-    }) mkString ","
 }

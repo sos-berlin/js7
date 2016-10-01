@@ -13,6 +13,8 @@ import spray.json.DefaultJsonProtocol._
   * @author Joacim Zschimmer
   */
 sealed trait OrderProcessingState {
+  def isDueOrStarted = false
+  def isStarted = false
   def isWaiting = false
   def isInProcess = false
 }
@@ -31,10 +33,18 @@ object OrderProcessingState {
   }
 
   final case class Due(at: Instant)
-  extends Waiting
+  extends Waiting {
+    override def isDueOrStarted = true
+  }
+
+  sealed trait Started
+  extends OrderProcessingState{
+    override def isStarted = true
+    override def isDueOrStarted = true
+  }
 
   sealed trait InTask
-  extends OrderProcessingState {
+  extends Started {
     def taskId: TaskId
     def processClassPath: ProcessClassPath
   }
@@ -54,12 +64,13 @@ object OrderProcessingState {
   }
 
   final case class OccupiedByClusterMember(clusterMemberId: ClusterMemberId)
-  extends OrderProcessingState
+  extends OrderProcessingState with Started
 
   final case class Setback(until: Instant)
-  extends Waiting
+  extends Started with Waiting
 
-  case object WaitingForResource extends Waiting
+  case object WaitingForResource
+  extends Started with Waiting
 
   case object Blacklisted
   extends OrderProcessingState

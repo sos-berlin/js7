@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.filebased.{TypedPath, UnknownTypedPath}
 import com.sos.scheduler.engine.data.folder.FolderPath
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
@@ -38,7 +39,7 @@ object PathQuery {
 
   def apply(path: FolderPath, isRecursive: Boolean = true) = Folder(path, isRecursive)
 
-  def apply(path: TypedPath): PathQuery =
+  implicit def apply(path: TypedPath): PathQuery =
     path match {
       case o: FolderPath ⇒ FolderTree(o)
       case o: TypedPath ⇒ SinglePath(o.string)

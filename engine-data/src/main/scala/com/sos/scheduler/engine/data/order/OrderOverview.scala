@@ -31,9 +31,9 @@ extends OrderView with QueryableOrder {
 
   def nodeKey: NodeKey = NodeKey(orderKey.jobChainPath, nodeId)
 
-  def isSetback = processingStateClass == classOf[OrderProcessingState.Setback]
+  def isSetback = orderProcessingStateClass == classOf[OrderProcessingState.Setback]
 
-  def isBlacklisted = processingStateClass == OrderProcessingState.Blacklisted.getClass
+  def isBlacklisted = orderProcessingStateClass == OrderProcessingState.Blacklisted.getClass
 
   def isSuspended = obstacles contains OrderObstacle.Suspended
 
@@ -52,7 +52,7 @@ object OrderOverview extends OrderView.Companion[OrderOverview] {
 
   final class Statistics(val orderOverviews: immutable.Seq[OrderOverview]) {
     def count = orderOverviews.size
-    lazy val inProcessCount = orderOverviews count { _.processingStateClass == classOf[OrderProcessingState.InTaskProcess] }
+    lazy val inProcessCount = orderOverviews count { _.orderProcessingStateClass == classOf[OrderProcessingState.InTaskProcess] }
     lazy val suspendedCount = orderOverviews count { _.isSuspended }
     lazy val blacklistedCount = orderOverviews count { _.isBlacklisted }
   }

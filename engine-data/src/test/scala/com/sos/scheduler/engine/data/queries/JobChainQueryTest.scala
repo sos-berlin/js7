@@ -13,26 +13,53 @@ import spray.json._
 @RunWith(classOf[JUnitRunner])
 final class JobChainQueryTest extends FreeSpec {
 
-  "All" in {
-    val q = JobChainQuery.All
-    assert(q == JobChainQuery(PathQuery[JobChainPath]("/")))
-    assert(q matches QueryableJobChain.ForTest(JobChainPath("/a")))
-    assert(q matches QueryableJobChain.ForTest(JobChainPath("/a/b")))
+  "matches" - {
+    "All" in {
+      val q = JobChainQuery.All
+      assert(q == JobChainQuery(PathQuery[JobChainPath]("/")))
+      assert(q matches QueryableJobChain.ForTest(JobChainPath("/a")))
+      assert(q matches QueryableJobChain.ForTest(JobChainPath("/a/b")))
+    }
+
+    "Single JobChainPath" in {
+      val q = JobChainQuery(PathQuery(JobChainPath("/a/b")))
+      assert(q == JobChainQuery(PathQuery[JobChainPath]("/a/b")))
+      assert(!(q matches QueryableJobChain.ForTest(JobChainPath("/a"))))
+      assert(!(q matches QueryableJobChain.ForTest(JobChainPath("/a/b/c"))))
+      assert(q matches QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))
+      assert(q matches QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = true))
+    }
+
+    "isDistributed" in {
+      val q = JobChainQuery(PathQuery(FolderPath("/a")), isDistributed = Some(false))
+      assert(q matches new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))
+      assert(!q.matches(new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = true)))
+    }
   }
 
-  "Single JobChainPath" in {
-    val q = JobChainQuery(PathQuery(JobChainPath("/a/b")))
-    assert(q == JobChainQuery(PathQuery[JobChainPath]("/a/b")))
-    assert(!(q matches QueryableJobChain.ForTest(JobChainPath("/a"))))
-    assert(!(q matches QueryableJobChain.ForTest(JobChainPath("/a/b/c"))))
-    assert(q matches QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))
-    assert(q matches QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = true))
+  "matchesAllNonDistributed" in {
+    assert(JobChainQuery().matchesAllNonDistributed)
+    assert(JobChainQuery(isDistributed = None).matchesAllNonDistributed)
+    assert(JobChainQuery(isDistributed = Some(false)).matchesAllNonDistributed)
+    assert(!JobChainQuery(isDistributed = Some(true)).matchesAllNonDistributed)
+    assert(!JobChainQuery(JobChainPath("/a")).matchesAllNonDistributed)
   }
 
-  "isDistributed" in {
-    val q = JobChainQuery(PathQuery(FolderPath("/a")), isDistributed = Some(false))
-    assert(q matches new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = false))
-    assert(!q.matches(new QueryableJobChain.ForTest(JobChainPath("/a/b"), isDistributed = true)))
+  "toPathAndParameters" in {
+    check(
+      JobChainQuery(),
+      "/" → Map())
+    check(
+      JobChainQuery(PathQuery[JobChainPath]("/JOB_CHAIN")),
+      "/JOB_CHAIN" → Map())
+    check(
+      JobChainQuery(PathQuery[JobChainPath]("/JOB_CHAIN"), isDistributed = Some(true)),
+      "/JOB_CHAIN" → Map("isDistributed" → "true"))
+
+    def check(q: JobChainQuery, pathAndParameters: (String, Map[String, String])): Unit = {
+      assert(q.toPathAndParameters == pathAndParameters)
+      assert(JobChainQuery.pathAndParameterSerializable.fromPathAndParameters(pathAndParameters) == q)
+    }
   }
 
   "JSON" - {

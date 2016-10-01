@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.job.JobPath
+import com.sos.scheduler.engine.data.jobchain.NodeId
 import com.sos.scheduler.engine.data.order.{OrderId, OrderProcessingState, OrderSourceType}
 
 /**
@@ -8,6 +9,7 @@ import com.sos.scheduler.engine.data.order.{OrderId, OrderProcessingState, Order
   */
 trait OnlyOrderQuery {
   def orderIds: Option[Set[OrderId]]
+  def nodeIds: Option[Set[NodeId]]
   def jobPaths: Option[Set[JobPath]]
   def isSuspended: Option[Boolean]
   def isSetback: Option[Boolean]
@@ -18,12 +20,13 @@ trait OnlyOrderQuery {
   def orIsSuspended: Boolean
 
   final def matchesOrder(o: QueryableOrder, jobPathOption: Option[JobPath] = None) =
+    (nodeIds forall { _ contains o.nodeId }) &
     (orderIds forall { _ contains o.orderKey.id }) &&
     (isSuspended forall { _ == o.isSuspended }) &&
     (isSetback forall { _ == o.isSetback }) &&
     (isBlacklisted forall { _ == o.isBlacklisted }) &&
     (isOrderSourceType forall { _ contains o.sourceType }) &&
-    ((isOrderProcessingState forall { _ exists { _ isAssignableFrom o.processingStateClass }})
+    ((isOrderProcessingState forall { _ exists { _ isAssignableFrom o.orderProcessingStateClass }})
       || orIsSuspended && o.isSuspended) &&
     (jobPaths forall { set ⇒ jobPathOption exists set.contains })
 }
@@ -35,6 +38,7 @@ object OnlyOrderQuery {
 
   final case class Standard(
     orderIds: Option[Set[OrderId]] = None,
+    nodeIds: Option[Set[NodeId]] = None,
     jobPaths: Option[Set[JobPath]] = None,
     isSuspended: Option[Boolean] = None,
     isSetback: Option[Boolean] = None,

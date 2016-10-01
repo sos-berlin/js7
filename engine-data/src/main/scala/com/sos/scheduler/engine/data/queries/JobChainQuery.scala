@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import com.sos.scheduler.engine.data.queries.JobChainQuery._
 import spray.json._
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
@@ -19,17 +20,19 @@ final case class JobChainQuery(
 
   def matchesAll = pathQuery.matchesAll && isDistributed.isEmpty
 
+  def matchesAllNonDistributed = pathQuery.matchesAll && isDistributed != Some(true)
+
   def matches(jobChain: QueryableJobChain) =
     pathQuery.matches(jobChain.path) &&
     (isDistributed forall { _ == jobChain.isDistributed })
 }
 
 object JobChainQuery {
-  type Interface = JobChainQuery
-
   val All = JobChainQuery()
   val PathName = "path"
   val IsDistributedName = "isDistributed"
+
+  implicit def fromPathQuery(o: PathQuery): JobChainQuery = JobChainQuery(o)
 
   implicit object jsonFormat extends RootJsonFormat[JobChainQuery] {
     def write(q: JobChainQuery) = JsObject((
