@@ -224,4 +224,6 @@ object ScalaTime {
       case _ if s(n - 1) == '0' => lengthWithoutTrailingZeros(s, n - 1)
       case _ ⇒ n
     }
+
+  def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 }
