@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
-import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunction
+import com.sos.scheduler.engine.base.convert.{ConvertiblePartialFunction, ConvertiblePartialFunctions}
 import com.sos.scheduler.engine.base.utils.ScalaUtils.{cast, implicitClass}
 import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
@@ -18,7 +18,7 @@ import scala.collection.{immutable, mutable}
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
-final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable {
+final class ScalaXMLEventReader(delegate: XMLEventReader, ignoreUnknown: Boolean = false) extends AutoCloseable {
 
   private var atStart = true
   private var _simpleAttributeMap: SimpleAttributeMap = null
@@ -34,14 +34,25 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
     result
   }
 
-  def ignoreElement(): Unit = {
-    parseElement() {
-      attributeMap.ignoreUnread()
-      while(!peek.isEndElement) {
-        if (peek.isCharacters) eatText()
-        else ignoreElement()
-      }
+  def ignoreElements(): Unit =
+    while(peek.isStartElement) {
+      ignoreElement()
     }
+
+  def ignoreElement(): Unit = {
+    require(delegate.peek.isStartElement)
+    delegate.nextEvent()
+    while (!delegate.peek.isEndElement) {
+      if (delegate.peek.isCharacters)
+        while (delegate.peek.isCharacters) delegate.nextEvent()
+      else if (delegate.peek.isStartElement)
+        ignoreElement()
+      else if (delegate.peek.isInstanceOf[Comment])
+        delegate.nextEvent()
+      else
+        throw new IllegalArgumentException(s"Unknown XML event: ${delegate.peek}")
+    }
+    delegate.nextEvent()
   }
 
   def parseElement[A](name: String)(body: ⇒ A): A = {
@@ -52,7 +63,13 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
   def parseElement[A]()(body: ⇒ A): A =
     wrapException {
       eat[StartElement]
-      parseStartElement()(body)
+      parseStartElement() {
+        val result = body
+        if (ignoreUnknown) {
+          ignoreElements()
+        }
+        result
+      }
     }
 
   def parseStartElement[A]()(body: ⇒ A): A = {
@@ -80,27 +97,28 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
     forEachStartElement[A] { case `name` ⇒ parseElement() { f } }.values
 
   def forEachStartElement[A](f: PartialFunction[String, A]): ConvertedElementMap[A] = {
-    val results = mutable.Buffer[(String, A)]()
-
-    @tailrec
-    def g(): Unit = {
-      peek match {
-        case e: StartElement ⇒
-          val o = parseStartElementAlternative(f)
-          results += e.getName.toString -> o
-          g()
-        case e: EndElement ⇒ mutable.Buffer[(String, A)]()
-      }
+    val results = Vector.newBuilder[(String, A)]
+    @tailrec def g(): Unit = peek match {
+      case e: StartElement ⇒
+        for (o ← parseStartElementAlternative(f))
+          results += e.getName.toString → o
+        g()
+      case e: EndElement ⇒
+      case e: EndDocument ⇒
     }
-
     g()
-    new ConvertedElementMap(results.toVector)
+    new ConvertedElementMap(results.result)
   }
 
-  def parseStartElementAlternative[A](f: PartialFunction[String, A]): A =
+  def parseStartElementAlternative[A](f: PartialFunction[String, A]): Option[A] =
     wrapException {
       val name = peek.asStartElement.getName.toString
-      f.applyOrElse(name, { name: String ⇒ sys.error(s"Unexpected XML element <$name>") })
+      val result = f.lift(name)
+      if (result.isEmpty) {
+        if (!ignoreUnknown) sys.error(s"Unexpected XML element <$name>")
+        ignoreElement()
+      }
+      result
     }
 
   private def wrapException[A](f: ⇒ A): A = {
@@ -133,7 +151,13 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
     result.toString()
   }
 
-  def eat[E <: XMLEvent : ClassTag]: E = cast[E](next())
+  def eat[E <: XMLEvent: ClassTag]: E = {
+    val event = next()
+    val e = implicitClass[E]
+    if (!e.isAssignableFrom(event.getClass))
+      throw new IllegalArgumentException(s"'${e.getSimpleName}' expected but '${event.getClass.getSimpleName}' encountered")
+    event.asInstanceOf[E]
+  }
 
   def hasNext = delegate.hasNext
 
@@ -146,7 +170,7 @@ final class ScalaXMLEventReader(delegate: XMLEventReader) extends AutoCloseable 
   }
 
   private def updateAttributeMap(): Unit = {
-    if (_simpleAttributeMap != null) {
+    if (!ignoreUnknown && _simpleAttributeMap != null) {
       _simpleAttributeMap.requireAllAttributesRead()
     }
     _simpleAttributeMap =
@@ -184,8 +208,10 @@ object ScalaXMLEventReader {
   def parseElem[A](elem: xml.Elem, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parseEvents: ScalaXMLEventReader ⇒ A): A =
     parseDocument(xmlElemToStaxSource(elem), inputFactory)(parseEvents)
 
-  def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parse: ScalaXMLEventReader ⇒ A): A =
-    autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source))) { reader ⇒
+  def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), ignoreUnknown: Boolean = false)
+    (parse: ScalaXMLEventReader ⇒ A)
+  : A =
+    autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source), ignoreUnknown = ignoreUnknown)) { reader ⇒
       reader.parseDocument {
         parse(reader)
       }
@@ -196,9 +222,10 @@ object ScalaXMLEventReader {
     //inputFactory.createFilteredReader(inputFactory.createXMLEventReader(source), IgnoreWhitespaceFilter)
 
   private def xmlEventIsIgnored(e: XMLEvent) =
-    cond(e) {
-      case e: Characters if e.isWhiteSpace ⇒ true
+    e match {
+      case e if e.isCharacters &&  e.asInstanceOf[Characters].isWhiteSpace ⇒ true
       case _: Comment ⇒ true
+      case _ ⇒ false
     }
 
 //  object IgnoreWhitespaceFilter extends EventFilter {
@@ -236,7 +263,7 @@ object ScalaXMLEventReader {
     }
   }
 
-  final class ConvertedElementMap[A] private[xmls](pairs: immutable.IndexedSeq[(String, A)]) {
+  final class ConvertedElementMap[A] private[xmls](pairs: Vector[(String, A)]) {
 
     def one[B <: A : ClassTag]: B =
       option[B] getOrElse { throw new NoSuchElementException(s"No element for type ${implicitClass[B].getSimpleName}") }

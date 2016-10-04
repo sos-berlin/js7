@@ -73,6 +73,7 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
         </AA>
       </A>.toString()
     parseString(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "oo", Nil))
+    parseDocument(StringSource(testXmlString))(_.ignoreElements())
   }
 
   "Optional attribute" in {
@@ -176,11 +177,11 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
           case "Z" ⇒ parseElement() { "ZZ" }
         }
       }
-    } shouldEqual "YY"
+    } shouldEqual Some("YY")
   }
 
   "ignoreElement" in {
-    val testXmlString = <A><AA><C x="xx">aa<D/>bb<D/>cc</C></AA></A>.toString()
+    val testXmlString = <A><AA><C x="xx">aa<D/>bb<D/><!--COMMENT-->cc</C></AA></A>.toString()
     parseString(testXmlString) { eventReader ⇒
       eventReader.parseElement("A") {
         eventReader.ignoreElement()
