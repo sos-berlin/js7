@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import java.io.{File, FileInputStream}
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.{Path, Paths}
-import scala.util.control.NonFatal
+import scala.util.Try
 
 /**
  * @author Joacim Zschimmer
@@ -35,7 +35,7 @@ object OperatingSystem {
   lazy val windows = new Windows
   val operatingSystem: OperatingSystem = if (isWindows) windows else unix
   val javaLibraryPathPropertyName = "java.library.path"
-  lazy val KernelSupportsNestedShebang = { KernelVersion() >= KernelVersion("Linux", List(2, 6, 28)) }  // Exactly 2.6.27.9 - but what means the fouth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
+  lazy val KernelSupportsNestedShebang = KernelVersion() >= KernelVersion("Linux", List(2, 6, 28))  // Exactly 2.6.27.9 - but what means the fourth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
 
   def makeModuleFilename(path: String): String = {
     val file = new File(path)
@@ -63,18 +63,38 @@ object OperatingSystem {
 
     protected def alternativeHostname: String = sys.env.getOrElse("HOSTNAME", "")
 
-    lazy val KernelSupportsNestedShebang = { KernelVersion() >= KernelVersion("Linux", List(2, 6, 28)) }  // Exactly 2.6.27.9 - but what means the fouth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
-
     lazy val distributionNameAndVersionOption: Option[String] = {
-      def readFirstLine(file: Path) = autoClosing(new FileInputStream(file)) { in ⇒ io.Source.fromInputStream(in).getLines().next().trim }
-      try Some(readFirstLine(Paths.get("/etc/system-release")))
-      catch { case NonFatal(_) ⇒
-        try Some(readFirstLine(autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")) { _.iterator().next() }))
-        catch { case NonFatal(t) ⇒
-          logger.debug(s"distributionNameAndVersion: ignoring $t")
-          None
+      def readFirstLine(file: Path): String =
+        autoClosing(new FileInputStream(file)) { in ⇒
+          io.Source.fromInputStream(in).getLines.next().trim
         }
+
+      def readFileOsRelease() = {
+        val prettyNamePrefix = "PRETTY_NAME="
+        val file = "/etc/os-release"
+        autoClosing(new FileInputStream(file)) { in ⇒    // http://man7.org/linux/man-pages/man5/os-release.5.html
+          io.Source.fromInputStream(in).getLines collectFirst {
+            case line if line startsWith prettyNamePrefix ⇒
+              line.stripPrefix(prettyNamePrefix).stripPrefix("\"").stripPrefix("'").stripSuffix("\"").stripSuffix("'").trim
+          }
+        }
+        .getOrElse { sys.error(s"Key PRETTY_NAME not found in file $file")}
       }
+
+      def readFileAnyRelease() = {
+        val anyFile = autoClosing(newDirectoryStream(Paths.get("/etc"), "*-release")) { stream ⇒
+          val iterator = stream.iterator
+          if (!iterator.hasNext) throw sys.error("No file matches /etc/*-release")
+          iterator.next
+        }
+        readFirstLine(anyFile)
+      }
+
+      Try { readFirstLine(Paths.get("/etc/system-release")) }  // Best result under CentOS 7.2 (more version details than in /etc/os-release)
+        .recover { case _ ⇒ readFileOsRelease() }   // New standard ?
+        .recover { case _ ⇒ readFileAnyRelease() }  // Vendor-specific
+        .recover { case _ ⇒ readFirstLine(Paths.get("/etc/release")) } // Solaris ?
+        .toOption
     }
   }
 
