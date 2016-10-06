@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.scalautil
 
 import scala.language.reflectiveCalls
-import scala.util.control.NonFatal
+import scala.util.control.{ControlThrowable, NonFatal}
 
 /** Wie java try(AutoClosable), aber für alle Klassen mit close().
   * @author Joacim Zschimmer */
@@ -29,7 +29,10 @@ object AutoClosing {
   }
 
   private def closeAfterError[A <: HasClose](resource: A, t: Throwable): Unit = {
-    if (!NonFatal(t)) logger.error(t.toString, t)
+    t match {
+      case (NonFatal(_) | _: ControlThrowable) ⇒ // Normal exception
+      case _ ⇒ logger.error(t.toString, t)
+    }
     try resource.close()
     catch {
       case suppressed: Throwable ⇒
