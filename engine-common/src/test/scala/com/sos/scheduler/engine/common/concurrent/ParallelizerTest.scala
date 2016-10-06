@@ -67,7 +67,7 @@ final class ParallelizerTest extends FreeSpec with BeforeAndAfterAll {
   private def parallelSum(count: ParallelizationCounter): Int= {
     var sum = 0
     Stopwatch.measureTime("parallel") {
-      val parallel = Parallelizer.to(timeout = 5.s) { o: Int ⇒ sum += o } (parallelExecutionContext)
+      val parallel = Parallelizer(timeout = 5.s, processResult = (o: Int) ⇒ sum += o) (parallelExecutionContext)
       for (i ← 1 to 50) {
         parallel {
           count {

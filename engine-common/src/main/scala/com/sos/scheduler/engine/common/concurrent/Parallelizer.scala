@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Tries._
 import com.sos.scheduler.engine.common.time.ScalaTime.RichDuration
 import java.time.Duration
 import java.util.concurrent.TimeUnit.MILLISECONDS
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{Semaphore, TimeoutException}
 import scala.annotation.tailrec
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,7 +20,7 @@ abstract class Parallelizer[A](parallelization: Int, timeout: Duration)(implicit
 
   private val semaphore = new Semaphore(parallelization)
   private val completions = new java.util.concurrent.ConcurrentLinkedQueue[Try[A]]
-  @volatile private var stopped = false
+  private val stopped = new AtomicBoolean
 
   /**
     * Called on caller's thread, unordered.
@@ -27,7 +28,7 @@ abstract class Parallelizer[A](parallelization: Int, timeout: Duration)(implicit
   protected def processResult(result: A): Unit
 
   final def apply(parallelExecution: ⇒ A): Unit = {
-    if (stopped) throw new IllegalStateException("Parallelizer has been finished")
+    if (stopped.get) throw new IllegalStateException("Parallelizer has been finished")
     processCompletions()
     acquireSemaphore()
     Future { parallelExecution } onComplete { o ⇒
@@ -37,7 +38,7 @@ abstract class Parallelizer[A](parallelization: Int, timeout: Duration)(implicit
   }
 
   final def finish() = {
-    stopped = true
+    if (stopped getAndSet true) throw new IllegalStateException("Parallelizer.finished")
     for (_ ← 1 to parallelization) {
       acquireSemaphore()
       processCompletions()
@@ -70,20 +71,28 @@ abstract class Parallelizer[A](parallelization: Int, timeout: Duration)(implicit
 }
 
 object Parallelizer {
-  private val NeverTimeout = Duration.ofMillis(Long.MaxValue)
+  val NeverTimeout = Duration.ofMillis(Long.MaxValue)
 
   /**
-    * @param processResult is called on caller's thread for each result, unordered.
+    * @param processResult is called in caller's thread for each result, unordered.
     */
-  def to[A](processResult: A ⇒ Unit)(implicit ec: ExecutionContext): Parallelizer[A] = to()(processResult)
+  def to[A](processResult: A ⇒ Unit)(implicit ec: ExecutionContext): Parallelizer[A] =
+    apply(processResult = processResult)
 
-  def to[A](
+  /**
+    * @param parallelization Maximum of parallel executions on executionContext
+    * @param timeout for a parallel operation. Use it in case of deadlock with full ExecutionContext.
+    * @param processResult is called in caller's thread for each result, unordered.
+    */
+  def apply[A](
     parallelization: Int = sys.runtime.availableProcessors,
-    timeout: Duration = NeverTimeout)
-    (process: A ⇒ Unit)
-    (implicit ec: ExecutionContext)
-  : Parallelizer[A] =
+    timeout: Duration = NeverTimeout,
+    processResult: A ⇒ Unit)
+    (implicit executioContext: ExecutionContext)
+  : Parallelizer[A] = {
+    val processResult_ = processResult
     new Parallelizer[A](parallelization, timeout) {
-      def processResult(result: A) = process(result)
+      def processResult(result: A) = processResult_(result)
     }
+  }
 }
