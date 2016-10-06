@@ -931,6 +931,11 @@
             	<artifactId>scalaz-core_${scala.binaryVersion}</artifactId>
             	<version>7.1.4</version>
             </dependency>
+            <dependency>
+                <groupId>com.zaxxer</groupId>
+                <artifactId>HikariCP</artifactId>
+                <version>2.5.1</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
