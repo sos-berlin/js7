@@ -3,7 +3,8 @@ package com.sos.scheduler.engine.common.scalautil.xmls
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.scalautil.ScalaThreadLocal._
 import com.sos.scheduler.engine.common.xml.XmlUtils.toXmlBytes
-import java.io.{StringReader, ByteArrayInputStream}
+import java.io.{ByteArrayInputStream, StringReader}
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{Attribute, StartElement}
 import javax.xml.transform.Source
@@ -64,7 +65,14 @@ object ScalaStax {
     private def workAroundNewDomSource(element: Element) = new StreamSource(new ByteArrayInputStream(toXmlBytes(element)))
   }
 
-  private val xmlInputFactoryTL = threadLocal { XMLInputFactory.newInstance() }
+  private val xmlInputFactoryLogged = new AtomicBoolean
+  private val xmlInputFactoryTL = threadLocal {
+    val result = XMLInputFactory.newInstance()
+    if (!xmlInputFactoryLogged.getAndSet(true)) {
+      logger.info(s"Using XMLInputFactory ${result.getClass}")
+    }
+    result
+  }
 
   /**
    * Fast XMLInputFactory provider - returned XMLInputFactory is mutable, do not change it.

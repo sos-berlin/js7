@@ -12,7 +12,6 @@ import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, St
 import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
 import javax.xml.transform.Source
 import org.scalactic.Requirements._
-import scala.PartialFunction._
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 import scala.language.implicitConversions
@@ -188,7 +187,7 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, ignoreUnknown: Boolean
   @tailrec
   def peek: XMLEvent =
     delegate.peek match {
-      case e if xmlEventIsIgnored(e) =>
+      case e if xmlEventIsIgnorable(e) =>
         delegate.nextEvent()
         peek
       case e ⇒ e
@@ -221,9 +220,9 @@ object ScalaXMLEventReader {
     inputFactory.createXMLEventReader(source)
     //inputFactory.createFilteredReader(inputFactory.createXMLEventReader(source), IgnoreWhitespaceFilter)
 
-  private def xmlEventIsIgnored(e: XMLEvent) =
+  private def xmlEventIsIgnorable(e: XMLEvent) =
     e match {
-      case e if e.isCharacters &&  e.asInstanceOf[Characters].isWhiteSpace ⇒ true
+      case e if e.isCharacters && e.asInstanceOf[Characters].isWhiteSpace ⇒ true
       case _: Comment ⇒ true
       case _ ⇒ false
     }
