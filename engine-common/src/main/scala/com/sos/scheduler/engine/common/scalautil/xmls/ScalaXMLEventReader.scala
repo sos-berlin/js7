@@ -17,12 +17,9 @@ import scala.collection.{immutable, mutable}
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
-final class ScalaXMLEventReader(delegate: XMLEventReader, ignoreUnknown: Boolean = false) extends AutoCloseable {
+final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Config.Default) extends AutoCloseable {
 
-  private var atStart = true
   private var _simpleAttributeMap: SimpleAttributeMap = null
-
-  updateAttributeMap()
 
   def close() = delegate.close()
 
@@ -54,17 +51,25 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, ignoreUnknown: Boolean
     delegate.nextEvent()
   }
 
-  def parseElement[A](name: String)(body: ⇒ A): A = {
+  def parseElement[A](name: String, withAttributeMap: Boolean = true)(body: ⇒ A): A = {
     requireStartElement(name)
-    parseElement()(body)
+    parseElement(withAttributeMap = withAttributeMap)(body)
   }
 
   def parseElement[A]()(body: ⇒ A): A =
+    parseElement(withAttributeMap = true)(body)
+
+  def parseElement[A](withAttributeMap: Boolean)(body: ⇒ A): A =
     wrapException {
-      eat[StartElement]
+      if (peek.isStartElement) {  // should be
+        updateAttributeMap(withAttributeMap = withAttributeMap)
+      }
+      if (withAttributeMap) {  // Otherwise, let the caller eat the StartElement to give it access to attributes
+        eat[StartElement]
+      }
       parseStartElement() {
         val result = body
-        if (ignoreUnknown) {
+        if (config.ignoreUnknown) {
           ignoreElements()
         }
         result
@@ -102,8 +107,8 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, ignoreUnknown: Boolean
         for (o ← parseStartElementAlternative(f))
           results += e.getName.toString → o
         g()
-      case e: EndElement ⇒
-      case e: EndDocument ⇒
+      case _: EndElement ⇒
+      case _: EndDocument ⇒
     }
     g()
     new ConvertedElementMap(results.result)
@@ -114,7 +119,7 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, ignoreUnknown: Boolean
       val name = peek.asStartElement.getName.toString
       val result = f.lift(name)
       if (result.isEmpty) {
-        if (!ignoreUnknown) sys.error(s"Unexpected XML element <$name>")
+        if (!config.ignoreUnknown) sys.error(s"Unexpected XML element <$name>")
         ignoreElement()
       }
       result
@@ -151,8 +156,12 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, ignoreUnknown: Boolean
   }
 
   def eat[E <: XMLEvent: ClassTag]: E = {
-    val event = next()
     val e = implicitClass[E]
+    if (e != classOf[StartElement]) {
+      releaseAttributeMap()
+    }
+    val event = peek  // Skips ignorables
+    delegate.nextEvent()
     if (!e.isAssignableFrom(event.getClass))
       throw new IllegalArgumentException(s"'${e.getSimpleName}' expected but '${event.getClass.getSimpleName}' encountered")
     event.asInstanceOf[E]
@@ -160,25 +169,22 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, ignoreUnknown: Boolean
 
   def hasNext = delegate.hasNext
 
-  def next(): XMLEvent = {
-    if (!atStart) {
-      updateAttributeMap()
-    }
-    atStart = false
-    delegate.nextEvent()
-  }
-
-  private def updateAttributeMap(): Unit = {
-    if (!ignoreUnknown && _simpleAttributeMap != null) {
-      _simpleAttributeMap.requireAllAttributesRead()
-    }
+  private def updateAttributeMap(withAttributeMap: Boolean): Unit = {
+    releaseAttributeMap()
     _simpleAttributeMap =
-      if (peek.isStartElement) new SimpleAttributeMap(peek.asStartElement.attributes map { o ⇒ o.getName.getLocalPart -> o.getValue })
+      if (withAttributeMap && peek.isStartElement) new SimpleAttributeMap(peek.asStartElement.attributes map { o ⇒ o.getName.getLocalPart → o.getValue })
       else null
   }
 
+  private def releaseAttributeMap(): Unit = {
+    if (!config.ignoreUnknown && _simpleAttributeMap != null) {
+      _simpleAttributeMap.requireAllAttributesRead()
+    }
+    _simpleAttributeMap = null
+  }
+
   def attributeMap = {
-    requireState(_simpleAttributeMap ne null, s"No attributes possible here, at $locationString")
+    if (_simpleAttributeMap eq null) throw new IllegalStateException(s"No attributes possible here, at $locationString")
     _simpleAttributeMap
   }
 
@@ -196,8 +202,13 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, ignoreUnknown: Boolean
   def xmlEventReader: XMLEventReader = delegate
 }
 
-
 object ScalaXMLEventReader {
+
+  final case class Config(ignoreUnknown: Boolean = false)
+
+  object Config {
+    val Default = Config()
+  }
 
   implicit def scalaXMLEventReaderToXMLEventReader(o: ScalaXMLEventReader): XMLEventReader = o.xmlEventReader
 
@@ -207,10 +218,10 @@ object ScalaXMLEventReader {
   def parseElem[A](elem: xml.Elem, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parseEvents: ScalaXMLEventReader ⇒ A): A =
     parseDocument(xmlElemToStaxSource(elem), inputFactory)(parseEvents)
 
-  def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), ignoreUnknown: Boolean = false)
+  def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), config: Config = Config.Default)
     (parse: ScalaXMLEventReader ⇒ A)
   : A =
-    autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source), ignoreUnknown = ignoreUnknown)) { reader ⇒
+    autoClosing(new ScalaXMLEventReader(newXMLEventReader(inputFactory, source), config = config)) { reader ⇒
       reader.parseDocument {
         parse(reader)
       }
