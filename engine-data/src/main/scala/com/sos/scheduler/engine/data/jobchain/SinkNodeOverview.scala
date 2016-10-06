@@ -4,11 +4,12 @@ import com.sos.scheduler.engine.data.job.JobPath
 import spray.json.DefaultJsonProtocol._
 
 final case class SinkNodeOverview(
-  nodeKey: NodeKey,
+  jobChainPath: JobChainPath,
+  nodeId: NodeId,
   nextNodeId: NodeId,
   errorNodeId: NodeId,
-  action: JobChainNodeAction,
   jobPath: JobPath,
+  action: JobChainNodeAction,
   orderCount: Int,
   obstacles: Set[NodeObstacle])
 extends JobNodeOverview
@@ -16,5 +17,5 @@ extends JobNodeOverview
 object SinkNodeOverview {
   private implicit val OrderStateJsonFormat = NodeId.MyJsonFormat
   private implicit val JobChainNodeActionJsonFormat = JobChainNodeAction.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat7(apply)
+  implicit val MyJsonFormat = jsonFormat8(apply)
 }

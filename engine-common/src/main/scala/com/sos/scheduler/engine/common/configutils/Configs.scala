@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.common.configutils
 
+import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions.wrappedConvert
+import com.sos.scheduler.engine.base.convert.{As, ConvertiblePartialFunction}
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.ClassLoaders.currentClassLoader
-import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions.wrappedConvert
-import com.sos.scheduler.engine.common.convert.{As, ConvertiblePartialFunction}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.utils.JavaResource

@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.filebased.{TypedPath, UnknownTypedPath}
 import com.sos.scheduler.engine.data.folder.FolderPath
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
@@ -16,6 +17,8 @@ sealed trait PathQuery {
   def matches[P <: TypedPath: TypedPath.Companion](path: P): Boolean
 
   def matchesAll = false
+
+  def typedPath[P <: TypedPath: TypedPath.Companion]: TypedPath
 
   def folderPath: FolderPath
 
@@ -36,7 +39,7 @@ object PathQuery {
 
   def apply(path: FolderPath, isRecursive: Boolean = true) = Folder(path, isRecursive)
 
-  def apply(path: TypedPath): PathQuery =
+  implicit def apply(path: TypedPath): PathQuery =
     path match {
       case o: FolderPath ⇒ FolderTree(o)
       case o: TypedPath ⇒ SinglePath(o.string)
@@ -57,13 +60,15 @@ object PathQuery {
     def patternString = folderPath.withTrailingSlash
     def isRecursive = true
     override val matchesAll = folderPath == FolderPath.Root
-    def matches[P <: TypedPath: TypedPath.Companion](path: P) = matchesAll || (folderPath isParentOf path)
+    def matches[P <: TypedPath: TypedPath.Companion](path: P) = matchesAll || (folderPath isAncestorOf path)
+    def typedPath[Ignored <: TypedPath: TypedPath.Companion] = folderPath
   }
 
   final case class FolderOnly(folderPath: FolderPath) extends Folder {
     def patternString = folderPath.withTrailingSlash + "*"
     def isRecursive = false
     def matches[P <: TypedPath: TypedPath.Companion](path: P) = folderPath == path.parent
+    def typedPath[Ignored <: TypedPath: TypedPath.Companion] = folderPath
   }
 
   final case class SinglePath(pathString: String) extends PathQuery {
@@ -71,6 +76,7 @@ object PathQuery {
     def isRecursive = false
     val folderPath = UnknownTypedPath(pathString).parent
     def matches[P <: TypedPath: TypedPath.Companion](path: P) = path == as[P]
+    def typedPath[P <: TypedPath: TypedPath.Companion]: TypedPath = as[P]
     def as[P <: TypedPath: TypedPath.Companion]: P = implicitly[TypedPath.Companion[P]].apply(pathString)
   }
 }

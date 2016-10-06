@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.xmlcommands
 
+import com.sos.scheduler.engine.data.agent.AgentAddress
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -19,11 +20,11 @@ final class ProcessClassConfigurationTest extends FreeSpec {
   }
 
   "With one agent" in {
-    assert(ProcessClassConfiguration(agentUris = List("one")).xmlElem == <process_class remote_scheduler="one"/>)
+    assert(ProcessClassConfiguration(agentUris = List(AgentAddress("one"))).xmlElem == <process_class remote_scheduler="one"/>)
   }
 
   "With multiple agent" in {
-    assert(ProcessClassConfiguration(agentUris = List("one", "two")).xmlElem ==
+    assert(ProcessClassConfiguration(agentUris = List(AgentAddress("one"), AgentAddress("two"))).xmlElem ==
       <process_class><remote_schedulers><remote_scheduler remote_scheduler="one"/><remote_scheduler remote_scheduler="two"/></remote_schedulers></process_class>)
   }
 }

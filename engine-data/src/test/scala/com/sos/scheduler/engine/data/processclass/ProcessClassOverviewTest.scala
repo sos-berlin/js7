@@ -1,7 +1,6 @@
-package com.sos.scheduler.engine.data.job
+package com.sos.scheduler.engine.data.processclass
 
 import com.sos.scheduler.engine.data.filebased.FileBasedState
-import com.sos.scheduler.engine.data.processclass.{ProcessClassObstacle, ProcessClassPath}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner

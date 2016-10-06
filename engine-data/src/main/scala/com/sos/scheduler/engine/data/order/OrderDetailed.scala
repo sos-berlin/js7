@@ -21,7 +21,7 @@ extends OrderView {
 
   private[engine] def occupyingClusterMemberId = overview.occupyingClusterMemberId
 
-  private[engine] def processingState = overview.processingState
+  private[engine] def orderProcessingState = overview.orderProcessingState
 
   private[engine] def nodeKey = overview.nodeKey
 }

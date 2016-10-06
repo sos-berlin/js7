@@ -19,7 +19,7 @@ trait IsString extends SerializableIsString {
 
 object IsString {
   /** Für &lt;elememt attribute={stringValue}/>. */
-  implicit def toXmlText(o: IsString): xml.Text = new xml.Text(o.string)
+  implicit def toXmlText(o: IsString): xml.Text = if (o == null) null else xml.Text(o.string)
 
   @Nullable def stringOrNull[A <: IsString](o: Option[A]): String = o match {
     case Some(a) ⇒ a.string

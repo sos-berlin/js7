@@ -1,9 +1,10 @@
 package com.sos.scheduler.engine.data.compounds
 
 import com.sos.scheduler.engine.data.folder.{FolderPath, FolderTree}
-import com.sos.scheduler.engine.data.job.{JobOverview, ProcessClassOverview, TaskOverview}
+import com.sos.scheduler.engine.data.job.{JobOverview, TaskOverview}
 import com.sos.scheduler.engine.data.jobchain.JobNodeOverview
 import com.sos.scheduler.engine.data.order.OrderView
+import com.sos.scheduler.engine.data.processclass.ProcessClassOverview
 import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._
 import spray.json.RootJsonWriter

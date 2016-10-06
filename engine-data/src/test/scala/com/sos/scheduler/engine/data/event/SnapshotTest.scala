@@ -48,4 +48,3 @@ final class SnapshotTest extends FreeSpec {
     assert(o == json.convertTo[Snapshot[immutable.Seq[Int]]])
   }
 }
-

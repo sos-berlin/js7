@@ -13,11 +13,11 @@ trait OrderView extends HasPath {
 
   private[engine] def occupyingClusterMemberId: Option[ClusterMemberId]
 
-  private[engine] def processingState: OrderProcessingState
+  private[engine] def orderProcessingState: OrderProcessingState
 
   private[engine] def nodeKey: NodeKey
 
-  final def processingStateClass = processingState.getClass
+  final def orderProcessingStateClass = orderProcessingState.getClass
 }
 
 object OrderView {

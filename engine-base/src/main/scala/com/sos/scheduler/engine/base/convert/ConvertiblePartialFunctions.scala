@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.convert
+package com.sos.scheduler.engine.base.convert
 
 import scala.language.higherKinds
 import scala.util.control.NonFatal

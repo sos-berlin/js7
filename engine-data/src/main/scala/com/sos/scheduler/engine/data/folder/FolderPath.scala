@@ -13,7 +13,7 @@ final case class FolderPath(string: String) extends TypedPath {
     FolderPath(s"${string stripSuffix "/"}/$name")
   }
 
-  def isParentOf(path: TypedPath): Boolean = path.string startsWith withTrailingSlash
+  def isAncestorOf(path: TypedPath): Boolean = path.string startsWith withTrailingSlash
 }
 
 object FolderPath extends TypedPath.Companion[FolderPath] {

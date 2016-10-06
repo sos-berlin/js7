@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.convert
+package com.sos.scheduler.engine.base.convert
 
-import com.sos.scheduler.engine.common.convert.ConvertiblePartialFunctions.wrappedConvert
+import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions.wrappedConvert
 
 /**
   * Provides methods for convertion of the result of a PartialFunction (for example a Map).

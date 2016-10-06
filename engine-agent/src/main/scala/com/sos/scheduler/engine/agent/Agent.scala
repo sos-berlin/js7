@@ -19,6 +19,7 @@ import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime.{MaxDuration, _}
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
+import com.sos.scheduler.engine.data.agent.AgentAddress
 import scala.concurrent.Future
 
 /**
@@ -36,7 +37,7 @@ final class Agent(module: Module) extends AutoCloseable {
   val configuration = injector.instance[AgentConfiguration]
   private implicit val closer = injector.instance[Closer]
   private val webServer = injector.instance[AgentWebServer].closeWithCloser
-  val localUri = webServer.localUri.toString
+  val localUri = AgentAddress(webServer.localUri.toString)
   private val taskHandler = injector.instance[TaskHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
 

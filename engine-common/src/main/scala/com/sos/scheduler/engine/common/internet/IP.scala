@@ -1,9 +1,8 @@
 package com.sos.scheduler.engine.common.internet
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils
+import com.sos.scheduler.engine.base.convert.As
+import com.sos.scheduler.engine.base.convert.As.convert
 import com.sos.scheduler.engine.base.utils.ScalaUtils.RichAny
-import com.sos.scheduler.engine.common.convert.As
-import com.sos.scheduler.engine.common.convert.As.convert
 import java.net.{InetAddress, InetSocketAddress}
 
 /**

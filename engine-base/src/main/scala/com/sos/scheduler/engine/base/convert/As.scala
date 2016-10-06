@@ -1,9 +1,7 @@
-package com.sos.scheduler.engine.common.convert
+package com.sos.scheduler.engine.base.convert
 
 import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.time.ScalaTime.parseDuration
 import java.nio.file.{Path, Paths}
-import java.time.Duration
 
 /**
   * @author Joacim Zschimmer
@@ -35,6 +33,4 @@ object As {
   implicit val StringAsPath: As[String, Path] = As(Paths.get(_))
 
   implicit val StringAsSecretString: As[String, SecretString] = As(SecretString.apply)
-
-  implicit val StringAsDuration: As[String, Duration] = As(parseDuration)
 }

@@ -1,61 +1,64 @@
 package com.sos.scheduler.engine.data.queries
 
+import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions._
+import com.sos.scheduler.engine.base.serial.PathAndParameterSerializable
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
-import com.sos.scheduler.engine.data.queries.JobChainQuery.IsDistributedName
+import com.sos.scheduler.engine.data.queries.JobChainQuery._
 import spray.json._
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
   */
-trait JobChainQuery {
-  def jobChainPathQuery: PathQuery
-  def isDistributed: Option[Boolean]
+final case class JobChainQuery(
+  pathQuery: PathQuery = PathQuery.All,
+  isDistributed: Option[Boolean] = None) {
 
-  def toUriPathAndParameters: (String, Map[String, String]) =
-    (jobChainPathQuery.toUriPath, (isDistributed map { o ⇒ IsDistributedName → o.toString }).toMap)
+  def toPathAndParameters: (String, Map[String, String]) =
+    (pathQuery.toUriPath, (isDistributed map { o ⇒ IsDistributedName → o.toString }).toMap)
 
-  def withJobChainPathQuery(q: PathQuery): JobChainQuery
+  def matchesAll = pathQuery.matchesAll && isDistributed.isEmpty
 
-  final def matchesAllJobChains = jobChainPathQuery.matchesAll && isDistributed.isEmpty
+  def matchesAllNonDistributed = pathQuery.matchesAll && isDistributed != Some(true)
 
-  final def matchesJobChain(jobChain: QueryableJobChain) =
-    jobChainPathQuery.matches(jobChain.path) &&
+  def matches(jobChain: QueryableJobChain) =
+    pathQuery.matches(jobChain.path) &&
     (isDistributed forall { _ == jobChain.isDistributed })
 }
 
 object JobChainQuery {
-
-  val All: JobChainQuery = Standard()
-  private val PathName = "path"
+  val All = JobChainQuery()
+  val PathName = "path"
   val IsDistributedName = "isDistributed"
 
-  def apply(jobChainPathQuery: PathQuery = PathQuery.All, isDistributed: Option[Boolean] = None): JobChainQuery =
-    Standard(jobChainPathQuery, isDistributed)
-
-  final case class Standard(
-    jobChainPathQuery: PathQuery = PathQuery.All,
-    isDistributed: Option[Boolean] = None)
-  extends JobChainQuery {
-
-    def withJobChainPathQuery(q: PathQuery) = copy(jobChainPathQuery = q)
-    def withIsDistributed(o: Boolean) = copy(isDistributed = Some(o))
-  }
+  implicit def fromPathQuery(o: PathQuery): JobChainQuery = JobChainQuery(o)
 
   implicit object jsonFormat extends RootJsonFormat[JobChainQuery] {
     def write(q: JobChainQuery) = JsObject((
-      (q.jobChainPathQuery != PathQuery.All option (PathName → JsString(q.jobChainPathQuery.toUriPath))) ++
+      (q.pathQuery != PathQuery.All option (PathName → JsString(q.pathQuery.toUriPath))) ++
         (q.isDistributed map { o ⇒ IsDistributedName → JsBoolean(o) }))
       .toMap)
 
     def read(json: JsValue) = {
       val fields = json.asJsObject.fields
-      JobChainQuery.Standard(
-        jobChainPathQuery = fields.get(PathName) match {
+      JobChainQuery(
+        pathQuery = fields.get(PathName) match {
           case Some(path) ⇒ PathQuery[JobChainPath](path.asInstanceOf[JsString].value)
           case None ⇒ PathQuery.All
         },
         isDistributed = fields.get(IsDistributedName) map { _.asInstanceOf[JsBoolean].value })
+    }
+  }
+
+  implicit object pathAndParameterSerializable extends PathAndParameterSerializable[JobChainQuery] {
+    def toPathAndParameters(q: JobChainQuery) = q.toPathAndParameters
+
+    def fromPathAndParameters(pathAndParameters: (String, Map[String, String])) = {
+      val (path, parameters) = pathAndParameters
+      JobChainQuery(
+        pathQuery = PathQuery[JobChainPath](path),
+        isDistributed = parameters.optionAs[Boolean](IsDistributedName))
     }
   }
 }

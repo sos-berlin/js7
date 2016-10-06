@@ -32,8 +32,8 @@ extends HasKey {
 }
 
 object OrderPersistentState {
-  private val NowDatabaseDistributedNextTime         = Instant.parse("2000-01-01T00:00:00Z")        // Auftrag ist verteilt und ist sofort ausführbar
-  private val NeverDatabaseDistributedNextTime       = Instant.parse("3111-11-11T00:00:00Z")        // Auftrag ist verteilt, hat aber keine Startzeit (weil z.B. suspendiert)
-  private val BlacklistDatabaseDistributedNextTime   = Instant.parse("3111-11-11T00:01:00Z")        // Auftrag ist auf der schwarzen Liste
-  private val ReplacementDatabaseDistributedNextTime = Instant.parse("3111-11-11T00:02:00Z")        // <order replacement="yes">
+  private[engine] val NowDatabaseDistributedNextTime         = Instant.parse("2000-01-01T00:00:00Z")        // Auftrag ist verteilt und ist sofort ausführbar
+  private[engine] val NeverDatabaseDistributedNextTime       = Instant.parse("3111-11-11T00:00:00Z")        // Auftrag ist verteilt, hat aber keine Startzeit (weil z.B. suspendiert)
+  private[engine] val BlacklistDatabaseDistributedNextTime   = Instant.parse("3111-11-11T00:01:00Z")        // Auftrag ist auf der schwarzen Liste
+  private[engine] val ReplacementDatabaseDistributedNextTime = Instant.parse("3111-11-11T00:02:00Z")        // <order replacement="yes">
 }

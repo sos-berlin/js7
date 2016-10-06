@@ -2,9 +2,9 @@ package com.sos.scheduler.engine.data.queries
 
 import com.sos.scheduler.engine.data.folder.FolderPath
 import com.sos.scheduler.engine.data.job.JobPath
-import com.sos.scheduler.engine.data.jobchain.JobChainPath
+import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import com.sos.scheduler.engine.data.order.OrderProcessingState.{NotPlanned, Setback}
-import com.sos.scheduler.engine.data.order.{OrderId, OrderSourceType}
+import com.sos.scheduler.engine.data.order.{OrderId, OrderProcessingState, OrderSourceType}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -16,14 +16,61 @@ import spray.json._
 @RunWith(classOf[JUnitRunner])
 final class OrderQueryTest extends FreeSpec {
 
+  "matches" - {
+    // See OnlyOrderQueryTest
+  }
+
   "orderKeyOption" in {
     assert(OrderQuery().orderKeyOption == None)
     assert(OrderQuery(orderIds = Some(Set(OrderId("1")))).orderKeyOption == None)
-    assert(OrderQuery(PathQuery(JobChainPath("/A"))).orderKeyOption == None)
-    assert(OrderQuery(PathQuery(JobChainPath("/A")), orderIds = Some(Set(OrderId("1")))).orderKeyOption ==
+    assert(OrderQuery(JobChainNodeQuery(JobChainQuery(PathQuery(JobChainPath("/A"))))).orderKeyOption == None)
+    assert(OrderQuery(JobChainNodeQuery(JobChainQuery(PathQuery(JobChainPath("/A")))), orderIds = Some(Set(OrderId("1")))).orderKeyOption ==
       Some(JobChainPath("/A") orderKey "1"))
-    assert(OrderQuery(PathQuery(JobChainPath("/A")), orderIds = Some(Set(OrderId("1"), OrderId("2")))).orderKeyOption == None)
+    assert(OrderQuery(JobChainNodeQuery(JobChainQuery(PathQuery(JobChainPath("/A")))), orderIds = Some(Set(OrderId("1"), OrderId("2")))).orderKeyOption == None)
   }
+
+  "toPathAndParameters" in {
+    check(
+      OrderQuery(),
+      "/" → Map())
+    check(
+      OrderQuery(JobChainNodeQuery(JobChainQuery(JobChainPath("/JOB_CHAIN")))),
+      "/JOB_CHAIN" → Map())
+    check(
+      OrderQuery(JobChainNodeQuery(JobChainQuery(JobChainPath("/JOB_CHAIN"), isDistributed = Some(true)))),
+      "/JOB_CHAIN" → Map("isDistributed" → "true"))
+    check(
+      OrderQuery(JobChainNodeQuery(
+        JobChainQuery(PathQuery[JobChainPath]("/JOB_CHAIN"), isDistributed = Some(true)),
+        jobPaths = Some(Set(JobPath("/A"), JobPath("/B"))),
+        nodeIds = Some(Set(NodeId("100"), NodeId("200")))),
+        orderIds = Some(Set(OrderId("1"), OrderId("2"))),
+        isSuspended = Some(true),
+        isSetback = Some(false),
+        isBlacklisted = Some(true),
+        isOrderSourceType = Some(Set(OrderSourceType.AdHoc, OrderSourceType.FileOrder)),
+        isOrderProcessingState = Some(Set(OrderProcessingState.NotPlanned.getClass, classOf[OrderProcessingState.Planned])),
+        orIsSuspended = true,
+        notInTaskLimitPerNode = Some(1000)),
+      "/JOB_CHAIN" → Map(
+        "isDistributed" → "true",
+        "jobPaths" → "/A,/B",
+        "nodeIds" → "100,200",
+        "orderIds" → "1,2",
+        "isSuspended" → "true",
+        "isSetback" → "false",
+        "isBlacklisted" → "true",
+        "isOrderSourceType" → "AdHoc,FileOrder",
+        "isOrderProcessingState" → "NotPlanned,Planned",
+        "orIsSuspended" → "true",
+        "notInTaskLimitPerNode" → "1000"))
+
+    def check(q: OrderQuery, pathAndParameters: (String, Map[String, String])): Unit = {
+      assert(q.toPathAndParameters == pathAndParameters)
+      assert(OrderQuery.pathAndParameterSerializable.fromPathAndParameters(pathAndParameters) == q)
+    }
+  }
+
 
   "JSON" - {
     "OrderQuery.All" in {
@@ -32,10 +79,13 @@ final class OrderQueryTest extends FreeSpec {
 
     "OrderQuery" in {
       check(OrderQuery(
-        jobChainPathQuery = PathQuery(FolderPath("/FOLDER")),
+        nodeQuery = JobChainNodeQuery(
+          JobChainQuery(
+            pathQuery = PathQuery(FolderPath("/FOLDER")),
+            isDistributed = Some(true)),
+          nodeIds = Some(Set(NodeId("100"), NodeId("200"))),
+          jobPaths = Some(Set(JobPath("/A"), JobPath("/B")))),
         orderIds = Some(Set(OrderId("A-ORDER-ID"), OrderId("B-ORDER-ID"))),
-        jobPaths = Some(Set(JobPath("/A"), JobPath("/B"))),
-        isDistributed = Some(true),
         isSuspended = Some(true),
         isSetback = Some(false),
         isBlacklisted = Some(false),
@@ -44,15 +94,19 @@ final class OrderQueryTest extends FreeSpec {
         notInTaskLimitPerNode = Some(1000)),
         """{
           "path": "/FOLDER/",
+          "isDistributed": true,
           "orderIds": [
             "A-ORDER-ID",
             "B-ORDER-ID"
+          ],
+          "nodeIds": [
+            "100",
+            "200"
           ],
           "jobPaths": [
             "/A",
             "/B"
           ],
-          "isDistributed": true,
           "isSuspended": true,
           "isSetback": false,
           "isBlacklisted": false,
@@ -62,10 +116,10 @@ final class OrderQueryTest extends FreeSpec {
         }""")
     }
 
-    "jobChainPathQuery" - {
+    "pathQuery" - {
       "Single JobChainPath" in {
         check(
-          OrderQuery(jobChainPathQuery = PathQuery(JobChainPath("/FOLDER/JOBCHAIN"))),
+          OrderQuery(JobChainNodeQuery(JobChainQuery(pathQuery = PathQuery(JobChainPath("/FOLDER/JOBCHAIN"))))),
           """{
             "path": "/FOLDER/JOBCHAIN"
           }""")
@@ -73,7 +127,7 @@ final class OrderQueryTest extends FreeSpec {
 
       "Folder, recursive" in {
         check(
-          OrderQuery(jobChainPathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = true)),
+          OrderQuery(JobChainNodeQuery(JobChainQuery(pathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = true)))),
           """{
             "path": "/FOLDER/"
           }""")
@@ -81,7 +135,7 @@ final class OrderQueryTest extends FreeSpec {
 
       "Folder, not recursive" in {
         check(
-          OrderQuery(jobChainPathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = false)),
+          OrderQuery(JobChainNodeQuery(JobChainQuery(pathQuery = PathQuery(FolderPath("/FOLDER"), isRecursive = false)))),
           """{
             "path": "/FOLDER/*"
           }""")

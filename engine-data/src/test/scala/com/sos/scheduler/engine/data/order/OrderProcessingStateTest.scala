@@ -27,9 +27,9 @@ final class OrderProcessingStateTest extends FreeSpec {
         "TYPE": "Planned",
         "at": "2016-08-01T11:22:33.444Z"
       }""")
-    addTest(Pending(Instant.parse("2016-08-01T11:22:33.444Z")),
+    addTest(Due(Instant.parse("2016-08-01T11:22:33.444Z")),
       """{
-        "TYPE": "Pending",
+        "TYPE": "Due",
         "at": "2016-08-01T11:22:33.444Z"
       }""")
     addTest(WaitingInTask(TaskId(123), ProcessClassPath("/TEST")),
@@ -61,9 +61,9 @@ final class OrderProcessingStateTest extends FreeSpec {
       """{
         "TYPE": "Blacklisted"
       }""")
-    addTest(WaitingForOther,
+    addTest(WaitingForResource,
       """{
-        "TYPE": "WaitingForOther"
+        "TYPE": "WaitingForResource"
       }""")
   }
 

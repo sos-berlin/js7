@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.data.event
 
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
 import spray.json._
 
 /**
@@ -39,6 +38,4 @@ object Snapshot {
       Snapshot(eventId, content.convertTo[A])
     }
   }
-
-  def unwrapJsArray(jsObject: JsObject): JsArray = jsObject.fields(ElementsJsonName).asJsArray
 }

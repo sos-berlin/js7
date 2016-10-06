@@ -11,12 +11,19 @@ import spray.json._
 @RunWith(classOf[JUnitRunner])
 final class OrderStatisticsTest extends FreeSpec {
 
+  "plus" in {
+    assert(
+      OrderStatistics(   1,    2,    3,    4,    5,    6,    7,    8,    9,   10,   11,   12) +
+      OrderStatistics(1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 1000, 1100, 1200) ==
+      OrderStatistics(1001, 2002, 3003, 4004, 5005, 6006, 7007, 8008, 9009, 1010, 1111, 1212))
+  }
+
   "JSON" in {
     val o = OrderStatistics(
       total = 1,
       notPlanned = 2,
       planned = 3,
-      pending = 4,
+      due = 4,
       running = 5,
       inTask = 6,
       inProcess = 7,
@@ -29,7 +36,7 @@ final class OrderStatisticsTest extends FreeSpec {
         "total": 1,
         "notPlanned": 2,
         "planned": 3,
-        "pending": 4,
+        "due": 4,
         "running": 5,
         "inTask": 6,
         "inProcess": 7,
@@ -41,5 +48,13 @@ final class OrderStatisticsTest extends FreeSpec {
       }""".parseJson
     assert(o.toJson == json)
     assert(json.convertTo[OrderStatistics] == o)
+  }
+
+  "Mutable +=" in {
+    val a = new OrderStatistics.Mutable
+    a += OrderStatistics(   1,    2,    3,    4,    5,    6,    7,    8,    9,   10,   11,   12)
+    a += OrderStatistics(1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 1000, 1100, 1200)
+    assert(a.toImmutable ==
+         OrderStatistics(1001, 2002, 3003, 4004, 5005, 6006, 7007, 8008, 9009, 1010, 1111, 1212))
   }
 }

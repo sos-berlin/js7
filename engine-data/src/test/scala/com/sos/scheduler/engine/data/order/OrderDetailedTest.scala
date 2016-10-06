@@ -43,7 +43,7 @@ final class OrderDetailedTest extends FreeSpec {
         "fileBasedState": "active",
         "sourceType": "AdHoc",
         "nodeId": "100",
-        "processingState": {
+        "orderProcessingState": {
           "TYPE": "InTaskProcess",
           "taskId": "123",
           "processClassPath": "/TEST",

@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.xmlcommands
 
+import com.sos.scheduler.engine.data.agent.AgentAddress
 import scala.collection.immutable
 
 /**
@@ -9,7 +10,7 @@ import scala.collection.immutable
  */
 final case class ProcessClassConfiguration(
   processMaximum: Option[Int] = None,
-  agentUris: immutable.Seq[String] = Nil,
+  agentUris: immutable.Seq[AgentAddress] = Nil,
   select: Option[String] = None,
   title: String = "")
 extends XmlCommand {
@@ -22,7 +23,7 @@ extends XmlCommand {
         case Seq(_) ⇒ xml.NodeSeq.Empty
         case _ ⇒
           <remote_schedulers select={select.orNull}>{
-            agentUris map { o ⇒ <remote_scheduler remote_scheduler={o}/> }
+            agentUris map { o ⇒ <remote_scheduler remote_scheduler={o.string}/> }
           }</remote_schedulers>
       }
     }</process_class>

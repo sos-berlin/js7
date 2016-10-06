@@ -3,13 +3,13 @@ package com.sos.scheduler.engine.agent.configuration
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration._
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
+import com.sos.scheduler.engine.base.convert.As
+import com.sos.scheduler.engine.base.convert.As.asAbsolutePath
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.configutils.Configs
 import com.sos.scheduler.engine.common.configutils.Configs._
-import com.sos.scheduler.engine.common.convert.As
-import com.sos.scheduler.engine.common.convert.As.asAbsolutePath
 import com.sos.scheduler.engine.common.internet.IP._
 import com.sos.scheduler.engine.common.process.Processes.ShellFileExtension
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -138,7 +138,7 @@ object AgentConfiguration {
   val InvalidAuthenticationDelay = 1.s
   private val DelayUntilFinishFile = EmptyPath  // Marker for finish
   private[configuration] lazy val DefaultsConfig = Configs.loadResource(
-    JavaResource("com/sos/scheduler/engine/agent/configuration/defaults.conf"))
+    JavaResource("com/sos/scheduler/engine/agent/configuration/agent.conf"))
 
   def apply(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
     fromDataDirectory(a.optionAs[Path]("-data-directory=")) withCommandLineArguments a
