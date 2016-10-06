@@ -49,4 +49,12 @@ final class OrderStatisticsTest extends FreeSpec {
     assert(o.toJson == json)
     assert(json.convertTo[OrderStatistics] == o)
   }
+
+  "Mutable +=" in {
+    val a = new OrderStatistics.Mutable
+    a += OrderStatistics(   1,    2,    3,    4,    5,    6,    7,    8,    9,   10,   11,   12)
+    a += OrderStatistics(1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 1000, 1100, 1200)
+    assert(a.toImmutable ==
+         OrderStatistics(1001, 2002, 3003, 4004, 5005, 6006, 7007, 8008, 9009, 1010, 1111, 1212))
+  }
 }

@@ -70,6 +70,21 @@ object OrderStatistics {
     var permanent: Int = 0,
     var fileOrder: Int = 0)
   {
+    def +=(o: OrderStatistics) = {
+      total       += o.total
+      notPlanned  += o.notPlanned
+      planned     += o.planned
+      due         += o.due
+      running     += o.running
+      inTask      += o.inTask
+      inProcess   += o.inProcess
+      setback     += o.setback
+      suspended   += o.suspended
+      blacklisted += o.blacklisted
+      permanent   += o.permanent
+      fileOrder   += o.fileOrder
+    }
+
     def toImmutable = OrderStatistics(
       total = total,
       notPlanned = notPlanned,
