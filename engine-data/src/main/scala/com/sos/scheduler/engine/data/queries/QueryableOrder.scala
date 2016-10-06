@@ -18,6 +18,16 @@ trait QueryableOrder {
 }
 
 object QueryableOrder {
+  final case class Standard(
+    orderKey: OrderKey,
+    nodeId: NodeId,
+    sourceType: OrderSourceType,
+    isSetback: Boolean,
+    isBlacklisted: Boolean,
+    isSuspended: Boolean,
+    orderProcessingStateClass: Class[_ <: OrderProcessingState])
+  extends QueryableOrder
+
   @TestOnly
   final case class ForTest(
     orderKey: OrderKey,
