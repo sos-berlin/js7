@@ -18,7 +18,7 @@ import spray.json.RootJsonFormat
 final case class OrderOverview(
   path: OrderKey,
   fileBasedState: FileBasedState,
-  sourceType: OrderSourceType,
+  orderSourceType: OrderSourceType,
   nodeId: NodeId,
   orderProcessingState: OrderProcessingState,
   historyId: Option[OrderHistoryId] = None,

@@ -10,7 +10,7 @@ import org.jetbrains.annotations.TestOnly
 trait QueryableOrder {
   def orderKey: OrderKey
   def nodeId: NodeId
-  def sourceType: OrderSourceType
+  def orderSourceType: OrderSourceType
   def isSuspended: Boolean
   def isSetback: Boolean
   def isBlacklisted: Boolean
@@ -21,7 +21,7 @@ object QueryableOrder {
   final case class Standard(
     orderKey: OrderKey,
     nodeId: NodeId,
-    sourceType: OrderSourceType,
+    orderSourceType: OrderSourceType,
     isSetback: Boolean,
     isBlacklisted: Boolean,
     isSuspended: Boolean,
@@ -32,7 +32,7 @@ object QueryableOrder {
   final case class ForTest(
     orderKey: OrderKey,
     nodeId: NodeId,
-    sourceType: OrderSourceType = OrderSourceType.AdHoc,
+    orderSourceType: OrderSourceType = OrderSourceType.AdHoc,
     isSetback: Boolean = false,
     isBlacklisted: Boolean = false,
     isSuspended: Boolean = false,

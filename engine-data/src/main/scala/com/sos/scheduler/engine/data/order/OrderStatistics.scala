@@ -11,7 +11,7 @@ final case class OrderStatistics(
   notPlanned: Int,
   planned: Int,
   due: Int,
-  running: Int,
+  started: Int,
   inTask: Int,
   inProcess: Int,
   setback: Int,
@@ -25,7 +25,7 @@ final case class OrderStatistics(
     notPlanned = notPlanned + o.notPlanned,
     planned = planned + o.planned,
     due = due + o.due,
-    running = running + o.running,
+    started = started + o.started,
     inTask = inTask + o.inTask,
     inProcess = inProcess + o.inProcess,
     setback = setback + o.setback,
@@ -39,7 +39,7 @@ final case class OrderStatistics(
       format("notPlanned", notPlanned),
       format("planned", planned),
       format("due", due),
-      format("running", running),
+      format("started", started),
       format("inTask", inTask),
       format("inProcess", inProcess),
       format("setback", setback),
@@ -75,7 +75,7 @@ object OrderStatistics {
       notPlanned  += o.notPlanned
       planned     += o.planned
       due         += o.due
-      running     += o.running
+      running     += o.started
       inTask      += o.inTask
       inProcess   += o.inProcess
       setback     += o.setback
@@ -90,7 +90,7 @@ object OrderStatistics {
       notPlanned = notPlanned,
       planned = planned,
       due = due,
-      running = running,
+      started = running,
       inTask = inTask,
       inProcess = inProcess,
       setback = setback,

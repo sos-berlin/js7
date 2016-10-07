@@ -25,7 +25,7 @@ trait OnlyOrderQuery {
     (isSuspended forall { _ == o.isSuspended }) &&
     (isSetback forall { _ == o.isSetback }) &&
     (isBlacklisted forall { _ == o.isBlacklisted }) &&
-    (isOrderSourceType forall { _ contains o.sourceType }) &&
+    (isOrderSourceType forall { _ contains o.orderSourceType }) &&
     ((isOrderProcessingState forall { _ exists { _ isAssignableFrom o.orderProcessingStateClass }})
       || orIsSuspended && o.isSuspended) &&
     (jobPaths forall { set ⇒ jobPathOption exists set.contains })
