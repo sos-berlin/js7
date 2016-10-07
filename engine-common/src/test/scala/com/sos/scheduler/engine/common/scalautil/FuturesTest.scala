@@ -36,11 +36,11 @@ final class FuturesTest extends FreeSpec {
   }
 
 
-  "withThisStackTrace failure exception is extended with future's creation stack trace" in {
+  "appendCurrentStackTrace failure exception is extended with future's creation stack trace" in {
     val future = Future[Int] { throw new TestException }
     Await.ready(future, 2.seconds)
     assert(!stackTraceContainsCreationsStackTrace { future.value.get.get })
-    val f = future.withThisStackTrace
+    val f = future.appendCurrentStackTrace
     Await.ready(f, 2.seconds)
     assert(stackTraceContainsCreationsStackTrace { f.value.get.get })
   }

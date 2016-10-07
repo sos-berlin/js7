@@ -1,7 +1,8 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.scheduler.engine.base.utils
 
-import com.sos.scheduler.engine.common.scalautil.Tries.ModifiedStackTraceTry
-import com.sos.scheduler.engine.common.scalautil.TriesTest._
+
+import com.sos.scheduler.engine.base.utils.StackTraces._
+import com.sos.scheduler.engine.base.utils.StackTracesTest._
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -11,7 +12,7 @@ import scala.util.Try
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TriesTest extends FreeSpec {
+final class StackTracesTest extends FreeSpec {
 
   "withThisSackTrace extends possible failures stack strace with own stack trace" in {
     val t = Try[Unit] { throw new TestException }
@@ -25,8 +26,8 @@ final class TriesTest extends FreeSpec {
   private class TestException extends Exception
 }
 
-private object TriesTest {
+private object StackTracesTest {
   private class MyTest {
-    def f[A](t: Try[A]) = t.withThisStackTrace
+    def f[A](t: Try[A]) = t.appendCurrentStackTrace
   }
 }

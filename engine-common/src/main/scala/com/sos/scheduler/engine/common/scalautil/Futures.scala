@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.Tries.{extendStackTraceWith, newStackTrace}
+import com.sos.scheduler.engine.base.utils.StackTraces._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
 import java.util.concurrent.TimeoutException
@@ -51,28 +51,21 @@ object Futures {
        */
       def successValue: A = delegate.value match {
         case Some(Success(o)) ⇒ o
-        case Some(Failure(t)) ⇒
-          extendStackTraceWith(t, newStackTrace())
-          throw t
+        case Some(Failure(t)) ⇒ throw t.appendCurrentStackTrace
         case None ⇒ throw new FutureNotSucceededException
       }
 
       /**
-       * Returns a new Future with the own stack trace added in case of failure of the original Future.
+       * Returns a new Future with the current stack trace added in case of failure of the original Future.
        */
-      def withThisStackTrace(implicit ec: ExecutionContext): Future[A] = {
+      def appendCurrentStackTrace: Future[A] = {
         val callersStackTrace = newStackTrace()
-        delegate recoverWith {
-          case t ⇒
-            extendStackTraceWith(t, callersStackTrace)
-            Future.failed[A](t)
-        }
+        delegate.recoverWith {
+          case t ⇒ Future.failed[A](t.appendStackTrace(callersStackTrace))
+        } (SynchronousExecutionContext)
       }
 
       def await(duration: Duration) = Await.ready(delegate, duration.toFiniteDuration).successValue
-
-      def awaitWithStackTrace(duration: Duration) =
-        Await.ready(delegate, duration.toFiniteDuration).successValue
     }
 
     implicit class RichFutures[A](val delegate: Iterable[Future[A]]) extends AnyVal {

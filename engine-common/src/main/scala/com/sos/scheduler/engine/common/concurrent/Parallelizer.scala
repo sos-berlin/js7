@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.concurrent
 
+import com.sos.scheduler.engine.base.utils.StackTraces._
 import com.sos.scheduler.engine.common.concurrent.Parallelizer._
-import com.sos.scheduler.engine.common.scalautil.Tries._
 import com.sos.scheduler.engine.common.time.ScalaTime.RichDuration
 import java.time.Duration
 import java.util.concurrent.TimeUnit.MILLISECONDS
@@ -62,9 +62,7 @@ abstract class Parallelizer[A](parallelization: Int, timeout: Duration)(implicit
         case Success(o) ⇒
           processResult(o)
           processCompletions()
-        case Failure(t) ⇒
-          extendStackTraceWith(t, newStackTrace())
-          throw t
+        case Failure(t) ⇒ throw t.appendCurrentStackTrace
       }
     }
   }
