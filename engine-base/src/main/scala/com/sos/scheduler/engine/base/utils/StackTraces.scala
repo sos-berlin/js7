@@ -12,7 +12,7 @@ object StackTraces {
     * Modifies the original `Try` if it is a `Failure`.
     */
   implicit class StackTraceTry[A](val delegate: Try[A]) extends AnyVal {
-    def appendCurrentStackTrace: delegate.type = {
+    def appendCurrentStackTrace = {
       delegate match {
         case Failure(t) ⇒ t.appendStackTrace(newStackTrace())
         case o ⇒ o

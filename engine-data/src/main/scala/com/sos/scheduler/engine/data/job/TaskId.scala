@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.data.job
 
-import com.fasterxml.jackson.annotation.JsonCreator
 import com.sos.scheduler.engine.base.generic.GenericInt
 import com.sos.scheduler.engine.cplusplus.runtime.annotation.ForCpp
 import scala.annotation.meta.getter
@@ -23,8 +22,6 @@ object TaskId extends GenericInt.Companion[TaskId] {
   // TaskId(1) is not used
   val SchedulerStart = TaskId(2)  // Misused for JobScheduler start database record. This number only with a new database.
   val First = TaskId(3)  // TaskId of the first Task with a new database
-
-  @JsonCreator def jsonCreator(taskId: Int) = new TaskId(taskId)
 
   implicit object MyJsonFormat extends JsonFormat[TaskId] {
     def read(jsValue: JsValue): TaskId = jsValue match {

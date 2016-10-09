@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.data.order
 
-import com.fasterxml.jackson.annotation.{JsonCreator, JsonProperty}
 import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 
@@ -34,10 +33,7 @@ object OrderKey extends TypedPath.Companion[OrderKey] {
     apply(o.substring(0, i), o.substring(i + 1))
   }
 
-  @JsonCreator
-  def apply(
-      @JsonProperty("jobChainPath") jobChainPath: String,
-      @JsonProperty("id") id: String): OrderKey =
+  def apply(jobChainPath: String, id: String): OrderKey =
     OrderKey(JobChainPath(jobChainPath), OrderId(id))
 
   def of(jobChainPath: String, id: String): OrderKey =
