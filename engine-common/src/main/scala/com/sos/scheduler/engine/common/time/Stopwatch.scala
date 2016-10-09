@@ -31,14 +31,14 @@ object Stopwatch {
     result
   }
 
-  def measureTime(n: Int, itemName: String)(body: ⇒ Unit): Result = {
+  def measureTime(n: Int, itemName: String, linePrefix: String = "")(body: ⇒ Unit): Result = {
     body  // Warm-up
     val start = nanoTime()
     for (_ ← 1 to n) body
     val duration = Duration.ofNanos(nanoTime() - start)
-    val r = Result(n, itemName, duration)
-    logger.info(r.toString)
-    r
+    val result = Result(n, itemName, duration)
+    logger.info(s"$linePrefix$result")
+    result
   }
 
   final case class Result(n: Int, itemName: String, totalDuration: Duration) {
