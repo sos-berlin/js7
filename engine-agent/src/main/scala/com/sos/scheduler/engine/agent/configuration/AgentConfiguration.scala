@@ -78,11 +78,13 @@ final case class AgentConfiguration(
 
   private def inetSocketAddressToHttps(addr: InetSocketAddress) = WebServerBinding.Https(
     addr,
-    https map { _.keystoreReference } getOrElse
+    https map { _.keystoreReference } getOrElse {
+      val sub = config.getConfig("jobscheduler.agent.https.keystore")
       KeystoreReference(
-        (privateDirectory / "private-https.jks").toUri.toURL,
-        storePassword = config.optionAs[SecretString]("jobscheduler.agent.https.keystore.password"),
-        keyPassword = Some(config.as[SecretString]("jobscheduler.agent.https.keystore.password"))))
+        url = sub.as[Path]("file", privateDirectory / "private-https.jks").toURI.toURL ,
+        storePassword = sub.optionAs[SecretString]("password"),
+        keyPassword = Some(sub.as[SecretString]("key-password")))
+    })
 
   def withWebService[A <: ExternalWebService : ClassTag] = withWebServices(List(implicitClass[A]))
 
