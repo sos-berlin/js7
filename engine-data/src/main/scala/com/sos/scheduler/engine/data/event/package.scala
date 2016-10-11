@@ -13,6 +13,7 @@ package object event {
   object EventId {
     val BeforeFirst: EventId = 0
     val IdsPerMillisecond = 1000
+    private[event] val JsonMaxValue = EventId(0x20000000000000L)  // =2^53 == 9007199254740992L
 
     def apply(eventId: String) = eventId.toLong
 
