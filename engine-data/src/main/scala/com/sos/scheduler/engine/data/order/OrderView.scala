@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.data.order
 import com.sos.scheduler.engine.data.filebased.HasPath
 import com.sos.scheduler.engine.data.jobchain.NodeKey
 import com.sos.scheduler.engine.data.scheduler.ClusterMemberId
-import spray.json._
+import spray.json.RootJsonFormat
 
 /**
   * @author Joacim Zschimmer

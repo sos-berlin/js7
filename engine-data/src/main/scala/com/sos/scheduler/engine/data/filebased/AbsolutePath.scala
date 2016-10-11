@@ -3,7 +3,6 @@ package com.sos.scheduler.engine.data.filebased
 import com.sos.scheduler.engine.base.generic.IsString
 import com.sos.scheduler.engine.data.filebased.AbsolutePath._
 import com.sos.scheduler.engine.data.folder.FolderPath
-import org.jetbrains.annotations.TestOnly
 
 trait AbsolutePath extends IsString {
 
@@ -15,6 +14,7 @@ trait AbsolutePath extends IsString {
     string lastIndexOf '/' match {
       case 0 if string == "/" ⇒ throw new IllegalStateException("Root path has not parent folder")
       case 0 ⇒ FolderPath.Root
+      case -1 ⇒ FolderPath.Root // In case of ProcessClass.Default (the empty string)
       case n ⇒ FolderPath(string.substring(0, n))
     }
 

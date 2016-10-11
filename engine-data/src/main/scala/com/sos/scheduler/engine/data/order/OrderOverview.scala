@@ -44,9 +44,11 @@ extends OrderView with QueryableOrder {
 }
 
 object OrderOverview extends OrderView.Companion[OrderOverview] {
-  private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
-  private implicit val OrderSourceTypeJsonFormat = OrderSourceType.MyJsonFormat
-  implicit val jsonFormat: RootJsonFormat[OrderOverview] = lazyRootFormat(jsonFormat9(apply))
+  implicit val jsonFormat: RootJsonFormat[OrderOverview] = {
+    implicit val a = FileBasedState.MyJsonFormat
+    implicit val b = OrderSourceType.MyJsonFormat
+    lazyRootFormat(jsonFormat9(apply))
+  }
 
   implicit val ordering: Ordering[OrderOverview] = Ordering by { o ⇒ (o.orderKey.jobChainPath, o.nodeId, o.orderKey.id) }
 
