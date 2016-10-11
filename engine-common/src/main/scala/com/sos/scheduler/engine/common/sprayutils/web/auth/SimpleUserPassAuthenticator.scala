@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.web.auth
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.auth.{Account, SimpleAccount, UserAndPassword}
 import scala.concurrent.Future
-import spray.routing.authentication.{UserPass, _}
+import spray.routing.authentication._
 
 /**
   * @author Joacim Zschimmer
