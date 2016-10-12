@@ -1,9 +1,9 @@
 package com.sos.scheduler.engine.agent.web.test
 
 import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
-import com.sos.scheduler.engine.agent.web.auth.UnknownUserPassAuthenticator
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.scalautil.HasCloser
+import com.sos.scheduler.engine.common.sprayutils.web.auth.UnknownUserPassAuthenticator
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._
 import spray.testkit.ScalatestRouteTest

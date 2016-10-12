@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.agent.web.auth
+package com.sos.scheduler.engine.common.sprayutils.web.auth
 
 import com.sos.scheduler.engine.common.auth.{Account, UnknownAccount}
 import scala.concurrent.Future
-import spray.routing.authentication.{UserPass, _}
+import spray.routing.authentication._
 
 /**
   * Returns `UnknownAccount` for requests with or without credentials.

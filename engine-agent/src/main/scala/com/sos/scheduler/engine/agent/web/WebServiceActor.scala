@@ -87,18 +87,18 @@ private[web] object WebServiceActor {
     agentConfiguration: AgentConfiguration,
     executionContext: ExecutionContext)
   {
-      def apply(authenticator: UserPassAuthenticator[Account]) =
-        new WebServiceActor(
-          injector,
-          commandExecutor,
-          tunnelServer,
-          agentOverviewProvider,
-          taskHandlerView,
-          commandHandler,
-          timerService,
-          extraWebServices,
-          agentConfiguration,
-          executionContext,
-          authenticator)
+    def apply(authenticator: UserPassAuthenticator[Account]) =
+      new WebServiceActor(
+        injector,
+        commandExecutor,
+        tunnelServer,
+        agentOverviewProvider,
+        taskHandlerView,
+        commandHandler,
+        timerService,
+        extraWebServices,
+        agentConfiguration,
+        executionContext,
+        authenticator)
   }
 }

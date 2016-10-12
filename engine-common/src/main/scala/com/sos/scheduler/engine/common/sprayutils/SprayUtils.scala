@@ -1,9 +1,14 @@
 package com.sos.scheduler.engine.common.sprayutils
 
-import shapeless.{::, HNil}
+import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import java.time.Duration
+import scala.concurrent._
+import shapeless.HNil
 import spray.http.HttpHeaders.Accept
 import spray.http.{MediaType, StatusCode}
 import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
+import spray.routing.AuthenticationFailedRejection.CredentialsRejected
 import spray.routing.Directives._
 import spray.routing._
 
@@ -11,6 +16,7 @@ import spray.routing._
   * @author Joacim Zschimmer
   */
 object SprayUtils {
+  private val logger = Logger(getClass)
 
   object implicits {
     implicit class RichOption[A](val delegate: Option[A]) extends AnyVal {
@@ -39,7 +45,8 @@ object SprayUtils {
   /**
     * Passes x iff argument is Some(x).
     */
-  def passSome[A](option: Option[A]): Directive1[A] =
+  def passSome[A](option: Option[A]): Directive1[A] = {
+    import shapeless.::
     new Directive1[A] {
       def happly(inner: (A :: HNil) ⇒ Route) =
         option match {
@@ -47,6 +54,7 @@ object SprayUtils {
           case None ⇒ reject
         }
     }
+  }
 
   /**
     * Passes x iff argument is true.
@@ -58,6 +66,17 @@ object SprayUtils {
       else
         reject
     }
+
+  def failIfCredentialsRejected(delay: Duration)(implicit ec: ExecutionContext) = RejectionHandler {
+    case rejections @ AuthenticationFailedRejection(CredentialsRejected, headers) :: _  ⇒
+      detach(()) {
+        logger.warn(s"HTTP request with invalid authentication rejected")
+        blocking {
+          sleep(delay)
+        }
+        RejectionHandler.Default(rejections)
+      }
+  }
 
 /*
   private type ParameterMap = Map[String, String]

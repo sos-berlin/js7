@@ -6,13 +6,11 @@ import com.sos.scheduler.engine.agent.web.common.RouteBuilder._
 import com.sos.scheduler.engine.common.auth.Account
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichSeq
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.sprayutils.SprayUtils.failIfCredentialsRejected
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, blocking}
-import spray.routing.AuthenticationFailedRejection.CredentialsRejected
 import spray.routing.Directives._
-import spray.routing.authentication.{BasicAuth, _}
-import spray.routing.{AuthenticationFailedRejection, RejectionHandler, Route}
+import spray.routing.Route
+import spray.routing.authentication._
 
 /**
   * @author Joacim Zschimmer
@@ -69,7 +67,7 @@ final class RouteBuilder extends Mutable {
   {
     implicit val executionContext = actorRefFactory.dispatcher
     val apiRoute =
-      handleRejections(failIfCredentialsRejected) {
+      handleRejections(failIfCredentialsRejected(InvalidAuthenticationDelay)) {
         authenticate(BasicAuth(authenticator, realm = Realm)) { _ ⇒
           toRoute(apiRoutes)
         }
@@ -99,17 +97,6 @@ object RouteBuilder {
   private val PackageName = getClass.getPackage.getName
 
   private def possiblyEmptyPathPrefix(uriPathPrefix: String) = if (uriPathPrefix.isEmpty) pass else pathPrefix(separateOnSlashes(uriPathPrefix))
-
-  private def failIfCredentialsRejected(implicit ec: ExecutionContext) = RejectionHandler {
-    case rejections @ AuthenticationFailedRejection(CredentialsRejected, headers) :: _ ⇒
-      detach(()) {
-        logger.warn(s"HTTP request with invalid authentication rejected")
-        blocking {
-          sleep(InvalidAuthenticationDelay)
-        }
-        RejectionHandler.Default(rejections)
-      }
-  }
 
   private def callerMethodString(methodName: String): String =
     new Exception().getStackTrace.toIterator.map { _.toString }

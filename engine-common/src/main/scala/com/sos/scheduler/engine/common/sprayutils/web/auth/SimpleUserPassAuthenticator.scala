@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.web.auth
+package com.sos.scheduler.engine.common.sprayutils.web.auth
 
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.auth.{Account, SimpleAccount, UserAndPassword}

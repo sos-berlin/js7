@@ -3,10 +3,10 @@ package com.sos.scheduler.engine.agent.web
 import akka.actor.ActorSystem
 import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.web.auth.{SimpleUserPassAuthenticator, UnknownUserPassAuthenticator}
 import com.sos.scheduler.engine.common.auth.UserAndPassword
 import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
 import com.sos.scheduler.engine.common.sprayutils.web.SprayWebServer
+import com.sos.scheduler.engine.common.sprayutils.web.auth.{SimpleUserPassAuthenticator, UnknownUserPassAuthenticator}
 import javax.inject.{Inject, Provider, Singleton}
 import scala.concurrent.ExecutionContext
 
