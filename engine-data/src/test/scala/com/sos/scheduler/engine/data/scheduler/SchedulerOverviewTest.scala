@@ -6,7 +6,7 @@ import java.time.Instant
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import spray.json.{pimpAny, pimpString}
+import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -19,8 +19,9 @@ final class SchedulerOverviewTest extends FreeSpec {
       version = "0.0",
       startedAt = Instant.parse("2016-07-13T01:02:03.004Z"),
       SchedulerId("SCHEDULER-ID"),
-      httpPort = Some(4444),
-      udpPort = Some(5555),
+      httpPort = Some("127.0.0.1:4444"),
+      httpsPort = Some("0.0.0.0:5555"),
+      udpPort = Some(6666),
       pid = 77,
       SchedulerState.running,
       system = SystemInformation(hostname = "TEST-HOSTNAME"),
@@ -31,8 +32,9 @@ final class SchedulerOverviewTest extends FreeSpec {
       "version": "0.0",
       "startedAt": "2016-07-13T01:02:03.004Z",
       "schedulerId": "SCHEDULER-ID",
-      "httpPort": 4444,
-      "udpPort": 5555,
+      "httpPort": "127.0.0.1:4444",
+      "httpsPort": "0.0.0.0:5555",
+      "udpPort": 6666,
       "pid": 77,
       "state": "running",
       "java": {

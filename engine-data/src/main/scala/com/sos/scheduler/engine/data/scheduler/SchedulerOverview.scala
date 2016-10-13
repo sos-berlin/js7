@@ -11,7 +11,8 @@ final case class SchedulerOverview(
   version: String,
   startedAt: Instant,
   schedulerId: SchedulerId,
-  httpPort: Option[Int],
+  httpPort: Option[String],
+  httpsPort: Option[String],
   udpPort: Option[Int],
   pid: Int,
   state: SchedulerState,
@@ -19,5 +20,5 @@ final case class SchedulerOverview(
   java: JavaInformation)
 
 object SchedulerOverview {
-  implicit val MyJsonFormat = jsonFormat9(apply)
+  implicit val MyJsonFormat = jsonFormat10(apply)
 }
