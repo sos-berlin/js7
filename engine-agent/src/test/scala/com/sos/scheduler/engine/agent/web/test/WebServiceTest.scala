@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.agent.web.test
 import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.sprayutils.web.auth.UnknownUserPassAuthenticator
+import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._
 import spray.testkit.ScalatestRouteTest
@@ -22,5 +22,5 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
 
   override protected def afterAll() = closer.close()
 
-  protected lazy val route = buildRoute(UnknownUserPassAuthenticator)
+  protected lazy val route = buildRoute(GateKeeper.forTest)
 }

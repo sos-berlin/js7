@@ -1,16 +1,13 @@
 package com.sos.scheduler.engine.agent.web.common
 
 import akka.actor.ActorRefFactory
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
 import com.sos.scheduler.engine.agent.web.common.RouteBuilder._
-import com.sos.scheduler.engine.common.auth.Account
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichSeq
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.failIfCredentialsRejected
+import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
 import scala.collection.mutable
 import spray.routing.Directives._
 import spray.routing.Route
-import spray.routing.authentication._
 
 /**
   * @author Joacim Zschimmer
@@ -62,15 +59,13 @@ final class RouteBuilder extends Mutable {
     unauthenticatedApiRoutes ++= o.unauthenticatedApiRoutes
   }
 
-  def buildRoute(authenticator: UserPassAuthenticator[Account], uriPathPrefix: String)
+  def buildRoute(gateKeeper: GateKeeper, uriPathPrefix: String)
     (implicit actorRefFactory: ActorRefFactory): Route =
   {
     implicit val executionContext = actorRefFactory.dispatcher
     val apiRoute =
-      handleRejections(failIfCredentialsRejected(InvalidAuthenticationDelay)) {
-        authenticate(BasicAuth(authenticator, realm = Realm)) { _ ⇒
-          toRoute(apiRoutes)
-        }
+      gateKeeper.allows {
+        toRoute(apiRoutes)
       } ~
         toRoute(unauthenticatedApiRoutes)
 
@@ -93,7 +88,6 @@ final class RouteBuilder extends Mutable {
 
 object RouteBuilder {
   private val logger = Logger(getClass)
-  private val Realm = "JobScheduler Agent"
   private val PackageName = getClass.getPackage.getName
 
   private def possiblyEmptyPathPrefix(uriPathPrefix: String) = if (uriPathPrefix.isEmpty) pass else pathPrefix(separateOnSlashes(uriPathPrefix))

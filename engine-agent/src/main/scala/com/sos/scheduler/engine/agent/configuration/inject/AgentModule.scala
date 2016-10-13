@@ -8,10 +8,8 @@ import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.{StandardAgentTaskFactory, TaskHandler}
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.{EncodedPasswordValidator, UserAndPassword}
-import com.sos.scheduler.engine.common.configutils.Configs._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
+import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
@@ -29,9 +27,9 @@ extends AbstractModule {
 
   protected def configure() = {}
 
-  @Provides  // Lazy, not (eager) @Singleton. Only HTTPS needs this - and requires passwords.conf.
-  def passwordValidator(conf: AgentConfiguration): UserAndPassword ⇒ Boolean =
-    new EncodedPasswordValidator(conf.authUsersConfig.optionAs[SecretString])
+  @Provides @Singleton
+  def provideGateKeeperConfiguration(config: Config): GateKeeper.Configuration =
+    GateKeeper.Configuration.fromSubConfig(config.getConfig("jobscheduler.agent.auth"))
 
   @Provides @Singleton
   def extraWebServices(agentConfiguration: AgentConfiguration, injector: Injector): immutable.Seq[ExternalWebService] =

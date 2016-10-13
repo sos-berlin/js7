@@ -9,3 +9,9 @@ trait Account {
   /** The user ID **/
   def id: String
 }
+
+object Account {
+  object Unknown extends Account {
+    def id = "UnknownAccount"
+  }
+}

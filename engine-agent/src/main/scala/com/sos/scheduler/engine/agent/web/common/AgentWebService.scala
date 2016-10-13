@@ -1,10 +1,9 @@
 package com.sos.scheduler.engine.agent.web.common
 
 import akka.actor.ActorRefFactory
-import com.sos.scheduler.engine.common.auth.Account
+import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
 import spray.http.Uri.Path
 import spray.routing._
-import spray.routing.authentication._
 
 /**
  * Standard trait for Agent web services.
@@ -21,6 +20,6 @@ trait AgentWebService extends AgentExceptionHandler {
   protected final def agentPath = Path(s"$prefixPath/jobscheduler/agent")
   protected final val routeBuilder = new RouteBuilder
 
-  final def buildRoute(authenticator: UserPassAuthenticator[Account])(implicit actorRefFactory: ActorRefFactory): Route =
-    routeBuilder.buildRoute(authenticator, uriPathPrefix = uriPathPrefix)
+  final def buildRoute(gateKeeper: GateKeeper)(implicit actorRefFactory: ActorRefFactory): Route =
+    routeBuilder.buildRoute(gateKeeper, uriPathPrefix = uriPathPrefix)
 }

@@ -10,9 +10,9 @@ import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
-import com.sos.scheduler.engine.common.auth.Account
 import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
@@ -21,14 +21,13 @@ import javax.inject.{Inject, Provider, Singleton}
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext
 import spray.routing._
-import spray.routing.authentication.UserPassAuthenticator
 
 /**
  * @author Joacim Zschimmer
  */
 // An Actor must not be a @Singleton!
 final private class WebServiceActor private(
-  injector: Injector,
+  gateKeeper: GateKeeper,
   commandExecutor: CommandExecutor,
   tunnelServer: TunnelServer,
   agentOverviewProvider: Provider[AgentOverview],
@@ -38,7 +37,7 @@ final private class WebServiceActor private(
   extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,
   implicit protected val executionContext: ExecutionContext,
-  protected val authenticator: UserPassAuthenticator[Account])
+  injector: Injector)
 extends HttpServiceActor
 with TimerWebService
 with CommandWebService
@@ -50,6 +49,7 @@ with CommandViewWebService
 with NoJobSchedulerEngineWebService
 {
   protected val uriPathPrefix = agentConfiguration.uriPathPrefix
+
   protected def commandHandlerOverview = commandHandler
   protected def commandRunOverviews = commandHandler.commandRuns
   protected def executeCommand(command: Command, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
@@ -65,18 +65,17 @@ with NoJobSchedulerEngineWebService
     routeBuilder ++= o.routeBuilder
   }
 
-  def receive = runRoute(buildRoute(authenticator))
+  def receive = runRoute(buildRoute(gateKeeper))
 }
 
 private[web] object WebServiceActor {
   private val logger = Logger(getClass)
 
-  private[web] def props(injector: Injector, authenticator: UserPassAuthenticator[Account]) =
-    Props { injector.instance[Factory].apply(authenticator) }
+  private[web] def props(gateKeeper: GateKeeper, injector: Injector) =
+    Props { injector.instance[Factory].apply(gateKeeper) }
 
   @Singleton
   private class Factory @Inject private(
-    injector: Injector,
     commandExecutor: CommandExecutor,
     tunnelServer: TunnelServer,
     agentOverviewProvider: Provider[AgentOverview],
@@ -85,11 +84,12 @@ private[web] object WebServiceActor {
     timerService: TimerService,
     extraWebServices: immutable.Seq[ExternalWebService],
     agentConfiguration: AgentConfiguration,
-    executionContext: ExecutionContext)
+    executionContext: ExecutionContext,
+    injector: Injector)
   {
-    def apply(authenticator: UserPassAuthenticator[Account]) =
+    def apply(gateKeeper: GateKeeper) =
       new WebServiceActor(
-        injector,
+        gateKeeper,
         commandExecutor,
         tunnelServer,
         agentOverviewProvider,
@@ -99,6 +99,6 @@ private[web] object WebServiceActor {
         extraWebServices,
         agentConfiguration,
         executionContext,
-        authenticator)
+        injector)
   }
 }

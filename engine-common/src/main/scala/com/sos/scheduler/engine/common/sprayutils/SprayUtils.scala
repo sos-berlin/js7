@@ -1,14 +1,10 @@
 package com.sos.scheduler.engine.common.sprayutils
 
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import java.time.Duration
-import scala.concurrent._
 import shapeless.HNil
 import spray.http.HttpHeaders.Accept
 import spray.http.{MediaType, StatusCode}
 import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
-import spray.routing.AuthenticationFailedRejection.CredentialsRejected
 import spray.routing.Directives._
 import spray.routing._
 
@@ -66,17 +62,6 @@ object SprayUtils {
       else
         reject
     }
-
-  def failIfCredentialsRejected(delay: Duration)(implicit ec: ExecutionContext) = RejectionHandler {
-    case rejections @ AuthenticationFailedRejection(CredentialsRejected, headers) :: _  ⇒
-      detach(()) {
-        logger.warn(s"HTTP request with invalid authentication rejected")
-        blocking {
-          sleep(delay)
-        }
-        RejectionHandler.Default(rejections)
-      }
-  }
 
 /*
   private type ParameterMap = Map[String, String]

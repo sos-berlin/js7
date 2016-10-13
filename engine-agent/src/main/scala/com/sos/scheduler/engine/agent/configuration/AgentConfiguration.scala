@@ -133,8 +133,6 @@ final case class AgentConfiguration(
       case Some(data) ⇒ data / "tmp"
       case None ⇒ logDirectory  // Usage of logDirectory is compatible with v1.10.4
   }
-
-  lazy val authUsersConfig: Config = config.getConfig("jobscheduler.agent.auth.users")
 }
 
 object AgentConfiguration {

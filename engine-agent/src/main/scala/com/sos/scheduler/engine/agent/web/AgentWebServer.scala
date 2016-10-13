@@ -3,11 +3,10 @@ package com.sos.scheduler.engine.agent.web
 import akka.actor.ActorSystem
 import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.common.auth.UserAndPassword
 import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
 import com.sos.scheduler.engine.common.sprayutils.web.SprayWebServer
-import com.sos.scheduler.engine.common.sprayutils.web.auth.{SimpleUserPassAuthenticator, UnknownUserPassAuthenticator}
-import javax.inject.{Inject, Provider, Singleton}
+import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 
 /**
@@ -16,7 +15,7 @@ import scala.concurrent.ExecutionContext
 @Singleton
 final class AgentWebServer @Inject private(
   conf: AgentConfiguration,
-  passwordValidatorProvider: Provider[UserAndPassword ⇒ Boolean],
+  gateKeeperConfiguration: GateKeeper.Configuration,
   injector: Injector)
   (implicit
     protected val actorSystem: ActorSystem,
@@ -28,12 +27,8 @@ extends SprayWebServer with SprayWebServer.HasLocalUri {
 
   protected def newRouteActorRef(binding: WebServerBinding) =
     actorSystem.actorOf(
-      WebServiceActor.props(injector, bindingToAuthenticator(binding)),
+      WebServiceActor.props(
+        new GateKeeper(gateKeeperConfiguration, isUnsecuredHttp = binding.isUnsecuredHttp),
+        injector),
       name = SprayWebServer.actorName("AgentWebServer", binding))
-
-  private def bindingToAuthenticator(binding: WebServerBinding) =
-    binding match {
-      case _: WebServerBinding.Http ⇒ UnknownUserPassAuthenticator
-      case _: WebServerBinding.Https ⇒ new SimpleUserPassAuthenticator(passwordValidatorProvider.get())
-    }
 }

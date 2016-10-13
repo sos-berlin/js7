@@ -24,7 +24,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
   private val defaultConf = GateKeeper.Configuration(
     realm = "REALM",
-    isValidUserAndPassword = {
+    providePasswordValidator = () ⇒ {
       case UserAndPassword("USER", SecretString("PASSWORD")) ⇒ true
       case _ ⇒ false
     },
