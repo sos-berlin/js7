@@ -4,7 +4,9 @@ import com.sos.scheduler.engine.base.utils.StackTraces._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
 import java.util.concurrent.TimeoutException
+import scala.collection.generic.CanBuildFrom
 import scala.concurrent._
+import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -68,8 +70,9 @@ object Futures {
       def await(duration: Duration) = Await.ready(delegate, duration.toFiniteDuration).successValue
     }
 
-    implicit class RichFutures[A](val delegate: Iterable[Future[A]]) extends AnyVal {
-      def await(duration: Duration)(implicit ec: ExecutionContext) = Await.result(Future.sequence(delegate), duration.toFiniteDuration)
+    implicit class RichFutures[A, M[X] <: TraversableOnce[X]](val delegate: M[Future[A]]) extends AnyVal {
+      def await(duration: Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+        Await.result(Future.sequence(delegate)(cbf, ec), duration.toFiniteDuration)
     }
 
     implicit class RichFutureFuture[A](val delegate: Future[Future[A]]) extends AnyVal {
