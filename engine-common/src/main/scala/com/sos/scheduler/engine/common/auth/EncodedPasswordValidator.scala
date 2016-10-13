@@ -15,6 +15,7 @@ import scala.util.{Failure, Success, Try}
   * tobbe = "plain:PASSWORD"
   * lisbeth = "sha512:130c7809c9e5a8d81347b55f5c82c3a7407f4b41b461eb641887d276b11af4b575c5a32d1cf104e531c700e4b1ddd75b27b9e849576f6dfb8ca42789fbc7ece2"
   * </pre>
+  * The SHA512 check sum can be generated with: sha512sum <code><(echo -n "password")</code>.
   *
   * @author Joacim Zschimmer
   */

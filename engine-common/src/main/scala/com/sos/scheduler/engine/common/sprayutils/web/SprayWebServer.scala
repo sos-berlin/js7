@@ -37,6 +37,7 @@ trait SprayWebServer extends AutoCloseable {
     if (bindings.isEmpty)
       Future.failed(newPortNeededException)
     else {
+      logger.debug(s"Binding to ${bindings mkString ", "}")
       val bound: Iterable[Future[Unit]] = bindings map {
         case o: WebServerBinding.Http ⇒ bindHttp(o)
         case o: WebServerBinding.Https ⇒ bindHttps(o)

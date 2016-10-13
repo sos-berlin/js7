@@ -111,7 +111,7 @@ object Https {
       val pw = (keystoreRef.storePassword map { _.string.toCharArray }).orNull
       keystore.load(in, pw)
     }
-    for (alias ← keystore.aliases; cert = keystore.getCertificate(alias)) logger.debug(s"$alias: $cert")
+    for (alias ← keystore.aliases; cert = keystore.getCertificate(alias)) logger.debug(s"Alias $alias: $cert")
     keystore
   }
 }

@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.base.convert.As.convert
 import com.sos.scheduler.engine.base.utils.ScalaUtils.RichAny
 import java.net.{InetAddress, InetSocketAddress}
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -25,14 +26,17 @@ object IP {
   final class StringToInetSocketAddress(defaultHost: String, defaultPort: Option[Int]) extends As[String, InetSocketAddress] {
     import StringToInetSocketAddress._
 
-    def apply(string: String) = string match {
-      case StandardRegex(host, port) ⇒ useDefaults(host, port)
-      case IPv6Regex(host, port) ⇒ useDefaults(host, port)
-      case IPv6Host(host) ⇒ useDefaults(host, defaultPortString)
-      case "" ⇒ makeInetSocketAddress(defaultHost, defaultPortString)
-      case _ if string forall { _.isDigit } ⇒ makeInetSocketAddress(defaultHost, string)
-      case _ ⇒ makeInetSocketAddress(string, defaultPortString)
-    }
+    def apply(string: String) =
+      try string match {
+        case StandardRegex(host, port) ⇒ useDefaults(host, port)
+        case IPv6Regex(host, port) ⇒ useDefaults(host, port)
+        case IPv6Host(host) ⇒ useDefaults(host, defaultPortString)
+        case "" ⇒ makeInetSocketAddress(defaultHost, defaultPortString)
+        case _ if string forall { _.isDigit } ⇒ makeInetSocketAddress(defaultHost, string)
+        case _ ⇒ makeInetSocketAddress(string, defaultPortString)
+      } catch {
+        case NonFatal(t) ⇒ throw new IllegalArgumentException(s"Invalid IP address and port combination in '$string': $t", t)
+      }
 
     private def useDefaults(host: String, port: String) =
       makeInetSocketAddress(host.substitute("", defaultHost), port.substitute("", defaultPort.toString))
