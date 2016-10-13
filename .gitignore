@@ -19,3 +19,20 @@
 
 # Old Intellij IDEA 15
 /out/
+
+# To allow source code switching from newer branches
+/engine-agent-client/target/
+/engine-agent-data/target/
+/engine-agent-gui/target/
+/engine-agent-gui/node_modules/
+/engine-agent-main/target/
+/engine-agent-test/target/
+/engine-base/target/
+/engine-client/target/
+/engine-http-client/target/
+/engine-http-server/target/
+/engine-main/target/
+/engine-taskserver-dotnet/target/
+/engine-taskserver-moduleapi/target/
+/engine-tunnel/target/
+/engine-tunnel-data/target/
