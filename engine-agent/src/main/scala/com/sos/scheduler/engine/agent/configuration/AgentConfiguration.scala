@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.base.convert.As.asAbsolutePath
-import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments
 import com.sos.scheduler.engine.common.configutils.Configs
@@ -78,13 +77,17 @@ final case class AgentConfiguration(
 
   private def inetSocketAddressToHttps(addr: InetSocketAddress) = WebServerBinding.Https(
     addr,
-    https map { _.keystoreReference } getOrElse {
-      val sub = config.getConfig("jobscheduler.agent.https.keystore")
-      KeystoreReference(
-        url = sub.as[Path]("file", privateDirectory / "private-https.jks").toURI.toURL ,
-        storePassword = sub.optionAs[SecretString]("password"),
-        keyPassword = Some(sub.as[SecretString]("key-password")))
+    https match {
+      case Some(o) ⇒ o.keystoreReference
+      case None ⇒ newKeyStoreReference()
     })
+
+  private def newKeyStoreReference() =
+    KeystoreReference.fromSubConfig(
+      config.getConfig("jobscheduler.agent.https.keystore"),
+      configDirectory = configDirectory getOrElse {
+        throw new IllegalArgumentException("For HTTPS, dataDirectory is required")
+      })
 
   def withWebService[A <: ExternalWebService : ClassTag] = withWebServices(List(implicitClass[A]))
 
@@ -93,9 +96,7 @@ final case class AgentConfiguration(
 
   def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
 
-  private def privateDirectory = dataDirectory map { _ / "config/private" } getOrElse {
-    throw new IllegalArgumentException("Missing dataDirectory")
-  }
+  private def configDirectory = dataDirectory map { _ / "config" }
 
   private[configuration] def finishAndProvideFiles: AgentConfiguration =
     provideDataSubdirectories()
