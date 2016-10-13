@@ -159,7 +159,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 private object AgentWebServerIT {
   private val Api = "jobscheduler/agent/api"
   private val ClientKeystoreRef = KeystoreReference(
-    JavaResource("com/sos/scheduler/engine/agent/test/agent-https.jks").url,
+    AgentConfigDirectoryProvider.PublicHttpJksResource.url,
     Some(SecretString("jobscheduler")))
   private val logger = Logger(getClass)
 }

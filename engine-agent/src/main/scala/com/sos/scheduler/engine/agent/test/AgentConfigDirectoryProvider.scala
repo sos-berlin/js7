@@ -32,7 +32,9 @@ trait AgentConfigDirectoryProvider {
 }
 
 object AgentConfigDirectoryProvider {
+  // Following resources have been generated with the command line:
+  // engine-common/src/main/resources/com/sos/scheduler/engine/common/sprayutils/https/generate-self-signed-ssl-certificate-test-keystore.sh -data-directory=engine-agent/src/main/resources/com/sos/scheduler/engine/agent/test -alias=agent-https
   val PrivateHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/config/private/private-https.jks")
-  val PublicHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/agent-https.jks")
+  val PublicHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/public-https.jks")
   val PrivateConfResource = JavaResource("com/sos/scheduler/engine/agent/test/config/private/private.conf")
 }
