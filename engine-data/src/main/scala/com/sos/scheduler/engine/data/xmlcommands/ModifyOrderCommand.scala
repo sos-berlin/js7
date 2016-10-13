@@ -9,7 +9,8 @@ final case class ModifyOrderCommand(
     at: Option[At] = None,
     title: Option[String] = None,
     suspended: Option[Boolean] = None,
-    state: Option[OrderState] = None)
+    state: Option[OrderState] = None,
+    endState: Option[OrderState] = None)
 extends XmlCommand {
 
   def xmlElem = <modify_order
@@ -20,6 +21,7 @@ extends XmlCommand {
     title={title.orNull}
     suspended={(suspended map { _.toString}).orNull}
     state={(state map { _.string }).orNull}
+    end_state={(endState map { _.string }).orNull}
     />
 }
 
