@@ -9,8 +9,8 @@ import java.util.concurrent.atomic.AtomicInteger
 final class ParallelismCounter {
 
   private val inParallel = new AtomicInteger
-  private var _maximum = 0
-  private var _total = 0
+  @volatile private var _maximum = 0
+  @volatile private var _total = 0
   private val lock = new Object
 
   def apply[A](body: ⇒ A): A = {
