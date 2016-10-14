@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.tunnel.server
 import akka.actor.ActorRef
 import akka.agent.Agent
 import akka.util.ByteString
+import com.sos.scheduler.engine.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.common.utils.Exceptions._
@@ -60,7 +61,7 @@ extends TunnelHandle {
 
   private[server] def callOnInactivity(since: Instant): Unit = {
     for (callback ← onInactivityCallback) {
-      ignoreException(logger.error) {
+      ignoreException(logger.asLazy.error) {
         callback(since)
       }
     }

@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.task
 import com.google.common.base.StandardSystemProperty.LINE_SEPARATOR
 import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.scheduler.engine.agent.task.CrashKillScript._
+import com.sos.scheduler.engine.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -29,7 +30,7 @@ final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
   def add(id: AgentTaskId, pid: Option[Pid], taskId: TaskId, jobPath: JobPath): Unit =
     synchronized {
       tasks.put(id, (jobPath, taskId, pid))
-      ignoreException(logger.warn) {
+      ignoreException(logger.asLazy.warn) {
         file.append(idToKillCommand(id, pid, jobPath, taskId), defaultCharset)
       }
     }
@@ -37,7 +38,7 @@ final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
   def remove(id: AgentTaskId): Unit =
     synchronized {
       for (_ ← tasks.remove(id)) {
-        ignoreException(logger.warn) {
+        ignoreException(logger.asLazy.warn) {
           rewriteFile()
         }
       }

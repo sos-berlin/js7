@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.utils
 
+import com.sos.scheduler.engine.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.Exceptions._
@@ -33,7 +34,7 @@ final class ExceptionsTest extends FreeSpec {
   }
 
   "ignoreException executes code" in {
-    val t: Try[Int] = ignoreException(logger.trace) { 123 }
+    val t: Try[Int] = ignoreException(logger.asLazy.trace) { 123 }
     assert(t == Success(123))
   }
 
@@ -57,7 +58,7 @@ final class ExceptionsTest extends FreeSpec {
 //  }
 
   "ignoreException ignores exception, with Logger" in {
-    ignoreException(logger.trace) {
+    ignoreException(logger.asLazy.trace) {
       throw new RuntimeException("TEST")
     }
   }

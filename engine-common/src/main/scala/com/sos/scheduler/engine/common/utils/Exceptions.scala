@@ -1,8 +1,6 @@
 package com.sos.scheduler.engine.common.utils
 
-import com.sos.scheduler.engine.common.scalautil.Logger
 import java.time.{Duration, Instant}
-import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 
@@ -24,8 +22,6 @@ object Exceptions {
   }
 
   private type LogFunction = (⇒ String, Throwable) ⇒ Unit
-
-  private def shouldCompile = Logger(getClass).debug: LogFunction
 
   def ignoreException[A](log: LogFunction)(body: ⇒ A): Try[A] =
     Try { body } recoverWith {

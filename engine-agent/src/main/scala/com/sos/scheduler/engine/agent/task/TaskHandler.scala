@@ -10,6 +10,7 @@ import com.sos.scheduler.engine.agent.task.TaskHandler._
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.scheduler.engine.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.soslicense.Parameters.UniversalAgent
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
@@ -69,9 +70,9 @@ extends TaskHandlerView {
 
   private def killAfterTunnelInactivity(task: AgentTask)(since: Instant): Unit = {
     logger.error(s"$task has no connection activity since $since. Task is being killed")
-    ignoreException(logger.error) { task.sendProcessSignal(SIGKILL) }
+    ignoreException(logger.asLazy.error) { task.sendProcessSignal(SIGKILL) }
     task.closeTunnel()  // This terminates Remoting and then SimpleTaskServer
-    task.terminated.onComplete { case _ ⇒ removeTaskAfterTermination(task) }
+    task.terminated.onComplete { _ ⇒ removeTaskAfterTermination(task) }
   }
 
   private def executeCloseTask(id: AgentTaskId, kill: Boolean) = {
@@ -88,7 +89,7 @@ extends TaskHandlerView {
   }
 
   private def tryKillTask(task: AgentTask): Unit =
-    ignoreException(logger.error) {
+    ignoreException(logger.asLazy.error) {
       task.sendProcessSignal(SIGKILL)
     }
 
@@ -133,7 +134,7 @@ extends TaskHandlerView {
   private def sendSignalToAllProcesses(signal: ProcessSignal): Unit =
     for (p ← tasks) {
       logger.warn(s"$signal $p")
-      ignoreException(logger.warn) { p.sendProcessSignal(signal) }
+      ignoreException(logger.asLazy.warn) { p.sendProcessSignal(signal) }
     }
 
   private def terminateWithTasksNotBefore(notBefore: Instant): Unit = {
@@ -151,7 +152,7 @@ extends TaskHandlerView {
   }
 
   private def executeAbortImmediately(): Nothing = {
-    for (o ← tasks) ignoreException(logger.warn) { o.sendProcessSignal(SIGKILL) }
+    for (o ← tasks) ignoreException(logger.asLazy.warn) { o.sendProcessSignal(SIGKILL) }
     val msg = "Due to command AbortImmediately, Agent is halted now!"
     logger.warn(msg)
     System.err.println(msg)
