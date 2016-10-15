@@ -19,4 +19,10 @@ final class EventIdTest extends FreeSpec {
     val instant = Instant.ofEpochSecond(EventId.JsonMaxValue / perSecond, EventId.JsonMaxValue % perSecond * 1000)
     assert(instant == MaximumJsonLosslessEventIdInstant)
   }
+
+  "toString" in {
+    assert(EventId.toString(EventId(0)) == "0 (1970-01-01T00:00:00Z)")
+    assert(EventId.toString(EventId(123456)) == "123456 (1970-01-01T00:00:00.123456Z)")
+    assert(EventId.toString(EventId.JsonMaxValue) == "9007199254740992 (2255-06-05T23:47:34.740992Z)")
+  }
 }
