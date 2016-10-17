@@ -46,10 +46,13 @@ extends RootJsonFormat[KeyedEvent[E]] {
       KeyedEvent[E](jsValue.asJsObject.fields(KeyFieldName).convertTo[E#Key](keyJsonFormat), event)
   }
 
-  implicit val eventTypedJsonFormat: TypedJsonFormat[E] = TypedJsonFormat()(keyedSubtypes map { _.toSubtype }: _*)
-  implicit val anyEventJsonFormat = eventTypedJsonFormat.asInstanceOf[TypedJsonFormat[AnyEvent]]
-
   def typeToClass: Map[String, Class[_ <: E]] = typedJsonFormat.typeNameToClass
+
+  implicit val eventTypedJsonFormat: TypedJsonFormat[E] =
+    TypedJsonFormat()(keyedSubtypes map { _.toSubtype }: _*)
+
+  implicit val anyEventJsonFormat: TypedJsonFormat[AnyEvent] =
+    eventTypedJsonFormat.asInstanceOf[TypedJsonFormat[AnyEvent]]
 }
 
 object KeyedTypedEventJsonFormat {

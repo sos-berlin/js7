@@ -2,7 +2,6 @@ package com.sos.scheduler.engine.base.sprayjson.typed
 
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
-import scala.collection.immutable
 import scala.reflect.ClassTag
 import spray.json._
 

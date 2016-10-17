@@ -20,6 +20,7 @@ package object event {
     // represent all integers between 0 and 2**53 (9.007.199.254.740.992).
     // 2 ** 53 = 9.007.199.254.740.992µs = 285 years. This is good until year 2255, for a million events/s.
     private[event] val JsonMaxValue = EventId(1L << 53)  // 2^53 == 9007199254740992L
+    val MaxValue = EventId(Long.MaxValue)
 
     def apply(eventId: String) = eventId.toLong
 
