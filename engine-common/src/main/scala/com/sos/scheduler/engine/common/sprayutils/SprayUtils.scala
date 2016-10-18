@@ -1,10 +1,13 @@
 package com.sos.scheduler.engine.common.sprayutils
 
+import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.common.scalautil.Logger
+import scala.util.control.NonFatal
 import shapeless.HNil
 import spray.http.HttpHeaders.Accept
 import spray.http.{MediaType, StatusCode}
 import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
+import spray.httpx.unmarshalling.{ContentExpected, FromStringOptionDeserializer, MalformedContent}
 import spray.routing.Directives._
 import spray.routing._
 
@@ -113,5 +116,19 @@ object SprayUtils {
     mapInnerRoute { route ⇒
       if (parameterMap.isEmpty) route
       else reject(ValidationRejection(s"Invalid parameters: ${parameterMap.keys mkString ", "}"))
+    }
+
+  implicit def asFromStringOptionDeserializer[A](implicit stringAsA: As[String, A]) =
+    new FromStringOptionDeserializer[A] {
+      def apply(value: Option[String]) =
+        value match {
+          case Some(string) ⇒
+            try Right(stringAsA(string))
+            catch { case NonFatal(t) ⇒
+              Left(new MalformedContent(t.toString, Some(t)))
+            }
+          case None ⇒
+            Left(ContentExpected)
+        }
     }
 }

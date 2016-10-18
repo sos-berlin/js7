@@ -171,15 +171,24 @@ final class ScalaTimeTest extends FreeSpec {
       Duration.ofNanos(100).pretty shouldEqual "100ns"
     }
 
+    "toSecondsString" in {
+      assert(0.s.toSecondsString == "0s")
+      assert(1.s.toSecondsString == "1s")
+      assert(1000000000.h.toSecondsString == "3600000000000s")
+      assert(Duration.ofNanos(1).toSecondsString == "0.000000001s")
+    }
+
     "parseDuration" in {
+      intercept[DateTimeParseException] { parseDuration(".1s") }
+      intercept[DateTimeParseException] { parseDuration(".1") }
       assert(parseDuration("0.123s") == 123.ms)
       assert(parseDuration("PT0.123S") == 123.ms)
       assert(parseDuration("1m") == 60.s)
       assert(parseDuration("1h2m3s") == 1.h + 2*60.s + 3.s)
       intercept[DateTimeParseException] { parseDuration("1d") }
       assert(parseDuration("P1d") == 24 * 3600.s)
-      intercept[DateTimeParseException] { parseDuration(".123s") }
-      intercept[DateTimeParseException] { parseDuration("1") }
+      assert(parseDuration("1") == 1.s)
+      assert(parseDuration("111222333444555666.123456789") == Duration.ofSeconds(111222333444555666L, 123456789))
     }
 
     "toConcurrent" in {

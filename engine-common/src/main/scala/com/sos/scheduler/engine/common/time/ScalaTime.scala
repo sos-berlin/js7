@@ -90,9 +90,23 @@ object ScalaTime {
   implicit val StringAsDuration: As[String, Duration] = As(parseDuration)
 
   /**
-   * Parses a duration according to ISO-8601 with optional first letters PT.
-   */
-  def parseDuration(string: String) = Duration parse (if (string.nonEmpty && isAsciiDigit(string(0))) s"PT$string" else string)
+    * Parses a duration according to ISO-8601 with optional first letters PT.
+    * <p>The string may like
+    * <ul>
+    *   <li>ISO-8601, like "PT3M30S" for 3 minutes and 30 seconds,
+    *   <li>"123s" or "123.456s" for a decimal number of seconds,
+    *   <li>"123" or "123.456" for a decimal number denoting seconds
+    * </ul>
+    */
+  def parseDuration(string: String): Duration =
+    Duration parse (
+      if (string.nonEmpty && isAsciiDigit(string.head))
+        if (isAsciiDigit(string.last))
+          s"PT${string}S"
+        else
+          s"PT$string"
+      else
+        string)
 
   def randomDuration(maximum: Duration): Duration = Duration ofNanos (maximum.toNanos * Random.nextFloat).toLong
 
@@ -131,6 +145,8 @@ object ScalaTime {
           }
         }
       }
+
+    def toSecondsString: String = delegate.toBigDecimal.bigDecimal.toPlainString + "s"
 
     def compare(o: RichDuration) = delegate compareTo o.delegate
   }
