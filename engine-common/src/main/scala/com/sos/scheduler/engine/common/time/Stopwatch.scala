@@ -53,7 +53,7 @@ object Stopwatch {
   def itemsPerSecondString(duration: Duration, n: Int, item: String, items: String = "") = {
     val nanos = duration.toNanos
     val perSecond = if (nanos == 0) "∞" else (n * 1000L * 1000 * 1000 / nanos).toString
-    val plural = if (items.isEmpty) s"${item}s" else items
+    val plural = if (items.nonEmpty) items else if (item.nonEmpty && item.last.isLetter) s"${item}s" else item
     s"${duration.pretty}/$n $plural, ${(duration / n).pretty}/$item, $perSecond $plural/s"
   }
 }
