@@ -28,11 +28,11 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
   private val defaultConf = GateKeeper.Configuration(
     realm = "REALM",
+    invalidAuthenticationDelay = 2.s,
     providePasswordValidator = () ⇒ {
       case UserAndPassword("USER", SecretString("PASSWORD")) ⇒ true
       case _ ⇒ false
-    },
-    invalidAuthenticationDelay = 2.s)
+    })
 
   private def route(conf: GateKeeper.Configuration): Route = route(newGateKeeper(conf))
 

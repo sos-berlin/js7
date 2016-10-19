@@ -51,30 +51,32 @@ object GateKeeper {
   def forTest()(implicit ec: ExecutionContext) = new GateKeeper(
     Configuration(
       realm = "TEST-REALM",
-      providePasswordValidator = () ⇒ _ ⇒ false,
-      httpIsPublic = true),
+      httpIsPublic = true,
+      providePasswordValidator = () ⇒ _ ⇒ false),
     new CSRF(CSRF.Configuration.Default),
     isUnsecuredHttp = true)
 
   final case class Configuration(
     /** Basic authentication realm */
     realm: String,
-    providePasswordValidator: () ⇒ UserAndPassword ⇒ Boolean,
     /** To hamper an attack */
     invalidAuthenticationDelay: Duration = 1.s,
     /** HTTP is open (assuming local access only) */
     httpIsPublic: Boolean = false,
     /** HTTP GET is open */
-    getIsPublic: Boolean = false)
+    getIsPublic: Boolean = false,
+    providePasswordValidator: () ⇒ UserAndPassword ⇒ Boolean)
 
   object Configuration {
-    def fromSubConfig(config: Config) = new Configuration(
-      realm = config.getString("realm"),
-      providePasswordValidator = () ⇒ new EncodedPasswordValidator(config.getConfig("users").optionAs[SecretString]),  // Configuration "users" is only required with authentication switched on
-      invalidAuthenticationDelay = config.getDuration("invalid-authentication-delay"),
-      httpIsPublic = config.getBoolean("http-is-public"),
-      getIsPublic = config.getBoolean("get-is-public")
-    )
+    def fromSubConfig(config: Config): Configuration =
+      fromSubConfig(config, () ⇒ config.getConfig("users"))
+
+    def fromSubConfig(authConfig: Config, usersConfig: () ⇒ Config) = new Configuration(
+      realm = authConfig.getString("realm"),
+      invalidAuthenticationDelay = authConfig.getDuration("invalid-authentication-delay"),
+      httpIsPublic = authConfig.getBoolean("http-is-public"),
+      getIsPublic = authConfig.getBoolean("get-is-public"),
+      providePasswordValidator = () ⇒ new EncodedPasswordValidator(usersConfig().optionAs[SecretString]) /* Configuration "users" is only required with authentication switched on*/)
   }
 
   def failIfCredentialsRejected(delay: Duration)(implicit ec: ExecutionContext) = RejectionHandler {
