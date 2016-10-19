@@ -18,26 +18,31 @@ import spray.routing.authentication._
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeper(configuraton: Configuration, isUnsecuredHttp: Boolean = false)(implicit ec: ExecutionContext) {
+final class GateKeeper(configuraton: Configuration, csrf: CSRF, isUnsecuredHttp: Boolean = false)(implicit ec: ExecutionContext) {
 
   import configuraton.{getIsPublic, httpIsPublic, invalidAuthenticationDelay, providePasswordValidator, realm}
 
-  val allows: Directive0 =
+  val restrict: Directive0 =
     mapInnerRoute { inner ⇒
-      if (isUnsecuredHttp && httpIsPublic)
-        inner
-      else
-        handleRejections(failIfCredentialsRejected(invalidAuthenticationDelay)) {
-          authenticate(BasicAuth(new SimpleUserPassAuthenticator(providePasswordValidator()), realm = realm)) { _ ⇒
-            inner
+      retrictRelaxed {
+        if (isUnsecuredHttp && httpIsPublic)
+          inner
+        else
+          handleRejections(failIfCredentialsRejected(invalidAuthenticationDelay)) {
+            authenticate(BasicAuth(new SimpleUserPassAuthenticator(providePasswordValidator()), realm = realm)) { _ ⇒
+              inner
+            }
+          } ~
+          passIf(getIsPublic) {  // After authenticate, to return its error
+            (get | head) {
+              inner
+            }
           }
-        } ~
-        passIf(getIsPublic) {  // After authenticate, to return its error
-          (get | head) {
-            inner
-          }
-        }
+      }
     }
+
+  def retrictRelaxed: Directive0 =
+    csrf.rejectSomeCSRF
 }
 
 object GateKeeper {
@@ -48,6 +53,7 @@ object GateKeeper {
       realm = "TEST-REALM",
       providePasswordValidator = () ⇒ _ ⇒ false,
       httpIsPublic = true),
+    new CSRF(CSRF.Configuration.Default),
     isUnsecuredHttp = true)
 
   final case class Configuration(

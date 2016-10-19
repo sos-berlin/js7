@@ -4,14 +4,18 @@ import akka.actor.ActorSystem
 import akka.testkit.TestDuration
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.auth.UserAndPassword
+import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers.JsObjectMarshaller
+import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeperTest._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Instant.now
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import scala.concurrent.ExecutionContext
 import spray.http.HttpHeaders.Authorization
-import spray.http.StatusCodes.{OK, Unauthorized}
+import spray.http.StatusCodes.{Forbidden, OK, Unauthorized}
 import spray.http.{BasicHttpCredentials, Uri}
+import spray.json.JsObject
 import spray.routing.Directives._
 import spray.routing._
 import spray.testkit.ScalatestRouteTest
@@ -30,10 +34,10 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     },
     invalidAuthenticationDelay = 2.s)
 
-  private def route(conf: GateKeeper.Configuration): Route = route(new GateKeeper(conf))
+  private def route(conf: GateKeeper.Configuration): Route = route(newGateKeeper(conf))
 
   private def route(gateKeeper: GateKeeper): Route =
-    gateKeeper.allows {
+    gateKeeper.restrict {
       path("TEST") {
         (get | post) {
           complete(OK)
@@ -42,6 +46,69 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     }
 
   private val uri = Uri("/TEST")
+
+  "httpIsPublic" - {
+    val conf = defaultConf.copy(httpIsPublic = true)
+
+    "Request via secured HTTP" - {
+      "GET without authentication is rejected" in {
+        Get(uri) ~> route(newGateKeeper(conf, isUnsecuredHttp = false)) ~> check {
+          assert(!handled)
+          assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
+        }
+      }
+
+      "POST JSON without authentication is rejected" in {
+        Post(uri, JsObject()) ~> route(newGateKeeper(conf, isUnsecuredHttp = false)) ~> check {
+          assert(!handled)
+          assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
+        }
+      }
+
+      addPostTextPlainText(conf)
+    }
+
+    "Request via inSecuredHttp" - {
+      "GET without authentication is accepted" in {
+        Get(uri) ~> route(newGateKeeper(conf, isUnsecuredHttp = true)) ~> check {
+          assert(status == OK)
+        }
+      }
+
+      "POST JSON without authentication is accepted" in {
+        Post(uri, JsObject()) ~> route(newGateKeeper(conf, isUnsecuredHttp = true)) ~> check {
+          assert(status == OK)
+        }
+      }
+
+      addPostTextPlainText(conf)
+    }
+  }
+
+  "getIsPublic - HTTP GET is open for everybody" - {
+    val conf = defaultConf.copy(getIsPublic = true)
+
+    "GET" in {
+      Get(uri) ~> route(conf) ~> check {
+        assert(status == OK)
+      }
+    }
+
+    "POST JSON" in {
+      Post(uri, JsObject()) ~> route(conf) ~> check {
+        assert(!handled)
+        assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
+      }
+    }
+
+    addPostTextPlainText(conf)
+  }
+
+  "Access with valid credentials" in {
+    Get(uri) ~> Authorization(BasicHttpCredentials("USER", "PASSWORD")) ~> route(defaultConf) ~> check {
+      assert(status == OK)
+    }
+  }
 
   "No access with missing credentials" in {
     Get(uri) ~> route(defaultConf) ~> check {
@@ -61,38 +128,16 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     assert(now - t >= defaultConf.invalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
   }
 
-  "Access with valid credentials" in {
-    Get(uri) ~> Authorization(BasicHttpCredentials("USER", "PASSWORD")) ~> route(defaultConf) ~> check {
-      assert(status == OK)
+  private def addPostTextPlainText(conf: GateKeeper.Configuration): Unit = {
+    "POST text/plain is rejected due to CSRF" in {
+      Post(uri, "TEXT") ~> route(newGateKeeper(conf, isUnsecuredHttp = true)) ~> check {
+        assert(status == Forbidden)
+      }
     }
   }
+}
 
-  "httpIsPublic" in {
-    val conf = defaultConf.copy(httpIsPublic = true)
-    Get(uri) ~> route(new GateKeeper(conf, isUnsecuredHttp = false)) ~> check {
-      assert(!handled)
-      assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
-    }
-    Post(uri) ~> route(new GateKeeper(conf, isUnsecuredHttp = false)) ~> check {
-      assert(!handled)
-      assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
-    }
-    Get(uri) ~> route(new GateKeeper(conf, isUnsecuredHttp = true)) ~> check {
-      assert(status == OK)
-    }
-    Post(uri) ~> route(new GateKeeper(conf, isUnsecuredHttp = true)) ~> check {
-      assert(status == OK)
-    }
-  }
-
-  "getIsPublic - HTTP GET is open for everybody" in {
-    val conf = defaultConf.copy(getIsPublic = true)
-    Get(uri) ~> route(conf) ~> check {
-      assert(status == OK)
-    }
-    Post(uri) ~> route(conf) ~> check {
-      assert(!handled)
-      assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
-    }
-  }
+private object GateKeeperTest {
+  def newGateKeeper(conf: GateKeeper.Configuration, isUnsecuredHttp: Boolean = false)(implicit ec: ExecutionContext) =
+    new GateKeeper(conf, new CSRF(CSRF.Configuration.Default), isUnsecuredHttp = isUnsecuredHttp)
 }

@@ -5,7 +5,7 @@ import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
 import com.sos.scheduler.engine.common.sprayutils.web.SprayWebServer
-import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
+import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 
@@ -16,6 +16,7 @@ import scala.concurrent.ExecutionContext
 final class AgentWebServer @Inject private(
   conf: AgentConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration,
+  csrf: CSRF,
   injector: Injector)
   (implicit
     protected val actorSystem: ActorSystem,
@@ -28,7 +29,7 @@ extends SprayWebServer with SprayWebServer.HasLocalUri {
   protected def newRouteActorRef(binding: WebServerBinding) =
     actorSystem.actorOf(
       WebServiceActor.props(
-        new GateKeeper(gateKeeperConfiguration, isUnsecuredHttp = binding.isUnsecuredHttp),
+        new GateKeeper(gateKeeperConfiguration, csrf, isUnsecuredHttp = binding.isUnsecuredHttp),
         injector),
       name = SprayWebServer.actorName("AgentWebServer", binding))
 }

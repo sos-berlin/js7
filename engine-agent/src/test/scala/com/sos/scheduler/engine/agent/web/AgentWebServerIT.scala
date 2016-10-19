@@ -22,7 +22,6 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.common.time.timer.TimerServiceOverview
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPorts
-import com.sos.scheduler.engine.common.utils.JavaResource
 import java.net.InetSocketAddress
 import java.time.Instant.now
 import org.junit.runner.RunWith
@@ -36,12 +35,12 @@ import spray.client.pipelining._
 import spray.http.CacheDirectives.{`no-cache`, `no-store`}
 import spray.http.HttpHeaders.{Accept, `Cache-Control`}
 import spray.http.MediaTypes._
-import spray.http.StatusCodes.Unauthorized
+import spray.http.StatusCodes.{Forbidden, Unauthorized}
 import spray.http.{BasicHttpCredentials, HttpRequest, HttpResponse, Uri}
 import spray.httpx.SprayJsonSupport._
 import spray.httpx.UnsuccessfulResponseException
 import spray.httpx.encoding.Gzip
-import spray.httpx.unmarshalling.FromResponseUnmarshaller
+import spray.httpx.unmarshalling.{FromResponseUnmarshaller, PimpedHttpResponse}
 
 /**
  * @author Joacim Zschimmer
@@ -90,25 +89,35 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   "HTTPS" - {
     lazy val uri = s"${webServer.localHttpsUriOption.get}/$Api"
 
-    "Unauthorized due to missing credentials" in {
-      intercept[UnsuccessfulResponseException] {
-        pipeline[HttpResponse](password = None).apply(Get(s"$uri/task")) await 10.s
+    "Unauthorized request is rejected" - {
+      "due to missing credentials" in {
+        intercept[UnsuccessfulResponseException] {
+          pipeline[HttpResponse](password = None).apply(Get(s"$uri/task")) await 10.s
+        }
+        .response.status shouldEqual Unauthorized
       }
-      .response.status shouldEqual Unauthorized
+
+      "due to wrong credentials" in {
+        val t = now
+        val e = intercept[UnsuccessfulResponseException] {
+          pipeline[AgentOverview](Some("WRONG-PASSWORD")).apply(Get(uri)) await 10.s
+        }
+        assert(now - t > InvalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
+        e.response.status shouldEqual Unauthorized
+      }
+
+      addPostTextPlainText(uri)
     }
 
-    "Unauthorized due to wrong credentials" in {
-      val t = now
-      val e = intercept[UnsuccessfulResponseException] {
-        pipeline[AgentOverview](Some("WRONG-PASSWORD")).apply(Get(uri)) await 10.s
-      }
-      assert(now - t > InvalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
-      e.response.status shouldEqual Unauthorized
-    }
+    "Authorized request" - {
+      val password = Some("SHA512-PASSWORD")
 
-    "Authorized" in {
-      val overview = pipeline[AgentOverview](Some("SHA512-PASSWORD")).apply(Get(uri)) await 10.s
-      assert(overview.totalTaskCount == 0)
+      "is accepted" in {
+        val overview = pipeline[AgentOverview](password).apply(Get(uri)) await 10.s
+        assert(overview.totalTaskCount == 0)
+      }
+
+      addPostTextPlainText(uri, password)
     }
 
     addThroughputMeasurementTests(uri)
@@ -127,12 +136,22 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
       assert(overview.totalTaskCount == 0)
     }
 
+    addPostTextPlainText(uri)
     addThroughputMeasurementTests(uri)
   }
 
   "close" in {
     webServer.close()
   }
+
+  private def addPostTextPlainText(uri: Uri, password: Option[String] = None): Unit =
+    "POST plain/text is rejected due to CSRF" in {
+      val response = intercept[UnsuccessfulResponseException] {
+        pipeline[HttpResponse](password).apply(Post(uri, "TEXT")) await 10.s
+      } .response
+      assert(response.status == Forbidden)
+      assert(response.as[String].right.get == "HTML form POST is forbidden")
+    }
 
   private def addThroughputMeasurementTests(uri: Uri): Unit = {
     if (false) {

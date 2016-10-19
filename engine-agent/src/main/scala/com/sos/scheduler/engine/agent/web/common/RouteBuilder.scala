@@ -63,11 +63,14 @@ final class RouteBuilder extends Mutable {
     (implicit actorRefFactory: ActorRefFactory): Route =
   {
     implicit val executionContext = actorRefFactory.dispatcher
+
     val apiRoute =
-      gateKeeper.allows {
+      gateKeeper.restrict {
         toRoute(apiRoutes)
       } ~
+      gateKeeper.retrictRelaxed {
         toRoute(unauthenticatedApiRoutes)
+      }
 
     logAllEntries()
 

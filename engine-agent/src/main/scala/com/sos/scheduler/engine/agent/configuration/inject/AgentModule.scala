@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.{StandardAgentTaskFactory, TaskHandler}
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
+import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
@@ -26,6 +26,10 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration)
 extends AbstractModule {
 
   protected def configure() = {}
+
+  @Provides @Singleton
+  def provideCsrfConfiguration(config: Config): CSRF.Configuration =
+    CSRF.Configuration.fromSubConfig(config.getConfig("jobscheduler.agent.webserver.csrf"))
 
   @Provides @Singleton
   def provideGateKeeperConfiguration(config: Config): GateKeeper.Configuration =
