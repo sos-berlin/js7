@@ -20,22 +20,23 @@ object Snapshot {
   val EventIdJsonName = "eventId"
   val ElementsJsonName = "elements"
 
-  implicit def jsonFormat[A: RootJsonFormat] = new RootJsonFormat[Snapshot[A]] {
+  implicit def jsonFormat[A: RootJsonFormat]: RootJsonFormat[Snapshot[A]] =
+    new RootJsonFormat[Snapshot[A]] {
 
-    def write(o: Snapshot[A]) = {
-      val contentFields = implicitly[RootJsonFormat[A]].write(o.value) match {
-        case JsObject(fields) ⇒ fields
-        case array: JsArray ⇒ Map(ElementsJsonName → array)
-        case x ⇒ sys.error(s"Unexpected ${x.getClass}")
+      def write(o: Snapshot[A]) = {
+        val contentFields = implicitly[RootJsonFormat[A]].write(o.value) match {
+          case JsObject(fields) ⇒ fields
+          case array: JsArray ⇒ Map(ElementsJsonName → array)
+          case x ⇒ sys.error(s"Unexpected ${x.getClass}")
+        }
+        JsObject(contentFields + (EventIdJsonName → EventId.toJsValue(o.eventId)))   // eventId in content overrides
       }
-      JsObject(Map(EventIdJsonName → EventId.toJsValue(o.eventId)) ++ contentFields)   // eventId in content overrides
-    }
 
-    def read(jsValue: JsValue) = {
-      val jsObject = jsValue.asJsObject
-      val eventId = EventId.fromJsValue(jsObject.fields(EventIdJsonName))
-      val content = jsObject.fields.getOrElse(ElementsJsonName, jsObject)
-      Snapshot(eventId, content.convertTo[A])
+      def read(jsValue: JsValue) = {
+        val jsObject = jsValue.asJsObject
+        val eventId = EventId.fromJsValue(jsObject.fields(EventIdJsonName))
+        val content = jsObject.fields.getOrElse(ElementsJsonName, jsObject)
+        Snapshot(eventId, content.convertTo[A])
+      }
     }
-  }
 }
