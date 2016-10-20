@@ -26,7 +26,8 @@ final class EventSeqTest extends FreeSpec {
       EventSeq.NonEmpty(List(
         Snapshot(1, KeyedEvent(TestEvent)("KEY")))),
       """{
-        "events": [
+        "TYPE": "NonEmpty",
+        "eventSnapshots": [
           {
             "TYPE": "TestEvent",
             "key": "KEY",
@@ -40,12 +41,16 @@ final class EventSeqTest extends FreeSpec {
     check[TestEvent.type](
       EventSeq.Empty(EventId(123)),
       """{
+        "TYPE": "Empty",
         "lastEventId": 123
         }""")
   }
 
-  "JSON EventSeq.Teared" in {
-    check[TestEvent.type](EventSeq.Teared, "{}")
+  "JSON EventSeq.Torn" in {
+    check[TestEvent.type](EventSeq.Torn,
+      """{
+        "TYPE": "Torn"
+      }""")
   }
 
   private def check[E: RootJsonFormat](eventSeq: EventSeq[Seq, E], json: String) = {

@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.event
 
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
+import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import scala.collection.immutable.Seq
 import scala.language.higherKinds
 import spray.json.DefaultJsonProtocol._
@@ -13,35 +13,25 @@ trait EventSeq[+M[_], +E]
 
 object EventSeq {
 
-  final case class NonEmpty[M[_], E](events: M[Snapshot[E]])
+  final case class NonEmpty[M[_], E](eventSnapshots: M[Snapshot[E]])
   extends EventSeq[M, E]
+
+  private implicit def nonEmptyJsonFormat[E: RootJsonFormat]: RootJsonFormat[NonEmpty[Seq, E]] =
+    //Does not compile: jsonFormat1((eventSnapshots: Seq[Snapshot[E]]) ⇒ NonEmpty(eventSnapshots)), // Error: kinds of the type arguments (scala.collection.immutable.Seq) do not conform to the expected kinds of the type parameters (type T) ...
+    new RootJsonFormat[NonEmpty[Seq, E]] {
+      def write(o: NonEmpty[Seq, E]) = JsObject("eventSnapshots" → o.eventSnapshots.toJson)
+      def read(json: JsValue) = NonEmpty(json.asJsObject.fields("eventSnapshots").convertTo[Seq[Snapshot[E]]])
+    }
 
   final case class Empty(lastEventId: EventId)
   extends EventSeq[Nothing, Nothing]
 
-  case object Teared
+  case object Torn
   extends EventSeq[Nothing, Nothing]
 
-  implicit def jsonFormat[E: RootJsonFormat] = new RootJsonFormat[EventSeq[Seq, E]] {
-    def write(o: EventSeq[Seq, E]) = o match {
-      case NonEmpty(events) ⇒ JsObject("events" → events.toJson)
-      case Empty(lastEventId) ⇒ JsObject("lastEventId" → JsNumber(lastEventId))
-      case Teared ⇒ JsObject()
-    }
-
-    def read(json: JsValue) = {
-      val fields = json.asJsObject.fields
-      fields.get("events") match {
-        case Some(events) ⇒
-          NonEmpty(events.asJsArray.elements map { _.convertTo[Snapshot[E]] })
-        case None ⇒
-          fields.get("lastEventId") match {
-            case Some(lastEventId) ⇒
-              Empty(lastEventId.asJsNumber.value.toLongExact)
-            case None ⇒
-              Teared
-          }
-      }
-    }
-  }
+  implicit def jsonFormat[E: RootJsonFormat]: TypedJsonFormat[EventSeq[Seq, E]] =
+    TypedJsonFormat[EventSeq[Seq, E]](
+      Subtype[NonEmpty[Seq, E]],
+      Subtype(jsonFormat1(Empty.apply)),
+      Subtype(jsonFormat0(() ⇒ Torn)))
 }
