@@ -1,8 +1,12 @@
 package com.sos.scheduler.engine.data.queries
 
+import com.sos.scheduler.engine.base.serial.PathAndParameterSerializable
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
+import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.data.filebased.{TypedPath, UnknownTypedPath}
 import com.sos.scheduler.engine.data.folder.FolderPath
 import scala.language.implicitConversions
+import spray.json.{JsObject, JsString, JsValue, RootJsonFormat}
 
 /**
   * @author Joacim Zschimmer
@@ -23,9 +27,15 @@ sealed trait PathQuery {
   def folderPath: FolderPath
 
   def toUriPath: String = patternString
+
+  def toPathAndParameters[P <: TypedPath: TypedPath.Companion]: (String, Map[String, Nothing]) =
+    PathQuery.pathAndParameterSerializable.toPathAndParameters(this)
 }
 
 object PathQuery {
+  val All = FolderTree(FolderPath.Root)
+  val PathName = "path"
+
   def apply[P <: TypedPath: TypedPath.Companion](pattern: String): PathQuery =
     if (pattern endsWith "/*")
       FolderOnly(FolderPath.fromTrailingSlash(pattern stripSuffix "*"))  // P is ignored. It's a FolderPath denoting a subtree of P
@@ -46,8 +56,6 @@ object PathQuery {
     }
 
   def fromUriPath[A <: TypedPath: TypedPath.Companion](path: String): PathQuery = apply[A](path)
-
-  val All = FolderTree(FolderPath.Root)
 
   sealed trait Folder extends PathQuery
 
@@ -79,4 +87,25 @@ object PathQuery {
     def typedPath[P <: TypedPath: TypedPath.Companion]: TypedPath = as[P]
     def as[P <: TypedPath: TypedPath.Companion]: P = implicitly[TypedPath.Companion[P]].apply(pathString)
   }
+
+  def jsonFormat[P <: TypedPath: TypedPath.Companion]: RootJsonFormat[PathQuery] =
+    new RootJsonFormat[PathQuery] {
+      def write(q: PathQuery) = JsObject((q != All option (PathName → JsString(q.toUriPath))).toMap)
+
+      def read(json: JsValue) =
+        json.asJsObject.fields.get(PathName) match {
+          case Some(path) ⇒ PathQuery[P](path.asJsString.value)
+          case None ⇒ PathQuery.All
+        }
+  }
+
+  final def pathAndParameterSerializable[P <: TypedPath: TypedPath.Companion] =
+    new PathAndParameterSerializable[PathQuery] {
+      def toPathAndParameters(q: PathQuery) = q.toUriPath → Map()
+
+      def fromPathAndParameters(pathAndParameters: (String, Map[String, String])) = {
+        val (path, _) = pathAndParameters
+        PathQuery[P](path)
+      }
+    }
 }
