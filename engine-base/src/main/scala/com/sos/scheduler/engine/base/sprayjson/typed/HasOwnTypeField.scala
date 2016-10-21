@@ -20,4 +20,6 @@ trait HasOwnTypeField[A] {
   def subtypeNames: immutable.Seq[String]
 
   final lazy val classToTypeName: Map[Class[_ <: A], String] = typeNameToClass map { _.swap }
+
+  final def typeNameExists(typeName: String) = typeNameToClass exists { _._1 == typeName }
 }
