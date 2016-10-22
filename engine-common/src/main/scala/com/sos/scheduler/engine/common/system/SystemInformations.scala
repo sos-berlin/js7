@@ -18,8 +18,12 @@ object SystemInformations {
     case "freePhysicalMemorySize" ⇒ OnlyNonNegative
   })
 
-  def systemInformation(): SystemInformation = SystemInformation(
-    hostname = OperatingSystem.operatingSystem.hostname,
-    distribution = OperatingSystem.operatingSystem.distributionNameAndVersionOption,
-    mxBeans = Map("operatingSystem" → operatingSystemMXBeanReader.toMap(getOperatingSystemMXBean)))
+  def systemInformation(): SystemInformation = {
+    import OperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
+    SystemInformation(
+      hostname = hostname,
+      distribution = distributionNameAndVersionOption,
+      cpuModel = cpuModel,
+      mxBeans = Map("operatingSystem" → operatingSystemMXBeanReader.toMap(getOperatingSystemMXBean)))
+  }
 }

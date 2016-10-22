@@ -21,11 +21,12 @@ trait OperatingSystem {
 
   def distributionNameAndVersionOption: Option[String]
 
+  def cpuModel: Option[String]
+
   protected def alternativeHostname: String
 }
 
 object OperatingSystem {
-  private val logger = Logger(getClass)
   val name: String = sys.props("os.name")
   val cpuArchitecture = CpuArchitecture.cpuArchitecture
   val isWindows = name startsWith "Windows"
@@ -54,6 +55,8 @@ object OperatingSystem {
     protected def alternativeHostname: String = sys.env.getOrElse("COMPUTERNAME", "")
 
     def distributionNameAndVersionOption = None
+
+    def cpuModel = sys.env.get("PROCESSOR_IDENTIFIER")
   }
 
   final class Unix private[system] extends OperatingSystem {
@@ -96,6 +99,16 @@ object OperatingSystem {
         .recover { case _ ⇒ readFirstLine(Paths.get("/etc/release")) } // Solaris ?
         .toOption
     }
+
+    def cpuModel =
+      Try {
+        val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
+        autoClosing(new FileInputStream("/proc/cpuinfo")) { in ⇒
+          io.Source.fromInputStream(in).getLines collectFirst {  // Assuming all cores are of same model
+            case CpuModelRegex(model) ⇒ model.trim
+          }
+        }
+      } .toOption.flatten
   }
 
   def concatFileAndPathChain(f: File, pathChain: String): String = {
