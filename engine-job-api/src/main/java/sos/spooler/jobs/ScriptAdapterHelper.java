@@ -1,11 +1,7 @@
 package sos.spooler.jobs;
 
-import com.google.common.collect.ImmutableMap;
-import com.sos.scheduler.engine.jobapi.scripting.JobScriptInstanceAdapter;
-import sos.spooler.HasBean;
-
 import java.util.Objects;
-
+import sos.spooler.HasBean;
 import static sos.spooler.Beans.toBean;
 
 /**
@@ -15,6 +11,8 @@ public class ScriptAdapterHelper {
 
     private static final String beanLanguagePrefix = "java";
     private static final String methodLanguagePrefix = "javax.script";
+
+    private ScriptAdapterHelper() {}
 
     static Parameters parseLanguageParameter(String prefixedLanguageString) {
         String[] parts = prefixedLanguageString.split(":", 2);
@@ -56,6 +54,4 @@ public class ScriptAdapterHelper {
             return Objects.hashCode(language) + Boolean.hashCode(isUsingBean);
         }
     }
-
-
 }
