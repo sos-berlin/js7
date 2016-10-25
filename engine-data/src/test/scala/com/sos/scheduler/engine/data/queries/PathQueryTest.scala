@@ -1,11 +1,13 @@
 package com.sos.scheduler.engine.data.queries
 
+import com.sos.scheduler.engine.data.filebased.UnknownTypedPath
 import com.sos.scheduler.engine.data.folder.FolderPath
 import com.sos.scheduler.engine.data.job.JobPath
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -24,6 +26,7 @@ final class PathQueryTest extends FreeSpec {
     assert(q matches AnyPath("/a"))
     assert(q matches AnyPath("/a/b"))
     assert(q.folderPath == FolderPath.Root)
+    checkJson(q, "{}")
   }
 
   "Single JobPath" in {
@@ -35,6 +38,7 @@ final class PathQueryTest extends FreeSpec {
     assert(q matches AnyPath("/a/b"))
     assert(!(q matches AnyPath("/a/b/c")))
     assert(q.folderPath == FolderPath("/a"))
+    checkJson(q, """{ "path": "/a/b" }""")
   }
 
   "PathQuery may apply to any TypedPath" in {
@@ -45,6 +49,7 @@ final class PathQueryTest extends FreeSpec {
     assert(q matches JobChainPath("/a"))
     assert(q matches FolderPath("/a"))
     assert(q == PathQuery.SinglePath("/a"))
+    checkJson(q, """{ "path": "/a" }""")
   }
 
   "FolderPath" in {
@@ -58,6 +63,7 @@ final class PathQueryTest extends FreeSpec {
     checkFolderQuery(q)
     assert(q == PathQuery.FolderTree(FolderPath("/a")))
     assert(q matches AnyPath("/a/b/c"))
+    checkJson(q, """{ "path": "/a/" }""")
   }
 
   "FolderPath, not recursive" in {
@@ -67,6 +73,7 @@ final class PathQueryTest extends FreeSpec {
     assert(q == PathQuery.FolderOnly(FolderPath("/a")))
     checkFolderQuery(q)
     assert(!(q matches AnyPath("/a/b/c")))
+    checkJson(q, """{ "path": "/a/*" }""")
   }
 
   "Root folder, not recursive" in {
@@ -75,6 +82,7 @@ final class PathQueryTest extends FreeSpec {
     assert(q.patternString == "/*")
     assert(q.toUriPath == "/*")
     assert(q == PathQuery.FolderOnly(FolderPath.Root))
+    checkJson(q, """{ "path": "/*" }""")
   }
 
   private def checkFolderQuery(q: PathQuery.Folder) {
@@ -83,5 +91,12 @@ final class PathQueryTest extends FreeSpec {
     assert(!(q matches AnyPath("/x/a")))
     assert(q matches AnyPath("/a/b"))
     assert(q.folderPath == FolderPath("/a"))
+  }
+
+  private def checkJson(q: PathQuery, json: String): Unit = {
+    implicit val jsonFormat = PathQuery.jsonFormat[UnknownTypedPath]
+    val jsObject = json.parseJson
+    assert(q.toJson == jsObject)
+    assert(jsObject.convertTo[PathQuery] == q)
   }
 }
