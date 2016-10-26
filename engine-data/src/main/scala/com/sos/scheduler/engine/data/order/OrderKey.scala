@@ -3,10 +3,8 @@ package com.sos.scheduler.engine.data.order
 import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 
-// Wegen "scala: error while loading IsString, class file OrderKey.class":  @JsonSerialize(using = classOf[OrderKeySerializer])
 final case class OrderKey(jobChainPath: JobChainPath, id: OrderId)
-extends SerializableOrderKey
-with TypedPath {
+extends TypedPath {
   import com.sos.scheduler.engine.data.order.OrderKey._
 
   validate()

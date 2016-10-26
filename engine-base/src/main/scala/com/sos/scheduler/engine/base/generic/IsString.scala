@@ -4,8 +4,7 @@ import javax.annotation.Nullable
 import scala.language.implicitConversions
 import spray.json.{JsString, JsValue, JsonFormat, JsonWriter}
 
-//@JsonSerialize(using = classOf[IsStringSerializer])
-trait IsString extends SerializableIsString {
+trait IsString {
   def string: String
 
   final def isEmpty = string.isEmpty

@@ -5,7 +5,7 @@ import spray.json._
 /**
   * @author Joacim Zschimmer
   */
-trait GenericInt extends SerializableGenericInt {
+trait GenericInt {
   def number: Int
 }
 

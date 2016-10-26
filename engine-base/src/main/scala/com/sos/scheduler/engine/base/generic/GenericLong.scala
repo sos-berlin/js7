@@ -6,7 +6,7 @@ import spray.json.{JsNumber, JsValue, JsonFormat, JsonWriter}
  * @author Joacim Zschimmer
  */
 trait GenericLong {
-  val value: Long
+  val number: Long
 }
 
 object GenericLong {
@@ -14,7 +14,7 @@ object GenericLong {
 //    throw new UnsupportedOperationException("JSON deserialization not supported for this (abstract?) GenericLong")
 
   class MyJsonWriter[A <: GenericLong] extends JsonWriter[A] {
-    final def write(o: A) = JsNumber(o.value)
+    final def write(o: A) = JsNumber(o.number)
   }
 
   final class MyJsonFormat[A <: GenericLong](construct: Long ⇒ A) extends MyJsonWriter[A] with JsonFormat[A] {
