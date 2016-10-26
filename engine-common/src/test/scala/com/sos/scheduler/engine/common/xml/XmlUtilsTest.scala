@@ -96,18 +96,6 @@ final class XmlUtilsTest extends FreeSpec {
     }
   }
 
-  "childElements" in {
-    testChildElements("<root><a/>x<b><bb/></b>x<c/></root>", "a", "b", "c")
-    testChildElements("<root>xx<a/>x<b><bb/></b>x<c/>xx</root>", "a", "b", "c")
-  }
-
-  "nodeListToSeq" in {
-    val a = loadXml("<a><b/><c/></a>").getDocumentElement
-    assertResult(List("b", "c")) { nodeListToSeq(a.getChildNodes) map { _.getLocalName }}
-    testChildElements("<root><a/>x<b><bb/></b>x<c/></root>", "a", "b", "c")
-    testChildElements("<root>xx<a/>x<b><bb/></b>x<c/>xx</root>", "a", "b", "c")
-  }
-
   "encoding and rawXmlToString" - {
     "encoding default" in {
       val xmlString = "<ö/>"
@@ -139,13 +127,6 @@ private object XmlUtilsTest {
     for (xml <- xmls; element = loadXml(xml).getDocumentElement) {
       assertResult(default) { booleanXmlAttribute(element, "b", default = default) }
       assertResult(default) { booleanXmlAttribute(element, "b", default = default) }
-    }
-  }
-
-  private def testChildElements(xml: String, expectedNames: String*): Unit = {
-    assertResult(expectedNames) {
-      val rootElement = loadXml(xml).getDocumentElement
-      childElements(rootElement).toIndexedSeq map { _.getTagName }
     }
   }
 }

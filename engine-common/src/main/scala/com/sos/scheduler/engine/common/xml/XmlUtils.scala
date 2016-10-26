@@ -20,8 +20,6 @@ import javax.xml.transform.{Result, TransformerFactory}
 import javax.xml.xpath.{XPathConstants, XPathFactory}
 import org.w3c.dom.{Document, Element, Node, NodeList}
 import org.xml.sax.{ErrorHandler, InputSource, SAXParseException}
-import scala.collection.JavaConversions._
-import scala.collection.immutable
 import scala.util.matching.Regex
 
 @ForCpp object XmlUtils {
@@ -225,12 +223,6 @@ import scala.util.matching.Regex
   def booleanXPath(baseNode: Node, xpathExpression: String): Boolean =
     xPath.evaluate(xpathExpression, baseNode, XPathConstants.BOOLEAN).asInstanceOf[Boolean]
 
-  def childElements(element: Element): Iterable[Element] =
-    new SiblingElementIterator(element.getFirstChild).toIterable
-
-  def childElementOption(e: Element, name: String): Option[Element] =
-    new NamedChildElements(name, e).headOption
-
   @ForCpp
   def xpathNodeList(baseNode: Node, xpathExpression: String): NodeList = {
     xPath.evaluate(xpathExpression, baseNode, XPathConstants.NODESET).asInstanceOf[NodeList]
@@ -282,9 +274,6 @@ import scala.util.matching.Regex
 
   def xmlBytesToString(bytes: Array[Byte]): String =
     SafeXML.load(new ByteArrayInputStream(bytes)).toString()
-
-  def nodeListToSeq(nodeList: NodeList): immutable.Seq[Node] =
-    for (i ← 0 until nodeList.getLength) yield nodeList.item(i)
 
   def encoding(xmlBytes: Array[Byte]): Charset = {
     val eventReader = ScalaStax.getCommonXMLInputFactory().createXMLStreamReader(new StreamSource(new ByteArrayInputStream(xmlBytes)))
