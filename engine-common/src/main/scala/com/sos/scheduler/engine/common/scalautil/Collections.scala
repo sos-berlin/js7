@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.common.scalautil
 import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
-import scala.collection.{AbstractIterable, AbstractIterator, TraversableLike, immutable, mutable}
+import scala.collection.{TraversableLike, immutable, mutable}
 import scala.language.implicitConversions
 
 object Collections {
