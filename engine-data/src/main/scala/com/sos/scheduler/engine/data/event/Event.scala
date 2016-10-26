@@ -5,7 +5,7 @@ package com.sos.scheduler.engine.data.event
   */
 trait Event {
   /**
-    * The type of the key in [[KeyedEvent]] or [[com.sos.scheduler.engine.data.event.KeyedEvent.NoKey]].
+    * The type of the key in [[KeyedEvent]] or [[KeyedEvent.NoKey]].
     */
   type Key
 }

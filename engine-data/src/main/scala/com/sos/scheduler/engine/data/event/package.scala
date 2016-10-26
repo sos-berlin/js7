@@ -1,9 +1,8 @@
 package com.sos.scheduler.engine.data
 
-import java.time.chrono.IsoChronology
-import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter._
-import java.time.format.{DateTimeFormatterBuilder, ResolverStyle}
+import java.time.format.DateTimeFormatterBuilder
+import java.time.{Instant, ZoneId}
 import spray.json.{JsNumber, JsValue}
 
 /**
@@ -11,6 +10,19 @@ import spray.json.{JsNumber, JsValue}
   */
 package object event {
 
+  /**
+    *  Identifies [[com.sos.scheduler.engine.data.event.Snapshot]]s taken at different times.
+    *  <p>
+    *    The ID encodes the timestamp as the value of milliseconds since 1970-01-01 UTC multiplied by 1000.
+    *    The accuracy is one millisecond in most cases (below 1000 events/ms).
+    *  <p>
+    *    The factor of 1000 is chosen to have room for a counter, starting every millisecond at 0,
+    *    to discriminate multiple events of the same millisecond.
+    *    The counter may overflow into the millisecond part (at >= 1000 events/s),
+    *    in which case the accuracy is no longer a millisecond.
+    *    For the algorithm, see EventIdGenerator.
+    *
+    */
   type EventId = Long
 
   object EventId {

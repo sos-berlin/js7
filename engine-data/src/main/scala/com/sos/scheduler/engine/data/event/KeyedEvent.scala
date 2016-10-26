@@ -5,6 +5,11 @@ import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtyp
 import scala.reflect.ClassTag
 import spray.json._
 
+/**
+  * A [[Event]] enriched with a `key` designating the respective object.
+  *
+  * @author Joacim Zschimmer
+  */
 final case class KeyedEvent[+E <: Event](key: E#Key, event: E)
 
 object KeyedEvent {
