@@ -9,7 +9,8 @@ import spray.json.DefaultJsonProtocol._
   */
 final case class ProcessClassDetailed(
   overview: ProcessClassOverview,
-  agents: immutable.Seq[AgentAddress])
+  agents: immutable.Seq[AgentAddress],
+  processes: immutable.Seq[ProcessDetailed])
 extends ProcessClassView {
 
   def path = overview.path
@@ -17,5 +18,5 @@ extends ProcessClassView {
 
 object ProcessClassDetailed extends ProcessClassView.Companion[ProcessClassDetailed] {
   implicit val ordering: Ordering[ProcessClassDetailed] = Ordering by { _.path }
-  implicit val jsonFormat = jsonFormat2(apply)
+  implicit val jsonFormat = jsonFormat3(apply)
 }
