@@ -76,6 +76,7 @@ object SprayJson {
       def asJsArray = delegate.asInstanceOf[JsArray]
       def asJsNumber = delegate.asInstanceOf[JsNumber]
       def asJsString = delegate.asInstanceOf[JsString]
+      def asString = asJsString.value
 
       def deepMapJsObjects(transform: JsObject ⇒ JsValue): JsValue =
         delegate match {
