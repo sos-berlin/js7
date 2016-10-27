@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.data.processclass
 import com.sos.scheduler.engine.data.agent.AgentAddress
 import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._
+import spray.json.RootJsonFormat
 
 /**
   * @author Joacim Zschimmer
@@ -18,5 +19,5 @@ extends ProcessClassView {
 
 object ProcessClassDetailed extends ProcessClassView.Companion[ProcessClassDetailed] {
   implicit val ordering: Ordering[ProcessClassDetailed] = Ordering by { _.path }
-  implicit val jsonFormat = jsonFormat3(apply)
+  implicit val jsonFormat: RootJsonFormat[ProcessClassDetailed] = jsonFormat3(apply)
 }
