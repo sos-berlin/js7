@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.job
 
-import spray.json.RootJsonFormat
+import com.sos.scheduler.engine.data.common.HasViewCompanion
 
 /**
   * @author Joacim Zschimmer
@@ -9,18 +9,7 @@ trait JobView {
   def path: JobPath
 }
 
-object JobView {
-  implicit def jsonFormat[V <: JobView: Companion]: RootJsonFormat[V] =
-    companion[V].jsonFormat
+object JobView extends HasViewCompanion.WithKnownSubtypes[JobView] {
 
-  def companion[V <: JobView: Companion]: Companion[V] =
-    implicitly[Companion[V]]
-
-  trait Companion[V <: JobView] {
-    implicit def jsonFormat: RootJsonFormat[V]
-
-    implicit final def implicitCompanion: Companion[V] = this
-
-    val name = getClass.getSimpleName stripSuffix "$"
-  }
+  protected val subtypes: Subtypes = Set(JobOverview, JobDescription)
 }

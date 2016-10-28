@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.common.sprayutils
 import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.util.control.NonFatal
-import shapeless.HNil
+import shapeless.{::, HNil}
 import spray.http.HttpHeaders.Accept
 import spray.http.{MediaType, StatusCode}
 import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
@@ -55,6 +55,15 @@ object SprayUtils {
     }
   }
 
+  def passRight[R](either: Either[String, R]): Directive1[R] =
+    new Directive1[R] {
+      def happly(inner: (R :: HNil) ⇒ Route) =
+        either match {
+          case Right(r) ⇒ inner(r :: HNil)
+          case Left(message) ⇒ reject(ValidationRejection(message))
+        }
+    }
+
   /**
     * Passes x iff argument is true.
     */
@@ -66,7 +75,7 @@ object SprayUtils {
         reject
     }
 
-/*
+  /*
   private type ParameterMap = Map[String, String]
 
   private def eatParameterOption(parameterMap: ParameterMap, key: String) =
