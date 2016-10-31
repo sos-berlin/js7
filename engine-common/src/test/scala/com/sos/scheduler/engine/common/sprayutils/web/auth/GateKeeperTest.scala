@@ -3,10 +3,11 @@ package com.sos.scheduler.engine.common.sprayutils.web.auth
 import akka.actor.ActorSystem
 import akka.testkit.TestDuration
 import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.UserAndPassword
+import com.sos.scheduler.engine.common.auth.{UserAndPassword, UserId}
 import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers.JsObjectMarshaller
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeperTest._
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
 import java.time.Instant.now
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -30,7 +31,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     realm = "REALM",
     invalidAuthenticationDelay = 2.s,
     providePasswordValidator = () ⇒ {
-      case UserAndPassword("USER", SecretString("PASSWORD")) ⇒ true
+      case UserAndPassword(UserId("USER"), SecretString("PASSWORD")) ⇒ true
       case _ ⇒ false
     })
 
@@ -138,6 +139,8 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 }
 
 private object GateKeeperTest {
+  intelliJuseImports(JsObjectMarshaller)
+
   def newGateKeeper(conf: GateKeeper.Configuration, isUnsecuredHttp: Boolean = false)(implicit ec: ExecutionContext) =
     new GateKeeper(conf, new CSRF(CSRF.Configuration.Default), isUnsecuredHttp = isUnsecuredHttp)
 }

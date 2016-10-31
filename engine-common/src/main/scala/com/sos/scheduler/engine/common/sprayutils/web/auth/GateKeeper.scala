@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.sprayutils.web.auth
 
 import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.{EncodedPasswordValidator, UserAndPassword}
+import com.sos.scheduler.engine.common.auth.{EncodedPasswordValidator, User, UserAndPassword}
 import com.sos.scheduler.engine.common.configutils.Configs.ConvertibleConfig
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
@@ -29,11 +29,12 @@ final class GateKeeper(configuraton: Configuration, csrf: CSRF, isUnsecuredHttp:
           inner
         else
           handleRejections(failIfCredentialsRejected(invalidAuthenticationDelay)) {
-            authenticate(BasicAuth(new SimpleUserPassAuthenticator(providePasswordValidator()), realm = realm)) { _ ⇒
+            val authenticator = new SimpleUserPassAuthenticator(providePasswordValidator())
+            authenticate(BasicAuth(authenticator, realm = realm)) { _: User ⇒
               inner
             }
           } ~
-          passIf(getIsPublic) {  // After authenticate, to return its error
+          passIf(getIsPublic) {
             (get | head) {
               inner
             }
@@ -76,7 +77,8 @@ object GateKeeper {
       invalidAuthenticationDelay = authConfig.getDuration("invalid-authentication-delay"),
       httpIsPublic = authConfig.getBoolean("http-is-public"),
       getIsPublic = authConfig.getBoolean("get-is-public"),
-      providePasswordValidator = () ⇒ new EncodedPasswordValidator(usersConfig().optionAs[SecretString]) /* Configuration "users" is only required with authentication switched on*/)
+      providePasswordValidator = () ⇒ new EncodedPasswordValidator(
+        userId ⇒ usersConfig().optionAs[SecretString](userId.string))) // Configuration "users" is only required with authentication switched on
   }
 
   def failIfCredentialsRejected(delay: Duration)(implicit ec: ExecutionContext) = RejectionHandler {

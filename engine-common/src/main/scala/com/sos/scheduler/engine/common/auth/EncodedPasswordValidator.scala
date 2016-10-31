@@ -19,13 +19,13 @@ import scala.util.{Failure, Success, Try}
   *
   * @author Joacim Zschimmer
   */
-final class EncodedPasswordValidator(userToEncodedPassword: String ⇒ Option[SecretString])
+final class EncodedPasswordValidator(userToEncodedPassword: UserId ⇒ Option[SecretString])
 extends (UserAndPassword ⇒ Boolean) {
 
   def apply(userAndPassword: UserAndPassword) =
-    hashedPasswordOption(userAndPassword.user) exists validatePassword(userAndPassword)
+    hashedPasswordOption(userAndPassword.userId) exists validatePassword(userAndPassword)
 
-  private[auth] def hashedPasswordOption(user: String): Option[SecretString] =
+  private[auth] def hashedPasswordOption(user: UserId): Option[SecretString] =
     Try { userToEncodedPassword(user) }
     match {
       case Success(o) ⇒
@@ -37,15 +37,15 @@ extends (UserAndPassword ⇒ Boolean) {
     }
 
   private[auth] def validatePassword(userAndPassword: UserAndPassword)(hashedPassword: SecretString): Boolean = {
-    import userAndPassword.{password, user}
+    import userAndPassword.{password, userId}
     hashedPassword.string match {
       case EntryRegex("plain", pw) ⇒ pw == password.string
       case EntryRegex("sha512", pw) ⇒ sha512.hashString(password.string, UTF_8) == HashCode.fromString(pw)
       case EntryRegex(_, _) ⇒
-        logger.error(s"Unknown password encoding scheme for user '$user'")
+        logger.error(s"Unknown password encoding scheme for user '$userId'")
         false
       case o ⇒
-        logger.error(s"Missing password encoding scheme for user '$user'. Try to prefix the configured password with 'plain:' or 'sha512:'")
+        logger.error(s"Missing password encoding scheme for user '$userId'. Try to prefix the configured password with 'plain:' or 'sha512:'")
         false
     }
   }
