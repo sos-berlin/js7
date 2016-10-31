@@ -64,8 +64,9 @@ trait SprayWebServer extends AutoCloseable {
       .map {
         case _: Http.Bound ⇒  // good
         case failed: Tcp.CommandFailed ⇒
-          sys.error(s"Binding to TCP port $address failed: $failed. " +
-            "Port is possibly in use and not available. Switch on DEBUG-level logging for `akka.io.TcpListener` to log the cause")
+          sys.error(s"Binding to TCP port $address failed. " +
+            "Port is possibly in use and not available. " +
+            s"Switch on DEBUG-level logging for `akka.io.TcpListener` to log the cause. $failed")
             // (Akka 2.3.7) When Akka #13861 should be fixed, replace by actual exception. See https://github.com/akka/akka/issues/13861
     }
   }
