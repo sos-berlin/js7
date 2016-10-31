@@ -90,21 +90,21 @@ object SprayWebServer {
   private val ShutdownTimeout = 5.s
   private val logger = Logger(getClass)
 
-  trait HasLocalUri {
+  trait HasUri {
     this: SprayWebServer ⇒
     protected def uriPathPrefix: String
 
-    lazy val localHttpUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Http ⇒ toLocalUri("http", o.address) }
-    lazy val localHttpsUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Https ⇒ toLocalUri("https", o.address) }
-    lazy val localUri: Uri = localHttpUriOption orElse localHttpsUriOption getOrElse { throw newPortNeededException }
+    lazy val locallyUsableHttpUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Http ⇒ toLocallyUsableUri("http", o.address) }
+    lazy val locallyUseableHttpsUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Https ⇒ toLocallyUsableUri("https", o.address) }
 
-    private def toLocalUri(scheme: String, address: InetSocketAddress) = {
+    lazy val locallyUsableUri: Uri = locallyUsableHttpUriOption orElse locallyUseableHttpsUriOption getOrElse { throw newPortNeededException }
+
+    private def toLocallyUsableUri(scheme: String, address: InetSocketAddress) = {
       val host = address.getAddress.getHostAddress.substitute("0.0.0.0", "127.0.0.1")
       val port = address.getPort
       Uri(s"$scheme://$host:$port/$uriPathPrefix" stripSuffix "/")
     }
   }
-
 
   def actorName(prefix: String, binding: WebServerBinding) =
     s"$prefix-${binding.scheme}-${inetSocketAddressToName(binding.address)}"

@@ -21,7 +21,7 @@ final class AgentWebServer @Inject private(
   (implicit
     protected val actorSystem: ActorSystem,
     protected val executionContext: ExecutionContext)
-extends SprayWebServer with SprayWebServer.HasLocalUri {
+extends SprayWebServer with SprayWebServer.HasUri {
 
   protected val bindings = conf.http ++ conf.https
   protected val uriPathPrefix = conf.uriPathPrefix

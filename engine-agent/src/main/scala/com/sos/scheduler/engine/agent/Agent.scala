@@ -37,7 +37,7 @@ final class Agent(module: Module) extends AutoCloseable {
   val configuration = injector.instance[AgentConfiguration]
   private implicit val closer = injector.instance[Closer]
   private val webServer = injector.instance[AgentWebServer].closeWithCloser
-  val localUri = AgentAddress(webServer.localUri.toString)
+  val localUri = AgentAddress(webServer.locallyUsableUri.toString)
   private val taskHandler = injector.instance[TaskHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
 
