@@ -162,6 +162,10 @@ public final class TaskBean implements Bean<Task> {
         delegate.call_me_again_when_locks_available();
     }
 
+    public String getWeb_service_access_token() {
+        return delegate.web_service_access_token();
+    }
+
     @Override public Task getDelegate() {
         return delegate;
     }

@@ -8,5 +8,6 @@ import com.sos.scheduler.engine.base.generic.IsString
 final case class UserId(string: String) extends IsString
 
 object UserId extends IsString.Companion[UserId] {
-  val AnonymousUserId = UserId("anonymous")
+  val Anonymous = UserId("anonymous")
+  val Empty = UserId("")
 }

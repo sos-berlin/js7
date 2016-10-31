@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.sprayutils.web.auth
 
 import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.{EncodedPasswordValidator, User, UserAndPassword}
+import com.sos.scheduler.engine.common.auth.{EncodedPasswordValidator, User, UserAndPassword, UserId}
 import com.sos.scheduler.engine.common.configutils.Configs.ConvertibleConfig
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
@@ -20,7 +20,7 @@ import spray.routing.authentication._
   */
 final class GateKeeper(configuraton: Configuration, csrf: CSRF, isUnsecuredHttp: Boolean = false)(implicit ec: ExecutionContext) {
 
-  import configuraton.{getIsPublic, httpIsPublic, invalidAuthenticationDelay, providePasswordValidator, realm}
+  import configuraton.{getIsPublic, httpIsPublic, invalidAuthenticationDelay, providePasswordValidator, provideAccessTokenValidator, realm}
 
   val restrict: Directive0 =
     mapInnerRoute { inner ⇒
@@ -29,7 +29,7 @@ final class GateKeeper(configuraton: Configuration, csrf: CSRF, isUnsecuredHttp:
           inner
         else
           handleRejections(failIfCredentialsRejected(invalidAuthenticationDelay)) {
-            val authenticator = new SimpleUserPassAuthenticator(providePasswordValidator())
+            val authenticator = new SimpleUserPassAuthenticator(providePasswordValidator(), provideAccessTokenValidator())
             authenticate(BasicAuth(authenticator, realm = realm)) { _: User ⇒
               inner
             }
@@ -66,7 +66,8 @@ object GateKeeper {
     httpIsPublic: Boolean = false,
     /** HTTP GET is open */
     getIsPublic: Boolean = false,
-    providePasswordValidator: () ⇒ UserAndPassword ⇒ Boolean)
+    providePasswordValidator: () ⇒ UserAndPassword ⇒ Boolean,
+    provideAccessTokenValidator: () ⇒ PartialFunction[SecretString, UserId] = () ⇒ PartialFunction.empty)
 
   object Configuration {
     def fromSubConfig(config: Config): Configuration =

@@ -186,6 +186,10 @@ public final class SpoolerBean implements Bean<Spooler> {
         return delegate.schedule(path).toBean();
     }
 
+    public String getUri() {
+        return delegate.uri();
+    }
+
     @Override public Spooler getDelegate() {
         return delegate;
     }

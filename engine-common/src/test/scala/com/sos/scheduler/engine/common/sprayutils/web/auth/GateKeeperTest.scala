@@ -33,7 +33,8 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     providePasswordValidator = () ⇒ {
       case UserAndPassword(UserId("USER"), SecretString("PASSWORD")) ⇒ true
       case _ ⇒ false
-    })
+    },
+    provideAccessTokenValidator = () ⇒ Map(SecretString("GRETA-TOKEN") → UserId("GRETA")))
 
   private def route(conf: GateKeeper.Configuration): Route = route(newGateKeeper(conf))
 
@@ -105,28 +106,56 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     addPostTextPlainText(conf)
   }
 
-  "Access with valid credentials" in {
-    Get(uri) ~> Authorization(BasicHttpCredentials("USER", "PASSWORD")) ~> route(defaultConf) ~> check {
-      assert(status == OK)
+  "User ID and password" - {
+    "Access with valid credentials" in {
+      Get(uri) ~> Authorization(BasicHttpCredentials("USER", "PASSWORD")) ~> route(defaultConf) ~> check {
+        assert(status == OK)
+      }
+    }
+
+    "No access with missing credentials" in {
+      Get(uri) ~> route(defaultConf) ~> check {
+        assert(!handled)
+        assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
+      }
+    }
+
+    "No access with invalid credentials" in {
+      implicit def default(implicit system: ActorSystem) =
+        RouteTestTimeout((2 * defaultConf.invalidAuthenticationDelay).toFiniteDuration.dilated)
+
+      val t = now
+      Get(uri) ~> Authorization(BasicHttpCredentials("USER", "WRONG")) ~> route(defaultConf) ~> check {
+        assert(status == Unauthorized)
+      }
+      assert(now - t >= defaultConf.invalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
     }
   }
 
-  "No access with missing credentials" in {
-    Get(uri) ~> route(defaultConf) ~> check {
-      assert(!handled)
-      assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
+  "Access token" - {
+    "Access with valid access token" in {
+      Get(uri) ~> Authorization(BasicHttpCredentials("", "GRETA-TOKEN")) ~> route(defaultConf) ~> check {
+        assert(status == OK)
+      }
     }
-  }
 
-  "No access with invalid credentials" in {
-    implicit def default(implicit system: ActorSystem) =
-      RouteTestTimeout((2 * defaultConf.invalidAuthenticationDelay).toFiniteDuration.dilated)
-
-    val t = now
-    Get(uri) ~> Authorization(BasicHttpCredentials("USER", "WRONG")) ~> route(defaultConf) ~> check {
-      assert(status == Unauthorized)
+    "No access with missing credentials" in {
+      Get(uri) ~> route(defaultConf) ~> check {
+        assert(!handled)
+        assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
+      }
     }
-    assert(now - t >= defaultConf.invalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
+
+    "No access with invalid credentials" in {
+      implicit def default(implicit system: ActorSystem) =
+        RouteTestTimeout((2 * defaultConf.invalidAuthenticationDelay).toFiniteDuration.dilated)
+
+      val t = now
+      Get(uri) ~> Authorization(BasicHttpCredentials("", "WRONG")) ~> route(defaultConf) ~> check {
+        assert(status == Unauthorized)
+      }
+      assert(now - t >= defaultConf.invalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
+    }
   }
 
   private def addPostTextPlainText(conf: GateKeeper.Configuration): Unit = {

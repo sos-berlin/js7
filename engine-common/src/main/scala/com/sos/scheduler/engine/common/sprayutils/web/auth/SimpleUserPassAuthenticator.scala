@@ -9,19 +9,20 @@ import spray.routing.authentication._
   * @author Joacim Zschimmer
   */
 final class SimpleUserPassAuthenticator(
-  isValidPassword: UserAndPassword ⇒ Boolean)
+  isValidPassword: UserAndPassword ⇒ Boolean,
+  validateAccessToken: PartialFunction[SecretString, UserId])
 extends UserPassAuthenticator[User] {
 
   def apply(userPass: Option[UserPass]) =
     Future.successful(
-      userPass match {
-        case Some(UserPass(user, password)) if isValidPassword(UserAndPassword(UserId(user), SecretString(password))) ⇒
-          Some(SimpleUser(UserId(user)))
-        case _ ⇒
-          None
+      userPass flatMap { case UserPass(user, pass) ⇒
+        val password = SecretString(pass)
+        UserId(user) match {
+          case UserId.Empty ⇒
+            validateAccessToken.lift(password) map SimpleUser.apply
+          case userId if isValidPassword(UserAndPassword(userId, password)) ⇒
+            Some(SimpleUser(userId))
+          case _ ⇒ None
+        }
       })
-}
-
-object SimpleUserPassAuthenticator {
-  val AccessTokenPseudoUser = ""
 }
