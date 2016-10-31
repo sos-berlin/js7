@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver.data
 
 import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
+import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
 import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
@@ -46,7 +47,7 @@ object TaskStartArguments {
   = new TaskStartArguments(
       masterAddress = s"127.0.0.1:$tcpPort",
       startMeta = StartTask.Meta.Default,
-      tunnelToken = TunnelToken(TunnelId("TEST-TUNNEL"), TunnelToken.Secret("TUNNEL-SECRET")),
+      tunnelToken = TunnelToken(TunnelId("TEST-TUNNEL"), SecretString("TUNNEL-SECRET")),
       workingDirectory = directory,
       logDirectory = temporaryDirectory,
       stdFileMap = stdFileMap,

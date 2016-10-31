@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerOverview
 import com.sos.scheduler.engine.agent.task.TaskHandlerTest._
 import com.sos.scheduler.engine.base.exceptions.PublicException
+import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
@@ -171,7 +172,7 @@ private object TaskHandlerTest {
   private val TestStartApiTask = StartApiTask(javaOptions = JavaOptions, javaClasspath = JavaClasspath,
     meta = Some(StartTask.Meta(taskId = TaskId(1), job = JobPath("/test-job"))))
   private val TestLicenseKeyBunch = LicenseKeyBunch("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")
-  private val TestTunnelToken = TunnelToken(TunnelId("1"), TunnelToken.Secret("SECRET"))
+  private val TestTunnelToken = TunnelToken(TunnelId("1"), SecretString("SECRET"))
 
   private class TestContext {
     val taskServers = List.fill(AgentTaskIds.size) { new MockTaskServer }

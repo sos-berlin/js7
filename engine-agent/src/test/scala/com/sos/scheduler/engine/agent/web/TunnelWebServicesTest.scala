@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.web
 import akka.util.ByteString
 import com.sos.scheduler.engine.agent.web.TunnelWebServicesTest._
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
+import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.time.ScalaTime.DurationRichInt
@@ -90,7 +91,7 @@ private object TunnelWebServicesTest {
   private val TunnelPath = Path("/jobscheduler/agent/api/tunnel")
   private val CrazyString = """,.-;:_!"§$%&/()=#'+*´`<>"""
   private val TestTunnelId = TunnelId(CrazyString * 2)  // In practice (2015), the TunnelId is simpler
-  private val TestSecret = TunnelToken.Secret(CrazyString.reverse * 100)  // In practice (2015), the secret is simpler. See TunnelId.newSecret
+  private val TestSecret = SecretString(CrazyString.reverse * 100)  // In practice (2015), the secret is simpler. See TunnelId.newSecret
   private val TestTunnelHandlerOverview = TunnelHandlerOverview(Some("TCP-ADDRESS"), tunnelCount = 77)
   private val TestTunnelOverviews = List(
     TunnelOverview(

@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.tunnel.web
 
 import akka.actor.ActorRefFactory
 import akka.util.ByteString
+import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
@@ -33,7 +34,7 @@ object TunnelWebServices {
   {
     (pathEndOrSingleSlash & post) {
       headerValueByName(SecretHeaderName) { secret ⇒
-        val tunnelToken = TunnelToken(tunnelId, TunnelToken.Secret(secret))
+        val tunnelToken = TunnelToken(tunnelId, SecretString(secret))
         handleExceptions(tunnelExceptionHandler) {
           val tunnel = tunnelAccess(tunnelToken)
           tunnel.heartbeatService.continueHeartbeat(onClientHeartbeat = onHeartbeat(tunnelToken, _)) ~
