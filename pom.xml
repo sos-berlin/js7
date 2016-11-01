@@ -78,7 +78,7 @@
         <scala-xml.version>1.0.3</scala-xml.version>
         <scalactic.version>2.2.4</scalactic.version>
         <scalatest.version>2.2.4</scalatest.version>
-        <spray.version>1.3.3</spray.version>
+        <spray.version>1.3.4</spray.version>
         <spray-json.version>1.3.2</spray-json.version>
         <slf4j.version>1.7.10</slf4j.version>
 
