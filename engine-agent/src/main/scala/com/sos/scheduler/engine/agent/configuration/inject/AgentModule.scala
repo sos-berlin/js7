@@ -31,7 +31,7 @@ extends AbstractModule {
 
   @Provides  // Lazy, not (eager) @Singleton. Only HTTPS needs this - and requires passwords.conf.
   def passwordValidator(conf: AgentConfiguration): UserAndPassword ⇒ Boolean =
-    new EncodedPasswordValidator(conf.authUsersConfig.optionAs[SecretString])
+    EncodedPasswordValidator.fromSubConfig(conf.authUsersConfig)
 
   @Provides @Singleton
   def extraWebServices(agentConfiguration: AgentConfiguration, injector: Injector): immutable.Seq[ExternalWebService] =

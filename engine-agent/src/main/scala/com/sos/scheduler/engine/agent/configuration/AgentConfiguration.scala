@@ -77,7 +77,7 @@ final case class AgentConfiguration(
   private def inetSocketAddressToHttps(addr: InetSocketAddress) = Https(
     addr,
     https map { _.keystoreReference } getOrElse {
-      val sub = config.getConfig("jobscheduler.agent.https.keystore")
+      val sub = config.getConfig("jobscheduler.agent.webserver.https.keystore")
       KeystoreReference(
         url = sub.as[Path]("file", privateDirectory / "private-https.jks").toURI.toURL ,
         storePassword = sub.optionAs[SecretString]("password"),
@@ -148,10 +148,10 @@ object AgentConfiguration {
     val c = config.getConfig("jobscheduler.agent")
     var v = new AgentConfiguration(
       dataDirectory = data,
-      httpAddress = c.optionAs("http.port")(StringToServerInetSocketAddress),
+      httpAddress = c.optionAs("webserver.http.port")(StringToServerInetSocketAddress),
       https = None,  // Changed below
       externalWebServiceClasses = Nil,
-      uriPathPrefix = c.as[String]("http.uri-prefix") stripPrefix "/" stripSuffix "/",
+      uriPathPrefix = c.as[String]("webserver.uri-prefix") stripPrefix "/" stripSuffix "/",
       logDirectory = c.optionAs("log.directory")(asAbsolutePath) orElse (data map defaultLogDirectory) getOrElse temporaryDirectory,
       environment = Map(),
       dotnet = DotnetConfiguration(classDllDirectory = c.optionAs("task.dotnet.class-directory")(asAbsolutePath)),
@@ -160,7 +160,7 @@ object AgentConfiguration {
       killScript = Some(ProcessKillScript(DelayUntilFinishFile)),  // Changed below
       config = config)
     v = v.withKillScript(c.optionAs[String]("task.kill.script"))
-    for (o ← c.optionAs("https.port")(StringToServerInetSocketAddress)) {
+    for (o ← c.optionAs("webserver.https.port")(StringToServerInetSocketAddress)) {
       v = v withHttpsInetSocketAddress o
     }
     v
