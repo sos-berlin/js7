@@ -8,6 +8,7 @@ import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.{StandardAgentTaskFactory, TaskHandler}
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
+import com.sos.scheduler.engine.common.auth.EncodedPasswordValidator
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
 import com.sos.scheduler.engine.common.time.timer.TimerService
@@ -33,9 +34,9 @@ extends AbstractModule {
 
   @Provides @Singleton
   def provideGateKeeperConfiguration(config: Config): GateKeeper.Configuration =
-    GateKeeper.Configuration.fromSubConfig(
-      authConfig  = config.getConfig("jobscheduler.agent.webserver.auth"),
-      usersConfig = config.getConfig("jobscheduler.agent.auth.users"))
+    GateKeeper.Configuration
+      .fromSubConfig(config.getConfig("jobscheduler.agent.webserver.auth"))
+      .copy(providePasswordValidator = () ⇒ EncodedPasswordValidator.fromSubConfig(config.getConfig("jobscheduler.agent.auth.users")))
 
   @Provides @Singleton
   def extraWebServices(agentConfiguration: AgentConfiguration, injector: Injector): immutable.Seq[ExternalWebService] =

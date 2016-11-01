@@ -4,7 +4,9 @@ import com.google.common.hash.HashCode
 import com.google.common.hash.Hashing.sha512
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.auth.EncodedPasswordValidator._
+import com.sos.scheduler.engine.common.configutils.Configs.ConvertibleConfig
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.typesafe.config.Config
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.util.{Failure, Success, Try}
 
@@ -51,7 +53,10 @@ extends (UserAndPassword ⇒ Boolean) {
   }
 }
 
-private object EncodedPasswordValidator {
+object EncodedPasswordValidator {
   private val EntryRegex = "([^:]+):(.*)".r
   private val logger = Logger(getClass)
+
+  def fromSubConfig(config: Config): EncodedPasswordValidator =
+    new EncodedPasswordValidator(userId ⇒ config.optionAs[SecretString](userId.string))
 }

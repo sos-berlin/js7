@@ -84,7 +84,7 @@ final case class AgentConfiguration(
 
   private def newKeyStoreReference() =
     KeystoreReference.fromSubConfig(
-      config.getConfig("jobscheduler.agent.https.keystore"),
+      config.getConfig("jobscheduler.agent.webserver.https.keystore"),
       configDirectory = configDirectory getOrElse {
         throw new IllegalArgumentException("For HTTPS, dataDirectory is required")
       })
