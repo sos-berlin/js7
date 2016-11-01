@@ -136,7 +136,7 @@ object AgentConfiguration {
   val InvalidAuthenticationDelay = 1.s
   private val DelayUntilFinishFile = EmptyPath  // Marker for finish
   private[configuration] lazy val DefaultsConfig = Configs.loadResource(
-    JavaResource("com/sos/scheduler/engine/agent/configuration/defaults.conf"))
+    JavaResource("com/sos/scheduler/engine/agent/configuration/agent.conf"))
 
   def apply(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
     fromDataDirectory(a.optionAs[Path]("-data-directory=")) withCommandLineArguments a
