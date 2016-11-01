@@ -70,16 +70,13 @@ object GateKeeper {
     provideAccessTokenValidator: () ⇒ PartialFunction[SecretString, UserId] = () ⇒ PartialFunction.empty)
 
   object Configuration {
-    def fromSubConfig(config: Config): Configuration =
-      fromSubConfig(config, () ⇒ config.getConfig("users"))
-
-    def fromSubConfig(authConfig: Config, usersConfig: () ⇒ Config) = new Configuration(
+    def fromSubConfig(authConfig: Config, usersConfig: ⇒ Config) = new Configuration(
       realm = authConfig.getString("realm"),
       invalidAuthenticationDelay = authConfig.getDuration("invalid-authentication-delay"),
       httpIsPublic = authConfig.getBoolean("http-is-public"),
       getIsPublic = authConfig.getBoolean("get-is-public"),
       providePasswordValidator = () ⇒ new EncodedPasswordValidator(
-        userId ⇒ usersConfig().optionAs[SecretString](userId.string))) // Configuration "users" is only required with authentication switched on
+        userId ⇒ usersConfig.optionAs[SecretString](userId.string))) // Configuration "users" is only required with authentication switched on
   }
 
   def failIfCredentialsRejected(delay: Duration)(implicit ec: ExecutionContext) = RejectionHandler {

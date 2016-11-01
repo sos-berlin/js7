@@ -34,8 +34,8 @@ extends AbstractModule {
   @Provides @Singleton
   def provideGateKeeperConfiguration(config: Config): GateKeeper.Configuration =
     GateKeeper.Configuration.fromSubConfig(
-      config.getConfig("jobscheduler.agent.webserver.auth"),
-      usersConfig = () ⇒ config.getConfig("jobscheduler.agent.auth.users"))  // Without "webserver." for compatibility
+      authConfig  = config.getConfig("jobscheduler.agent.webserver.auth"),
+      usersConfig = config.getConfig("jobscheduler.agent.auth.users"))
 
   @Provides @Singleton
   def extraWebServices(agentConfiguration: AgentConfiguration, injector: Injector): immutable.Seq[ExternalWebService] =
