@@ -49,9 +49,7 @@ public enum SchedulerLogLevel {
     }
 
     public static SchedulerLogLevel ofCpp(int cppLogLevel) {
-        for (SchedulerLogLevel o: values())
-            if (o.cppNumber == cppLogLevel) return o;
-        throw new RuntimeException("Unknown C++ log_level: "+cppLogLevel);
+        return values()[cppLogLevel - (Min.cppNumber - 1)];
     }
 
     public static final JsonFormat<SchedulerLogLevel> MyJsonFormat = new JavaEnumJsonFormat<>(SchedulerLogLevel.class);
