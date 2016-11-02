@@ -8,7 +8,8 @@ import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
 
 /**
- * @author Joacim Zschimmer
+  * @see RFC 3023 XML Media Types, https://tools.ietf.org/html/rfc3023
+  * @author Joacim Zschimmer
  */
 final case class XmlString(string: String)
 

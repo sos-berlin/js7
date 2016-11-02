@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
 import com.sos.scheduler.engine.common.sprayutils.XmlStringTest._
 import com.sos.scheduler.engine.common.xml.XmlUtils.removeXmlProlog
 import java.io.ByteArrayInputStream
-import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_16, UTF_8}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -44,6 +44,24 @@ final class XmlStringTest extends FreeSpec with ScalatestRouteTest {
       val entity = HttpEntity(`text/xml` withCharset charset, testString.getBytes(charset.nioCharset))
       assert(entity.as[XmlString] == Right(xmlString))
     }
+  }
+
+  "Unmarshal application/xml with default UTF-8" in {
+    val entity = HttpEntity(`application/xml`, testString.getBytes(UTF_8))
+    assert(entity.as[XmlString] == Right(xmlString))
+  }
+
+  for ((encodingXml, encoding) ← List("UTF-16" → UTF_16, "ISO-8859-1" → ISO_8859_1, "UTF-8" → UTF_8)) {
+    s"Unmarshal application/xml with <?xml enoding='$encodingXml'?>" in {
+      val withPrologXmlString = s"<?xml version='1.0' encoding='$encodingXml'?>$testString"
+      val entity = HttpEntity(`application/xml`, withPrologXmlString.getBytes(encoding))
+      assert(entity.as[XmlString] == Right(xmlString))  // Prolog removed (?)
+    }
+  }
+
+  "Unmarshal text/xml" in {
+    val entity = HttpEntity(`text/xml`, testString.getBytes(ISO_8859_1))
+    assert(entity.as[XmlString] == Right(xmlString))
   }
 
   "Web service" - {
