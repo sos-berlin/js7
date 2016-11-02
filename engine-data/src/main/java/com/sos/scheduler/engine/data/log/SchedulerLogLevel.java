@@ -49,7 +49,7 @@ public enum SchedulerLogLevel {
     }
 
     public static SchedulerLogLevel ofCpp(int cppLogLevel) {
-        return values()[cppLogLevel - (Min.cppNumber - 1)];
+        return values()[cppLogLevel - none.cppNumber];
     }
 
     public static final JsonFormat<SchedulerLogLevel> MyJsonFormat = new JavaEnumJsonFormat<>(SchedulerLogLevel.class);
