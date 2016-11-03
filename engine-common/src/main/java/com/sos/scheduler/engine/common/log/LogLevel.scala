@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.log
 
+import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
 import org.slf4j
 
 /**
@@ -26,14 +27,24 @@ object LogLevel {
         case Error ⇒ delegate.isErrorEnabled
       }
 
-    def logByLevel(level: LogLevel, message: ⇒ String): Unit = {
+    def log(level: LogLevel, message: ⇒ String): Unit = {
       level match {
-        case None  ⇒ false
+        case None  ⇒
         case Trace ⇒ delegate.trace(message)
         case Debug ⇒ delegate.debug(message)
         case Info  ⇒ delegate.info(message)
         case Warn  ⇒ delegate.warn(message)
         case Error ⇒ delegate.error(message)
+      }
+    }
+  }
+
+  implicit class LevelScalaLogger(val delegate: ScalaLogger) extends AnyVal {
+    def isEnabled(level: LogLevel): Boolean = delegate.underlying.isEnabled(level)
+
+    def log(level: LogLevel, message: ⇒ String): Unit = {
+      if (isEnabled(level)) {
+        delegate.underlying.log(level, message)
       }
     }
   }
