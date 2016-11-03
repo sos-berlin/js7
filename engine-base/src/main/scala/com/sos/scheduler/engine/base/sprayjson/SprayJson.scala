@@ -73,10 +73,16 @@ object SprayJson {
     }
 
     implicit class RichJsValue(val delegate: JsValue) extends AnyVal {
-      def asJsArray = delegate.asInstanceOf[JsArray]
-      def asJsNumber = delegate.asInstanceOf[JsNumber]
-      def asJsString = delegate.asInstanceOf[JsString]
-      def asString = asJsString.value
+      def asJsArray: JsArray = delegate.asInstanceOf[JsArray]
+      def asJsString: JsString = delegate.asInstanceOf[JsString]
+      def asJsNumber: JsNumber = delegate.asInstanceOf[JsNumber]
+      def asJsBoolean: JsBoolean = delegate.asInstanceOf[JsBoolean]
+      def asVector: Vector[JsValue] = delegate.asJsArray.elements
+      def asString: String = asJsString.value
+      def asBigDecimal: BigDecimal = asJsNumber.value
+      def asLong: Long = asJsNumber.value.toLongExact
+      def asInt: Int = asJsNumber.value.toIntExact
+      def asBoolean: Boolean = asJsBoolean.value
 
       def deepMapJsObjects(transform: JsObject ⇒ JsValue): JsValue =
         delegate match {
