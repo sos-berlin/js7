@@ -1,11 +1,10 @@
 package com.sos.scheduler.engine.common.sprayutils
 
 import com.sos.scheduler.engine.base.convert.As
-import com.sos.scheduler.engine.common.scalautil.Logger
 import scala.util.control.NonFatal
 import shapeless.{::, HNil}
 import spray.http.HttpHeaders.Accept
-import spray.http.{MediaType, StatusCode}
+import spray.http.{HttpHeader, MediaType, StatusCode}
 import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
 import spray.httpx.unmarshalling.{ContentExpected, FromStringOptionDeserializer, MalformedContent}
 import spray.routing.Directives._
@@ -15,8 +14,6 @@ import spray.routing._
   * @author Joacim Zschimmer
   */
 object SprayUtils {
-  private val logger = Logger(getClass)
-
   object implicits {
     implicit class RichOption[A](val delegate: Option[A]) extends AnyVal {
       def applyRoute(f: A ⇒ Route): Route =
@@ -74,6 +71,9 @@ object SprayUtils {
       else
         reject
     }
+
+  def addHeader(header: HttpHeader): Directive0 =
+    mapRequest(o ⇒ o.copy(headers = header :: o.headers))
 
   /*
   private type ParameterMap = Map[String, String]
