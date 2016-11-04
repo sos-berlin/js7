@@ -9,17 +9,28 @@ import org.slf4j
 sealed trait LogLevel
 
 object LogLevel {
-  object None extends LogLevel
+  object LogNone extends LogLevel
   object Trace extends LogLevel
   object Debug extends LogLevel
   object Info extends LogLevel
   object Warn extends LogLevel
   object Error extends LogLevel
 
+  def apply(string: String): LogLevel =
+    string match {
+      case "None"  ⇒ LogNone
+      case "Trace" ⇒ Trace
+      case "Debug" ⇒ Debug
+      case "Info"  ⇒ Info
+      case "Warn"  ⇒ Warn
+      case "Error" ⇒ Error
+      case _ ⇒ throw new IllegalArgumentException("Invalid LogLevel '$string'")
+    }
+
   implicit class LevelLogger(val delegate: slf4j.Logger) extends AnyVal {
     def isEnabled(level: LogLevel): Boolean =
       level match {
-        case None  ⇒ false
+        case LogNone  ⇒ false
         case Trace ⇒ delegate.isTraceEnabled
         case Debug ⇒ delegate.isDebugEnabled
         case Info  ⇒ delegate.isInfoEnabled
@@ -29,7 +40,7 @@ object LogLevel {
 
     def log(level: LogLevel, message: ⇒ String): Unit = {
       level match {
-        case None  ⇒
+        case LogNone  ⇒
         case Trace ⇒ delegate.trace(message)
         case Debug ⇒ delegate.debug(message)
         case Info  ⇒ delegate.info(message)
