@@ -3,7 +3,8 @@ package com.sos.scheduler.engine.common.scalautil
 import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
-import scala.collection.{TraversableLike, immutable, mutable}
+import scala.collection.immutable.Vector
+import scala.collection.{GenTraversable, TraversableLike, immutable, mutable}
 import scala.language.implicitConversions
 
 object Collections {
@@ -110,6 +111,17 @@ object Collections {
       def toImmutableSeq: immutable.Seq[A] = Vector() ++ delegate.iterator
     }
   }
+
+  implicit class RichGenericCompanion[+CC[X] <: GenTraversable[X]](val delegate: scala.collection.generic.GenericCompanion[CC]) {
+    def build[A](body: mutable.Builder[A, CC[A]] ⇒ Unit): CC[A] = {
+      val b = delegate.newBuilder[A]
+      body(b)
+      b.result
+    }
+  }
+
+  // To satisfy IntelliJ IDEA 2016.2.5
+  implicit class RichVector(delegate: Vector.type) extends RichGenericCompanion[Vector](delegate)
 
   def emptyToNone(@Nullable o: String): Option[String] =
     if (o == null || o.isEmpty) None else Some(o)
