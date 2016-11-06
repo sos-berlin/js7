@@ -1,8 +1,9 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.modules.shell
 
 import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
+import ShellProcessTaskTest._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -16,12 +17,14 @@ import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable, InvocableIDispatch, PublicMethodsAreInvocable}
+import com.sos.scheduler.engine.taskserver.common.StdFiles
 import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches._
 import com.sos.scheduler.engine.taskserver.moduleapi.Script
+import com.sos.scheduler.engine.taskserver.modules.common.CommonArguments
 import com.sos.scheduler.engine.taskserver.modules.javamodule.TestJavaModule
-import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.modules.shell.ShellProcessTaskTest.Setting
 import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedIDispatches}
-import com.sos.scheduler.engine.taskserver.task.ShellProcessTaskTest._
+import com.sos.scheduler.engine.taskserver.task.{Monitor, TaskArguments}
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
@@ -37,7 +40,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private lazy val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.shutdown() }
-  private val synchronizedStartProcess = new RichProcessStartSynchronizer()(actorSystem).closeWithCloser
+  private val synchronizedStartProcess = new StandardRichProcessStartSynchronizer()(actorSystem).closeWithCloser
 
   override protected def afterAll() = {
     onClose { super.afterAll() }
@@ -93,9 +96,10 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
     }
   }
 
-  private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) =
+  private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) = {
+    val factory = new ShellModule.Factory(synchronizedStartProcess, taskServerMainTerminatedOption = None)
     new ShellProcessTask(
-      new ShellModule(ShellModule.Arguments(testScript(setting.exitCode))),
+      factory.newModule(ShellModule.Arguments(factory, testScript(setting.exitCode))),
       CommonArguments(
         AgentTaskId("1-1"),
         jobName = "TEST-JOB",
@@ -115,6 +119,7 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
       logFilenamePart = s"ShellProcessTaskTest-$id",
       killScriptOption = None,
       synchronizedStartProcess)
+  }
 }
 
 private object ShellProcessTaskTest {

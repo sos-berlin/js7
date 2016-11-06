@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.base.utils.ScalaUtils
 import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
 import com.sos.scheduler.engine.common.process.Processes.Pid
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
@@ -12,10 +11,13 @@ import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignat
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch, IUnknownFactory, InvocableIDispatch}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
+import com.sos.scheduler.engine.taskserver.TaskServerMain
+import com.sos.scheduler.engine.taskserver.common.StdFiles
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
-import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
-import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
+import com.sos.scheduler.engine.taskserver.modules.javamodule.{ApiModule, ApiProcessTask}
+import com.sos.scheduler.engine.taskserver.modules.shell.{RichProcessStartSynchronizer, ShellModule, ShellProcessTask}
 import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
 import java.util.UUID
 import javax.inject.Inject
@@ -30,7 +32,7 @@ final class RemoteModuleInstanceServer @Inject private(
   moduleFactoryRegister: ModuleFactoryRegister,
   taskStartArguments: TaskStartArguments,
   synchronizedStartProcess: RichProcessStartSynchronizer,
-  taskServerMainTerminatedOption: Option[Future[Unit]])
+  taskServerMainTerminatedOption: Option[Future[TaskServerMain.Terminated.type]])
   (implicit ec: ExecutionContext)
 extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
@@ -65,12 +67,11 @@ extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
       stdFiles)
     val task = moduleFactoryRegister.newModule(taskArguments.rawModuleArguments) match {
       case module: ShellModule ⇒
-        new ShellProcessTask(module, commonArguments,
-          environment = taskStartArguments.environment ++ taskArguments.environment,
-          variablePrefix = taskArguments.shellVariablePrefix,
-          logDirectory = taskStartArguments.logDirectory,
-          logFilenamePart = taskStartArguments.logFilenamePart,
-          killScriptOption = taskStartArguments.killScriptOption,
+        module.newTask(
+          commonArguments,
+          taskStartArguments,
+          environment = taskArguments.environment,
+          shellVariablePrefix = taskArguments.shellVariablePrefix,
           synchronizedStartProcess,
           taskServerMainTerminatedOption = taskServerMainTerminatedOption)
       case module: ApiModule ⇒

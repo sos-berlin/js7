@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.common
 
 import com.google.common.base.Splitter
 import com.sos.scheduler.engine.common.process.StdoutStderr._
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
+import com.sos.scheduler.engine.taskserver.common.StdFiles._
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
-import com.sos.scheduler.engine.taskserver.task.StdFiles._
 import java.nio.charset.Charset
 import java.nio.file.Path
 import scala.collection.JavaConversions._
@@ -15,7 +15,7 @@ import scala.collection.immutable
  *
  * @author Joacim Zschimmer
  */
-private[task] final case class StdFiles(
+final case class StdFiles(
   stdFileMap: Map[StdoutStderrType, Path],
   encoding: Charset = Encoding,
   stderrLogLevel: SchedulerLogLevel,
@@ -38,6 +38,6 @@ private[task] final case class StdFiles(
 object StdFiles {
   private val LineSplitter = Splitter on '\n'
 
-  private[task] def prefixLinesWithStdoutOrStderr(t: StdoutStderrType, lines: String): String =
+  private[taskserver] def prefixLinesWithStdoutOrStderr(t: StdoutStderrType, lines: String): String =
     LineSplitter split (lines stripSuffix "\n" stripSuffix "\r")  map { o ⇒ s"[${t.string}] $o"} mkString "\n"
 }

@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.SetOnce
+import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, ProcessConfiguration, RichProcess}
 import java.io.File
@@ -16,7 +17,7 @@ final class OwnProcessTaskServer(val taskStartArguments: TaskStartArguments, jav
 extends TaskServer {
 
   private val processOnce = new SetOnce[RichProcess]
-  private val terminatedPromise = Promise[Unit]()
+  private val terminatedPromise = Promise[Terminated.type]()
 
   def terminated = terminatedPromise.future
 
@@ -33,7 +34,7 @@ extends TaskServer {
       mainClass = TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix
       arguments = Nil)
     processOnce := process
-    process.terminated onComplete terminatedPromise.complete
+    process.terminated map { _ ⇒ Terminated } onComplete terminatedPromise.complete
     val a = taskStartArguments.copy(stdFileMap = stdFileMap, logStdoutAndStderr = true)
     process.stdinWriter.write(a.toJson.compactPrint)
     process.stdinWriter.close()

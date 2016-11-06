@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.agent.Agent
 import akka.util.ByteString
 import com.google.common.base.Splitter
-import com.google.inject.Injector
+import com.google.inject.{AbstractModule, Injector}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commands.{StartApiTask, StartNonApiTask, StartTask}
@@ -72,13 +72,16 @@ extends AgentTaskFactory {
       environment = agentConfiguration.environment,
       killScriptOption = agentConfiguration.killScript,
       rpcKeepaliveDurationOption = agentConfiguration.rpcKeepaliveDuration)
+    lazy val taskServerInjector = injector.createChildInjector(new AbstractModule {
+      def configure() = bind(classOf[TaskStartArguments]) toInstance taskStartArguments
+    })
     if (runInProcess) {
       // For debugging
       logger.warn(s"Due to system property $InProcessName, task runs in Agent process")
-      new SimpleTaskServer(injector, taskStartArguments)
+      new SimpleTaskServer(taskServerInjector, taskStartArguments)
     } else
       command match {
-        case _: StartNonApiTask ⇒ new SimpleTaskServer(injector, taskStartArguments)
+        case _: StartNonApiTask ⇒ new SimpleTaskServer(taskServerInjector, taskStartArguments)
         case o: StartApiTask ⇒ new OwnProcessTaskServer(
           taskStartArguments,
           javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),

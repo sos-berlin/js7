@@ -1,8 +1,8 @@
 package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.common.process.Processes
 import com.sos.scheduler.engine.common.process.Processes.Pid
+import com.sos.scheduler.engine.taskserver.TaskServer._
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import scala.concurrent.Future
 
@@ -17,8 +17,16 @@ trait TaskServer extends AutoCloseable {
   def start(): Unit
   def sendProcessSignal(signal: ProcessSignal): Unit
   def deleteLogFiles(): Unit
-  def terminated: Future[Unit]
+  def terminated: Future[Terminated.type]
   def pidOption: Option[Pid]
 
   override def toString = Some(s"master=${taskStartArguments.masterAddress})") ++ pidOption mkString (s"${getClass.getSimpleName}(", " ", ")")
+}
+
+object TaskServer {
+
+  /**
+    * For Future[Terminated], succeeds when TaskServer has terminated.
+    */
+  object Terminated
 }

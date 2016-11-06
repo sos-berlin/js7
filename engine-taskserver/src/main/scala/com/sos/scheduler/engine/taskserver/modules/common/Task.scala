@@ -1,13 +1,12 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.modules.common
 
-import com.sos.scheduler.engine.common.process.Processes
 import com.sos.scheduler.engine.common.process.Processes.Pid
 import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
-private[task] trait Task extends AutoCloseable {
+private[taskserver] trait Task extends AutoCloseable {
 
   def start(): Future[Boolean]
 

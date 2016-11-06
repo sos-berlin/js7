@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.modules.shell
 
 import akka.actor.ActorRefFactory
 import com.sos.scheduler.engine.common.async.synchronizer.OwnActorSynchronizer
@@ -9,5 +9,5 @@ import javax.inject.{Inject, Singleton}
   * @author Joacim Zschimmer
   */
 @Singleton
-final class RichProcessStartSynchronizer @Inject()(implicit protected val actorRefFactory: ActorRefFactory)
-extends OwnActorSynchronizer[RichProcess]
+final class StandardRichProcessStartSynchronizer @Inject()(implicit protected val actorRefFactory: ActorRefFactory)
+extends RichProcessStartSynchronizer with OwnActorSynchronizer[RichProcess]

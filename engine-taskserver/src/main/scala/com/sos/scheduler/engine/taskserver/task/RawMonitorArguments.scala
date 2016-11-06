@@ -8,8 +8,8 @@ import com.sos.scheduler.engine.taskserver.task.RawMonitorArguments._
   *
   * @author Joacim Zschimmer
   */
-final case class RawMonitorArguments(rawModuleArguments: RawModuleArguments, name: String, ordering: Int = DefaultOrdering)
+private[task] final case class RawMonitorArguments(rawModuleArguments: RawModuleArguments, name: String, ordering: Int = DefaultOrdering)
 
-object RawMonitorArguments {
+private[task] object RawMonitorArguments {
   val DefaultOrdering = 1
 }

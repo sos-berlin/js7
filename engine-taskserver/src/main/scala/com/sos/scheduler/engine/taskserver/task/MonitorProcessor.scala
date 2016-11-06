@@ -9,11 +9,11 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-final class MonitorProcessor private(instances: Vector[sos.spooler.Monitor_impl], spoolerLog: SpoolerLog)
+private[taskserver] final class MonitorProcessor private(instances: Vector[sos.spooler.Monitor_impl], spoolerLog: SpoolerLog)
 extends HasCloser {
 
   def preTask(): Boolean = instances forall { _.spooler_task_before() }
-  
+
   def postTask(): Unit =
     for (i ← instances.reverseIterator) {
       try i.spooler_task_after()
@@ -31,7 +31,7 @@ extends HasCloser {
   def isEmpty = instances.isEmpty
 }
 
-object MonitorProcessor {
+private[taskserver] object MonitorProcessor {
   def create(monitors: Seq[Monitor], namedIDispatches: TypedNamedIDispatches) = {
     def newMonitorInstance(args: ModuleArguments): sos.spooler.Monitor_impl =
       args.newModule() match {

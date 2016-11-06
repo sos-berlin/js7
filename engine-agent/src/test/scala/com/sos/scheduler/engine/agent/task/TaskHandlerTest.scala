@@ -24,6 +24,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
 import com.sos.scheduler.engine.taskserver.TaskServer
+import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
@@ -203,7 +204,7 @@ private object TaskHandlerTest {
   }
 
   private class MockTaskServer extends TaskServer {
-    private val terminatedPromise = Promise[Unit]()
+    private val terminatedPromise = Promise[Terminated.type]()
     var sigtermed = false
     var sigkilled = false
     var started = false
@@ -218,7 +219,7 @@ private object TaskHandlerTest {
         sigtermed = true
       case SIGKILL ⇒
         sigkilled = true
-        terminatedPromise.success(())
+        terminatedPromise.success(Terminated)
     }
 
     def deleteLogFiles() = {}
@@ -235,7 +236,7 @@ private object TaskHandlerTest {
       }
     }
 
-    def mockedTerminate(): Unit = terminatedPromise.trySuccess(())
+    def mockedTerminate(): Unit = terminatedPromise.trySuccess(Terminated)
 
     def pidOption = None
   }

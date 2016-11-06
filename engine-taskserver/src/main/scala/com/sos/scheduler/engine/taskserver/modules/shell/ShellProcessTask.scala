@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.modules.shell
 
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.base.process.ProcessSignal
@@ -10,11 +10,13 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
+import com.sos.scheduler.engine.taskserver.TaskServerMain
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
-import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
-import com.sos.scheduler.engine.taskserver.task.ShellProcessTask._
+import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
+import com.sos.scheduler.engine.taskserver.modules.shell.ShellProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
 import com.sos.scheduler.engine.taskserver.task.process.{ProcessConfiguration, RichProcess}
+import com.sos.scheduler.engine.taskserver.task.{ConcurrentStdoutAndStderrWell, MonitorProcessor}
 import java.nio.file.Files._
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
@@ -26,7 +28,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * @author Joacim Zschimmer
   * @see spooler_module_process.cxx, C++ class Process_module_instance
  */
-private[task] final class ShellProcessTask(
+private[taskserver] final class ShellProcessTask(
   module: ShellModule,
   protected val commonArguments: CommonArguments,
   environment: Map[String, String],
@@ -35,7 +37,7 @@ private[task] final class ShellProcessTask(
   logFilenamePart: String,
   killScriptOption: Option[ProcessKillScript],
   synchronizedStartProcess: RichProcessStartSynchronizer,
-  taskServerMainTerminatedOption: Option[Future[Unit]] = None)
+  taskServerMainTerminatedOption: Option[Future[TaskServerMain.Terminated.type]] = None)
   (implicit executionContext: ExecutionContext)
 extends HasCloser with Task {
 

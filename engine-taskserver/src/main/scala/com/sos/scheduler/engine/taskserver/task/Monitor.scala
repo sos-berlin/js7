@@ -6,8 +6,8 @@ import com.sos.scheduler.engine.taskserver.task.Monitor._
 /**
  * @author Joacim Zschimmer
  */
-final case class Monitor(moduleArguments: ModuleArguments, name: String, ordering: Int = DefaultOrdering)
+private[taskserver] final case class Monitor(moduleArguments: ModuleArguments, name: String, ordering: Int = DefaultOrdering)
 
-object Monitor {
+private[taskserver] object Monitor {
   val DefaultOrdering = 1
 }

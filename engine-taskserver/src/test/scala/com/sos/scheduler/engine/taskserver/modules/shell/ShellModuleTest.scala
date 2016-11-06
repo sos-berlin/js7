@@ -12,13 +12,16 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class ShellModuleTest extends FreeSpec {
 
+  private val unusedRichProcessStartSynchronizer: RichProcessStartSynchronizer = null
+  private val shellModuleFactory = new ShellModule.Factory(unusedRichProcessStartSynchronizer, None)
+
   "Wrong language" in {
     val raw = RawModuleArguments(ModuleLanguage("java:javascript"), None, Script("TEST-SCRIPT"), None, None)
-    assert(!toModuleArguments.isDefinedAt(raw))
+    assert(!shellModuleFactory.toModuleArguments.isDefinedAt(raw))
   }
 
   "okay" in {
     val raw = RawModuleArguments(ModuleLanguage("shell"), None, Script("TEST-SCRIPT"), None, None)
-    assert(toModuleArguments(raw) == Arguments(Script("TEST-SCRIPT")))
+    assert(shellModuleFactory.toModuleArguments(raw) == Arguments(shellModuleFactory, Script("TEST-SCRIPT")))
   }
 }

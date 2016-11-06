@@ -6,7 +6,7 @@ import sos.spooler.jobs.{ScriptAdapterJob, ScriptAdapterMonitor}
 /**
  * @author Joacim Zschimmer
  */
-final case class JavaScriptEngineModule(arguments: JavaScriptEngineModule.Arguments) extends JavaModule {
+final class JavaScriptEngineModule(arguments: JavaScriptEngineModule.Arguments) extends JavaModule {
 
   import arguments.{script, scriptLanguage}
 

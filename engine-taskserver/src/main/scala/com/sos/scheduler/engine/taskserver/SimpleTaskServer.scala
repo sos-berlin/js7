@@ -3,13 +3,12 @@ package com.sos.scheduler.engine.taskserver
 import akka.util.ByteString
 import com.google.inject.Injector
 import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
-import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerModule
+import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
 import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
@@ -28,11 +27,10 @@ final class SimpleTaskServer(injector: Injector, val taskStartArguments: TaskSta
 extends TaskServer with HasCloser {
 
   private val logger = Logger.withPrefix(getClass, taskStartArguments.agentTaskId.toString)
-  private val terminatedPromise = Promise[Unit]()
-  private val childInjector = injector.createChildInjector(new TaskServerModule(taskStartArguments, taskServerMainTerminated = isMain option terminated))
+  private val terminatedPromise = Promise[Terminated.type]()
   private val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
   private val remoting = new Remoting(
-    childInjector,
+    injector,
     new DialogConnection(master),
     IDispatchFactories,
     ProxyIDispatchFactories,
@@ -52,9 +50,9 @@ extends TaskServer with HasCloser {
       }
     } onComplete { tried ⇒
       val (correctedTried, msg) = tried match {
-        case Failure(t: AsynchronousCloseException) ⇒ (Success(()), s"Terminated after close(): $t")
-        case Failure(t: Remoting.ConnectionClosedException) ⇒ (Success(()), s"Terminated, $t")
-        case _ ⇒ (tried, Some("Terminated") ++ tried.failed.toOption mkString ", ")
+        case Failure(t: AsynchronousCloseException) ⇒ (Success(Terminated), s"Terminated after close(): $t")
+        case Failure(t: Remoting.ConnectionClosedException) ⇒ (Success(Terminated), s"Terminated, $t")
+        case _ ⇒ (tried map { _ ⇒ Terminated }, Some("Terminated") ++ tried.failed.toOption mkString ", ")
       }
       logger.info(msg)
       terminatedPromise.complete(correctedTried)

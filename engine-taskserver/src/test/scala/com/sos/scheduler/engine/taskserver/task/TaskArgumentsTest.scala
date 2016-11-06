@@ -1,18 +1,22 @@
 package com.sos.scheduler.engine.taskserver.task
 
+import com.google.inject.{AbstractModule, Guice, Provides}
+import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.types.VariantArray
+import com.sos.scheduler.engine.taskserver.TaskServerMain
 import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
 import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleFactoryRegister, Script}
-import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
 import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule
-import com.sos.scheduler.engine.taskserver.modules.javamodule.StandardJavaModule
-import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
+import com.sos.scheduler.engine.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
+import com.sos.scheduler.engine.taskserver.modules.shell.{RichProcessStartSynchronizer, ShellModule}
 import java.nio.file.Paths
+import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
@@ -30,7 +34,24 @@ final class TaskArgumentsTest extends FreeSpec {
     }
     new DotnetModule.Factory(instanceFactory, classDllDirectory = Some(Paths.get("/TEST-DLLS")))
   }
-  private val moduleFactoryRegister = new ModuleFactoryRegister(StandardModuleFactories :+ stubDotnetModuleFactory)
+  private val injector = Guice.createInjector(new AbstractModule {
+    def configure() = {}
+    @Provides @Singleton
+    def moduleFactoryRegister(shellModuleFactory: ShellModule.Factory): ModuleFactoryRegister =
+        new ModuleFactoryRegister(List(
+          StandardJavaModule,
+          JavaScriptEngineModule,
+          shellModuleFactory,
+          stubDotnetModuleFactory))
+
+    @Provides @Singleton
+    def synchronizedStartProcess: RichProcessStartSynchronizer = RichProcessStartSynchronizer.ForTest
+
+    @Provides @Singleton
+    def unitFutureOption: Option[Future[TaskServerMain.Terminated.type]] = None
+  })
+
+  private val moduleFactoryRegister = injector.instance[ModuleFactoryRegister]
 
   "jobName" in {
     assert(taskArguments("job=JOBNAME").jobName == "JOBNAME")
@@ -42,7 +63,7 @@ final class TaskArgumentsTest extends FreeSpec {
 
   "language=shell" in {
     assert(moduleArguments("language=shell", s"script=$scriptXml") ==
-      ShellModule.Arguments(Script(scriptText)))
+      ShellModule.Arguments(injector.instance[ShellModule.Factory], Script(scriptText)))
   }
 
   "language=java" in {
@@ -108,7 +129,7 @@ final class TaskArgumentsTest extends FreeSpec {
     assert(moduleArguments(
       "language=shell",
       "script=" + <source><source_part linenr="100">PART-A
-</source_part><source_part linenr="200">PART-B</source_part></source>) == ShellModule.Arguments(Script("PART-A\nPART-B")))
+</source_part><source_part linenr="200">PART-B</source_part></source>) == ShellModule.Arguments(injector.instance[ShellModule.Factory], Script("PART-A\nPART-B")))
   }
 
   "module (Java)" in {

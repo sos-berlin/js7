@@ -12,13 +12,14 @@ import com.sos.scheduler.engine.common.auth.EncodedPasswordValidator
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
 import com.sos.scheduler.engine.common.time.timer.TimerService
+import com.sos.scheduler.engine.taskserver.TaskServerMain
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
-import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
+import com.sos.scheduler.engine.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import scala.collection.immutable
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * @author Joacim Zschimmer
@@ -49,12 +50,20 @@ extends AbstractModule {
   def taskHandlerView(o: TaskHandler): TaskHandlerView = o
 
   @Provides @Singleton
-  def moduleFactoryRegister(): ModuleFactoryRegister = {
-    val moduleFactories =
-      if (StandardAgentTaskFactory.runInProcess) StandardModuleFactories  // For in-process debugging
-      else List(ShellModule)  // Other modules get its own process via TaskServerMain
-    new ModuleFactoryRegister(moduleFactories)
+  def moduleFactoryRegister(shellModuleFactory: ShellModule.Factory): ModuleFactoryRegister = {
+    val forInProcessDebugging = if (StandardAgentTaskFactory.runInProcess)
+      List(  // For in-process debugging
+        StandardJavaModule,
+        JavaScriptEngineModule,
+        shellModuleFactory)
+      else
+        Nil  // Other modules get its own process via TaskServerMain
+    new ModuleFactoryRegister(shellModuleFactory :: forInProcessDebugging)
   }
+
+  /** If task server runs in an own process, the Future of its termination. */
+  @Provides @Singleton
+  def TerminatedFutureOption: Option[Future[TaskServerMain.Terminated.type]] = None
 
   @Provides @Singleton
   def timerService(actorSystem: ActorSystem, closer: Closer): TimerService =

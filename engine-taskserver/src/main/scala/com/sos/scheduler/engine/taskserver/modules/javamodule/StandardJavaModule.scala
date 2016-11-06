@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFac
 /**
  * @author Joacim Zschimmer
  */
-final case class StandardJavaModule(arguments: StandardJavaModule.Arguments) extends JavaClassModule {
+final class StandardJavaModule(arguments: StandardJavaModule.Arguments) extends JavaClassModule {
 
   private lazy val clazz = Class.forName(arguments.className)
 

@@ -13,8 +13,9 @@ import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
 import com.sos.scheduler.engine.taskserver.dotnet.Jni4netModuleInstanceFactory
 import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleInstanceFactory
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
-import com.sos.scheduler.engine.taskserver.modules.StandardModuleFactories
 import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule
+import com.sos.scheduler.engine.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
+import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
 import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
 
@@ -26,8 +27,15 @@ final class TaskServerMainModule(dotnet: DotnetConfiguration) extends AbstractMo
   def configure() = {}
 
   @Provides @Singleton
-  private def moduleFactoryRegister(dotnetModuleFactory: DotnetModule.Factory): ModuleFactoryRegister =
-    new ModuleFactoryRegister(StandardModuleFactories :+ dotnetModuleFactory)
+  private def moduleFactoryRegister(
+    shellModuleFactory: ShellModule.Factory,
+    dotnetModuleFactory: DotnetModule.Factory): ModuleFactoryRegister
+  =
+    new ModuleFactoryRegister(List(
+      StandardJavaModule,
+      JavaScriptEngineModule,
+      shellModuleFactory,
+      dotnetModuleFactory))
 
   @Provides @Singleton
   private def dotnetModuleFactory(implicit closer: Closer): DotnetModule.Factory = {

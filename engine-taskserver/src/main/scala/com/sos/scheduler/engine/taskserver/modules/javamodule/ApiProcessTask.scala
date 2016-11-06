@@ -1,12 +1,13 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.modules.javamodule
 
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
-import com.sos.scheduler.engine.taskserver.task.ApiProcessTask._
+import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
+import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiProcessTask._
+import com.sos.scheduler.engine.taskserver.task.{ConcurrentStdoutAndStderrWell, MonitorProcessor}
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal
@@ -17,7 +18,7 @@ import scala.util.control.NonFatal
  *
  * @author Joacim Zschimmer
  */
-private[task] final class ApiProcessTask(module: ApiModule, protected val commonArguments: CommonArguments)
+private[taskserver] final class ApiProcessTask(module: ApiModule, protected val commonArguments: CommonArguments)
 extends Task with HasCloser {
 
   import commonArguments.{jobName, monitors, namedIDispatches, stdFiles}
