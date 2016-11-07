@@ -24,3 +24,5 @@
 # To allow source code switching from newer branches
 /engine-agent-gui/target/
 /engine-agent-gui/node_modules/
+/engine-plugins/engine-plugins-legacy/target/
+/engine-web/target/
