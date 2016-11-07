@@ -21,5 +21,6 @@
 # Old Intellij IDEA 15
 /out/
 
-# Branch zschimmer/agent-gui
-/engine-agent-gui/
+# To allow source code switching from newer branches
+/engine-agent-gui/target/
+/engine-agent-gui/node_modules/
