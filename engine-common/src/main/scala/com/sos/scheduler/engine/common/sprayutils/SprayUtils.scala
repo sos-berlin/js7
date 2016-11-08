@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.base.convert.As
 import scala.util.control.NonFatal
 import shapeless.{::, HNil}
 import spray.http.HttpHeaders.Accept
-import spray.http.{HttpHeader, MediaType, StatusCode}
+import spray.http.{ContentType, HttpHeader, MediaType, StatusCode}
 import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
 import spray.httpx.unmarshalling.{ContentExpected, FromStringOptionDeserializer, MalformedContent}
 import spray.routing.Directives._
@@ -30,11 +30,16 @@ object SprayUtils {
     }
 
 
-  def accept(mediaType: MediaType): Directive0 =
+  def accept(mediaType: MediaType, mediaTypes: MediaType*): Directive0 =
+    accept(mediaTypes.toSet + mediaType)
+
+  def accept(mediaTypes: Iterable[MediaType]): Directive0 =
     mapInnerRoute { route ⇒
       headerValueByType[Accept]() {
-        case Accept(mediaTypes) if mediaTypes exists { _ matches mediaType } ⇒ route
-        case _ ⇒ reject
+        case Accept(requestedMediaTypes) if requestedMediaTypes exists { o ⇒ mediaTypes exists o.matches } ⇒
+          route
+        case _ ⇒
+          reject(UnacceptedResponseContentTypeRejection((mediaTypes map { m ⇒ ContentType(m) }).toList))
       }
     }
 
