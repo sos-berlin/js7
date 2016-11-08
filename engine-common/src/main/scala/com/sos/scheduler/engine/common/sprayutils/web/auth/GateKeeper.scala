@@ -1,8 +1,7 @@
 package com.sos.scheduler.engine.common.sprayutils.web.auth
 
 import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.{EncodedPasswordValidator, User, UserAndPassword, UserId}
-import com.sos.scheduler.engine.common.configutils.Configs.ConvertibleConfig
+import com.sos.scheduler.engine.common.auth.{User, UserAndPassword, UserId}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper._
@@ -20,7 +19,7 @@ import spray.routing.authentication._
   */
 final class GateKeeper(configuraton: Configuration, csrf: CSRF, isUnsecuredHttp: Boolean = false)(implicit ec: ExecutionContext) {
 
-  import configuraton.{getIsPublic, httpIsPublic, invalidAuthenticationDelay, providePasswordValidator, provideAccessTokenValidator, realm}
+  import configuraton.{getIsPublic, httpIsPublic, invalidAuthenticationDelay, provideAccessTokenValidator, providePasswordValidator, realm}
 
   val restrict: Directive0 =
     mapInnerRoute { inner ⇒
