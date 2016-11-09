@@ -1,16 +1,18 @@
 package com.sos.scheduler.engine.data.filebased
 
 import spray.json.DefaultJsonProtocol._
+import spray.json.RootJsonFormat
 
 final case class FileBasedOverview(
   path: TypedPath,
   fileBasedState: FileBasedState)
-extends HasPath {
+extends FileBasedView
+with HasPath {
 
   def asTyped[P <: TypedPath: TypedPath.Companion] = copy(path = path.asTyped[P])
 }
 
-object FileBasedOverview {
+object FileBasedOverview extends FileBasedView.Companion[FileBasedOverview] {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat2(apply)
+  implicit val jsonFormat: RootJsonFormat[FileBasedOverview] = jsonFormat2(apply)
 }

@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
 import java.nio.file.Path
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._
+import spray.json.RootJsonFormat
 
 /**
  * @author Joacim Zschimmer
@@ -14,13 +15,14 @@ final case class FileBasedDetailed(
   file: Option[Path],
   fileModifiedAt: Option[Instant],
   sourceXml: Option[String])
+extends FileBasedView
 {
   def path = overview.path
 
   def asTyped[P <: TypedPath: TypedPath.Companion] = copy(overview = overview.asTyped[P])
 }
 
-object FileBasedDetailed {
+object FileBasedDetailed extends FileBasedView.Companion[FileBasedDetailed] {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
-  implicit val MyJsonFormat = jsonFormat4(apply)
+  implicit val jsonFormat: RootJsonFormat[FileBasedDetailed] = jsonFormat4(apply)
 }
