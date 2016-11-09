@@ -1,8 +1,6 @@
 package com.sos.scheduler.engine.data.filebaseds
 
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
-import com.sos.scheduler.engine.base.utils.ScalaUtils
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.data.filebased.TypedPath._
 import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
 import com.sos.scheduler.engine.data.folder.FolderPath
@@ -13,7 +11,6 @@ import com.sos.scheduler.engine.data.monitor.MonitorPath
 import com.sos.scheduler.engine.data.order.OrderKey
 import com.sos.scheduler.engine.data.processclass.ProcessClassPath
 import com.sos.scheduler.engine.data.schedule.SchedulePath
-import scala.reflect.ClassTag
 import spray.json.{JsString, JsValue, JsonFormat}
 
 /**
@@ -21,7 +18,7 @@ import spray.json.{JsString, JsValue, JsonFormat}
   */
 object TypedPathRegister {
 
-  private val TypedPathCompanions: Set[TypedPath.AnyCompanion] = Set(
+  private val Companions: Set[TypedPath.AnyCompanion] = Set(
     FolderPath,
     JobPath,
     JobChainPath,
@@ -32,22 +29,22 @@ object TypedPathRegister {
     SchedulePath)
 
   val fileBasedTypedToCompanion: FileBasedType ⇒ AnyCompanion =
-    (TypedPathCompanions map { o ⇒ o.fileBasedType → o }).toMap
+    (Companions map { o ⇒ o.fileBasedType → o }).toMap
 
   private val classToAnyCompanion: Map[Class[_ <: TypedPath], AnyCompanion] =
-    (TypedPathCompanions map { o ⇒ o.typedPathClass → o }).toMap
+    (Companions map { o ⇒ o.typedPathClass → o }).toMap
 
   def classToCompanion[P <: TypedPath](c: Class[P]): Companion[P] =
     classToAnyCompanion(c).asInstanceOf[Companion[P]]
 
-//  def companion[P <: TypedPath: ClassTag]: Companion[P] =
-//    classToCompanion(implicitClass[P])
+  val camelNameToCompanion: Map[String, AnyCompanion] =
+    (Companions map { o ⇒ o.fileBasedType.camelName → o }).toMap
 
-  private val camelNameToCompanion: String ⇒ AnyCompanion =
-    (TypedPathCompanions map { o ⇒ o.fileBasedType.camelName → o }).toMap
+  val lowerCaseCamelNameToCompanion: Map[String, AnyCompanion] =
+    (Companions map { o ⇒ o.fileBasedType.lowerCaseCamelName → o }).toMap
 
   private val cppNameToCompanion: String ⇒ AnyCompanion =
-    (TypedPathCompanions map { o ⇒ o.fileBasedType.cppName → o }).toMap
+    (Companions map { o ⇒ o.fileBasedType.cppName → o }).toMap
 
   private def splitTypeAndPath(typeAndPath: String): (String, String) = {
     typeAndPath indexOf ":" match {

@@ -1,13 +1,10 @@
 package com.sos.scheduler.engine.data.filebased
 
 import com.sos.scheduler.engine.base.generic.IsString
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits._
-import com.sos.scheduler.engine.base.utils.ScalaUtils
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.data.filebased.TypedPath._
 import java.io.File
 import scala.reflect.ClassTag
-import spray.json.{JsString, JsValue, JsonFormat}
 
 trait TypedPath
 extends AbsolutePath {
