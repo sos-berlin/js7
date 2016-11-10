@@ -7,6 +7,7 @@ import sos.spooler.Job_impl;
 public final class DelayingJob extends Job_impl {
 
     private Duration delay = Duration.ofSeconds(1);
+    private boolean spooler_process = true;
 
     @Override
     public boolean spooler_init() {
@@ -20,12 +21,16 @@ public final class DelayingJob extends Job_impl {
                 } catch (DateTimeParseException ignored2) {}
             }
         }
+        String spoolerProcessString = spooler_task.params().value("spooler_process");
+        if (!delayString.isEmpty()) {
+            spooler_process = Boolean.parseBoolean(spoolerProcessString);
+        }
         return true;
     }
 
     @Override
     public boolean spooler_process() throws InterruptedException {
         Thread.sleep(delay.toMillis());
-        return true;
+        return spooler_process;
     }
 }
