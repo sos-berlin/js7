@@ -14,11 +14,12 @@ final case class SchedulerOverview(
   httpPort: Option[String],
   httpsPort: Option[String],
   udpPort: Option[Int],
+  supervisor: Option[SupervisorUri] = None,
   pid: Int,
   state: SchedulerState,
   system: SystemInformation,
   java: JavaInformation)
 
 object SchedulerOverview {
-  implicit val MyJsonFormat = jsonFormat10(apply)
+  implicit val MyJsonFormat = jsonFormat11(apply)
 }

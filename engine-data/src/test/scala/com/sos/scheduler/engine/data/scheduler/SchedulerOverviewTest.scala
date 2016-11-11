@@ -22,6 +22,7 @@ final class SchedulerOverviewTest extends FreeSpec {
       httpPort = Some("127.0.0.1:4444"),
       httpsPort = Some("0.0.0.0:5555"),
       udpPort = Some(6666),
+      supervisor = Some(SupervisorUri("tcp://example.com:4000")),
       pid = 77,
       SchedulerState.running,
       system = SystemInformation(hostname = "TEST-HOSTNAME"),
@@ -35,6 +36,7 @@ final class SchedulerOverviewTest extends FreeSpec {
       "httpPort": "127.0.0.1:4444",
       "httpsPort": "0.0.0.0:5555",
       "udpPort": 6666,
+      "supervisor": "tcp://example.com:4000",
       "pid": 77,
       "state": "running",
       "java": {
