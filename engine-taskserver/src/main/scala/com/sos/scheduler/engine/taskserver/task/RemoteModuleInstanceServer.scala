@@ -11,9 +11,8 @@ import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignat
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch, IUnknownFactory, InvocableIDispatch}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
-import com.sos.scheduler.engine.taskserver.TaskServerMain
 import com.sos.scheduler.engine.taskserver.common.StdFiles
-import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.{TaskServerMainTerminated, TaskStartArguments}
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
 import com.sos.scheduler.engine.taskserver.modules.javamodule.{ApiModule, ApiProcessTask}
@@ -33,7 +32,7 @@ final class RemoteModuleInstanceServer @Inject private(
   moduleFactoryRegister: ModuleFactoryRegister,
   taskStartArguments: TaskStartArguments,
   synchronizedStartProcess: RichProcessStartSynchronizer,
-  taskServerMainTerminatedOption: Option[Future[TaskServerMain.Terminated.type]])
+  taskServerMainTerminatedOption: Option[Future[TaskServerMainTerminated.type]])
   (implicit ec: ExecutionContext)
 extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
   import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._

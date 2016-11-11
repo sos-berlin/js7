@@ -12,7 +12,7 @@ import com.sos.scheduler.engine.common.auth.EncodedPasswordValidator
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
 import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.taskserver.TaskServerMain
+import com.sos.scheduler.engine.taskserver.data.TaskServerMainTerminated
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
@@ -63,7 +63,7 @@ extends AbstractModule {
 
   /** If task server runs in an own process, the Future of its termination. */
   @Provides @Singleton
-  def TerminatedFutureOption: Option[Future[TaskServerMain.Terminated.type]] = None
+  def TerminatedFutureOption: Option[Future[TaskServerMainTerminated.type]] = None
 
   @Provides @Singleton
   def timerService(actorSystem: ActorSystem, closer: Closer): TimerService =

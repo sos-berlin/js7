@@ -10,9 +10,9 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
-import com.sos.scheduler.engine.taskserver.TaskServerMain
 import com.sos.scheduler.engine.taskserver.common.ConcurrentStdoutAndStderrWell
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
+import com.sos.scheduler.engine.taskserver.data.TaskServerMainTerminated
 import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
 import com.sos.scheduler.engine.taskserver.modules.monitor.MonitorProcessor
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellProcessTask._
@@ -38,7 +38,7 @@ private[taskserver] final class ShellProcessTask(
   logFilenamePart: String,
   killScriptOption: Option[ProcessKillScript],
   synchronizedStartProcess: RichProcessStartSynchronizer,
-  taskServerMainTerminatedOption: Option[Future[TaskServerMain.Terminated.type]] = None)
+  taskServerMainTerminatedOption: Option[Future[TaskServerMainTerminated.type]] = None)
   (implicit executionContext: ExecutionContext)
 extends HasCloser with Task {
 

@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.taskserver.modules.shell
 
-import com.sos.scheduler.engine.taskserver.TaskServerMain
-import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.{TaskServerMainTerminated, TaskStartArguments}
 import com.sos.scheduler.engine.taskserver.moduleapi.{Module, ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
 import com.sos.scheduler.engine.taskserver.modules.common.CommonArguments
 import javax.inject.Inject
@@ -22,7 +21,7 @@ extends Module {
     environment: Map[String, String],
     shellVariablePrefix: String,
     synchronizedStartProcess: RichProcessStartSynchronizer,
-    taskServerMainTerminatedOption: Option[Future[TaskServerMain.Terminated.type]])
+    taskServerMainTerminatedOption: Option[Future[TaskServerMainTerminated.type]])
     (implicit ec: ExecutionContext)
   =
     new ShellProcessTask(

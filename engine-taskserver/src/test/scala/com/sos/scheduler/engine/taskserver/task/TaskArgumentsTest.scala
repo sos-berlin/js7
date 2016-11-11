@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.types.VariantArray
-import com.sos.scheduler.engine.taskserver.TaskServerMain
+import com.sos.scheduler.engine.taskserver.data.TaskServerMainTerminated
 import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
 import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleFactoryRegister, Script}
 import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule
@@ -48,7 +48,7 @@ final class TaskArgumentsTest extends FreeSpec {
     def synchronizedStartProcess: RichProcessStartSynchronizer = RichProcessStartSynchronizer.ForTest
 
     @Provides @Singleton
-    def unitFutureOption: Option[Future[TaskServerMain.Terminated.type]] = None
+    def unitFutureOption: Option[Future[TaskServerMainTerminated.type]] = None
   })
 
   private val moduleFactoryRegister = injector.instance[ModuleFactoryRegister]
