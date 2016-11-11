@@ -2,8 +2,8 @@ package com.sos.scheduler.engine.taskserver.modules.common
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.taskserver.common.StdFiles
+import com.sos.scheduler.engine.taskserver.modules.monitor.{Monitor, MonitorProcessor}
 import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
-import com.sos.scheduler.engine.taskserver.task.Monitor
 import scala.collection.immutable
 
 /**
@@ -16,3 +16,7 @@ private[taskserver] final case class CommonArguments(
   monitors: immutable.Seq[Monitor],
   hasOrder: Boolean,
   stdFiles: StdFiles)
+{
+  def newMonitorProcessor(): MonitorProcessor =
+    MonitorProcessor.create(monitors, namedIDispatches)
+}

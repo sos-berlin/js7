@@ -17,6 +17,7 @@ import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
 import com.sos.scheduler.engine.taskserver.modules.javamodule.{ApiModule, ApiProcessTask}
+import com.sos.scheduler.engine.taskserver.modules.monitor.Monitor
 import com.sos.scheduler.engine.taskserver.modules.shell.{RichProcessStartSynchronizer, ShellModule, ShellProcessTask}
 import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
 import java.util.UUID

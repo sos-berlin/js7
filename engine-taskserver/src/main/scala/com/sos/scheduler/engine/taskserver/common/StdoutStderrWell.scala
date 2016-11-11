@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.scheduler.engine.taskserver.common
 
 import com.sos.scheduler.engine.common.process.StdoutStderr.{Stdout, StdoutStderrType}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable

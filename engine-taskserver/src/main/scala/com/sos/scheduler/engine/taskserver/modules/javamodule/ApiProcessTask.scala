@@ -5,9 +5,10 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAu
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
 import com.sos.scheduler.engine.data.message.MessageCode
+import com.sos.scheduler.engine.taskserver.common.ConcurrentStdoutAndStderrWell
 import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
 import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiProcessTask._
-import com.sos.scheduler.engine.taskserver.task.{ConcurrentStdoutAndStderrWell, MonitorProcessor}
+import com.sos.scheduler.engine.taskserver.modules.monitor.MonitorProcessor
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal

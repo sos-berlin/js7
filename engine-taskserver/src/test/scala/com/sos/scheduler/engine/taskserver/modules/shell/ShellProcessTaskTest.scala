@@ -3,7 +3,6 @@ package com.sos.scheduler.engine.taskserver.modules.shell
 import akka.actor.ActorSystem
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import ShellProcessTaskTest._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
@@ -22,9 +21,10 @@ import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches._
 import com.sos.scheduler.engine.taskserver.moduleapi.Script
 import com.sos.scheduler.engine.taskserver.modules.common.CommonArguments
 import com.sos.scheduler.engine.taskserver.modules.javamodule.TestJavaModule
-import com.sos.scheduler.engine.taskserver.modules.shell.ShellProcessTaskTest.Setting
+import com.sos.scheduler.engine.taskserver.modules.monitor.Monitor
+import com.sos.scheduler.engine.taskserver.modules.shell.ShellProcessTaskTest.{Setting, _}
 import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedIDispatches}
-import com.sos.scheduler.engine.taskserver.task.{Monitor, TaskArguments}
+import com.sos.scheduler.engine.taskserver.task.TaskArguments
 import org.junit.runner.RunWith
 import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
@@ -97,7 +97,7 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
   }
 
   private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) = {
-    val factory = new ShellModule.Factory(synchronizedStartProcess, taskServerMainTerminatedOption = None)
+    val factory = new ShellModule.Factory(synchronizedStartProcess)
     new ShellProcessTask(
       factory.newModule(ShellModule.Arguments(factory, testScript(setting.exitCode))),
       CommonArguments(

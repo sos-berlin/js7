@@ -11,12 +11,13 @@ import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.utils.JavaShutdownHook
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.taskserver.TaskServerMain
+import com.sos.scheduler.engine.taskserver.common.ConcurrentStdoutAndStderrWell
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
+import com.sos.scheduler.engine.taskserver.modules.monitor.MonitorProcessor
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellProcessTask._
 import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
 import com.sos.scheduler.engine.taskserver.task.process.{ProcessConfiguration, RichProcess}
-import com.sos.scheduler.engine.taskserver.task.{ConcurrentStdoutAndStderrWell, MonitorProcessor}
 import java.nio.file.Files._
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly

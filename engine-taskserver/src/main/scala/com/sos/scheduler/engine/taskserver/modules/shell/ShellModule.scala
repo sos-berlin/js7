@@ -12,8 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 final class ShellModule(
   arguments: ShellModule.Arguments,
-  synchronizedStartProcess: RichProcessStartSynchronizer,
-  taskServerMainTerminatedOption: Option[Future[TaskServerMain.Terminated.type]])
+  synchronizedStartProcess: RichProcessStartSynchronizer)
 extends Module {
   def script = arguments.script
 
@@ -39,9 +38,7 @@ extends Module {
 }
 
 object ShellModule {
-  final case class Factory @Inject private[shell](
-    synchronizedStartProcess: RichProcessStartSynchronizer,
-    taskServerMainTerminatedOption: Option[Future[TaskServerMain.Terminated.type]])
+  final case class Factory @Inject private[shell](synchronizedStartProcess: RichProcessStartSynchronizer)
   extends ModuleFactory {
 
     def toModuleArguments = {
@@ -51,8 +48,7 @@ object ShellModule {
 
     def newModule(arguments: ModuleArguments) = new ShellModule(
       arguments.asInstanceOf[Arguments],
-      synchronizedStartProcess,
-      taskServerMainTerminatedOption = taskServerMainTerminatedOption)
+      synchronizedStartProcess)
   }
 
   final case class Arguments(moduleFactory: Factory, script: Script) extends ModuleArguments
