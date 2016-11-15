@@ -5,7 +5,7 @@ import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 import scala.collection.immutable.Vector
 import scala.collection.{GenTraversable, TraversableLike, immutable, mutable}
-import scala.language.implicitConversions
+import scala.language.{higherKinds, implicitConversions}
 
 object Collections {
   object implicits {
@@ -59,7 +59,10 @@ object Collections {
     implicit class RichTraversable[A](val delegate: Traversable[A]) extends AnyVal {
       def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap
 
-      def requireUniqueness[K](key: A ⇒ K) = {
+      def requireUniqueness: Traversable[A] =
+        requireUniqueness(identity[A])
+
+      def requireUniqueness[K](key: A ⇒ K): Traversable[A] = {
         duplicates(key) match {
           case o if o.nonEmpty ⇒ throw new DuplicateKeyException(s"Unexpected duplicates: ${o.keys mkString ", "}")
           case _ ⇒

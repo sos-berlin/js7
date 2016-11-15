@@ -94,11 +94,14 @@ final class CollectionsTest extends FreeSpec {
     dup(Seq(a1, a2, b1, c1, c2, c3)) shouldEqual Map(1 → Seq(a1, a2), 3 → Seq(c1, c2, c3))
   }
 
-  "requireDistinct" in {
+  "requireUniqueness" in {
     def r(o: Seq[A]) = o requireUniqueness { _.i }
 
     r(Seq[A]()) shouldBe 'empty
     intercept[DuplicateKeyException] { r(Seq(a1, a2)) }
+
+    Nil.requireUniqueness
+    intercept[DuplicateKeyException] { List(1, 1).requireUniqueness }
   }
 
   "toSeqMultiMap" in {
