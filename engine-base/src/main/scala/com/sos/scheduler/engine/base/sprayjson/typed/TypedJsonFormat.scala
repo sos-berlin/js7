@@ -65,12 +65,14 @@ object TypedJsonFormat {
     new WithSubtypeRegister[A](
       implicitClass[A],
       classToJsonWriter = (subtypes flatMap { _.toClassToJsonWriter(typeFieldName) }).toMap,
-      typeNameToClass = (Vector(superclassName → implicitClass[A]) ++ typeNamesAndClasses).toMap,
-      typeNameToJsonReader = (subtypes flatMap { _.toTypeToReader(typeFieldName) }).toMap,
+      typeNameToClass = (Vector(superclassName → implicitClass[A]) ++ typeNamesAndClasses).toMap withDefault throwUnknownType,
+      typeNameToJsonReader = (subtypes flatMap { _.toTypeToReader(typeFieldName) }).toMap withDefault throwUnknownType,
       (typeNamesAndClasses map { _._1 }).toVector,
       typeFieldName = typeFieldName,
       shortenTypeOnlyValue = shortenTypeOnlyValue)
   }
+
+  private def throwUnknownType(name: String) = throw new NoSuchElementException(s"Unknown type '$name'")
 
   /**
     * For recursive structures.
