@@ -80,10 +80,10 @@ object ScalaUtils {
       classOf[RuntimeException])
   }
 
-  def cast[A : ClassTag](o: Any): A = {
+  def cast[A: ClassTag](o: Any): A = {
     val a = implicitClass[A]
     if (o == null) throw new NullPointerException(s"${a.getName} expected instead of null")
-    if (!(a isAssignableFrom o.getClass)) throw new ClassCastException(s"'$o': ${o.getClass.getName} is not a ${a.getName}")
+    if (!(a isAssignableFrom o.getClass)) throw new ClassCastException(s"${o.getClass.getName} is not a ${a.getName}: $o")
     o.asInstanceOf[A]
   }
 

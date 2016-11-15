@@ -59,7 +59,7 @@ final class ScalaUtilsTest extends FreeSpec {
     val s: Any = "Hej!"
     val string = cast[String](s)
     (string: String) shouldEqual "Hej!"
-    intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "'123': java.lang.Integer is not a java.lang.String"
+    intercept[ClassCastException]{ cast[String](123) } .getMessage shouldEqual "java.lang.Integer is not a java.lang.String: 123"
   }
 
   "someUnless" in {
