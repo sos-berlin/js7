@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.agent.task
 
-import akka.actor.ActorSystem
-import akka.agent.Agent
+import akka.agent.{Agent ⇒ AkkaAgent}
 import akka.util.ByteString
 import com.google.common.base.Splitter
 import com.google.inject.{AbstractModule, Injector}
@@ -25,7 +24,7 @@ import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
 import java.net.InetAddress
 import java.util.regex.Pattern
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContext, Promise}
 
 /**
  * @author Joacim Zschimmer
@@ -34,11 +33,9 @@ import scala.concurrent.Promise
 final class StandardAgentTaskFactory @Inject private(
   agentConfiguration: AgentConfiguration,
   tunnelServer: TunnelServer,
-  actorSystem: ActorSystem,
   injector: Injector)
+  (implicit executionContext: ExecutionContext)
 extends AgentTaskFactory {
-
-  import actorSystem.dispatcher
 
   private val agentTaskIdGenerator = AgentTaskId.newGenerator()
 
@@ -49,7 +46,7 @@ extends AgentTaskFactory {
       val startMeta = command.meta getOrElse StartTask.Meta.Default
       val taskArgumentsFuture = taskArgumentsPromise.future
       val tunnel = {
-        val listener = Agent(new TaskArgumentsListener(taskArgumentsPromise))
+        val listener = AkkaAgent(new TaskArgumentsListener(taskArgumentsPromise))
         tunnelServer.newTunnel(TunnelId(id.index.toString), listener, clientIpOption)
       }
       val taskServer = closeOnError(tunnel) {
