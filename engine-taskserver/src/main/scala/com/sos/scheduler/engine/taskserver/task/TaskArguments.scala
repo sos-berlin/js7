@@ -73,13 +73,13 @@ final class TaskArguments private(arguments: List[(String, String)]) {
 
 object TaskArguments {
   val DefaultShellVariablePrefix = "SCHEDULER_PARAM_"
-  private val EnvironmentKey = "environment"
-  private val HasOrderKey = "has_order"
-  private val JobKey = "job"
-  private val ShellVariablePrefixKey = "process.shell_variable_prefix"
-  private val StderrLogLevelKey = "stderr_log_level"
-  private val TaskIdKey = "task_id"
-  private object module {
+  val EnvironmentKey = "environment"
+  val HasOrderKey = "has_order"
+  val JobKey = "job"
+  val ShellVariablePrefixKey = "process.shell_variable_prefix"
+  val StderrLogLevelKey = "stderr_log_level"
+  val TaskIdKey = "task_id"
+  object module {
     val LanguageKey = "language"
     val ScriptKey = "script"
     val JavaClassKey = "java_class"

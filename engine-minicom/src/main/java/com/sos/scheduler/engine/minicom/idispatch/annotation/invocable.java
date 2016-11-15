@@ -10,4 +10,8 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Retention(RUNTIME)
 @Target(ElementType.METHOD)
-public @interface invocable {}
+public @interface invocable {
+    int UnusedDispId = Integer.MIN_VALUE;
+
+    int dispId() default UnusedDispId;
+}

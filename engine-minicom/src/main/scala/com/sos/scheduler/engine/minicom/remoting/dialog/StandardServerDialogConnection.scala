@@ -1,10 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting
+package com.sos.scheduler.engine.minicom.remoting.dialog
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.tcp.MessageConnection
-import com.sos.scheduler.engine.minicom.remoting.DialogConnection._
-import java.util.concurrent.locks.ReentrantLock
 import org.scalactic.Requirements._
 
 /**
@@ -14,11 +11,11 @@ import org.scalactic.Requirements._
  *
  * @author Joacim Zschimmer
  */
-final class DialogConnection(connection: MessageConnection) {
+final class StandardServerDialogConnection(protected val connection: MessageConnection)
+extends ServerDialogConnection with StandardClientDialogConnection {
 
   private var firstMessageReceived = false
   private var lastMessageSent = false
-  private val lock = new ReentrantLock
 
   def receiveFirstMessage(): Option[ByteString] = {
     requireState(!firstMessageReceived)
@@ -27,30 +24,16 @@ final class DialogConnection(connection: MessageConnection) {
     r
   }
 
-  def sendAndReceive(data: ByteString): Option[ByteString] = {
+  override def sendAndReceive(data: ByteString): Option[ByteString] = {
     requireState(firstMessageReceived && !lastMessageSent)
-    exclusive {
-      connection.sendMessage(data)
-      connection.receiveMessage()
-    }
+    super.sendAndReceive(data)
   }
 
-  def sendLastMessage(data: ByteString) = {
+  def sendLastMessage(data: ByteString): Unit = {
     requireState(firstMessageReceived && !lastMessageSent)
     lastMessageSent = true
     exclusive {
       connection.sendMessage(data)
     }
   }
-
-  private def exclusive[A](body: ⇒ A): A = {
-    if (lock.isLocked) logger.trace("Waiting for completion of a concurrent connection dialog")
-    lock.lock()
-    try body
-    finally lock.unlock()
-  }
-}
-
-object DialogConnection {
-  private val logger = Logger(getClass)
 }

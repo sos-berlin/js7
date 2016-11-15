@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.remoting
+package com.sos.scheduler.engine.minicom.remoting.invoker
 
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch
 

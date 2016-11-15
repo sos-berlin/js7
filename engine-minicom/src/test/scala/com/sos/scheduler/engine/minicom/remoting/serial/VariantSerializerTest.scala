@@ -42,21 +42,34 @@ final class VariantSerializerTest extends FreeSpec {
     testSerialize((), VT_EMPTY, Nil)
   }
 
+  "Array" in {
+    testSerialize(Array(1, 2, 3),
+      VT_VARIANT | VT_ARRAY, ArraySerialized)
+  }
+
+  "Seq" in {
+    testSerialize(Seq(1, 2, 3),
+      VT_VARIANT | VT_ARRAY, ArraySerialized)
+  }
+
   "VariantArray" in {
-    testDeserialize(VariantArray(Vector(1, 2, 3)),
-      VT_I4 | VT_ARRAY, List(
-        0, 1,  // Dimensions
-        0x08, 0x80, // Features FADF_HAVEVARTYPE | FADF_VARIANT
-        0, 0, 0, 3,  // Count
-        0, 0, 0, 0,  // Start index
-        0, 0, 0, VT_VARIANT,  // Element type
-        0, 0, 0, VT_I4, 0, 0, 0, 1,
-        0, 0, 0, VT_I4, 0, 0, 0, 2,
-        0, 0, 0, VT_I4, 0, 0, 0, 3))
+    test(VariantArray(Vector(1, 2, 3)),
+      VT_VARIANT | VT_ARRAY, ArraySerialized)
   }
 }
 
 private object VariantSerializerTest {
+
+  private val ArraySerialized = Vector(
+    0, 1,  // Dimensions
+    0x08, 0x80, // Features FADF_HAVEVARTYPE | FADF_VARIANT
+    0, 0, 0, 3,  // Count
+    0, 0, 0, 0,  // Start index
+    0, 0, 0, VT_VARIANT,  // Element type
+    0, 0, 0, VT_I4, 0, 0, 0, 1,
+    0, 0, 0, VT_I4, 0, 0, 0, 2,
+    0, 0, 0, VT_I4, 0, 0, 0, 3)
+
   private def test(value: Any, variantType: Int, bytes: Seq[Int]): Unit = {
     testSerialize(value, variantType, bytes)
     testDeserialize(value, variantType, bytes)

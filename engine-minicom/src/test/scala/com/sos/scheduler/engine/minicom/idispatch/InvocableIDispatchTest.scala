@@ -45,11 +45,17 @@ final class InvocableIDispatchTest extends FreeSpec {
     annotated.call("optional", List(Int box 1, Double box 2.3)) shouldEqual 3.3
     annotated.call("optional", List(1)) shouldEqual 1.0
     annotated.call("optional", List()) shouldEqual 0.0
+    annotated.call("var42", List()) shouldEqual 4242
   }
 
   "GetIDsOfNames and Invoke" in {
     val dispId = annotated.getIdOfName("DOUBLE")
     annotated.invoke(dispId, Set(DISPATCH_METHOD), List(1.2)) shouldEqual 1.3
+  }
+
+  "@invocable with dispId" in {
+    assert(annotated.invoke(DISPID(42), Set(DISPATCH_METHOD)) == 4242)
+    assert(annotated.invoke(DISPID(42), Set(DISPATCH_PROPERTYGET)) == 4242)
   }
 
   "@invocable is mandatory" in {
@@ -68,7 +74,7 @@ final class InvocableIDispatchTest extends FreeSpec {
     OverridingAnnotated.call("overridden") shouldEqual "OVERRIDDEN"
     OverridingAnnotated.call("notOverridden") shouldEqual "NOT OVERRIDDEN"
   }
-  
+
   "Property" in {
     assert(annotated.invokeGet("property") == 0)
     annotated.invokePut("property", 7)
@@ -91,6 +97,7 @@ private object InvocableIDispatchTest {
     @invocable def boxedBoolean(o: Boolean): java.lang.Boolean = !o
     @invocable def string(i: Int, l: Long, d: Double, b: Boolean, o: String) = s"$i $l $d $b $o"
     @invocable def array(a: VariantArray) = a.indexedSeq(0).asInstanceOf[Long] + a.indexedSeq(1).asInstanceOf[Double]
+    @(invocable @getter @setter)(dispId = 42) var var42 = 4242
     @invocable def optional(a: Option[java.lang.Integer], b: Option[java.lang.Double]) = {
       // As long as OverridingInvocableIDispatch uses Java reflection is used, only Option[_ <: AnyRef] can be used as parameter type.
       val aa = a map { o => o: Int }

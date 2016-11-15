@@ -23,15 +23,18 @@ private final class CallSerializer(protected val proxyRegister: ProxyRegister) e
         writeByte(MessageClass.KeepAlive)
     }
 
-  private def writeSessionCall(call: SessionCall) =
+  private def writeSessionCall(call: SessionCall) = {
+    writeInt64(0)  // Session ID
     call match {
       case CreateInstanceCall(clsid, outer, context, iids) ⇒
+        writeByte(MessageCommand.CreateInstance)
         writeUUID(clsid.uuid)
-        writeNull() // outer
+        writeIUnknown(null) // outer
         writeInt32(0) // context
         writeInt32(iids.size)
         for (o ← iids) writeUUID(o.uuid)
     }
+  }
 
   private def writeObjectCall(call: ObjectCall) =
     call match {
@@ -62,6 +65,13 @@ private final class CallSerializer(protected val proxyRegister: ProxyRegister) e
         writeInt32(localeId)
         writeInt32(names.size)
         names foreach writeString
+
+      case CallCall(proxyId, methodName, arguments) ⇒
+        writeByte(MessageCommand.Call)
+        writeString(methodName)
+        writeInt32(arguments.size)
+        writeInt32(0)  // namedArgumentCount
+        for (a ← arguments.reverseIterator) writeVariant(a)
 
       case _: ReleaseCall | _: CallCall ⇒ throw new UnsupportedOperationException(call.getClass.getSimpleName)
     }

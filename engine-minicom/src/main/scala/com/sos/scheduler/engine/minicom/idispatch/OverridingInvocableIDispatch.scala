@@ -1,11 +1,10 @@
 package com.sos.scheduler.engine.minicom.idispatch
 
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.OverridingInvocableIDispatch._
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, VariantArray}
 import java.lang.reflect.{InvocationTargetException, Method, ParameterizedType, Type}
-import scala.collection.immutable
 
 /**
  * Converts an with @`invocable` annotated `Invocable` to an `IDispatch`.
@@ -19,52 +18,76 @@ import scala.collection.immutable
  */
 trait OverridingInvocableIDispatch extends Invocable with IDispatch {
 
-  private val (nameToDispid, methodMap) = {
-    val seq: Seq[MethodMeta] =
-      (invocableMethods map { o ⇒ o.getName.toLowerCase → o } collect {
-        case (ScalaSetterExtractor(name), m) ⇒ List(MethodMeta(DISPATCH_PROPERTYPUT, name, m))
-        case (name, m) if m.getReturnType.getName == "void" ⇒ MethodMeta(DISPATCH_METHOD, name, m) :: Nil
-        case (name, m) ⇒ MethodMeta(DISPATCH_PROPERTYGET, name, m) :: MethodMeta(DISPATCH_METHOD, name, m) :: Nil
+  private lazy val (nameToDispId, dispIdToDispatchTypeToMethod) = {
+    val invocableMethods = this.invocableMethods
+    val nameToDispId: Map[String, DISPID] = {
+      val dispIdGenerator = for (i ← Iterator from 0) yield DISPID(MethodDispatchIdBase - i)
+      val normalized = invocableMethods map { case (method, dispIdOption) ⇒ normalizeName(method.getName) → dispIdOption }
+      (for ((name, dispIdOption) ← normalized.distinct) yield
+        name → (dispIdOption getOrElse dispIdGenerator.next()))
+      .distinct.uniqueToMap
+    }
+    val methodMetas: Seq[MethodMeta] = {
+      (invocableMethods map {
+        case (m, Some(dispId)) ⇒ m → dispId
+        case (m, None) ⇒ m → nameToDispId(normalizeName(m.getName))
+      } map { m ⇒
+        m._1.getName → m
+      } collect {
+        case (ScalaSetterExtractor(name), (m, dispId)) ⇒
+          MethodMeta(DISPATCH_PROPERTYPUT, name, m, dispId) :: Nil
+        case (name, (m, dispId)) if m.getReturnType.getName == "void" ⇒
+          MethodMeta(DISPATCH_METHOD, normalizeName(name), m, dispId) :: Nil
+        case (name, (m, dispId)) ⇒
+          MethodMeta(DISPATCH_PROPERTYGET, normalizeName(name), m, dispId) ::
+          MethodMeta(DISPATCH_METHOD, normalizeName(name), m, dispId) :: Nil
       }).flatten
-    val names = (seq map { _.name }).toSet
-    val nameToDispid: Map[String, DISPID] = (names zip (Iterator.from(0) map methodIndexToDISPID).toIterable).toMap
-    val methodMap: Map[(DispatchType, DISPID), immutable.Iterable[Method]] =
-      seq groupBy { o ⇒ (o.typ, nameToDispid(o.name)) } mapValues { v ⇒ (v map { _.method }).toImmutableIterable }
-    (nameToDispid, methodMap)
+    }
+    val dispIdToDispatchTypeToMethod =
+      methodMetas groupBy { _.dispId } mapValues { _ groupBy { _.typ }} map { case (dispId, dispatchTypeToMethodMetas) ⇒
+        dispId → (dispatchTypeToMethodMetas mapValues { metas ⇒
+          if (metas.size == 1)
+            metas.head.method
+          else
+            throw new COMException(DISP_E_MEMBERNOTFOUND, s"Multiple methods ${metas map { _.method } mkString ", "} for $dispId in $getClass")
+        })
+      }
+    (nameToDispId, dispIdToDispatchTypeToMethod)
   }
 
-  def call(name: String, arguments: Seq[Any] = Nil): Any =
-    nameToDispid.get(name.toLowerCase) match {
-      case Some(dispid) ⇒ invokeMethod(method(DISPATCH_METHOD, dispid), arguments)
-      case None ⇒ super.invoke(super.getIdOfName(name), Set(DISPATCH_METHOD), arguments)
+  abstract override def call(name: String, arguments: Seq[Any] = Nil): Any =
+    nameToDispId.get(normalizeName(name)) match {
+      case Some(dispId) ⇒ invokeMethod(dispIdToDispatchTypeToMethod(dispId)(DISPATCH_METHOD), arguments)
+      case None ⇒ super.call(name, arguments)
     }
 
   abstract override def getIdOfName(name: String) = {
     def superDispid = {
       val dispid = super.getIdOfName(name)
-      if (isInvocableDISPID(dispid)) throw new RuntimeException(s"IDispatch $dispid of $getClass $name collides with DISPIDs of Invocable") // !!!
+      if (dispIdToDispatchTypeToMethod contains dispid) sys.error(s"IDispatch $dispid of $getClass $name collides with DISPIDs of Invocable")
       dispid
     }
-    nameToDispid.getOrElse(name.toLowerCase, superDispid)
+    nameToDispId.getOrElse(normalizeName(name), superDispid)
   }
 
-  abstract override def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any] = Nil, namedArguments: Seq[(DISPID, Any)] = Nil): Any = {
-    if (isInvocableDISPID(dispId)) {
-      if (dispatchTypes.size != 1) throw new COMException(DISP_E_MEMBERNOTFOUND, "Use of multiple or no DispatchType is not supported")
-      val dispatchType = dispatchTypes.head
-      val m = method(dispatchType, dispId)
-      dispatchType match {
-        case DISPATCH_PROPERTYGET | DISPATCH_METHOD ⇒
-          if (namedArguments.nonEmpty) throw new COMException(DISP_E_PARAMNOTFOUND, "Named arguments are not supported")
-          invokeMethod(m, arguments)
-        case DISPATCH_PROPERTYPUT ⇒
-          if (namedArguments.size != 1 || namedArguments.head._1 != DISPID.PROPERTYPUT) throw new COMException(DISP_E_PARAMNOTFOUND, "Unexpected named argument for DISPATCH_PROPERTYPUT")
-          invokeMethod(m, arguments :+ namedArguments.head._2)
-        case _ ⇒ throw new COMException(DISP_E_MEMBERNOTFOUND, "Only DISPATCH_METHOD, DISPATCH_PROPERTYGET and DISPATCH_PROPERTYPUT is supported")
-      }
-    } else
-      super.invoke(dispId, dispatchTypes, arguments, namedArguments)
-  }
+  abstract override def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any] = Nil, namedArguments: Seq[(DISPID, Any)] = Nil): Any =
+    dispIdToDispatchTypeToMethod.get(dispId) match {
+      case Some(dispatchTypeToMethod) ⇒
+        if (dispatchTypes.size != 1) throw new COMException(DISP_E_MEMBERNOTFOUND, "Use of multiple or no DispatchType is not supported")
+        val dispatchType = dispatchTypes.head
+        val method = dispatchTypeToMethod(dispatchType)
+        dispatchType match {
+          case DISPATCH_PROPERTYGET | DISPATCH_METHOD ⇒
+            if (namedArguments.nonEmpty) throw new COMException(DISP_E_PARAMNOTFOUND, "Named arguments are not supported")
+            invokeMethod(method, arguments)
+          case DISPATCH_PROPERTYPUT ⇒
+            if (namedArguments.size != 1 || namedArguments.head._1 != DISPID.PROPERTYPUT) throw new COMException(DISP_E_PARAMNOTFOUND, "Unexpected named argument for DISPATCH_PROPERTYPUT")
+            invokeMethod(method, arguments :+ namedArguments.head._2)
+          case _ ⇒ throw new COMException(DISP_E_MEMBERNOTFOUND, "Only DISPATCH_METHOD, DISPATCH_PROPERTYGET and DISPATCH_PROPERTYPUT is supported")
+        }
+      case None ⇒
+        super.invoke(dispId, dispatchTypes, arguments, namedArguments)
+    }
 
   private def invokeMethod(method: Method, arguments: Seq[Any]): Any = {
     val optionalCount = method.getParameterTypes.reverse prefixLength { _ == classOf[Option[_]] }
@@ -76,22 +99,10 @@ trait OverridingInvocableIDispatch extends Invocable with IDispatch {
       catch { case e: InvocationTargetException ⇒ throw e.getTargetException }
     if (result == null) Unit else result
   }
-
-  private def isInvocableDISPID(o: DISPID) = o.value <= MethodDispatchIdBase && o.value > MethodDispatchIdBase - nameToDispid.size
-
-  private def method(t: DispatchType, dispId: DISPID): Method = {
-    val m = methodMap((t, dispId))
-    if (m.size > 1) throw new COMException(DISP_E_MEMBERNOTFOUND, s"Multiple methods for $dispId '${dispIdToName(dispId)}' in $getClass")
-    m.headOption getOrElse { throw new COMException(DISP_E_MEMBERNOTFOUND, s"Unknown @invocable $dispId in $getClass") }
-  }
-
-  private def dispIdToName(o: DISPID): String = (nameToDispid find { _._2 == o }).get._1
 }
 
 object OverridingInvocableIDispatch {
   private val MethodDispatchIdBase = -1000000000
-  private def methodIndexToDISPID(i: Int) = DISPID(MethodDispatchIdBase - i)
-
   private val ScalaSetterExtractor = """(.+)_\$eq""".r   // Scala-generated method name for setter "property_=" ends with "_$eq"
 
   private val IntClass = classOf[Int]
@@ -105,6 +116,12 @@ object OverridingInvocableIDispatch {
   private val StringClass = classOf[String]
   private val AnyRefClass = classOf[AnyRef]
   private val VariantArraySerializableClass = classOf[VariantArray]
+
+  private def normalizeName(name: String): String =
+    name match {
+      case ScalaSetterExtractor(name_) ⇒ name_.toLowerCase
+      case _ ⇒ name.toLowerCase
+    }
 
   private def convert(typ: Type, value: Any): AnyRef =
     typ match {
@@ -133,7 +150,7 @@ object OverridingInvocableIDispatch {
       case _ ⇒ throw new IllegalArgumentException(s"Unsuported type for dynamic method invocation: $typ")
     }
 
-  private case class MethodMeta(typ: DispatchType, name: String, method: Method)
+  private case class MethodMeta(typ: DispatchType, name: String, method: Method, dispId: DISPID)
 
   private object MissingArgument
 }

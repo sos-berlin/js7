@@ -19,7 +19,7 @@ private[serial] trait CallDeserializer extends VariantDeserializer {
     result
   }
 
-  final def readCall(): Call =
+  private final def readCall(): Call =
     readByte() match {
       case MessageClass.Session ⇒ readSessionCall()
       case MessageClass.Object ⇒ readObjectCall()
@@ -103,6 +103,9 @@ object CallDeserializer {
   }
 
   def deserializeCall(message: ByteString) = new SimpleCallDeserializer(message.asByteBuffer).readCallAndEnd()
+
+  def isCall(byteString: ByteString): Boolean =
+    byteString.nonEmpty && MessageClass.isCall(byteString.head)
 
   private class SimpleCallDeserializer(protected val buffer: ByteBuffer) extends CallDeserializer with RemotingIUnknownDeserializer {
     val remoting = ServerRemoting.Dummy

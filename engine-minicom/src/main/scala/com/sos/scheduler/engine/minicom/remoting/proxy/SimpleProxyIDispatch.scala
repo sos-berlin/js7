@@ -12,7 +12,9 @@ private[proxy] final class SimpleProxyIDispatch(
   protected val remoting: ClientRemoting,
   val id: ProxyId,
   val name: String)
-extends CachingProxyIDispatch
+extends CachingProxyIDispatch {
+  override def toString = s"SimpleProxyIDispatch($name)"
+}
 
 private[minicom] object SimpleProxyIDispatch extends ProxyIDispatchFactory {
   val clsid = CLSID.Null

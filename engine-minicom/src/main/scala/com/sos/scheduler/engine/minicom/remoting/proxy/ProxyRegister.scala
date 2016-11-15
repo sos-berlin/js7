@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister._
 import com.sos.scheduler.engine.minicom.types.HRESULT.E_POINTER
 import com.sos.scheduler.engine.minicom.types.{COMException, IUnknown}
-import org.scalactic.Requirements._
+import javax.annotation.Nullable
 import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.reflect.ClassTag
@@ -18,28 +18,30 @@ import scala.util.control.NonFatal
  */
 private[remoting] final class ProxyRegister {
   private val proxyIdToIUnknown = HashBiMap.create[ProxyId, IUnknown]()
-  private val iUnknownToProxyId = proxyIdToIUnknown.inverse
+  private val _iUnknownToProxyId = proxyIdToIUnknown.inverse
   private val proxyIdGenerator = ProxyId.newGenerator()
 
   def registerProxy(proxy: ProxyIDispatch): Unit = add(proxy.id, proxy)
 
-  def iUnknownToProxyId(iUnknown: IUnknown): (ProxyId, Boolean) = {
-    requireNonNull(iUnknown)
-    synchronized {
-      iUnknownToProxyId.get(iUnknown) match {
-        case null ⇒
-          val proxyId = proxyIdGenerator.next()
-          add(proxyId, iUnknown)
-          (proxyId, true)
-        case o ⇒ (o, false)
+  def iUnknownToProxyId(@Nullable iUnknown: IUnknown): (ProxyId, Boolean) = {
+    if (iUnknown == null)
+      (ProxyId.Null, false)
+    else
+      synchronized {
+        _iUnknownToProxyId.get(iUnknown) match {
+          case null ⇒
+            val proxyId = proxyIdGenerator.next()
+            add(proxyId, iUnknown)
+            (proxyId, true)
+          case o ⇒ (o, false)
+        }
       }
-    }
   }
 
   private def add(proxyId: ProxyId, iUnknown: IUnknown): Unit =
     synchronized {
       if (proxyIdToIUnknown containsKey proxyId) throw new DuplicateKeyException(s"$proxyId already registered")
-      if (iUnknownToProxyId containsKey iUnknown) throw new DuplicateKeyException(s"IUnknown '$iUnknown' already registered")
+      if (_iUnknownToProxyId containsKey iUnknown) throw new DuplicateKeyException(s"IUnknown '$iUnknown' already registered")
       proxyIdToIUnknown.put(proxyId, iUnknown)
     }
 

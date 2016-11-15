@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.minicom.idispatch
 
 import com.sos.scheduler.engine.minicom.types.IUnknown
 import java.lang.reflect.Method
+import scala.collection.immutable.Seq
 
 /**
  * Public methods annotated with @[[com.sos.scheduler.engine.minicom.idispatch.annotation.invocable]] are callable via [[OverridingInvocableIDispatch]].
@@ -10,7 +11,7 @@ import java.lang.reflect.Method
  * @author Joacim Zschimmer
  */
 trait Invocable extends IUnknown {
-  def invocableMethods: Seq[Method]
+  def invocableMethods: Seq[(Method, Option[DISPID])]
 }
 
 object Invocable {

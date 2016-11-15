@@ -25,6 +25,15 @@ final class BaseSerializerTest extends FreeSpec {
     }
   }
 
+  "writeInt16" in {
+    new Tester[Short](_.writeInt16, _.readInt16()) {
+      test(0x1234, 0x12, 0x34)
+      test(0x8765.toShort, 0x87, 0x65) // negative
+      test(Short.MaxValue, 0x7f, 0xff)
+      test(Short.MinValue, 0x80, 0x00)
+    }
+  }
+
   "writeInt32" in {
     new Tester[Int](_.writeInt32, _.readInt32()) {
       test(0x12345678, 0x12, 0x34, 0x56, 0x78)

@@ -6,7 +6,8 @@ import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.tcp.TcpConnection
-import com.sos.scheduler.engine.minicom.remoting.{DialogConnection, Remoting}
+import com.sos.scheduler.engine.minicom.remoting.dialog.StandardServerDialogConnection
+import com.sos.scheduler.engine.minicom.remoting.{Remoting, RemotingServer}
 import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
 import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
@@ -29,12 +30,12 @@ extends TaskServer with HasCloser {
   private val logger = Logger.withPrefix(getClass, taskStartArguments.agentTaskId.toString)
   private val terminatedPromise = Promise[Terminated.type]()
   private val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
-  private val remoting = new Remoting(
+  private val remoting = new RemotingServer(
     injector,
-    new DialogConnection(master),
-    IDispatchFactories,
-    ProxyIDispatchFactories,
+    new StandardServerDialogConnection(master),
     name = taskStartArguments.agentTaskId.toString,
+    ProxyIDispatchFactories,
+    IDispatchFactories,
     returnAfterReleaseOf = _.isInstanceOf[RemoteModuleInstanceServer],
     keepaliveDurationOption = taskStartArguments.rpcKeepaliveDurationOption)
 

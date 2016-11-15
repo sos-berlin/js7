@@ -8,6 +8,12 @@ import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
  */
 trait ClientRemoting {
 
+  /**
+    * Combines getIdOfName and invoke.
+    * May be used to optimize remote procedure calls.
+    */
+  def call(proxyId: ProxyId, methodName: String, arguments: Seq[Any]): Any
+
   private[remoting] def getIdOfName(proxyId: ProxyId, name: String): DISPID
 
   def invoke(

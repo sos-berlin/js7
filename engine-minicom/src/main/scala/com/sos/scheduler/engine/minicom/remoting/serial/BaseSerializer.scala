@@ -16,6 +16,8 @@ private[serial] class BaseSerializer {
 
   final def writeByte(o: Byte): Unit = builder.putByte(o)
 
+  final def writeInt16(o: Short): Unit = builder.putShort(o)
+
   final def writeInt32(o: Int): Unit = builder.putInt(o)
 
   final def writeInt64(o: Long): Unit = builder.putLong(o)

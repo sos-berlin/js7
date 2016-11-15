@@ -33,8 +33,8 @@ private[serial] object variantTypes {
 
 
 object variantArrayFlags {
-  private[minicom] final val FADF_FIXEDSIZE   =  0x10
-  private[minicom] final val FADF_HAVEVARTYPE =  0x80
-  private[minicom] final val FADF_BSTR        = 0x100
-  private[minicom] final val FADF_VARIANT     = 0x800
+  private[minicom] final val FADF_FIXEDSIZE  : Short =  0x10
+  private[minicom] final val FADF_HAVEVARTYPE: Short =  0x80
+  private[minicom] final val FADF_BSTR       : Short = 0x100
+  private[minicom] final val FADF_VARIANT    : Short = 0x800
 }

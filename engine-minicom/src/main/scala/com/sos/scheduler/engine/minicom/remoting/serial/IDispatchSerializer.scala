@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister
+import com.sos.scheduler.engine.minicom.remoting.proxy.{HasProxyMeta, ProxyRegister}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IUnknown}
 
 /**
@@ -17,14 +17,19 @@ extends VariantSerializer {
     writeBoolean(isNew)
     if (isNew) {
       writeString(iUnknown.getClass.getSimpleName)
-      writeUUID(CLSID.Null.uuid)
-      writeInt32(0)
-//      writeUUID(localProxy.clsid.uuid)
-//      writeInt32(localProxy.properties.size)
-//      for ((name, v) ← localProxy.properties) {
-//        writeString(name)
-//        writeVariant(v)
-//      }
+      iUnknown match {
+        case hasProxyMeta: HasProxyMeta ⇒
+          val meta = hasProxyMeta.proxyMeta
+          writeUUID(meta.clsid.uuid)
+          writeInt32(meta.properties.size)
+          for ((name, v) ← meta.properties) {
+            writeString(name)
+            writeVariant(v)
+          }
+        case _ ⇒
+          writeUUID(CLSID.Null.uuid)
+          writeInt32(0)
+      }
     }
   }
 }
