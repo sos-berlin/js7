@@ -59,24 +59,31 @@ extends VariantDeserializer with RemotingIUnknownDeserializer {
     if (hr.isError) throw new COMException(hr)
   }
 
-  private def readAnswerHeaderHRESULT(): HRESULT = {
+  private def readAnswerHeaderHRESULT(): HRESULT =
     readByte() match {
       case MessageClass.Answer ⇒
         HRESULT(readInt32())
 
       case MessageClass.Error ⇒
-        val strings = mutable.Buffer[String]()
+        val others = mutable.Buffer[String]()
+        var name, code, what: String = ""
         for (_ ← 1 to 3) readString() match {
-          case KeyValueRegex("name", v) ⇒ strings += v
-          case KeyValueRegex("code", v) ⇒ strings += v
-          case KeyValueRegex("what", v) ⇒ strings += v
-          case v ⇒ strings += v
+          case KeyValueRegex("name", v) ⇒ name = v
+          case KeyValueRegex("code", v) ⇒ code = v
+          case KeyValueRegex("what", v) ⇒ what = v
+          case v ⇒ others += v
         }
+        val strings = mutable.Buffer[String]()
+        // Remove redundancy
+        if (!code.startsWith(name)) strings += name
+        if (!what.startsWith(code)) strings += code
+        val m = DISP_E_EXCEPTION.comString
+        strings += (if (what.startsWith(m)) what.substring(m.length).trim else what)
+        strings ++= others
         throw new COMException(DISP_E_EXCEPTION, strings mkString " ")
     }
-  }
 }
 
 object ResultDeserializer {
-  private val KeyValueRegex = "([a-z]+)=(.*)".r
+  private val KeyValueRegex = "([a-z]+)=(?s)(.*)".r
 }
