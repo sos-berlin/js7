@@ -99,7 +99,7 @@ object FileUtils {
     (Iterator.fill(ShortNameSize) { ThreadLocalRandom.current.nextInt(FilenameCharacterSet.length) } map FilenameCharacterSet).mkString
 
   def withTemporaryFile[A](body: Path ⇒ A): A = withTemporaryFile(prefix = "", suffix = ".tmp")(body)
-  
+
   def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[_]*)(body: Path ⇒ A): A =
     autoDeleting(Files.createTempFile(prefix, suffix, attributes: _*))(body)
 
@@ -111,9 +111,9 @@ object FileUtils {
       body(file)
   }
 
-  def deleteDirectoryRecursively(dir: Path): Unit = {
+  def deleteDirectoryContentRecursively(dir: Path): Unit = {
     for (f ← dir.pathSet) {
-      if (f.isDirectory && !isSymbolicLink(f)) deleteDirectoryRecursively(f)
+      if (f.isDirectory && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
       delete(f)
     }
   }
