@@ -67,7 +67,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     unmarshal[A]
 
   override protected def beforeAll() = {
-    acceptTlsCertificateFor(ClientKeystoreRef, webServer.locallyUseableHttpsUriOption.get)
+    acceptTlsCertificateFor(ClientKeystoreRef, webServer.localHttpsUriOption.get)
     super.beforeAll()
   }
 
@@ -87,7 +87,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "HTTPS" - {
-    lazy val uri = s"${webServer.locallyUseableHttpsUriOption.get}/$Api"
+    lazy val uri = s"${webServer.localHttpsUriOption.get}/$Api"
 
     "Unauthorized request is rejected" - {
       "due to missing credentials" in {
@@ -124,7 +124,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "HTTP" - {
-    lazy val uri = s"${webServer.locallyUsableHttpUriOption.get}/$Api"
+    lazy val uri = s"${webServer.localHttpUriOption.get}/$Api"
 
     "Without credentials" in {
       val overview = pipeline[AgentOverview](password = None).apply(Get(uri)) await 10.s

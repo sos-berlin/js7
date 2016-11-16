@@ -94,10 +94,10 @@ object SprayWebServer {
     this: SprayWebServer ⇒
     protected def uriPathPrefix: String
 
-    lazy val locallyUsableHttpUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Http ⇒ toLocallyUsableUri("http", o.address) }
-    lazy val locallyUseableHttpsUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Https ⇒ toLocallyUsableUri("https", o.address) }
+    lazy val localHttpUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Http ⇒ toLocallyUsableUri("http", o.address) }
+    lazy val localHttpsUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Https ⇒ toLocallyUsableUri("https", o.address) }
 
-    lazy val locallyUsableUri: Uri = locallyUsableHttpUriOption orElse locallyUseableHttpsUriOption getOrElse { throw newPortNeededException }
+    lazy val localUri: Uri = localHttpUriOption orElse localHttpsUriOption getOrElse { throw newPortNeededException }
 
     private def toLocallyUsableUri(scheme: String, address: InetSocketAddress) = {
       val host = address.getAddress.getHostAddress.substitute("0.0.0.0", "127.0.0.1")
