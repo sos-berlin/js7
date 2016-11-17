@@ -102,7 +102,7 @@ object Https {
 
   private def loadKeyStore(keystoreRef: KeystoreReference): KeyStore = {
     val keystore = KeyStore.getInstance(KeyStore.getDefaultType)
-    logger.debug(s"Loading $keystoreRef")
+    logger.info(s"Loading $keystoreRef")
     autoClosing(keystoreRef.url.openStream()) { in ⇒
       val pw = (keystoreRef.storePassword map { _.string.toCharArray }).orNull
       keystore.load(in, pw)
