@@ -1,16 +1,15 @@
 package com.sos.scheduler.engine.common.sprayutils.https
 
 import akka.actor.ActorSystem
-import akka.io.IO
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.scalautil.ScalaUtils.cast
 import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import java.security.KeyStore
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, SSLEngine, TrustManagerFactory}
 import scala.collection.JavaConversions._
-import spray.can.Http
 import spray.can.Http.HostConnectorSetup
 import spray.http.Uri
 import spray.io.{ClientSSLEngineProvider, ServerSSLEngineProvider}
@@ -45,14 +44,11 @@ object Https {
     r
   }
 
-  def acceptTlsCertificateFor(keystoreRef: KeystoreReference, uri: Uri)(implicit actorSystem: ActorSystem): Unit =
-    acceptTlsCertificateFor(keystoreRef, uri.authority.host.address, uri.effectivePort)
+  def toHostConnectorSetup(keystore: KeystoreReference, uri: Uri)(implicit actorSystem: ActorSystem): HostConnectorSetup =
+    toHostConnectorSetup(keystore, cast[Uri.NonEmptyHost](uri.authority.host), uri.effectivePort)
 
-  def acceptTlsCertificateFor(keystore: KeystoreReference, host: String, port: Int)(implicit actorSystem: ActorSystem): Unit =
-    IO(Http) ! {
-      implicit val myEngineProvider = newClientSSLEngineProvider(keystore)
-      HostConnectorSetup(host = host, port = port, sslEncryption = true)
-    }
+  def toHostConnectorSetup(keystore: KeystoreReference, host: Uri.NonEmptyHost, port: Int)(implicit actorSystem: ActorSystem): HostConnectorSetup =
+    HostConnectorSetup(host = host.address, port = port, sslEncryption = true)(actorSystem, newClientSSLEngineProvider(keystore))
 
   def newClientSSLEngineProvider(keystore: KeystoreReference): ClientSSLEngineProvider = {
     implicit val sslContext = newSSLContext(keystore)

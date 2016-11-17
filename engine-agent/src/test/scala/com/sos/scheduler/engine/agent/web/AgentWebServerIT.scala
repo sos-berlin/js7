@@ -15,8 +15,8 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAn
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.sprayutils.https.Https._
-import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
+import com.sos.scheduler.engine.common.sprayutils.https.{Https, KeystoreReference}
+import com.sos.scheduler.engine.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.common.time.timer.TimerServiceOverview
@@ -31,6 +31,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.reflect.ClassTag
+import spray.can.Http.HostConnectorSetup
 import spray.client.pipelining._
 import spray.http.CacheDirectives.{`no-cache`, `no-store`}
 import spray.http.HttpHeaders.{Accept, `Cache-Control`}
@@ -56,20 +57,16 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     .withHttpsInetSocketAddress(new InetSocketAddress("127.0.0.1", httpsPort))
   private lazy val webServer = Guice.createInjector(new AgentModule(agentConfiguration)).instance[AgentWebServer]
   private implicit lazy val actorSystem = ActorSystem("AgentWebServerIT") withCloser { _.shutdown() }
+  private lazy val httpsSetup = Some(Https.toHostConnectorSetup(ClientKeystoreRef, webServer.localHttpsUriOption.get))
 
-  private def pipeline[A: FromResponseUnmarshaller](password: Option[String]): HttpRequest ⇒ Future[A] =
+  private def pipeline[A: FromResponseUnmarshaller](password: Option[String], setupOption: Option[HostConnectorSetup] = None): HttpRequest ⇒ Future[A] =
     (password map { o ⇒ addCredentials(BasicHttpCredentials("SHA512-USER", o)) } getOrElse identity[HttpRequest] _) ~>
     addHeader(Accept(`application/json`)) ~>
     addHeader(`Cache-Control`(`no-cache`, `no-store`)) ~>
     encode(Gzip) ~>
-    sendReceive ~>
+    extendedSendReceive(60.s.toFiniteDuration, setupOption) ~>
     decode(Gzip) ~>
     unmarshal[A]
-
-  override protected def beforeAll() = {
-    acceptTlsCertificateFor(ClientKeystoreRef, webServer.localHttpsUriOption.get)
-    super.beforeAll()
-  }
 
   override protected def afterAll() = {
     close()
@@ -91,7 +88,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 
     "Unauthorized due to missing credentials" in {
       intercept[UnsuccessfulResponseException] {
-        pipeline[HttpResponse](password = None).apply(Get(s"$uri/task")) await 10.s
+        pipeline[HttpResponse](password = None, httpsSetup).apply(Get(s"$uri/task")) await 10.s
       }
       .response.status shouldEqual Unauthorized
     }
@@ -99,14 +96,14 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     "Unauthorized due to wrong credentials" in {
       val t = now
       val e = intercept[UnsuccessfulResponseException] {
-        pipeline[AgentOverview](Some("WRONG-PASSWORD")).apply(Get(uri)) await 10.s
+        pipeline[AgentOverview](Some("WRONG-PASSWORD"), httpsSetup).apply(Get(uri)) await 10.s
       }
       assert(now - t > InvalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
       e.response.status shouldEqual Unauthorized
     }
 
     "Authorized" in {
-      val overview = pipeline[AgentOverview](Some("SHA512-PASSWORD")).apply(Get(uri)) await 10.s
+      val overview = pipeline[AgentOverview](Some("SHA512-PASSWORD"), httpsSetup).apply(Get(uri)) await 10.s
       assert(overview.totalTaskCount == 0)
     }
 
@@ -131,19 +128,19 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 
   "close" in {
     webServer.close()
-  }
+    }
 
-  private def addThroughputMeasurementTests(uri: Uri): Unit = {
+  private def addThroughputMeasurementTests(uri: Uri, setupOption: Option[HostConnectorSetup] = None): Unit = {
     if (false) {
-      addThroughputMeasurementTest[TaskHandlerOverview](s"$uri/task")
-      addThroughputMeasurementTest[TimerServiceOverview](s"$uri/timer")
+      addThroughputMeasurementTest[TaskHandlerOverview](s"$uri/task", setupOption)
+      addThroughputMeasurementTest[TimerServiceOverview](s"$uri/timer", setupOption)
     }
   }
 
-  private def addThroughputMeasurementTest[A: FromResponseUnmarshaller: ClassTag](uri: Uri) {
+  private def addThroughputMeasurementTest[A: FromResponseUnmarshaller: ClassTag](uri: Uri, setupOption: Option[HostConnectorSetup] = None) {
     s"Measure throughput of ${implicitClass[A].getSimpleName}" in {
       val get = Get(uri)
-      val p = pipeline[A](Some("SHA512-PASSWORD"))
+      val p = pipeline[A](Some("SHA512-PASSWORD"), setupOption)
       val m = 2 * sys.runtime.availableProcessors
       val n = 1000
       val result: A = p(get) await 10.s
