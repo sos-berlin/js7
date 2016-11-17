@@ -31,7 +31,7 @@ with HasKey {
 
   protected def taskArgumentsFuture: Future[TaskArguments]
 
-  protected def tunnel: TunnelHandle
+  def tunnel: TunnelHandle
 
   protected def taskServer: TaskServer
 
