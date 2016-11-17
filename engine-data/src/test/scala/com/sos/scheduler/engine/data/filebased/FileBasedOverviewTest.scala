@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.filebased
 
+import com.sos.scheduler.engine.data.job.JobPath
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -13,10 +14,10 @@ final class FileBasedOverviewTest extends FreeSpec {
 
   "JSON" in {
     val o = FileBasedOverview(
-      UnknownTypedPath("/TEST"),
+      JobPath("/TEST"),
       FileBasedState.active)
     val json = """{
-        "path": "/TEST",
+        "path": "Job:/TEST",
         "fileBasedState": "active"
       }""".parseJson
     assert(o.toJson == json)

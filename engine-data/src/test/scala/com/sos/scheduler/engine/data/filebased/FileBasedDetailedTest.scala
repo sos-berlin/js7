@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.filebased
 
+import com.sos.scheduler.engine.data.job.JobPath
 import java.nio.file.Paths
 import java.time.Instant
 import org.junit.runner.RunWith
@@ -18,7 +19,7 @@ final class FileBasedDetailedTest extends FreeSpec {
     val o =
       FileBasedDetailed(
         FileBasedOverview(
-        UnknownTypedPath("/TEST"),
+        JobPath("/TEST"),
         FileBasedState.active),
         Some(file),
         Some(Instant.parse("2016-09-07T11:22:33.444Z")),
@@ -26,7 +27,7 @@ final class FileBasedDetailedTest extends FreeSpec {
     val fileJson = '"' + file.toString.replace("""\""", """\\""") + '"'
     val json = s"""{
         "overview": {
-          "path": "/TEST",
+          "path": "Job:/TEST",
           "fileBasedState": "active"
         },
         "file": $fileJson,
