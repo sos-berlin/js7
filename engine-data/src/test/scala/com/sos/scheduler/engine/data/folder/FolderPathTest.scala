@@ -22,6 +22,8 @@ final class FolderPathTest extends FreeSpec {
   }
 
   "isParentOf" in {
+    assert(FolderPath.Root.isParentOf(FolderPath("/a")))
+    assert(!FolderPath.Root.isParentOf(FolderPath.Root))
     assert(!FolderPath("/a").isParentOf(FolderPath("/a")))
     assert(!FolderPath("/a").isParentOf(JobPath("/x")))
     assert(!FolderPath("/a/b").isParentOf(JobPath("/a")))

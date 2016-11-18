@@ -14,7 +14,7 @@ final case class FolderPath(string: String) extends TypedPath {
   }
 
   def isParentOf(path: TypedPath): Boolean =
-    this == path.parent
+    path != FolderPath.Root && this == path.parent
 
   def isAncestorOf(path: TypedPath): Boolean =
     (path.string startsWith withTrailingSlash) ||
