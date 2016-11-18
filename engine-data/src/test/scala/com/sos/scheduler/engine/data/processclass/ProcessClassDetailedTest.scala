@@ -24,6 +24,7 @@ final class ProcessClassDetailedTest extends FreeSpec {
           processLimit = 10,
           usedProcessCount = 11,
           obstacles = Set(ProcessClassObstacle.ProcessLimitReached(10))),
+        selectionMethod = "FixedPriority",
         List(
           AgentAddress("https://example.com:4445")),
         List(
@@ -46,6 +47,7 @@ final class ProcessClassDetailedTest extends FreeSpec {
             }
           ]
         },
+      "selectionMethod": "FixedPriority",
       "agents": [
         "https://example.com:4445"
       ],

@@ -10,6 +10,10 @@ import spray.json.RootJsonFormat
   */
 final case class ProcessClassDetailed(
   overview: ProcessClassOverview,
+  /**
+    *  "FixedPriority" or "RoundRobin", see class `com.sos.scheduler.engine.kernel.processclass.common.selection.SelectionMethod`.
+    */
+  selectionMethod: String,
   agents: immutable.Seq[AgentAddress],
   processes: immutable.Seq[ProcessDetailed])
 extends ProcessClassView {
@@ -19,5 +23,5 @@ extends ProcessClassView {
 
 object ProcessClassDetailed extends ProcessClassView.Companion[ProcessClassDetailed] {
   implicit val ordering: Ordering[ProcessClassDetailed] = Ordering by { _.path }
-  implicit val jsonFormat: RootJsonFormat[ProcessClassDetailed] = jsonFormat3(apply)
+  implicit val jsonFormat: RootJsonFormat[ProcessClassDetailed] = jsonFormat4(apply)
 }
