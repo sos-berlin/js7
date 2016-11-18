@@ -12,7 +12,7 @@ final case class EventRequest[E <: Event](
   after: EventId,
   timeout: Duration,
   limit: Int)
-extends SomeEventRequest {
+extends SomeEventRequest[E] {
   require(limit > 0, "Limit must not be below zero")
 }
 
@@ -25,7 +25,7 @@ final case class ReverseEventRequest[E <: Event](
   eventClass: Class[E],
   limit: Int,
   after: EventId)
-extends SomeEventRequest {
+extends SomeEventRequest[E] {
   require(limit > 0, "Limit must not be below zero")
 }
 
@@ -34,4 +34,6 @@ object ReverseEventRequest {
     new ReverseEventRequest(implicitClass[E], after = after, limit = limit)
 }
 
-sealed trait SomeEventRequest
+sealed trait SomeEventRequest[E <: Event] {
+  def eventClass: Class[E]
+}

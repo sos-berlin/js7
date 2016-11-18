@@ -85,6 +85,32 @@ final class PathQueryTest extends FreeSpec {
     checkJson(q, """{ "path": "/*" }""")
   }
 
+  "matchesAnyType" - {
+    "All" in {
+      assert(PathQuery.All matchesAnyType AnyPath("/a"))
+      assert(PathQuery.All matchesAnyType FolderPath.Root)
+    }
+    "FolderTree" in {
+      assert(PathQuery.FolderTree(FolderPath("/a")) matchesAnyType AnyPath("/a/b"))
+      assert(PathQuery.FolderTree(FolderPath("/a")) matchesAnyType FolderPath("/a/b"))
+      assert(PathQuery.FolderTree(FolderPath("/a")) matchesAnyType FolderPath("/a/b/c"))
+      assert(!(PathQuery.FolderTree(FolderPath("/a")) matchesAnyType AnyPath("/a")))
+      assert(PathQuery.FolderTree(FolderPath("/a")) matchesAnyType FolderPath("/a"))
+    }
+    "FolderOnly" in {
+      assert(PathQuery.FolderOnly(FolderPath("/a")) matchesAnyType AnyPath("/a/b"))
+      assert(PathQuery.FolderOnly(FolderPath("/a")) matchesAnyType FolderPath("/a/b"))
+      assert(!(PathQuery.FolderOnly(FolderPath("/a")) matchesAnyType FolderPath("/a/b/c")))
+      assert(!(PathQuery.FolderOnly(FolderPath("/a")) matchesAnyType AnyPath("/a")))
+      assert(!(PathQuery.FolderOnly(FolderPath("/a")) matchesAnyType FolderPath("/a")))
+    }
+    "SinglePath" in {
+      assert(!(PathQuery.SinglePath("/a") matchesAnyType AnyPath("/a/b")))
+      assert(PathQuery.SinglePath("/a") matchesAnyType AnyPath("/a"))
+      assert(PathQuery.SinglePath("/a") matchesAnyType FolderPath("/a"))
+    }
+  }
+
   private def checkFolderQuery(q: PathQuery.Folder) {
     assert(!(q matches AnyPath("/a")))
     assert(!(q matches AnyPath("/x")))

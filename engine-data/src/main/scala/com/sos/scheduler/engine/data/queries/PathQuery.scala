@@ -17,6 +17,12 @@ sealed trait PathQuery {
 
   def isRecursive: Boolean
 
+  final def matchesAnyType(path: TypedPath): Boolean =
+    path match {
+      case o: FolderPath ⇒ matches(o)
+      case o ⇒ matches(o.asTyped[UnknownTypedPath])
+    }
+
   /** PathQuery may apply to any `TypedPath`. */
   def matches[P <: TypedPath: TypedPath.Companion](path: P): Boolean
 
@@ -28,7 +34,7 @@ sealed trait PathQuery {
 
   def toUriPath: String = patternString
 
-  def toPathAndParameters[P <: TypedPath: TypedPath.Companion]: (String, Map[String, Nothing]) =
+  def toPathAndParameters[P <: TypedPath: TypedPath.Companion]: (String, Map[String, String]) =
     PathQuery.pathAndParameterSerializable.toPathAndParameters(this)
 }
 
@@ -75,7 +81,7 @@ object PathQuery {
   final case class FolderOnly(folderPath: FolderPath) extends Folder {
     def patternString = folderPath.withTrailingSlash + "*"
     def isRecursive = false
-    def matches[P <: TypedPath: TypedPath.Companion](path: P) = folderPath == path.parent
+    def matches[P <: TypedPath: TypedPath.Companion](path: P) = folderPath isParentOf path
     def typedPath[Ignored <: TypedPath: TypedPath.Companion] = folderPath
   }
 
