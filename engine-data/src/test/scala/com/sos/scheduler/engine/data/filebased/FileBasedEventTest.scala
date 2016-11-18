@@ -2,7 +2,6 @@ package com.sos.scheduler.engine.data.filebased
 
 import com.sos.scheduler.engine.data.event._
 import com.sos.scheduler.engine.data.events.schedulerKeyedEventJsonFormat
-import com.sos.scheduler.engine.data.filebaseds.TypedPathRegister
 import com.sos.scheduler.engine.data.job.JobPath
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -49,8 +48,6 @@ final class FileBasedEventTest extends FreeSpec {
 
   private def check[A <: TypedPath: TypedPath.Companion](event: AnyKeyedEvent, json: String): Unit = {
     val jsValue = json.parseJson
-    implicit def typedPathJsonFormat = TypedPathRegister.WithCompanionJsonFormat
-
     assert(event.toJson == jsValue)
     val KeyedEvent(typedPath: TypedPath, e: FileBasedEvent) = jsValue.convertTo[AnyKeyedEvent]
     assert(event == KeyedEvent[FileBasedEvent](typedPath.asTyped[A], e))

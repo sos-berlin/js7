@@ -49,7 +49,7 @@ object TypedPath {
   type AnyCompanion = Companion[_ <: TypedPath]
 
   abstract class Companion[A <: TypedPath: ClassTag] extends AbsolutePath.Companion[A] {
-    implicit val implicitCompanion = this
+    implicit val implicitCompanion: Companion[A] = this
 
     def fileBasedType: FileBasedType
 

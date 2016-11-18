@@ -18,8 +18,6 @@ final case class FileBasedDetailed(
 extends FileBasedView
 {
   def path = overview.path
-
-  def asTyped[P <: TypedPath: TypedPath.Companion] = copy(overview = overview.asTyped[P])
 }
 
 object FileBasedDetailed extends FileBasedView.Companion[FileBasedDetailed] {

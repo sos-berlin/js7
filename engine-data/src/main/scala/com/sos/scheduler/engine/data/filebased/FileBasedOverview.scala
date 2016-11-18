@@ -7,10 +7,7 @@ final case class FileBasedOverview(
   path: TypedPath,
   fileBasedState: FileBasedState)
 extends FileBasedView
-with HasPath {
-
-  def asTyped[P <: TypedPath: TypedPath.Companion] = copy(path = path.asTyped[P])
-}
+with HasPath
 
 object FileBasedOverview extends FileBasedView.Companion[FileBasedOverview] {
   private implicit val FileBasedStateJsonFormat = FileBasedState.MyJsonFormat
