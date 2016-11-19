@@ -51,7 +51,7 @@ final class ProxyRegisterTest extends FreeSpec {
 
   "null" in {
     intercept[COMException] { proxyRegister.iUnknown(ProxyId.Null) } .hResult shouldEqual E_POINTER
-    assert(proxyRegister.iUnknownToProxyId(null) == (ProxyId.Null, false))
+    assert(proxyRegister.iUnknownToProxyId(null) == ((ProxyId.Null, false)))
   }
 
   "removeProxy" in {
