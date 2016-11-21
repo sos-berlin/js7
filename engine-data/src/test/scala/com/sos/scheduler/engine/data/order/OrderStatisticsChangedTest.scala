@@ -18,31 +18,37 @@ final class OrderStatisticsChangedTest extends FreeSpec {
       OrderStatistics(
         total = 1,
         notPlanned = 2,
-        planned = 3,
-        due = 4,
-        started = 5,
-        inTask = 6,
-        inProcess = 7,
-        setback = 8,
-        suspended = 9,
-        blacklisted = 10,
-        permanent = 11,
-        fileOrder = 12)))
+        notSuspendedNotPlanned = 3,
+        planned = 4,
+        due = 5,
+        started = 6,
+        inTask = 7,
+        inProcess = 8,
+        setback = 9,
+        waitingForResource = 10,
+        notSuspendedWaitingForResource = 11,
+        suspended = 12,
+        blacklisted = 13,
+        permanent = 14,
+        fileOrder = 15)))
     val json = """{
         "TYPE": "OrderStatisticsChanged",
         "orderStatistics": {
           "total": 1,
           "notPlanned": 2,
-          "planned": 3,
-          "due": 4,
-          "started": 5,
-          "inTask": 6,
-          "inProcess": 7,
-          "setback": 8,
-          "suspended": 9,
-          "permanent": 11,
-          "blacklisted": 10,
-          "fileOrder": 12
+          "notSuspendedNotPlanned": 3,
+          "planned": 4,
+          "due": 5,
+          "started": 6,
+          "inTask": 7,
+          "inProcess": 8,
+          "setback": 9,
+          "waitingForResource": 10,
+          "notSuspendedWaitingForResource": 11,
+          "suspended": 12,
+          "blacklisted": 13,
+          "permanent": 14,
+          "fileOrder": 15
         }
       }""".parseJson
     assert(o.toJson == json)
