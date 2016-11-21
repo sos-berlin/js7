@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtyp
 import com.sos.scheduler.engine.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat}
 import com.sos.scheduler.engine.data.filebased.FileBasedEvent
 import com.sos.scheduler.engine.data.log.Logged
-import com.sos.scheduler.engine.data.order.{OrderEvent, OrderStatisticsChanged}
+import com.sos.scheduler.engine.data.order.{JocOrderStatisticsChanged, OrderEvent}
 
 /**
   * @author Joacim Zschimmer
@@ -16,7 +16,7 @@ package object events {
       KeyedSubtype[FileBasedEvent],
       KeyedSubtype[Logged],
       KeyedSubtype[OrderEvent],
-      KeyedSubtype[OrderStatisticsChanged])
+      KeyedSubtype[JocOrderStatisticsChanged])
 
   /**
     * All subtypes of `Event` are serialized as `Event`.

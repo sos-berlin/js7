@@ -1,8 +1,10 @@
 package com.sos.scheduler.engine.data.queries
 
+import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.data.jobchain.NodeId
 import com.sos.scheduler.engine.data.order.{OrderKey, OrderProcessingState, OrderSourceType}
 import org.jetbrains.annotations.TestOnly
+import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
@@ -15,6 +17,9 @@ trait QueryableOrder {
   def isSetback: Boolean
   def isBlacklisted: Boolean
   def orderProcessingStateClass: Class[_ <: OrderProcessingState]
+
+  final def isOrderProcessingState[A <: OrderProcessingState: ClassTag]: Boolean =
+    implicitClass[A] isAssignableFrom orderProcessingStateClass
 }
 
 object QueryableOrder {

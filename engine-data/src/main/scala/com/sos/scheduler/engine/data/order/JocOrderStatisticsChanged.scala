@@ -6,8 +6,8 @@ import spray.json.DefaultJsonProtocol._
 /**
   * @author Joacim Zschimmer
   */
-final case class OrderStatisticsChanged(orderStatistics: OrderStatistics) extends NoKeyEvent
+final case class JocOrderStatisticsChanged(orderStatistics: JocOrderStatistics) extends NoKeyEvent
 
-object OrderStatisticsChanged {
+object JocOrderStatisticsChanged {
   implicit val MyJsonFormat = jsonFormat1(apply)
 }

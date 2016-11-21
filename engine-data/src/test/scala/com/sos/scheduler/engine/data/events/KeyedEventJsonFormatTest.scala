@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import com.sos.scheduler.engine.data.filebased.{FileBasedActivated, FileBasedAdded, FileBasedEvent, FileBasedRemoved, FileBasedReplaced}
 import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import com.sos.scheduler.engine.data.log.InfoLogged
-import com.sos.scheduler.engine.data.order.{OrderEvent, OrderFinished, OrderNestedFinished, OrderNestedStarted, OrderNodeChanged, OrderResumed, OrderSetBack, OrderStarted, OrderStatisticsChanged, OrderStepEnded, OrderStepStarted, OrderSuspended}
+import com.sos.scheduler.engine.data.order.{JocOrderStatisticsChanged, OrderEvent, OrderFinished, OrderNestedFinished, OrderNestedStarted, OrderNodeChanged, OrderResumed, OrderSetBack, OrderStarted, OrderStepEnded, OrderStepStarted, OrderSuspended}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -60,6 +60,6 @@ final class KeyedEventJsonFormatTest extends FreeSpec {
           "OrderSetBack" → classOf[OrderSetBack],
           "OrderSuspended" → OrderSuspended.getClass,
           "OrderResumed" → OrderResumed.getClass,
-        "OrderStatisticsChanged" → classOf[OrderStatisticsChanged]))
+        "JocOrderStatisticsChanged" → classOf[JocOrderStatisticsChanged]))
   }
 }
