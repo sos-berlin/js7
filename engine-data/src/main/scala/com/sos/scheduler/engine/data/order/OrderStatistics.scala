@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.data.order.OrderStatistics._
+import com.sos.scheduler.engine.data.queries.QueryableOrder
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -61,7 +62,7 @@ object OrderStatistics {
     var notPlanned: Int = 0,
     var planned: Int = 0,
     var due: Int = 0,
-    var running: Int = 0,
+    var started: Int = 0,
     var inTask: Int = 0,
     var inProcess: Int = 0,
     var setback: Int = 0,
@@ -75,7 +76,7 @@ object OrderStatistics {
       notPlanned  += o.notPlanned
       planned     += o.planned
       due         += o.due
-      running     += o.started
+      started     += o.started
       inTask      += o.inTask
       inProcess   += o.inProcess
       setback     += o.setback
@@ -85,12 +86,28 @@ object OrderStatistics {
       fileOrder   += o.fileOrder
     }
 
+    def +=(order: QueryableOrder): Unit = {
+      import OrderProcessingState._
+      total       += 1
+      notPlanned  += toInt(order.orderProcessingStateClass == NotPlanned.getClass)
+      planned     += toInt(order.orderProcessingStateClass == classOf[Planned])
+      due         += toInt(order.orderProcessingStateClass == classOf[Due])
+      started     += toInt(classOf[Started] isAssignableFrom order.orderProcessingStateClass)
+      inProcess   += toInt(classOf[InTask] isAssignableFrom order.orderProcessingStateClass)
+      setback     += toInt(order.orderProcessingStateClass == classOf[Setback])
+      inTask      += toInt(classOf[InTask] isAssignableFrom order.orderProcessingStateClass)
+      suspended   += toInt(order.isSuspended)
+      blacklisted += toInt(order.isBlacklisted)
+      permanent   += toInt(order.orderSourceType == OrderSourceType.Permanent)
+      fileOrder   += toInt(order.orderSourceType == OrderSourceType.FileOrder)
+    }
+
     def toImmutable = OrderStatistics(
       total = total,
       notPlanned = notPlanned,
       planned = planned,
       due = due,
-      started = running,
+      started = started,
       inTask = inTask,
       inProcess = inProcess,
       setback = setback,
@@ -99,4 +116,6 @@ object OrderStatistics {
       permanent = permanent,
       fileOrder = fileOrder)
   }
+
+  private def toInt(b: Boolean) = if (b) 1 else 0
 }
