@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.taskserver.task
 
 import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
 import com.sos.scheduler.engine.base.utils.ScalaUtils._
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.xml.VariableSets
 import com.sos.scheduler.engine.data.job.TaskId
@@ -113,9 +114,12 @@ object TaskArguments {
   private val KeyValueRegex = "(?s)([[a-z_.]]+)=(.*)".r  //  "(?s)" dot matches \n too, "key=value"
   private val logger = Logger(getClass)
 
-  def apply(arguments: VariantArray): TaskArguments = {
+  def apply(arguments: VariantArray): TaskArguments =
+    apply(arguments.indexedSeq filterNot variant.isEmpty map cast[String])
+
+  def apply(keyValues: immutable.Seq[String]): TaskArguments = {
     val buffer = mutable.Buffer[(String, String)]()
-    for (keyValueString ← arguments.indexedSeq filterNot variant.isEmpty map cast[String]) {
+    for (keyValueString ← keyValues) {
       val KeyValueRegex(key, value) = keyValueString
       if (KeySet contains key) {
         buffer += key → value
@@ -126,4 +130,7 @@ object TaskArguments {
     }
     new TaskArguments(buffer.toList)
   }
+
+  def toStrings(keyValues: Iterable[(String, String)]): immutable.Seq[String] =
+    (keyValues map { case (k, v) ⇒ s"$k=$v" }).toImmutableSeq
 }
