@@ -24,7 +24,7 @@ object LogLevel {
       case "Info"  ⇒ Info
       case "Warn"  ⇒ Warn
       case "Error" ⇒ Error
-      case _ ⇒ throw new IllegalArgumentException("Invalid LogLevel '$string'")
+      case _ ⇒ throw new IllegalArgumentException(s"Invalid LogLevel '$string'")
     }
 
   implicit class LevelLogger(val delegate: slf4j.Logger) extends AnyVal {
