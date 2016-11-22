@@ -24,11 +24,12 @@ final case class JocOrderStatistics(
   permanent: Int,
   fileOrder: Int)
 {
-  if (total >= 0) {  // Negative values only to simplify tests
-    require(total == notPlanned + planned + due + started + occupiedByClusterMember + suspended &&
-            total == notPlanned + planned + due + inTask + occupiedByClusterMember + setback + waitingForResource + suspended,
-      s"$toString does not sum up correctly")
-  }
+  assert(total < 0 ||  // Negative values only to simplify tests
+         total == notPlanned + planned + due + started + suspended + blacklisted &&
+         started == inTask + occupiedByClusterMember + setback + waitingForResource &&
+         inTask >= inTaskProcess &&
+         total >= permanent + fileOrder,
+    s"$this does not sum up correctly")
 
   def +(o: JocOrderStatistics) = JocOrderStatistics(
     total = total + o.total,
