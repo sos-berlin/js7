@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.time.timer
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils
 import com.sos.scheduler.engine.base.utils.ScalaUtils.someUnless
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion.ToYamlString
@@ -12,6 +11,7 @@ import java.lang.System.currentTimeMillis
 import java.time.Instant.now
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicBoolean
+import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
 import scala.collection.immutable
 import scala.concurrent._
@@ -123,6 +123,20 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
     queue.clear()
   }
 
+  /**
+    * Tries to complete `promise` with `completeWith` after timeout.
+    */
+  def tryCompletePromiseAfter[A](delay: Duration, promise: Promise[A], completeWith: Try[A], name: String)(implicit ec: ExecutionContext): Unit =
+    tryCompletePromiseAt(now + delay, promise, completeWith, name)
+
+  /**
+    * Tries to complete `promise` with `completeWith` after timeout.
+    */
+  def tryCompletePromiseAt[A](at: Instant, promise: Promise[A], completeWith: Try[A], name: String)(implicit ec: ExecutionContext): Unit = {
+    val timer = add(new Timer(chooseWakeTime(at), name, promise = promise, completeWith = completeWith))
+    promise.future onComplete { _ ⇒ cancel(timer) }
+  }
+
   def delay(delay: Duration, name: String): Timer[Unit] =
     at((now plusNanos 1000) + delay, name)
 
@@ -164,6 +178,9 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
   def isEmpty: Boolean = !nonEmpty
 
   def nonEmpty: Boolean = queue.headOption exists { _ != NeverTimer }
+
+  @TestOnly
+  def queueSize: Int = queue.size
 
   def overview: TimerServiceOverview = TimerServiceOverview(
     count = queue.size - 1,
@@ -216,13 +233,12 @@ object TimerService {
 
   implicit class TimeoutFuture[A](val delegate: Future[A]) extends AnyVal {
     def timeoutAfter[B >: A](delay: Duration, name: String, completeWith: Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] =
-      timeoutAt(now + delay, name)
+      timeoutAt(now + delay, completeWith, name)
 
-    def timeoutAt[B >: A](at: Instant, name: String, completeWith: Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] = {
+    def timeoutAt[B >: A](at: Instant, completeWith: Try[B] = Timer.ElapsedFailure, name: String)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] = {
       val promise = Promise[B]()
       delegate onComplete promise.tryComplete
-      val timer = timerService.add(new Timer(at, name, promise = promise, completeWith = completeWith))
-      promise.future onComplete { _ ⇒ timerService.cancel(timer) }
+      timerService.tryCompletePromiseAt(at, promise, completeWith, name = name)
       promise.future
     }
   }
