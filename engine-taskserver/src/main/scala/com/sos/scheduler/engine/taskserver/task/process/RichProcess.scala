@@ -7,16 +7,14 @@ import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout, Std
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logger}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
-import java.io.{BufferedOutputStream, OutputStreamWriter}
+import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
@@ -30,7 +28,7 @@ class RichProcess protected[process](val processConfiguration: ProcessConfigurat
   (implicit exeuctionContext: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
-  val pidOption = processToPidOption(process)
+  val pidOption: Option[Pid] = processToPidOption(process)
   private val logger = Logger.withPrefix(getClass, toString)
   /**
    * UTF-8 encoded stdin.
@@ -63,7 +61,7 @@ extends HasCloser with ClosedFuture {
               val pidArgs = pidOption map { o ⇒ s"-pid=${o.string}" }
               executeKillScript(args ++ pidArgs) recover {
                 case t ⇒ logger.error(s"Cannot start kill script command '$args': $t")
-              } onComplete { case _ ⇒
+              } onComplete { _ ⇒
                 killNow()
               }
             case None ⇒
@@ -99,13 +97,12 @@ extends HasCloser with ClosedFuture {
     ReturnCode(process.exitValue)
   }
 
-  final def stdin = process.getOutputStream
+  final def stdin: OutputStream = process.getOutputStream
 
   override def toString = processConfiguration.agentTaskIdOption ++ List(processToString(process, pidOption)) ++ processConfiguration.fileOption mkString " "
 }
 
 object RichProcess {
-  private val WaitForProcessPeriod = 100.ms
   private val logger = Logger(getClass)
 
   def start(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
@@ -132,7 +129,7 @@ object RichProcess {
 
   private def waitForProcessTermination(process: Process): Unit = {
     logger.debug(s"waitFor ${processToString(process)} ...")
-    while (!process.waitFor(WaitForProcessPeriod.toMillis, MILLISECONDS)) {}
+    process.waitFor()
     logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
   }
 
