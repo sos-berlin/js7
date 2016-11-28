@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.minicom.remoting.proxy
 
-import com.google.inject.Injector
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.types.CLSID
@@ -20,7 +19,7 @@ private[minicom] object SimpleProxyIDispatch extends ProxyIDispatchFactory {
   val clsid = CLSID.Null
   private val logger = Logger(getClass)
 
-  def apply(injector: Injector, remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
+  def apply(remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
     if (properties.nonEmpty) logger.warn(s"IGNORED: $properties")
     new SimpleProxyIDispatch(remoting, id, name)
   }

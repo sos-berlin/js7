@@ -120,12 +120,11 @@ extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
   def pidOption: Option[Pid] = taskOnce flatMap { _.pidOption }
 }
 
-object RemoteModuleInstanceServer extends IUnknownFactory {
+object RemoteModuleInstanceServer {
   val clsid = CLSID(UUID fromString "feee47a3-6c1b-11d8-8103-000476ee8afb")
   val iid   = IID  (UUID fromString "feee47a2-6c1b-11d8-8103-000476ee8afb")
-  private val logger = Logger(getClass)
 
-  def iUnknownClass = classOf[RemoteModuleInstanceServer]
+  private val logger = Logger(getClass)
 
   private def toNamedObjectMap(names: VariantArray, anys: VariantArray): TypedNamedIDispatches = {
     val nameStrings = names.as[String]
@@ -141,4 +140,9 @@ object RemoteModuleInstanceServer extends IUnknownFactory {
    * @throws NullPointerException when an IUnknown is null.
    */
   private def variantArrayToIDispatches(a: VariantArray) = a.indexedSeq map cast[IDispatch]
+
+  trait Factory extends IUnknownFactory {
+    final val clsid = RemoteModuleInstanceServer.this.clsid
+    final val iid   = RemoteModuleInstanceServer.this.iid
+  }
 }

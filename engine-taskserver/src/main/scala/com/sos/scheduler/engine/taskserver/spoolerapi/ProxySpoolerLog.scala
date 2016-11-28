@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
-import com.google.inject.Injector
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
@@ -81,10 +80,11 @@ extends SpoolerLog with SpecializedProxyIDispatch with AnnotatedInvocable with O
 
 object ProxySpoolerLog extends ProxyIDispatchFactory {
   val clsid = CLSID(UUID fromString "feee47a6-6c1b-11d8-8103-000476ee8afb")
+
   private[spoolerapi] val LogDispid = DISPID(14)
   private[spoolerapi] val LevelDispid = DISPID(19)
 
-  def apply(injector: Injector, remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
+  def apply(remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
     var level = SchedulerLogLevel.Min
     forEachProperty(properties, "sos.spooler.Log") {
       case ("level", v) ⇒ level = SchedulerLogLevel.ofCpp(v.asInstanceOf[Int])

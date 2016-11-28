@@ -1,14 +1,12 @@
 package com.sos.scheduler.engine.taskserver
 
 import akka.util.ByteString
-import com.google.inject.Injector
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.minicom.remoting.dialog.StandardServerDialogConnection
 import com.sos.scheduler.engine.minicom.remoting.{Remoting, RemotingServer}
-import com.sos.scheduler.engine.taskserver.SimpleTaskServer._
 import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
@@ -24,18 +22,32 @@ import spray.json._
  *
  * @author Joacim Zschimmer
  */
-final class SimpleTaskServer(injector: Injector, val taskStartArguments: TaskStartArguments, isMain: Boolean = false)(implicit ec: ExecutionContext)
+final class SimpleTaskServer(
+  newRemoteModuleInstanceServer: () ⇒ RemoteModuleInstanceServer,
+  val taskStartArguments: TaskStartArguments,
+  isMain: Boolean = false)
+  (implicit ec: ExecutionContext)
 extends TaskServer with HasCloser {
 
   private val logger = Logger.withPrefix(getClass, taskStartArguments.agentTaskId.toString)
   private val terminatedPromise = Promise[Terminated.type]()
   private val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
+
   private val remoting = new RemotingServer(
-    injector,
     new StandardServerDialogConnection(master),
     name = taskStartArguments.agentTaskId.toString,
-    ProxyIDispatchFactories,
-    IDispatchFactories,
+    iUnknownFactories = List(
+      new RemoteModuleInstanceServer.Factory {
+        def newIUnknown() = newRemoteModuleInstanceServer()
+      }),
+    proxyIDispatchFactories = List(
+      new ProxySpooler.Factory {
+        val taskStartArguments = SimpleTaskServer.this.taskStartArguments
+      },
+      ProxySpoolerLog,
+      new ProxySpoolerTask.Factory {
+        val taskStartArguments = SimpleTaskServer.this.taskStartArguments
+      }),
     returnAfterReleaseOf = _.isInstanceOf[RemoteModuleInstanceServer],
     keepaliveDurationOption = taskStartArguments.rpcKeepaliveDurationOption)
 
@@ -72,9 +84,4 @@ extends TaskServer with HasCloser {
   def pidOption = (remoteModuleInstanceServers flatMap { _.pidOption }).headOption
 
   private def remoteModuleInstanceServers = remoting.iUnknowns[RemoteModuleInstanceServer]  // Should return one
-}
-
-object SimpleTaskServer {
-  private val IDispatchFactories = List(RemoteModuleInstanceServer)
-  private val ProxyIDispatchFactories = List(ProxySpooler, ProxySpoolerLog, ProxySpoolerTask)
 }

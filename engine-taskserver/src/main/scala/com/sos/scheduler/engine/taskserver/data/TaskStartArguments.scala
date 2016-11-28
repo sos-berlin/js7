@@ -15,6 +15,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.time.Duration
 import spray.json.DefaultJsonProtocol._
+import spray.json.RootJsonFormat
 
 /**
  * @author Joacim Zschimmer
@@ -33,7 +34,7 @@ final case class TaskStartArguments(
   killScriptOption: Option[ProcessKillScript] = None,
   rpcKeepaliveDurationOption: Option[Duration])
 {
-  def masterInetSocketAddress = toInetSocketAddress(masterAddress)
+  def masterInetSocketAddress: InetSocketAddress = toInetSocketAddress(masterAddress)
   def logFilenamePart = s"task-${agentTaskId.string}-${startMeta.job.name}-${startMeta.taskId.string}"
 }
 
@@ -59,5 +60,5 @@ object TaskStartArguments {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }
 
-  implicit val MyJsonFormat = jsonFormat12(apply)
+  implicit val jsonFormat: RootJsonFormat[TaskStartArguments] = jsonFormat12(apply)
 }

@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
-import com.google.inject.Guice
-import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout}
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
-import com.sos.scheduler.engine.minicom.idispatch._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
@@ -33,12 +30,9 @@ final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with Ha
     r
   }
 
-  private lazy val injector = Guice.createInjector(new ScalaAbstractModule {
-    def configure() = bindInstance[TaskStartArguments](TaskStartArguments.forTest(stdFileMap = stdFileMap))
-  })
-
-  private lazy val spoolerTask =
-    ProxySpoolerTask(injector, mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
+  private lazy val spoolerTask: ProxySpoolerTask = new ProxySpoolerTask.Factory {
+      val taskStartArguments = TaskStartArguments.forTest(stdFileMap = stdFileMap)
+    } .apply(mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
 
   override def afterAll() = closer.close()
 

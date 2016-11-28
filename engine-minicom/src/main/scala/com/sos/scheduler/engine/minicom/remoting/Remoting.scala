@@ -1,44 +1,111 @@
 package com.sos.scheduler.engine.minicom.remoting
 
 import akka.util.ByteString
-import com.google.inject.Injector
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
+import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
+import com.sos.scheduler.engine.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
+import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits.RichIDispatch
+import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch, IUnknownFactory}
 import com.sos.scheduler.engine.minicom.remoting.Remoting._
-import com.sos.scheduler.engine.minicom.remoting.calls.{Call, CallCall, CreateInstanceCall, CreateInstanceResult, GetIDsOfNamesCall, InvokeCall, InvokeResult, KeepaliveCall, ProxyId, _}
+import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.dialog.ClientDialogConnection
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, ProxyRegister, SimpleProxyIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.serial.CallSerializer.serializeCall
-import com.sos.scheduler.engine.minicom.remoting.serial.{CallDeserializer, ResultDeserializer, ServerRemoting}
+import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializeError
+import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
+import com.sos.scheduler.engine.minicom.remoting.serial.{CallDeserializer, Proxying, RemotingIUnknownDeserializer, ResultDeserializer}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
+import org.scalactic.Requirements._
 import scala.annotation.tailrec
 import scala.collection.{breakOut, immutable}
 import scala.reflect.ClassTag
+import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
  */
-trait Remoting extends ServerRemoting with ClientRemoting {
+trait Remoting extends Proxying with ClientRemoting {
 
-  protected val injector: Injector
   protected val connection: ClientDialogConnection
   protected val name: String
-  protected val proxyIDispatchFactories: Iterable[ProxyIDispatchFactory]
+  protected val iUnknownFactories: immutable.Iterable[IUnknownFactory]
+  protected val proxyIDispatchFactories: immutable.Iterable[ProxyIDispatchFactory]
+
+  protected def onReleased(iUnknown: IUnknown): Unit
 
   private val logger = Logger.withPrefix(getClass, name)
-  protected final val proxyRegister = new ProxyRegister
-  private val proxyClsidMap: Map[CLSID, ProxyIDispatchFactory.Fun] =
+  private val proxyRegister = new ProxyRegister
+  private lazy val createInvocable = toCreateIUnknownByCLSID(iUnknownFactories)
+  private lazy val proxyClsidMap: Map[CLSID, ProxyIDispatchFactory.Fun] =
     (List(SimpleProxyIDispatch) ++ proxyIDispatchFactories).map { o ⇒ o.clsid → o.apply _ } (breakOut)
 
+  protected final def executeMessage(callMessage: ByteString): ByteString =
+    try {
+      val call = deserializeCall(callMessage)
+      logger.debug(s"${call.getClass.getSimpleName}")
+      logger.trace(s"$call")
+      val result = executeCall(call)
+      logger.debug(s"${result.getClass.getSimpleName}")
+      logger.trace(s"$result")
+      serializeResult(proxyRegister, result)
+    }
+    catch {
+      case NonFatal(t) ⇒
+        logger.debug(t.toString, t)
+        serializeError(t)
+      case t: Throwable ⇒
+        // Try to respond in any case (even LinkageError, OutOfMemoryError), to let the client know and continue
+        logger.error(t.toString, t)
+        serializeError(t)
+    }
+
+  private def executeCall(call: Call): Result = call match {
+    case CreateInstanceCall(clsid, outer, context, iids) ⇒
+      require(outer == null && context == 0 && iids.size == 1)
+      CreateInstanceResult(iUnknown = createInvocable(clsid, iids.head))
+
+    case ReleaseCall(proxyId) ⇒
+      val released = proxyRegister.iUnknown(proxyId)
+      proxyRegister.release(proxyId)
+      onReleased(released)
+      EmptyResult
+
+    case _: QueryInterfaceCall | _: GetIDsOfNamesCall  ⇒
+      throw new UnsupportedOperationException(call.getClass.getSimpleName)
+
+    case InvokeCall(proxyId, dispatchId, iid, dispatchTypes, arguments, namedArguments) ⇒
+      val iUnknown = cast[IDispatch](proxyRegister.iUnknown(proxyId))
+      val result = iUnknown.invoke(dispatchId, dispatchTypes, arguments, namedArguments)
+      InvokeResult(result)
+
+    case CallCall(proxyId, methodName, arguments) ⇒
+      val iUnknown = proxyRegister.iUnknown(proxyId)
+      val result = iUnknown match {
+        //case o: Invocable ⇒ o.call(methodName, arguments)
+        case o: IDispatch ⇒ o.invokeMethod(methodName, arguments)
+        case o ⇒ throw new IllegalArgumentException(s"Not an IDispatch or Invocable: ${o.getClass}")
+      }
+      InvokeResult(result)
+
+    case KeepaliveCall ⇒ EmptyResult
+  }
+
   private[remoting] final def newProxy(proxyId: ProxyId, name: String, proxyClsid: CLSID, properties: Iterable[(String, Any)]) = {
-    val newProxy = proxyClsidMap.getOrElse(proxyClsid, proxyClsidMap(CLSID.Null))   // TODO getOrElse solange nicht alle Proxys implementiert sind
-    val result = newProxy(injector, this, proxyId, name, properties)
+    //val newProxy = proxyClsidMap.getOrElse(proxyClsid, proxyClsidMap(CLSID.Null))   // TODO getOrElse solange nicht alle Proxys implementiert sind
+    val newProxy = proxyClsidMap.getOrElse(proxyClsid, throw new NoSuchElementException(s"No ProxyIDispatchFactory for CLSID $proxyClsid '$name'"))
+    val result = newProxy(this, proxyId, name, properties)
     proxyRegister.registerProxy(result)
     result
   }
 
-  private[remoting] final def iUnknown(proxyId: ProxyId) = proxyRegister.iUnknown(proxyId)
+  private[remoting] final def iUnknown(proxyId: ProxyId): IUnknown =
+    proxyRegister.iUnknown(proxyId)
+
+  /**
+   * Returns all registered iUnknowns implementing the erased type A.
+   */
+  final def iUnknowns[A <: IUnknown: ClassTag]: immutable.Iterable[A] =
+    proxyRegister.iUnknowns[A]
 
   private[remoting] final def getIdOfName(proxyId: ProxyId, name: String) = {
     logger.trace(s"getIdOfName $proxyId '${proxyRegister.iUnknown(proxyId)}' $name")
@@ -65,7 +132,8 @@ trait Remoting extends ServerRemoting with ClientRemoting {
     value
   }
 
-  final def sendReceiveKeepalive(): Unit = sendReceive(KeepaliveCall).readEmptyResult()
+  final def sendReceiveKeepalive(): Unit =
+    sendReceive(KeepaliveCall).readEmptyResult()
 
   private def sendReceive(call: Call): ResultDeserializer = {
     @tailrec def callbackLoop(sendByteString: ByteString): ByteString = {
@@ -77,15 +145,30 @@ trait Remoting extends ServerRemoting with ClientRemoting {
         byteString
     }
     val byteString = callbackLoop(serializeCall(proxyRegister, call))
-    new ResultDeserializer(this, byteString)
+    toResultDeserializer(byteString)
   }
 
-  /**
-   * Returns all registered iUnknowns implementing the erased type A.
-   */
-  final def iUnknowns[A <: IUnknown: ClassTag]: immutable.Iterable[A] = proxyRegister.iUnknowns[A]
+  private def toResultDeserializer(byteString: ByteString): ResultDeserializer =
+    new ResultDeserializer with RemotingIUnknownDeserializer {
+      protected val proxying = Remoting.this
+      protected val buffer = byteString.toByteBuffer
+    }
+
+  protected final def deserializeCall(byteString: ByteString): Call =
+    CallDeserializer.deserializeCall(this, byteString)
 }
 
 object Remoting {
+  private type CreateIUnknownByCLSID = (CLSID, IID) ⇒ IUnknown
   final class ConnectionClosedException extends RuntimeException
+
+  private def toCreateIUnknownByCLSID(invocableFactories: Iterable[IUnknownFactory]): CreateIUnknownByCLSID = {
+    val clsidToFactoryMap = invocableFactories toKeyedMap { _.clsid }
+    def createIUnknown(clsId: CLSID, iid: IID): IUnknown = {
+      val factory = clsidToFactoryMap(clsId)
+      require(factory.iid == iid, s"IID $iid is not supported by $factory")
+      factory.newIUnknown()
+    }
+    createIUnknown  // Return the function itself
+  }
 }

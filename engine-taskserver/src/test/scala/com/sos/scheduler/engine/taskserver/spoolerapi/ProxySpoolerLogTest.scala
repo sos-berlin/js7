@@ -38,7 +38,7 @@ final class ProxySpoolerLogTest extends FreeSpec {
     s"$message at minimum $minimumLevel${if (suppressed) " is suppressed" else ""}" in {
       val remoting = mock[ClientRemoting]
       val proxyId = ProxyId(Random.nextLong())
-      val spoolerLog = ProxySpoolerLog(injector, remoting, proxyId, name = "TEST", properties = List("level" → minimumLevel.cppNumber))
+      val spoolerLog = ProxySpoolerLog(remoting, proxyId, name = "TEST", properties = List("level" → minimumLevel.cppNumber))
       body(spoolerLog)
       if (!suppressed) {
         verify(remoting).invoke(proxyId, ProxySpoolerLog.LogDispid, Set(DISPATCH_METHOD), arguments = List(level.cppNumber, message), namedArguments = Nil)
@@ -51,7 +51,7 @@ final class ProxySpoolerLogTest extends FreeSpec {
     val remoting = mock[ClientRemoting]
     val proxyId = ProxyId(Random.nextLong())
 
-    val spoolerLog = ProxySpoolerLog(injector, remoting, proxyId, name = "TEST", properties = List("level" → SchedulerLogLevel.warning.cppNumber))
+    val spoolerLog = ProxySpoolerLog(remoting, proxyId, name = "TEST", properties = List("level" → SchedulerLogLevel.warning.cppNumber))
     spoolerLog.invokeMethod("info", List("INFO"))   // Suppressed
     spoolerLog.invokeMethod("warn", List("WARNING"))
     verify(remoting).invoke(proxyId, ProxySpoolerLog.LogDispid, Set(DISPATCH_METHOD), arguments = List(SchedulerLogLevel.warning.cppNumber, "WARNING"), namedArguments = Nil)

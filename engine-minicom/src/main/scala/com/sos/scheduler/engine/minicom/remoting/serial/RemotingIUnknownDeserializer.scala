@@ -11,7 +11,7 @@ import scala.collection.immutable
 private[remoting] trait RemotingIUnknownDeserializer {
   this: VariantDeserializer ⇒
 
-  protected val remoting: ServerRemoting
+  protected val proxying: Proxying
 
   @Nullable
   override final def readIUnknownOrNull() = {
@@ -25,12 +25,12 @@ private[remoting] trait RemotingIUnknownDeserializer {
         val value = readVariant()
         name → value
       }
-      remoting.newProxy(proxyId, name, proxyClsid, proxyProperties)
+      proxying.newProxy(proxyId, name, proxyClsid, proxyProperties)
     }
     else
       proxyId match {
         case ProxyId.Null ⇒ null
-        case _ ⇒ remoting.iUnknown(proxyId)
+        case _ ⇒ proxying.iUnknown(proxyId)
       }
   }
 }

@@ -43,7 +43,7 @@ trait OverridingInvocableIDispatch extends Invocable with IDispatch {
           MethodMeta(DISPATCH_METHOD, normalizeName(name), m, dispId) :: Nil
       }).flatten
     }
-    val dispIdToDispatchTypeToMethod =
+    val dispIdToDispatchTypeToMethod: Map[DISPID, Map[DispatchType, Method]] =
       methodMetas groupBy { _.dispId } mapValues { _ groupBy { _.typ }} map { case (dispId, dispatchTypeToMethodMetas) ⇒
         dispId → (dispatchTypeToMethodMetas mapValues { metas ⇒
           if (metas.size == 1)
@@ -75,13 +75,14 @@ trait OverridingInvocableIDispatch extends Invocable with IDispatch {
       case Some(dispatchTypeToMethod) ⇒
         if (dispatchTypes.size != 1) throw new COMException(DISP_E_MEMBERNOTFOUND, "Use of multiple or no DispatchType is not supported")
         val dispatchType = dispatchTypes.head
-        val method = dispatchTypeToMethod(dispatchType)
+        val method = dispatchTypeToMethod.getOrElse(dispatchType, throw new NoSuchElementException(s"$getClass: $dispId is not accessible via $dispatchType"))
         dispatchType match {
           case DISPATCH_PROPERTYGET | DISPATCH_METHOD ⇒
             if (namedArguments.nonEmpty) throw new COMException(DISP_E_PARAMNOTFOUND, "Named arguments are not supported")
             invokeMethod(method, arguments)
           case DISPATCH_PROPERTYPUT ⇒
-            if (namedArguments.size != 1 || namedArguments.head._1 != DISPID.PROPERTYPUT) throw new COMException(DISP_E_PARAMNOTFOUND, "Unexpected named argument for DISPATCH_PROPERTYPUT")
+            if (namedArguments.size != 1 || namedArguments.head._1 != DISPID.PROPERTYPUT)
+              throw new COMException(DISP_E_PARAMNOTFOUND, "Unexpected named argument for DISPATCH_PROPERTYPUT")
             invokeMethod(method, arguments :+ namedArguments.head._2)
           case _ ⇒ throw new COMException(DISP_E_MEMBERNOTFOUND, "Only DISPATCH_METHOD, DISPATCH_PROPERTYGET and DISPATCH_PROPERTYPUT is supported")
         }
@@ -92,7 +93,8 @@ trait OverridingInvocableIDispatch extends Invocable with IDispatch {
   private def invokeMethod(method: Method, arguments: Seq[Any]): Any = {
     val optionalCount = method.getParameterTypes.reverse prefixLength { _ == classOf[Option[_]] }
     val n = method.getParameterCount
-    if (arguments.size < n - optionalCount || arguments.size > n) throw new COMException(DISP_E_BADPARAMCOUNT, s"Number of arguments (${arguments.size}) does not match method $method")
+    if (arguments.size < n - optionalCount || arguments.size > n)
+      throw new COMException(DISP_E_BADPARAMCOUNT, s"Number of arguments (${arguments.size}) does not match method $method")
     val javaParameters = for ((t, v) ← method.getGenericParameterTypes.zipAll(arguments, classOf[Nothing], MissingArgument)) yield convert(t, v)
     val result =
       try method.invoke(this, javaParameters: _*)

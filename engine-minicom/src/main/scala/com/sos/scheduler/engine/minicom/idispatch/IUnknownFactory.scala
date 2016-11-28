@@ -8,5 +8,5 @@ import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
 trait IUnknownFactory {
   def clsid: CLSID
   def iid: IID
-  def iUnknownClass: Class[_ <: IUnknown]
+  def newIUnknown(): IUnknown
 }

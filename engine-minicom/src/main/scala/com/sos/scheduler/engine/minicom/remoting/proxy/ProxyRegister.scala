@@ -69,7 +69,7 @@ private[remoting] final class ProxyRegister {
       (proxyIdToIUnknown.valuesIterator collect assignableFrom[A]).toVector
     }
 
-  def size = proxyIdToIUnknown.size
+  def size: Int = proxyIdToIUnknown.size
 }
 
 private[remoting] object ProxyRegister {

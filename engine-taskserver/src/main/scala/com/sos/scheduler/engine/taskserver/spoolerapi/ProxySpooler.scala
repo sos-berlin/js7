@@ -1,9 +1,7 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
-import com.google.inject.Injector
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, OverridingInvocableIDispatch}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
+import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, OverridingInvocableIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch._
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
@@ -33,11 +31,16 @@ extends SpecializedProxyIDispatch with AnnotatedInvocable with OverridingInvocab
   def create_xslt_stylesheet(file: Option[String]) = throw new UnsupportedApiException("sos.spooler.Spooler.create_xslt_stylesheet")
 }
 
-object ProxySpooler extends ProxyIDispatchFactory {
-  val clsid = CLSID(UUID fromString "feee47b3-6c1b-11d8-8103-000476ee8afb")
+object ProxySpooler {
 
-  def apply(injector: Injector, remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
-    requireNoProperties(properties, "sos.spooler.Spooler")
-    new ProxySpooler(remoting, id, name, injector.instance[TaskStartArguments])
+  trait Factory extends ProxyIDispatchFactory {
+    final val clsid = CLSID(UUID fromString "feee47b3-6c1b-11d8-8103-000476ee8afb")
+
+    def taskStartArguments: TaskStartArguments
+
+    final def apply(remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
+      requireNoProperties(properties, "sos.spooler.Spooler")
+      new ProxySpooler(remoting, id, name, taskStartArguments)
+    }
   }
 }

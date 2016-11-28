@@ -1,7 +1,5 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
-import com.google.inject.Injector
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -68,14 +66,20 @@ extends SpoolerTask with SpecializedProxyIDispatch with AnnotatedInvocable with 
   def priority_=(o: Int): Unit = logger.warn(s"Ignoring sos.spooler.Task.priority=$o")
 }
 
-object ProxySpoolerTask extends ProxyIDispatchFactory {
+object ProxySpoolerTask {
   val clsid = CLSID(UUID fromString "feee47aa-6c1b-11d8-8103-000476ee8afb")
   private val logger = Logger(getClass)
 
-  def apply(injector: Injector, remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
-    forEachProperty(properties, "sos.spooler.Task") {
-      case ("subprocess_own_process_group_default", v: Boolean) ⇒ if (v) logger.trace(s"Universal Agent does not support subprocess.own_process_group=true")
+  trait Factory extends ProxyIDispatchFactory {
+    final val clsid = ProxySpoolerTask.this.clsid
+
+    def taskStartArguments: TaskStartArguments
+
+    final def apply(remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
+      forEachProperty(properties, "sos.spooler.Task") {
+        case ("subprocess_own_process_group_default", v: Boolean) ⇒ if (v) logger.trace(s"Universal Agent does not support subprocess.own_process_group=true")
+      }
+      new ProxySpoolerTask(taskStartArguments, remoting, id, name)
     }
-    new ProxySpoolerTask(injector.instance[TaskStartArguments], remoting, id, name)
   }
 }

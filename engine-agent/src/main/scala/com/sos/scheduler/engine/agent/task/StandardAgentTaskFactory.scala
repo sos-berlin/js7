@@ -9,6 +9,7 @@ import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commands.{StartApiTask, StartNonApiTask, StartTask}
 import com.sos.scheduler.engine.agent.task.StandardAgentTaskFactory._
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.closeOnError
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -16,7 +17,7 @@ import com.sos.scheduler.engine.minicom.remoting.calls.CallCall
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer.{deserializeCall, messageIsCall}
 import com.sos.scheduler.engine.minicom.types.VariantArray
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
-import com.sos.scheduler.engine.taskserver.task.TaskArguments
+import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskArguments}
 import com.sos.scheduler.engine.taskserver.{OwnProcessTaskServer, SimpleTaskServer}
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelListener.StopListening
@@ -69,16 +70,19 @@ extends AgentTaskFactory {
       environment = agentConfiguration.environment,
       killScriptOption = agentConfiguration.killScript,
       rpcKeepaliveDurationOption = agentConfiguration.rpcKeepaliveDuration)
-    lazy val taskServerInjector = injector.createChildInjector(new AbstractModule {
-      def configure() = bind(classOf[TaskStartArguments]) toInstance taskStartArguments
-    })
+    def newRemoteModuleInstanceServer() =
+      injector.createChildInjector(
+        new AbstractModule {
+          def configure() = bind(classOf[TaskStartArguments]) toInstance taskStartArguments
+        })
+      .instance[RemoteModuleInstanceServer]
     if (runInProcess) {
       // For debugging
       logger.warn(s"Due to system property $InProcessName, task runs in Agent process")
-      new SimpleTaskServer(taskServerInjector, taskStartArguments)
+      new SimpleTaskServer(newRemoteModuleInstanceServer, taskStartArguments)
     } else
       command match {
-        case _: StartNonApiTask ⇒ new SimpleTaskServer(taskServerInjector, taskStartArguments)
+        case _: StartNonApiTask ⇒ new SimpleTaskServer(newRemoteModuleInstanceServer, taskStartArguments)
         case o: StartApiTask ⇒ new OwnProcessTaskServer(
           taskStartArguments,
           javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
@@ -94,7 +98,7 @@ object StandardAgentTaskFactory {
   private val logger = Logger(getClass)
   private val InProcessName = "jobscheduler.agent.inProcess"
 
-  def runInProcess = sys.props contains InProcessName
+  def runInProcess: Boolean = sys.props contains InProcessName
 
   /**
    * Resembles the behaviour of [[com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer]]#invoke.

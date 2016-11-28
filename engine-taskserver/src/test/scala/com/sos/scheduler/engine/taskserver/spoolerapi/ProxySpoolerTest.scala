@@ -1,7 +1,5 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
-import com.google.inject.Guice
-import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
@@ -22,12 +20,10 @@ import scala.util.Random
 final class ProxySpoolerTest extends FreeSpec with BeforeAndAfterAll {
 
   private val testDirectory = Paths.get("TEST")
-  private lazy val injector = Guice.createInjector(new ScalaAbstractModule {
-    def configure() = bindInstance[TaskStartArguments](TaskStartArguments.forTest(directory = testDirectory))
-  })
 
-  private lazy val spooler =
-    ProxySpooler(injector, mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
+  private lazy val spooler: ProxySpooler = new ProxySpooler.Factory {
+      val taskStartArguments = TaskStartArguments.forTest(directory = testDirectory)
+    } .apply(mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
 
   "directory returns TaskStartArguments.directory" in {
     assert(spooler.invokeGet("directory") == s"$testDirectory${File.separator}")

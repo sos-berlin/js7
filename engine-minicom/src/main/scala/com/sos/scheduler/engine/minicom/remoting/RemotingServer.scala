@@ -1,7 +1,6 @@
 package com.sos.scheduler.engine.minicom.remoting
 
 import akka.util.ByteString
-import com.google.inject.Injector
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.minicom.idispatch.IUnknownFactory
@@ -11,20 +10,20 @@ import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyIDispatchFactory
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
 import java.time.{Duration, Instant}
 import scala.annotation.tailrec
+import scala.collection.immutable
 import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
 final class RemotingServer(
-  protected val injector: Injector,
   protected val connection: ServerDialogConnection,
   protected val name: String,
-  protected val proxyIDispatchFactories: Iterable[ProxyIDispatchFactory] = Nil,
-  protected val invocableFactories: Iterable[IUnknownFactory] = Nil,
+  protected val iUnknownFactories: immutable.Iterable[IUnknownFactory] = Nil,
+  protected val proxyIDispatchFactories: immutable.Iterable[ProxyIDispatchFactory] = Nil,
   returnAfterReleaseOf: IUnknown ⇒ Boolean = _ ⇒ false,
   keepaliveDurationOption: Option[Duration] = None)
-extends Remoting with ExecutingRemoting
+extends Remoting
 {
   private var end = false
 

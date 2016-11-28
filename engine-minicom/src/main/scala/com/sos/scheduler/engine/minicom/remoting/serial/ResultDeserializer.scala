@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.minicom.remoting.serial
 
-import akka.util.ByteString
 import com.sos.scheduler.engine.minicom.idispatch.DISPID
 import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultDeserializer._
@@ -13,12 +12,8 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-private[remoting] final class ResultDeserializer(
-  protected val remoting: ServerRemoting,
-  message: ByteString)
-extends VariantDeserializer with RemotingIUnknownDeserializer {
-
-  protected val buffer = message.asByteBuffer
+private[remoting] trait ResultDeserializer
+extends VariantDeserializer  {
 
   def readCreateInstanceResult(): CreateInstanceResult = {
     readAnswerHeader()

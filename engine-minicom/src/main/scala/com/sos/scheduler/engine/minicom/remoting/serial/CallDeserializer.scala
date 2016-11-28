@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
 import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
-import java.nio.ByteBuffer
 import scala.collection.immutable
 
 /**
@@ -84,30 +83,39 @@ private[serial] trait CallDeserializer extends VariantDeserializer {
 
 object CallDeserializer {
   private[remoting] object MessageCommand {
-    val CreateInstance  = 'C'.toByte
-    val Release         = 'R'.toByte
-    val QueryInterface  = 'Q'.toByte
-    val GetIDsOfNames   = 'G'.toByte
-    val Invoke          = 'I'.toByte
-    val Call            = 'A'.toByte
+    val CreateInstance: Byte = 'C'
+    val Release       : Byte = 'R'
+    val QueryInterface: Byte = 'Q'
+    val GetIDsOfNames : Byte = 'G'
+    val Invoke        : Byte = 'I'
+    val Call          : Byte = 'A'
   }
 
-  def messageIsCall(message: ByteString) = MessageClass.isCall(message.head)
+  private object NoProxyingRemoting extends Proxying {
+    private[remoting] def iUnknown(proxyId: ProxyId) =
+      throw new UnsupportedOperationException("No Proxying")
 
-  def deserializeCall(remoting: ServerRemoting, message: ByteString) = {
-    val _remoting = remoting
+    private[remoting] def newProxy(proxyId: ProxyId, name: String, proxyClsid: CLSID, properties: Iterable[(String, Any)]) =
+      throw new UnsupportedOperationException("No Proxying")
+  }
+
+  def messageIsCall(message: ByteString): Boolean =
+    MessageClass.isCall(message.head)
+
+  /**
+    * Deserialize without a `Call` without `Remoting`.
+    */
+  def deserializeCall(message: ByteString): Call =
+    deserializeCall(NoProxyingRemoting, message)
+
+  def deserializeCall(proxying: Proxying, message: ByteString): Call = {
+    val _proxying = proxying
     new CallDeserializer with RemotingIUnknownDeserializer {
       val buffer = message.asByteBuffer
-      val remoting = _remoting
+      val proxying = _proxying
     }.readCallAndEnd()
   }
 
-  def deserializeCall(message: ByteString) = new SimpleCallDeserializer(message.asByteBuffer).readCallAndEnd()
-
   def isCall(byteString: ByteString): Boolean =
     byteString.nonEmpty && MessageClass.isCall(byteString.head)
-
-  private class SimpleCallDeserializer(protected val buffer: ByteBuffer) extends CallDeserializer with RemotingIUnknownDeserializer {
-    val remoting = ServerRemoting.Dummy
-  }
 }

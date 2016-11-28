@@ -12,6 +12,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.configuration.inject.{TaskServerMainModule, TaskServerModule}
 import com.sos.scheduler.engine.taskserver.data.{TaskServerMainTerminated, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
 import scala.concurrent.Promise
 import spray.json._
 
@@ -43,8 +44,8 @@ object TaskServerMain {
       new TaskServerModule(startArguments, Some(terminated.future))
     )
     implicit val executionContext = injector.instance[ActorSystem].dispatcher
-    autoClosing(injector.instance[Closer]) { closer ⇒
-      autoClosing(new SimpleTaskServer(injector, startArguments, isMain = true)) { taskServer ⇒
+    autoClosing(injector.instance[Closer]) { _ ⇒
+      autoClosing(new SimpleTaskServer(() ⇒ injector.instance[RemoteModuleInstanceServer], startArguments, isMain = true)) { taskServer ⇒
         taskServer.terminated map { _: TaskServer.Terminated.type ⇒ TaskServerMainTerminated } onComplete terminated.complete
         taskServer.start()
         awaitResult(taskServer.terminated, MaxDuration)
