@@ -21,9 +21,9 @@ import org.scalatest.junit.JUnitRunner
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class SimpleTaskServerTest extends FreeSpec {
+final class StandardTaskServerTest extends FreeSpec {
 
-  "SimpleTaskServer terminates when connection has been closed" in {
+  "StandardTaskServer terminates when connection has been closed" in {
     val port = FreeTcpPortFinder.findRandomFreeTcpPort()
     val interface = "127.0.0.1"
     autoClosing(new ServerSocket(port, 1, InetAddress.getByName(interface))) { listener ⇒
@@ -31,9 +31,10 @@ final class SimpleTaskServerTest extends FreeSpec {
       val injector = Guice.createInjector(PRODUCTION,
         new TaskServerMainModule(DotnetConfiguration()),
         new TaskServerModule(taskStartArguments, taskServerMainTerminated = None))
-      implicit val executionContext = injector.instance[ActorSystem].dispatcher
       autoClosing(injector.instance[Closer]) { _ ⇒
-        autoClosing(new SimpleTaskServer(() ⇒ injector.instance[RemoteModuleInstanceServer], taskStartArguments)) { server ⇒
+        implicit val executionContext = injector.instance[ActorSystem].dispatcher
+        val newRemoteModuleInstanceServer = injector.instance[RemoteModuleInstanceServer.Factory]
+        autoClosing(new StandardTaskServer(newRemoteModuleInstanceServer, taskStartArguments)) { server ⇒
           server.start()
           listener.setSoTimeout(10*1000)
           sleep(100.ms)  // Otherwise, if it starts to fast, read() may throw an IOException "connection lost" instead of returning EOF

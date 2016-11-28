@@ -22,8 +22,8 @@ import spray.json._
  *
  * @author Joacim Zschimmer
  */
-final class SimpleTaskServer(
-  newRemoteModuleInstanceServer: () ⇒ RemoteModuleInstanceServer,
+final class StandardTaskServer(
+  newRemoteModuleInstanceServer: TaskStartArguments ⇒ RemoteModuleInstanceServer,
   val taskStartArguments: TaskStartArguments,
   isMain: Boolean = false)
   (implicit ec: ExecutionContext)
@@ -37,16 +37,16 @@ extends TaskServer with HasCloser {
     new StandardServerDialogConnection(master),
     name = taskStartArguments.agentTaskId.toString,
     iUnknownFactories = List(
-      new RemoteModuleInstanceServer.Factory {
-        def newIUnknown() = newRemoteModuleInstanceServer()
+      new RemoteModuleInstanceServer.MyIUnknownFactory {
+        def newIUnknown() = newRemoteModuleInstanceServer(taskStartArguments)
       }),
     proxyIDispatchFactories = List(
       new ProxySpooler.Factory {
-        val taskStartArguments = SimpleTaskServer.this.taskStartArguments
+        val taskStartArguments = StandardTaskServer.this.taskStartArguments
       },
       ProxySpoolerLog,
       new ProxySpoolerTask.Factory {
-        val taskStartArguments = SimpleTaskServer.this.taskStartArguments
+        val taskStartArguments = StandardTaskServer.this.taskStartArguments
       }),
     returnAfterReleaseOf = _.isInstanceOf[RemoteModuleInstanceServer],
     keepaliveDurationOption = taskStartArguments.rpcKeepaliveDurationOption)
@@ -79,7 +79,7 @@ extends TaskServer with HasCloser {
 
   def deleteLogFiles() = {}  // Files are closed when master via COM RPC releases RemoteModuleInstanceServer
 
-  override def toString = s"SimpleTaskServer(master=${taskStartArguments.masterAddress})"
+  override def toString = s"StandardTaskServer(master=${taskStartArguments.masterAddress})"
 
   def pidOption = (remoteModuleInstanceServers flatMap { _.pidOption }).headOption
 

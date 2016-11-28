@@ -43,9 +43,10 @@ object TaskServerMain {
       new TaskServerMainModule(startArguments.dotnet),
       new TaskServerModule(startArguments, Some(terminated.future))
     )
-    implicit val executionContext = injector.instance[ActorSystem].dispatcher
     autoClosing(injector.instance[Closer]) { _ ⇒
-      autoClosing(new SimpleTaskServer(() ⇒ injector.instance[RemoteModuleInstanceServer], startArguments, isMain = true)) { taskServer ⇒
+      implicit val executionContext = injector.instance[ActorSystem].dispatcher
+      val newRemoteModuleInstanceServer = injector.instance[RemoteModuleInstanceServer.Factory]
+      autoClosing(new StandardTaskServer(newRemoteModuleInstanceServer, startArguments, isMain = true)) { taskServer ⇒
         taskServer.terminated map { _: TaskServer.Terminated.type ⇒ TaskServerMainTerminated } onComplete terminated.complete
         taskServer.start()
         awaitResult(taskServer.terminated, MaxDuration)

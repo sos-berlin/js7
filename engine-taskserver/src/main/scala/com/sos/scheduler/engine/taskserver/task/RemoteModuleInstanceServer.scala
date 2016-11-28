@@ -20,7 +20,7 @@ import com.sos.scheduler.engine.taskserver.modules.monitor.Monitor
 import com.sos.scheduler.engine.taskserver.modules.shell.{RichProcessStartSynchronizer, ShellModule, ShellProcessTask}
 import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
 import java.util.UUID
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 import org.scalactic.Requirements._
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -28,7 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
  * @author Joacim Zschimmer
  * @see Com_remote_module_instance_server, spooler_module_remote_server.cxx
  */
-final class RemoteModuleInstanceServer @Inject private(
+final class RemoteModuleInstanceServer private(
   moduleFactoryRegister: ModuleFactoryRegister,
   taskStartArguments: TaskStartArguments,
   synchronizedStartProcess: RichProcessStartSynchronizer,
@@ -141,8 +141,24 @@ object RemoteModuleInstanceServer {
    */
   private def variantArrayToIDispatches(a: VariantArray) = a.indexedSeq map cast[IDispatch]
 
-  trait Factory extends IUnknownFactory {
+  trait MyIUnknownFactory extends IUnknownFactory {
     final val clsid = RemoteModuleInstanceServer.this.clsid
     final val iid   = RemoteModuleInstanceServer.this.iid
+  }
+
+  @Singleton
+  final class Factory @Inject private(
+    moduleFactoryRegister: ModuleFactoryRegister,
+    synchronizedStartProcess: RichProcessStartSynchronizer,
+    taskServerMainTerminatedOption: Option[Future[TaskServerMainTerminated.type]])
+    (implicit ec: ExecutionContext)
+  extends (TaskStartArguments ⇒ RemoteModuleInstanceServer)
+  {
+    def apply(taskStartArguments: TaskStartArguments): RemoteModuleInstanceServer =
+      new RemoteModuleInstanceServer(
+        moduleFactoryRegister = moduleFactoryRegister,
+        taskStartArguments = taskStartArguments,
+        synchronizedStartProcess = synchronizedStartProcess,
+        taskServerMainTerminatedOption = taskServerMainTerminatedOption)
   }
 }

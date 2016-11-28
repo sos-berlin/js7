@@ -71,7 +71,7 @@ extends TaskHandlerView {
   private def killAfterTunnelInactivity(task: AgentTask)(since: Instant): Unit = {
     logger.error(s"$task has no connection activity since $since. Task is being killed")
     ignoreException(logger.asLazy.error) { task.sendProcessSignal(SIGKILL) }
-    task.closeTunnel()  // This terminates Remoting and then SimpleTaskServer
+    task.closeTunnel()  // This terminates Remoting and then StandardTaskServer
     task.terminated.onComplete { _ ⇒ removeTaskAfterTermination(task) }
   }
 
