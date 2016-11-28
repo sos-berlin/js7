@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
-import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
 import org.junit.runner.RunWith
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec
@@ -22,7 +22,7 @@ import scala.util.Random
 final class ProxySpoolerLogTest extends FreeSpec {
 
   private lazy val injector = Guice.createInjector(new ScalaAbstractModule {
-    def configure() = bindInstance[TaskStartArguments](TaskStartArguments.forTest())
+    def configure() = bindInstance[TaskServerArguments](TaskServerArguments.forTest())
   })
 
   for (minimumLevel ← List(SchedulerLogLevel.debug9, SchedulerLogLevel.error)) {

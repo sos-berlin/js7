@@ -12,22 +12,22 @@ import spray.json._
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class TaskStartArgumentsTest extends FreeSpec {
+final class TaskServerArgumentsTest extends FreeSpec {
 
   "logFilenamePart" in {
     assertResult("task-1-1-test-123") {
-      TaskStartArguments.forTest().copy(startMeta = StartTask.Meta(JobPath("/folder/test"), TaskId(123))).logFilenamePart
+      TaskServerArguments.forTest().copy(startMeta = StartTask.Meta(JobPath("/folder/test"), TaskId(123))).logFilenamePart
     }
   }
 
   "logFilenamePart when master < v1.10.4" in {
     assertResult("task-1-1-(OLD-MASTER)--1") {
-      TaskStartArguments.forTest().logFilenamePart
+      TaskServerArguments.forTest().logFilenamePart
     }
   }
 
   "JSON" in {
-    val obj = TaskStartArguments.forTest().copy(
+    val obj = TaskServerArguments.forTest().copy(
       environment = Map("a" → "A", "bb" → "BB"),
       workingDirectory = Paths.get("DIRECTORY"),
       logDirectory = Paths.get("LOG-DIRECTORY"))
@@ -53,6 +53,6 @@ final class TaskStartArgumentsTest extends FreeSpec {
         "dotnet": {}
       }""".parseJson
     assert(obj.toJson == json)
-    assert(obj == json.convertTo[TaskStartArguments])
+    assert(obj == json.convertTo[TaskServerArguments])
   }
 }

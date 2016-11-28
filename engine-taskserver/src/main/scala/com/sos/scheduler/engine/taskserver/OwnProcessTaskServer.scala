@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.taskserver
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.SetOnce
 import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
-import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
 import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, ProcessConfiguration, RichProcess}
 import java.io.File
 import scala.concurrent.{ExecutionContext, Promise}
@@ -12,7 +12,7 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-final class OwnProcessTaskServer(val taskStartArguments: TaskStartArguments, javaOptions: Seq[String], javaClasspath: String)
+final class OwnProcessTaskServer(val arguments: TaskServerArguments, javaOptions: Seq[String], javaClasspath: String)
 (implicit executionContext: ExecutionContext)
 extends TaskServer {
 
@@ -22,20 +22,20 @@ extends TaskServer {
   def terminated = terminatedPromise.future
 
   def start() = {
-    val stdFileMap = RichProcess.createStdFiles(taskStartArguments.logDirectory, id = taskStartArguments.logFilenamePart)
+    val stdFileMap = RichProcess.createStdFiles(arguments.logDirectory, id = arguments.logFilenamePart)
     val process = JavaProcess.startJava(
       ProcessConfiguration(
         stdFileMap,
-        additionalEnvironment = taskStartArguments.environment,
-        agentTaskIdOption = Some(taskStartArguments.agentTaskId),
-        killScriptOption = taskStartArguments.killScriptOption),
+        additionalEnvironment = arguments.environment,
+        agentTaskIdOption = Some(arguments.agentTaskId),
+        killScriptOption = arguments.killScriptOption),
       options = javaOptions,
       classpath = Some(javaClasspath + File.pathSeparator + JavaProcess.OwnClasspath),
       mainClass = TaskServerMain.getClass.getName stripSuffix "$", // Strip Scala object class suffix
       arguments = Nil)
     processOnce := process
     process.terminated map { _ ⇒ Terminated } onComplete terminatedPromise.complete
-    val a = taskStartArguments.copy(stdFileMap = stdFileMap, logStdoutAndStderr = true)
+    val a = arguments.copy(stdFileMap = stdFileMap, logStdoutAndStderr = true)
     process.stdinWriter.write(a.toJson.compactPrint)
     process.stdinWriter.close()
   }

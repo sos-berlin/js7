@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
 import com.sos.scheduler.engine.common.scalautil.FileUtils.EmptyPath
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.tcp.TcpUtils.parseTcpPort
-import com.sos.scheduler.engine.taskserver.data.TaskStartArguments.toInetSocketAddress
+import com.sos.scheduler.engine.taskserver.data.TaskServerArguments.toInetSocketAddress
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import java.nio.file.Path
@@ -20,7 +20,7 @@ import spray.json.RootJsonFormat
 /**
  * @author Joacim Zschimmer
  */
-final case class TaskStartArguments(
+final case class TaskServerArguments(
   agentTaskId: AgentTaskId,
   startMeta: StartTask.Meta,
   masterAddress: String,
@@ -38,14 +38,14 @@ final case class TaskStartArguments(
   def logFilenamePart = s"task-${agentTaskId.string}-${startMeta.job.name}-${startMeta.taskId.string}"
 }
 
-object TaskStartArguments {
+object TaskServerArguments {
   private val HostPortRegex = "(.*):(\\d+)".r
 
   def forTest(
     tcpPort: Int = 999999999,
     directory: Path = EmptyPath,
     stdFileMap: Map[StdoutStderrType, Path] = Map())
-  = new TaskStartArguments(
+  = new TaskServerArguments(
       masterAddress = s"127.0.0.1:$tcpPort",
       startMeta = StartTask.Meta.Default,
       tunnelToken = TunnelToken(TunnelId("TEST-TUNNEL"), SecretString("TUNNEL-SECRET")),
@@ -60,5 +60,5 @@ object TaskStartArguments {
       case HostPortRegex(host, port) ⇒ new InetSocketAddress(host, parseTcpPort(port))
     }
 
-  implicit val jsonFormat: RootJsonFormat[TaskStartArguments] = jsonFormat12(apply)
+  implicit val jsonFormat: RootJsonFormat[TaskServerArguments] = jsonFormat12(apply)
 }

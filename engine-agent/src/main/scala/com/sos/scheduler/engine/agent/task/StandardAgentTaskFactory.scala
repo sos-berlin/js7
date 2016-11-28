@@ -14,7 +14,7 @@ import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.remoting.calls.CallCall
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer.{deserializeCall, messageIsCall}
 import com.sos.scheduler.engine.minicom.types.VariantArray
-import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
 import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskArguments}
 import com.sos.scheduler.engine.taskserver.{OwnProcessTaskServer, StandardTaskServer}
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
@@ -57,7 +57,7 @@ extends AgentTaskFactory {
   }
 
   private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, masterAddress: String, tunnelToken: TunnelToken) = {
-    val taskStartArguments = TaskStartArguments(
+    val arguments = TaskServerArguments(
       agentTaskId,
       startMeta = command.meta getOrElse StartTask.Meta.Default,
       masterAddress = masterAddress,
@@ -71,19 +71,19 @@ extends AgentTaskFactory {
     if (runInProcess) {
       // For debugging
       logger.warn(s"Due to system property $InProcessName, task runs in Agent process")
-      newStandardTaskServer(taskStartArguments)
+      newStandardTaskServer(arguments)
     } else
       command match {
-        case _: StartNonApiTask ⇒ newStandardTaskServer(taskStartArguments)
+        case _: StartNonApiTask ⇒ newStandardTaskServer(arguments)
         case o: StartApiTask ⇒ new OwnProcessTaskServer(
-          taskStartArguments,
+          arguments,
           javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
           javaClasspath = o.javaClasspath)
       }
   }
 
-  private def newStandardTaskServer(taskStartArguments: TaskStartArguments) =
-    new StandardTaskServer(newRemoteModuleInstanceServer, taskStartArguments)
+  private def newStandardTaskServer(arguments: TaskServerArguments) =
+    new StandardTaskServer(newRemoteModuleInstanceServer, arguments)
 
   private def splitJavaOptions(options: String) =
     Splitter.on(Pattern.compile("\\s+")).trimResults.omitEmptyStrings.split(options).toImmutableSeq

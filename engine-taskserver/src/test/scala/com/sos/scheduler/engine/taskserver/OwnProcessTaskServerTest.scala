@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.taskserver
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
-import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
 import java.net.ServerSocket
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -18,7 +18,7 @@ final class OwnProcessTaskServerTest extends FreeSpec {
   "OwnProcessTaskServer" in {
     val tcpPort = findRandomFreeTcpPort()
     autoClosing(new ServerSocket(tcpPort, 1)) { listener ⇒
-      val taskArguments = TaskStartArguments.forTest(tcpPort = tcpPort)
+      val taskArguments = TaskServerArguments.forTest(tcpPort = tcpPort)
       autoClosing(new OwnProcessTaskServer(taskArguments, javaOptions = Nil, javaClasspath = "")) { process ⇒
         process.start()
         listener.setSoTimeout(10*1000)

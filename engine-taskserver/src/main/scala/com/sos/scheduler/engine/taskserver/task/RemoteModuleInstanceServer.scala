@@ -12,7 +12,7 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch, IUnknownFactory, InvocableIDispatch}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
 import com.sos.scheduler.engine.taskserver.common.StdFiles
-import com.sos.scheduler.engine.taskserver.data.{TaskServerMainTerminated, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
 import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
 import com.sos.scheduler.engine.taskserver.modules.javamodule.{ApiModule, ApiProcessTask}
@@ -30,7 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
  */
 final class RemoteModuleInstanceServer private(
   moduleFactoryRegister: ModuleFactoryRegister,
-  taskStartArguments: TaskStartArguments,
+  taskServerArguments: TaskServerArguments,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   taskServerMainTerminatedOption: Option[Future[TaskServerMainTerminated.type]])
   (implicit ec: ExecutionContext)
@@ -47,19 +47,19 @@ extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
   @invocable
   def construct(arguments: VariantArray): Unit = {
     taskArguments = TaskArguments(arguments)
-    logger.info(s"${taskStartArguments.agentTaskId} is Master's task ${taskArguments.jobName}:${taskArguments.taskId}")
+    logger.info(s"${taskServerArguments.agentTaskId} is Master's task ${taskArguments.jobName}:${taskArguments.taskId}")
   }
 
   @invocable
   def begin(objectAnys: VariantArray, objectNamesAnys: VariantArray): Boolean = {
     val namedIDispatches = toNamedObjectMap(names = objectNamesAnys, anys = objectAnys)
     val stdFiles = StdFiles(
-      stdFileMap = taskStartArguments.stdFileMap filter { _ ⇒ taskStartArguments.logStdoutAndStderr },
+      stdFileMap = taskServerArguments.stdFileMap filter { _ ⇒ taskServerArguments.logStdoutAndStderr },
       stderrLogLevel = taskArguments.stderrLogLevel,
       log = namedIDispatches.spoolerLog.log
     )
     val commonArguments = CommonArguments(
-      taskStartArguments.agentTaskId,
+      taskServerArguments.agentTaskId,
       jobName = taskArguments.jobName,
       namedIDispatches,
       taskArguments.rawMonitorArguments map { o ⇒ Monitor(moduleFactoryRegister.toModuleArguments(o.rawModuleArguments), o.name, o.ordering) },
@@ -69,7 +69,7 @@ extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
       case module: ShellModule ⇒
         module.newTask(
           commonArguments,
-          taskStartArguments,
+          taskServerArguments,
           environment = taskArguments.environment,
           shellVariablePrefix = taskArguments.shellVariablePrefix,
           synchronizedStartProcess,
@@ -152,12 +152,12 @@ object RemoteModuleInstanceServer {
     synchronizedStartProcess: RichProcessStartSynchronizer,
     taskServerMainTerminatedOption: Option[Future[TaskServerMainTerminated.type]])
     (implicit ec: ExecutionContext)
-  extends (TaskStartArguments ⇒ RemoteModuleInstanceServer)
+  extends (TaskServerArguments ⇒ RemoteModuleInstanceServer)
   {
-    def apply(taskStartArguments: TaskStartArguments): RemoteModuleInstanceServer =
+    def apply(taskServerArguments: TaskServerArguments): RemoteModuleInstanceServer =
       new RemoteModuleInstanceServer(
         moduleFactoryRegister = moduleFactoryRegister,
-        taskStartArguments = taskStartArguments,
+        taskServerArguments = taskServerArguments,
         synchronizedStartProcess = synchronizedStartProcess,
         taskServerMainTerminatedOption = taskServerMainTerminatedOption)
   }

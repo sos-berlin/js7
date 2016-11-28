@@ -25,7 +25,7 @@ import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
-import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
+import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.net.InetAddress
@@ -212,7 +212,7 @@ private object TaskHandlerTest {
 
     def terminated = terminatedPromise.future
 
-    def taskStartArguments = TaskStartArguments.forTest(tcpPort = TestMasterPort)   // For TaskHandler.overview
+    val arguments = TaskServerArguments.forTest(tcpPort = TestMasterPort)   // For TaskHandler.overview
 
     def sendProcessSignal(signal: ProcessSignal) = signal match {
       case SIGTERM ⇒

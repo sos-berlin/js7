@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.taskserver.modules.shell
 
-import com.sos.scheduler.engine.taskserver.data.{TaskServerMainTerminated, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
 import com.sos.scheduler.engine.taskserver.moduleapi.{Module, ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
 import com.sos.scheduler.engine.taskserver.modules.common.CommonArguments
 import javax.inject.Inject
@@ -13,11 +13,12 @@ final class ShellModule(
   arguments: ShellModule.Arguments,
   synchronizedStartProcess: RichProcessStartSynchronizer)
 extends Module {
-  def script = arguments.script
+
+  def script: Script = arguments.script
 
   def newTask(
     commonArguments: CommonArguments,
-    taskStartArguments: TaskStartArguments,
+    taskServerArguments: TaskServerArguments,
     environment: Map[String, String],
     shellVariablePrefix: String,
     synchronizedStartProcess: RichProcessStartSynchronizer,
@@ -27,11 +28,11 @@ extends Module {
     new ShellProcessTask(
       this,
       commonArguments,
-      environment = taskStartArguments.environment ++ environment,
+      environment = taskServerArguments.environment ++ environment,
       variablePrefix = shellVariablePrefix,
-      logDirectory = taskStartArguments.logDirectory,
-      logFilenamePart = taskStartArguments.logFilenamePart,
-      killScriptOption = taskStartArguments.killScriptOption,
+      logDirectory = taskServerArguments.logDirectory,
+      logFilenamePart = taskServerArguments.logFilenamePart,
+      killScriptOption = taskServerArguments.killScriptOption,
       synchronizedStartProcess,
       taskServerMainTerminatedOption = taskServerMainTerminatedOption)
 }

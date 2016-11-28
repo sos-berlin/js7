@@ -11,14 +11,14 @@ import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch._
 import com.sos.scheduler.engine.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRemoting, SpecializedProxyIDispatch}
 import com.sos.scheduler.engine.minicom.types.CLSID
+import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
-import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import java.util.UUID
 
 /**
  * @author Joacim Zschimmer
  */
-final class ProxySpoolerTask private(taskStartArguments: TaskStartArguments, protected val remoting: ProxyRemoting, val id: ProxyId, val name: String)
+final class ProxySpoolerTask private(taskServerArguments: TaskServerArguments, protected val remoting: ProxyRemoting, val id: ProxyId, val name: String)
 extends SpoolerTask with SpecializedProxyIDispatch with AnnotatedInvocable with OverridingInvocableIDispatch {
 
   import ProxySpoolerTask._
@@ -46,9 +46,9 @@ extends SpoolerTask with SpecializedProxyIDispatch with AnnotatedInvocable with 
   @invocable
   def stderr_text: String = fileText(Stderr)
 
-  private def fileText(s: StdoutStderrType) = taskStartArguments.stdFileMap.get(s) map { _.contentString(Encoding) } getOrElse ""
+  private def fileText(s: StdoutStderrType) = taskServerArguments.stdFileMap.get(s) map { _.contentString(Encoding) } getOrElse ""
 
-  private def filePath(s: StdoutStderrType) = taskStartArguments.stdFileMap.get(s) map { _.toString } getOrElse ""
+  private def filePath(s: StdoutStderrType) = taskServerArguments.stdFileMap.get(s) map { _.toString } getOrElse ""
 
   @invocable
   def create_subprocess(program_and_parameters: Option[AnyRef]) = throw new UnsupportedApiException("sos.spooler.Task.create_subprocess")
@@ -73,13 +73,13 @@ object ProxySpoolerTask {
   trait Factory extends ProxyIDispatchFactory {
     final val clsid = ProxySpoolerTask.this.clsid
 
-    def taskStartArguments: TaskStartArguments
+    def taskServerArguments: TaskServerArguments
 
     final def apply(remoting: ProxyRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
       forEachProperty(properties, "sos.spooler.Task") {
         case ("subprocess_own_process_group_default", v: Boolean) ⇒ if (v) logger.trace(s"Universal Agent does not support subprocess.own_process_group=true")
       }
-      new ProxySpoolerTask(taskStartArguments, remoting, id, name)
+      new ProxySpoolerTask(taskServerArguments, remoting, id, name)
     }
   }
 }

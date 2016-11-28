@@ -11,7 +11,7 @@ import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.taskserver.configuration.inject.{TaskServerMainModule, TaskServerModule}
-import com.sos.scheduler.engine.taskserver.data.{TaskServerMainTerminated, TaskStartArguments}
+import com.sos.scheduler.engine.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
 import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
 import scala.concurrent.Promise
 import spray.json._
@@ -26,7 +26,7 @@ object TaskServerMain {
   def main(args: Array[String]): Unit = {
     CommandLineArguments.parse(args) { _.optionAs[String]("-agent-task-id=") }  // -agent-task-id=.. is only for the kill script and ignored
     try {
-      val startArguments = new JsonParser(ByteStreams.toByteArray(System.in)).parseJsValue().asJsObject.convertTo[TaskStartArguments]
+      val startArguments = new JsonParser(ByteStreams.toByteArray(System.in)).parseJsValue().asJsObject.convertTo[TaskServerArguments]
       run(startArguments)
       logger.info("Terminating")
     } catch {
@@ -37,7 +37,7 @@ object TaskServerMain {
     }
   }
 
-  private def run(startArguments: TaskStartArguments): Unit = {
+  private def run(startArguments: TaskServerArguments): Unit = {
     val terminated = Promise[TaskServerMainTerminated.type]()
     val injector = Guice.createInjector(PRODUCTION,
       new TaskServerMainModule(startArguments.dotnet),
