@@ -26,7 +26,9 @@ object FileBasedObstacle {
   extends LiveChanged
 
   final case class MissingRequisites(paths: Set[TypedPath])
-  extends FileBasedObstacle
+  extends FileBasedObstacle {
+    override def toString = paths.mkString("MissingRequisites(", ", ", ")")
+  }
 
   object MissingRequisites {
     private implicit def typedPathJsonFormat = TypedPathRegister.WithCompanionJsonFormat

@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.processclass
 
 import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.data.filebased.FileBasedObstacle
+import com.sos.scheduler.engine.data.filebased.{FileBasedObstacle, IsFileBasedObstacles}
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -12,7 +12,7 @@ sealed trait ProcessClassObstacle
 object ProcessClassObstacle {
 
   final case class FileBasedObstacles(fileBasedObstacles: Set[FileBasedObstacle])
-  extends ProcessClassObstacle
+  extends ProcessClassObstacle with IsFileBasedObstacles
 
   final case class ProcessLimitReached(limit: Int)
   extends ProcessClassObstacle

@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.lock
 
 import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.data.filebased.FileBasedObstacle
+import com.sos.scheduler.engine.data.filebased.{FileBasedObstacle, IsFileBasedObstacles}
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -12,7 +12,7 @@ private sealed trait LockObstacle
 
 private object LockObstacle {
   final case class FileBasedObstacles(fileBasedObstacles: Set[FileBasedObstacle])
-  extends LockObstacle
+  extends LockObstacle with IsFileBasedObstacles
 
   case object LockedExclusivly
   extends LockObstacle

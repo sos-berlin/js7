@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.data.order
 
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.data.filebased.FileBasedObstacle
+import com.sos.scheduler.engine.data.filebased.{FileBasedObstacle, IsFileBasedObstacles}
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._
 
@@ -14,7 +14,7 @@ sealed trait OrderObstacle
 object OrderObstacle {
 
   final case class FileBasedObstacles(fileBasedObstacles: Set[FileBasedObstacle])
-  extends OrderObstacle
+  extends OrderObstacle with IsFileBasedObstacles
 
   case object Suspended
   extends OrderObstacle
