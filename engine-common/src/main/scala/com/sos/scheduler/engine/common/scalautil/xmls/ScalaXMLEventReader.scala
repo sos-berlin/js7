@@ -1,12 +1,13 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
-import com.sos.scheduler.engine.base.convert.{ConvertiblePartialFunction, ConvertiblePartialFunctions}
+import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunction
 import com.sos.scheduler.engine.base.utils.ScalaUtils.{cast, implicitClass}
 import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory, xmlElemToStaxSource}
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
+import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources.stringToSource
 import java.util.NoSuchElementException
 import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
 import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
@@ -17,7 +18,8 @@ import scala.collection.{immutable, mutable}
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
-final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Config.Default) extends AutoCloseable {
+final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Config.Default)
+extends AutoCloseable {
 
   private var _simpleAttributeMap: SimpleAttributeMap = null
 
@@ -97,14 +99,14 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Confi
     attributeMap foreach callF
   }
 
-  def parseEachRepeatingElement[A](name: String)(f: ⇒ A): immutable.Seq[A] =
-    forEachStartElement[A] { case `name` ⇒ parseElement() { f } }.values
+  def parseEachRepeatingElement[A](name: String)(body: ⇒ A): immutable.Seq[A] =
+    forEachStartElement[A] { case `name` ⇒ parseElement() { body } }.values
 
-  def forEachStartElement[A](f: PartialFunction[String, A]): ConvertedElementMap[A] = {
+  def forEachStartElement[A](body: PartialFunction[String, A]): ConvertedElementMap[A] = {
     val results = Vector.newBuilder[(String, A)]
     @tailrec def g(): Unit = peek match {
       case e: StartElement ⇒
-        for (o ← parseStartElementAlternative(f))
+        for (o ← parseStartElementAlternative(body))
           results += e.getName.toString → o
         g()
       case _: EndElement ⇒
@@ -114,10 +116,10 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Confi
     new ConvertedElementMap(results.result)
   }
 
-  def parseStartElementAlternative[A](f: PartialFunction[String, A]): Option[A] =
+  def parseStartElementAlternative[A](body: PartialFunction[String, A]): Option[A] =
     wrapException {
       val name = peek.asStartElement.getName.toString
-      val result = f.lift(name)
+      val result = body.lift(name)
       if (result.isEmpty) {
         if (!config.ignoreUnknown) sys.error(s"Unexpected XML element <$name>")
         ignoreElement()
@@ -125,9 +127,9 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Confi
       result
     }
 
-  private def wrapException[A](f: ⇒ A): A = {
+  private def wrapException[A](body: ⇒ A): A = {
     val element = peek.asStartElement()
-    try f
+    try body
     catch {
       case x: Exception ⇒ throw new XmlException(element.getName.toString, element.getLocation, x)
     }
@@ -146,9 +148,10 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Confi
 //  private def parseElementInto(result: Result): Unit =
 //  Liest bis zum Stream-Ende statt nur bis zum Endetag:  transformerFactory.newTransformer().transform(new StAXSource(xmlEventReader), result)
 
-  def requireStartElement(name: String) = require(peek.asStartElement.getName.getLocalPart == name)
+  def requireStartElement(name: String): Unit =
+    require(peek.asStartElement.getName.getLocalPart == name)
 
-  def eatText() = {
+  def eatText(): String = {
     val result = new StringBuilder
     while (peek.isCharacters)
       result append eat[Characters].getData
@@ -167,7 +170,7 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Confi
     event.asInstanceOf[E]
   }
 
-  def hasNext = delegate.hasNext
+  def hasNext: Boolean = delegate.hasNext
 
   private def updateAttributeMap(withAttributeMap: Boolean): Unit = {
     releaseAttributeMap()
@@ -183,12 +186,13 @@ final class ScalaXMLEventReader(delegate: XMLEventReader, config: Config = Confi
     _simpleAttributeMap = null
   }
 
-  def attributeMap = {
+  def attributeMap: SimpleAttributeMap = {
     if (_simpleAttributeMap eq null) throw new IllegalStateException(s"No attributes possible here, at $locationString")
     _simpleAttributeMap
   }
 
-  def locationString = locationToString(peek.getLocation)
+  def locationString: String =
+    locationToString(peek.getLocation)
 
   @tailrec
   def peek: XMLEvent =
@@ -213,7 +217,7 @@ object ScalaXMLEventReader {
   implicit def scalaXMLEventReaderToXMLEventReader(o: ScalaXMLEventReader): XMLEventReader = o.xmlEventReader
 
   def parseString[A](xml: String, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parse: ScalaXMLEventReader ⇒ A): A =
-    parseDocument(StringSource(xml), inputFactory)(parse)
+    parseDocument(stringToSource(xml), inputFactory)(parse)
 
   def parseElem[A](elem: xml.Elem, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parseEvents: ScalaXMLEventReader ⇒ A): A =
     parseDocument(xmlElemToStaxSource(elem), inputFactory)(parseEvents)
@@ -233,14 +237,10 @@ object ScalaXMLEventReader {
 
   private def xmlEventIsIgnorable(e: XMLEvent) =
     e match {
-      case e if e.isCharacters && e.asInstanceOf[Characters].isWhiteSpace ⇒ true
+      case e: Characters ⇒ e.isWhiteSpace
       case _: Comment ⇒ true
       case _ ⇒ false
     }
-
-//  object IgnoreWhitespaceFilter extends EventFilter {
-//    def accept(e: XMLEvent) = cond(e) { case e: Characters ⇒ !e.isWhiteSpace }
-//  }
 
   final class SimpleAttributeMap private[xmls](pairs: TraversableOnce[(String, String)])
   extends mutable.HashMap[String, String]
@@ -307,7 +307,7 @@ object ScalaXMLEventReader {
   }
 
   final class UnparsedAttributesException private[xmls](val names: immutable.Seq[String]) extends RuntimeException {
-    override def getMessage = s"Unknown XML attributes " + (names map { "'"+ _ +"'" } mkString ", ")
+    override def getMessage = s"Unknown XML attributes " + (names map { "'" + _ + "'" } mkString ", ")
   }
 
   final class XmlException(elementName: String, location: Location, override val getCause: Exception) extends RuntimeException {
@@ -332,10 +332,11 @@ object ScalaXMLEventReader {
   }
 
   object XmlException {
-    def unapply(o: XmlException) = o.getCause match {
-      case cause: XmlException ⇒ Some(cause.nonWrappedCause)
-      case cause ⇒ Some(cause)
-    }
+    def unapply(o: XmlException): Some[Throwable] =
+      o.getCause match {
+        case cause: XmlException ⇒ Some(cause.nonWrappedCause)
+        case cause ⇒ Some(cause)
+      }
   }
 
   private def locationToString(o: Location) =
