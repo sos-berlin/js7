@@ -18,7 +18,7 @@ import scala.util.Success
 /**
 * @author Joacim Zschimmer
 */
-private[task] trait AgentTask
+trait AgentTask
 extends AutoCloseable
 with HasKey {
 
