@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.tcp.TcpConnection
 import com.sos.scheduler.engine.minicom.remoting.dialog.StandardServerDialogConnection
-import com.sos.scheduler.engine.minicom.remoting.{Remoting, RemotingServer}
+import com.sos.scheduler.engine.minicom.remoting.{Remoting, ServerRemoting}
 import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
@@ -33,7 +33,7 @@ extends TaskServer with HasCloser {
   private val terminatedPromise = Promise[Terminated.type]()
   private val master = TcpConnection.connect(taskStartArguments.masterInetSocketAddress).closeWithCloser
 
-  private val remoting = new RemotingServer(
+  private val remoting = new ServerRemoting(
     new StandardServerDialogConnection(master),
     name = taskStartArguments.agentTaskId.toString,
     iUnknownFactories = List(

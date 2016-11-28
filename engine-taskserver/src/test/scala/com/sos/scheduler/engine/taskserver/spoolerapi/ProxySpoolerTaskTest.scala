@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
+import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess
@@ -32,7 +32,7 @@ final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with Ha
 
   private lazy val spoolerTask: ProxySpoolerTask = new ProxySpoolerTask.Factory {
       val taskStartArguments = TaskStartArguments.forTest(stdFileMap = stdFileMap)
-    } .apply(mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
+    } .apply(mock[ProxyRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
 
   override def afterAll() = closer.close()
 

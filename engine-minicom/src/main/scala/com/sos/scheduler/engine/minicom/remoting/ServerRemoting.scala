@@ -4,7 +4,7 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.minicom.idispatch.IUnknownFactory
-import com.sos.scheduler.engine.minicom.remoting.RemotingServer._
+import com.sos.scheduler.engine.minicom.remoting.ServerRemoting._
 import com.sos.scheduler.engine.minicom.remoting.dialog.ServerDialogConnection
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyIDispatchFactory
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class RemotingServer(
+final class ServerRemoting(
   protected val connection: ServerDialogConnection,
   protected val name: String,
   protected val iUnknownFactories: immutable.Iterable[IUnknownFactory] = Nil,
@@ -87,7 +87,7 @@ extends Remoting
   }
 }
 
-object RemotingServer {
+object ServerRemoting {
   private type CreateIUnknownByCLSID = (CLSID, IID) ⇒ IUnknown
   private val logger = Logger(getClass)
 }

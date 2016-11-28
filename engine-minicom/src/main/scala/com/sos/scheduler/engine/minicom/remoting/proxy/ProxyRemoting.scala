@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 /**
  * @author Joacim Zschimmer
  */
-trait ClientRemoting {
+trait ProxyRemoting {
 
   /**
     * Combines getIdOfName and invoke.

@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
 import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
+import com.sos.scheduler.engine.minicom.remoting.serial.ProxyRegistering.NoProxyingRegistering
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
 import scala.collection.immutable
 
@@ -91,14 +92,6 @@ object CallDeserializer {
     val Call          : Byte = 'A'
   }
 
-  private object NoProxyingRemoting extends Proxying {
-    private[remoting] def iUnknown(proxyId: ProxyId) =
-      throw new UnsupportedOperationException("No Proxying")
-
-    private[remoting] def newProxy(proxyId: ProxyId, name: String, proxyClsid: CLSID, properties: Iterable[(String, Any)]) =
-      throw new UnsupportedOperationException("No Proxying")
-  }
-
   def messageIsCall(message: ByteString): Boolean =
     MessageClass.isCall(message.head)
 
@@ -106,13 +99,13 @@ object CallDeserializer {
     * Deserialize without a `Call` without `Remoting`.
     */
   def deserializeCall(message: ByteString): Call =
-    deserializeCall(NoProxyingRemoting, message)
+    deserializeCall(NoProxyingRegistering, message)
 
-  def deserializeCall(proxying: Proxying, message: ByteString): Call = {
-    val _proxying = proxying
-    new CallDeserializer with RemotingIUnknownDeserializer {
+  def deserializeCall(proxyRegistering: ProxyRegistering, message: ByteString): Call = {
+    val _proxyRegistering = proxyRegistering
+    new CallDeserializer with ProxyingIUnknownDeserializer {
       val buffer = message.asByteBuffer
-      val proxying = _proxying
+      val proxyRegistering = _proxyRegistering
     }.readCallAndEnd()
   }
 

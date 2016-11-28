@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 trait ProxyIDispatch extends IDispatch {
   val id: ProxyId
   val name: String
-  protected val remoting: ClientRemoting
+  protected val remoting: ProxyRemoting
 
   override def call(methodName: String, arguments: Seq[Any]): Any =
     remoting.call(id, methodName, arguments)

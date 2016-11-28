@@ -9,9 +9,9 @@ import com.sos.scheduler.engine.minicom.types.CLSID
 trait ProxyIDispatchFactory {
   val clsid: CLSID
 
-  def apply(remoting: ClientRemoting, id: ProxyId, name: String, proxyProperties: Iterable[(String, Any)]): ProxyIDispatch
+  def apply(remoting: ProxyRemoting, id: ProxyId, name: String, proxyProperties: Iterable[(String, Any)]): ProxyIDispatch
 }
 
 object ProxyIDispatchFactory {
-  type Fun = (ClientRemoting, ProxyId, String, Iterable[(String, Any)]) ⇒ ProxyIDispatch
+  type Fun = (ProxyRemoting, ProxyId, String, Iterable[(String, Any)]) ⇒ ProxyIDispatch
 }

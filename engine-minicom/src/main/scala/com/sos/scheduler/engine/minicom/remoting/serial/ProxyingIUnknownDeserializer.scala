@@ -8,10 +8,10 @@ import scala.collection.immutable
 /**
  * @author Joacim Zschimmer
  */
-private[remoting] trait RemotingIUnknownDeserializer {
+private[remoting] trait ProxyingIUnknownDeserializer {
   this: VariantDeserializer ⇒
 
-  protected val proxying: Proxying
+  protected val proxyRegistering: ProxyRegistering
 
   @Nullable
   override final def readIUnknownOrNull() = {
@@ -25,12 +25,12 @@ private[remoting] trait RemotingIUnknownDeserializer {
         val value = readVariant()
         name → value
       }
-      proxying.newProxy(proxyId, name, proxyClsid, proxyProperties)
+      proxyRegistering.newProxy(proxyId, name, proxyClsid, proxyProperties)
     }
     else
       proxyId match {
         case ProxyId.Null ⇒ null
-        case _ ⇒ proxying.iUnknown(proxyId)
+        case _ ⇒ proxyRegistering.iUnknown(proxyId)
       }
   }
 }

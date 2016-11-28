@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, OverridingInvocableIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch._
-import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
+import com.sos.scheduler.engine.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRemoting, SpecializedProxyIDispatch}
 import com.sos.scheduler.engine.minicom.types.CLSID
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import java.util.UUID
@@ -12,7 +12,7 @@ import java.util.UUID
 /**
  * @author Joacim Zschimmer
  */
-final class ProxySpooler private(protected val remoting: ClientRemoting, val id: ProxyId, val name: String, taskStartArguments: TaskStartArguments)
+final class ProxySpooler private(protected val remoting: ProxyRemoting, val id: ProxyId, val name: String, taskStartArguments: TaskStartArguments)
 extends SpecializedProxyIDispatch with AnnotatedInvocable with OverridingInvocableIDispatch {
 
   @invocable
@@ -38,7 +38,7 @@ object ProxySpooler {
 
     def taskStartArguments: TaskStartArguments
 
-    final def apply(remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
+    final def apply(remoting: ProxyRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
       requireNoProperties(properties, "sos.spooler.Spooler")
       new ProxySpooler(remoting, id, name, taskStartArguments)
     }

@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch._
-import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
+import com.sos.scheduler.engine.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRemoting, SpecializedProxyIDispatch}
 import com.sos.scheduler.engine.minicom.types.CLSID
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
@@ -18,7 +18,7 @@ import java.util.UUID
 /**
  * @author Joacim Zschimmer
  */
-final class ProxySpoolerTask private(taskStartArguments: TaskStartArguments, protected val remoting: ClientRemoting, val id: ProxyId, val name: String)
+final class ProxySpoolerTask private(taskStartArguments: TaskStartArguments, protected val remoting: ProxyRemoting, val id: ProxyId, val name: String)
 extends SpoolerTask with SpecializedProxyIDispatch with AnnotatedInvocable with OverridingInvocableIDispatch {
 
   import ProxySpoolerTask._
@@ -75,7 +75,7 @@ object ProxySpoolerTask {
 
     def taskStartArguments: TaskStartArguments
 
-    final def apply(remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
+    final def apply(remoting: ProxyRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
       forEachProperty(properties, "sos.spooler.Task") {
         case ("subprocess_own_process_group_default", v: Boolean) ⇒ if (v) logger.trace(s"Universal Agent does not support subprocess.own_process_group=true")
       }

@@ -6,14 +6,14 @@ import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch.forEachProperty
-import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, SpecializedProxyIDispatch}
+import com.sos.scheduler.engine.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRemoting, SpecializedProxyIDispatch}
 import com.sos.scheduler.engine.minicom.types.CLSID
 import java.util.UUID
 
 /**
  * @author Joacim Zschimmer
  */
-final class ProxySpoolerLog private(protected val remoting: ClientRemoting, val id: ProxyId, val name: String, initialMinimumLevel: SchedulerLogLevel)
+final class ProxySpoolerLog private(protected val remoting: ProxyRemoting, val id: ProxyId, val name: String, initialMinimumLevel: SchedulerLogLevel)
 extends SpoolerLog with SpecializedProxyIDispatch with AnnotatedInvocable with OverridingInvocableIDispatch {
 
   import com.sos.scheduler.engine.taskserver.spoolerapi.ProxySpoolerLog._
@@ -84,7 +84,7 @@ object ProxySpoolerLog extends ProxyIDispatchFactory {
   private[spoolerapi] val LogDispid = DISPID(14)
   private[spoolerapi] val LevelDispid = DISPID(19)
 
-  def apply(remoting: ClientRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
+  def apply(remoting: ProxyRemoting, id: ProxyId, name: String, properties: Iterable[(String, Any)]) = {
     var level = SchedulerLogLevel.Min
     forEachProperty(properties, "sos.spooler.Log") {
       case ("level", v) ⇒ level = SchedulerLogLevel.ofCpp(v.asInstanceOf[Int])

@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.taskserver.spoolerapi
 
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
+import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import java.io.File
 import java.nio.file.Paths
@@ -23,7 +23,7 @@ final class ProxySpoolerTest extends FreeSpec with BeforeAndAfterAll {
 
   private lazy val spooler: ProxySpooler = new ProxySpooler.Factory {
       val taskStartArguments = TaskStartArguments.forTest(directory = testDirectory)
-    } .apply(mock[ClientRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
+    } .apply(mock[ProxyRemoting], ProxyId(Random.nextLong()), name = "TEST", properties = Nil)
 
   "directory returns TaskStartArguments.directory" in {
     assert(spooler.invokeGet("directory") == s"$testDirectory${File.separator}")

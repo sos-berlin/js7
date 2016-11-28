@@ -79,5 +79,5 @@ final class ProxyRegisterTest extends FreeSpec {
     assert((proxyRegister.iUnknowns[X].toSet: Set[X]) == xs)
   }
 
-  private def newProxy(proxyId: ProxyId, name: String = "") = new SimpleProxyIDispatch(mock[ClientRemoting], proxyId, name)
+  private def newProxy(proxyId: ProxyId, name: String = "") = new SimpleProxyIDispatch(mock[ProxyRemoting], proxyId, name)
 }

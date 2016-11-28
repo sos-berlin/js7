@@ -9,11 +9,11 @@ import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispat
 import com.sos.scheduler.engine.minicom.remoting.Remoting._
 import com.sos.scheduler.engine.minicom.remoting.calls._
 import com.sos.scheduler.engine.minicom.remoting.dialog.ClientDialogConnection
-import com.sos.scheduler.engine.minicom.remoting.proxy.{ClientRemoting, ProxyIDispatchFactory, ProxyRegister, SimpleProxyIDispatch}
+import com.sos.scheduler.engine.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRegister, ProxyRemoting, SimpleProxyIDispatch}
 import com.sos.scheduler.engine.minicom.remoting.serial.CallSerializer.serializeCall
 import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializeError
 import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
-import com.sos.scheduler.engine.minicom.remoting.serial.{CallDeserializer, Proxying, RemotingIUnknownDeserializer, ResultDeserializer}
+import com.sos.scheduler.engine.minicom.remoting.serial.{CallDeserializer, ProxyRegistering, ProxyingIUnknownDeserializer, ResultDeserializer}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
@@ -24,7 +24,7 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-trait Remoting extends Proxying with ClientRemoting {
+trait Remoting extends ProxyRegistering with ProxyRemoting {
 
   protected val connection: ClientDialogConnection
   protected val name: String
@@ -149,8 +149,8 @@ trait Remoting extends Proxying with ClientRemoting {
   }
 
   private def toResultDeserializer(byteString: ByteString): ResultDeserializer =
-    new ResultDeserializer with RemotingIUnknownDeserializer {
-      protected val proxying = Remoting.this
+    new ResultDeserializer with ProxyingIUnknownDeserializer {
+      protected val proxyRegistering = Remoting.this
       protected val buffer = byteString.toByteBuffer
     }
 

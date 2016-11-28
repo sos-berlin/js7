@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.proxy.ClientRemoting
+import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
 import com.sos.scheduler.engine.taskserver.data.TaskStartArguments
 import org.junit.runner.RunWith
 import org.mockito.Mockito._
@@ -36,7 +36,7 @@ final class ProxySpoolerLogTest extends FreeSpec {
   private def testLog(minimumLevel: SchedulerLogLevel, level: SchedulerLogLevel, message: String)(body: IDispatch ⇒ Unit): Unit = {
     val suppressed = level.cppNumber < minimumLevel.cppNumber
     s"$message at minimum $minimumLevel${if (suppressed) " is suppressed" else ""}" in {
-      val remoting = mock[ClientRemoting]
+      val remoting = mock[ProxyRemoting]
       val proxyId = ProxyId(Random.nextLong())
       val spoolerLog = ProxySpoolerLog(remoting, proxyId, name = "TEST", properties = List("level" → minimumLevel.cppNumber))
       body(spoolerLog)
@@ -48,7 +48,7 @@ final class ProxySpoolerLogTest extends FreeSpec {
   }
 
   "level" in {
-    val remoting = mock[ClientRemoting]
+    val remoting = mock[ProxyRemoting]
     val proxyId = ProxyId(Random.nextLong())
 
     val spoolerLog = ProxySpoolerLog(remoting, proxyId, name = "TEST", properties = List("level" → SchedulerLogLevel.warning.cppNumber))

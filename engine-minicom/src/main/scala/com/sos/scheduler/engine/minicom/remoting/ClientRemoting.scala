@@ -9,7 +9,7 @@ import scala.collection.immutable
 /**
   * @author Joacim Zschimmer
   */
-final class RemotingClient(
+final class ClientRemoting(
   protected val connection: ClientDialogConnection,
   protected val name: String,
   protected val iUnknownFactories: immutable.Iterable[IUnknownFactory] = Nil,
