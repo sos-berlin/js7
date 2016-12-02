@@ -38,6 +38,8 @@ final class PathQueryTest extends FreeSpec {
     assert(q matches AnyPath("/a/b"))
     assert(!(q matches AnyPath("/a/b/c")))
     assert(q.folderPath == FolderPath("/a"))
+    assert(q.withRecursive(true) eq q)
+    assert(q.withRecursive(false) eq q)
     checkJson(q, """{ "path": "/a/b" }""")
   }
 
@@ -63,6 +65,8 @@ final class PathQueryTest extends FreeSpec {
     checkFolderQuery(q)
     assert(q == PathQuery.FolderTree(FolderPath("/a")))
     assert(q matches AnyPath("/a/b/c"))
+    assert(q.withRecursive(true) eq q)
+    assert(q.withRecursive(false) == PathQuery(FolderPath("/a"), isRecursive = false))
     checkJson(q, """{ "path": "/a/" }""")
   }
 
@@ -73,6 +77,8 @@ final class PathQueryTest extends FreeSpec {
     assert(q == PathQuery.FolderOnly(FolderPath("/a")))
     checkFolderQuery(q)
     assert(!(q matches AnyPath("/a/b/c")))
+    assert(q.withRecursive(true) == PathQuery(FolderPath("/a"), isRecursive = true))
+    assert(q.withRecursive(false) eq q)
     checkJson(q, """{ "path": "/a/*" }""")
   }
 

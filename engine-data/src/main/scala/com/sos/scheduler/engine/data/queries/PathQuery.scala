@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.data.filebased.{TypedPath, UnknownTypedPath}
 import com.sos.scheduler.engine.data.folder.FolderPath
+import com.sos.scheduler.engine.data.queries.PathQuery._
 import scala.language.implicitConversions
 import spray.json.{JsObject, JsString, JsValue, RootJsonFormat}
 
@@ -14,8 +15,6 @@ import spray.json.{JsObject, JsString, JsValue, RootJsonFormat}
 sealed trait PathQuery {
 
   def patternString: String
-
-  def isRecursive: Boolean
 
   final def matchesAnyType(path: TypedPath): Boolean =
     path match {
@@ -27,6 +26,14 @@ sealed trait PathQuery {
   def matches[P <: TypedPath: TypedPath.Companion](path: P): Boolean
 
   def matchesAll = false
+
+
+  def withRecursive(recursive: Boolean): PathQuery =
+    this match {
+      case o: FolderTree if !recursive ⇒ FolderOnly(o.folderPath)
+      case o: FolderOnly if recursive ⇒ FolderTree(o.folderPath)
+      case o ⇒ o
+    }
 
   def typedPath[P <: TypedPath: TypedPath.Companion]: TypedPath
 
@@ -63,7 +70,9 @@ object PathQuery {
 
   def fromUriPath[A <: TypedPath: TypedPath.Companion](path: String): PathQuery = apply[A](path)
 
-  sealed trait Folder extends PathQuery
+  sealed trait Folder extends PathQuery {
+    def isRecursive: Boolean
+  }
 
   object Folder {
     def apply(folder: FolderPath, isRecursive: Boolean) = if (isRecursive) FolderTree(folder) else FolderOnly(folder)
