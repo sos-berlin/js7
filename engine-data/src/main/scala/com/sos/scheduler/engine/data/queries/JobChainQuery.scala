@@ -34,6 +34,8 @@ object JobChainQuery {
 
   implicit def fromPathQuery(o: PathQuery): JobChainQuery = JobChainQuery(o)
 
+  implicit def fromJobChainPath(o: JobChainPath): JobChainQuery = JobChainQuery(o)
+
   implicit object jsonFormat extends RootJsonFormat[JobChainQuery] {
     def write(q: JobChainQuery) =
       JsObject(
