@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
 import com.sos.scheduler.engine.common.utils.IntelliJUtils._
 import spray.http.CacheDirectives.`max-age`
 import spray.http.HttpHeaders.`Cache-Control`
@@ -20,7 +21,7 @@ trait TaskWebService extends AgentWebService {
   protected def taskHandlerView: TaskHandlerView
 
   routeBuilder.addApiRoute {
-    pathPrefix("task") {
+    pathSegments("task") {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {
           get {

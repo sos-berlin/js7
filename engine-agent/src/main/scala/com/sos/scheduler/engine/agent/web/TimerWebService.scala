@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.agent.web
 
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import scala.concurrent.ExecutionContext
 import spray.http.CacheDirectives.`max-age`
@@ -18,7 +19,7 @@ trait TimerWebService extends AgentWebService {
   protected implicit def executionContext: ExecutionContext
 
   routeBuilder.addApiRoute {
-    pathPrefix("timer") {
+    pathSegments("timer") {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {
           get {

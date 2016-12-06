@@ -27,7 +27,6 @@ sealed trait PathQuery {
 
   def matchesAll = false
 
-
   def withRecursive(recursive: Boolean): PathQuery =
     this match {
       case o: FolderTree if !recursive ⇒ FolderOnly(o.folderPath)

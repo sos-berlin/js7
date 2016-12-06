@@ -1,10 +1,11 @@
 package com.sos.scheduler.engine.common.sprayutils
 
 import com.sos.scheduler.engine.base.convert.As
+import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import shapeless.{::, HNil}
 import spray.http.HttpHeaders.Accept
-import spray.http.{ContentType, HttpHeader, MediaType, StatusCode}
+import spray.http.{ContentType, HttpHeader, MediaType, StatusCode, Uri}
 import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
 import spray.httpx.unmarshalling.{ContentExpected, FromStringOptionDeserializer, MalformedContent}
 import spray.routing.Directives._
@@ -145,4 +146,56 @@ object SprayUtils {
             Left(ContentExpected)
         }
     }
+
+  implicit class RichPath(val delegate: Uri.Path) extends AnyVal {
+    import Uri.Path._
+
+    /**
+      * Matches complete segments (not characters, as `startWith`).
+      */
+    @tailrec
+    final def startsWithPath(prefix: Uri.Path): Boolean =
+      (delegate, prefix) match {
+        case (Slash(a), Slash(b)) ⇒ a startsWithPath b
+        case (Segment(aHead, aTail), Segment(bHead, bTail)) ⇒ aHead == bHead && (aTail startsWithPath bTail)
+        case _ ⇒ prefix.isEmpty
+      }
+
+    def drop(n: Int): Uri.Path =
+      if (n == 0)
+        delegate
+      else {
+        require(n > 0)
+        delegate.tail drop n - 1
+      }
+  }
+
+  /**
+    * Like `pathPrefix`, but `prefix` denotes a path of complete path segments.
+    */
+  def pathSegments(prefix: String): Directive0 =
+    pathSegments(Uri.Path(prefix))
+
+  /**
+    * Like `pathPrefix`, but matches complete path segments.
+    */
+  def pathSegments(prefix: Uri.Path): Directive0 =
+    pathPrefix(matchSegments(prefix))
+
+  /**
+    * A `PathMatcher` for Directive `pathPrefix` matching complete segments.
+    */
+  def matchSegments(prefix: Uri.Path): PathMatcher0 = {
+    import PathMatcher._
+    if (prefix.isEmpty)
+      provide(HNil)
+    else
+      new PathMatcher[HNil] {
+        def apply(path: Uri.Path) =
+          if (path startsWithPath prefix)
+            Matched(path drop prefix.length, HNil)
+          else
+            Unmatched
+        }
+  }
 }

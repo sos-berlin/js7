@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.web.views
 import com.sos.scheduler.engine.agent.command.{CommandHandlerOverview, CommandRunOverview}
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
 import com.sos.scheduler.engine.common.utils.IntelliJUtils._
 import scala.collection.immutable
 import spray.http.CacheDirectives.`max-age`
@@ -19,7 +20,7 @@ trait CommandViewWebService extends AgentWebService {
   protected def commandRunOverviews: immutable.Iterable[CommandRunOverview]
 
   routeBuilder.addApiRoute {
-    (pathPrefix("command") & get) {
+    (pathSegments("command") & get) {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {
          complete { commandHandlerOverview }

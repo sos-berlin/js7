@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.agent.web
 import akka.actor.ActorRefFactory
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
 import com.sos.scheduler.engine.tunnel.data.TunnelView._
 import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.TunnelAccess
@@ -28,7 +29,7 @@ trait TunnelWebService extends AgentWebService {
   protected def tunnelView(tunnelId: TunnelId): Future[TunnelView]
 
   routeBuilder.addApiRoute {
-    pathPrefix("tunnel") {
+    pathSegments("tunnel") {
       path(Segment) { idString ⇒
         post {
           tunnelRequestRoute(TunnelId(idString))(tunnelAccess, onTunnelHeartbeat)
