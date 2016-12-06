@@ -39,7 +39,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   private def route(conf: GateKeeper.Configuration): Route = route(newGateKeeper(conf))
 
   private def route(gateKeeper: GateKeeper): Route =
-    gateKeeper.restrict {
+    gateKeeper.restrict.apply {
       path("TEST") {
         (get | post) {
           complete(OK)

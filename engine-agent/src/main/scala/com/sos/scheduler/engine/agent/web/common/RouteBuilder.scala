@@ -4,6 +4,7 @@ import akka.actor.ActorRefFactory
 import com.sos.scheduler.engine.agent.web.common.RouteBuilder._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichSeq
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
 import scala.collection.mutable
 import spray.routing.Directives._
@@ -65,7 +66,7 @@ final class RouteBuilder extends Mutable {
     implicit val executionContext = actorRefFactory.dispatcher
 
     val apiRoute =
-      gateKeeper.restrict {
+      gateKeeper.restrict.apply {
         toRoute(apiRoutes)
       } ~
       gateKeeper.retrictRelaxed {
@@ -76,8 +77,8 @@ final class RouteBuilder extends Mutable {
 
     (decompressRequest() & compressResponseIfRequested(())) {
       possiblyEmptyPathPrefix(uriPathPrefix) {
-        pathPrefix("jobscheduler") {
-          pathPrefix("agent" / "api") {
+        pathSegments("jobscheduler") {
+          pathSegments("agent/api") {
             apiRoute
           } ~
             toRoute(jobschedulerStandardRoutes)

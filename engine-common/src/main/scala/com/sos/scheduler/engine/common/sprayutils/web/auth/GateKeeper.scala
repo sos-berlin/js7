@@ -13,6 +13,7 @@ import spray.routing.AuthenticationFailedRejection.CredentialsRejected
 import spray.routing.Directives._
 import spray.routing._
 import spray.routing.authentication._
+import spray.util.LoggingContext
 
 /**
   * @author Joacim Zschimmer
@@ -21,7 +22,7 @@ final class GateKeeper(configuraton: Configuration, csrf: CSRF, isUnsecuredHttp:
 
   import configuraton.{getIsPublic, httpIsPublic, invalidAuthenticationDelay, provideAccessTokenValidator, providePasswordValidator, realm}
 
-  val restrict: Directive0 =
+  def restrict(implicit routingSettings: RoutingSettings, log: LoggingContext): Directive0 =
     mapInnerRoute { inner ⇒
       retrictRelaxed {
         if (isUnsecuredHttp && httpIsPublic)
@@ -30,7 +31,11 @@ final class GateKeeper(configuraton: Configuration, csrf: CSRF, isUnsecuredHttp:
           handleRejections(failIfCredentialsRejected(invalidAuthenticationDelay)) {
             val authenticator = new SimpleUserPassAuthenticator(providePasswordValidator(), provideAccessTokenValidator())
             authenticate(BasicAuth(authenticator, realm = realm)) { _: User ⇒
-              inner
+              handleRejections(RejectionHandler.Default) {
+                handleExceptions(ExceptionHandler.default) {
+                  inner
+                }
+              }
             }
           } ~
           passIf(getIsPublic) {
