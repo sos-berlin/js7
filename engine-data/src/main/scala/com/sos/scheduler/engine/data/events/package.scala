@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.data.filebased.FileBasedEvent
 import com.sos.scheduler.engine.data.job.{JobEvent, TaskEvent}
 import com.sos.scheduler.engine.data.log.Logged
 import com.sos.scheduler.engine.data.order.{JobChainEvent, JocOrderStatisticsChanged, OrderEvent}
+import com.sos.scheduler.engine.data.scheduler.SchedulerEvent
 
 /**
   * @author Joacim Zschimmer
@@ -23,6 +24,7 @@ package object events {
       KeyedSubtype[JocOrderStatisticsChanged],
       KeyedSubtype[Logged],
       KeyedSubtype[OrderEvent],
+      KeyedSubtype[SchedulerEvent],
       KeyedSubtype[TaskEvent])
 
   /**

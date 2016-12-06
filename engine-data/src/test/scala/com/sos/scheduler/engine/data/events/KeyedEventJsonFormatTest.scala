@@ -5,7 +5,8 @@ import com.sos.scheduler.engine.data.filebased.{FileBasedActivated, FileBasedAdd
 import com.sos.scheduler.engine.data.job.{JobEvent, JobStateChanged, TaskClosed, TaskEnded, TaskEvent, TaskStarted}
 import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import com.sos.scheduler.engine.data.log.InfoLogged
-import com.sos.scheduler.engine.data.order.{JobChainEvent, JobChainNodeActionChanged, JobChainNodeEvent, JobChainStateChanged, JocOrderStatisticsChanged, OrderEvent, OrderFinished, OrderNestedFinished, OrderNestedStarted, OrderNodeChanged, OrderResumed, OrderSetBack, OrderStarted, OrderStepEnded, OrderStepStarted, OrderSuspended}
+import com.sos.scheduler.engine.data.order.{JobChainEvent, JobChainNodeActionChanged, JobChainStateChanged, JocOrderStatisticsChanged, OrderEvent, OrderFinished, OrderNestedFinished, OrderNestedStarted, OrderNodeChanged, OrderResumed, OrderSetBack, OrderStarted, OrderStepEnded, OrderStepStarted, OrderSuspended}
+import com.sos.scheduler.engine.data.scheduler.{SchedulerClosed, SchedulerEvent, SchedulerStateChanged}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -51,16 +52,12 @@ final class KeyedEventJsonFormatTest extends FreeSpec {
           "FileBasedReplaced" → FileBasedReplaced.getClass,
           "FileBasedRemoved" → FileBasedRemoved.getClass,
           "FileBasedActivated" → FileBasedActivated.getClass,
-        "JobEvent" → classOf[JobEvent],
-          "JobStateChanged" → classOf[JobStateChanged],
         "JobChainEvent" → classOf[JobChainEvent],
           "JobChainStateChanged" → classOf[JobChainStateChanged],
           "JobChainNodeActionChanged" → classOf[JobChainNodeActionChanged],
+        "JobEvent" → classOf[JobEvent],
+          "JobStateChanged" → classOf[JobStateChanged],
         "JocOrderStatisticsChanged" → classOf[JocOrderStatisticsChanged],
-        "TaskEvent" → classOf[TaskEvent],
-          "TaskStarted" → TaskStarted.getClass,
-          "TaskEnded" → classOf[TaskEnded],
-          "TaskClosed" → TaskClosed.getClass,
         "OrderEvent" → classOf[OrderEvent],
           "OrderStarted" → OrderStarted.getClass,
           "OrderFinished" → classOf[OrderFinished],
@@ -71,6 +68,13 @@ final class KeyedEventJsonFormatTest extends FreeSpec {
           "OrderNestedFinished" → OrderNestedFinished.getClass,
           "OrderSetBack" → classOf[OrderSetBack],
           "OrderSuspended" → OrderSuspended.getClass,
-          "OrderResumed" → OrderResumed.getClass))
+          "OrderResumed" → OrderResumed.getClass,
+        "SchedulerEvent" → classOf[SchedulerEvent],
+          "SchedulerStateChanged" → classOf[SchedulerStateChanged],
+          "SchedulerClosed" → SchedulerClosed.getClass,
+        "TaskEvent" → classOf[TaskEvent],
+          "TaskStarted" → TaskStarted.getClass,
+          "TaskEnded" → classOf[TaskEnded],
+          "TaskClosed" → TaskClosed.getClass))
   }
 }
