@@ -14,11 +14,13 @@ object SchedulerEvent {
   implicit val jsonFormat: TypedJsonFormat[SchedulerEvent] =
     TypedJsonFormat[SchedulerEvent](
       Subtype(jsonFormat1(SchedulerStateChanged)),
-      Subtype(jsonFormat0(() ⇒ SchedulerClosed))
-    )
+      Subtype(jsonFormat0(() ⇒ SchedulerInitiated)),
+      Subtype(jsonFormat0(() ⇒ SchedulerClosed)))
 }
 
 final case class SchedulerStateChanged(state: SchedulerState) extends SchedulerEvent
+
+case object SchedulerInitiated extends SchedulerEvent
 
 /**
   * JavaSubsystem has been closed.

@@ -6,7 +6,7 @@ import com.sos.scheduler.engine.data.job.{JobEvent, JobStateChanged, TaskClosed,
 import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import com.sos.scheduler.engine.data.log.InfoLogged
 import com.sos.scheduler.engine.data.order.{JobChainEvent, JobChainNodeActionChanged, JobChainStateChanged, JocOrderStatisticsChanged, OrderEvent, OrderFinished, OrderNestedFinished, OrderNestedStarted, OrderNodeChanged, OrderResumed, OrderSetBack, OrderStarted, OrderStepEnded, OrderStepStarted, OrderSuspended}
-import com.sos.scheduler.engine.data.scheduler.{SchedulerClosed, SchedulerEvent, SchedulerStateChanged}
+import com.sos.scheduler.engine.data.scheduler.{SchedulerClosed, SchedulerEvent, SchedulerInitiated, SchedulerStateChanged}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
@@ -71,6 +71,7 @@ final class KeyedEventJsonFormatTest extends FreeSpec {
           "OrderResumed" → OrderResumed.getClass,
         "SchedulerEvent" → classOf[SchedulerEvent],
           "SchedulerStateChanged" → classOf[SchedulerStateChanged],
+          "SchedulerInitiated" → SchedulerInitiated.getClass,
           "SchedulerClosed" → SchedulerClosed.getClass,
         "TaskEvent" → classOf[TaskEvent],
           "TaskStarted" → TaskStarted.getClass,
