@@ -106,6 +106,14 @@ final class OrderEventTest extends FreeSpec {
       }""")
     }
 
+  "OrderWaitingInTask" in {
+    check(KeyedEvent(OrderWaitingInTask)(orderKey),
+      """{
+        "TYPE": "OrderWaitingInTask",
+        "key": "/JOB-CHAIN,ORDER-ID"
+      }""")
+    }
+
   private def check(event: AnyKeyedEvent, json: String): Unit = {
     val jsValue = json.parseJson
     assert(event.toJson == jsValue)

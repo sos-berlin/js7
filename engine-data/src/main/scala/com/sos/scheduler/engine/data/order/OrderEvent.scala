@@ -46,7 +46,8 @@ object OrderEvent {
     Subtype(jsonFormat1(OrderStepEnded)),
     Subtype(jsonFormat2(OrderStepStarted)),
     Subtype(jsonFormat0(() ⇒ OrderSuspended)),
-    Subtype(jsonFormat0(() ⇒ OrderStarted)))
+    Subtype(jsonFormat0(() ⇒ OrderStarted)),
+    Subtype(jsonFormat0(() ⇒ OrderWaitingInTask)))
 }
 
 /**
@@ -116,4 +117,11 @@ extends OrderEvent
   * A task will process a first step of the order's job chain.
   */
 case object OrderStarted
+extends OrderEvent
+
+/**
+  * A Task has taken the order and waits for a process (`OrderProcessingState.WaitingInTask`).
+  * This event occury only when a task is not immediately available (...).
+  */
+case object OrderWaitingInTask
 extends OrderEvent

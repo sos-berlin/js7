@@ -5,7 +5,7 @@ import com.sos.scheduler.engine.data.filebased.{FileBasedActivated, FileBasedAdd
 import com.sos.scheduler.engine.data.job.{JobEvent, JobStateChanged, TaskClosed, TaskEnded, TaskEvent, TaskStarted}
 import com.sos.scheduler.engine.data.jobchain.{JobChainPath, NodeId}
 import com.sos.scheduler.engine.data.log.InfoLogged
-import com.sos.scheduler.engine.data.order.{JobChainEvent, JobChainNodeActionChanged, JobChainStateChanged, JocOrderStatisticsChanged, OrderEvent, OrderFinished, OrderNestedFinished, OrderNestedStarted, OrderNodeChanged, OrderResumed, OrderSetBack, OrderStarted, OrderStepEnded, OrderStepStarted, OrderSuspended}
+import com.sos.scheduler.engine.data.order._
 import com.sos.scheduler.engine.data.scheduler.{SchedulerClosed, SchedulerEvent, SchedulerInitiated, SchedulerStateChanged}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -16,7 +16,7 @@ import spray.json._
   * @author Joacim Zschimmer
   */
 @RunWith(classOf[JUnitRunner])
-final class KeyedEventJsonFormatTest extends FreeSpec {
+final class SchedulerKeyedEventTest extends FreeSpec {
 
   "InfoLogged" in {
     checkJson(KeyedEvent(InfoLogged("MESSAGE-1 text")),
@@ -43,7 +43,7 @@ final class KeyedEventJsonFormatTest extends FreeSpec {
     assert(event == jsValue.convertTo[AnyKeyedEvent] )
   }
 
-  "SchedulerAnyKeyedEventJsonFormat.typeNameToClass" in {
+  "SchedulerKeyedEventTest.typeNameToClass" in {
     // All publicly known event classes
     assert(SchedulerAnyKeyedEventJsonFormat.typeNameToClass == Map(
       "Event" → classOf[Event],
@@ -69,6 +69,7 @@ final class KeyedEventJsonFormatTest extends FreeSpec {
           "OrderSetBack" → classOf[OrderSetBack],
           "OrderSuspended" → OrderSuspended.getClass,
           "OrderResumed" → OrderResumed.getClass,
+          "OrderWaitingInTask" → OrderWaitingInTask.getClass,
         "SchedulerEvent" → classOf[SchedulerEvent],
           "SchedulerStateChanged" → classOf[SchedulerStateChanged],
           "SchedulerInitiated" → SchedulerInitiated.getClass,
