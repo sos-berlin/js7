@@ -57,9 +57,10 @@ class SetOnce[A](name: String = "SetOnce") {
    *
    * @throws IllegalStateException
    */
-  final def :=(value: A): Unit = {
+  final def :=(value: A): A = {
     val ok = trySet(value)
     if (!ok) throw new IllegalStateException(s"SetOnce[${ref.get.getClass.getName}] has already been set")
+    value
   }
 
   final def trySet(value: A): Boolean =
