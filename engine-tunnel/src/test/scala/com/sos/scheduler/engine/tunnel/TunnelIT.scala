@@ -5,7 +5,7 @@ import akka.agent.Agent
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.tcp.{MessageTcpBridge, TcpConnection}
+import com.sos.scheduler.engine.common.tcp.{MessageTcpBridge, BlockingTcpConnection}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.common.time.timer.TimerService
@@ -113,7 +113,7 @@ object TunnelIT {
 
     override def run(): Unit =
       try {
-        val connection = TcpConnection.connect(masterAddress)
+        val connection = BlockingTcpConnection.connect(masterAddress)
         connection.sendMessage(TunnelConnectionMessage(tunnelToken).toByteString)
         for (request ← (Iterator.continually { connection.receiveMessage() } takeWhile { _.nonEmpty }).flatten) {
           val response = requestToResponse(request, tunnelId)

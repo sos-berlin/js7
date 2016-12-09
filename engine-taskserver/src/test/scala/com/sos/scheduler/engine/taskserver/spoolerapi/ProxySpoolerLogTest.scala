@@ -1,18 +1,16 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
-import com.google.inject.Guice
-import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
+import com.sos.scheduler.engine.taskserver.spoolerapi.ProxySpoolerLogTest._
 import org.junit.runner.RunWith
-import org.mockito.Mockito._
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.mock.MockitoSugar.mock
+import scala.collection.mutable
+import scala.concurrent.Future
 import scala.util.Random
 
 /**
@@ -20,10 +18,6 @@ import scala.util.Random
  */
 @RunWith(classOf[JUnitRunner])
 final class ProxySpoolerLogTest extends FreeSpec {
-
-  private lazy val injector = Guice.createInjector(new ScalaAbstractModule {
-    def configure() = bindInstance[TaskServerArguments](TaskServerArguments.forTest())
-  })
 
   for (minimumLevel ← List(SchedulerLogLevel.debug9, SchedulerLogLevel.error)) {
     testLog(minimumLevel, SchedulerLogLevel.debug1, "debug") { _.invokeMethod("debug", List("debug")) }
@@ -36,33 +30,50 @@ final class ProxySpoolerLogTest extends FreeSpec {
   private def testLog(minimumLevel: SchedulerLogLevel, level: SchedulerLogLevel, message: String)(body: IDispatch ⇒ Unit): Unit = {
     val suppressed = level.cppNumber < minimumLevel.cppNumber
     s"$message at minimum $minimumLevel${if (suppressed) " is suppressed" else ""}" in {
-      val remoting = mock[ProxyRemoting]
+      val remoting = new TestProxyRemoting
       val proxyId = ProxyId(Random.nextLong())
       val spoolerLog = ProxySpoolerLog(remoting, proxyId, name = "TEST", properties = List("level" → minimumLevel.cppNumber))
       body(spoolerLog)
-      if (!suppressed) {
-        verify(remoting).invoke(proxyId, ProxySpoolerLog.LogDispid, Set(DISPATCH_METHOD), arguments = List(level.cppNumber, message), namedArguments = Nil)
-      }
-      verifyNoMoreInteractions(remoting)
+      assert(remoting._invokes == (
+        if (suppressed)
+          Nil
+        else List(
+          (proxyId, ProxySpoolerLog.LogDispid, Set(DISPATCH_METHOD), List(level.cppNumber, message), Nil))))
     }
   }
 
   "level" in {
-    val remoting = mock[ProxyRemoting]
+    val remoting = new TestProxyRemoting
     val proxyId = ProxyId(Random.nextLong())
 
     val spoolerLog = ProxySpoolerLog(remoting, proxyId, name = "TEST", properties = List("level" → SchedulerLogLevel.warning.cppNumber))
     spoolerLog.invokeMethod("info", List("INFO"))   // Suppressed
     spoolerLog.invokeMethod("warn", List("WARNING"))
-    verify(remoting).invoke(proxyId, ProxySpoolerLog.LogDispid, Set(DISPATCH_METHOD), arguments = List(SchedulerLogLevel.warning.cppNumber, "WARNING"), namedArguments = Nil)
-    verifyNoMoreInteractions(remoting)
-
-    reset(remoting)
+    assert(remoting._invokes == List(
+      (proxyId, ProxySpoolerLog.LogDispid, Set(DISPATCH_METHOD), List(SchedulerLogLevel.warning.cppNumber, "WARNING"), Nil)))
+    remoting._invokes.clear()
     spoolerLog.invokePut("level", SchedulerLogLevel.info.cppNumber)
     spoolerLog.invokeMethod("debug9", List("DEBUG9"))  // Suppressed
     spoolerLog.invokeMethod("info", List("INFO"))
-    verify(remoting).invoke(proxyId, ProxySpoolerLog.LevelDispid, Set(DISPATCH_PROPERTYPUT), arguments = Nil, namedArguments = List(DISPID.PROPERTYPUT → SchedulerLogLevel.info.cppNumber))
-    verify(remoting).invoke(proxyId, ProxySpoolerLog.LogDispid, Set(DISPATCH_METHOD), arguments = List(SchedulerLogLevel.info.cppNumber, "INFO"), namedArguments = Nil)
-    verifyNoMoreInteractions(remoting)
+    assert(remoting._invokes == List(
+      (proxyId, ProxySpoolerLog.LevelDispid, Set(DISPATCH_PROPERTYPUT), Nil, List(DISPID.PROPERTYPUT → SchedulerLogLevel.info.cppNumber)),
+      (proxyId, ProxySpoolerLog.LogDispid, Set(DISPATCH_METHOD), List(SchedulerLogLevel.info.cppNumber, "INFO"), Nil))                    )
+  }
+}
+
+private object ProxySpoolerLogTest {
+  private class TestProxyRemoting extends ProxyRemoting {
+    val _invokes = mutable.Buffer[(ProxyId, DISPID, Set[DispatchType], Seq[Any], Seq[(DISPID, Any)])]()
+
+    def call(proxyId: ProxyId, methodName: String, arguments: Seq[Any]) =
+      throw new NotImplementedError
+
+    def getIdOfName(proxyId: ProxyId, name: String) =
+      throw new NotImplementedError
+
+    def invoke(proxyId: ProxyId, dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any], namedArguments: Seq[(DISPID, Any)]) = {
+      _invokes += ((proxyId, dispId, dispatchTypes, arguments, namedArguments))
+      Future.successful(())
+    }
   }
 }

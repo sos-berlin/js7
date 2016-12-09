@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.minicom.remoting.dialog
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.tcp.MessageConnection
+import com.sos.scheduler.engine.common.tcp.BlockingMessageConnection
+import scala.concurrent.{ExecutionContext, Future, blocking}
 
 /**
   * @author Joacim Zschimmer
@@ -9,12 +10,16 @@ import com.sos.scheduler.engine.common.tcp.MessageConnection
 trait StandardClientDialogConnection
 extends ClientDialogConnection with ExclusiveLock {
 
-  protected def connection: MessageConnection
+  protected def connection: BlockingMessageConnection
+  protected implicit def executionContext: ExecutionContext
 
-  def sendAndReceive(data: ByteString): Option[ByteString] = {
-    exclusive {
-      connection.sendMessage(data)
-      connection.receiveMessage()
+  def sendAndReceive(data: ByteString): Future[Option[ByteString]] =
+    Future {
+      blocking {
+        exclusive {
+          connection.sendMessage(data)
+          connection.receiveMessage()
+        }
+      }
     }
-  }
 }

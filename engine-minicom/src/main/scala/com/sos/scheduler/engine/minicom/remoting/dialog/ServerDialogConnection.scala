@@ -10,7 +10,7 @@ import akka.util.ByteString
   */
 trait ServerDialogConnection extends ClientDialogConnection {
 
-  def receiveFirstMessage(): Option[ByteString]
+  def blockingReceiveFirstMessage(): Option[ByteString]
 
-  def sendLastMessage(data: ByteString): Unit
+  def blockingSendLastMessage(data: ByteString): Unit
 }

@@ -20,11 +20,11 @@ import scala.util.Random
  * @author Joacim Zschimmer
  */
 @RunWith(classOf[JUnitRunner])
-final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
+final class BlockingTcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private val localhost = InetAddress.getByName("127.0.0.1")
   private var listenSocket: ServerSocket = _
-  private var tcpConnection: TcpConnection =  _
+  private var tcpConnection: BlockingTcpConnection =  _
   private var testSocket: Socket = null
   private def out = testSocket.getOutputStream
   private def in = testSocket.getInputStream
@@ -89,8 +89,8 @@ final class TcpConnectionTest extends FreeSpec with HasCloser with BeforeAndAfte
     intercept[java.nio.channels.AsynchronousCloseException] { awaitResult(future, 1.s) }
   }
 
-  private def connect(): TcpConnection = {
-    val connected = Future { TcpConnection.connect(new InetSocketAddress(localhost, listenSocket.getLocalPort)) }
+  private def connect(): BlockingTcpConnection = {
+    val connected = Future { BlockingTcpConnection.connect(new InetSocketAddress(localhost, listenSocket.getLocalPort)) }
     listenSocket.setSoTimeout(10*1000)
     testSocket = listenSocket.accept().closeWithCloser
     awaitResult(connected, 1.s)

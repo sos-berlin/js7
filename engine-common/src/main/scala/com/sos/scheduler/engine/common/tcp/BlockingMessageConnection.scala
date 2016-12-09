@@ -5,7 +5,7 @@ import akka.util.ByteString
 /**
  * @author Joacim Zschimmer
  */
-trait MessageConnection {
+trait BlockingMessageConnection {
   def receiveMessage(): Option[ByteString]
   def sendMessage(data: ByteString): Unit
 }

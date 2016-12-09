@@ -6,7 +6,7 @@ import akka.io.{IO, Tcp}
 import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.tcp.TcpConnection
+import com.sos.scheduler.engine.common.tcp.BlockingTcpConnection
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
 import com.sos.scheduler.engine.common.time.timer.TimerService
@@ -105,7 +105,7 @@ object TcpHttpTcpTunnelIT {
 
   private class ClientSide(uri: Uri, tunnelToken: TunnelToken) extends AutoCloseable {
     private implicit val actorSystem = ActorSystem(getClass.getSimpleName)
-    private val clientSideListener = TcpConnection.Listener.forLocalHostPort()
+    private val clientSideListener = BlockingTcpConnection.Listener.forLocalHostPort()
     private val tcpHttpBridge = new TcpToHttpBridge(
       actorSystem,
       clientSideListener.boundAddress,
@@ -216,7 +216,7 @@ object TcpHttpTcpTunnelIT {
     val tunnelId = tunnelToken.id
     setName(s"TCP Server $tunnelId")
     val terminatedPromise = Promise[Unit]()
-    val connection = TcpConnection.connect(masterAddress)
+    val connection = BlockingTcpConnection.connect(masterAddress)
 
     override def run(): Unit =
       try {

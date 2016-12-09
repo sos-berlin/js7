@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.minicom.remoting
 import akka.util.ByteString
 import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits.RichIDispatch
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch, IUnknownFactory}
@@ -16,8 +17,8 @@ import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.seriali
 import com.sos.scheduler.engine.minicom.remoting.serial.{CallDeserializer, ProxyRegistering, ProxyingIUnknownDeserializer, ResultDeserializer}
 import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
 import org.scalactic.Requirements._
-import scala.annotation.tailrec
 import scala.collection.{breakOut, immutable}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
@@ -30,6 +31,7 @@ trait Remoting extends ProxyRegistering with ProxyRemoting {
   protected val name: String
   protected val iUnknownFactories: immutable.Iterable[IUnknownFactory]
   protected val proxyIDispatchFactories: immutable.Iterable[ProxyIDispatchFactory]
+  protected implicit def executionContext: ExecutionContext
 
   protected def onReleased(iUnknown: IUnknown): Unit
 
@@ -91,7 +93,6 @@ trait Remoting extends ProxyRegistering with ProxyRemoting {
   }
 
   private[remoting] final def newProxy(proxyId: ProxyId, name: String, proxyClsid: CLSID, properties: Iterable[(String, Any)]) = {
-    //val newProxy = proxyClsidMap.getOrElse(proxyClsid, proxyClsidMap(CLSID.Null))   // TODO getOrElse solange nicht alle Proxys implementiert sind
     val newProxy = proxyClsidMap.getOrElse(proxyClsid, throw new NoSuchElementException(s"No ProxyIDispatchFactory for CLSID $proxyClsid '$name'"))
     val result = newProxy(this, proxyId, name, properties)
     proxyRegister.registerProxy(result)
@@ -107,45 +108,47 @@ trait Remoting extends ProxyRegistering with ProxyRemoting {
   final def iUnknowns[A <: IUnknown: ClassTag]: immutable.Iterable[A] =
     proxyRegister.iUnknowns[A]
 
-  private[remoting] final def getIdOfName(proxyId: ProxyId, name: String) = {
+  final def getIdOfName(proxyId: ProxyId, name: String) = {
     logger.trace(s"getIdOfName $proxyId '${proxyRegister.iUnknown(proxyId)}' $name")
     val call = GetIDsOfNamesCall(proxyId, IID.Null, localeId = 0, names = List(name))
-    val GetIDsOfNamesResult(dispIds) = sendReceive(call).readGetIDsOfNamesResult(1)
-    dispIds.head
+    for (response ← sendReceive(call)) yield
+      response.readGetIDsOfNamesResult(n = 1).dispatchIds.head
   }
 
-  final def createInstance(clsid: CLSID, iid: IID): IUnknown = {
-    val CreateInstanceResult(iUnknown) = sendReceive(CreateInstanceCall(clsid, null, 0, List(iid))).readCreateInstanceResult()
-    iUnknown
+  final def createInstance(clsid: CLSID, iid: IID): Future[IUnknown] = {
+    for (response ← sendReceive(CreateInstanceCall(clsid, null, 0, List(iid)))) yield
+      response.readCreateInstanceResult().iUnknown
   }
 
   final def invoke(proxyId: ProxyId, dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any], namedArguments: Seq[(DISPID, Any)]) = {
     logger.trace(s"invoke $proxyId $dispId '${proxyRegister.iUnknown(proxyId)}' $dispatchTypes ${arguments.mkString("(", ",", ")")} ${(namedArguments map { case (k, v) ⇒ s"$k -> $v"}).mkString("(", ",", ")")}")
     val call = InvokeCall(proxyId, dispId, IID.Null, dispatchTypes, arguments.toImmutableSeq, namedArguments.toImmutableSeq)
-    val InvokeResult(value) = sendReceive(call).readInvokeResult()
-    value
+    for (response ← sendReceive(call)) yield
+      response.readInvokeResult().result
   }
 
-  final def call(proxyId: ProxyId, methodName: String, arguments: Seq[Any]): Any = {
+  final def call(proxyId: ProxyId, methodName: String, arguments: Seq[Any]) = {
     val call = CallCall(proxyId, methodName, arguments.toImmutableSeq)
-    val InvokeResult(value) = sendReceive(call).readInvokeResult()
-    value
+    for (response ← sendReceive(call)) yield
+      response.readInvokeResult().result
   }
 
-  final def sendReceiveKeepalive(): Unit =
-    sendReceive(KeepaliveCall).readEmptyResult()
+  final def sendReceiveKeepalive(): Future[Unit] =
+    for (response ← sendReceive(KeepaliveCall))
+      yield response.readEmptyResult()
 
-  private def sendReceive(call: Call): ResultDeserializer = {
-    @tailrec def callbackLoop(sendByteString: ByteString): ByteString = {
-      val byteString = connection.sendAndReceive(sendByteString) getOrElse { throw new ConnectionClosedException }
-      if (CallDeserializer.isCall(byteString)) {
-        val callbackResult = executeMessage(byteString)
-        callbackLoop(callbackResult)
-      } else
-        byteString
+  private def sendReceive(call: Call): Future[ResultDeserializer] = {
+    def callbackLoop(sendByteString: ByteString): Future[ByteString] = {
+      (for (byteString ← connection.sendAndReceive(sendByteString) map { _ getOrElse { throw new ConnectionClosedException }}) yield
+        if (CallDeserializer.isCall(byteString)) {
+          val callbackResult = executeMessage(byteString)
+          callbackLoop(callbackResult)
+        } else
+          Future.successful(byteString)
+      ).flatten
     }
-    val byteString = callbackLoop(serializeCall(proxyRegister, call))
-    toResultDeserializer(byteString)
+    for (byteString ← callbackLoop(serializeCall(proxyRegister, call))) yield
+      toResultDeserializer(byteString)
   }
 
   private def toResultDeserializer(byteString: ByteString): ResultDeserializer =

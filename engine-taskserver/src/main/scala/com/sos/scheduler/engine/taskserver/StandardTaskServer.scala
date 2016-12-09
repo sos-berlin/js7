@@ -3,8 +3,10 @@ package com.sos.scheduler.engine.taskserver
 import akka.util.ByteString
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.tcp.TcpConnection
+import com.sos.scheduler.engine.common.tcp.BlockingTcpConnection
+import com.sos.scheduler.engine.common.time.ScalaTime.MaxDuration
 import com.sos.scheduler.engine.minicom.remoting.dialog.StandardServerDialogConnection
 import com.sos.scheduler.engine.minicom.remoting.{Remoting, ServerRemoting}
 import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
@@ -31,7 +33,7 @@ extends TaskServer with HasCloser {
 
   private val logger = Logger.withPrefix(getClass, arguments.agentTaskId.toString)
   private val terminatedPromise = Promise[Terminated.type]()
-  private val master = TcpConnection.connect(arguments.masterInetSocketAddress).closeWithCloser
+  private val master = BlockingTcpConnection.connect(arguments.masterInetSocketAddress).closeWithCloser
 
   private val remoting = new ServerRemoting(
     new StandardServerDialogConnection(master),
@@ -58,7 +60,7 @@ extends TaskServer with HasCloser {
       blocking {
         val connectionMessage = TunnelConnectionMessage(arguments.tunnelToken)
         master.sendMessage(ByteString(connectionMessage.toJson.compactPrint))
-        remoting.run()
+        remoting.run() await MaxDuration
         master.close()
       }
     } onComplete { tried ⇒

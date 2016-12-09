@@ -2,12 +2,13 @@ package com.sos.scheduler.engine.common.tcp
 
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.tcp.TcpConnection._
+import com.sos.scheduler.engine.common.tcp.BlockingTcpConnection._
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousCloseException, ServerSocketChannel, SocketChannel}
 
-final class TcpConnection(val channel: SocketChannel) extends AutoCloseable with MessageConnection {
+final class BlockingTcpConnection(val channel: SocketChannel)
+extends AutoCloseable with BlockingMessageConnection {
 
   val ownAddress: InetSocketAddress = channel.getLocalAddress.asInstanceOf[InetSocketAddress]
   val peerAddress: InetSocketAddress = channel.getRemoteAddress.asInstanceOf[InetSocketAddress]
@@ -50,29 +51,29 @@ final class TcpConnection(val channel: SocketChannel) extends AutoCloseable with
     channel.write(Array(lengthBuffer) ++ byteBuffers)
   }
 
-  override def toString = s"TcpConnection($peerAddress)"
+  override def toString = s"BlockingTcpConnection($peerAddress)"
 
   def ownPort: Int = ownAddress.getPort
   def isConnected = channel.isConnected
 }
 
-object TcpConnection{
+object BlockingTcpConnection{
   private val logger = Logger(getClass)
 
-  def connect(peerAddress: InetSocketAddress): TcpConnection = {
+  def connect(peerAddress: InetSocketAddress): BlockingTcpConnection = {
     logger.debug(s"Connecting with $peerAddress ...")
     val channel = SocketChannel.open()
     channel.connect(peerAddress)
     logger.debug(s"Connected own ${channel.getLocalAddress} with remote $peerAddress")
     assert(channel.isBlocking)
-    new TcpConnection(channel)
+    new BlockingTcpConnection(channel)
   }
 
   final class Listener(address: InetSocketAddress) extends AutoCloseable {
     private val listener = ServerSocketChannel.open().bind(address)
     val boundAddress = listener.getLocalAddress.asInstanceOf[InetSocketAddress]
 
-    def accept() = new TcpConnection(listener.accept())
+    def accept() = new BlockingTcpConnection(listener.accept())
 
     def close() = listener.close()
   }
