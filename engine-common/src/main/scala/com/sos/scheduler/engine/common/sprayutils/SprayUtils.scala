@@ -1,13 +1,16 @@
 package com.sos.scheduler.engine.common.sprayutils
 
 import com.sos.scheduler.engine.base.convert.As
+import com.sos.scheduler.engine.base.utils.ScalaUtils.RichThrowable
+import com.sos.scheduler.engine.common.time.ScalaTime.parseDuration
+import java.time.Duration
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import shapeless.{::, HNil}
 import spray.http.HttpHeaders.Accept
 import spray.http.{ContentType, HttpHeader, MediaType, StatusCode, Uri}
 import spray.httpx.marshalling.ToResponseMarshallable.isMarshallable
-import spray.httpx.unmarshalling.{ContentExpected, FromStringOptionDeserializer, MalformedContent}
+import spray.httpx.unmarshalling.{ContentExpected, Deserialized, FromStringOptionDeserializer, MalformedContent}
 import spray.routing.Directives._
 import spray.routing._
 
@@ -134,13 +137,22 @@ object SprayUtils {
     }
 
   implicit def asFromStringOptionDeserializer[A](implicit stringAsA: As[String, A]) =
+    simpleFromStringOptionDeserializer(stringAsA)
+
+//  implicit def isStringFromStringOptionDeserializer[A <: IsString: IsString.Companion]: FromStringOptionDeserializer[A] =
+//    simpleFromStringOptionDeserializer(implicitly[IsString.Companion[A]].apply)
+
+  implicit val DurationFromStringOptionDeserializer: FromStringOptionDeserializer[Duration] =
+    simpleFromStringOptionDeserializer(parseDuration)
+
+  final def simpleFromStringOptionDeserializer[A](fromString: String ⇒ A) =
     new FromStringOptionDeserializer[A] {
-      def apply(value: Option[String]) =
+      def apply(value: Option[String]): Deserialized[A] =
         value match {
           case Some(string) ⇒
-            try Right(stringAsA(string))
-            catch { case NonFatal(t) ⇒
-              Left(new MalformedContent(t.toString, Some(t)))
+            try Right(fromString(string))
+            catch {
+              case NonFatal(t) ⇒ Left(new MalformedContent(t.toSimplifiedString, Some(t)))
             }
           case None ⇒
             Left(ContentExpected)
