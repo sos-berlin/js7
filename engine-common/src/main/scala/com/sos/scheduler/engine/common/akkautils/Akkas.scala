@@ -5,6 +5,7 @@ import akka.actor.Cancellable
 import akka.util.{ByteString, Timeout}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
+import spray.http.Uri
 
 /**
  * @author Joacim Zschimmer
@@ -53,4 +54,13 @@ object Akkas {
 
     def isCancelled = _isCancelled
   }
+
+  def encodeAsActorName(o: String): String = {
+    val a = Uri.Path.Segment(o, Uri.Path.Empty).toString
+    if (a startsWith "$") "%24" + a.tail
+    else a
+  }
+
+  def decodeActorName(o: String): String =
+    Uri(o).path.head.toString
 }

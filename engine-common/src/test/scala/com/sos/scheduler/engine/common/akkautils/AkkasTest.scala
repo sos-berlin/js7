@@ -59,4 +59,13 @@ final class AkkasTest extends FreeSpec {
     assert(string endsWith " ...")
     assert(byteStringToTruncatedString(byteString).size < 330)
   }
+
+  "encodeAsActorName" in {
+    intercept[IllegalArgumentException] { encodeAsActorName("") }
+    assert(encodeAsActorName("a") == "a")
+    assert(encodeAsActorName("$/$") == "%24%2F$")
+    assert(decodeActorName("%24%2F$") == "$/$")
+    assert(encodeAsActorName("folder/subfolder/jobname") == "folder%2Fsubfolder%2Fjobname")
+    assert(encodeAsActorName("a?b=!&c=ö") == "a%3Fb=!&c=%C3%B6")
+  }
 }
