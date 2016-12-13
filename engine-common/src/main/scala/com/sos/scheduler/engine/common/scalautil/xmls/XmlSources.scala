@@ -16,6 +16,6 @@ object XmlSources {
   implicit def xmlElemToSource(o: xml.Elem): Source =
     new StreamSource(new StringReader(o.toString))
 
-  implicit def inputStreamSource(o: InputStream): Source =
+  implicit def inputStreamSource(o: InputStream): StreamSource =
     new StreamSource(o)
 }
