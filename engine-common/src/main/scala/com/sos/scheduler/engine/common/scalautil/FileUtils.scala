@@ -111,6 +111,14 @@ object FileUtils {
       body(file)
   }
 
+  def deleteDirectoryRecursively(dir: Path): Unit = {
+    require(dir.isDirectory, s"Not a directory: $dir")
+    if (!isSymbolicLink(dir)) {
+      deleteDirectoryContentRecursively(dir)
+    }
+    delete(dir)
+  }
+
   def deleteDirectoryContentRecursively(dir: Path): Unit = {
     for (f ← dir.pathSet) {
       if (f.isDirectory && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
