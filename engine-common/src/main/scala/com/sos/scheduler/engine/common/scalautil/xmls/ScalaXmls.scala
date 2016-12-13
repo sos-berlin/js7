@@ -2,14 +2,25 @@ package com.sos.scheduler.engine.common.scalautil.xmls
 
 import akka.util.ByteString
 import com.google.common.base.Charsets.UTF_8
+import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import java.io.File
 import java.nio.charset.Charset
+import java.nio.file.Path
 
 object ScalaXmls {
 
   object implicits {
 
     implicit class RichXmlFile(val delegate: File) extends AnyVal {
+
+      def xml = SafeXML.loadFile(delegate)
+
+      def xml_=(o: scala.xml.Elem): Unit = {
+        scala.xml.XML.save(delegate.getPath, o, enc = UTF_8.name, xmlDecl = true)
+      }
+    }
+
+    implicit class RichXmlPath(val delegate: Path) extends AnyVal {
 
       def xml = SafeXML.loadFile(delegate)
 
