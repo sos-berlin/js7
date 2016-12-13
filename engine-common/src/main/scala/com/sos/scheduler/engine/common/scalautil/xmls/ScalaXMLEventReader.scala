@@ -12,7 +12,6 @@ import java.util.NoSuchElementException
 import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
 import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
 import javax.xml.transform.Source
-import org.scalactic.Requirements._
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 import scala.language.implicitConversions
@@ -104,9 +103,10 @@ extends AutoCloseable {
 
   def forEachStartElement[A](body: PartialFunction[String, A]): ConvertedElementMap[A] = {
     val results = Vector.newBuilder[(String, A)]
+    val liftedBody = body.lift
     @tailrec def g(): Unit = peek match {
       case e: StartElement ⇒
-        for (o ← parseStartElementAlternative(body))
+        for (o ← parseStartElementAlternative(liftedBody))
           results += e.getName.toString → o
         g()
       case _: EndElement ⇒
@@ -116,10 +116,10 @@ extends AutoCloseable {
     new ConvertedElementMap(results.result)
   }
 
-  def parseStartElementAlternative[A](body: PartialFunction[String, A]): Option[A] =
+  private[xmls] def parseStartElementAlternative[A](body: String ⇒ Option[A]): Option[A] =
     wrapException {
       val name = peek.asStartElement.getName.toString
-      val result = body.lift(name)
+      val result = body(name)
       if (result.isEmpty) {
         if (!config.ignoreUnknown) sys.error(s"Unexpected XML element <$name>")
         ignoreElement()
@@ -148,8 +148,11 @@ extends AutoCloseable {
 //  private def parseElementInto(result: Result): Unit =
 //  Liest bis zum Stream-Ende statt nur bis zum Endetag:  transformerFactory.newTransformer().transform(new StAXSource(xmlEventReader), result)
 
-  def requireStartElement(name: String): Unit =
-    require(peek.asStartElement.getName.getLocalPart == name)
+  def requireStartElement(name: String): StartElement = {
+    val e = peek.asStartElement
+    require(e.getName.getLocalPart == name)
+    e
+  }
 
   def eatText(): String = {
     val result = new StringBuilder
@@ -169,6 +172,8 @@ extends AutoCloseable {
       throw new IllegalArgumentException(s"'${e.getSimpleName}' expected but '${event.getClass.getSimpleName}' encountered")
     event.asInstanceOf[E]
   }
+
+  def nextEvent() = delegate.nextEvent()
 
   def hasNext: Boolean = delegate.hasNext
 
@@ -216,11 +221,15 @@ object ScalaXMLEventReader {
 
   implicit def scalaXMLEventReaderToXMLEventReader(o: ScalaXMLEventReader): XMLEventReader = o.xmlEventReader
 
-  def parseString[A](xml: String, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parse: ScalaXMLEventReader ⇒ A): A =
-    parseDocument(stringToSource(xml), inputFactory)(parse)
+  def parseString[A](xml: String, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), config: Config = Config.Default)
+    (parse: ScalaXMLEventReader ⇒ A)
+  : A =
+    parseDocument(stringToSource(xml), inputFactory, config)(parse)
 
-  def parseElem[A](elem: xml.Elem, inputFactory: XMLInputFactory = getCommonXMLInputFactory())(parseEvents: ScalaXMLEventReader ⇒ A): A =
-    parseDocument(xmlElemToStaxSource(elem), inputFactory)(parseEvents)
+  def parseElem[A](elem: xml.Elem, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), config: Config = Config.Default)
+    (parseEvents: ScalaXMLEventReader ⇒ A)
+  : A =
+    parseDocument(xmlElemToStaxSource(elem), inputFactory, config)(parseEvents)
 
   def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), config: Config = Config.Default)
     (parse: ScalaXMLEventReader ⇒ A)
@@ -268,8 +277,10 @@ object ScalaXMLEventReader {
     def ignoreUnread(): Unit = readAttributes ++= keys
 
     def requireAllAttributesRead(): Unit = {
-      val names = keySet -- readAttributes
-      if (names.nonEmpty) throw new UnparsedAttributesException(names.toImmutableSeq)
+      if (keySet != readAttributes) {
+        val names = keySet -- readAttributes
+        if (names.nonEmpty) throw new UnparsedAttributesException(names.toImmutableSeq)
+      }
     }
   }
 

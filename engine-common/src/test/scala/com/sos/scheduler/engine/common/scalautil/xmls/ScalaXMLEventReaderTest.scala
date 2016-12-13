@@ -173,9 +173,10 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
       import eventReader._
       parseElement("A") {
         parseStartElementAlternative {
-          case "X" ⇒ parseElement() { "XX" }
-          case "Y" ⇒ parseElement() { "YY" }
-          case "Z" ⇒ parseElement() { "ZZ" }
+          case "X" ⇒ Some(parseElement() { "XX" })
+          case "Y" ⇒ Some(parseElement() { "YY" })
+          case "Z" ⇒ Some(parseElement() { "ZZ" })
+          case _ ⇒ None
         }
       }
     } shouldEqual Some("YY")
