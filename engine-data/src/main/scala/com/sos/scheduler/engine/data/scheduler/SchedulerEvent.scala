@@ -2,8 +2,8 @@ package com.sos.scheduler.engine.data.scheduler
 
 import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.scheduler.engine.data.event.NoKeyEvent
-import spray.json.DefaultJsonProtocol._
 import com.sos.scheduler.engine.data.scheduler.SchedulerStates._
+import spray.json.DefaultJsonProtocol._
 
 /**
   * Event from [[com.sos.scheduler.engine.main.SchedulerThreadController]]
