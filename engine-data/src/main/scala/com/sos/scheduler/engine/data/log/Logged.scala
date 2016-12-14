@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.log
 
-import com.sos.scheduler.engine.base.sprayjson.typed.{SimpleTypedJsonFormat, TypedJsonFormat}
+import com.sos.scheduler.engine.base.sprayjson.typed.SimpleTypedJsonFormat
 import com.sos.scheduler.engine.data.event.NoKeyEvent
 import com.sos.scheduler.engine.data.log.Logged._
 import com.sos.scheduler.engine.data.message.MessageCode
