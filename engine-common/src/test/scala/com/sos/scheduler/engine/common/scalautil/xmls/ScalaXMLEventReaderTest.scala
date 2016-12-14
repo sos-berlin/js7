@@ -2,9 +2,10 @@ package com.sos.scheduler.engine.common.scalautil.xmls
 
 import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions._
 import com.sos.scheduler.engine.base.utils.ScalaUtils._
-import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources.stringToSource
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReaderTest._
+import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources.stringToSource
+import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -199,6 +200,14 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
 
   "xmlElemToStaxSource" in {
     parseElem(<A/>) { eventReader ⇒ eventReader.parseElement("A") {} }
+  }
+
+  if (sys.props contains "test.speed") "Speed for minimal XML document" in {
+    for (_ ← 1 to 10) measureTime(10000, "document") {
+      parseString("<A/>") { eventReader ⇒
+        eventReader.parseElement("A") {}
+      }
+    }
   }
 }
 
