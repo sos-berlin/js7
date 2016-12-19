@@ -5,11 +5,13 @@ import com.sos.scheduler.engine.common.event.collector.EventCollector._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutureFuture
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, Snapshot}
+import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, Snapshot, SomeEventRequest}
 import com.typesafe.config.Config
 import java.time.Instant.now
 import java.time.{Duration, Instant}
+import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
+import scala.math.max
 
 /**
   * @author Joacim Zschimmer
@@ -34,6 +36,19 @@ trait EventCollector {
     sync.onNewEvent(eventId)
   }
 
+  def byPredicate[E <: Event](request: SomeEventRequest[E], predicate: KeyedEvent[E] ⇒ Boolean): Future[EventSeq[Iterator, KeyedEvent[E]]] =
+    request match {
+      case request: EventRequest[E] ⇒
+        when[E](request, predicate)
+      case request: ReverseEventRequest[E] ⇒
+        val snapshots = reverse[E](request, predicate)
+        Future.successful(
+          if (snapshots.nonEmpty)
+            EventSeq.NonEmpty(snapshots)
+          else
+            EventSeq.Empty(eventIdGenerator.lastUsedEventId))  // eventReverse is only for testing purposes
+  }
+
   final def when[E <: Event](
     request: EventRequest[E],
     predicate: KeyedEvent[E] ⇒ Boolean = (_: KeyedEvent[E]) ⇒ true)
@@ -53,6 +68,14 @@ trait EventCollector {
         case e if eventClasses.exists(_ isAssignableFrom e.event.getClass) && predicate(e.asInstanceOf[KeyedEvent[E]]) ⇒
           e.asInstanceOf[KeyedEvent[E]]
       })
+
+  def byKeyAndPredicate[E <: Event](request: SomeEventRequest[E], key: E#Key, predicate: E ⇒ Boolean): Future[EventSeq[Iterator, E]] =
+    request match {
+      case request: EventRequest[E] ⇒
+        whenForKey(request, key, predicate)
+      case request: ReverseEventRequest[E] ⇒
+        Future.successful(EventSeq.NonEmpty(reverseForKey(request, key)))
+    }
 
   final def whenForKey[E <: Event](
     request: EventRequest[E],
@@ -135,6 +158,20 @@ trait EventCollector {
           Snapshot(eventId, event)
       }
       .take(request.limit)
+
+  def wrapInSnapshot[E](future: ⇒ Future[EventSeq[Iterator, E]]): Future[Snapshot[EventSeq[Seq, E]]] = {
+    val eventId = eventIdGenerator.next()
+    for (eventSeq ← future) yield
+      eventSeq match {
+        case EventSeq.NonEmpty(iterator) ⇒
+          val events = iterator.toVector
+          Snapshot(max(eventId, events.last.eventId), EventSeq.NonEmpty(events))
+        case o: EventSeq.Empty ⇒
+          eventIdGenerator.newSnapshot(o)
+        case EventSeq.Torn ⇒
+          eventIdGenerator.newSnapshot(EventSeq.Torn)
+      }
+  }
 }
 
 object EventCollector {
