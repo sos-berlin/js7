@@ -23,7 +23,8 @@ import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{blocking, Future}
+import scala.concurrent.{Future, blocking}
+import scala.io
 
 /**
   * JS-1558 Agent includes kill scripts

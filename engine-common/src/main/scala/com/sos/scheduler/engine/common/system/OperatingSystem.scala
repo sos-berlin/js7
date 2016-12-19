@@ -2,10 +2,10 @@ package com.sos.scheduler.engine.common.system
 
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
 import java.io.{File, FileInputStream}
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.{Path, Paths}
+import scala.io
 import scala.util.Try
 
 /**

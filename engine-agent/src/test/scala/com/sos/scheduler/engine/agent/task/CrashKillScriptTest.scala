@@ -13,6 +13,7 @@ import java.nio.file.{Files, Paths}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import scala.io
 
 /**
   * JS-1551.

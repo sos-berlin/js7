@@ -24,6 +24,7 @@ import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
 import scala.concurrent.duration.Duration.Inf
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.io
 
 /**
  * @author Joacim Zschimmer

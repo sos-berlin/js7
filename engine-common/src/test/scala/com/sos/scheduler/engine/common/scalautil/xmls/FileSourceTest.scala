@@ -6,6 +6,7 @@ import java.nio.file.Files.{createTempFile, delete}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import scala.io
 
 /**
   * @author Joacim Zschimmer
