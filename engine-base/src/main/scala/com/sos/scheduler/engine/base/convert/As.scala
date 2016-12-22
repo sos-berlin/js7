@@ -44,7 +44,4 @@ object As {
 
   implicit val StringAsPath: As[String, Path] =
     As(Paths.get(_))
-
-  implicit val StringAsSecretString: As[String, SecretString] =
-    As(SecretString.apply)
 }

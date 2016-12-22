@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.base.generic
 
+import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
 import spray.json.{JsString, JsValue, RootJsonFormat}
 
@@ -19,4 +20,7 @@ object SecretString {
       def read(jsValue: JsValue) = SecretString(jsValue.asString)
     }
   }
+
+  implicit val StringAsSecretString: As[String, SecretString] =
+    As(SecretString.apply)
 }

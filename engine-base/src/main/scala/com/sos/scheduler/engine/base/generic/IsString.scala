@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.base.generic
 
+import com.sos.scheduler.engine.base.convert.As
 import javax.annotation.Nullable
 import scala.language.implicitConversions
 import spray.json.{JsString, JsValue, JsonFormat, JsonWriter}
@@ -47,5 +48,6 @@ object IsString {
 
   trait Companion[A <: IsString] extends HasJsonFormat[A] {
     implicit val ordering: Ordering[A] = Ordering by { _.string }
+    implicit val IsStringAsString: As[String, A] = As(apply)
   }
 }
