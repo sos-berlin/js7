@@ -13,8 +13,10 @@ trait EventSeq[+M[_], +E]
 
 object EventSeq {
 
-  final case class NonEmpty[M[_], E](eventSnapshots: M[Snapshot[E]])
-  extends EventSeq[M, E]
+  final case class NonEmpty[M[_] <: TraversableOnce[_], E](eventSnapshots: M[Snapshot[E]])
+  extends EventSeq[M, E] {
+    assert(eventSnapshots.nonEmpty)
+  }
 
   private implicit def nonEmptyJsonFormat[E: RootJsonFormat]: RootJsonFormat[NonEmpty[Seq, E]] =
     //Does not compile: jsonFormat1((eventSnapshots: Seq[Snapshot[E]]) ⇒ NonEmpty(eventSnapshots)), // Error: kinds of the type arguments (scala.collection.immutable.Seq) do not conform to the expected kinds of the type parameters (type T) ...
