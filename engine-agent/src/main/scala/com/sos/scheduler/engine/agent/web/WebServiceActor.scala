@@ -10,6 +10,7 @@ import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
+import com.sos.scheduler.engine.common.event.EventIdGenerator
 import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
@@ -36,6 +37,7 @@ final private class WebServiceActor private(
   protected val timerService: TimerService,
   extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,
+  protected val eventIdGenerator: EventIdGenerator,
   implicit protected val executionContext: ExecutionContext,
   injector: Injector)
 extends HttpServiceActor
@@ -84,6 +86,7 @@ private[web] object WebServiceActor {
     timerService: TimerService,
     extraWebServices: immutable.Seq[ExternalWebService],
     agentConfiguration: AgentConfiguration,
+    eventIdGenerator: EventIdGenerator,
     executionContext: ExecutionContext,
     injector: Injector)
   {
@@ -98,6 +101,7 @@ private[web] object WebServiceActor {
         timerService,
         extraWebServices,
         agentConfiguration,
+        eventIdGenerator,
         executionContext,
         injector)
   }

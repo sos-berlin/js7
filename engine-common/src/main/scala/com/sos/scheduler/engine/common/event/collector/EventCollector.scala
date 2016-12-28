@@ -9,34 +9,26 @@ import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, EventId, Event
 import com.typesafe.config.Config
 import java.time.Instant.now
 import java.time.{Duration, Instant}
-import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
-import scala.math.max
 
 /**
   * @author Joacim Zschimmer
   */
-trait EventCollector {
-
-  protected val configuration: Configuration
-  protected val eventIdGenerator: EventIdGenerator
-  protected val timerService: TimerService
-  protected implicit val executionContext: ExecutionContext
+abstract class EventCollector(configuration: Configuration)
+  (implicit
+    timerService: TimerService,
+    executionContext: ExecutionContext)
+{
 
   private[collector] val keyedEventQueue = new KeyedEventQueue(sizeLimit = configuration.queueSize)
-  //private val keyToEventQueue = new concurrent.TrieMap[Any, EventQueue]()
-
   private val sync = new Sync(timerService)
 
-  protected final def putEvent(keyedEvent: AnyKeyedEvent): Unit = {
-    //keyToEventQueue.getOrElseUpdate(keyedEvent.key, new EventQueue(EventQueueSizeLimitPerKey))
-    //  .add(Snapshot(eventId, keyedEvent.event))
-    val eventId = eventIdGenerator.next()
-    keyedEventQueue.add(Snapshot(eventId, keyedEvent))
-    sync.onNewEvent(eventId)
+  private[collector] final def putEventSnapshot(snapshot: Snapshot[AnyKeyedEvent]): Unit = {
+    keyedEventQueue.add(snapshot)
+    sync.onNewEvent(snapshot.eventId)
   }
 
-  def byPredicate[E <: Event](request: SomeEventRequest[E], predicate: KeyedEvent[E] ⇒ Boolean): Future[EventSeq[Iterator, KeyedEvent[E]]] =
+  final def byPredicate[E <: Event](request: SomeEventRequest[E], predicate: KeyedEvent[E] ⇒ Boolean): Future[EventSeq[Iterator, KeyedEvent[E]]] =
     request match {
       case request: EventRequest[E] ⇒
         when[E](request, predicate)
@@ -46,7 +38,7 @@ trait EventCollector {
           if (snapshots.nonEmpty)
             EventSeq.NonEmpty(snapshots)
           else
-            EventSeq.Empty(eventIdGenerator.lastUsedEventId))  // eventReverse is only for testing purposes
+            EventSeq.Empty(keyedEventQueue.lastEventId))  // eventReverse is only for testing purposes
   }
 
   final def when[E <: Event](
@@ -69,7 +61,7 @@ trait EventCollector {
           e.asInstanceOf[KeyedEvent[E]]
       })
 
-  def byKeyAndPredicate[E <: Event](request: SomeEventRequest[E], key: E#Key, predicate: E ⇒ Boolean): Future[EventSeq[Iterator, E]] =
+  final def byKeyAndPredicate[E <: Event](request: SomeEventRequest[E], key: E#Key, predicate: E ⇒ Boolean): Future[EventSeq[Iterator, E]] =
     request match {
       case request: EventRequest[E] ⇒
         whenForKey(request, key, predicate)
@@ -159,19 +151,11 @@ trait EventCollector {
       }
       .take(request.limit)
 
-  def wrapInSnapshot[E](future: ⇒ Future[EventSeq[Iterator, E]]): Future[Snapshot[EventSeq[Seq, E]]] = {
-    val eventId = eventIdGenerator.next()
-    for (eventSeq ← future) yield
-      eventSeq match {
-        case EventSeq.NonEmpty(iterator) ⇒
-          val events = iterator.toVector
-          Snapshot(max(eventId, events.last.eventId), EventSeq.NonEmpty(events))
-        case o: EventSeq.Empty ⇒
-          eventIdGenerator.newSnapshot(o)
-        case EventSeq.Torn ⇒
-          eventIdGenerator.newSnapshot(EventSeq.Torn)
-      }
-  }
+  final def lastEventId: EventId =
+    keyedEventQueue.lastEventId
+
+  final def eventCount: Int =
+    keyedEventQueue.size
 }
 
 object EventCollector {
