@@ -44,8 +44,6 @@ object TypedPath {
 
   implicit val jsonFormat: JsonFormat[TypedPath] = TypedPathRegister.WithCompanionJsonFormat
 
-  val extensions: Set[String] = FileBasedTypes.forFiles map { _.filenameExtension }
-
   type AnyCompanion = Companion[_ <: TypedPath]
 
   abstract class Companion[A <: TypedPath: ClassTag] extends AbsolutePath.Companion[A] {

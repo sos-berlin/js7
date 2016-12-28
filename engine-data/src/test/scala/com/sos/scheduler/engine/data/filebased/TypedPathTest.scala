@@ -13,11 +13,6 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 final class TypedPathTest extends FreeSpec {
 
-  "filenameExtensions" in {
-    assert(TypedPath.extensions ==
-      Set(".job.xml", ".job_chain.xml", ".lock.xml", ".monitor.xml", ".process_class.xml", ".order.xml", ".schedule.xml"))
-  }
-
   "asTyped" in {
     val jobPath = JobPath("/TEST")
     assert(jobPath.asTyped[JobPath] eq jobPath)
