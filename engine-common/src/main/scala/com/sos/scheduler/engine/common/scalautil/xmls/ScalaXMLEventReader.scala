@@ -98,10 +98,13 @@ extends AutoCloseable {
     attributeMap foreach callF
   }
 
-  def parseEachRepeatingElement[A](name: String)(body: ⇒ A): immutable.Seq[A] =
-    forEachStartElement[A] { case `name` ⇒ parseElement() { body } }.values
+  def parseEachRepeatingElement[A](name: String)(body: ⇒ A): immutable.IndexedSeq[A] =
+    parseElements[A] { case `name` ⇒ parseElement() { body } } map { _._2 }
 
-  def forEachStartElement[A](body: PartialFunction[String, A]): ConvertedElementMap[A] = {
+  def forEachStartElement[A](body: PartialFunction[String, A]): ConvertedElementMap[A] =
+    new ConvertedElementMap(parseElements[A](body))
+
+  def parseElements[A](body: PartialFunction[String, A]): immutable.IndexedSeq[(String, A)] = {
     val results = Vector.newBuilder[(String, A)]
     val liftedBody = body.lift
     @tailrec def g(): Unit = peek match {
@@ -113,7 +116,7 @@ extends AutoCloseable {
       case _: EndDocument ⇒
     }
     g()
-    new ConvertedElementMap(results.result)
+    results.result
   }
 
   private[xmls] def parseStartElementAlternative[A](body: String ⇒ Option[A]): Option[A] =
@@ -284,7 +287,7 @@ object ScalaXMLEventReader {
     }
   }
 
-  final class ConvertedElementMap[A] private[xmls](pairs: Vector[(String, A)]) {
+  final class ConvertedElementMap[A] private[xmls](pairs: immutable.IndexedSeq[(String, A)]) {
 
     def one[B <: A : ClassTag]: B =
       option[B] getOrElse { throw new NoSuchElementException(s"No element for type ${implicitClass[B].getSimpleName}") }
