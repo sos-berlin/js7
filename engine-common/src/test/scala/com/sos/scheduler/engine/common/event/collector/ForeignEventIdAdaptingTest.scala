@@ -19,10 +19,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
 final class ForeignEventIdAdaptingTest extends FreeSpec {
 
   "test" in {
+    implicit val timerService = TimerService()
     val eventCollector =
-      new EventCollector(
-        EventCollector.Configuration(queueSize = 1000, timeoutLimit = 1.h),
-        TimerService())
+      new EventCollector(EventCollector.Configuration(queueSize = 1000, timeoutLimit = 1.h))
       with ForeignEventIdAdapting {
         protected val executionContext = ExecutionContext.global
         protected val eventIdGenerator = new EventIdGenerator
