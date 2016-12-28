@@ -82,12 +82,14 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
 
 private object EventCollectorTest {
 
-  private class MyEventCollector(protected val configuration: EventCollector.Configuration = EventCollector.Configuration.ForTest)
+  private class MyEventCollector(configuration: EventCollector.Configuration = EventCollector.Configuration.ForTest)
     (implicit
       protected val eventIdGenerator: EventIdGenerator,
       protected val timerService: TimerService,
       protected val executionContext: ExecutionContext)
-  extends EventCollector {
+  extends EventCollector(configuration, timerService)
+  with EventIdGenerating
+  {
     def putEvent_(keyedEvent: AnyKeyedEvent) = putEvent(keyedEvent)
   }
 

@@ -19,14 +19,17 @@ final class KeyedEventQueue(sizeLimit: Int) {
   def oldestEventId = lastRemovedFirstId
 
   def add(snapshot: Snapshot[AnyKeyedEvent]): Unit = {
-    // Always called in JobScheduler's C++ thread
-    if (queueSize >= sizeLimit) {
-      lastRemovedFirstId = queue.firstKey
-      queue.remove(lastRemovedFirstId)
-      queueSize -= 1
+    synchronized {
+      require(lastEventId < snapshot.eventId,
+        s"EventId '${EventId.toString(snapshot.eventId)}' is not greater than last Eventid ${EventId.toString(lastEventId)}")
+      if (queueSize >= sizeLimit) {
+        lastRemovedFirstId = queue.firstKey
+        queue.remove(lastRemovedFirstId)
+        queueSize -= 1
+      }
+      queue.put(snapshot.eventId, snapshot)
+      queueSize += 1
     }
-    queue.put(snapshot.eventId, snapshot)
-    queueSize += 1
   }
 
   def hasAfter(after: EventId) = queue.navigableKeySet.higher(after) != null
@@ -51,6 +54,12 @@ final class KeyedEventQueue(sizeLimit: Int) {
 
   def reverseEvents(after: EventId): Iterator[Snapshot[AnyKeyedEvent]] =
     new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator takeWhile { _ > after } map queue.get)
+
+  def lastEventId: EventId =
+    if (queue.isEmpty) EventId.BeforeFirst else queue.lastKey
+
+  def size: Int =
+    queueSize
 
   private class EventIterator(firstEventId: EventId, snapshots: Iterator[Snapshot[AnyKeyedEvent]])
   extends GuavaIterator[Snapshot[AnyKeyedEvent]] {
