@@ -10,8 +10,9 @@ import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Files.{delete, isSymbolicLink}
 import java.nio.file.attribute.FileAttribute
-import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths}
+import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
 import scala.annotation.tailrec
+import scala.collection.AbstractIterator
 import scala.concurrent.forkjoin.ThreadLocalRandom
 import scala.language.implicitConversions
 
@@ -125,4 +126,14 @@ object FileUtils {
       delete(f)
     }
   }
+
+  def nestedPathsIterator(directory: Path, options: FileVisitOption*): AutoCloseable with Iterator[Path] =
+    new AbstractIterator[Path] with AutoCloseable {
+      private val javaStream = Files.walk(directory, options: _*)
+      private val iterator = javaStreamToIterator(javaStream)
+
+      def close() = javaStream.close()
+      def hasNext = iterator.hasNext
+      def next() = iterator.next()
+    }
 }
