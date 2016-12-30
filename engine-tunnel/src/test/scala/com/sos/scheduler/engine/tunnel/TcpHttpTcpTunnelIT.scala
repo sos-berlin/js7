@@ -116,8 +116,11 @@ object TcpHttpTcpTunnelIT {
           val uri = ClientSide.this.uri withPath Path("/test/tunnel")
           uri withPath (uri.path / tunnelToken.id.string)
         },
-        agentSendReceive = (arf, ec, t) ⇒ spray.client.pipelining.sendReceive(arf, ec, t),
-        heartbeatRequestorOption = None))
+        heartbeatRequestorOption = None)
+      {
+        def tunnelSendReceive(t: Timeout)(implicit ec: ExecutionContext) =
+          spray.client.pipelining.sendReceive(actorSystem, ec, t)
+      })
 
     tcpHttpBridge.start()
     val tcp = clientSideListener.accept()

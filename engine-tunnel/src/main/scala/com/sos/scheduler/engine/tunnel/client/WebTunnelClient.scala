@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.tunnel.client
 
-import akka.actor.{ActorRefFactory, ActorSystem}
+import akka.actor.ActorSystem
 import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.akkautils.Akkas
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -20,13 +20,14 @@ import spray.httpx.encoding.Gzip
 /**
  * @author Joacim Zschimmer
  */
-final class WebTunnelClient(
+abstract class WebTunnelClient(
   tunnelToken: TunnelToken,
   val tunnelUri: Uri,
-  agentSendReceive: (ActorRefFactory, ExecutionContext, Timeout) ⇒ SendReceive,
   heartbeatRequestorOption: Option[HeartbeatRequestor])
   (implicit actorSystem: ActorSystem)
 extends AutoCloseable {
+
+  protected def tunnelSendReceive(timeout: Timeout)(implicit executionContext: ExecutionContext): SendReceive
 
   private implicit def executionContext = actorSystem.dispatcher
   private val veryLongTimeout = Akkas.maximumTimeout(actorSystem.settings)
@@ -34,12 +35,12 @@ extends AutoCloseable {
   private lazy val pipelineTrunk: HttpRequest ⇒ Future[HttpResponse] =
     addHeader(Accept(`application/octet-stream`)) ~>
     encode(Gzip) ~>
-    agentSendReceive(actorSystem, actorSystem.dispatcher, veryLongTimeout) ~>
+    tunnelSendReceive(veryLongTimeout) ~>
     decode(Gzip)
 
-  def close() = heartbeatRequestorOption foreach { _.close() }
+  final def close() = heartbeatRequestorOption foreach { _.close() }
 
-  def tunnelRequest(requestMessage: ByteString): Future[ByteString] = {
+  final def tunnelRequest(requestMessage: ByteString): Future[ByteString] = {
     val mySendReceive = addHeader(SecretHeaderName, tunnelToken.secret.string) ~> pipelineTrunk
     val request = Post(tunnelUri, requestMessage)
     try
