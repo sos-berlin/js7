@@ -27,7 +27,7 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
     super.afterAll()
   }
 
-  "eventCollector.after" in {
+  "eventCollector.keyedEventQueue.after" in {
     val eventCollector = new MyEventCollector
     import eventCollector.keyedEventQueue
     assert(keyedEventQueue.after(after = EventId.BeforeFirst).get.isEmpty)
