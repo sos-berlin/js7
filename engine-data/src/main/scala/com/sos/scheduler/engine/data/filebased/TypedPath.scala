@@ -32,7 +32,7 @@ extends AbsolutePath {
 
   override def toString = toTypedString
 
-  def toTypedString: String = s"${fileBasedType.camelName}:$string"
+  def toTypedString: String = s"${companion.camelName}:$string"
 }
 
 
@@ -49,8 +49,14 @@ object TypedPath {
   abstract class Companion[A <: TypedPath: ClassTag] extends AbsolutePath.Companion[A] {
     implicit val implicitCompanion: Companion[A] = this
 
+    def typedPathClass: Class[A] = implicitClass[A]
+
     def fileBasedType: FileBasedType
 
-    def typedPathClass: Class[A] = implicitClass[A]
+    val camelName: String = name stripSuffix "Path"
+
+    final lazy val lowerCaseCamelName = camelName.substring(0, 1).toLowerCase + camelName.substring(1)
+
+    def filenameExtension: String = fileBasedType.filenameExtension
   }
 }

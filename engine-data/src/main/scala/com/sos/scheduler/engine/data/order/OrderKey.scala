@@ -23,6 +23,7 @@ object OrderKey extends TypedPath.Companion[OrderKey] {
 
   private val Separator = ','
 
+  override val camelName = "Order"
   override implicit val ordering: Ordering[OrderKey] = Ordering by { o ⇒ (o.jobChainPath, o.id) }
 
   def apply(o: String): OrderKey = {

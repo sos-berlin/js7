@@ -17,13 +17,11 @@ public enum FileBasedType {
     private final String internalCppName;
     private final String cppName;
     private final String camelName;
-    private final String lowerCaseCamelName;
 
     FileBasedType(String internalCppName, String cppName, String camelName) {
         this.internalCppName = internalCppName;
         this.cppName = cppName;
         this.camelName = camelName;
-        this.lowerCaseCamelName = camelName.substring(0, 1).toLowerCase() + camelName.substring(1);
     }
 
     public String cppName() {
@@ -32,14 +30,6 @@ public enum FileBasedType {
 
     public String filenameExtension() {
         return this == Folder? "/" : "." + cppName + ".xml";
-    }
-
-    public String camelName() {
-        return camelName;
-    }
-
-    public String lowerCaseCamelName() {
-        return lowerCaseCamelName;
     }
 
     @Override public String toString() {

@@ -38,10 +38,10 @@ object TypedPathRegister {
     classToAnyCompanion(c).asInstanceOf[Companion[P]]
 
   val camelNameToCompanion: Map[String, AnyCompanion] =
-    (Companions map { o ⇒ o.fileBasedType.camelName → o }).toMap
+    (Companions map { o ⇒ o.camelName → o }).toMap
 
   val lowerCaseCamelNameToCompanion: Map[String, AnyCompanion] =
-    (Companions map { o ⇒ o.fileBasedType.lowerCaseCamelName → o }).toMap
+    (Companions map { o ⇒ o.lowerCaseCamelName → o }).toMap
 
   private val cppNameToCompanion: String ⇒ AnyCompanion =
     (Companions map { o ⇒ o.fileBasedType.cppName → o }).toMap
