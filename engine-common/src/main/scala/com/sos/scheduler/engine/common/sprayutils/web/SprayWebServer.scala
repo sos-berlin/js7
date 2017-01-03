@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.common.sprayutils.https.Https.newServerSSLEngine
 import com.sos.scheduler.engine.common.sprayutils.web.SprayWebServer._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.net.InetSocketAddress
+import java.util.concurrent.ConcurrentLinkedQueue
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
@@ -29,6 +30,7 @@ trait SprayWebServer extends AutoCloseable {
   protected implicit def executionContext: ExecutionContext
   protected def newRouteActorRef(binding: WebServerBinding): ActorRef
   protected def bindings: Iterable[WebServerBinding]
+  private val httpListeners = new ConcurrentLinkedQueue[ActorRef]
 
   /**
    * @return Future, completed when Agent has been started and is running.
@@ -72,17 +74,7 @@ trait SprayWebServer extends AutoCloseable {
   }
 
   def close() = {
-    logger.debug("close")
-    implicit val timeout = Timeout(ShutdownTimeout.toFiniteDuration)
-    val future = for (_ ← { logger.debug("Unbind"); IO(Http) ? Unbind(ShutdownTimeout.toConcurrent) };
-                      _ ← { logger.debug("CloseAll"); IO(Http) ? Http.CloseAll }) yield ()
-    future onComplete {
-      case Success(_) ⇒ logger.debug("WebService terminated")
-      case _ ⇒
-//      case Failure(t: AskTimeoutException) ⇒ logger.debug(s"close (ignored): $t")
-//      case Failure(t) ⇒ logger.debug(s"close (ignored): $t", t)
-    }
-    // May not terminate in time: awaitResult(future, ShutdownTimeout)
+    // TODO Send Http.Unbind to senders of Http.Bound (we need an Actor to get the sender()).
   }
 }
 
