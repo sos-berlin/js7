@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.agent.web.common
 
 import akka.actor.ActorRefFactory
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
+import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
 import spray.http.Uri.Path
 import spray.routing._
 
@@ -13,12 +14,14 @@ import spray.routing._
  * @author Joacim Zschimmer
  */
 trait AgentWebService extends AgentExceptionHandler {
+
   protected def uriPathPrefix: String   // Same value for every AgentWebService
+  protected def sessionRegister: SessionRegister[Unit]
 
   protected final def prefixPath = Path(if (uriPathPrefix.isEmpty) "" else s"/$uriPathPrefix")
   protected final def jobschedulerPath = Path(s"$prefixPath/jobscheduler")
   protected final def agentPath = Path(s"$prefixPath/jobscheduler/agent")
-  protected final val routeBuilder = new RouteBuilder
+  protected final lazy val routeBuilder = new RouteBuilder(sessionRegister)
 
   final def buildRoute(gateKeeper: GateKeeper)(implicit actorRefFactory: ActorRefFactory): Route =
     routeBuilder.buildRoute(gateKeeper, uriPathPrefix = uriPathPrefix)

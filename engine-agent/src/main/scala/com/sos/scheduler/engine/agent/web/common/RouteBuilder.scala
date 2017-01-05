@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichSeq
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
+import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
 import scala.collection.mutable
 import spray.routing.Directives._
 import spray.routing.Route
@@ -13,7 +14,7 @@ import spray.routing.Route
 /**
   * @author Joacim Zschimmer
   */
-final class RouteBuilder extends Mutable {
+final class RouteBuilder(sessionRegister: SessionRegister[Unit]) extends Mutable {
   private val otherRoutes = mutable.Buffer[CallersRoute]()
   private val prefixedRoutes = mutable.Buffer[CallersRoute]()
   private val jobschedulerStandardRoutes = mutable.Buffer[CallersRoute]()
@@ -47,7 +48,7 @@ final class RouteBuilder extends Mutable {
   def addUnauthenticatedApiRoute(route: ⇒ Route): Unit =
     unauthenticatedApiRoutes += CallersRoute.of("addUnauthenticatedApiRoute", route)
 
-  private def logAllEntries() {
+  private def logAllEntries(): Unit = {
     val all = otherRoutes ++ prefixedRoutes ++ jobschedulerStandardRoutes ++ apiRoutes ++ unauthenticatedApiRoutes
     for (e ← all) logger.trace(s"Using route of ${e.callerName}")
   }
@@ -66,6 +67,11 @@ final class RouteBuilder extends Mutable {
     implicit val executionContext = actorRefFactory.dispatcher
 
     val apiRoute =
+      sessionRegister.directives.session { _ ⇒
+        gateKeeper.retrictRelaxed {
+          toRoute(apiRoutes)
+        }
+      } ~
       gateKeeper.restrict.apply {
         toRoute(apiRoutes)
       } ~

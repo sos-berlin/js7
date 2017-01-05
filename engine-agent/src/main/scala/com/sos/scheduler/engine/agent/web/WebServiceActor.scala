@@ -14,7 +14,9 @@ import com.sos.scheduler.engine.common.event.EventIdGenerator
 import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
+import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
 import com.sos.scheduler.engine.common.time.timer.TimerService
+import com.sos.scheduler.engine.data.session.SessionToken
 import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.TunnelServer
 import java.time.Duration
@@ -32,6 +34,7 @@ final private class WebServiceActor private(
   commandExecutor: CommandExecutor,
   tunnelServer: TunnelServer,
   agentOverviewProvider: Provider[AgentOverview],
+  protected val sessionRegister: SessionRegister[Unit],
   protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
   protected val timerService: TimerService,
@@ -51,6 +54,8 @@ with CommandViewWebService
 with NoJobSchedulerEngineWebService
 {
   protected val uriPathPrefix = agentConfiguration.uriPathPrefix
+
+  protected def sessionTokenIsValid(sessionToken: SessionToken) = sessionRegister contains sessionToken
 
   protected def commandHandlerOverview = commandHandler
   protected def commandRunOverviews = commandHandler.commandRuns
@@ -81,6 +86,7 @@ private[web] object WebServiceActor {
     commandExecutor: CommandExecutor,
     tunnelServer: TunnelServer,
     agentOverviewProvider: Provider[AgentOverview],
+    sessionRegister: SessionRegister[Unit],
     taskHandlerView: TaskHandlerView,
     commandHandler: AgentCommandHandler,
     timerService: TimerService,
@@ -96,6 +102,7 @@ private[web] object WebServiceActor {
         commandExecutor,
         tunnelServer,
         agentOverviewProvider,
+        sessionRegister,
         taskHandlerView,
         commandHandler,
         timerService,

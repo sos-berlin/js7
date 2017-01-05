@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.agent.web.common.ExternalWebService
 import com.sos.scheduler.engine.common.auth.EncodedPasswordValidator
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
+import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.taskserver.data.TaskServerMainTerminated
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
@@ -28,6 +29,10 @@ final class AgentModule(originalAgentConfiguration: AgentConfiguration)
 extends AbstractModule {
 
   protected def configure() = {}
+
+  @Provides @Singleton
+  def sessionRegister(): SessionRegister[Unit] =
+    new SessionRegister(_ ⇒ ())
 
   @Provides @Singleton
   def provideCsrfConfiguration(config: Config): CSRF.Configuration =

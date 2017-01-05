@@ -1,16 +1,20 @@
 package com.sos.scheduler.engine.agent.command
 
 import com.sos.scheduler.engine.agent.command.AgentCommandHandler._
+import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.fileordersource.{FileCommandExecutor, RequestFileOrderSourceContentExecutor}
 import com.sos.scheduler.engine.agent.task.TaskHandler
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
+import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
+import com.sos.scheduler.engine.data.session.SessionToken
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -20,6 +24,7 @@ import spray.json.DefaultJsonProtocol._
  */
 @Singleton
 final class AgentCommandHandler @Inject private(
+  sessionRegister: SessionRegister[Unit],
   taskHandler: TaskHandler,
   executeRequestFileOrderSourceContent: RequestFileOrderSourceContentExecutor)
   (implicit ec: ExecutionContext)
@@ -49,12 +54,30 @@ with CommandHandlerDetailed {
   private def executeCommand2(id: InternalCommandId, command: Command, meta: CommandMeta) =
     (command match {
       case command: FileCommand ⇒ Future.successful(FileCommandExecutor.executeCommand(command))
+      case Login ⇒ login(meta.sessionTokenOption)
+      case Logout ⇒ logout(meta.sessionTokenOption)
+      case NoOperation ⇒ Future.successful(EmptyResponse)
       case command: TaskCommand ⇒ taskHandler.execute(command, meta)
       case command: TerminateOrAbort ⇒ taskHandler.execute(command, meta)
       case command: RequestFileOrderSourceContent ⇒ executeRequestFileOrderSourceContent(command)
     }) map { response ⇒
       logger.debug(s"Response to $id ${command.getClass.getSimpleName}: $response")
       response.asInstanceOf[command.Response]
+    }
+
+  private def login(currentSessionTokenOption: Option[SessionToken]): Future[LoginResponse] =
+    Future fromTry Try {
+      currentSessionTokenOption foreach sessionRegister.remove
+      LoginResponse(sessionRegister.newSessionToken())
+    }
+
+  private def logout(sessionTokenOption: Option[SessionToken]): Future[EmptyResponse.type] =
+    Future fromTry Try {
+      val sessionToken = sessionTokenOption getOrElse {
+        throw new IllegalArgumentException("Logout without SessionToken")
+      }
+      sessionRegister.remove(sessionToken)
+      EmptyResponse
     }
 }
 
