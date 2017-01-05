@@ -46,7 +46,7 @@ final class GateKeeper(configuraton: Configuration, csrf: CSRF, isUnsecuredHttp:
       }
     }
 
-  def retrictRelaxed: Directive0 =
+  val retrictRelaxed: Directive0 =
     csrf.rejectSomeCSRF
 }
 
