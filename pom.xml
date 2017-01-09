@@ -625,6 +625,11 @@
                 <version>${scalatest.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.scalacheck</groupId>
+                <artifactId>scalacheck_${scala.binaryVersion}</artifactId>
+                <version>1.12.6</version>  <!-- ScalaTest requires v1.12 -->
+            </dependency>
+            <dependency>
                 <groupId>org.hibernate</groupId>
                 <artifactId>hibernate-entitymanager</artifactId>
                 <version>4.3.7.Final</version>
