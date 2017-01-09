@@ -4,8 +4,9 @@ import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions._
 import com.sos.scheduler.engine.base.utils.ScalaUtils._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
 import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReaderTest._
-import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources.stringToSource
+import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources._
 import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
+import javax.xml.transform.Source
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -23,7 +24,7 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
     trait T
     case class Y() extends T
     case class Z() extends T
-    val x = parseString(<X><Y/><Z/><Z/></X>.toString()) { eventReader ⇒
+    val x = parseDocument(<X><Y/><Z/><Z/></X>) { eventReader ⇒
       import eventReader._
       parseElement("X") {
         val children = forEachStartElement {
@@ -60,8 +61,8 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
   }
 
   "ScalaXMLEventReader" in {
-    val testXmlString = <A><AA><B/><C x="xx" optional="oo"><D/><D/></C></AA></A>.toString()
-    parseString(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "oo", List(D(), D())))
+    val testXmlString = <A><AA><B/><C x="xx" optional="oo"><D/><D/></C></AA></A>
+    parseDocument(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "oo", List(D(), D())))
   }
 
   "Whitespace and comment are ignored" in {
@@ -73,18 +74,29 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
           <C x="xx" optional="oo"/>
           <!-- comment -->
         </AA>
-      </A>.toString()
-    parseString(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "oo", Nil))
+      </A>
+    parseDocument(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "oo", Nil))
     parseDocument(testXmlString)(_.ignoreElements())
   }
 
+  "matchElement" in {
+    def parse(source: Source) = parseDocument(source) { eventReader ⇒
+      eventReader.matchElement {
+        case "A" ⇒ fail()
+        case "B" ⇒ eventReader.parseElement() { "OK" }
+      }
+    }
+    assert(parse(<B/>) == "OK")
+    intercept[IllegalArgumentException] { parse(<X/>) }
+  }
+
   "Optional attribute" in {
-    val testXmlString = <A><AA><B/><C x="xx"><D/><D/></C></AA></A>.toString()
-    parseString(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "DEFAULT", List(D(), D())))
+    val testXmlString = <A><AA><B/><C x="xx"><D/><D/></C></AA></A>
+    parseDocument(testXmlString)(parseA) shouldEqual A(B(), C(x = "xx", o = "DEFAULT", List(D(), D())))
   }
 
   "as and optionAs" in {
-    parseString(<X int="1" empty="" wrong="xx"/>.toString()) { eventReader ⇒
+    parseDocument(<X int="1" empty="" wrong="xx"/>) { eventReader ⇒
       import eventReader._
       parseElement("X") {
         assertResult(1) { attributeMap.as[Int]("int") }
@@ -100,7 +112,7 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
 //  "parseElementAsXmlString" in {
 //    val testXmlString = <A><AA><B b="b">text<C/></B><B/></AA></A>.toString()
 //    assertResult("""<B b="b">text<C/></B>, <B/>""") {
-//      parseString(testXmlString) { eventReader ⇒
+//      parseDocument(testXmlString) { eventReader ⇒
 //        import eventReader._
 //        parseElement("A") {
 //          val children = forEachStartElement {
@@ -113,17 +125,17 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
 //  }
 
   "Detects extra attribute, XmlException" in {
-    val testXmlString = <A><AA><B/><C x="xx" optional="oo" z="zz"><D/><D/></C></AA></A>.toString()
-    val e = intercept[XmlException] { parseString(testXmlString)(parseA) }
+    val testXmlString = <A><AA><B/><C x="xx" optional="oo" z="zz"><D/><D/></C></AA></A>
+    val e = intercept[XmlException] { parseDocument(testXmlString)(parseA) }
     e.rootCause.asInstanceOf[UnparsedAttributesException].names shouldEqual List("z")
     val XmlException(throwable) = e
     assert(throwable.getMessage == "Unknown XML attributes 'z'")
   }
 
   "Ignore all extra attributes" in {
-    val testXmlString = <C x="xx" y="yy" z="zz"/>.toString()
+    val testXmlString = <C x="xx" y="yy" z="zz"/>
     assertResult("xx") {
-      parseString(testXmlString) { eventReader: ScalaXMLEventReader ⇒
+      parseDocument(testXmlString) { eventReader: ScalaXMLEventReader ⇒
         import eventReader._
         parseElement("C") {
           attributeMap.ignoreUnread()
@@ -134,9 +146,9 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
   }
 
   "Ignore one extra attributes" in {
-    val testXmlString = <C x="xx" y="yy"/>.toString()
+    val testXmlString = <C x="xx" y="yy"/>
     assertResult("xx") {
-      parseString(testXmlString) { eventReader: ScalaXMLEventReader ⇒
+      parseDocument(testXmlString) { eventReader: ScalaXMLEventReader ⇒
         import eventReader._
         parseElement("C") {
           attributeMap.ignore("y")
@@ -147,30 +159,30 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
   }
 
   "Detects missing attribute" in {
-    val testXmlString = <A><AA><B/><C><D/><D/></C></AA></A>.toString()
-    intercept[XmlException] { parseString(testXmlString)(parseA) }
+    val testXmlString = <A><AA><B/><C><D/><D/></C></AA></A>
+    intercept[XmlException] { parseDocument(testXmlString)(parseA) }
       .rootCause.asInstanceOf[NoSuchElementException]
   }
 
   "Detects extra element" in {
-    val testXmlString = <A><AA><B/><C x="xx"><D/><D/></C><EXTRA/></AA></A>.toString()
-    intercept[XmlException] { parseString(testXmlString)(parseA) }
+    val testXmlString = <A><AA><B/><C x="xx"><D/><D/></C><EXTRA/></AA></A>
+    intercept[XmlException] { parseDocument(testXmlString)(parseA) }
   }
 
   "Detects extra repeating element" in {
-    val testXmlString = <A><AA><B/><C x="xx"><D/><D/><EXTRA/></C></AA></A>.toString()
-    intercept[XmlException] { parseString(testXmlString)(parseA) }
+    val testXmlString = <A><AA><B/><C x="xx"><D/><D/><EXTRA/></C></AA></A>
+    intercept[XmlException] { parseDocument(testXmlString)(parseA) }
   }
 
   "Detects missing element" in {
-    val testXmlString = <A><AA><C x="xx"><D/><D/></C></AA></A>.toString()
-    intercept[Exception] { parseString(testXmlString)(parseA) }
+    val testXmlString = <A><AA><C x="xx"><D/><D/></C></AA></A>
+    intercept[Exception] { parseDocument(testXmlString)(parseA) }
       .rootCause.asInstanceOf[NoSuchElementException]
   }
 
   "parseStartElementAlternative" in {
-    val testXmlString = <A><Y/></A>.toString()
-    parseString(testXmlString) { eventReader ⇒
+    val testXmlString = <A><Y/></A>
+    parseDocument(testXmlString) { eventReader ⇒
       import eventReader._
       parseElement("A") {
         parseStartElementAlternative {
@@ -184,8 +196,8 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
   }
 
   "ignoreElement" in {
-    val testXmlString = <A><AA><C x="xx">aa<D/>bb<D/><!--COMMENT-->cc</C></AA></A>.toString()
-    parseString(testXmlString) { eventReader ⇒
+    val testXmlString = <A><AA><C x="xx">aa<D/>bb<D/><!--COMMENT-->cc</C></AA></A>
+    parseDocument(testXmlString) { eventReader ⇒
       eventReader.parseElement("A") {
         eventReader.ignoreElement()
       }
@@ -193,18 +205,18 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
   }
 
   "Exception with XML element path" in {
-    val testXmlString = <A><AA><Y/></AA></A>.toString()
-    intercept[XmlException] { parseString(testXmlString)(parseA) }
+    val testXmlString = <A><AA><Y/></AA></A>
+    intercept[XmlException] { parseDocument(testXmlString)(parseA) }
       .toString should include ("""XmlException: Unexpected XML element <Y> - In <A> (:1:4) <AA> (:1:8)""")
   }
 
   "xmlElemToStaxSource" in {
-    parseElem(<A/>) { eventReader ⇒ eventReader.parseElement("A") {} }
+    parseDocument(<A/>) { eventReader ⇒ eventReader.parseElement("A") {} }
   }
 
   if (sys.props contains "test.speed") "Speed for minimal XML document" in {
     for (_ ← 1 to 10) measureTime(10000, "document") {
-      parseString("<A/>") { eventReader ⇒
+      parseDocument("<A/>") { eventReader ⇒
         eventReader.parseElement("A") {}
       }
     }

@@ -77,6 +77,10 @@ extends AutoCloseable {
       }
     }
 
+  def matchElement[A](pf: PartialFunction[String, A]): A =
+    pf.applyOrElse(peek.asStartElement.getName.getLocalPart,
+      (_: String) ⇒ throw new IllegalArgumentException(s"Unexpected XML element: <${peek.asStartElement.getName}>"))
+
   def parseStartElement[A]()(body: ⇒ A): A = {
     val result = body
     eat[EndElement]
@@ -224,15 +228,11 @@ object ScalaXMLEventReader {
 
   implicit def scalaXMLEventReaderToXMLEventReader(o: ScalaXMLEventReader): XMLEventReader = o.xmlEventReader
 
+  @deprecated("Use parseDocument(XmlSources.stringToSource)", "v1.11")
   def parseString[A](xml: String, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), config: Config = Config.Default)
     (parse: ScalaXMLEventReader ⇒ A)
   : A =
     parseDocument(stringToSource(xml), inputFactory, config)(parse)
-
-  def parseElem[A](elem: xml.Elem, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), config: Config = Config.Default)
-    (parseEvents: ScalaXMLEventReader ⇒ A)
-  : A =
-    parseDocument(xmlElemToStaxSource(elem), inputFactory, config)(parseEvents)
 
   def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), config: Config = Config.Default)
     (parse: ScalaXMLEventReader ⇒ A)
