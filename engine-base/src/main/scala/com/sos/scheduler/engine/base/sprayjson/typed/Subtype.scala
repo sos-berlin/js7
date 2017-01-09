@@ -76,7 +76,7 @@ extends Subtype[A] {
   def nameToClass =
     jsonFormat match {
       case o: WithSubtypeRegister[A @unchecked] ⇒  // Recursive TypedJsonFormat
-        require(classes forall o.superclass.isAssignableFrom)
+        for (c ← classes) require(o.superclass isAssignableFrom c, s"$c is not a subclass of ${o.superclass}")
         o.typeNameToClass
       case _ ⇒
         Map()
