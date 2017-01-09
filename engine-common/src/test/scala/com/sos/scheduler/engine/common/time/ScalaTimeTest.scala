@@ -3,7 +3,7 @@ package com.sos.scheduler.engine.common.time
 import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.format.DateTimeParseException
-import java.time.{Duration, Instant, LocalTime}
+import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -296,6 +296,24 @@ final class ScalaTimeTest extends FreeSpec {
       LocalTime.ofSecondOfDay(7) <= LocalTime.ofSecondOfDay(7) shouldEqual true
       LocalTime.ofSecondOfDay(7) > LocalTime.ofSecondOfDay(7) shouldEqual false
       LocalTime.ofSecondOfDay(7) >= LocalTime.ofSecondOfDay(7) shouldEqual true
+    }
+  }
+
+  "LocalDateTime" - {
+    "compare" in {
+      val a = LocalDateTime.of(2016, 1, 1, 12, 0, 0)
+      val b = LocalDateTime.of(2016, 1, 1, 12, 0, 1)
+      assert(a < b)
+      assert(a <= b)
+      assert(!(a >= b))
+      assert(!(a > b))
+      assert(a.compareTo(LocalDateTime.of(2016, 1, 1, 12, 0, 0)) == 0)
+    }
+
+    "toInstant" in {
+      val timeZone = ZoneId of "Europe/Helsinki"
+      assert(LocalDateTime.of(2016, 1, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-01-01T10:00:00Z"))
+      assert(LocalDateTime.of(2016, 7, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-07-01T09:00:00Z"))
     }
   }
 }

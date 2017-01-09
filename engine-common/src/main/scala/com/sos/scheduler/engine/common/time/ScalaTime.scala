@@ -181,6 +181,11 @@ object ScalaTime {
 //    def compare(a: LocalTime, b: LocalTime) = a compareTo b
 //  }
 
+  implicit class RichLocalDateTime(val delegate: LocalDateTime) extends AnyVal with Ordered[RichLocalDateTime] {
+    def compare(o: RichLocalDateTime) = delegate compareTo o.delegate
+    def toInstant(zone: ZoneId) = delegate.toInstant(zone.getRules.getOffset(delegate))
+  }
+
   def javaToConcurrentDuration(o: Duration): scala.concurrent.duration.Duration = {
     if ((o compareTo MaxConcurrentDuration) > 0) scala.concurrent.duration.Duration.Inf
     else simpleJavaToConcurrentFiniteDuration(o)
