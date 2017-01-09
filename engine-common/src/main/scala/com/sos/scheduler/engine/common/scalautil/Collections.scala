@@ -3,8 +3,9 @@ package com.sos.scheduler.engine.common.scalautil
 import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
+import scala.collection.generic.{GenMapFactory, GenericCompanion}
 import scala.collection.immutable.Vector
-import scala.collection.{GenTraversable, TraversableLike, immutable, mutable}
+import scala.collection.{GenMap, GenMapLike, GenTraversable, TraversableLike, immutable, mutable}
 import scala.language.{higherKinds, implicitConversions}
 
 object Collections {
@@ -115,7 +116,7 @@ object Collections {
     }
   }
 
-  implicit class RichGenericCompanion[+CC[X] <: GenTraversable[X]](val delegate: scala.collection.generic.GenericCompanion[CC]) {
+  implicit class RichGenericCompanion[+CC[X] <: GenTraversable[X]](val delegate: GenericCompanion[CC]) extends AnyVal {
     def build[A](body: mutable.Builder[A, CC[A]] ⇒ Unit): CC[A] = {
       val b = delegate.newBuilder[A]
       body(b)
@@ -124,7 +125,19 @@ object Collections {
   }
 
   // To satisfy IntelliJ IDEA 2016.2.5
-  implicit class RichVector(delegate: Vector.type) extends RichGenericCompanion[Vector](delegate)
+  //implicit class RichVector(delegate: Vector.type) extends RichGenericCompanion[Vector](delegate)
+
+  implicit class RichMapCompanion[CC[A, B] <: GenMap[A, B] with GenMapLike[A, B, CC[A, B]]](val delegate: GenMapFactory[CC]) extends AnyVal {
+    def build[A, B](body: mutable.Builder[(A, B), CC[A, B]] ⇒ Unit): CC[A, B] = {
+      val b = delegate.newBuilder[A, B]
+      body(b)
+      b.result
+    }
+  }
+
+  implicit class RichBufferedIterator[A](val delegate: BufferedIterator[A]) extends AnyVal {
+    def headOption: Option[A] = if (delegate.hasNext) Some(delegate.head) else None
+  }
 
   def emptyToNone(@Nullable o: String): Option[String] =
     if (o == null || o.isEmpty) None else Some(o)

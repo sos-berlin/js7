@@ -170,6 +170,14 @@ final class CollectionsTest extends FreeSpec {
     assert((Iterator(3, 2, 3) compareElementWise Iterator(1, 2, 3)) > 0)
     assert((Iterator(0, 2, 3) compareElementWise Iterator(1, 2, 3)) < 0)
   }
+
+  "Vector.build" in {
+    assert(Vector.build[Int] { builder ⇒ builder += 7} == Vector(7))
+  }
+
+  "Map.build" in {
+    assert(Map.build[Int, String] { builder ⇒ builder += 7 → "seven"} == Map(7 → "seven"))
+  }
 }
 
 private object CollectionsTest {
