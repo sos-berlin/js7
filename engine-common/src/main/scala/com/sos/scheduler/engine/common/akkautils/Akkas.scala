@@ -57,10 +57,36 @@ object Akkas {
 
   def encodeAsActorName(o: String): String = {
     val a = Uri.Path.Segment(o, Uri.Path.Empty).toString
-    if (a startsWith "$") "%24" + a.tail
-    else a
+    encodeAsActorName2(
+      if (a startsWith "$") "%24" + a.tail
+      else a)
+  }
+
+  private val ValidSymbols = "%" + """-_.*$+:@&=,!~';""" // See ActorRef.ValidSymbols (private)
+  private val toHex = "0123456789ABCDEF"
+
+  private def isValidChar(c: Char): Boolean =
+    (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (ValidSymbols.indexOf(c) != -1)
+
+  private def encodeAsActorName2(string: String): String = {
+    val sb = new StringBuilder(string.length + 10*3)
+    for (c ← string) {
+      if (isValidChar(c)) {
+        sb += c
+      } else {
+        if (c >= 0x80) {
+          sb += '%'
+          sb += toHex(c.toInt >> 12)
+          sb += toHex((c.toInt >> 8) & 0x0f)
+        }
+        sb += '%'
+        sb += toHex((c.toInt >> 4) & 0x0f)
+        sb += toHex(c.toInt & 0x0f)
+      }
+    }
+    sb.toString
   }
 
   def decodeActorName(o: String): String =
-    Uri(o).path.head.toString
+    Uri.Path(o).head.toString
 }

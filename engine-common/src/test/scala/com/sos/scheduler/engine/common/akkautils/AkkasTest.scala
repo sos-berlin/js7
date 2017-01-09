@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.akkautils
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorPath, ActorSystem}
 import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.akkautils.Akkas._
 import com.typesafe.config.ConfigFactory
@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.junit.JUnitRunner
+import scala.util.Random
 
 /**
  * @author Joacim Zschimmer
@@ -57,7 +58,7 @@ final class AkkasTest extends FreeSpec {
     val string = byteStringToTruncatedString(byteString)
     assert(string startsWith "1000 bytes 00 01 02 03 04 ")
     assert(string endsWith " ...")
-    assert(byteStringToTruncatedString(byteString).size < 330)
+    assert(byteStringToTruncatedString(byteString).length < 330)
   }
 
   "encodeAsActorName" in {
@@ -66,6 +67,17 @@ final class AkkasTest extends FreeSpec {
     assert(encodeAsActorName("$/$") == "%24%2F$")
     assert(decodeActorName("%24%2F$") == "$/$")
     assert(encodeAsActorName("folder/subfolder/jobname") == "folder%2Fsubfolder%2Fjobname")
-    assert(encodeAsActorName("a?b=!&c=ö") == "a%3Fb=!&c=%C3%B6")
+    assert(encodeAsActorName("a?b=!&c=ö[]{}") == "a%3Fb=!&c=%C3%B6%5B%5D%7B%7D")
+    assert(encodeAsActorName("()") == "%28%29")
+
+    check((((32 to 127) ++ (160 to 1000)) map { _.toChar }).toString)
+    for (_ ← 1 to 10000) {
+      check(Vector.fill(100) { 32 + Random.nextInt(95) } .toString)
+    }
+    def check(string: String): Unit = {
+      val actorName = encodeAsActorName(string)
+      assert(ActorPath.isValidPathElement(actorName))
+      assert(decodeActorName(actorName) == string)
+    }
   }
 }
