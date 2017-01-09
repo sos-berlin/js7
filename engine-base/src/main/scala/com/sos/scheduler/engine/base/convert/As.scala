@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.base.convert
 
-import com.sos.scheduler.engine.base.generic.SecretString
 import java.nio.file.{Path, Paths}
 
 /**
