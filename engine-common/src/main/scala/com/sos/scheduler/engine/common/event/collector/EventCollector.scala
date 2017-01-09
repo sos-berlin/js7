@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.event.collector
 
-import com.sos.scheduler.engine.common.event.EventIdGenerator
 import com.sos.scheduler.engine.common.event.collector.EventCollector._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutureFuture
 import com.sos.scheduler.engine.common.time.ScalaTime._
