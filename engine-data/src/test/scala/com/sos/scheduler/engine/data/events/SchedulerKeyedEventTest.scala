@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.events
 
+import com.sos.scheduler.engine.data.event.custom.{CustomEvent, VariablesCustomEvent}
 import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import com.sos.scheduler.engine.data.filebased.{FileBasedActivated, FileBasedAdded, FileBasedEvent, FileBasedRemoved, FileBasedReplaced}
 import com.sos.scheduler.engine.data.job.{JobEvent, JobStateChanged, TaskClosed, TaskEnded, TaskEvent, TaskStarted}
@@ -47,6 +48,8 @@ final class SchedulerKeyedEventTest extends FreeSpec {
     // All publicly known event classes
     assert(SchedulerAnyKeyedEventJsonFormat.typeNameToClass == Map(
       "Event" → classOf[Event],
+        "CustomEvent" → classOf[CustomEvent],
+          "VariablesCustomEvent" → classOf[VariablesCustomEvent],
         "FileBasedEvent" → classOf[FileBasedEvent],
           "FileBasedAdded" → FileBasedAdded.getClass,
           "FileBasedReplaced" → FileBasedReplaced.getClass,
