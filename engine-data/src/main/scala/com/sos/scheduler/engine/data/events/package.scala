@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.data
 
 import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
+import com.sos.scheduler.engine.data.event.custom.CustomEvent
 import com.sos.scheduler.engine.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat}
 import com.sos.scheduler.engine.data.filebased.FileBasedEvent
 import com.sos.scheduler.engine.data.job.{JobEvent, TaskEvent}
@@ -18,6 +19,7 @@ package object events {
     */
   implicit val SchedulerAnyKeyedEventJsonFormat: KeyedTypedEventJsonFormat[Event] =
     KeyedEvent.typedJsonFormat[Event](
+      KeyedSubtype[CustomEvent],
       KeyedSubtype[FileBasedEvent],
       KeyedSubtype[JobChainEvent],
       KeyedSubtype[JobEvent],
