@@ -31,7 +31,7 @@ final class ForeignEventIdAdaptingTest extends FreeSpec {
     eventCollector.putForeignEventSnapshot(Snapshot(EventId.MaxValue - 100, KeyedEvent(AEvent)))
 
     val snapshots: Vector[Snapshot[KeyedEvent[AEvent.type]]] =
-      (for (eventSeq ← eventCollector.when(EventRequest[AEvent.type](EventId.BeforeFirst, timeout = 0.s))) yield
+      (for (eventSeq ← eventCollector.when(EventRequest.only[AEvent.type](EventId.BeforeFirst, timeout = 0.s))) yield
         eventSeq match {
           case EventSeq.NonEmpty(iterator) ⇒ iterator.toVector
         }

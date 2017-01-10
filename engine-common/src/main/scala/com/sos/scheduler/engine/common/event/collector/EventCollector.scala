@@ -45,7 +45,7 @@ abstract class EventCollector(configuration: Configuration)
     predicate: KeyedEvent[E] ⇒ Boolean = (_: KeyedEvent[E]) ⇒ true)
   : Future[EventSeq[Iterator, KeyedEvent[E]]]
   =
-    whenAny[E](request, Set[Class[_ <: E]](request.eventClass), predicate)
+    whenAny[E](request, request.eventClasses, predicate)
 
   final def whenAny[E <: Event](
     request: EventRequest[E],
@@ -77,7 +77,7 @@ abstract class EventCollector(configuration: Configuration)
     whenAnyKeyedEvents(
       request,
       collect = {
-        case e if (request.eventClass isAssignableFrom e.event.getClass) && e.key == key && predicate(e.event.asInstanceOf[E]) ⇒
+        case e if request.matchesClass(e.event.getClass) && e.key == key && predicate(e.event.asInstanceOf[E]) ⇒
           e.event.asInstanceOf[E]
       })
 
@@ -127,7 +127,7 @@ abstract class EventCollector(configuration: Configuration)
   =
     keyedEventQueue.reverseEvents(after = request.after)
       .collect {
-        case snapshot if request.eventClass isAssignableFrom snapshot.value.event.getClass ⇒
+        case snapshot if request matchesClass snapshot.value.event.getClass ⇒
           snapshot.asInstanceOf[Snapshot[KeyedEvent[E]]]
       }
       .filter(snapshot ⇒ predicate(snapshot.value))
@@ -141,7 +141,7 @@ abstract class EventCollector(configuration: Configuration)
   =
     keyedEventQueue.reverseEvents(after = request.after)
       .collect {
-        case snapshot if request.eventClass isAssignableFrom snapshot.value.event.getClass ⇒
+        case snapshot if request matchesClass snapshot.value.event.getClass ⇒
           snapshot.asInstanceOf[Snapshot[KeyedEvent[E]]]
       }
       .collect {

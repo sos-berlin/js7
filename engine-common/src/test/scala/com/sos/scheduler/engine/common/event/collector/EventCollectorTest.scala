@@ -41,8 +41,8 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
 
   "eventCollector.when with torn event stream" in {
     val eventCollector = new MyEventCollector(EventCollector.Configuration.ForTest.copy(queueSize = 2))
-    val anyFuture = eventCollector.when(EventRequest[Event](after = EventId.BeforeFirst, 30.s))
-    val bFuture = eventCollector.when(EventRequest[BEvent](after = EventId.BeforeFirst, 30.s))
+    val anyFuture = eventCollector.when(EventRequest.only[Event](after = EventId.BeforeFirst, 30.s))
+    val bFuture = eventCollector.when(EventRequest.only[BEvent](after = EventId.BeforeFirst, 30.s))
     assert(!anyFuture.isCompleted)
     eventCollector.putEvent_(KeyedEvent(A1)("1"))
     val EventSeq.NonEmpty(anyEvents) = anyFuture await 100.ms
@@ -57,10 +57,10 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
     // Third event, overflowing the queue
     eventCollector.putEvent_(KeyedEvent(B1)("2"))
 
-    val EventSeq.NonEmpty(cEventIterator) = eventCollector.when(EventRequest[BEvent](after = bEvents.last.eventId, 1.s)) await 100.ms
+    val EventSeq.NonEmpty(cEventIterator) = eventCollector.when(EventRequest.only[BEvent](after = bEvents.last.eventId, 1.s)) await 100.ms
     assert((cEventIterator.toList map { _.value }) == List(KeyedEvent(B1)("2")))
 
-    assert((eventCollector.when(EventRequest[BEvent](after = EventId.BeforeFirst, 1.s)) await 100.ms) == EventSeq.Torn)
+    assert((eventCollector.when(EventRequest.only[BEvent](after = EventId.BeforeFirst, 1.s)) await 100.ms) == EventSeq.Torn)
   }
 
   "eventCollector.whenForKey" in {
@@ -71,7 +71,7 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
     eventCollector.putEvent_(KeyedEvent(A2)("2"))
     eventCollector.putEvent_(KeyedEvent(B2)("1"))
     def eventsForKey[E <: Event: ClassTag](key: E#Key) = {
-      val EventSeq.NonEmpty(eventIterator) = eventCollector.whenForKey[E](EventRequest(after = EventId.BeforeFirst, 20.s), key) await 10.s
+      val EventSeq.NonEmpty(eventIterator) = eventCollector.whenForKey[E](EventRequest.only(after = EventId.BeforeFirst, 20.s), key) await 10.s
       eventIterator.toVector map { _.value }
     }
     assert(eventsForKey[AEvent]("1") == Vector(A1, A2))
