@@ -8,16 +8,17 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 final case class EventRequest[E <: Event](
-  eventClass: Class[E],
+  eventClasses: Set[Class[_ <: E]],
   after: EventId,
   timeout: Duration,
   limit: Int)
 extends SomeEventRequest[E] {
+  require(eventClasses.nonEmpty, "Missing Event class")
   require(limit > 0, "Limit must not be below zero")
 
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
-    builder += "return" → (eventClass.getSimpleName stripSuffix "$")
+    builder += returnQueryParameter
     if (timeout != Duration.ZERO) builder += "timeout" → timeout.toString
     if (limit != Int.MaxValue) builder += "limit" → limit.toString
     builder += "after" → after.toString
@@ -26,12 +27,15 @@ extends SomeEventRequest[E] {
 }
 
 object EventRequest {
-  def apply[E <: Event: ClassTag](after: EventId, timeout: Duration, limit: Int = Int.MaxValue): EventRequest[E] =
-    new EventRequest(implicitClass[E], after, timeout, limit)
+  /**
+    * Convenience for only one Event class.
+    */
+  def only[E <: Event: ClassTag](after: EventId, timeout: Duration, limit: Int = Int.MaxValue): EventRequest[E] =
+    new EventRequest[E](Set(implicitClass[E]), after, timeout, limit)
 }
 
 final case class ReverseEventRequest[E <: Event](
-  eventClass: Class[E],
+  eventClasses: Set[Class[_ <: E]],
   limit: Int,
   after: EventId)
 extends SomeEventRequest[E] {
@@ -39,7 +43,7 @@ extends SomeEventRequest[E] {
 
   def toQueryParameters: Vector[(String, String)] = {
     val builder = Vector.newBuilder[(String, String)]
-    if (eventClass != classOf[Event]) builder += "return" → (eventClass.getSimpleName stripSuffix "$")
+    if (eventClasses != Set(classOf[Event])) builder += returnQueryParameter
     builder += "limit" → (-limit).toString
     if (after != EventId.BeforeFirst) builder += "after" → after.toString
     builder.result()
@@ -48,14 +52,20 @@ extends SomeEventRequest[E] {
 
 object ReverseEventRequest {
   def apply[E <: Event: ClassTag](after: EventId = EventId.BeforeFirst, limit: Int): ReverseEventRequest[E] =
-    new ReverseEventRequest(implicitClass[E], after = after, limit = limit)
+    new ReverseEventRequest[E](Set(implicitClass[E]), after = after, limit = limit)
 }
 
 /**
   * Common trait for both EventRequest and ReverseEventRequest.
   */
 sealed trait SomeEventRequest[E <: Event] {
-  def eventClass: Class[E]
+  def eventClasses: Set[Class[_ <: E]]
 
   def toQueryParameters: Vector[(String, String)]
+
+  protected def returnQueryParameter: (String, String) =
+    "return" → (eventClasses map { _.getSimpleName stripSuffix "$" } mkString ",")
+
+  def matchesClass(clazz: Class[_ <: Event]): Boolean =
+    eventClasses exists { _ isAssignableFrom clazz }
 }
