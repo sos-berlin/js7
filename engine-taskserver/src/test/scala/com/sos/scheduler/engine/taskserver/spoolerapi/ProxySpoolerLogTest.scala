@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
+import com.sos.scheduler.engine.base.generic.Completed
 import com.sos.scheduler.engine.data.log.SchedulerLogLevel
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
 import com.sos.scheduler.engine.minicom.idispatch._
@@ -64,6 +65,9 @@ final class ProxySpoolerLogTest extends FreeSpec {
 private object ProxySpoolerLogTest {
   private class TestProxyRemoting extends ProxyRemoting {
     val _invokes = mutable.Buffer[(ProxyId, DISPID, Set[DispatchType], Seq[Any], Seq[(DISPID, Any)])]()
+
+    def release(proxyId: ProxyId): Future[Completed] =
+      throw new NotImplementedError
 
     def call(proxyId: ProxyId, methodName: String, arguments: Seq[Any]) =
       throw new NotImplementedError

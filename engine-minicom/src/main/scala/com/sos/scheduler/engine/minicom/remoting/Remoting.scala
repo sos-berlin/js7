@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.minicom.remoting
 
 import akka.util.ByteString
+import com.sos.scheduler.engine.base.generic.Completed
 import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
@@ -107,6 +108,14 @@ trait Remoting extends ProxyRegistering with ProxyRemoting {
    */
   final def iUnknowns[A <: IUnknown: ClassTag]: immutable.Iterable[A] =
     proxyRegister.iUnknowns[A]
+
+  final def release(proxyId: ProxyId) = {
+    logger.trace(s"release $proxyId '${proxyRegister.iUnknown(proxyId)}")
+    for (response ← sendReceive(ReleaseCall(proxyId))) yield {
+      response.readEmptyResult()
+      Completed
+    }
+  }
 
   final def getIdOfName(proxyId: ProxyId, name: String) = {
     logger.trace(s"getIdOfName $proxyId '${proxyRegister.iUnknown(proxyId)}' $name")

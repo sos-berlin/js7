@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.minicom.remoting.proxy
 
+import com.sos.scheduler.engine.base.generic.Completed
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.time.ScalaTime.MaxDuration
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch}
@@ -13,6 +14,9 @@ trait ProxyIDispatch extends IDispatch {
   val id: ProxyId
   val name: String
   protected val remoting: ProxyRemoting
+
+  def release(): Future[Completed] =
+    remoting.release(id)
 
   override def call(methodName: String, arguments: Seq[Any]): Any =
     asyncCall(methodName, arguments) await MaxDuration

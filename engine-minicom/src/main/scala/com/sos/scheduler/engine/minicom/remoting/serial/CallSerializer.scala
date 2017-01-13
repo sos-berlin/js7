@@ -38,17 +38,15 @@ private final class CallSerializer(protected val proxyRegister: ProxyRegister) e
 
   private def writeObjectCall(call: ObjectCall) =
     call match {
-      //      case ReleaseCall(proxyInvocable) ⇒   // TODO
-      //        writeByte(MessageClass.Object)
-      //        writeIUnknown(proxyInvocable.id)
-      //        writeByte(MessageCommand.Release)
+      case ReleaseCall(_) ⇒
+        writeByte(MessageCommand.Release)
 
       case QueryInterfaceCall(proxyId, iid) ⇒
         writeByte(MessageCommand.GetIDsOfNames)
         writeInt64(proxyId.value)
         writeUUID(iid.uuid)
 
-      case InvokeCall(proxyId, dispatchId, iid, dispatchTypes, arguments, namedArguments) ⇒
+      case InvokeCall(_, dispatchId, iid, dispatchTypes, arguments, namedArguments) ⇒
         writeByte(MessageCommand.Invoke)
         writeInt32(dispatchId.value)
         writeUUID(iid.uuid)
@@ -59,14 +57,14 @@ private final class CallSerializer(protected val proxyRegister: ProxyRegister) e
         for (a ← namedArguments.reverseIterator) writeInt32(a._1.value)
         for (a ← (namedArguments.reverseIterator map { _._2 }) ++ arguments.reverseIterator) writeVariant(a)
 
-      case GetIDsOfNamesCall(proxyId, iid, localeId, names) ⇒
+      case GetIDsOfNamesCall(_, iid, localeId, names) ⇒
         writeByte(MessageCommand.GetIDsOfNames)
         writeUUID(iid.uuid)
         writeInt32(localeId)
         writeInt32(names.size)
         names foreach writeString
 
-      case CallCall(proxyId, methodName, arguments) ⇒
+      case CallCall(_, methodName, arguments) ⇒
         writeByte(MessageCommand.Call)
         writeString(methodName)
         writeInt32(arguments.size)
