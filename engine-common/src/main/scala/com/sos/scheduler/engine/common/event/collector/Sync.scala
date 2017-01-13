@@ -14,17 +14,15 @@ import scala.util.Success
   */
 private[collector] final class Sync(timerService: TimerService) {
 
-  @volatile private var eventArrivedPromise = Promise[Boolean]()
-  @volatile private var promiseUsed = false
+  @volatile private var promise: Promise[Boolean] = null
   @volatile private var lastEventId = EventId.BeforeFirst
 
   def onNewEvent(eventId: EventId): Unit =
     synchronized {
       lastEventId = eventId
-      if (promiseUsed) {
-        eventArrivedPromise.trySuccess(true)
-        promiseUsed = false
-        eventArrivedPromise = Promise[Boolean]()
+      if (promise != null) {
+        promise.success(true)
+        promise = null
       }
     }
 
@@ -37,13 +35,20 @@ private[collector] final class Sync(timerService: TimerService) {
     else
     if (until <= now)
       Future.successful(false)
-    else
-      synchronized {
+    else {
+      val future = synchronized {
         if (after < lastEventId)
           Future.successful(true)
         else {
-          promiseUsed = true
-          eventArrivedPromise.future.timeoutAt(until, Success(false), getClass.getName)(timerService, ec)
+          if (promise == null) {
+            promise = Promise[Boolean]()
+          }
+          promise.future
         }
       }
+      if (future.isCompleted)
+        future
+      else
+        future.timeoutAt(until, Success(false), getClass.getName)(timerService, ec)
+    }
 }
