@@ -15,7 +15,7 @@ import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
 import scala.collection.immutable
 import scala.concurrent._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author Joacim Zschimmer
@@ -240,6 +240,19 @@ object TimerService {
       delegate onComplete promise.tryComplete
       timerService.tryCompletePromiseAt(at, promise, completeWith, name = name)
       promise.future
+    }
+
+    def delay(duration: Duration)(implicit timerService: TimerService, ec: ExecutionContext): Future[A] = {
+      if (duration <= Duration.ZERO)
+        delegate
+      else {
+        val promise = Promise[A]()
+        delegate onComplete {
+          case Success(result) ⇒ timerService.delay(duration, name = "delay").onElapsed { promise.success(result) }
+          case o @ Failure(_) ⇒ promise.complete(o)
+        }
+        promise.future
+      }
     }
   }
 }

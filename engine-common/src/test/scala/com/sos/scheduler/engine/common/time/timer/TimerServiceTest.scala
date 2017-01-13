@@ -144,10 +144,10 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
 
   "Massive parallel parallel timer enqueuing" in {
     autoClosing(TimerService(idleTimeout = Some(1.s))) { timerService ⇒
-      for (nr ← 1 to 10) {
+      for (_ ← 1 to 10) {
         val counter = new AtomicInteger
         val n = 5000 * sys.runtime.availableProcessors
-        val delays = for (i ← 1 to n) yield Random.nextInt(40).ms
+        val delays = for (_ ← 1 to n) yield Random.nextInt(40).ms
         for (delay ← delays) Future { timerService.delay(delay, "test") onElapsed { counter.incrementAndGet() }}
         val ok = waitForCondition(2.s, 10.ms) { counter.get == n }
         if (!ok) logger.error(s"$counter/$n $timerService")
@@ -201,6 +201,15 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       Await.ready(newRecoveredFuture(2.ms, 2.ms), 500.millis) // Warm-up
       newRecoveredFuture(100.ms, 200.ms) await 1.s shouldEqual "OK"
       newRecoveredFuture(200.ms, 100.ms) await 1.s shouldEqual "TIMEOUT"
+    }
+  }
+
+  "Future.delay" in {
+    autoClosing(TimerService(idleTimeout = Some(1.s))) { implicit timerService ⇒
+      def newFuture(delay: Duration) = Future { "OK" } delay delay
+      val t = now
+      newFuture(200.ms) await 1.s shouldEqual "OK"
+      assert(t + 100.ms <= now)
     }
   }
 
