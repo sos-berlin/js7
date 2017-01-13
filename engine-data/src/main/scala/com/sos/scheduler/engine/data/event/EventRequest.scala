@@ -30,7 +30,7 @@ object EventRequest {
   /**
     * Convenience for only one Event class.
     */
-  def only[E <: Event: ClassTag](after: EventId, timeout: Duration, limit: Int = Int.MaxValue): EventRequest[E] =
+  def singleClass[E <: Event: ClassTag](after: EventId, timeout: Duration, limit: Int = Int.MaxValue): EventRequest[E] =
     new EventRequest[E](Set(implicitClass[E]), after, timeout, limit)
 }
 

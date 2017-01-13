@@ -13,7 +13,7 @@ import org.scalatest.junit.JUnitRunner
 final class EventRequestTest extends FreeSpec {
 
   "toQueryParameters" in {
-    assert(EventRequest.only[AEvent](after = EventId(3), timeout = Duration.ofSeconds(123), limit = 999).toQueryParameters ==
+    assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = Duration.ofSeconds(123), limit = 999).toQueryParameters ==
       Vector(
         "return" → "AEvent",
         "timeout" → "PT2M3S",
