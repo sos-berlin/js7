@@ -7,7 +7,7 @@ import scala.annotation.meta.getter
 
 @ForCpp
 final case class TaskPersistentState(
-    @(ForCpp @getter) taskId: TaskId,
+                      taskId: TaskId,
                       jobPath: JobPath,
     @(ForCpp @getter) enqueueTime: ReadableInstant,
                       startTimeOption: Option[ReadableInstant],
@@ -18,6 +18,9 @@ extends HasKey {
   type Key = TaskId
 
   def key = taskId
+
+  @ForCpp
+  def taskIdNumber: Int = taskId.number
 
   @ForCpp
   def startTimeMillis: Long = startTimeOption map { _.getMillis } getOrElse 0

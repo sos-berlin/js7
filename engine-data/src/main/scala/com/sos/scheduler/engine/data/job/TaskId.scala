@@ -1,12 +1,9 @@
 package com.sos.scheduler.engine.data.job
 
 import com.sos.scheduler.engine.base.generic.GenericInt
-import com.sos.scheduler.engine.cplusplus.runtime.annotation.ForCpp
-import scala.annotation.meta.getter
 import spray.json.{JsNumber, JsString, JsValue, JsonFormat}
 
-@ForCpp
-final case class TaskId(@(ForCpp @getter) number: Int) extends GenericInt {
+final case class TaskId(number: Int) extends GenericInt {
 
   override def toString = s"TaskId $number"
 
