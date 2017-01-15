@@ -10,7 +10,6 @@ final case class UnknownTypedPath(string: String) extends TypedPath {
 }
 
 object UnknownTypedPath extends TypedPath.Companion[UnknownTypedPath]{
-  override def fileBasedType = FileBasedType.Unknown
 
   override val camelName = "Unknown"
 

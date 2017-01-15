@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.folder
 
-import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
+import com.sos.scheduler.engine.data.filebased.TypedPath
 
 final case class FolderPath(string: String) extends TypedPath {
 
@@ -26,14 +26,12 @@ final case class FolderPath(string: String) extends TypedPath {
 object FolderPath extends TypedPath.Companion[FolderPath] {
 
   val Root = FolderPath("/")
+  override lazy val filenameExtension = "/"
 
   def fromTrailingSlash(string: String) = {
     require(string endsWith "/", "Trailing slash required for FolderPath")
     FolderPath(if (string == "/") string else string stripSuffix "/")
   }
-
-  // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.Folder
 
   override protected[engine] def isSingleSlashAllowed = true
   override protected[engine] def isCommaAllowed = false

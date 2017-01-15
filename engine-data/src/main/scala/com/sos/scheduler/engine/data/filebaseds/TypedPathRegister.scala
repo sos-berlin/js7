@@ -18,21 +18,23 @@ import spray.json.{JsString, JsValue, JsonFormat}
   */
 object TypedPathRegister {
 
-  private val Companions: Set[TypedPath.AnyCompanion] = Set(
-    FolderPath,
-    JobPath,
-    JobChainPath,
-    LockPath,
-    MonitorPath,
-    OrderKey,
-    ProcessClassPath,
-    SchedulePath)
+  private val FileBasedTypedToCompanion: Map[FileBasedType, TypedPath.AnyCompanion] = Map(
+    FileBasedType.Folder → FolderPath,
+    FileBasedType.Job → JobPath,
+    FileBasedType.JobChain → JobChainPath,
+    FileBasedType.Lock → LockPath,
+    FileBasedType.Monitor → MonitorPath,
+    FileBasedType.Order → OrderKey,
+    FileBasedType.ProcessClass → ProcessClassPath,
+    FileBasedType.Schedule → SchedulePath)
 
-  val fileBasedTypedToCompanion: FileBasedType ⇒ AnyCompanion =
-    (Companions map { o ⇒ o.fileBasedType → o }).toMap
+  private val Companions = FileBasedTypedToCompanion.values
 
   private val classToAnyCompanion: Map[Class[_ <: TypedPath], AnyCompanion] =
     (Companions map { o ⇒ o.typedPathClass → o }).toMap
+
+  def fileBasedTypedToCompanion(t: FileBasedType): TypedPath.AnyCompanion =
+    FileBasedTypedToCompanion(t)
 
   def classToCompanion[P <: TypedPath](c: Class[P]): Companion[P] =
     classToAnyCompanion(c).asInstanceOf[Companion[P]]
@@ -44,7 +46,7 @@ object TypedPathRegister {
     (Companions map { o ⇒ o.lowerCaseCamelName → o }).toMap
 
   private val cppNameToCompanion: String ⇒ AnyCompanion =
-    (Companions map { o ⇒ o.fileBasedType.cppName → o }).toMap
+    (Companions map { o ⇒ o.cppName → o }).toMap
 
   private def splitTypeAndPath(typeAndPath: String): (String, String) = {
     typeAndPath indexOf ":" match {

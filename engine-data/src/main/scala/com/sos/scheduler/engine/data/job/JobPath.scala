@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.job
 
-import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
+import com.sos.scheduler.engine.data.filebased.TypedPath
 
 final case class JobPath(string: String)
 extends TypedPath {
@@ -10,8 +10,4 @@ extends TypedPath {
   def companion = JobPath
 }
 
-object JobPath extends TypedPath.Companion[JobPath] {
-
-  // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.Job
-}
+object JobPath extends TypedPath.Companion[JobPath]

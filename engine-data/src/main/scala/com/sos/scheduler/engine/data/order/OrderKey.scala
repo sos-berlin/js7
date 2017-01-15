@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.order
 
-import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
+import com.sos.scheduler.engine.data.filebased.TypedPath
 import com.sos.scheduler.engine.data.jobchain.JobChainPath
 
 final case class OrderKey(jobChainPath: JobChainPath, id: OrderId)
@@ -17,9 +17,6 @@ extends TypedPath {
 }
 
 object OrderKey extends TypedPath.Companion[OrderKey] {
-
-  // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.Order
 
   private val Separator = ','
 

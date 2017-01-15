@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.processclass
 
-import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
+import com.sos.scheduler.engine.data.filebased.TypedPath
 
 final case class ProcessClassPath(string: String) extends TypedPath {
 
@@ -12,9 +12,6 @@ final case class ProcessClassPath(string: String) extends TypedPath {
 }
 
 object ProcessClassPath extends TypedPath.Companion[ProcessClassPath] {
-
-  // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.ProcessClass
 
   val Default = ProcessClassPath("")
 }

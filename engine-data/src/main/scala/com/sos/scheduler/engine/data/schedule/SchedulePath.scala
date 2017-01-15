@@ -8,8 +8,4 @@ final case class SchedulePath(string: String) extends TypedPath {
   def companion = SchedulePath
 }
 
-object SchedulePath extends TypedPath.Companion[SchedulePath] {
-
-  // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.Schedule
-}
+object SchedulePath extends TypedPath.Companion[SchedulePath]

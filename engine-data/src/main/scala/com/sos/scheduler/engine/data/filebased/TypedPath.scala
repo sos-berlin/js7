@@ -12,15 +12,12 @@ extends AbsolutePath {
 
   def companion: Companion[_ <: TypedPath]
 
-  def fileBasedType: FileBasedType = companion.fileBasedType
-
   def file(baseDirectory: File): File =
     new File(baseDirectory, relativeFilePath)
 
   /** @return Relativer Pfad mit Schrägstrich beginnend. Großschreibung kann bei manchen Typen abweichen. */
-  def relativeFilePath: String =
-    if (fileBasedType eq FileBasedType.Folder) string + "/"
-    else string + "." + fileBasedType.cppName + ".xml"
+  final def relativeFilePath: String =
+    string + companion.filenameExtension
 
   def asTyped[A <: TypedPath: TypedPath.Companion]: A = {
     val c = implicitly[TypedPath.Companion[A]]
@@ -34,7 +31,6 @@ extends AbsolutePath {
 
   def toTypedString: String = s"${companion.camelName}:$string"
 }
-
 
 object TypedPath {
   implicit def ordering[A <: TypedPath]: Ordering[A] =
@@ -51,12 +47,9 @@ object TypedPath {
 
     def typedPathClass: Class[A] = implicitClass[A]
 
-    def fileBasedType: FileBasedType
-
     val camelName: String = name stripSuffix "Path"
-
     final lazy val lowerCaseCamelName = camelName.substring(0, 1).toLowerCase + camelName.substring(1)
-
-    def filenameExtension: String = fileBasedType.filenameExtension
+    private[engine] final lazy val cppName: String = lowerCaseCamelName map { c ⇒ if (c.isUpper) "_" + c.toLower else c } mkString ""
+    lazy val filenameExtension: String = s".$cppName.xml"
   }
 }

@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.jobchain
 
-import com.sos.scheduler.engine.data.filebased.{FileBasedType, TypedPath}
+import com.sos.scheduler.engine.data.filebased.TypedPath
 import com.sos.scheduler.engine.data.order.{OrderId, OrderKey}
 
 final case class JobChainPath(string: String)
@@ -17,9 +17,6 @@ extends TypedPath {
 
 
 object JobChainPath extends TypedPath.Companion[JobChainPath] {
-
-  // 'def' due to mutual singleton dependency of this and FileBasedType
-  def fileBasedType = FileBasedType.JobChain
 
   override protected[engine] def isCommaAllowed = false
 }
