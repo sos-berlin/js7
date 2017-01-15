@@ -30,6 +30,8 @@
     </developers>
 
     <modules>
+        <module>data</module>
+
         <module>engine-agent</module>
         <module>engine-agent-client</module>
         <module>engine-agent-data</module>
