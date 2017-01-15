@@ -96,7 +96,7 @@ object PathQuery {
   final case class SinglePath(pathString: String) extends PathQuery {
     def patternString = pathString
     def isRecursive = false
-    val folderPath = UnknownTypedPath(pathString).parent
+    val folderPath = FolderPath.parentOf(UnknownTypedPath(pathString))
     def matches[P <: TypedPath: TypedPath.Companion](path: P) = path == as[P]
     def typedPath[P <: TypedPath: TypedPath.Companion]: TypedPath = as[P]
     def as[P <: TypedPath: TypedPath.Companion]: P = implicitly[TypedPath.Companion[P]].apply(pathString)
