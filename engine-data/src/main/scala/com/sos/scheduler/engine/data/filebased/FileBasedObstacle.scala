@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.data.filebased
 
 import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.data.filebaseds.TypedPathRegister
+import com.sos.scheduler.engine.data.filebaseds.TypedPathRegister.TypedPathJsonFormat
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -31,7 +31,6 @@ object FileBasedObstacle {
   }
 
   object MissingRequisites {
-    private implicit def typedPathJsonFormat = TypedPathRegister.WithCompanionJsonFormat
     implicit val MyJsonFormat = jsonFormat1(apply)
   }
 

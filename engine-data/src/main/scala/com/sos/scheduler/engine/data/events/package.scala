@@ -4,6 +4,7 @@ import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtyp
 import com.sos.scheduler.engine.data.event.custom.CustomEvent
 import com.sos.scheduler.engine.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat}
 import com.sos.scheduler.engine.data.filebased.FileBasedEvent
+import com.sos.scheduler.engine.data.filebaseds.TypedPathRegister.TypedPathJsonFormat
 import com.sos.scheduler.engine.data.job.{JobEvent, TaskEvent}
 import com.sos.scheduler.engine.data.log.Logged
 import com.sos.scheduler.engine.data.order.{JobChainEvent, JocOrderStatisticsChanged, OrderEvent}

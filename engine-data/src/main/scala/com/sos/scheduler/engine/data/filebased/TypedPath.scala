@@ -2,10 +2,8 @@ package com.sos.scheduler.engine.data.filebased
 
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.data.filebased.TypedPath._
-import com.sos.scheduler.engine.data.filebaseds.TypedPathRegister
 import java.io.File
 import scala.reflect.ClassTag
-import spray.json.JsonFormat
 
 trait TypedPath
 extends AbsolutePath {
@@ -37,8 +35,6 @@ object TypedPath {
     new Ordering[A] {
       def compare(a: A, b: A) = a.string compare b.string
     }
-
-  implicit val jsonFormat: JsonFormat[TypedPath] = TypedPathRegister.WithCompanionJsonFormat
 
   type AnyCompanion = Companion[_ <: TypedPath]
 

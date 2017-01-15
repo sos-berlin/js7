@@ -68,7 +68,7 @@ object TypedPathRegister {
     cppNameToCompanion(typeName).apply(path)
   }
 
-  val WithCompanionJsonFormat: JsonFormat[TypedPath] =
+  implicit val TypedPathJsonFormat: JsonFormat[TypedPath] =
     new JsonFormat[TypedPath] {
       def write(o: TypedPath) = JsString(o.toTypedString)
       def read(json: JsValue) = fromTypedString(json.asString)

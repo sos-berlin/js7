@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.data.filebased
 
+import com.sos.scheduler.engine.data.filebaseds.TypedPathRegister.TypedPathJsonFormat
 import spray.json.DefaultJsonProtocol._
 import spray.json.RootJsonFormat
 
