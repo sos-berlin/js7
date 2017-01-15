@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.fileordersource
 
-import com.google.inject.Guice
+import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.scheduler.engine.agent.data.commandresponses.FileOrderSourceContent
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.fileordersource.RequestFileOrderSourceContentExecutorTest._
@@ -18,6 +18,7 @@ import java.nio.file.Paths
 import java.nio.file.attribute.FileTime
 import java.time.ZoneOffset.UTC
 import java.time.{Duration, ZonedDateTime}
+import javax.inject.Singleton
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.Futures
@@ -30,11 +31,13 @@ import scala.util.matching.Regex
   *
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
+@org.junit.runner.RunWith(classOf[JUnitRunner])
 final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futures {
 
-  private lazy val injector = Guice.createInjector(new ScalaAbstractModule {
-    def configure() = bindInstance[ExecutionContext](ExecutionContext.global)
+  private lazy val injector = Guice.createInjector(new AbstractModule {
+    def configure() = ()
+    @Provides @Singleton
+    def executionContext: ExecutionContext = ExecutionContext.global
   })
   private lazy val exec = injector.instance[RequestFileOrderSourceContentExecutor]
 
