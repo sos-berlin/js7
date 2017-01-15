@@ -7,8 +7,6 @@ import com.sos.scheduler.engine.base.process.ProcessSignal
  * @author Joacim Zschimmer
  */
 final case class ReturnCode(number: Int) extends GenericInt {
-  @deprecated("Use number")
-  def toInt = number
 
   def isSuccess = number == 0
 

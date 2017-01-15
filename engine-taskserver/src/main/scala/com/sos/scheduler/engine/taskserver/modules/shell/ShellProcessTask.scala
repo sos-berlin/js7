@@ -114,7 +114,7 @@ extends HasCloser with Task {
         concurrentStdoutStderrWell.finish()
         transferReturnValuesToMaster()
         val success = monitorProcessor.postStep(rc.isSuccess)
-        <process.result spooler_process_result={success.toString} exit_code={rc.toInt.toString} state_text={concurrentStdoutStderrWell.firstStdoutLine}/>.toString()
+        <process.result spooler_process_result={success.toString} exit_code={rc.number.toString} state_text={concurrentStdoutStderrWell.firstStdoutLine}/>.toString()
     }
   }
 

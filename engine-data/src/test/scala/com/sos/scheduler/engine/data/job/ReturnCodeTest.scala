@@ -20,9 +20,9 @@ final class ReturnCodeTest extends FreeSpec {
 
   "Boolean ReturnCode" in {
     assert(ReturnCode(true).isSuccess)
-    assert(ReturnCode(true).toInt == 0)
+    assert(ReturnCode(true).number == 0)
     assert(!ReturnCode(false).isSuccess)
-    assert(ReturnCode(false).toInt == 1)
+    assert(ReturnCode(false).number == 1)
   }
 
   "Success" in {
@@ -32,7 +32,7 @@ final class ReturnCodeTest extends FreeSpec {
   "StandardSuccess" in {
     assert(!ReturnCode.StandardFailure.isSuccess)
   }
-  
+
   "Interrupted process" in {
     assert(ReturnCode(SIGKILL) == ReturnCode(128 + 9))
     assert(ReturnCode(SIGTERM) == ReturnCode(128 + 15))
