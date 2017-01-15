@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.event.custom
+package com.sos.scheduler.engine.data.events.custom
 
 import com.sos.scheduler.engine.base.generic.IsString
 import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.event.custom
+package com.sos.scheduler.engine.data.events.custom
 
 import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
 import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, KeyedEvent}

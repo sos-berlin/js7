@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.event.custom
+package com.sos.scheduler.engine.data.events.custom
 
 import com.sos.scheduler.engine.data.event.KeyedEvent
 import scala.collection.JavaConversions._
