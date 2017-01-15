@@ -16,12 +16,6 @@ import scala.util.Random
 @RunWith(classOf[JUnitRunner])
 final class AkkasTest extends FreeSpec {
 
-  "MaximumTimeout" in {
-    val millis = Int.MaxValue * 10L - 2000
-    assert(millis / 1000 / 3600 / 24 / 30 == 8)  // Months
-    assert(MaximumTimeout == Timeout.apply(millis, TimeUnit.MILLISECONDS))
-  }
-
   "maximumTimeout" in {
     val millis = Int.MaxValue * 10L - 2000
     assert(millis / 1000 / 3600 / 24 / 30 == 8)  // Months

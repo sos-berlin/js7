@@ -13,11 +13,6 @@ import spray.http.Uri
 object Akkas {
 
   /**
-   * 8 months, assuming the Akka confinguration default akka.scheduler.tick-duration = 10.ms
-   */
-  val MaximumTimeout = tickDurationToMaximumTimeout(tickMillis = 10)
-
-  /**
    * Returns the a Timeout accepted for HTTP request, dependent on Akkas configuration akka.scheduler.tick-duration.
    * <ul>
    * <li>68 years for akka.scheduler.tick-duration = 1s</li>
