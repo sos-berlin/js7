@@ -22,7 +22,7 @@ import com.sos.scheduler.engine.common.soslicense.{LicenseKeyBunch, LicenseKeyPa
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
+import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.taskserver.TaskServer
 import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
 import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
@@ -171,7 +171,7 @@ private object TaskHandlerTest {
   private val JavaClasspath = "JAVA-CLASSPATH"
   private val TestMasterPort = 9999
   private val TestStartApiTask = StartApiTask(javaOptions = JavaOptions, javaClasspath = JavaClasspath,
-    meta = Some(StartTask.Meta(taskId = TaskId(1), job = JobPath("/test-job"))))
+    meta = Some(StartTask.Meta(job = "/test-job", taskId = TaskId(1))))
   private val TestLicenseKeyBunch = LicenseKeyBunch("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")
   private val TestTunnelToken = TunnelToken(TunnelId("1"), SecretString("SECRET"))
 

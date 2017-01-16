@@ -19,13 +19,13 @@ final class MavenPropertiesTest extends FreeSpec {
   "Maven?" in {
     logger.info(s"isMaven=$isMaven")
   }
-  
+
   "groupId" in {
     assert(m.groupId == "com.sos-berlin.jobscheduler.engine")
   }
 
   "artifactId" in {
-    assert(m.artifactId == "engine-common")
+    assert(m.artifactId startsWith "common_"/*+scala binaryVersion*/)
   }
 
   "version" in {

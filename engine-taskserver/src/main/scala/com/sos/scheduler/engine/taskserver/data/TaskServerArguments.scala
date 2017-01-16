@@ -35,7 +35,13 @@ final case class TaskServerArguments(
   rpcKeepaliveDurationOption: Option[Duration])
 {
   def masterInetSocketAddress: InetSocketAddress = toInetSocketAddress(masterAddress)
-  def logFilenamePart = s"task-${agentTaskId.string}-${startMeta.job.name}-${startMeta.taskId.string}"
+  def logFilenamePart = {
+    val jobName = startMeta.job lastIndexOf "/" match {
+      case -1 ⇒ startMeta.job
+      case i ⇒ startMeta.job.substring(i + 1)
+    }
+    s"task-${agentTaskId.string}-$jobName-${startMeta.taskId.string}"
+  }
 }
 
 object TaskServerArguments {

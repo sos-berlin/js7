@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
-import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
+import com.sos.scheduler.engine.data.job.TaskId
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}
@@ -22,16 +22,16 @@ import scala.collection.mutable
   */
 final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
 
-  private val tasks = new mutable.HashMap[AgentTaskId, (JobPath, TaskId, Option[Pid])]
+  private val tasks = new mutable.HashMap[AgentTaskId, (String, TaskId, Option[Pid])]
 
   deleteIfExists(file)
   createFile(file)
 
-  def add(id: AgentTaskId, pid: Option[Pid], taskId: TaskId, jobPath: JobPath): Unit =
+  def add(id: AgentTaskId, pid: Option[Pid], taskId: TaskId, jobPath: String): Unit =
     synchronized {
       tasks.put(id, (jobPath, taskId, pid))
       ignoreException(logger.asLazy.warn) {
-        file.append(idToKillCommand(id, pid, jobPath, taskId), defaultCharset)
+        file.append(idToKillCommand(id, pid, jobPath = jobPath, taskId), defaultCharset)
       }
     }
 
@@ -51,14 +51,14 @@ final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
       val tmp = file.getParent resolve s"~${file.getFileName}.tmp"
       autoClosing(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmp), defaultCharset))) { writer ⇒
         for ((id, (jobPath, taskId, pid)) ← tasks) {
-          writer.write(idToKillCommand(id, pid, jobPath, taskId))
+          writer.write(idToKillCommand(id, pid, jobPath = jobPath, taskId))
         }
       }
       move(tmp, file, REPLACE_EXISTING)
     }
 
-  private def idToKillCommand(id: AgentTaskId, pid: Option[Pid], jobPath: JobPath, taskId: TaskId) = {
-    val args = killScript.toCommandArguments(id, pid, jobPath, taskId)
+  private def idToKillCommand(id: AgentTaskId, pid: Option[Pid], jobPath: String, taskId: TaskId) = {
+    val args = killScript.toCommandArguments(id, pid, jobPath = jobPath, taskId)
     val cleanTail = args.tail collect { case CleanArgument(o) ⇒ o }
     ((s""""${args.head}"""" +: cleanTail) mkString " ") + LineSeparator
   }

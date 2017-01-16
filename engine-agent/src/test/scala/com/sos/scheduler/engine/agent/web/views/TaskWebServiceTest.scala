@@ -4,7 +4,7 @@ import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commands.StartTask
 import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
-import com.sos.scheduler.engine.data.job.{JobPath, TaskId}
+import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetAddress
 import java.time.Instant
@@ -39,7 +39,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
       TunnelId("99"),
       Instant.parse("2015-06-10T12:00:00Z"),
       startedByHttpIp = Some(InetAddress.getByName("127.1.2.3")),
-      startMeta = StartTask.Meta(JobPath("/FOLDER/JOB"), TaskId(123)),
+      startMeta = StartTask.Meta(job = "/FOLDER/JOB", TaskId(123)),
       arguments = Some(TaskOverview.Arguments(
         language = "LANGUAGE",
         javaClassName = Some("JAVA.CLASS"),

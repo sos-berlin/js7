@@ -56,7 +56,7 @@
         </dependency>
         <dependency>
             <groupId>com.sos-berlin.jobscheduler.engine</groupId>
-            <artifactId>engine-data</artifactId>
+            <artifactId>data_${scala.binaryVersion}</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
