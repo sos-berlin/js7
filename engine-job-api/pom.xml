@@ -31,7 +31,7 @@
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>engine-common</artifactId>
+            <artifactId>common_${scala.binaryVersion}</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>

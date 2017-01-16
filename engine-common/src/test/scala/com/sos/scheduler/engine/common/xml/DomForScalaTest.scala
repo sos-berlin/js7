@@ -2,7 +2,7 @@ package com.sos.scheduler.engine.common.xml
 
 import com.sos.scheduler.engine.common.xml.DomForScala._
 import com.sos.scheduler.engine.common.xml.DomForScalaTest._
-import com.sos.scheduler.engine.common.xml.XmlUtils.loadXml
+import com.sos.scheduler.engine.common.xml.CppXmlUtils.loadXml
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

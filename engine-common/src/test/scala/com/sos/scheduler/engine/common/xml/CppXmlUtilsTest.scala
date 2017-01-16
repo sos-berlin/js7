@@ -1,7 +1,8 @@
 package com.sos.scheduler.engine.common.xml
 
-import com.sos.scheduler.engine.common.xml.XmlUtils._
-import com.sos.scheduler.engine.common.xml.XmlUtilsTest._
+import com.sos.scheduler.engine.common.scalautil.xmls.ScalaStax.getCommonXMLInputFactory
+import com.sos.scheduler.engine.common.xml.CppXmlUtils.{domElementToStaxSource, _}
+import com.sos.scheduler.engine.common.xml.CppXmlUtilsTest._
 import java.nio.charset.StandardCharsets.{ISO_8859_1, US_ASCII, UTF_16BE, UTF_8}
 import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
@@ -9,7 +10,13 @@ import org.scalatest.Matchers._
 import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
-final class XmlUtilsTest extends FreeSpec {
+final class CppXmlUtilsTest extends FreeSpec {
+
+  "domElementToStaxSource" in {
+    val domElement = loadXml("<a/>").getDocumentElement
+    for (_ <- 1 to 2)
+      getCommonXMLInputFactory().createXMLEventReader(domElementToStaxSource(domElement))
+  }
 
   "sanitize" in {
     val original = ((0 to 300) map { _.toChar }).mkString
@@ -115,7 +122,7 @@ final class XmlUtilsTest extends FreeSpec {
   }
 }
 
-private object XmlUtilsTest {
+private object CppXmlUtilsTest {
   private def testBooleanXmlAttribute(xmls: Seq[String], expected: Boolean): Unit = {
     for (xml <- xmls; element = loadXml(xml).getDocumentElement) {
       assertResult(expected) { booleanXmlAttribute(element, "b", default = false) }

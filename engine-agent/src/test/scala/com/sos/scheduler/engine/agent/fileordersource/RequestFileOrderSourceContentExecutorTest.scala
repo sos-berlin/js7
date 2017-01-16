@@ -5,7 +5,6 @@ import com.sos.scheduler.engine.agent.data.commandresponses.FileOrderSourceConte
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.fileordersource.RequestFileOrderSourceContentExecutorTest._
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
-import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._

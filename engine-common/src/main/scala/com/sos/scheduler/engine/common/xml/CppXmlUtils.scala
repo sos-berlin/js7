@@ -7,6 +7,7 @@ import com.sos.scheduler.engine.common.scalautil.ScalaThreadLocal._
 import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.scheduler.engine.common.scalautil.StringWriters.writingString
 import com.sos.scheduler.engine.common.scalautil.xmls.{SafeXML, ScalaStax}
+import com.sos.scheduler.engine.common.xml.XmlUtils._
 import com.sos.scheduler.engine.cplusplus.runtime.annotation.ForCpp
 import java.io._
 import java.nio.charset.Charset
@@ -16,13 +17,15 @@ import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.OutputKeys._
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.{StreamResult, StreamSource}
-import javax.xml.transform.{Result, TransformerFactory}
+import javax.xml.transform.{Result, Source, TransformerFactory}
 import javax.xml.xpath.{XPathConstants, XPathFactory}
 import org.w3c.dom.{Document, Element, Node, NodeList}
 import org.xml.sax.{ErrorHandler, InputSource, SAXParseException}
 import scala.util.matching.Regex
 
-@ForCpp object XmlUtils {
+@ForCpp
+object CppXmlUtils {
+
   // See https://www.w3.org/TR/REC-xml/#charsets
   private lazy val InvalidXmlCharactersRegex = new Regex("[" +
     "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007" +
@@ -51,6 +54,9 @@ import scala.util.matching.Regex
   private val transformerFactory = threadLocal { TransformerFactory.newInstance() }
 
   private var static_xPathNullPointerLogged = false
+
+  def domElementToStaxSource(element: org.w3c.dom.Element): Source =
+    new StreamSource(new ByteArrayInputStream(toXmlBytes(element)))
 
   @ForCpp
   def newDocument(): Document = {
@@ -117,9 +123,6 @@ import scala.util.matching.Regex
     val result = writingString { w => writeXmlTo(n, w, indent = indent) }
     removeXmlProlog(result)
   }
-
-  def removeXmlProlog(xml: String) =
-    if (xml startsWith "<?") xml.replaceFirst("^<[?][xX][mM][lL].+[?][>]\\w*", "") else xml
 
   def writeXmlTo(n: Node, o: OutputStream, encoding: Charset, indent: Boolean): Unit = {
     writeXmlTo(n, new StreamResult(o), Some(encoding), indent = indent)

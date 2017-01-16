@@ -70,8 +70,6 @@ private final class CallSerializer(protected val proxyRegister: ProxyRegister) e
         writeInt32(arguments.size)
         writeInt32(0)  // namedArgumentCount
         for (a ← arguments.reverseIterator) writeVariant(a)
-
-      case _: ReleaseCall | _: CallCall ⇒ throw new UnsupportedOperationException(call.getClass.getSimpleName)
     }
 }
 
