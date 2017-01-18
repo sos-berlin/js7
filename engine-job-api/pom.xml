@@ -60,10 +60,6 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>xerces</groupId>
-            <artifactId>xercesImpl</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.codehaus.groovy</groupId>
             <artifactId>groovy</artifactId>
             <version>1.8.6</version>
