@@ -19,7 +19,7 @@ import static javax.script.ScriptContext.ENGINE_SCOPE;
  * General wrapper for the javax.script interface
  *
  * This class provides a general mechanism to call script in different languages.
- *    
+ *
  * {@code
 ScriptInstance module = new ScriptInstance("javascript");
 module.setSourceCode("print('Hello ' + name + '\\n');");
@@ -28,7 +28,6 @@ module.call();
  * }
  */
 public class ScriptInstance {
-    //Haben wir im Task-Prozess das Logging eingestellt? private static final Logger logger = LoggerFactory.getLogger(ScriptInstance.class);
 
     private final ScriptEngine engine;
     private final Supplier<ImmutableMap<String, Object>> bindingsLazy;
@@ -43,8 +42,6 @@ public class ScriptInstance {
     private static ScriptEngine newScriptEngine(String language) {
         ScriptEngine result = new ScriptEngineManager().getEngineByName(language);
         if (result == null) throw throwUnknownLanguage(language);
-//        if (logger.isDebugEnabled())
-//            logger.debug(result.getFactory().getEngineName() +" "+ result.getFactory().getEngineVersion());
         return result;
     }
 

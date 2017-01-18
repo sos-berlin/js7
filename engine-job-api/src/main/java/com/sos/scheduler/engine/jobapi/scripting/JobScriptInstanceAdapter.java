@@ -6,9 +6,6 @@ import com.google.common.collect.ImmutableMap;
 public class JobScriptInstanceAdapter {
     private final ScriptInstance scriptInstance;
 
-    //TODO Was passiert, wenn der Scriptcode fehlerhaft ist
-    //TODO funktioniert das Scripting auch bei remote jobs?
-
     public JobScriptInstanceAdapter(String language, Supplier<ImmutableMap<String,Object>> bindingsLazy, String script) {
         this.scriptInstance = new ScriptInstance(language, bindingsLazy, script);
     }
