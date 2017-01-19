@@ -4,14 +4,11 @@ import com.google.common.io.Closer
 import com.sos.scheduler.engine.common.scalautil.AutoClosing._
 import com.sos.scheduler.engine.common.scalautil.AutoClosingTest._
 import java.io.Closeable
-import org.junit.runner.RunWith
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
 
-@RunWith(classOf[JUnitRunner])
 final class AutoClosingTest extends FreeSpec {
 
   "autoClosing without Exception" in {

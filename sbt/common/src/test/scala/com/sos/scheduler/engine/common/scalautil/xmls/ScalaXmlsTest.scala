@@ -7,15 +7,12 @@ import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXmls.implicits._
 import java.io.File
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ScalaXmlsTest extends FreeSpec {
 
   "File.xml" in {

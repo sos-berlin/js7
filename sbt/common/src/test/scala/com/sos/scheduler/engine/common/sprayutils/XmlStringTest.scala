@@ -6,9 +6,7 @@ import com.sos.scheduler.engine.common.sprayutils.XmlStringTest._
 import com.sos.scheduler.engine.common.xml.XmlUtils.removeXmlProlog
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_16, UTF_8}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.HttpCharsets.{`ISO-8859-1`, `UTF-8`}
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes._
@@ -23,7 +21,6 @@ import spray.testkit.ScalatestRouteTest
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class XmlStringTest extends FreeSpec with ScalatestRouteTest {
 
   private val testString = "<a><Ä/></a>"

@@ -2,16 +2,13 @@ package com.sos.scheduler.engine.base.sprayjson.typed
 
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.lazyRootFormat
 import com.sos.scheduler.engine.base.sprayjson.typed.TypedJsonFormatTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class TypedJsonFormatTest extends FreeSpec {
 
   private implicit val aJsonFormat = TypedJsonFormat[A](shortenTypeOnlyValue = true)(

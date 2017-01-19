@@ -1,15 +1,12 @@
 package com.sos.scheduler.engine.base.convert
 
 import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ConvertiblePartialFunctionsTest extends FreeSpec {
 
   private val pf: PartialFunction[String, String] = Map("KEY" → "111", "other" → "000")

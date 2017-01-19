@@ -4,13 +4,10 @@ import com.sos.scheduler.engine.base.convert.As
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.duration.{DurationInt, DurationLong}
 
-@RunWith(classOf[JUnitRunner])
 final class ScalaTimeTest extends FreeSpec {
 
   "Duration" - {

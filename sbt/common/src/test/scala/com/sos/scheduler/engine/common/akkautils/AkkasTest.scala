@@ -5,15 +5,12 @@ import akka.util.{ByteString, Timeout}
 import com.sos.scheduler.engine.common.akkautils.Akkas._
 import com.typesafe.config.ConfigFactory
 import java.util.concurrent.TimeUnit
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.util.Random
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class AkkasTest extends FreeSpec {
 
   "maximumTimeout" in {

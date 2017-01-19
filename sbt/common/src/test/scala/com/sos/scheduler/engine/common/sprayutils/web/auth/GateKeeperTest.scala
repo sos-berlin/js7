@@ -9,9 +9,7 @@ import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeperTest._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
 import java.time.Instant.now
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext
 import spray.http.HttpHeaders.Authorization
 import spray.http.StatusCodes.{Forbidden, OK, Unauthorized}
@@ -24,7 +22,6 @@ import spray.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
   private val defaultConf = GateKeeper.Configuration(

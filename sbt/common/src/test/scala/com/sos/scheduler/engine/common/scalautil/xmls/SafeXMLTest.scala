@@ -1,16 +1,13 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
 import com.sos.scheduler.engine.common.scalautil.xmls.SafeXMLTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.xml.sax.SAXParseException
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class SafeXMLTest extends FreeSpec {
 
   "xml.XML.load allows DOCTYPE" in {

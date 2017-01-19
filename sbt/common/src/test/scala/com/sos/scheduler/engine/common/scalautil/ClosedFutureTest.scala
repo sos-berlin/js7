@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.util.Success
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ClosedFutureTest extends FreeSpec {
 
   "closed future succeeds" in {

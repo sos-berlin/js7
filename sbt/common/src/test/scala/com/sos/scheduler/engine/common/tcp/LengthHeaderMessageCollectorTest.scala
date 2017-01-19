@@ -6,15 +6,12 @@ import com.sos.scheduler.engine.common.tcp.LengthHeaderMessageCollector.intToByt
 import com.sos.scheduler.engine.common.tcp.LengthHeaderMessageCollectorTest._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Instant.now
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.util.Random
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class LengthHeaderMessageCollectorTest extends FreeSpec {
 
   "intToByteString" in {

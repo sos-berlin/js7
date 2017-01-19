@@ -1,15 +1,12 @@
 package com.sos.scheduler.engine.base.convert
 
 import java.nio.file.{Path, Paths}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ConvertibleMultiPartialFunctionTest extends FreeSpec {
 
   "as with default" in {

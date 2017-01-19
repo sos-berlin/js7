@@ -4,15 +4,12 @@ import akka.actor.{Actor, ActorSystem, Props}
 import com.sos.scheduler.engine.common.akkautils.DeadLetterActorTest._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class DeadLetterActorTest extends FreeSpec {
 
   "DeadLetterActor.subscribe" in {

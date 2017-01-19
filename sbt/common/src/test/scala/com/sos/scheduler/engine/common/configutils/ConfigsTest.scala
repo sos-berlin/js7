@@ -3,14 +3,11 @@ package com.sos.scheduler.engine.common.configutils
 import com.sos.scheduler.engine.common.configutils.Configs._
 import com.sos.scheduler.engine.common.configutils.ConfigsTest._
 import com.typesafe.config.{ConfigException, ConfigFactory}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ConfigsTest extends FreeSpec {
 
   "Config syntax" in {

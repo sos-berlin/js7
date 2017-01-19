@@ -3,16 +3,13 @@ package com.sos.scheduler.engine.base.sprayjson
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class JavaTimeJsonFormatsTest extends FreeSpec {
 
   "Instant" - {

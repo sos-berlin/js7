@@ -6,16 +6,13 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import java.time.Instant
 import java.time.Instant.now
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
 import scala.concurrent.Promise
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ConcurrentCallerTest extends FreeSpec {
 
   "ConcurrentCaller" in {

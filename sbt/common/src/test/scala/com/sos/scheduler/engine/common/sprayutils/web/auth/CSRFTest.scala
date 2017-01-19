@@ -1,8 +1,6 @@
 package com.sos.scheduler.engine.common.sprayutils.web.auth
 
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.HttpCharsets.`UTF-8`
 import spray.http.MediaTypes.`application/json`
 import spray.http.StatusCodes.{Forbidden, OK}
@@ -15,7 +13,6 @@ import spray.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class CSRFTest extends FreeSpec with ScalatestRouteTest {
 
   private val csrf = new CSRF(CSRF.Configuration.Default)

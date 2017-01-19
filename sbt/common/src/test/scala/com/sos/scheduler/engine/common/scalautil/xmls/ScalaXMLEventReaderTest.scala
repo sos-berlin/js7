@@ -7,16 +7,13 @@ import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReaderTest._
 import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources._
 import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
 import javax.xml.transform.Source
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.collection.immutable
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ScalaXMLEventReaderTest extends FreeSpec {
 
   "Methods" in {

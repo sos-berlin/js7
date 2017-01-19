@@ -1,15 +1,12 @@
 package com.sos.scheduler.engine.common.commandline
 
 import com.sos.scheduler.engine.common.commandline.CommandLineArguments.parse
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class CommandLineArgumentsTest extends FreeSpec {
 
   "Flag" - {

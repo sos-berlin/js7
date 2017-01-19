@@ -3,16 +3,13 @@ package com.sos.scheduler.engine.common.sprayutils
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits._
 import com.sos.scheduler.engine.common.sprayutils.SprayJsonTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class SprayJsonTest extends FreeSpec {
 
   "Map JSON" in {

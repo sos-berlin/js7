@@ -1,9 +1,7 @@
 package com.sos.scheduler.engine.data.event
 
 import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.immutable.Seq
 import scala.language.higherKinds
 import spray.json.DefaultJsonProtocol._
@@ -12,7 +10,6 @@ import spray.json._
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class EventSeqTest extends FreeSpec {
 
   private object TestEvent extends Event {

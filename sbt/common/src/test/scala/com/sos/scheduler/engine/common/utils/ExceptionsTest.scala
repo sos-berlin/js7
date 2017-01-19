@@ -7,15 +7,12 @@ import com.sos.scheduler.engine.common.utils.Exceptions._
 import com.sos.scheduler.engine.common.utils.ExceptionsTest._
 import java.io.IOException
 import java.time.Instant
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.util.{Success, Try}
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ExceptionsTest extends FreeSpec {
 
   "repeatUntilNoException" in {

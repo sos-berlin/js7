@@ -3,13 +3,10 @@ package com.sos.scheduler.engine.common.scalautil
 import com.sos.scheduler.engine.common.scalautil.Collections._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
 import com.sos.scheduler.engine.common.scalautil.CollectionsTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.collection.{immutable, mutable}
 
-@RunWith(classOf[JUnitRunner])
 final class CollectionsTest extends FreeSpec {
 
   "toImmutableSeq of an already immutable.Seq" in {

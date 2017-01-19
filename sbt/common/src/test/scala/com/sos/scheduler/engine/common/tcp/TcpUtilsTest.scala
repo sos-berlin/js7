@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.common.tcp
 
 import com.sos.scheduler.engine.common.tcp.TcpUtils.{parseTcpPort, requireTcpPortNumber}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TcpUtilsTest extends FreeSpec {
 
   "parseTcpPort" in {

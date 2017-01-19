@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.data.system
 
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json._
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class JavaInformationTest extends FreeSpec {
 
   "JSON 1" in {

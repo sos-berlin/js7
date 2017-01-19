@@ -1,17 +1,14 @@
 package com.sos.scheduler.engine.common.scalautil
 
 import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.reflect.ClassTag
 
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class AssignableFromTest extends FreeSpec {
 
   "AssignableFrom" in {

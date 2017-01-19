@@ -3,16 +3,13 @@ package com.sos.scheduler.engine.common.scalautil
 import com.google.common.io.Closer
 import com.sos.scheduler.engine.common.scalautil.Closers._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import org.junit.runner.RunWith
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
 import scala.collection.mutable
 import scala.language.reflectiveCalls
 
-@RunWith(classOf[JUnitRunner])
 final class ClosersTest extends FreeSpec {
 
   "onClose" in {

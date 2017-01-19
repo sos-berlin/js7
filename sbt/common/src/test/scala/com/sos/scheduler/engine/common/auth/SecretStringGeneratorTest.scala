@@ -6,14 +6,11 @@ import com.sos.scheduler.engine.common.auth.SecretStringGeneratorTest._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class SecretStringGeneratorTest extends FreeSpec {
 
   "newSecretString returns different secrets" in {

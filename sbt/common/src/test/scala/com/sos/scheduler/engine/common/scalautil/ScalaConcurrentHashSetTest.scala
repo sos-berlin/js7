@@ -1,13 +1,10 @@
 package com.sos.scheduler.engine.common.scalautil
 
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ScalaConcurrentHashSetTest extends FreeSpec {
 
   private val m = new ScalaConcurrentHashSet[Int]

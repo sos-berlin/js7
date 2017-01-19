@@ -1,16 +1,13 @@
 package com.sos.scheduler.engine.common.sprayutils
 
 import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class YamlJsonConversionTest extends FreeSpec {
 
   private val jsObject = JsObject(

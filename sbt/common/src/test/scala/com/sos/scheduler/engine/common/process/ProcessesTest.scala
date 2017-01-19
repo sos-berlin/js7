@@ -11,16 +11,12 @@ import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
 import java.nio.file.Paths
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
-import scala.io
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ProcessesTest extends FreeSpec {
 
   "processToPidOption, toShellCommandArguments" in {
@@ -52,9 +48,10 @@ final class ProcessesTest extends FreeSpec {
       file.contentString = ShellScript
       val process = new ProcessBuilder(toShellCommandArguments(file, Args)).redirectOutput(PIPE).start()
       val echoLines = io.Source.fromInputStream(process.getInputStream).getLines().toList
-      val expectedLines = List(file.toString) ++ Args
-      for ((a, b) ← echoLines zip expectedLines) assert(a == b)
-      assert(echoLines.size == expectedLines.size)
+      val normalizedFirstEcho = if (isWindows) echoLines.head stripSuffix "\"" stripPrefix "\"" else echoLines.head  // Windows (with sbt?) may echo the quoted file path
+      assert(normalizedFirstEcho == file.toString)
+      for ((a, b) ← echoLines.tail zip Args) assert(a == b)
+      assert(echoLines.size - 1 == Args.size)
       process.waitFor()
     }
   }
@@ -101,5 +98,5 @@ private object ProcessesTest {
       "@echo off\r\n" +
         (0 to Args.size map { i ⇒ s"echo %$i\r\n" } mkString "")
     else
-        0 to Args.size map { i ⇒ s"""echo "$$$i"""" + '\n' } mkString ""
+      0 to Args.size map { i ⇒ s"""echo "$$$i"""" + '\n' } mkString ""
 }

@@ -1,19 +1,16 @@
 package com.sos.scheduler.engine.common.time.timer.signaling
 
-import java.util.concurrent.CountDownLatch
-import scala.concurrent.ExecutionContext.Implicits.global
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import org.junit.runner.RunWith
-import org.scalatest.Matchers._
+import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
+import org.scalatest.Matchers._
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{blocking, Await, Future}
+import scala.concurrent.{Await, Future, blocking}
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class SignalingTest extends FreeSpec {
 
   for ((name, signaling) ← List(

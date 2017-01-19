@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.data.event
 
 import java.time.Instant
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class EventIdTest extends FreeSpec {
 
   private val MaximumJsonLosslessEventIdInstant = Instant.parse("2255-06-05T23:47:34.740992Z")

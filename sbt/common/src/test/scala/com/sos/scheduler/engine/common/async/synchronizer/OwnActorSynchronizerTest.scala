@@ -5,16 +5,13 @@ import com.sos.scheduler.engine.common.scalautil.Closers._
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutures
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.immutable.IndexedSeq
 import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class OwnActorSynchronizerTest extends FreeSpec {
 
   "test" in {

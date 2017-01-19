@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.data.filebased
 
 import com.sos.scheduler.engine.data.filebased.TypedPathTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class TypedPathTest extends FreeSpec {
 
   "asTyped" in {

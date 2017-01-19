@@ -1,12 +1,9 @@
 package com.sos.scheduler.engine.common.time
 
 import com.sos.scheduler.engine.common.time.TimeoutWithSteps._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 final class TimeoutWithStepsTest extends FreeSpec {
 
   "instantIterator" in {

@@ -4,15 +4,12 @@ import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.common.auth.EncodedPasswordValidatorTest._
 import com.sos.scheduler.engine.common.configutils.Configs.ConvertibleConfig
 import com.typesafe.config.ConfigFactory
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class EncodedPasswordValidatorTest extends FreeSpec {
 
   "Unknown user" in {

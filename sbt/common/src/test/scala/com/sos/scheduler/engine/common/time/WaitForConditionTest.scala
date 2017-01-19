@@ -6,12 +6,9 @@ import com.sos.scheduler.engine.common.time.WaitForConditionTest._
 import java.lang.System.currentTimeMillis
 import java.time.Duration
 import java.time.Instant.now
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 final class WaitForConditionTest extends FreeSpec {
 
   "realTimeIterator (time-critical test)" in {

@@ -1,15 +1,12 @@
 package com.sos.scheduler.engine.data.filebased
 
 import com.sos.scheduler.engine.data.filebased.AbsolutePathTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
 @SuppressWarnings(Array("deprecated"))
-@RunWith(classOf[JUnitRunner])
 final class AbsolutePathTest extends FreeSpec {
 
   "validate" in {

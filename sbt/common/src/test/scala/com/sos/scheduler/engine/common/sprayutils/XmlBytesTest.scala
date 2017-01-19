@@ -3,9 +3,7 @@ package com.sos.scheduler.engine.common.sprayutils
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.sprayutils.XmlBytesTest._
 import java.nio.charset.StandardCharsets.UTF_8
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.HttpEntity
 import spray.http.MediaTypes._
 import spray.http.StatusCodes.OK
@@ -18,7 +16,6 @@ import spray.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class XmlBytesTest extends FreeSpec with ScalatestRouteTest {
 
   private val xmlBytes = XmlBytes(ByteString("<?xml encoding='utf-8'?><a><Ä/></a>".getBytes(UTF_8)))

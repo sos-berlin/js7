@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.common.utils
 
 import com.sos.scheduler.engine.common.utils.Strings._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class StringsTest extends FreeSpec {
 
   "truncateWithEllipsis" in {

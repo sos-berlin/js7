@@ -3,13 +3,11 @@ package com.sos.scheduler.engine.common.system
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import java.io.File
 import java.io.File.pathSeparator
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[org.scalatest.junit.JUnitRunner] )
 final class OperatingSystemTest extends FreeSpec {
 
   "makeModuleFilename" in {

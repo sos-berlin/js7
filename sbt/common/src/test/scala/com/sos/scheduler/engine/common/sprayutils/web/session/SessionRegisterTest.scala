@@ -2,9 +2,7 @@ package com.sos.scheduler.engine.common.sprayutils.web.session
 
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.data.session.SessionToken
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.StatusCodes.{Forbidden, Unauthorized}
 import spray.routing.Directives._
 import spray.testkit.ScalatestRouteTest
@@ -12,7 +10,6 @@ import spray.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest {
 
   private val sessionRegister = new SessionRegister(token ⇒ s"/${token.secret.string}/")

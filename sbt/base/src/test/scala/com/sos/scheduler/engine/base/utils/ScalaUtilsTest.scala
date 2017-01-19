@@ -4,13 +4,10 @@ import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.base.utils.ScalaUtils._
 import com.sos.scheduler.engine.base.utils.ScalaUtils.implicits._
 import java.util.concurrent.atomic.AtomicBoolean
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.reflect.ClassTag
 
-@RunWith(classOf[JUnitRunner])
 final class ScalaUtilsTest extends FreeSpec {
 
   "implicitClass" in {

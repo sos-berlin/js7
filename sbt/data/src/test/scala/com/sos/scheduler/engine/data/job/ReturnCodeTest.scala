@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.data.job
 
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ReturnCodeTest extends FreeSpec {
 
   "Int ReturnCode" in {

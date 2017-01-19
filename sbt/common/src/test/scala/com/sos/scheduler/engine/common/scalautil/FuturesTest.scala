@@ -4,10 +4,8 @@ import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures.{FutureNotSucceededException, NoFuture, catchInFuture}
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.util.concurrent.TimeoutException
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
@@ -15,7 +13,6 @@ import scala.concurrent.{Await, Future, Promise}
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class FuturesTest extends FreeSpec {
 
   "successValue" in {

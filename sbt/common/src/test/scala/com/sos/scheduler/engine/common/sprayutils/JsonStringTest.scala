@@ -2,9 +2,7 @@ package com.sos.scheduler.engine.common.sprayutils
 
 import com.sos.scheduler.engine.common.sprayutils.JsonStringTest._
 import java.nio.charset.StandardCharsets.UTF_8
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.HttpCharsets.`UTF-8`
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes._
@@ -18,7 +16,6 @@ import spray.testkit.ScalatestRouteTest
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class JsonStringTest extends FreeSpec with ScalatestRouteTest {
 
   private val testString = """{"Ä": "a"}"""

@@ -3,15 +3,12 @@ package com.sos.scheduler.engine.base.utils
 
 import com.sos.scheduler.engine.base.utils.StackTraces._
 import com.sos.scheduler.engine.base.utils.StackTracesTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.util.Try
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class StackTracesTest extends FreeSpec {
 
   "withThisSackTrace extends possible failures stack strace with own stack trace" in {

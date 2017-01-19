@@ -2,14 +2,11 @@ package com.sos.scheduler.engine.data.event
 
 import com.sos.scheduler.engine.data.event.EventRequestTest._
 import java.time.Duration
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class EventRequestTest extends FreeSpec {
 
   "toQueryParameters" in {

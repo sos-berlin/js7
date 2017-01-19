@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.common.xml
 
 import com.sos.scheduler.engine.common.xml.VariableSets.{parseXml, toParamsXmlElem, toXmlElem}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class VariableSetsTest extends FreeSpec {
 
   "parseXml" in {

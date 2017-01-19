@@ -1,17 +1,14 @@
 package com.sos.scheduler.engine.base.sprayjson
 
 import com.sos.scheduler.engine.base.sprayjson.InetAddressJsonSupport._
-import java.net.{InetSocketAddress, InetAddress}
-import org.junit.runner.RunWith
+import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json._
 
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class InetAddressJsonSupportTest extends FreeSpec {
 
   "InetAddress" - {

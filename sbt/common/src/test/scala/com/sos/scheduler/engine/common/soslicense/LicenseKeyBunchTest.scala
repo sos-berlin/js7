@@ -3,15 +3,12 @@ package com.sos.scheduler.engine.common.soslicense
 import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter
 import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
 import com.sos.scheduler.engine.common.soslicense.Parameters._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class LicenseKeyBunchTest extends FreeSpec {
 
   "Empty" in {

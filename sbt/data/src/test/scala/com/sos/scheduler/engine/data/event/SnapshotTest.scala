@@ -1,8 +1,6 @@
 package com.sos.scheduler.engine.data.event
 
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._
 import spray.json._
@@ -10,7 +8,6 @@ import spray.json._
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class SnapshotTest extends FreeSpec {
 
   "map" in {

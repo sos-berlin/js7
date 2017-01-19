@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.base.convert
 
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class AsTest extends FreeSpec {
 
   "StringAsInt" in {

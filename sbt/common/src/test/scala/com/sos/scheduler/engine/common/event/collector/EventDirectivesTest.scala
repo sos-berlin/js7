@@ -5,9 +5,7 @@ import com.sos.scheduler.engine.common.event.collector.EventDirectivesTest._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
 import com.sos.scheduler.engine.data.event.{Event, EventId, EventRequest, KeyedEvent}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol._
 import spray.routing.Directives._
 import spray.testkit.ScalatestRouteTest
@@ -15,7 +13,6 @@ import spray.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class EventDirectivesTest extends FreeSpec with ScalatestRouteTest {
 
   private implicit val myKeyedEventJsonFormat = {

@@ -2,12 +2,10 @@ package com.sos.scheduler.engine.common.sprayutils
 
 import akka.actor.ActorSystem
 import com.sos.scheduler.engine.common.sprayutils.SimpleTypeSprayJsonSupport._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
+import spray.http.ContentTypes
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes._
-import spray.http.{ContentTypes, Uri}
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 import spray.routing.HttpService
@@ -16,7 +14,6 @@ import spray.testkit.ScalatestRouteTest
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class SimpleTypeSprayJsonSupportTest extends FreeSpec with ScalatestRouteTest with HttpService {
 
   implicit lazy val actorRefFactory = ActorSystem(getClass.getSimpleName)

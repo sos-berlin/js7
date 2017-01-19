@@ -3,14 +3,11 @@ package com.sos.scheduler.engine.common.internet
 import com.sos.scheduler.engine.base.convert.As.convert
 import com.sos.scheduler.engine.common.internet.IP._
 import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class IPTest extends FreeSpec {
 
   "InetAddress" in {

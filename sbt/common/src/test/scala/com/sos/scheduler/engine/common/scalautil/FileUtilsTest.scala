@@ -8,15 +8,12 @@ import java.io.File
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete, exists}
 import java.nio.file.{Files, NotDirectoryException, Path}
-import org.junit.runner.RunWith
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class FileUtilsTest extends FreeSpec with BeforeAndAfterAll {
 
   private lazy val file = createTempFile("FileUtilTest-", ".tmp").toFile

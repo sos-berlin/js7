@@ -4,14 +4,11 @@ import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter
 import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
 import com.sos.scheduler.engine.common.soslicense.Parameters._
 import java.time.LocalDate
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class LicenseKeyTest extends FreeSpec {
 
   testLicenseKey("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6") { key ⇒

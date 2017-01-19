@@ -1,9 +1,7 @@
 package com.sos.scheduler.engine.common.sprayutils
 
 import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.Uri
 import spray.routing.Directives._
 import spray.testkit.ScalatestRouteTest
@@ -11,7 +9,6 @@ import spray.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class SprayUtilsTest extends FreeSpec with ScalatestRouteTest {
 
   "Path" - {

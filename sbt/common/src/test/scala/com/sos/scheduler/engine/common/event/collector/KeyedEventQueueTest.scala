@@ -2,14 +2,11 @@ package com.sos.scheduler.engine.common.event.collector
 
 import com.sos.scheduler.engine.common.event.collector.KeyedEventQueueTest._
 import com.sos.scheduler.engine.data.event.{EventId, KeyedEvent, NoKeyEvent, Snapshot}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class KeyedEventQueueTest extends FreeSpec {
 
   private val queue = new KeyedEventQueue(3)

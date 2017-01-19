@@ -1,13 +1,10 @@
 package com.sos.scheduler.engine.common.utils
 
-import FreeTcpPortFinder._
+import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
 import java.net.ServerSocket
-import org.junit.runner.RunWith
-import org.scalatest.{FreeSpec, FunSuite}
+import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 final class FreeTcpPortFinderTest extends FreeSpec {
 
   "findRandomFreePort" in {

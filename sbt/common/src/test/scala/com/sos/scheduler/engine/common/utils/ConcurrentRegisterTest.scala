@@ -2,15 +2,12 @@ package com.sos.scheduler.engine.common.utils
 
 import com.sos.scheduler.engine.base.utils.HasKey
 import com.sos.scheduler.engine.common.scalautil.DuplicateKeyException
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ConcurrentRegisterTest extends FreeSpec {
 
   private val register = ConcurrentRegister[Value]()
