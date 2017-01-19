@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
   * @author Joacim Zschimmer
   */
 object Monitors {
-  def newMonitorInstance(args: ModuleArguments, namedIDispatches: TypedNamedIDispatches): sos.spooler.Monitor_impl =
+  def newMonitorInstance(args: ModuleArguments, namedIDispatches: TypedNamedIDispatches): sos.spooler.IMonitor_impl =
     args.newModule() match {
       case module: ApiModule ⇒ module.newMonitorInstance(namedIDispatches)
       case module ⇒ throw new IllegalArgumentException(s"Unsupported module class '${module.getClass.getSimpleName}' for a monitor")

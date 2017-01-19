@@ -26,7 +26,7 @@ extends Task with HasCloser {
   import namedIDispatches.spoolerTask
 
   private val monitorProcessor = MonitorProcessor.create(monitors, namedIDispatches).closeWithCloser
-  private val instance: sos.spooler.Job_impl = module.newJobInstance(namedIDispatches)
+  private val instance: sos.spooler.IJob_impl = module.newJobInstance(namedIDispatches)
   private val methodIsCalled = mutable.Set[String]()
   private val concurrentStdoutStderrWell = stdFiles.nonEmpty option new ConcurrentStdoutAndStderrWell(s"Job $jobName", stdFiles).closeWithCloser
   private var closeCalled = false
@@ -40,7 +40,7 @@ extends Task with HasCloser {
 
   /**
    * Behaves as Module_instance::call&#95;&#95;end.
-   * Method must exists. Job must implement [[sos.spooler.Job_impl]].
+   * Method must exists. Job must implement [[sos.spooler.IJob_impl]].
    */
   def callIfExists(methodWithSignature: String) =
     if (ignoreCall(methodWithSignature)) {
