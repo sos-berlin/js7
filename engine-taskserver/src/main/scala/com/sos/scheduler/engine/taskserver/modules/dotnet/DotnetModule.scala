@@ -14,10 +14,10 @@ extends ApiModule {
   import DotnetModule._
 
   def newJobInstance(namedIDispatches: TypedNamedIDispatches) =
-    factory.newInstance(classOf[sos.spooler.Job_impl], namedIDispatchesToTaskContext(namedIDispatches), arguments.reference)
+    factory.newInstance(classOf[sos.spooler.IJob_impl], namedIDispatchesToTaskContext(namedIDispatches), arguments.reference)
 
   def newMonitorInstance(namedIDispatches: TypedNamedIDispatches) =
-    factory.newInstance(classOf[sos.spooler.Monitor_impl], namedIDispatchesToTaskContext(namedIDispatches), arguments.reference)
+    factory.newInstance(classOf[sos.spooler.IMonitor_impl], namedIDispatchesToTaskContext(namedIDispatches), arguments.reference)
 }
 
 object DotnetModule {

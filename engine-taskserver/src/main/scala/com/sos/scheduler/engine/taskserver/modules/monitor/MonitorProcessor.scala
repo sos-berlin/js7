@@ -8,7 +8,7 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-private[modules] final class MonitorProcessor private(instances: Vector[sos.spooler.Monitor_impl], spoolerLog: SpoolerLog)
+private[modules] final class MonitorProcessor private(instances: Vector[sos.spooler.IMonitor_impl], spoolerLog: SpoolerLog)
 extends HasCloser {
 
   def preTask(): Boolean = instances forall { _.spooler_task_before() }

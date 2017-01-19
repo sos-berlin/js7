@@ -9,25 +9,27 @@ import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
   */
 trait JavaModule extends ApiModule {
 
-  protected def newJobInstance(): sos.spooler.Job_impl
-  protected def newMonitorInstance(): sos.spooler.Monitor_impl
+  protected def newJobInstance(): sos.spooler.IJob_impl
+  protected def newMonitorInstance(): sos.spooler.IMonitor_impl
 
-  final def newJobInstance(namedIDispatches: TypedNamedIDispatches): sos.spooler.Job_impl = {
+  final def newJobInstance(namedIDispatches: TypedNamedIDispatches): sos.spooler.IJob_impl = {
     val r = newJobInstance()
-    r.spooler_log = spooler_log(namedIDispatches)
-    r.spooler_task = spooler_task(namedIDispatches)
-    r.spooler_job = spooler_job(namedIDispatches)
-    r.spooler = spooler(namedIDispatches)
+    initializeSpoolerVariables(r, namedIDispatches)
     r
   }
 
-  final def newMonitorInstance(namedIDispatches: TypedNamedIDispatches): sos.spooler.Monitor_impl = {
+  final def newMonitorInstance(namedIDispatches: TypedNamedIDispatches): sos.spooler.IMonitor_impl = {
     val r = newMonitorInstance()
-    r.spooler_log = spooler_log(namedIDispatches)
-    r.spooler_task = spooler_task(namedIDispatches)
-    r.spooler_job = spooler_job(namedIDispatches)
-    r.spooler = spooler(namedIDispatches)
+    initializeSpoolerVariables(r, namedIDispatches)
     r
+  }
+
+  private def initializeSpoolerVariables(o: sos.spooler.HasInitializeSpoolerVariables, namedIDispatches: TypedNamedIDispatches): Unit = {
+    o.initializeSpoolerVariables(
+      spooler_log(namedIDispatches),
+      spooler(namedIDispatches),
+      spooler_job(namedIDispatches),
+      spooler_task(namedIDispatches))
   }
 }
 
