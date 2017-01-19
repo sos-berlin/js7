@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.data.events
 
-import com.sos.scheduler.engine.data.event.custom.{CustomEvent, VariablesCustomEvent}
+import com.sos.scheduler.engine.data.events.custom.{CustomEvent, VariablesCustomEvent}
 import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import com.sos.scheduler.engine.data.filebased.{FileBasedActivated, FileBasedAdded, FileBasedEvent, FileBasedRemoved, FileBasedReplaced}
 import com.sos.scheduler.engine.data.job.{JobEvent, JobStateChanged, TaskClosed, TaskEnded, TaskEvent, TaskStarted}
