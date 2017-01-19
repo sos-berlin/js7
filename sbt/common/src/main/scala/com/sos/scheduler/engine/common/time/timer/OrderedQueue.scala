@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.time.timer
 
+import com.sos.scheduler.engine.common.time.timer.OrderedQueue._
 import scala.collection.immutable
 
 /**
@@ -19,7 +20,7 @@ trait OrderedQueue[K, V] {
 
   def foreach(body: V ⇒ Unit): Unit
 
-  def head: V = headOption getOrElse { throw new NoSuchElementException("OrderedQueue.head") }
+  def head: V = headOption getOrElse { throw new EmptyQueueException }
 
   def headOption: Option[V]
 
@@ -45,4 +46,6 @@ object OrderedQueue {
       else Right(removeHead() ensuring { _ == value })
     }
   }
+
+  final class EmptyQueueException private[OrderedQueue] extends NoSuchElementException
 }

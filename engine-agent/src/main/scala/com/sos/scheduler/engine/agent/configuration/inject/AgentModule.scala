@@ -72,7 +72,7 @@ extends AbstractModule {
 
   @Provides @Singleton
   def timerService(actorSystem: ActorSystem, closer: Closer): TimerService =
-    TimerService()(actorSystem.dispatcher) closeWithCloser closer
+    TimerService() closeWithCloser closer
 
   @Provides @Singleton
   def actorSystem(closer: Closer, config: Config): ActorSystem =

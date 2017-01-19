@@ -245,7 +245,7 @@ private object TaskHandlerTest {
     private val taskIterator = tasks.iterator
 
     def configure() = {
-      bindInstance[TimerService](TimerService(idleTimeout = Some(1.s))(ExecutionContext.global))
+      bindInstance[TimerService](TimerService(idleTimeout = Some(1.s)))
       bindInstance[ExecutionContext](ExecutionContext.global)
     }
 

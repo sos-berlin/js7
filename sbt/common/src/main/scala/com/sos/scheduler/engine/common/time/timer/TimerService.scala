@@ -20,7 +20,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * @author Joacim Zschimmer
  */
-final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Option[Duration] = None) extends AutoCloseable {
+final class TimerService(idleTimeout: Option[Duration]) extends AutoCloseable {
 
   private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer[_] ⇒ a.atEpochMilli: java.lang.Long }))
   @volatile private var closed = false
@@ -43,9 +43,13 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
         runInBackground {
           logger.debug("Started")
           try loop()
-          catch { case t: Throwable ⇒
-            logger.error(s"$t", t)
-            throw t
+          catch {
+            case t: OrderedQueue.EmptyQueueException if !stopped ⇒
+              logger.error(s"$t", t)
+              throw t
+            case t: Throwable ⇒
+              logger.error(s"$t", t)
+              throw t
           }
           finally {
             logger.debug("Terminated")
@@ -90,6 +94,7 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
               waitUntil(atMillis)
             }
           case Right(timer) ⇒
+            assert(timer ne NeverTimer, "NeverTimer")
             waitUntil.hot = false
             timer.complete()
             timerCompleteCounter += 1
@@ -110,6 +115,17 @@ final class TimerService(runInBackground: (⇒ Unit) ⇒ Unit, idleTimeout: Opti
       if (!signaled) wakeCounter += 1
       !signaled
     }
+
+    private def runInBackground(body: ⇒ Unit) =
+      new Thread {
+        setName("TimerService")
+        override def run() =
+          try body
+          catch { case t: Throwable ⇒
+            logger.error(s"TimerService: $t", t)
+            throw t
+          }
+      } .start()
 
     def isRunning = _isRunning.get
   }
@@ -204,8 +220,8 @@ object TimerService {
   private val NeverTimer = new Timer[Nothing](Instant.ofEpochMilli(Long.MaxValue), "Never")
   private val NeverMillis = NeverTimer.atEpochMilli
 
-  def apply(idleTimeout: Option[Duration] = None)(implicit ec: ExecutionContext) =
-    new TimerService(runInBackground = body ⇒ Future { blocking { body } }, idleTimeout)
+  def apply(idleTimeout: Option[Duration] = None) =
+    new TimerService(idleTimeout)
 
   /**
     * Coalesces wake-up times to reduce processor wake-ups.
