@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.sprayutils
 
-import com.sos.scheduler.engine.base.sprayjson.SprayJson
 import com.sos.scheduler.engine.base.sprayjson.SprayJson.valueToJsValue
 import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
 import org.yaml.snakeyaml.DumperOptions.FlowStyle
@@ -13,7 +12,7 @@ import spray.json._
  */
 object YamlJsonConversion {
 
-  private val yaml = {
+  private def yaml = {
     val options = new DumperOptions sideEffect { o ⇒
       o.setDefaultFlowStyle(FlowStyle.BLOCK)
       o.setWidth(100)
