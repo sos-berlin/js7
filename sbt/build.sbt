@@ -53,7 +53,7 @@ lazy val common = project.dependsOn(base, data)
       sprayJsons ++
       snakeYaml ++
       guava ++
-      intelliJAnnotations ++
+      intelliJAnnotations % "compile" ++
       googleFindbugs ++
       scalaTest % "test" ++
       sprayTestkit % "test" ++

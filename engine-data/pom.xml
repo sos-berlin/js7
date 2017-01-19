@@ -46,7 +46,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>engine-base</artifactId>
+            <artifactId>base_${scala.binaryVersion}</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -112,6 +112,7 @@
         <dependency>
             <groupId>com.intellij</groupId>
             <artifactId>annotations</artifactId>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 </project>
