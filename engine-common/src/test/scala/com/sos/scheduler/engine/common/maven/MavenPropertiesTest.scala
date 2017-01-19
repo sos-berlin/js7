@@ -25,7 +25,7 @@ final class MavenPropertiesTest extends FreeSpec {
   }
 
   "artifactId" in {
-    assert(m.artifactId startsWith "common_"/*+scala binaryVersion*/)
+    assert(m.artifactId startsWith "engine-common")
   }
 
   "version" in {
