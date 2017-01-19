@@ -26,3 +26,4 @@
 /engine-agent-gui/node_modules/
 /engine-plugins/engine-plugins-legacy/target/
 /engine-web/target/
+/sbt/
