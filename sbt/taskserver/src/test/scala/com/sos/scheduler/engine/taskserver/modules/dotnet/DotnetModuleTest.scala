@@ -4,14 +4,11 @@ import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFacto
 import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleLanguage, RawModuleArguments, Script}
 import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule._
 import java.nio.file.Paths
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class DotnetModuleTest extends FreeSpec {
 
   private val dotnetFactory = new Factory(DotnetModuleInstanceFactory.Unsupported, classDllDirectory = None)

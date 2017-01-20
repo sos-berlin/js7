@@ -2,16 +2,13 @@ package com.sos.scheduler.engine.taskserver.modules.javamodule
 
 import com.sos.scheduler.engine.minicom.idispatch.{DISPATCH_METHOD, DISPATCH_PROPERTYGET, DISPATCH_PROPERTYPUT, DISPID, IDispatch}
 import com.sos.scheduler.engine.taskserver.modules.javamodule.JavaInvokerTest._
-import org.junit.runner.RunWith
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class JavaInvokerTest extends FreeSpec {
 
   "call method" in {

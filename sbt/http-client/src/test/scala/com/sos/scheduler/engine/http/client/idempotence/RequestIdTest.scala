@@ -1,13 +1,10 @@
 package com.sos.scheduler.engine.http.client.idempotence
 
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class RequestIdTest extends FreeSpec {
 
   "succ" in {

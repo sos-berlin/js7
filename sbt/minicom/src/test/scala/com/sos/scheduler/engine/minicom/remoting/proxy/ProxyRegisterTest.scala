@@ -7,18 +7,15 @@ import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister.DuplicateKeyException
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, IUnknown}
-import org.junit.runner.RunWith
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
 import scala.util.control.NoStackTrace
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ProxyRegisterTest extends FreeSpec {
 
   private val proxyRegister = Guice.createInjector().instance[ProxyRegister]

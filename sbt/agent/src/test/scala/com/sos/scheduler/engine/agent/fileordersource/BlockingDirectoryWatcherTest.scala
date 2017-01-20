@@ -9,16 +9,13 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.nio.file.Files
 import java.nio.file.Files.delete
 import java.time.Instant.now
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class BlockingDirectoryWatcherTest extends FreeSpec {
 
   "waitForNextChange" in {

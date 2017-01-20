@@ -14,14 +14,11 @@ import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createTempDirectory, delete}
 import java.nio.file.Paths
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class AgentConfigurationTest extends FreeSpec {
 
   private val shellExt = if (isWindows) "cmd" else "sh"

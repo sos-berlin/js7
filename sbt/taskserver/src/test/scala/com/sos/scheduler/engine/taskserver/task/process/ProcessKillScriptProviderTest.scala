@@ -9,16 +9,13 @@ import java.nio.file.Files
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * JS-1558 Agent includes kill scripts
   *
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ProcessKillScriptProviderTest extends FreeSpec {
 
   private lazy val tmp = temporaryDirectory

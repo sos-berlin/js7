@@ -13,14 +13,11 @@ import com.sos.scheduler.engine.taskserver.configuration.inject.{TaskServerMainM
 import com.sos.scheduler.engine.taskserver.data.{DotnetConfiguration, TaskServerArguments}
 import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
 import java.net.{InetAddress, ServerSocket}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class StandardTaskServerTest extends FreeSpec {
 
   "StandardTaskServer terminates when connection has been closed" in {

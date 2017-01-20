@@ -2,14 +2,11 @@ package com.sos.scheduler.engine.taskserver.modules.shell
 
 import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleLanguage, RawModuleArguments, Script}
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ShellModuleTest extends FreeSpec {
 
   private val unusedRichProcessStartSynchronizer: RichProcessStartSynchronizer = null

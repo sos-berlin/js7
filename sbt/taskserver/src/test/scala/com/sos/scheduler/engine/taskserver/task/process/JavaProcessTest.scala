@@ -12,15 +12,12 @@ import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.JavaProcessTest._
 import java.lang.System.{err, exit, out}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class JavaProcessTest extends FreeSpec {
 
   "JavaProcess" in {

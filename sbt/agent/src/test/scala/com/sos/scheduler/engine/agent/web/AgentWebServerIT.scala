@@ -25,9 +25,7 @@ import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcp
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.time.Instant.now
-import org.junit.runner.RunWith
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -48,7 +46,6 @@ import spray.httpx.unmarshalling.{FromResponseUnmarshaller, PimpedHttpResponse}
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfterAll with AgentConfigDirectoryProvider {
 
   private lazy val List(httpPort, httpsPort) = findRandomFreeTcpPorts(2)

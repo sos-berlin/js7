@@ -2,14 +2,11 @@ package com.sos.scheduler.engine.agent.data.web
 
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.tunnel.data.TunnelId
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class AgentUrisTest extends FreeSpec {
 
   private val agentUris = AgentUris("http://example.com:9999/testPrefix")

@@ -10,8 +10,6 @@ import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.data.job.TaskId
 import java.nio.file.Files.{delete, exists, size}
 import java.nio.file.{Files, Paths}
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 
 /**
@@ -19,7 +17,6 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
   *
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   override protected def afterAll() = closer.close()

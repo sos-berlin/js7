@@ -19,8 +19,6 @@ import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestor.HttpReq
 import com.sos.scheduler.engine.http.client.heartbeat.{HeartbeatId, HeartbeatRequestor, HttpHeartbeatTiming}
 import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatIT._
 import java.time.Duration
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent._
@@ -39,7 +37,6 @@ import spray.routing.{HttpServiceActor, Route}
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class HeartbeatIT extends FreeSpec with BeforeAndAfterAll {
 
   private implicit val askTimeout = AskTimeout

@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.minicom.idispatch
 
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class DispatchTypeTest extends FreeSpec {
 
   "DispatchType" in {

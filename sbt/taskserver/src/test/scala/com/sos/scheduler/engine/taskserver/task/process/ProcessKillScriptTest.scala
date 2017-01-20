@@ -18,9 +18,7 @@ import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit.SECONDS
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
@@ -31,7 +29,6 @@ import scala.io
   *
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ProcessKillScriptTest extends FreeSpec {
 
   "Kill script kills descendants" in {

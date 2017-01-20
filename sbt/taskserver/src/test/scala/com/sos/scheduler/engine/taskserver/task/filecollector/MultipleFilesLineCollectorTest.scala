@@ -6,15 +6,12 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempFile, delete}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.util.Random
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class MultipleFilesLineCollectorTest extends FreeSpec  {
 
   "FileLogger" in {

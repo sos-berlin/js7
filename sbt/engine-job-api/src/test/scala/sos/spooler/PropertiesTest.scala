@@ -2,15 +2,12 @@ package sos.spooler
 
 import com.sos.scheduler.engine.common.scalautil.Logger
 import java.lang.reflect.{Method, Modifier, Type}
-import org.junit.runner.RunWith
 import org.reflections.Reflections
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.JavaConversions._
 import sos.spooler.PropertiesTest._
 
 /** Prüft für alle Idispatch-Klassen, ob die zugehörigen Bean-Klassen korrekt sind. */
-@RunWith(classOf[JUnitRunner])
 final class PropertiesTest extends FreeSpec {
 
   for (javaClass ← new Reflections(sosSpoolerPackage.getName).getSubTypesOf(classOf[Idispatch]).toSeq sortBy { _.getName }) {

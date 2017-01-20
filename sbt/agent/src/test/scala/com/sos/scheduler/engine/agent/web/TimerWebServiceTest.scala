@@ -5,9 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAu
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.{TimerOverview, TimerService, TimerServiceOverview}
 import java.time.Instant
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.immutable
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes._
@@ -18,7 +16,6 @@ import spray.json._
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerWebService {
 
   protected def executionContext = actorRefFactory.dispatcher

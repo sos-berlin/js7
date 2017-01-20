@@ -25,9 +25,7 @@ import com.sos.scheduler.engine.taskserver.modules.monitor.Monitor
 import com.sos.scheduler.engine.taskserver.modules.shell.ShellProcessTaskTest.{Setting, _}
 import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedIDispatches}
 import com.sos.scheduler.engine.taskserver.task.TaskArguments
-import org.junit.runner.RunWith
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -36,7 +34,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private lazy val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.shutdown() }

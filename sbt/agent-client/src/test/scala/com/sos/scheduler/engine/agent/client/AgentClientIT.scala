@@ -23,9 +23,7 @@ import java.nio.file.Files
 import java.nio.file.Files._
 import java.nio.file.attribute.FileTime
 import java.time.{Duration, Instant}
-import org.junit.runner.RunWith
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -36,7 +34,6 @@ import spray.httpx.UnsuccessfulResponseException
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class AgentClientIT extends FreeSpec with ScalaFutures with BeforeAndAfterAll {
 
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)

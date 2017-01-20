@@ -18,10 +18,8 @@ import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, 
 import com.sos.scheduler.engine.tunnel.server.{TunnelAccess, TunnelListener, TunnelServer}
 import com.sos.scheduler.engine.tunnel.web.TunnelWebServices._
 import java.net.InetSocketAddress
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -36,7 +34,6 @@ import spray.routing.HttpServiceActor
  *
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TcpHttpTcpTunnelIT extends FreeSpec {
 
   private implicit val timeout = Timeout(5.seconds)

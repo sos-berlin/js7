@@ -4,15 +4,12 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import DotnetEnvironmentTest._
 import java.nio.file.Files.{createTempDirectory, delete}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class DotnetEnvironmentTest extends FreeSpec {
 
   if (!isWindows) {

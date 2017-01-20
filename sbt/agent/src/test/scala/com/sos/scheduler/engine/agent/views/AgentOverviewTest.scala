@@ -3,15 +3,12 @@ package com.sos.scheduler.engine.agent.views
 import com.sos.scheduler.engine.base.system.SystemInformation
 import com.sos.scheduler.engine.data.system.JavaInformation
 import java.time.Instant
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json._
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class AgentOverviewTest extends FreeSpec {
 
   "JSON" in {

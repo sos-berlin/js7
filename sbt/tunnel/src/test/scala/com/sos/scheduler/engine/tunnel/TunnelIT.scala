@@ -13,9 +13,7 @@ import com.sos.scheduler.engine.tunnel.TunnelIT._
 import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
 import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
 import java.net.InetSocketAddress
-import org.junit.runner.RunWith
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.{Future, Promise, blocking}
 import scala.math.{log, min, pow}
 import scala.util.Random
@@ -26,7 +24,6 @@ import scala.util.Random
  *
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TunnelIT extends FreeSpec with BeforeAndAfterAll {
 
   private lazy val actorSystem = ActorSystem(getClass.getSimpleName)

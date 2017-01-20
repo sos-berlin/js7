@@ -2,16 +2,13 @@ package com.sos.scheduler.engine.http.client.common
 
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.http.client.common.OwnHttpHeaderTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.HttpHeader
 import spray.http.HttpHeaders.RawHeader
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class OwnHttpHeaderTest extends FreeSpec {
 
   "OwnHttpHeader" in {

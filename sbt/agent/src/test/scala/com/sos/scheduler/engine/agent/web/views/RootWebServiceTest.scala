@@ -6,9 +6,7 @@ import com.sos.scheduler.engine.base.system.SystemInformation
 import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
 import com.sos.scheduler.engine.data.system.JavaInformation
 import java.time.Instant
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.{`application/json`, `text/plain`}
 import spray.json._
@@ -16,7 +14,6 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWebService {
 
   protected def agentOverview = AgentOverview(

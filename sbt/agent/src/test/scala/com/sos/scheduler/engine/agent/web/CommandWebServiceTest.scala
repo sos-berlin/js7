@@ -8,9 +8,7 @@ import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import com.sos.scheduler.engine.base.exceptions.StandardPublicException
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.Future
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.`application/json`
@@ -22,7 +20,6 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class CommandWebServiceTest extends FreeSpec with WebServiceTest with CommandWebService {
 
   protected implicit def executionContext = actorRefFactory.dispatcher

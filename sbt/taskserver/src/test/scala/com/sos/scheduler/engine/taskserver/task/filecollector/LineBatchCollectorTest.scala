@@ -7,15 +7,12 @@ import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import java.io.{BufferedReader, FileInputStream, FileOutputStream, InputStreamReader, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempFile, delete}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class LineBatchCollectorTest extends FreeSpec {
 
   "LineBatchCollector" in {

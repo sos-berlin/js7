@@ -1,15 +1,12 @@
 package com.sos.scheduler.engine.tunnel.data
 
 import java.net.InetAddress
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json.{pimpAny, pimpString}
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TunnelOverviewTest extends FreeSpec {
 
   "JSON" in {

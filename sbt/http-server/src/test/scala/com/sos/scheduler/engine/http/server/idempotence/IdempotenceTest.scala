@@ -16,10 +16,8 @@ import com.sos.scheduler.engine.http.client.idempotence.RequestId
 import com.sos.scheduler.engine.http.server.idempotence.IdempotenceTest._
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
-import org.junit.runner.RunWith
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.exceptions.TestFailedException
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -34,7 +32,6 @@ import spray.routing.HttpServiceActor
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class IdempotenceTest extends FreeSpec with BeforeAndAfterAll with ScalaFutures {
   private implicit val askTimeout: Timeout = AskTimeout
   private implicit val dataJsonFormat = DataJsonFormat

@@ -4,17 +4,14 @@ import akka.util.ByteString
 import com.google.common.base.Charsets.US_ASCII
 import com.sos.scheduler.engine.minicom.remoting.serial.BaseSerializerTest._
 import java.util.UUID
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.util.Random
 
 /**
  * Tests BaseSerializer and BaseDeserializer.
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class BaseSerializerTest extends FreeSpec {
 
   "writeByte" in {

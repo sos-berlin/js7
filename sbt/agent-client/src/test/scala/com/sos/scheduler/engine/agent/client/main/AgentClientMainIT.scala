@@ -10,8 +10,6 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCl
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -19,7 +17,6 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCloser with AgentTest {
 
   override def afterAll() = closer.closeThen { super.afterAll() }

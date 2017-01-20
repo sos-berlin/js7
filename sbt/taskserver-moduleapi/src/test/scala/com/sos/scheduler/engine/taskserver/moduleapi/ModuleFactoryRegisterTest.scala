@@ -2,14 +2,11 @@ package com.sos.scheduler.engine.taskserver.moduleapi
 
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister.UnsupportedRawModuleArgumentsException
 import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegisterTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ModuleFactoryRegisterTest extends FreeSpec {
 
   "Non matching" in {

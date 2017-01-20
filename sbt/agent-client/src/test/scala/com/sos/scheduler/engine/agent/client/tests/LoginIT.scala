@@ -11,9 +11,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAn
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import org.junit.runner.RunWith
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import spray.http.StatusCodes.{Forbidden, Unauthorized}
 import spray.httpx.UnsuccessfulResponseException
@@ -21,7 +19,6 @@ import spray.httpx.UnsuccessfulResponseException
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class LoginIT extends FreeSpec with BeforeAndAfterAll {
 
   "Login and Logout" in {

@@ -16,15 +16,12 @@ import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.data.job.ReturnCode
 import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
 import java.nio.file.Files._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ShellScriptProcessTest extends FreeSpec {
 
   "ShellScriptProcess" in {

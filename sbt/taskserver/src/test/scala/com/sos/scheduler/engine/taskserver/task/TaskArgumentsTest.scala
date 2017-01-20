@@ -13,15 +13,12 @@ import com.sos.scheduler.engine.taskserver.modules.javamodule.{JavaScriptEngineM
 import com.sos.scheduler.engine.taskserver.modules.shell.{RichProcessStartSynchronizer, ShellModule}
 import java.nio.file.Paths
 import javax.inject.Singleton
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TaskArgumentsTest extends FreeSpec {
 
   private val scriptXml = <source><source_part linenr="1">PART-A

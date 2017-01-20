@@ -7,9 +7,7 @@ import com.sos.scheduler.engine.minicom.idispatch._
 import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
 import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
 import com.sos.scheduler.engine.taskserver.spoolerapi.ProxySpoolerLogTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.Random
@@ -17,7 +15,6 @@ import scala.util.Random
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ProxySpoolerLogTest extends FreeSpec {
 
   for (minimumLevel ← List(SchedulerLogLevel.debug9, SchedulerLogLevel.error)) {

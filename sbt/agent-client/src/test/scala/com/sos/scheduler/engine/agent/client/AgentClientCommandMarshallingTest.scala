@@ -14,9 +14,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.time.Duration
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import javax.inject.Singleton
-import org.junit.runner.RunWith
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -24,7 +22,6 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class AgentClientCommandMarshallingTest extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with AgentTest {
 
   override def afterAll(): Unit = {

@@ -15,9 +15,7 @@ import com.sos.scheduler.engine.tunnel.data._
 import com.sos.scheduler.engine.tunnel.server.TunnelAccess
 import java.net.InetAddress
 import java.time.{Duration, Instant}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.util.Random
@@ -32,7 +30,6 @@ import spray.json.DefaultJsonProtocol._
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TunnelWebServicesTest extends FreeSpec with WebServiceTest with TunnelWebService {
 
   protected implicit def executionContext = actorRefFactory.dispatcher

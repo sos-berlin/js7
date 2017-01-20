@@ -2,14 +2,11 @@ package com.sos.scheduler.engine.minicom.remoting.proxy
 
 import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch}
 import com.sos.scheduler.engine.minicom.remoting.proxy.DISPIDCachingIDispatchTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class DISPIDCachingIDispatchTest extends FreeSpec {
 
   "test" in {

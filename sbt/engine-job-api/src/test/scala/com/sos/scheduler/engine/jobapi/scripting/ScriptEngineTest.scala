@@ -1,12 +1,9 @@
 package com.sos.scheduler.engine.jobapi.scripting
 
 import javax.script._
-import org.junit.runner.RunWith
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FreeSpec, OneInstancePerTest}
 
-@RunWith(classOf[JUnitRunner])
 final class ScriptEngineTest extends FreeSpec with OneInstancePerTest {
 
   private val engine = new ScriptEngineManager().getEngineByName("JavaScript")

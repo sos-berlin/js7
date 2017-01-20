@@ -31,17 +31,14 @@ import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.net.InetAddress
 import java.time.{Duration, Instant}
 import javax.inject.Singleton
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Inside.inside
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.{ExecutionContext, Promise}
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TaskHandlerTest extends FreeSpec {
 
   "Second StartApiTask without a license is rejected - JS-1482" in {

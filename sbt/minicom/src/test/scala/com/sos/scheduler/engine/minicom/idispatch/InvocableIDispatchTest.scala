@@ -5,16 +5,13 @@ import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatchTest._
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.types.HRESULT._
 import com.sos.scheduler.engine.minicom.types.{COMException, VariantArray}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import scala.annotation.meta.{getter, setter}
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class InvocableIDispatchTest extends FreeSpec {
 
   private val annotated = new Annotated

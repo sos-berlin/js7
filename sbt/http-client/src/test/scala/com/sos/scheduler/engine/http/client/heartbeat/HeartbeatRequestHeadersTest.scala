@@ -2,9 +2,7 @@ package com.sos.scheduler.engine.http.client.heartbeat
 
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestHeaders._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.HttpHeaders.RawHeader
 import spray.http.StatusCodes.{BadRequest, InternalServerError}
 import spray.httpx.marshalling.BasicMarshallers._
@@ -14,7 +12,6 @@ import spray.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class HeartbeatRequestHeadersTest extends FreeSpec with ScalatestRouteTest {
 
   "X-JobScheduler-Heartbeat-Start" in {

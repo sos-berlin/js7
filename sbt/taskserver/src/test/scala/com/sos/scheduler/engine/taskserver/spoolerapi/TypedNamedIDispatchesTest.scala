@@ -1,14 +1,11 @@
 package com.sos.scheduler.engine.taskserver.spoolerapi
 
 import com.sos.scheduler.engine.minicom.idispatch.IDispatch
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TypedNamedIDispatchesTest extends FreeSpec {
 
   "spoolerLog" in {

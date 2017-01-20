@@ -2,11 +2,8 @@ package com.sos.scheduler.engine.jobapi.scripting
 
 import com.google.common.base.Supplier
 import com.google.common.collect.ImmutableMap
-import org.junit.runner.RunWith
 import org.scalatest.FunSuite
-import org.scalatest.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 final class JobScriptInstanceAdapterTest extends FunSuite {
 
   // Für weitere Tests siehe ScriptInstanceTest mit TestExecutor

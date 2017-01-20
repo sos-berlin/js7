@@ -4,13 +4,10 @@ import com.sos.scheduler.engine.common.system.Bitness.is32Bit
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.taskserver.dotnet.SimpleDotnetTest.TestErrorMessage
 import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleReference
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class SimpleVBScriptTest extends SimpleDotnetTest {
 
   protected def language = "VBScript"

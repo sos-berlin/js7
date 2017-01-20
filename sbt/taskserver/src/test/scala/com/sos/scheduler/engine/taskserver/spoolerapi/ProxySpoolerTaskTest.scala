@@ -11,9 +11,7 @@ import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
 import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
 import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
 import com.sos.scheduler.engine.taskserver.task.process.RichProcess
-import org.junit.runner.RunWith
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.util.Random
@@ -21,7 +19,6 @@ import scala.util.Random
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ProxySpoolerTaskTest extends FreeSpec with BeforeAndAfterAll with HasCloser {
 
   private lazy val stdFileMap = {

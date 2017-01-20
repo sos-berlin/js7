@@ -2,14 +2,11 @@ package com.sos.scheduler.engine.taskserver.spoolerapi
 
 import com.sos.scheduler.engine.data.message.MessageCode
 import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch}
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class SpoolerTaskTest extends FreeSpec {
 
   private object TestSpoolerTask extends SpoolerTask with IDispatch.Empty with AnnotatedInvocable {

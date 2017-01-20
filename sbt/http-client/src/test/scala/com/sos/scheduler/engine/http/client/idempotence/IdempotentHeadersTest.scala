@@ -2,14 +2,11 @@ package com.sos.scheduler.engine.http.client.idempotence
 
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.http.client.idempotence.IdempotentHeaders.`X-JobScheduler-Request-ID`
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class IdempotentHeadersTest extends FreeSpec {
 
   private val requestIdNumber = 123567890123456789L

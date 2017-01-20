@@ -2,16 +2,13 @@ package com.sos.scheduler.engine.agent.client
 
 import akka.actor.ActorRefFactory
 import com.sos.scheduler.engine.agent.client.AgentClientTest._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.client.pipelining.Get
 import spray.http.{HttpResponse, Uri}
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class AgentClientTest extends FreeSpec {
 
   private val agentUri = Uri("https://example.com:9999")

@@ -1,12 +1,9 @@
 package sos.spooler.jobs
 
 import ScriptAdapterHelper._
-import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
-@RunWith(classOf[JUnitRunner])
 final class ScriptAdapterHelperTest extends FunSuite {
 
   test("ScriptAdapterJob.parseLanguageParameter") {

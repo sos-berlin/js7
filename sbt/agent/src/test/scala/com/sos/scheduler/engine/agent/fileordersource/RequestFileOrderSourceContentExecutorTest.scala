@@ -10,7 +10,6 @@ import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.FileUtils.touchAndDeleteWithCloser
 import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import java.nio.file.Files._
 import java.nio.file.Paths
@@ -18,10 +17,8 @@ import java.nio.file.attribute.FileTime
 import java.time.ZoneOffset.UTC
 import java.time.{Duration, ZonedDateTime}
 import javax.inject.Singleton
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.Futures
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.ExecutionContext
 import scala.util.matching.Regex
 
@@ -30,7 +27,6 @@ import scala.util.matching.Regex
   *
   * @author Joacim Zschimmer
   */
-@org.junit.runner.RunWith(classOf[JUnitRunner])
 final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futures {
 
   private lazy val injector = Guice.createInjector(new AbstractModule {

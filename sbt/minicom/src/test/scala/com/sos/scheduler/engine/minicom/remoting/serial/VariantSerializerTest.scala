@@ -4,15 +4,12 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.minicom.remoting.serial.VariantSerializerTest._
 import com.sos.scheduler.engine.minicom.remoting.serial.variantTypes._
 import com.sos.scheduler.engine.minicom.types.VariantArray
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class VariantSerializerTest extends FreeSpec {
 
   "Byte - not implemented" in {

@@ -16,9 +16,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.scheduler.engine.data.agent.AgentAddress
 import javax.inject.Singleton
-import org.junit.runner.RunWith
 import org.scalatest.Assertions._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,7 +28,6 @@ import spray.routing.authentication._
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCloser with AgentTest with AgentConfigDirectoryProvider {
 
   override protected def agentConfiguration = AgentConfiguration.forTest(Some(dataDirectory)).copy(

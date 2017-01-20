@@ -6,9 +6,7 @@ import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
 import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
 import java.io.File
 import java.nio.file.Paths
-import org.junit.runner.RunWith
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.mock.MockitoSugar.mock
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.util.Random
@@ -16,7 +14,6 @@ import scala.util.Random
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class ProxySpoolerTest extends FreeSpec with BeforeAndAfterAll {
 
   private val testDirectory = Paths.get("TEST")

@@ -4,14 +4,11 @@ import com.google.common.base.Supplier
 import com.google.common.collect.ImmutableMap
 import com.sos.scheduler.engine.common.utils.JavaResource
 import com.sos.scheduler.engine.jobapi.scripting.ScriptInstanceTest._
-import org.junit.runner.RunWith
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FreeSpec, OneInstancePerTest}
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-@RunWith(classOf[JUnitRunner])
 final class ScriptInstanceTest extends FreeSpec with OneInstancePerTest {
 
   private val scriptLogger = new ScriptInstanceTest.JavaScriptLogger

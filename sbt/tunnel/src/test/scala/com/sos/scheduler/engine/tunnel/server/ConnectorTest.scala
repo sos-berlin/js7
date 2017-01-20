@@ -1,15 +1,12 @@
 package com.sos.scheduler.engine.tunnel.server
 
 import akka.util.ByteString
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.concurrent.Promise
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class ConnectorTest extends FreeSpec {
 
   "Request.toString" in {

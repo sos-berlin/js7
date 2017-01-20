@@ -4,9 +4,7 @@ import com.sos.scheduler.engine.agent.command.{CommandHandlerOverview, CommandRu
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate}
 import com.sos.scheduler.engine.agent.web.test.WebServiceTest
 import java.time.Instant
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.`application/json`
 import spray.httpx.SprayJsonSupport._
@@ -16,7 +14,6 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class CommandViewServiceTest extends FreeSpec with WebServiceTest with CommandViewWebService {
 
   override protected val uriPathPrefix = "test"

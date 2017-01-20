@@ -1,15 +1,12 @@
 package com.sos.scheduler.engine.agent.data.commands
 
 import com.sos.scheduler.engine.data.job.TaskId
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import spray.json._
 
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class StartApiTaskTest extends FreeSpec {
 
   "JSON minimum" in {

@@ -1,10 +1,8 @@
 package com.sos.scheduler.engine.http.client.heartbeat
 
 import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatResponseHeaders._
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.junit.JUnitRunner
 import spray.http.HttpHeader
 import spray.http.HttpHeaders.`Cache-Control`
 import spray.testkit.ScalatestRouteTest
@@ -12,7 +10,6 @@ import spray.testkit.ScalatestRouteTest
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class HeartbeatResponseHeadersTest extends FreeSpec with ScalatestRouteTest {
 
   "response.X-JobScheduler-Heartbeat" in {

@@ -8,9 +8,7 @@ import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.tunnel.data.TunnelId
 import java.net.InetAddress
 import java.time.Instant
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 import scala.collection.immutable
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.`application/json`
@@ -21,7 +19,6 @@ import spray.json._
 /**
  * @author Joacim Zschimmer
  */
-@RunWith(classOf[JUnitRunner])
 final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWebService {
 
   private val testAgentTaskId = AgentTaskId("1-123")
