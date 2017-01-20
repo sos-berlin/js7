@@ -30,25 +30,14 @@
     </developers>
 
     <modules>
-        <module>engine-agent</module>
-        <module>engine-agent-client</module>
-        <module>engine-agent-data</module>
-        <module>engine-agent-main</module>
-        <module>engine-agent-test</module>
         <module>engine-cppjava</module>
         <module>engine-client</module>
         <module>engine-data</module>
         <module>engine-common</module>
-        <module>engine-http-client</module>
-        <module>engine-http-server</module>
-        <module>engine-job-api</module>
-        <module>engine-minicom</module>
         <module>engine-newkernel</module>
         <module>engine-persistence</module>
         <module>engine-test</module>
         <module>engine-tests</module>
-        <module>engine-tunnel</module>
-        <module>engine-tunnel-data</module>
         <module>engine-kernel</module>
         <module>engine-kernelcpp-generated</module>
         <module>engine-kernelcpp</module>
@@ -56,9 +45,6 @@
         <module>engine-playground</module>
         <module>engine-plugins</module>
         <module>engine-setup</module>
-        <module>engine-taskserver</module>
-        <module>engine-taskserver-moduleapi</module>
-        <module>engine-taskserver-dotnet</module>
         <module>engine-main</module>
     </modules>
 
