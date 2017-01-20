@@ -1,17 +1,16 @@
-import scala.collection.immutable.Seq
-
-val commonSettings = Seq(
+val ParallelTestsLimit = 1 //math.max(1, sys.runtime.availableProcessors / 2)
+val commonSettings = List(
   organization := "com.sos-berlin.jobscheduler.engine",
   organizationName := "SOS Software GmbH, Berlin",
   organizationHomepage := Some(url("https://www.sos-berlin.com")),
   scalaVersion := Libraries.scalaVersion,
-  logBuffered in Test := false)
-
-fork in Test := true
-javaOptions in Test += s"-Dlogback.configurationFile=${baseDirectory.value}/project/logback.xml"
-parallelExecution in Test := false
-val ParallelTestsLimit = 1 //math.max(1, sys.runtime.availableProcessors / 2)
-concurrentRestrictions in Global += Tags.limit(Tags.Test, ParallelTestsLimit)
+  logBuffered in Test := false,
+  javacOptions in Compile ++= List("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
+  javacOptions in (Compile, compile) ++= List("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
+  javaOptions in Test += s"-Dlogback.configurationFile=${baseDirectory.value}/project/logback.xml",  // Does not work ???
+  parallelExecution in Test := false,
+  fork in Test := true,
+  concurrentRestrictions in Global += Tags.limit(Tags.Test, ParallelTestsLimit))
 
 resolvers += Resolver.mavenLocal
 
