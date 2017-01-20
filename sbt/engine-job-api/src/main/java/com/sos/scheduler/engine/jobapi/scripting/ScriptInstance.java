@@ -1,17 +1,15 @@
 package com.sos.scheduler.engine.jobapi.scripting;
 
-import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
-
+import java.util.List;
+import java.util.stream.Collectors;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-
 import static com.google.common.base.Throwables.propagate;
 import static javax.script.ScriptContext.ENGINE_SCOPE;
 
@@ -40,18 +38,18 @@ public class ScriptInstance {
     }
 
     private static ScriptEngine newScriptEngine(String language) {
-        ScriptEngine result = new ScriptEngineManager().getEngineByName(language);
-        if (result == null) throw throwUnknownLanguage(language);
+        ScriptEngineManager manager = new ScriptEngineManager();
+        ScriptEngine result = manager.getEngineByName(language);
+        if (result == null) {
+            manager = new ScriptEngineManager(null);  // Under sbt 0.13.13, javascript is known here
+            result = manager.getEngineByName(language);
+            if (result == null) throw throwUnknownLanguage(language, manager.getEngineFactories());
+        }
         return result;
     }
 
-    private static RuntimeException throwUnknownLanguage(String language) {
-        String availableLanguages = Joiner.on(", ").join(Iterables.transform(new ScriptEngineManager().getEngineFactories(),
-                new Function<ScriptEngineFactory, String>() {
-                    public String apply(ScriptEngineFactory o) {
-                        return o.getLanguageName();
-                    }
-                }));
+    private static RuntimeException throwUnknownLanguage(String language, List<ScriptEngineFactory> factories) {
+        String availableLanguages = Joiner.on(", ").join(factories.stream().map(ScriptEngineFactory::getLanguageName).collect(Collectors.toList()));
         throw new RuntimeException("Script language '"+ language +"' is unknown. Available languages are "+availableLanguages);
     }
 
