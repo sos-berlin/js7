@@ -1,3 +1,12 @@
+/**
+  * Recommended start script: ./build (requires bash)
+  *
+  * Under Windows, compile engine-job-api first, to allow taskserver-dotnet accessing the class files of engine-job-api.
+  * For example: ;project engine-job-api; compile; project /; compile; test
+  */
+
+import BuildUtils._
+
 val ParallelTestsLimit = 1 //math.max(1, sys.runtime.availableProcessors / 2)
 val commonSettings = List(
   organization := "com.sos-berlin.jobscheduler.engine",
@@ -82,8 +91,8 @@ lazy val common = project.dependsOn(base, data)
   .enablePlugins(GitVersioning)
   .enablePlugins(BuildInfoPlugin)
   .settings(
-    buildInfoKeys := Seq[BuildInfoKey](version),
-    buildInfoKeys := Seq[BuildInfoKey](
+    buildInfoKeys := List[BuildInfoKey](version),
+    buildInfoKeys := List[BuildInfoKey](
       "buildVersion" → VersionFormatter.buildVersion(
         version = version.value,
         versionCommitHash = git.gitHeadCommit.value,
@@ -296,7 +305,64 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
     libraryDependencies ++=
       javaxAnnotations % "compile" ++
       "net.sf.jni4net" % "jni4net.j" % "0.8.8.0" ++
+      "net.sf.jni4net" % "jni4net-bin" % "0.8.8.0" % "compile" ++
+      "com.sos-berlin" % "jni4net.n-sos" % "0.8.8.0" % "compile" ++
       mockito % "test" ++
       scalaTest % "test" ++
       logbackClassic % "test"
   }
+  .settings(
+    sourceGenerators in Compile += Def.task {
+      if (!isWindows) Nil
+      else {
+        import java.lang.ProcessBuilder.Redirect.PIPE
+        import java.nio.file.Files.createDirectories
+        println("+++ Preparing and calling jni4net +++")
+        // engine-job-api must have been compiled before running this code !!!
+        val jobApiClassesDir = baseDirectory.value / "../engine-job-api/target/classes/sos/spooler"  // How to do this right with a TaskKey???
+
+        def provideJobApiClassFiles(): Unit = {
+          val classes = listFiles(jobApiClassesDir) filter { file ⇒
+            file.isFile && !Set("Job_impl.class", "Monitor_impl.class", "Spooler_program.class").contains(file.getName)
+          }
+          if (classes.isEmpty) sys.error(s"Expecting class files in $jobApiClassesDir")
+          val dest = target.value / "jni4net-input/javaClasses/sos/spooler"
+          createDirectories(dest.toPath)
+          for (classFile ← classes) IO.copyFile(classFile, dest / classFile.getName)
+        }
+
+        def extractProxygen() = IO.unzip(
+          from = (update in Compile).value.select().filter { _.name contains "jni4net-bin-0.8.8.0.jar" }.head,
+          toDirectory = (target in Compile).value / "jni4net",
+          filter = { name: String ⇒ name.startsWith("bin/proxygen.exe") || name.startsWith("lib/") })
+
+        def extractDll() = IO.unzip(
+          from = (update in Compile).value.select().filter { _.name contains "jni4net.n-sos-0.8.8.0.jar" }.head,
+          toDirectory = (target in Compile).value / "jni4net_forked")
+
+        def callPowershellScript(): Unit = {
+          val scriptFile = baseDirectory.value / "src/main/scripts/Generate-Jni4Net.ps1"
+          executeWindowsCmd(
+            command = s"""powershell -NonInteractive -noprofile -executionpolicy bypass "& '$scriptFile' '${target.value}' '${crossTarget.value}/classes'" <NUL""",
+            name = scriptFile.toString)
+        }
+
+        def executeWindowsCmd(command: String, name: String): Unit = {
+          val cmd = sys.env.get("ComSpec") orElse sys.env.get("COMSPEC"/*cygwin*/) getOrElse """C:\Windows\system32\cmd.exe"""
+          val processBuilder = new java.lang.ProcessBuilder(cmd, "/C", command)
+            .inheritIO().redirectInput(PIPE).directory(baseDirectory.value)
+          for (o ← javaHome.value) processBuilder.environment.put("JAVA_HOME", o.toString)
+          val process = processBuilder.start()
+          process.getOutputStream.close()
+          val exitValue = process.waitFor()
+          if (exitValue != 0) sys.error(s"Process '$name' terminates with exitValue=$exitValue")
+        }
+
+        provideJobApiClassFiles()
+        extractProxygen()
+        extractDll()
+        callPowershellScript()
+
+        listFiles(target.value / "jni4net-build/jvm/sos/spooler")  // Generated Java source files
+      }
+    }.taskValue)

@@ -9,8 +9,12 @@
 #
 #     Environment variables WINDOWS_NET_SDK_HOME with the installation path of Micosoft Windows SDK (.Net-SDK) is needed,
 #     for example: set WINDOWS_NET_SDK_HOME=%windir%\Microsoft.NET\Framework\v4.0.30319
+#
+#     Needed environment variables: JAVA_HOME, WINDOWS_NET_SDK_HOME
 
 $ErrorActionPreference = 'Stop'  # PowerShell preference
+$Target = $args[0]
+$Classes = $args[1]
 
 # ----------------------------------------------------------------------
 # Settings
@@ -19,27 +23,28 @@ $ErrorActionPreference = 'Stop'  # PowerShell preference
 $CSharpSourceDirectory = "src/main/dotnet"
 
 # Directory with Java classes to be proxied
-$JobApiClassesDirectory = "target\jni4net-input\javaClasses"
+$JobApiClassesDirectory = "$Target\jni4net-input\javaClasses"
 
 # Directory with extracted jni4net.zip distribution
-$Jni4Net = "target\jni4net"
+$Jni4Net = "$Target\jni4net"
 
 # Directory with extracted jni4net forked distribution
-$Jni4NetForked = "target\jni4net_forked"
+$Jni4NetForked = "$Target\jni4net_forked"
 
 # Target DLL directory
-$ProxyDllResultDirectory = mkdir 'target/classes/com/sos/scheduler/engine/taskserver/dotnet/dlls' -force
+$ProxyDllResultDirectory = mkdir "$Classes/com/sos/scheduler/engine/taskserver/dotnet/dlls" -force
 
 # Target .Net adapter DLL path, same name as in DotnetDlls.scala
 $ResultAdapterAssemblyDll = Join-Path $ProxyDllResultDirectory "com.sos-berlin.engine.engine-job-api-dotnet.dll"  # Same name as in AssemblyInfo.cs
 
-$BuildDirectory = mkdir "target/jni4net-build" -force
+$BuildDirectory = mkdir "$Target/jni4net-build" -force
 $Jni4NDllName   = "jni4net.n-0.8.8.0.dll"
 $Jni4NetDlls    = @($Jni4NDllName, "jni4net.n.w32.v40-0.8.8.0.dll", "jni4net.n.w64.v40-0.8.8.0.dll")
 $WindowsSDK     = ${env:WINDOWS_NET_SDK_HOME}
 # ----------------------------------------------------------------------
 
 function ExecuteCommand([string] $command, [Array]$arguments) {
+    echo $command
     $process = Start-Process $command -NoNewWindow -Wait -PassThru -ArgumentList $arguments
     if ($process.exitCode -ne 0) {
         throw "Command failed with exit code $($process.exitCode): $command"
