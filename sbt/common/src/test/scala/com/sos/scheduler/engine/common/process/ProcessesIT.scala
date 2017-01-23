@@ -40,7 +40,7 @@ final class ProcessesIT extends FreeSpec {
     }
     val (files, processes) = (filesAndProcesses await 300.s).unzip
     waitForCondition(300.s, 100.ms) { !(processes exists { _.isAlive }) }
-    logger.info(stopwatch.itemsPerSecondString(n, "process", "processes"))
+    info(stopwatch.itemsPerSecondString(n, "process", "processes"))
     for (p ← processes) {
       val rc = p.waitFor()
       assert(rc == 0)

@@ -8,5 +8,5 @@ if "%WINDOWS_NET_SDK_HOME%" == "" (
   rem echo Using WINDOWS_NET_SDK_HOME=%WINDOWS_NET_SDK_HOME%
 )
 
-sbt "; clean; project engine-job-api; compile; project /; compile; test; publish-m2"
+sbt "; clean; compile-all; test-all; publish-m2"
 endlocal
