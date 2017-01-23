@@ -50,7 +50,7 @@ extends TunnelHandle {
 
   def remoteAddressStringOption: Option[String] = connectedPromise.future.value flatMap { _.toOption } map { _.toString stripPrefix "/" }
 
-  def onRequestSent(request: Connector.Request)(implicit ec:ExecutionContext): Unit = {
+  def onRequest(request: Connector.Request)(implicit ec:ExecutionContext): Unit = {
     statistics.updateWith(request)
     listener send { _.onRequest(request.message) }
   }

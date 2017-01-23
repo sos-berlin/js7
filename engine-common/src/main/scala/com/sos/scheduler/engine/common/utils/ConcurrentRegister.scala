@@ -32,6 +32,8 @@ trait ConcurrentRegister[V <: HasKey] {
 
   final def map[A](f: V ⇒ A) = keyToValue.values map f
 
+  final def values: Iterable[V] = keyToValue.values
+
   final def insert(value: V): Unit = {
     keyToValue.insert(value.key, value)
     counter.incrementAndGet()

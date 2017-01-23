@@ -92,9 +92,6 @@ object CallDeserializer {
     val Call          : Byte = 'A'
   }
 
-  def messageIsCall(message: ByteString): Boolean =
-    MessageClass.isCall(message.head)
-
   /**
     * Deserialize without a `Call` without `Remoting`.
     */
@@ -108,6 +105,12 @@ object CallDeserializer {
       val proxyRegistering = _proxyRegistering
     }.readCallAndEnd()
   }
+
+  def isCallCall(message: ByteString): Boolean =
+    message.head == MessageClass.Object && message(1 + 8) == MessageCommand.Call
+
+  def isReleaseCall(message: ByteString): Boolean =
+    message.head == MessageClass.Object && message(1 + 8) == MessageCommand.Release
 
   def isCall(byteString: ByteString): Boolean =
     byteString.nonEmpty && MessageClass.isCall(byteString.head)
