@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter.{Expired,
  */
 trait LicenseKeyChecker {
 
-  final def require(parameter: Parameter, failureText: String = ""): Unit = {
+  final def require(parameter: Parameter, failureText: ⇒ String = ""): Unit = {
     apply(parameter) match {
       case OK ⇒ OK
       case Expired ⇒ throw new LicenseKeyParameterExpiredException(parameter, failureText = failureText)

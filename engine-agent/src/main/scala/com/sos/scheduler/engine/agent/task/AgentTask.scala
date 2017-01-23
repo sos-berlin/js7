@@ -30,6 +30,11 @@ with HasKey {
 
   protected def taskArgumentsFuture: Future[TaskArguments]
 
+  /**
+    * ReleaseCall has been called on RemoteModuleInstanceServer.
+    */
+  protected def taskReleaseFuture: Future[Unit]
+
   protected def tunnel: TunnelHandle
 
   protected def taskServer: TaskServer
@@ -66,6 +71,8 @@ with HasKey {
           javaClassName = a.rawModuleArguments.javaClassNameOption,
           monitorCount = a.rawMonitorArguments.size)
     })
+
+  private[task] final def isReleasedCalled = taskReleaseFuture.isCompleted
 
   private[task] final def tunnelToken = tunnel.tunnelToken
 

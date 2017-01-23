@@ -54,8 +54,9 @@ extends TaskHandlerView {
     }
 
   private def executeStartTask(command: StartTask, meta: CommandMeta) = Future {
-    if (tasks.nonEmpty) {
-      meta.licenseKeyBunch.require(UniversalAgent, "No license key provided by master to execute jobs in parallel")
+    if (!(tasks.values forall { _.isReleasedCalled })) {
+        meta.licenseKeyBunch.require(UniversalAgent,
+          s"No license key provided by master to execute jobs in parallel (unreleased tasks: ${tasks.values filterNot { _.isReleasedCalled } mkString ", "})")
     }
     if (isTerminating) throw new StandardPublicException("Agent is terminating and does no longer accept task starts")
     val task = newAgentTask(command, meta.clientIpOption)

@@ -92,7 +92,11 @@ object CallDeserializer {
     val Call            = 'A'.toByte
   }
 
-  def messageIsCall(message: ByteString) = MessageClass.isCall(message.head)
+  def isCallCall(message: ByteString): Boolean =
+    message.head == MessageClass.Object && message(1 + 8) == MessageCommand.Call
+
+  def isReleaseCall(message: ByteString): Boolean =
+    message.head == MessageClass.Object && message(1 + 8) == MessageCommand.Release
 
   def deserializeCall(remoting: ServerRemoting, message: ByteString) = {
     val _remoting = remoting

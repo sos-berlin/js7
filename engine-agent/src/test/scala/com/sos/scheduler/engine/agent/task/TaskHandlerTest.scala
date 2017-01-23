@@ -182,6 +182,7 @@ private object TaskHandlerTest {
         def tunnel = mockTunnelHandle()
         def taskServer = taskServer_
         def taskArgumentsFuture = NoFuture
+        def taskReleaseFuture = NoFuture
         def close() = closeTunnelAndTaskServer()
       }
     }
