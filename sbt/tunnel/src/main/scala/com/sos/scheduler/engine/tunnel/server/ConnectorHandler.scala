@@ -94,8 +94,8 @@ private[tunnel] final class ConnectorHandler private(implicit timerService: Time
                 stop(connector)
               case Handle.Uninitialized ⇒
               case Handle.RequestBeforeConnected(request) ⇒
+                handle.onRequest(request)
                 connector ! request
-                handle.onRequestSent(request)
             }
           }
           handle.connectedPromise.success(peerAddress)
@@ -116,7 +116,7 @@ private[tunnel] final class ConnectorHandler private(implicit timerService: Time
         handle.state match {
           case Handle.ConnectedConnector(connector) ⇒
             connector ! request
-            handle.onRequestSent(request)
+            handle.onRequest(request)
           case Handle.Uninitialized ⇒ handle.state = Handle.RequestBeforeConnected(request)
           case o: Handle.RequestBeforeConnected ⇒ sys.error("Second request before connection has been established")
         }
