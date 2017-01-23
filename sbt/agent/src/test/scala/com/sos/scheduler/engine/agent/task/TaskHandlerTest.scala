@@ -16,6 +16,7 @@ import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.guice.GuiceImplicits._
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.scheduler.engine.common.scalautil.Futures._
 import com.sos.scheduler.engine.common.soslicense.{LicenseKeyBunch, LicenseKeyParameterIsMissingException}
@@ -31,15 +32,22 @@ import com.sos.scheduler.engine.tunnel.server.TunnelHandle
 import java.net.InetAddress
 import java.time.{Duration, Instant}
 import javax.inject.Singleton
-import org.scalatest.FreeSpec
 import org.scalatest.Inside.inside
 import org.scalatest.Matchers._
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.{ExecutionContext, Promise}
 
 /**
  * @author Joacim Zschimmer
  */
-final class TaskHandlerTest extends FreeSpec {
+final class TaskHandlerTest extends FreeSpec with BeforeAndAfterAll {
+
+  private implicit lazy val actorSystem = ActorSystem("TaskHandlerTest")
+
+  override def afterAll() = {
+    actorSystem.terminate()
+    super.afterAll()
+  }
 
   "Second StartApiTask without a license is rejected - JS-1482" in {
     val testContext = new TestContext
@@ -172,13 +180,13 @@ private object TaskHandlerTest {
   private val TestLicenseKeyBunch = LicenseKeyBunch("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")
   private val TestTunnelToken = TunnelToken(TunnelId("1"), SecretString("SECRET"))
 
-  private class TestContext {
+  private class TestContext(implicit actorSystem: ActorSystem) {
     val taskServers = List.fill(AgentTaskIds.size) { new MockTaskServer }
     val tasks = AgentTaskIds zip taskServers map {
       case (id_, taskServer_) ⇒ new AgentTask {
         def id = id_
         def startMeta = TestStartApiTask.meta.get
-        def tunnel = mockTunnelHandle()
+        def tunnel = mockTunnelHandle
         def taskServer = taskServer_
         def taskArgumentsFuture = NoFuture
         def close() = closeTunnelAndTaskServer()
@@ -187,8 +195,8 @@ private object TaskHandlerTest {
     val taskHandler = Guice.createInjector(new TestModule(tasks)).instance[TaskHandler]
   }
 
-  private def mockTunnelHandle() = new TunnelHandle {
-    val connectorHandler = ActorSystem("TaskHandlerTest").actorOf(Props { new Actor { def receive = { case _ ⇒ }}})
+  private def mockTunnelHandle(implicit actorSystem: ActorSystem) = new TunnelHandle {
+    val connectorHandler = actorSystem.actorOf(Props { new Actor { def receive = { case _ ⇒ }}})
     def tunnelToken = TestTunnelToken
     def startedByHttpIpOption = None
     def connected = Promise().future
