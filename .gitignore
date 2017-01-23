@@ -25,3 +25,4 @@
 /engine-agent-gui/target/
 /engine-agent-gui/node_modules/
 /engine-client/target/
+/sbt
