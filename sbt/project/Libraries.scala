@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 object Libraries {
   val scalaVersion = "2.11.8"
 
-  val akkaVersion = "2.3.15" //"2.4.7"
+  val akkaVersion = "2.4.16"
   val sprayVersion = "1.3.4"
   val slf4jVersion = "1.7.21"
 
