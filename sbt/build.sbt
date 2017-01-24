@@ -5,6 +5,7 @@
   * For example: ;project engine-job-api; compile; project /; compile; test
   */
 
+import com.typesafe.sbt.packager.SettingsHelper.makeDeploymentSettings
 import BuildUtils._
 
 val fastSbt = sys.env contains "FAST_SBT"
@@ -21,7 +22,8 @@ val commonSettings = List(
   javacOptions in (Compile, compile) ++= List("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   logBuffered in Test := false,
   testForkedParallel in Test := fastSbt,  // Experimental in sbt 0.13.13
-  sources in (Compile, doc) := Nil) // No ScalaDoc
+  sources in (Compile, doc) := Nil, // No ScalaDoc
+  test in publishM2 := {})
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
   max = if (fastSbt) math.max(1, sys.runtime.availableProcessors / 2) else 1)
@@ -131,7 +133,7 @@ lazy val agent = project.dependsOn(`agent-data`, common, data, taskserver, tunne
       logbackClassic % "test"
   }
 
-lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent` % "compile->test", `agent-test` % Test)
+lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent` % "compile->test", `agent-test` % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Client")
@@ -164,8 +166,29 @@ lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
   }
 
 lazy val `agent-main` = project.dependsOn(agent, `agent-client`)
+  .enablePlugins(JavaAppPackaging)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    //mainClass in assembly := Some("com.sos.scheduler.engine.agent.main.AgentMain"),
+    //test in assembly := {},
+    //assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false, includeDependency = false),  // No externals
+    //assemblyJarName in assembly := "jobscheduler-agent.jar",  // Without Scala binary version
+    name in Universal := name.value,
+    (mappings in Universal) :=
+      ((mappings in Universal).value filter { case (_, path) ⇒
+        (path startsWith "lib/") &&
+          !(path startsWith "lib/com.typesafe.akka.akka-testkit_") &&
+          !(path startsWith "lib/io.spray.spray-testkit_") &&
+          !(path startsWith "lib/org.scalatest.scalatest_") &&  // How to automatically exclude test dependencies ???
+          !(path startsWith "lib/org.mockito.") &&
+          !(path startsWith "lib/org.hamcrest.")
+      }) ++
+      List(
+        (baseDirectory.value / "src/main/scripts/agent.sh") → "bin/agent.sh",
+        (baseDirectory.value / "src/main/scripts/agent-client.sh") → "bin/agent-client.sh",
+        (baseDirectory.value / "src/main/scripts/set-context.sh") → "bin/set-context.sh"))
+  //.settings(makeDeploymentSettings(Universal, packageBin in Universal, "zip"))
   .settings {
     import Libraries._
     libraryDependencies ++=

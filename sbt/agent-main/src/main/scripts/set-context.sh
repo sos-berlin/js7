@@ -12,11 +12,11 @@ fi
 declare JAVA_HOME
 declare OSTYPE
 if [ "$OSTYPE" = "cygwin" ]; then
-    jarDir=$(cygpath -w "$SCHEDULER_AGENT_HOME/jar" || kill $$)
+    jarDir=$(cygpath -w "$SCHEDULER_AGENT_HOME/lib" || kill $$)
     javaHome=""
     [ -n "$JAVA_HOME" ] && javaHome=$(cygpath "$JAVA_HOME" || kill $$)
 else
-    jarDir="$SCHEDULER_AGENT_HOME/jar"
+    jarDir="$SCHEDULER_AGENT_HOME/lib"
     javaHome="$JAVA_HOME"
 fi
 

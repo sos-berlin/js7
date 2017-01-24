@@ -2,6 +2,7 @@ import sbt._
 import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 
+//noinspection TypeAnnotation
 object Libraries {
   val scalaVersion = "2.11.8"
 
