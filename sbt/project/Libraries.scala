@@ -15,15 +15,15 @@ object Libraries {
   val logbackClassic      = "ch.qos.logback" % "logback-classic" % "1.1.3"
 
   val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
-  val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.0.4"
-  val scalaTest           = "org.scalatest" %% "scalatest" % "2.2.4"
-  val scalactic           = "org.scalactic" %% "scalactic" % "2.2.4"
+  val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
+  val scalaTest           = "org.scalatest" %% "scalatest" % "3.0.1"
+  val scalactic           = "org.scalactic" %% "scalactic" % "3.0.1"
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0" :: slf4j :: Nil
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
   val guice               = "com.google.inject" % "guice" % "3.0" :: javaxInject :: Nil
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.3.0"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.3.1"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaAgent           = "com.typesafe.akka" %% "akka-agent" % akkaVersion
   val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
@@ -40,7 +40,7 @@ object Libraries {
   val snakeYaml           = "org.yaml" % "snakeyaml" % "1.15"
 
   val javaxAnnotations    = "com.google.code.findbugs" % "jsr305" % "3.0.0"
-  val guava               = "com.google.guava" % "guava" % "18.0"
+  val guava               = "com.google.guava" % "guava" % "21.0"
   val apacheCommonsBeanutils = "commons-beanutils" % "commons-beanutils" % "1.9.2"
   val reflections         = "org.reflections" % "reflections" % "0.9.9"
   val groovy              = "org.codehaus.groovy" % "groovy" % "1.8.6"

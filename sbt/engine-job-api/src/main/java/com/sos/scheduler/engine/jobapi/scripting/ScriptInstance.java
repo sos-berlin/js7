@@ -10,7 +10,6 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
-import static com.google.common.base.Throwables.propagate;
 import static javax.script.ScriptContext.ENGINE_SCOPE;
 
 /**
@@ -59,7 +58,9 @@ public class ScriptInstance {
                 engine.put(e.getKey(), e.getValue());
             engine.eval(script);
         }
-        catch (ScriptException e) { throw propagate(e); }
+        catch (ScriptException e) {
+            throw new RuntimeException(e.toString(), e);
+        }
     }
 
     public final boolean callBooleanWhenExists(boolean defaultResult, String name, Object... parameters) {
@@ -101,7 +102,9 @@ public class ScriptInstance {
             //logger.trace("Result is " + result);
             return (Boolean)result;
         }
-        catch (ScriptException e) { throw propagate(e); }
+        catch (ScriptException e) {
+            throw new RuntimeException(e.toString(), e);
+		}
     }
 
     public final void close() {
