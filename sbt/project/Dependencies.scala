@@ -3,7 +3,7 @@ import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 
 //noinspection TypeAnnotation
-object Libraries {
+object Dependencies {
   val scalaVersion = "2.11.8"
 
   val akkaVersion = "2.4.16"

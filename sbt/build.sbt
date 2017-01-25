@@ -5,7 +5,6 @@
   * For example: ;project engine-job-api; compile; project /; compile; test
   */
 
-import com.typesafe.sbt.packager.SettingsHelper.makeDeploymentSettings
 import BuildUtils._
 
 val fastSbt = sys.env contains "FAST_SBT"
@@ -17,7 +16,7 @@ val commonSettings = List(
   organization := "com.sos-berlin.jobscheduler.engine",
   organizationName := "SOS Software GmbH, Berlin",
   organizationHomepage := Some(url("https://www.sos-berlin.com")),
-  scalaVersion := Libraries.scalaVersion,
+  scalaVersion := Dependencies.scalaVersion,
   javacOptions in Compile ++= List("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= List("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   logBuffered in Test := false,
@@ -56,7 +55,7 @@ lazy val jobscheduler = (project in file("."))
 lazy val base = project
   .settings(commonSettings)
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       scalaXml ++
       sprayJson ++
@@ -68,12 +67,12 @@ lazy val data = project.dependsOn(base)
   .settings(commonSettings)
   .settings(
     libraryDependencies +=
-      Libraries.scalaTest % "test")
+      Dependencies.scalaTest % "test")
 
 lazy val common = project.dependsOn(base, data)
   .settings(commonSettings)
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       scalaXml ++
       scalactic ++
@@ -112,7 +111,7 @@ lazy val agent = project.dependsOn(`agent-data`, common, data, taskserver, tunne
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent")
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       scalaXml ++
       guava ++
@@ -138,7 +137,7 @@ lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent`
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Client")
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       guice ++
       akkaActor ++
@@ -154,7 +153,7 @@ lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Value Classes")
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       scalaXml ++
       guava ++
@@ -188,9 +187,8 @@ lazy val `agent-main` = project.dependsOn(agent, `agent-client`)
         (baseDirectory.value / "src/main/scripts/agent.sh") → "bin/agent.sh",
         (baseDirectory.value / "src/main/scripts/agent-client.sh") → "bin/agent-client.sh",
         (baseDirectory.value / "src/main/scripts/set-context.sh") → "bin/set-context.sh"))
-  //.settings(makeDeploymentSettings(Universal, packageBin in Universal, "zip"))
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       scalaTest % "test" ++
       logbackClassic % "test"
@@ -200,7 +198,7 @@ lazy val `agent-test` = project.dependsOn(agent, common)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       scalaTest ++
       logbackClassic % "test"
@@ -210,7 +208,7 @@ lazy val `http-client` = project.dependsOn(common, data)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       sprayJson ++
       sprayRouting ++
@@ -228,7 +226,7 @@ lazy val `http-server` = project.dependsOn(`http-client`, common, data)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       sprayJson ++
       sprayRouting ++
@@ -248,7 +246,7 @@ lazy val `engine-job-api` = project.dependsOn(common)
     description := "JobScheduler Java Job API",
     crossPaths := false)  // No Scala binary "_2.11" version in artifact name
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       guava ++
       javaxAnnotations % "compile" ++
@@ -263,7 +261,7 @@ lazy val minicom = project.dependsOn(common, `engine-job-api`)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       guava ++
       scalaXml ++
@@ -279,7 +277,7 @@ lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data)
   .settings(commonSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC")
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       sprayJson ++
       sprayRouting ++
@@ -299,13 +297,13 @@ lazy val `tunnel-data` = project.dependsOn(common, data, `http-server`/*Heartbea
   .settings(commonSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC - value classes")
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       scalaTest % "test" ++
       logbackClassic % "test"
   }
 
-lazy val taskserver  = project
+lazy val taskserver = project
   .dependsOn(
     `taskserver-moduleapi`,
     `taskserver-dotnet`,
@@ -317,7 +315,7 @@ lazy val taskserver  = project
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       scalaXml ++
       akkaActor ++
@@ -333,7 +331,7 @@ lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       scalaTest % "test" ++
       logbackClassic % "test"
@@ -343,7 +341,7 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
-    import Libraries._
+    import Dependencies._
     libraryDependencies ++=
       javaxAnnotations % "compile" ++
       "net.sf.jni4net" % "jni4net.j" % "0.8.8.0" ++
