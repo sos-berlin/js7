@@ -545,7 +545,7 @@
         <profile>
             <id>balanced</id>
             <properties>
-                <forkCount>1C</forkCount>
+                <forkCount>0.5C</forkCount>
                 <surefire.runOrder>balanced</surefire.runOrder>
                 <failsafe.runOrder>balanced</failsafe.runOrder>
             </properties>
