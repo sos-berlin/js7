@@ -30,7 +30,7 @@ object AgentMain {
       run(conf)
     }
     catch { case NonFatal(t) ⇒
-      println(s"AGENT TERMINATED DUE TO ERROR: $t")
+      println(s"JOBSCHEDULER AGENT TERMINATED DUE TO ERROR: $t")
       logger.error(t.toString, t)
       System.exit(1)
     }
