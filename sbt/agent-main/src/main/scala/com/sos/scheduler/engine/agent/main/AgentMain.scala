@@ -4,7 +4,8 @@ import com.sos.scheduler.engine.agent.Agent
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commands.Terminate
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Closers.EmptyAutoCloseable
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.scheduler.engine.common.scalautil.Closers.{EmptyAutoCloseable, withCloser}
 import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
@@ -45,13 +46,12 @@ object AgentMain {
     }
 
   def run(conf: AgentConfiguration): Unit =
-    autoClosing(new Agent(conf)) { agent ⇒
-      def onShutdown(): Unit = {
+    withCloser { implicit closer ⇒
+      val agent = new Agent(conf).closeWithCloser
+      JavaShutdownHook.add("AgentMain") {
         agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(OnJavaShutdownSigkillProcessesAfter)))
         awaitResult(agent.terminated, ShutdownTimeout)
-      }
-      autoClosing(JavaShutdownHook.add(onShutdown, name = AgentMain.getClass.getName)) { _ ⇒
-        agent.run()
-      }
+      }.closeWithCloser
+      agent.run()
     }
 }
