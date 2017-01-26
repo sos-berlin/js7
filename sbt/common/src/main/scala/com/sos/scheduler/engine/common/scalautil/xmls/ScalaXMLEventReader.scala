@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.common.scalautil.xmls
 
+import ScalaXMLEventReader._
 import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunction
 import com.sos.scheduler.engine.base.utils.ScalaUtils.{cast, implicitClass}
 import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
@@ -187,8 +188,14 @@ extends AutoCloseable {
   private def updateAttributeMap(withAttributeMap: Boolean): Unit = {
     releaseAttributeMap()
     _simpleAttributeMap =
-      if (withAttributeMap && peek.isStartElement) new SimpleAttributeMap(peek.asStartElement.attributes map { o ⇒ o.getName.getLocalPart → o.getValue })
-      else null
+      if (withAttributeMap && peek.isStartElement)
+        new SimpleAttributeMap(peek.asStartElement.attributes filter { a ⇒
+          !IgnoredAttributeNamespaces(a.getName.getNamespaceURI)
+        } map { a ⇒
+          a.getName.getLocalPart → a.getValue }
+        )
+      else
+        null
   }
 
   private def releaseAttributeMap(): Unit = {
@@ -219,6 +226,8 @@ extends AutoCloseable {
 }
 
 object ScalaXMLEventReader {
+
+  private val IgnoredAttributeNamespaces = Set("http://www.w3.org/2001/XMLSchema-instance")
 
   final case class Config(ignoreUnknown: Boolean = false)
 
@@ -254,7 +263,7 @@ object ScalaXMLEventReader {
       case _ ⇒ false
     }
 
-  final class SimpleAttributeMap private[xmls](pairs: TraversableOnce[(String, String)])
+  final class SimpleAttributeMap private[ScalaXMLEventReader](pairs: Iterator[(String, String)])
   extends mutable.HashMap[String, String]
   with ConvertiblePartialFunction[String, String]
   {
