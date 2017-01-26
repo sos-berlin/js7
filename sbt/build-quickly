@@ -1,0 +1,5 @@
+#! /bin/bash
+set -e
+
+cd "$(dirname "$0")"
+FAST_SBT=1 sbt -batch "universal:packageZipTarball"

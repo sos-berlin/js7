@@ -11,6 +11,8 @@ val fastSbt = sys.env contains "FAST_SBT"
 
 addCommandAlias("compile-all", "; project engine-job-api; compile; project /; compile")
 addCommandAlias("test-all", "; test; ForkedTest:test")
+addCommandAlias("build", "; compile-all; test-all; universal:packageZipTarball")
+addCommandAlias("build-quickly", "; compile-all; universal:packageZipTarball")
 
 val commonSettings = List(
   organization := "com.sos-berlin.jobscheduler.engine",
@@ -23,6 +25,12 @@ val commonSettings = List(
   testForkedParallel in Test := fastSbt,  // Experimental in sbt 0.13.13
   sources in (Compile, doc) := Nil, // No ScalaDoc
   test in publishM2 := {})
+
+val universalPluginSettings = List(
+  universalArchiveOptions in (Universal, packageZipTarball) :=
+    "--force-local" +: (universalArchiveOptions in (Universal, packageZipTarball)).value,  // Under cygwin, tar shall not interpret C:
+  universalArchiveOptions in (Universal, packageXzTarball) :=
+    "--force-local" +: (universalArchiveOptions in (Universal, packageXzTarball)).value)  // Under cygwin, tar shall not interpret C:
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
   max = if (fastSbt) math.max(1, sys.runtime.availableProcessors / 2) else 1)
@@ -173,16 +181,9 @@ lazy val `agent-main` = project.dependsOn(agent, `agent-client`)
     //test in assembly := {},
     //assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false, includeDependency = false),  // No externals
     //assemblyJarName in assembly := "jobscheduler-agent.jar",  // Without Scala binary version
-    name in Universal := name.value,
+    universalPluginSettings,
     (mappings in Universal) :=
-      ((mappings in Universal).value filter { case (_, path) ⇒
-        (path startsWith "lib/") &&
-          !(path startsWith "lib/com.typesafe.akka.akka-testkit_") &&
-          !(path startsWith "lib/io.spray.spray-testkit_") &&
-          !(path startsWith "lib/org.scalatest.scalatest_") &&  // How to automatically exclude test dependencies ???
-          !(path startsWith "lib/org.mockito.") &&
-          !(path startsWith "lib/org.hamcrest.")
-      }) ++
+      ((mappings in Universal).value filter { case (_, path) ⇒ (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
       List(
         (baseDirectory.value / "src/main/scripts/agent.sh") → "bin/agent.sh",
         (baseDirectory.value / "src/main/scripts/agent-client.sh") → "bin/agent-client.sh",
@@ -413,3 +414,10 @@ lazy val forkedSettings = inConfig(ForkedTest)(Defaults.testTasks) ++ List(
   testOptions in Test := Seq(Tests.Filter(name ⇒ !isIT(name))))
 
 def isIT(name: String): Boolean = name endsWith "IT"
+
+def isTestJar(name: String) = // How to automatically determine/exclude test dependencies ???
+  name.startsWith("com.typesafe.akka.akka-testkit_") ||
+  name.startsWith("io.spray.spray-testkit_") ||
+  name.startsWith("org.scalatest.scalatest_") ||
+  name.startsWith("org.mockito.") ||
+  name.startsWith("org.hamcrest.")
