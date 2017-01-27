@@ -54,7 +54,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         assert(r(0)._2 >= t && r(0)._2 <= t + 200.ms)
         assert(r(1)._2 >= t && r(1)._2 <= t + 400.ms)
         assert(r(2)._2 >= t && r(2)._2 <= t + 600.ms)
-        assert(timerService.overview == TimerServiceOverview(count = 0, completeCount = nr * 3, wakeCount = nr * 2))
+        assert(timerService.overview == TimerServiceOverview(count = 0, completeCount = nr * 3, wakeCount = nr * 3))
       }
     }
     timerService.close()
@@ -131,8 +131,8 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
 
   "roundUp" in {
     val t = Instant.parse("2000-01-01T00:00:00Z")
-    assert(TimerService.roundUp(t + 1.ms, t.toEpochMilli) == t + 1.ms)
-    assert(TimerService.roundUp(t + 99.ms, t.toEpochMilli) == t + 99.ms)
+    assert(TimerService.roundUp(t + 1.ms, t.toEpochMilli) == t + 10.ms) //1.ms)
+    assert(TimerService.roundUp(t + 99.ms, t.toEpochMilli) == t + 100.ms) //99.ms)
     assert(TimerService.roundUp(t + 123.ms, t.toEpochMilli) == t + 130.ms)
     assert(TimerService.roundUp(t + 423.ms, t.toEpochMilli) == t + 430.ms)
     assert(TimerService.roundUp(t + 923.ms, t.toEpochMilli) == t + 950.ms)

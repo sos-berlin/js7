@@ -241,8 +241,8 @@ object TimerService {
       case d if d >= 5000 ⇒ 500
       case d if d >= 1000 ⇒ 100
       case d if d >= 500 ⇒ 50
-      case d if d >= 100 ⇒ 10
-      case _ ⇒ 1
+    //case d if d >= 100 ⇒ 10
+      case _ ⇒ 10
     }
 
   private def timerToOverview(timer: Timer[_]) = TimerOverview(timer.at, name = timer.name)
