@@ -8,7 +8,6 @@ import com.sos.scheduler.engine.common.time.timer.Timer.nowMillis
 import com.sos.scheduler.engine.common.time.timer.TimerService._
 import com.sos.scheduler.engine.common.time.timer.signaling.SynchronizedSignaling
 import java.lang.System.currentTimeMillis
-import java.time.Instant.now
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicBoolean
 import org.jetbrains.annotations.TestOnly
@@ -143,7 +142,7 @@ final class TimerService(idleTimeout: Option[Duration]) extends AutoCloseable {
     * Tries to complete `promise` with `completeWith` after timeout.
     */
   def tryCompletePromiseAfter[A](delay: Duration, promise: Promise[A], completeWith: Try[A], name: String)(implicit ec: ExecutionContext): Unit =
-    tryCompletePromiseAt(now + delay, promise, completeWith, name)
+    tryCompletePromiseAt(nowPlus(delay), promise, completeWith, name)
 
   /**
     * Tries to complete `promise` with `completeWith` after timeout.
@@ -154,15 +153,21 @@ final class TimerService(idleTimeout: Option[Duration]) extends AutoCloseable {
   }
 
   def delay(delay: Duration, name: String): Timer[Unit] =
-    at((now plusNanos 1000) + delay, name)
+    at(nowPlus(delay), name)
+
+  def delay[A](delay: Duration, name: String, completeWith: Try[A]): Timer[A] =
+    at(nowPlus(delay), name, completeWith = completeWith)
 
   def at(at: Instant, name: String): Timer[Unit] =
     add(new Timer[Unit](chooseWakeTime(at), name))
 
+  def at[A](at: Instant, name: String, completeWith: Try[A]): Timer[A] =
+    add(new Timer[A](chooseWakeTime(at), name, completeWith = completeWith))
+
   private[timer] def add[A](timer: Timer[A]): timer.type = {
     require(timer.at.toEpochMilli < NeverMillis)
     requireState(!closed)
-    if (timer.at <= now) {
+    if (timer.at.toEpochMilli <= currentTimeMillis) {
       timer.complete()
       timerCompleteCounter += 1
     } else {
@@ -227,7 +232,11 @@ object TimerService {
     * Coalesces wake-up times to reduce processor wake-ups.
     * @see http://msdn.microsoft.com/en-us/library/windows/hardware/gg463266.aspx
     */
-  private def chooseWakeTime(at: Instant): Instant = roundUp(at, currentTimeMillis = currentTimeMillis)
+  private def chooseWakeTime(at: Instant): Instant =
+    if (at.toEpochMilli <= currentTimeMillis)
+      at  // Not rounding, leading to delay <= 0.s, short-circuiting the TimerService
+    else
+      roundUp(at, currentTimeMillis = currentTimeMillis)
 
   private[timer] def roundUp(at: Instant, currentTimeMillis: Long): Instant = {
     val atMillis = at.toEpochMilli
@@ -249,7 +258,7 @@ object TimerService {
 
   implicit class TimeoutFuture[A](val delegate: Future[A]) extends AnyVal {
     def timeoutAfter[B >: A](delay: Duration, name: String, completeWith: Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] =
-      timeoutAt(now + delay, completeWith, name)
+      timeoutAt(nowPlus(delay), completeWith, name)
 
     def timeoutAt[B >: A](at: Instant, completeWith: Try[B] = Timer.ElapsedFailure, name: String)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] = {
       val promise = Promise[B]()
@@ -271,4 +280,10 @@ object TimerService {
       }
     }
   }
+
+  private def nowPlus(delay: Duration): Instant =
+    nowPlusMillis(delay.getSeconds * 1000 + (delay.getNano + 999999) / 1000000)  // round-up 1ns -> 1ms
+
+  private def nowPlusMillis(millis: Long): Instant =
+    Instant.ofEpochMilli(currentTimeMillis + millis)
 }

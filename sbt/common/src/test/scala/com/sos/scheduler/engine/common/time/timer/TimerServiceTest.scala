@@ -54,7 +54,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         assert(r(0)._2 >= t && r(0)._2 <= t + 200.ms)
         assert(r(1)._2 >= t && r(1)._2 <= t + 400.ms)
         assert(r(2)._2 >= t && r(2)._2 <= t + 600.ms)
-        assert(timerService.overview == TimerServiceOverview(count = 0, completeCount = nr * 3, wakeCount = nr * 3))
+        assert(timerService.overview == TimerServiceOverview(count = 0, completeCount = nr * 3, wakeCount = nr * 2))
       }
     }
     timerService.close()
