@@ -114,7 +114,7 @@ trait AgentClient {
   }
 
   final def get[A: FromResponseUnmarshaller](uri: AgentUris ⇒ String, timeout: Duration = RequestTimeout): Future[A] =
-    unmarshallingPipeline[A](RequestTimeout).apply(Get(uri(agentUris)))
+    unmarshallingPipeline[A](timeout).apply(Get(uri(agentUris)))
 
   @TestOnly
   private[client] final def sendReceive[A: FromResponseUnmarshaller](request: HttpRequest, timeout: Duration = RequestTimeout): Future[A] =
@@ -166,10 +166,10 @@ trait AgentClient {
   private def sessionTokenRequestTransformer(sessionTokenOption: Option[SessionToken]): RequestTransformer =
     sessionTokenOption map { token ⇒ addHeader(SessionToken.HeaderName, token.secret.string) } getOrElse identity
 
-  private[client] def setSessionToken(sessionToken: SessionToken): Unit =
+  private[agent] final def setSessionToken(sessionToken: SessionToken): Unit =
     sessionTokenRef.set(Some(sessionToken))
 
-  def hasSession: Boolean =
+  final def hasSession: Boolean =
     sessionTokenRef.get.nonEmpty
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest ⇒ Future[A]): Future[A] =
@@ -178,10 +178,10 @@ trait AgentClient {
       case None ⇒ Future.failed(new IllegalArgumentException(s"URI '${request.uri} does not match $toString"))
     }
 
-  private[client] def toCheckedAgentUri(uri: Uri): Option[Uri] =
+  private[client] final def toCheckedAgentUri(uri: Uri): Option[Uri] =
     checkAgentUri(normalizeAgentUri(uri))
 
-  private[client] def normalizeAgentUri(uri: Uri): Uri = {
+  private[client] final def normalizeAgentUri(uri: Uri): Uri = {
     val Uri(scheme, authority, path, query, fragment) = uri
     if (scheme.isEmpty && authority.isEmpty)
       Uri(agentUri.scheme, agentUri.authority, path, query, fragment)
@@ -224,7 +224,7 @@ object AgentClient {
   /**
    * The returns timeout for the HTTP request is longer than the expected duration of the request
    */
-  private[client] def commandDurationToRequestTimeout(duration: Duration): Timeout = {
+  private[agent] def commandDurationToRequestTimeout(duration: Duration): Timeout = {
     require(duration >= 0.s)
     Timeout((duration + RequestTimeout).toFiniteDuration)
   }
