@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.common.time.timer
 
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -238,11 +240,12 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       q.offer(true)
       q.take()
     }
-    Future { blocking { while(q.take()) {} }}
+    val future = Future { blocking { while(q.take()) {} }}
     Stopwatch.measureTime(10000, "put") {
       q.put(true)
     }
-    q.put(true)
+    q.put(false)
+    future await 1.s
   }
 }
 

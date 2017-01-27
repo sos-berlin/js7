@@ -18,7 +18,7 @@ import spray.json._
   */
 final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerWebService {
 
-  protected def executionContext = actorRefFactory.dispatcher
+  protected def executionContext = system.dispatcher
   protected lazy val timerService = TimerService(Some(5.s)).closeWithCloser
 
   "timerService (empty)" in {

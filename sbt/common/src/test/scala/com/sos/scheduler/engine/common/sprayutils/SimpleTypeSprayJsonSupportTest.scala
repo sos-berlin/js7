@@ -18,6 +18,11 @@ final class SimpleTypeSprayJsonSupportTest extends FreeSpec with ScalatestRouteT
 
   implicit lazy val actorRefFactory = ActorSystem(getClass.getSimpleName)
 
+  override def afterAll(): Unit = {
+    actorRefFactory.terminate()
+    super.afterAll()
+  }
+
   private val TestInt = JsNumber(123456789)
   private val TestLong = JsNumber(123456789012345678L)
   private val TestBigDecimal = JsNumber(BigDecimal("111222333444555666777888999000.111222333"))

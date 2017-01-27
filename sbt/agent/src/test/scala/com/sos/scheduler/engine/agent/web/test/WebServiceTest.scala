@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.web.test
 
-import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
+import akka.actor.ActorRefFactory
 import com.sos.scheduler.engine.agent.web.common.AgentWebService
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
@@ -21,9 +21,13 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
 
   implicit val routeTestTimeout = RouteTestTimeout(5.seconds)
 
-  protected implicit final lazy val actorRefFactory = newActorSystem(getClass.getSimpleName)(closer)
+  /** Provide ActorRefFactory for some Routes. */
+  protected final def actorRefFactory: ActorRefFactory = system
 
-  override protected def afterAll() = closer.close()
+  override protected def afterAll() = {
+    closer.close()
+    super.afterAll()
+  }
 
   protected lazy val route = buildRoute(GateKeeper.forTest)
 }
