@@ -19,7 +19,7 @@ object ScalaStax {
   private val xmlInputFactoryTL = threadLocal {
     val result = XMLInputFactory.newInstance()
     if (!xmlInputFactoryLogged.getAndSet(true)) {
-      logger.info(s"Using XMLInputFactory ${result.getClass}")
+      logger.debug(s"Using XMLInputFactory ${result.getClass}")
     }
     result
   }
