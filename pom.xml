@@ -7,7 +7,7 @@
 
     <groupId>com.sos-berlin.jobscheduler.engine</groupId>
     <artifactId>engine</artifactId>
-    <version>1.11.0-SNAPSHOT</version>
+    <version>1.11.0-RC4</version>
 
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>
@@ -869,6 +869,6 @@
         <connection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</connection>
         <developerConnection>scm:git:git@github.com:sos-berlin/scheduler-engine.git</developerConnection>
         <url>https://github.com/sos-berlin/scheduler-engine</url>
-        <tag>HEAD</tag>
+        <tag>v1.11.0-RC4</tag>
     </scm>
 </project>
