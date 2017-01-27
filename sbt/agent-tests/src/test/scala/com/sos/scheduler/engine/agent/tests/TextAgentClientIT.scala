@@ -1,7 +1,6 @@
-package com.sos.scheduler.engine.agent.client
+package com.sos.scheduler.engine.agent.tests
 
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.scheduler.engine.agent.client.TextAgentClientIT._
 import com.sos.scheduler.engine.agent.command.{CommandExecutor, CommandMeta}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
@@ -24,6 +23,8 @@ import spray.can.Http
 import spray.http.StatusCodes._
 import spray.httpx.UnsuccessfulResponseException
 import spray.routing.authentication._
+import TextAgentClientIT._
+import com.sos.scheduler.engine.agent.client.TextAgentClient
 
 /**
  * @author Joacim Zschimmer

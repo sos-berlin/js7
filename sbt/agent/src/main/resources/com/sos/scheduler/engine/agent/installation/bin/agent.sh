@@ -46,7 +46,7 @@ logbackConfig=$(
     fi)
 logbackArg="-Dlogback.configurationFile=$logbackConfig"
 agentOptions=("-job-java-options=$logbackArg" "${agentOptions[@]}")
-executeAgent=("$java" "${javaOptions[@]}" -classpath "$jarDir/*" "$logbackArg" com.sos.scheduler.engine.agent.main.AgentMain "${agentOptions[@]}")
+executeAgent=("$java" "${javaOptions[@]}" -classpath "$lib/*" "$logbackArg" com.sos.scheduler.engine.agent.main.AgentMain "${agentOptions[@]}")
 echo "${executeAgent[@]}"
 if [ -n "$crashKillScript" ]; then :
     rm -f "$crashKillScript"

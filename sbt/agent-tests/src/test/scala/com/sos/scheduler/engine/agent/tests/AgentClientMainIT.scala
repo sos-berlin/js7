@@ -1,10 +1,11 @@
-package com.sos.scheduler.engine.agent.client.main
+package com.sos.scheduler.engine.agent.tests
 
-import com.sos.scheduler.engine.agent.client.main.AgentClientMainIT._
+import com.sos.scheduler.engine.agent.client.main.AgentClientMain
 import com.sos.scheduler.engine.agent.command.{CommandExecutor, CommandMeta}
 import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
 import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate}
 import com.sos.scheduler.engine.agent.test.AgentTest
+import com.sos.scheduler.engine.agent.tests.AgentClientMainIT._
 import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.scheduler.engine.common.scalautil.HasCloser

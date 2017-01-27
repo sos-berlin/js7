@@ -2,4 +2,4 @@
 set -e
 
 cd "$(dirname "$0")"
-sbt -batch "; clean; compile-all; test-all; publish-m2"
+sbt -batch "; clean; build; publish-m2"

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.client.tests
+package com.sos.scheduler.engine.agent.tests
 
 import com.sos.scheduler.engine.agent.Agent
 import com.sos.scheduler.engine.agent.client.AgentClient

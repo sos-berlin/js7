@@ -28,7 +28,7 @@ import spray.json.{JsValue, JsonParser}
 /**
   * @author Joacim Zschimmer
   */
-private[client] class TextAgentClient(agentUri: AgentAddress, print: String ⇒ Unit,
+private[agent] final class TextAgentClient(agentUri: AgentAddress, print: String ⇒ Unit,
   userAndPassword: Option[UserAndPassword] = None, keystore: Option[KeystoreReference] = None)
 extends AutoCloseable {
 

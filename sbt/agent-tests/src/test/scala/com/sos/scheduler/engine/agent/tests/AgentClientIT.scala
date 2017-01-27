@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.agent.client
+package com.sos.scheduler.engine.agent.tests
 
 import akka.actor.ActorRefFactory
 import akka.util.Timeout
 import com.google.common.io.Closer
 import com.google.common.io.Files._
 import com.sos.scheduler.engine.agent.Agent
+import com.sos.scheduler.engine.agent.client.AgentClient
 import com.sos.scheduler.engine.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
-import com.sos.scheduler.engine.agent.client.AgentClientIT._
 import com.sos.scheduler.engine.agent.configuration.{AgentConfiguration, Akkas}
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
@@ -27,6 +27,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import AgentClientIT._
 import scala.util.matching.Regex
 import spray.http.StatusCodes.InternalServerError
 import spray.httpx.UnsuccessfulResponseException
@@ -124,7 +125,7 @@ final class AgentClientIT extends FreeSpec with ScalaFutures with BeforeAndAfter
   "fileExists" in {
     val file = createTempFile("AgentClientIT with blank", ".tmp")
     closer.onClose { deleteIfExists(file) }
-    for (i ← 1 to 3) {   // Check no-cache
+    for (_ ← 1 to 3) {   // Check no-cache
       touch(file)
       whenReady(client.fileExists(file.toString)) { exists ⇒ assert(exists) }
       delete(file)

@@ -26,7 +26,7 @@ object AgentClientMain {
       System.exit(1)
     }
 
-  private[client] def run(args: Seq[String], print: String ⇒ Unit): Int = {
+  def run(args: Seq[String], print: String ⇒ Unit): Int = {
     val (agentUri, operations) = parseArgs(args)
     autoClosing(new TextAgentClient(agentUri, print)) { client ⇒
       if (operations.isEmpty)

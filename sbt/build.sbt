@@ -45,8 +45,8 @@ lazy val jobscheduler = (project in file("."))
     data,
     `agent-client`,
     `agent-data`,
-    `agent-main`,
     `agent-test`,
+    `agent-tests`,
     `http-client`,
     `http-server`,
     `engine-job-api`,
@@ -117,7 +117,6 @@ lazy val common = project.dependsOn(base, data)
 lazy val agent = project.dependsOn(`agent-data`, common, data, taskserver, tunnel)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
-  .settings(description := "JobScheduler Agent")
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -137,10 +136,23 @@ lazy val agent = project.dependsOn(`agent-data`, common, data, taskserver, tunne
       guice ++
       mockito % "test" ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      logbackClassic //FIXME % "test"
   }
+  .enablePlugins(JavaAppPackaging)
+  .settings(
+    //mainClass in assembly := Some("com.sos.scheduler.engine.agent.main.AgentMain"),
+    //test in assembly := {},
+    //assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false, includeDependency = false),  // No externals
+    //assemblyJarName in assembly := "jobscheduler-agent.jar",  // Without Scala binary version
+    universalPluginSettings,
+    (mappings in Universal) :=
+      ((mappings in Universal).value filter { case (_, path) ⇒ (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
+      List(
+        (baseDirectory.value / "src/main/resources/com/sos/scheduler/engine/agent/installation/bin/agent.sh") → "bin/agent.sh",
+        (baseDirectory.value / "src/main/resources/com/sos/scheduler/engine/agent/installation/bin/agent-client.sh") → "bin/agent-client.sh",
+        (baseDirectory.value / "src/main/resources/com/sos/scheduler/engine/agent/installation/bin/set-context.sh") → "bin/set-context.sh"))
 
-lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent` % "compile->test", `agent-test` % "compile->test")
+lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-test` % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Client")
@@ -153,7 +165,7 @@ lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent`
       sprayClient ++
       sprayJson ++
       scalaTest % "test" ++
-      logbackClassic
+      logbackClassic % "test"
   }
 
 lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
@@ -172,29 +184,6 @@ lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
       logbackClassic % "test"
   }
 
-lazy val `agent-main` = project.dependsOn(agent, `agent-client`)
-  .enablePlugins(JavaAppPackaging)
-  .configs(ForkedTest).settings(forkedSettings)
-  .settings(
-    commonSettings,
-    //mainClass in assembly := Some("com.sos.scheduler.engine.agent.main.AgentMain"),
-    //test in assembly := {},
-    //assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false, includeDependency = false),  // No externals
-    //assemblyJarName in assembly := "jobscheduler-agent.jar",  // Without Scala binary version
-    universalPluginSettings,
-    (mappings in Universal) :=
-      ((mappings in Universal).value filter { case (_, path) ⇒ (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
-      List(
-        (baseDirectory.value / "src/main/scripts/agent.sh") → "bin/agent.sh",
-        (baseDirectory.value / "src/main/scripts/agent-client.sh") → "bin/agent-client.sh",
-        (baseDirectory.value / "src/main/scripts/set-context.sh") → "bin/set-context.sh"))
-  .settings {
-    import Dependencies._
-    libraryDependencies ++=
-      scalaTest % "test" ++
-      logbackClassic % "test"
-  }
-
 lazy val `agent-test` = project.dependsOn(agent, common)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
@@ -202,6 +191,19 @@ lazy val `agent-test` = project.dependsOn(agent, common)
     import Dependencies._
     libraryDependencies ++=
       scalaTest ++
+      logbackClassic % "test"
+  }
+
+lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test")
+  .configs(ForkedTest).settings(forkedSettings)
+  .settings(
+    commonSettings,
+    description := "JobScheduler Agent Tests")
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      scalaTest % "test" ++
+      mockito % "test" ++
       logbackClassic % "test"
   }
 
