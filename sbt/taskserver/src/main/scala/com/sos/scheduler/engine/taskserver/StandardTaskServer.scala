@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.sos.scheduler.engine.base.process.ProcessSignal
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.scheduler.engine.common.scalautil.Futures.namedThreadFuture
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
 import com.sos.scheduler.engine.common.tcp.BlockingTcpConnection
 import com.sos.scheduler.engine.common.time.ScalaTime.MaxDuration
@@ -56,13 +57,11 @@ extends TaskServer with HasCloser {
   def terminated = terminatedPromise.future
 
   def start(): Unit =
-    Future {
-      blocking {
-        val connectionMessage = TunnelConnectionMessage(arguments.tunnelToken)
-        master.sendMessage(ByteString(connectionMessage.toJson.compactPrint))
-        remoting.run() await MaxDuration
-        master.close()
-      }
+    namedThreadFuture("Job " + arguments.startMeta.job) {
+      val connectionMessage = TunnelConnectionMessage(arguments.tunnelToken)
+      master.sendMessage(ByteString(connectionMessage.toJson.compactPrint))
+      remoting.run() await MaxDuration
+      master.close()
     } onComplete { tried ⇒
       val (correctedTried, msg) = tried match {
         case Failure(t: AsynchronousCloseException) ⇒ (Success(Terminated), s"Terminated after close(): $t")
