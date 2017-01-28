@@ -34,6 +34,15 @@ object Futures {
       case NonFatal(t) ⇒ Future.failed(t)
     }
 
+  def namedThreadFuture[A](name: String)(body: ⇒ A): Future[A] = {
+    val promise = Promise[A]()
+    new Thread {
+      setName(name)
+      override def run() = promise complete Try { body }
+    } .start()
+    promise.future
+  }
+
   /**
    * A Future that will never happen.
    */

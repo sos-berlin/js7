@@ -2,13 +2,17 @@ package com.sos.scheduler.engine.common.scalautil
 
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures.{FutureNotSucceededException, NoFuture, catchInFuture}
+import com.sos.scheduler.engine.common.scalautil.Futures.namedThreadFuture
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.time.Stopwatch
+import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
 import java.util.concurrent.TimeoutException
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
+import scala.util.Failure
 
 /**
  * @author Joacim Zschimmer
@@ -50,6 +54,16 @@ final class FuturesTest extends FreeSpec {
     intercept[RuntimeException] { f(true) }
     Await.ready(f(false), 2.seconds).value.get.failed.get
     Await.ready(catchInFuture { f(true) }, 2.seconds).value.get.failed.get
+  }
+
+  "namedThreadFuture" in {
+    val (n, warmUp) = if (sys.props contains "test.speed") (10000, 10000) else (100, 100)
+    measureTime(n, "namedThreadFuture", warmUp = warmUp) {
+      val future = namedThreadFuture("FuturesTest") { "x" }
+      assert(Await.result(future, 2.seconds) == "x")
+    }
+    val future = namedThreadFuture("FuturesTest") { sys.error("TEST-ERROR") }
+    assert(Await.ready(future, 2.seconds).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
   }
 
   "future.await" in {
