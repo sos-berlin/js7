@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
  * @author Joacim Zschimmer
  */
-final class OwnProcessTaskServerTest extends FreeSpec {
+final class OwnProcessTaskServerIT extends FreeSpec {
 
   "OwnProcessTaskServer" in {
     val tcpPort = findRandomFreeTcpPort()

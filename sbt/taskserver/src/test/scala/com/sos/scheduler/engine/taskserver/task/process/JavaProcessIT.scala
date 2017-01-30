@@ -10,7 +10,7 @@ import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.data.job.ReturnCode
-import com.sos.scheduler.engine.taskserver.task.process.JavaProcessTest._
+import com.sos.scheduler.engine.taskserver.task.process.JavaProcessIT._
 import java.lang.System.{err, exit, out}
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -18,21 +18,25 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
  * @author Joacim Zschimmer
  */
-final class JavaProcessTest extends FreeSpec {
+final class JavaProcessIT extends FreeSpec {
 
   "JavaProcess" in {
     withCloser { closer ⇒
-      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "JavaProcessTest")
+      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "JavaProcessIT")
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
       val stopwatch = new Stopwatch
       val process = JavaProcess.startJava(
         ProcessConfiguration(stdFileMap),
         options = List("-Xmx10m", s"-Dtest=$TestValue"),
         classpath = Some(JavaProcess.OwnClasspath),
-        mainClass = JavaProcessTest.getClass.getName stripSuffix "$", // Scala object class name ends with '$'
+        mainClass = JavaProcessIT.getClass.getName stripSuffix "$", // Scala object class name ends with '$'
         arguments = Arguments)
       try {
         val returnCode = process.waitForTermination()
+        if (returnCode != ReturnCode(77)) {
+          info(stdFileMap(Stdout).contentString)
+          info(stdFileMap(Stderr).contentString)
+        }
         assert(returnCode == ReturnCode(77))
         assert(stdFileMap(Stdout).contentString contains s"STDOUT $TestValue")
         assert(stdFileMap(Stderr).contentString contains s"STDERR $TestValue")
@@ -44,7 +48,7 @@ final class JavaProcessTest extends FreeSpec {
   }
 }
 
-private object JavaProcessTest {
+private object JavaProcessIT {
   private val TestValue = "TEST TEST"
   private val Arguments = Vector("a", "1 2")
   private val logger = Logger(getClass)
