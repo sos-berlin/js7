@@ -11,8 +11,8 @@ val fastSbt = sys.env contains "FAST_SBT"
 
 addCommandAlias("compile-all", "; project engine-job-api; compile; project /; compile")
 addCommandAlias("test-all", "; test; ForkedTest:test")
-addCommandAlias("build", "; compile-all; test-all; universal:packageZipTarball")
-addCommandAlias("build-quickly", "; compile-all; universal:packageZipTarball")
+addCommandAlias("build", "; compile-all; test-all")
+addCommandAlias("build-quickly", "; compile-all")
 
 val commonSettings = List(
   organization := "com.sos-berlin.jobscheduler.engine",
