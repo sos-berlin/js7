@@ -57,8 +57,8 @@ lazy val jobscheduler = (project in file("."))
     tunnel,
     `tunnel-data`)
   .settings(
-    commonSettings,
-    publishM2 := {})  // This project is only a build wrapper
+    commonSettings)
+    //publishM2 := {})  // This project is only a build wrapper
 
 lazy val base = project
   .settings(commonSettings)
@@ -138,19 +138,11 @@ lazy val agent = project.dependsOn(`agent-data`, common, data, taskserver, tunne
       scalaTest % "test" ++
       logbackClassic //FIXME % "test"
   }
-  .enablePlugins(JavaAppPackaging)
-  .settings(
-    //mainClass in assembly := Some("com.sos.scheduler.engine.agent.main.AgentMain"),
-    //test in assembly := {},
-    //assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false, includeDependency = false),  // No externals
-    //assemblyJarName in assembly := "jobscheduler-agent.jar",  // Without Scala binary version
-    universalPluginSettings,
-    (mappings in Universal) :=
-      ((mappings in Universal).value filter { case (_, path) ⇒ (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
-      List(
-        (baseDirectory.value / "src/main/resources/com/sos/scheduler/engine/agent/installation/bin/agent.sh") → "bin/agent.sh",
-        (baseDirectory.value / "src/main/resources/com/sos/scheduler/engine/agent/installation/bin/agent-client.sh") → "bin/agent-client.sh",
-        (baseDirectory.value / "src/main/resources/com/sos/scheduler/engine/agent/installation/bin/set-context.sh") → "bin/set-context.sh"))
+  //.settings(
+  //mainClass in assembly := Some("com.sos.scheduler.engine.agent.main.AgentMain"),
+  //test in assembly := {},
+  //assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false, includeDependency = false),  // No externals
+  //assemblyJarName in assembly := "jobscheduler-agent.jar",  // Without Scala binary version
 
 lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-test` % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
