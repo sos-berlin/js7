@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-. "$(cd "$(dirname "$0")" && pwd || kill $$)/set-context.sh"
+. "$(cd "$(dirname -- "$0")" && pwd || kill $$)/set-context.sh"
 declare jobschedulerHome classpath pathSeparator JAVA_HOME java
 
 declare -a javaOptions=()

@@ -22,7 +22,7 @@ toSystemPath() {
   fi
 }
 
-jobschedulerHome=$(cd "$(dirname "$0")/.." && pwd || kill $$)
+jobschedulerHome=$(cd "$(dirname -- "$0")/.." && pwd || kill $$)
 
 declare JAVA_HOME
 declare -a classpath=()

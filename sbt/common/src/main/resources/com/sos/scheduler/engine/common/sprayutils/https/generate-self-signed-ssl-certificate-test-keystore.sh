@@ -28,7 +28,7 @@ for arg in "$@"; do
             ;;
         -resources)
             # Generate test code files (to be called manually)
-            directory="$(dirname "$0")"
+            directory="$(dirname -- "$0")"
             shift
             ;;
         -days=*)

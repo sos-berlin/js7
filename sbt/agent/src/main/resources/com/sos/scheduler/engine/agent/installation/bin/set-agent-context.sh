@@ -8,5 +8,5 @@
 
 declare agentHome
 if [ -z "$agentHome" ]; then :
-    agentHome=$(cd "$(dirname "$0")/.." && pwd || kill $$)
+    agentHome=$(cd "$(dirname -- "$0")/.." && pwd || kill $$)
 fi
