@@ -31,6 +31,7 @@ object EventSeq {
   case object Torn
   extends EventSeq[Nothing, Nothing]
 
+  // TODO May be slow if instantiated often
   implicit def jsonFormat[E: RootJsonFormat]: TypedJsonFormat[EventSeq[Seq, E]] =
     TypedJsonFormat[EventSeq[Seq, E]](
       Subtype[NonEmpty[Seq, E]],
