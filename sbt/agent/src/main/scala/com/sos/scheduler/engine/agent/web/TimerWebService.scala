@@ -18,7 +18,7 @@ trait TimerWebService extends AgentWebService {
   protected def timerService: TimerService
   protected implicit def executionContext: ExecutionContext
 
-  routeBuilder.addApiRoute {
+  routeBuilder.addApiRoute { _ ⇒
     pathSegments("timer") {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {

@@ -12,7 +12,7 @@ import spray.testkit.ScalatestRouteTest
   */
 final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest {
 
-  private val sessionRegister = new SessionRegister(token ⇒ s"/${token.secret.string}/")
+  private val sessionRegister = new SessionRegister[String]
   private val unknownSessionToken = SessionToken(SecretString("UNKNOWN"))
 
   "Remove unknown SessionToken" in {
@@ -24,7 +24,7 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest {
   }
 
   "login" in {
-    val sessionToken = sessionRegister.newSessionToken()
+    val sessionToken = sessionRegister.add("A")
     assert(sessionRegister contains sessionToken)
     sessionRegister.remove(sessionToken)
     assert(!sessionRegister.contains(sessionToken))
@@ -51,9 +51,9 @@ final class SessionRegisterTest extends FreeSpec with ScalatestRouteTest {
     }
 
     "Known session header" in {
-      val sessionToken = sessionRegister.newSessionToken()
+      val sessionToken = sessionRegister.add("TEST-SESSION")
       Get("/test") ~> addHeader(SessionToken.HeaderName, sessionToken.secret.string) ~> route ~> check {
-        assert(responseAs[String] == s"/${sessionToken.secret.string}/")
+        assert(responseAs[String] == s"TEST-SESSION")
       }
     }
   }

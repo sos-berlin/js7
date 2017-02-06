@@ -11,7 +11,7 @@ trait User {
 
 object User {
   /** The unauthenticated, anonymous user. */
-  object Anonymous extends User {
+  case object Anonymous extends User {
     def id = UserId.Anonymous
   }
 }

@@ -19,7 +19,7 @@ trait CommandViewWebService extends AgentWebService {
   protected def commandHandlerOverview: CommandHandlerOverview
   protected def commandRunOverviews: immutable.Iterable[CommandRunOverview]
 
-  routeBuilder.addApiRoute {
+  routeBuilder.addApiRoute { _ ⇒
     (pathSegments("command") & get) {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {

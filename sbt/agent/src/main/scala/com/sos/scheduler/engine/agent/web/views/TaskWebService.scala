@@ -20,7 +20,7 @@ trait TaskWebService extends AgentWebService {
 
   protected def taskHandlerView: TaskHandlerView
 
-  routeBuilder.addApiRoute {
+  routeBuilder.addApiRoute { _ ⇒
     pathSegments("task") {
       respondWithHeader(`Cache-Control`(`max-age`(0))) {
         pathEnd {

@@ -7,7 +7,7 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.task.{StandardAgentTaskFactory, TaskHandler}
-import com.sos.scheduler.engine.agent.web.common.ExternalWebService
+import com.sos.scheduler.engine.agent.web.common.{ExternalWebService, LoginSession}
 import com.sos.scheduler.engine.common.auth.EncodedPasswordValidator
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
@@ -31,8 +31,8 @@ extends AbstractModule {
   protected def configure() = {}
 
   @Provides @Singleton
-  def sessionRegister(): SessionRegister[Unit] =
-    new SessionRegister(_ ⇒ ())
+  def sessionRegister(): SessionRegister[LoginSession] =
+    new SessionRegister[LoginSession]
 
   @Provides @Singleton
   def provideCsrfConfiguration(config: Config): CSRF.Configuration =

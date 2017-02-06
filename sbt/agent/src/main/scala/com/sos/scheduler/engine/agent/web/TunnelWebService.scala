@@ -28,7 +28,7 @@ trait TunnelWebService extends AgentWebService {
   protected def tunnelOverviews: Future[immutable.Iterable[TunnelOverview]]
   protected def tunnelView(tunnelId: TunnelId): Future[TunnelView]
 
-  routeBuilder.addApiRoute {
+  routeBuilder.addApiRoute { _ ⇒
     pathSegments("tunnel") {
       path(Segment) { idString ⇒
         post {

@@ -8,7 +8,7 @@ import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
-import com.sos.scheduler.engine.agent.web.common.ExternalWebService
+import com.sos.scheduler.engine.agent.web.common.{ExternalWebService, LoginSession}
 import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
 import com.sos.scheduler.engine.common.event.EventIdGenerator
 import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
@@ -34,7 +34,7 @@ final private class WebServiceActor private(
   commandExecutor: CommandExecutor,
   tunnelServer: TunnelServer,
   agentOverviewProvider: Provider[AgentOverview],
-  protected val sessionRegister: SessionRegister[Unit],
+  protected val sessionRegister: SessionRegister[LoginSession],
   protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
   protected val timerService: TimerService,
@@ -86,7 +86,7 @@ private[web] object WebServiceActor {
     commandExecutor: CommandExecutor,
     tunnelServer: TunnelServer,
     agentOverviewProvider: Provider[AgentOverview],
-    sessionRegister: SessionRegister[Unit],
+    sessionRegister: SessionRegister[LoginSession],
     taskHandlerView: TaskHandlerView,
     commandHandler: AgentCommandHandler,
     timerService: TimerService,

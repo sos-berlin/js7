@@ -21,13 +21,14 @@ trait CommandWebService extends AgentWebService {
   protected def executeCommand(command: Command, meta: CommandMeta): Future[Response]
   protected implicit def executionContext: ExecutionContext
 
-  routeBuilder.addApiRoute {
+  routeBuilder.addApiRoute { user ⇒
     (path("command") & post) {
       optionalHeaderValueByName(SessionToken.HeaderName) { sessionTokenOption ⇒
         optionalHeaderValueByName(LicenseKeyHeaderName) { licenseKeys ⇒
           (clientIP | provide[RemoteAddress](RemoteAddress.Unknown)) { clientIp ⇒  // Requires Spray configuration spray.can.remote-address-header = on
             entity(as[Command]) { command ⇒
               val response: Future[Response] = executeCommand(command, CommandMeta(
+                user,
                 clientIp.toOption,
                 sessionTokenOption map { o ⇒ SessionToken(SecretString(o)) },
                 LicenseKeyBunch(licenseKeys getOrElse "")))

@@ -1,6 +1,7 @@
 package com.sos.scheduler.engine.common.sprayutils.web.auth
 
 import com.sos.scheduler.engine.base.generic.SecretString
+import com.sos.scheduler.engine.common.auth.User.Anonymous
 import com.sos.scheduler.engine.common.auth.{User, UserAndPassword, UserId}
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
@@ -22,28 +23,30 @@ final class GateKeeper(configuraton: Configuration, csrf: CSRF, isUnsecuredHttp:
 
   import configuraton.{getIsPublic, httpIsPublic, invalidAuthenticationDelay, provideAccessTokenValidator, providePasswordValidator, realm}
 
-  def restrict(implicit routingSettings: RoutingSettings, log: LoggingContext): Directive0 =
-    mapInnerRoute { inner ⇒
-      retrictRelaxed {
-        if (isUnsecuredHttp && httpIsPublic)
-          inner
-        else
-          handleRejections(failIfCredentialsRejected(invalidAuthenticationDelay)) {
-            val authenticator = new SimpleUserPassAuthenticator(providePasswordValidator(), provideAccessTokenValidator())
-            authenticate(BasicAuth(authenticator, realm = realm)) { _: User ⇒
-              handleRejections(RejectionHandler.Default) {
-                handleExceptions(ExceptionHandler.default) {
-                  inner
+  def restrict(implicit routingSettings: RoutingSettings, log: LoggingContext): Directive1[User] =
+    new Directive1[User] {
+      import shapeless.{::, HNil}
+      def happly(inner: (User :: HNil) ⇒ Route) =
+        retrictRelaxed {
+          if (isUnsecuredHttp && httpIsPublic)
+            inner(Anonymous :: HNil)
+          else
+            handleRejections(failIfCredentialsRejected(invalidAuthenticationDelay)) {
+              val authenticator = new SimpleUserPassAuthenticator(providePasswordValidator(), provideAccessTokenValidator())
+              authenticate(BasicAuth(authenticator, realm = realm)) { user: User ⇒
+                handleRejections(RejectionHandler.Default) {
+                  handleExceptions(ExceptionHandler.default) {
+                    inner(user :: HNil)
+                  }
                 }
               }
+            } ~
+            passIf(getIsPublic) {
+              (get | head) {
+                inner(Anonymous :: HNil)
+              }
             }
-          } ~
-          passIf(getIsPublic) {
-            (get | head) {
-              inner
-            }
-          }
-      }
+        }
     }
 
   val retrictRelaxed: Directive0 =

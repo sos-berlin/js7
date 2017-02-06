@@ -16,7 +16,7 @@ import spray.routing._
 trait AgentWebService extends AgentExceptionHandler {
 
   protected def uriPathPrefix: String   // Same value for every AgentWebService
-  protected def sessionRegister: SessionRegister[Unit]
+  protected def sessionRegister: SessionRegister[LoginSession]
 
   protected final def prefixPath = Path(if (uriPathPrefix.isEmpty) "" else s"/$uriPathPrefix")
   protected final def jobschedulerPath = Path(s"$prefixPath/jobscheduler")

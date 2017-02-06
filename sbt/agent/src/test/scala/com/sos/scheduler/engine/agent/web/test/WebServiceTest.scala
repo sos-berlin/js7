@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.agent.web.test
 
 import akka.actor.ActorRefFactory
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
+import com.sos.scheduler.engine.agent.web.common.{AgentWebService, LoginSession}
 import com.sos.scheduler.engine.common.scalautil.HasCloser
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
 import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
@@ -17,7 +17,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
 
   protected def uriPathPrefix = ""
 
-  protected val sessionRegister = SessionRegister.forTest
+  protected val sessionRegister = new SessionRegister[LoginSession]
 
   implicit val routeTestTimeout = RouteTestTimeout(5.seconds)
 

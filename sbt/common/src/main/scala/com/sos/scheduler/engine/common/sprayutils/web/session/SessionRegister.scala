@@ -14,13 +14,12 @@ import spray.routing.{Directive1, Route}
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegister[A](newSession: (SessionToken) ⇒ A) {
+final class SessionRegister[S] {
 
-  private val sessions = new ConcurrentHashMap[SessionToken, A]()
+  private val sessions = new ConcurrentHashMap[SessionToken, S]()
 
-  def newSessionToken(): SessionToken = {
+  def add(session: S): SessionToken = {
     val token = SessionToken(SecretStringGenerator.newSecretString())
-    val session = newSession(token)
     assert(!sessions.isDefinedAt(token))
     sessions += token → session
     token
@@ -34,8 +33,8 @@ final class SessionRegister[A](newSession: (SessionToken) ⇒ A) {
     sessions isDefinedAt sessionToken
 
   object directives {
-    object session extends Directive1[A] {
-      def happly(inner: A :: HNil ⇒ Route) =
+    object session extends Directive1[S] {
+      def happly(inner: S :: HNil ⇒ Route) =
         optionalHeaderValueByName(SessionToken.HeaderName) {
           case Some(string) ⇒
             val sessionToken = SessionToken(SecretString(string))
@@ -53,8 +52,8 @@ final class SessionRegister[A](newSession: (SessionToken) ⇒ A) {
     /**
       * Directive passes with known SessionToken or when no SessionToken header is set.
       */
-    object optionalSession extends Directive1[Option[A]] {
-      def happly(inner: Option[A] :: HNil ⇒ Route) =
+    object optionalSession extends Directive1[Option[S]] {
+      def happly(inner: Option[S] :: HNil ⇒ Route) =
         optionalHeaderValueByName(SessionToken.HeaderName) {
           case Some(string) ⇒
             val sessionToken = SessionToken(SecretString(string))
@@ -70,8 +69,4 @@ final class SessionRegister[A](newSession: (SessionToken) ⇒ A) {
         }
     }
   }
-}
-
-object SessionRegister {
-  def forTest = new SessionRegister(_ ⇒ ())
 }

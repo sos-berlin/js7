@@ -36,10 +36,10 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   private def route(conf: GateKeeper.Configuration): Route = route(newGateKeeper(conf))
 
   private def route(gateKeeper: GateKeeper): Route =
-    gateKeeper.restrict.apply {
+    gateKeeper.restrict.apply { user ⇒
       path("TEST") {
         (get | post) {
-          complete(OK)
+          complete(user.toString)
         }
       }
     }
@@ -70,13 +70,13 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     "Request via inSecuredHttp" - {
       "GET without authentication is accepted" in {
         Get(uri) ~> route(newGateKeeper(conf, isUnsecuredHttp = true)) ~> check {
-          assert(status == OK)
+          assert(responseAs[String] == "Anonymous")
         }
       }
 
       "POST JSON without authentication is accepted" in {
         Post(uri, JsObject()) ~> route(newGateKeeper(conf, isUnsecuredHttp = true)) ~> check {
-          assert(status == OK)
+          assert(responseAs[String] == "Anonymous")
         }
       }
 
@@ -89,7 +89,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
     "GET" in {
       Get(uri) ~> route(conf) ~> check {
-        assert(status == OK)
+        assert(responseAs[String] == "Anonymous")
       }
     }
 
@@ -106,7 +106,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
   "User ID and password" - {
     "Access with valid credentials" in {
       Get(uri) ~> Authorization(BasicHttpCredentials("USER", "PASSWORD")) ~> route(defaultConf) ~> check {
-        assert(status == OK)
+        assert(responseAs[String] == "SimpleUser(USER)")
       }
     }
 
@@ -133,6 +133,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     "Access with valid access token" in {
       Get(uri) ~> Authorization(BasicHttpCredentials("", "GRETA-TOKEN")) ~> route(defaultConf) ~> check {
         assert(status == OK)
+        assert(responseAs[String] == "SimpleUser(GRETA)")
       }
     }
 

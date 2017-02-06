@@ -1,11 +1,14 @@
 package com.sos.scheduler.engine.agent.command
 
 import com.sos.scheduler.engine.agent.command.AgentCommandHandler._
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.fileordersource.{FileCommandExecutor, RequestFileOrderSourceContentExecutor}
 import com.sos.scheduler.engine.agent.task.TaskHandler
+import com.sos.scheduler.engine.agent.web.common.LoginSession
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.scheduler.engine.common.auth.User
 import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
 import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
 import com.sos.scheduler.engine.data.session.SessionToken
@@ -24,9 +27,10 @@ import spray.json.DefaultJsonProtocol._
  */
 @Singleton
 final class AgentCommandHandler @Inject private(
-  sessionRegister: SessionRegister[Unit],
+  sessionRegister: SessionRegister[LoginSession],
   taskHandler: TaskHandler,
-  executeRequestFileOrderSourceContent: RequestFileOrderSourceContentExecutor)
+  executeRequestFileOrderSourceContent: RequestFileOrderSourceContentExecutor,
+  agentConfiguration: AgentConfiguration)
   (implicit ec: ExecutionContext)
 extends CommandExecutor
 with CommandHandlerOverview
@@ -54,7 +58,7 @@ with CommandHandlerDetailed {
   private def executeCommand2(id: InternalCommandId, command: Command, meta: CommandMeta) =
     (command match {
       case command: FileCommand ⇒ Future.successful(FileCommandExecutor.executeCommand(command))
-      case Login ⇒ login(meta.sessionTokenOption)
+      case Login ⇒ login(meta.sessionTokenOption, meta.user)
       case Logout ⇒ logout(meta.sessionTokenOption)
       case NoOperation ⇒ Future.successful(EmptyResponse)
       case command: TaskCommand ⇒ taskHandler.execute(command, meta)
@@ -65,10 +69,10 @@ with CommandHandlerDetailed {
       response.asInstanceOf[command.Response]
     }
 
-  private def login(currentSessionTokenOption: Option[SessionToken]): Future[LoginResponse] =
+  private def login(currentSessionTokenOption: Option[SessionToken], user: User): Future[LoginResponse] =
     Future fromTry Try {
       currentSessionTokenOption foreach sessionRegister.remove
-      LoginResponse(sessionRegister.newSessionToken())
+      LoginResponse(sessionRegister.add(LoginSession(user)))
     }
 
   private def logout(sessionTokenOption: Option[SessionToken]): Future[EmptyResponse.type] =

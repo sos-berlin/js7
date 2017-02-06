@@ -14,7 +14,7 @@ import spray.routing.Directives._
  */
 trait NoJobSchedulerEngineWebService extends AgentWebService {
 
-  routeBuilder.addJobschedulerRoute {
+  routeBuilder.addJobschedulerRoute { _ ⇒
     pathSegments("engine") {
       (clientIP | provide[RemoteAddress](RemoteAddress.Unknown)) { ip ⇒
         logger.warn(s"To HTTP requestor $ip: $Message")
