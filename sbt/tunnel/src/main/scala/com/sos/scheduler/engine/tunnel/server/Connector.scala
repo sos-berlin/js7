@@ -206,7 +206,7 @@ private[server] object Connector {
   private[server] final case class Request(message: ByteString, responsePromise: Promise[ByteString], timeout: Option[Duration]) extends Command {
     override def toString = s"Request(${byteStringToTruncatedString(message)})"
   }
-  private[server] case object Close extends Command
+  private[server] case object Close extends Command with DeadLetterSuppression
 
   private[server] sealed trait MyEvent
   private[server] final case class AssociatedWithTunnelId(tunnelToken: TunnelToken, peerAddress: InetSocketAddress) extends MyEvent
