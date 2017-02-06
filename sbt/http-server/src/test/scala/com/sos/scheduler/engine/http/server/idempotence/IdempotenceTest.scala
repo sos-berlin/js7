@@ -57,7 +57,7 @@ final class IdempotenceTest extends FreeSpec with BeforeAndAfterAll with ScalaFu
   "With RequestId, idempotent" in {
     val id = newRequestId()
     val operations = for (i ← 1 to 3) yield {
-      sleep(10.ms)
+      sleep(20.ms)
       sendReceive.apply(Post(s"$baseUri/test", Data(100.ms, s"$i")) withHeaders List(`X-JobScheduler-Request-ID`(id)))
     }
     val responses = Await.result(Future.sequence(operations), AskTimeout.duration)
