@@ -30,6 +30,7 @@ import org.scalactic.Requirements._
 import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.reflect.ClassTag
+import spray.http.Uri
 
 /**
  * @author Joacim Zschimmer
@@ -133,6 +134,11 @@ final case class AgentConfiguration(
       case Some(data) ⇒ data / "tmp"
       case None ⇒ logDirectory  // Usage of logDirectory is compatible with v1.10.4
   }
+
+  def localUri: Uri =
+    http map { o ⇒ Uri(s"http://${o.address.getAddress.getHostAddress}:${o.address.getPort}") } getOrElse {
+      throw sys.error("No HTTP binding for localUri")
+    }
 }
 
 object AgentConfiguration {
