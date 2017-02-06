@@ -19,7 +19,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * @author Joacim Zschimmer
  */
-final class TimerService(idleTimeout: Option[Duration], test: Boolean) extends AutoCloseable {
+final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) extends AutoCloseable {
 
   private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer[_] ⇒ a.atEpochMilli: java.lang.Long }))
   @volatile private var closed = false
