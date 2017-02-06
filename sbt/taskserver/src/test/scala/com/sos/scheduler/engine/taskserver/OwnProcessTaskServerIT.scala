@@ -8,8 +8,9 @@ import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
- * @author Joacim Zschimmer
- */
+  * build.sbt forks "IT" tests. This is needed to a propery sys.props("java.class.path") for JavaProcess.
+  * @author Joacim Zschimmer
+  */
 final class OwnProcessTaskServerIT extends FreeSpec {
 
   "OwnProcessTaskServer" in {

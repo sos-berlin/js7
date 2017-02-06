@@ -1,11 +1,11 @@
 package com.sos.scheduler.engine.taskserver.task.process
 
 import com.sos.scheduler.engine.common.process.StdoutStderr._
+import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
 import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
 import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.system.FileUtils._
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
@@ -14,10 +14,13 @@ import com.sos.scheduler.engine.taskserver.task.process.JavaProcessIT._
 import java.lang.System.{err, exit, out}
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.control.NonFatal
 
 /**
- * @author Joacim Zschimmer
- */
+  * build.sbt forks "IT" tests. This is needed to a propery sys.props("java.class.path") for JavaProcess.
+  *
+  * @author Joacim Zschimmer
+  */
 final class JavaProcessIT extends FreeSpec {
 
   "JavaProcess" in {
@@ -41,9 +44,16 @@ final class JavaProcessIT extends FreeSpec {
         assert(stdFileMap(Stdout).contentString contains s"STDOUT $TestValue")
         assert(stdFileMap(Stderr).contentString contains s"STDERR $TestValue")
       }
+      catch { case NonFatal(t) ⇒
+        for ((typ, path) ← stdFileMap)
+          autoClosing(scala.io.Source.fromFile(path)) { source ⇒
+            for (line ← source.getLines) alert(s"$typ: $line")
+          }
+        throw t
+      }
       finally process.close()
       awaitResult(process.closed, 10.s)
-      logger.info(s"$stopwatch for Java process")
+      info(s"$stopwatch for Java process")
     }
   }
 }
@@ -51,7 +61,6 @@ final class JavaProcessIT extends FreeSpec {
 private object JavaProcessIT {
   private val TestValue = "TEST TEST"
   private val Arguments = Vector("a", "1 2")
-  private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
     if (args.toVector == Arguments) {
