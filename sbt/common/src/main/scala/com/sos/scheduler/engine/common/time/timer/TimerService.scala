@@ -19,7 +19,7 @@ import scala.util.{Failure, Success, Try}
 /**
  * @author Joacim Zschimmer
  */
-final class TimerService(idleTimeout: Option[Duration]) extends AutoCloseable {
+final class TimerService(idleTimeout: Option[Duration], test: Boolean) extends AutoCloseable {
 
   private val queue = new ConcurrentOrderedQueue(new TreeMapOrderedQueue({ a: Timer[_] ⇒ a.atEpochMilli: java.lang.Long }))
   @volatile private var closed = false
@@ -152,6 +152,21 @@ final class TimerService(idleTimeout: Option[Duration]) extends AutoCloseable {
     promise.future onComplete { _ ⇒ cancel(timer) }
   }
 
+  def delayed(duration: Duration)(implicit ec: ExecutionContext): Future[Delayed] =
+    delayedFuture[Delayed](duration)(Delayed)
+
+  def delayedFuture[A](duration: Duration)(body: ⇒ A)(implicit ec: ExecutionContext): Future[A] = {
+    if (!test && duration <= Duration.ZERO)
+      Future(body)
+    else {
+      val promise = Promise[A]()
+      this.delay(duration, "delayedFuture") onElapsed {
+        promise complete Try { body }
+      }
+      promise.future
+    }
+  }
+
   def delay(delay: Duration, name: String): Timer[Unit] =
     at(nowPlus(delay), name)
 
@@ -167,7 +182,7 @@ final class TimerService(idleTimeout: Option[Duration]) extends AutoCloseable {
   private[timer] def add[A](timer: Timer[A]): timer.type = {
     require(timer.at.toEpochMilli < NeverMillis)
     requireState(!closed)
-    if (timer.at.toEpochMilli <= currentTimeMillis) {
+    if (!test && timer.at.toEpochMilli <= currentTimeMillis) {
       timer.complete()
       timerCompleteCounter += 1
     } else {
@@ -225,8 +240,11 @@ object TimerService {
   private val NeverTimer = new Timer[Nothing](Instant.ofEpochMilli(Long.MaxValue), "Never")
   private val NeverMillis = NeverTimer.atEpochMilli
 
-  def apply(idleTimeout: Option[Duration] = None) =
-    new TimerService(idleTimeout)
+  sealed trait Delayed
+  case object Delayed extends Delayed
+
+  def apply(idleTimeout: Option[Duration] = None, test: Boolean = false) =
+    new TimerService(idleTimeout, test = test)
 
   /**
     * Coalesces wake-up times to reduce processor wake-ups.
@@ -267,7 +285,7 @@ object TimerService {
       promise.future
     }
 
-    def delay(duration: Duration)(implicit timerService: TimerService, ec: ExecutionContext): Future[A] = {
+    def thenDelay(duration: Duration)(implicit timerService: TimerService, ec: ExecutionContext): Future[A] = {
       if (duration <= Duration.ZERO)
         delegate
       else {
