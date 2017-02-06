@@ -181,7 +181,7 @@ final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) e
 
   private[timer] def add[A](timer: Timer[A]): timer.type = {
     require(timer.at.toEpochMilli < NeverMillis)
-    requireState(!closed)
+    if (closed) throw new IllegalStateException("TimerService has already terminated")
     if (!test && timer.at.toEpochMilli <= currentTimeMillis) {
       timer.complete()
       timerCompleteCounter += 1
