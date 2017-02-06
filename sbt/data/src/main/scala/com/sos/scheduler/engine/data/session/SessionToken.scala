@@ -6,7 +6,9 @@ import spray.json.DefaultJsonProtocol._
 /**
   * @author Joacim Zschimmer
   */
-final case class SessionToken(secret: SecretString)
+final case class SessionToken(secret: SecretString) {
+  override def toString = "SessionToken"
+}
 
 object SessionToken {
   private implicit val x = SecretString.implicits.jsonFormat
