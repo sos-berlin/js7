@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.common.tcp
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props}
 import akka.io.Tcp
 import akka.util.ByteString
 import com.sos.scheduler.engine.common.akkautils.Akkas._
@@ -75,6 +75,7 @@ extends Actor {
   }
 
   private def closing: Receive = {
+    case Close ⇒
     case closed: Tcp.ConnectionClosed ⇒
       logger.debug(s"$closed")
       stop(self)
@@ -94,7 +95,7 @@ object MessageTcpBridge {
     override def toString = s"SendMessage(${byteStringToTruncatedString(message)})"
   }
 
-  case object Close extends Command
+  case object Close extends Command with DeadLetterSuppression
   case object Abort extends Command
 
   sealed trait Event
