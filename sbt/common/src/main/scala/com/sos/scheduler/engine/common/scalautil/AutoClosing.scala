@@ -1,7 +1,10 @@
 package com.sos.scheduler.engine.common.scalautil
 
+import com.google.common.io.Closer
+import java.io.Closeable
 import scala.language.reflectiveCalls
 import scala.util.control.{ControlThrowable, NonFatal}
+import scala.language.higherKinds
 
 /** Wie java try(AutoClosable), aber für alle Klassen mit close().
   * @author Joacim Zschimmer */
@@ -11,9 +14,20 @@ object AutoClosing {
 
   private val logger = Logger(getClass)
 
+  def multipleAutoClosing[M[X] <: Iterable[X], A <: AutoCloseable, B](resources: M[A])(body: resources.type ⇒ B): B = {
+    autoClosing(Closer.create()) { closer ⇒
+      for (o ← resources) closer.register(new Closeable {
+        def close() = o.close()
+      })
+      body(resources)
+    }
+  }
+
   /** Wie Java 7 try-with-resource */
-  def autoClosing[A <: HasClose, B](resource: A)(body: A ⇒ B): B = {
-    val result = closeOnError(resource) { body(resource) }
+  def autoClosing[A <: HasClose, B](resource: A)(body: resource.type ⇒ B): B = {
+    val result = closeOnError(resource) {
+      body(resource)
+    }
     resource.close()
     result
   }

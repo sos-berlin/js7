@@ -11,25 +11,67 @@ import org.scalatest.mock.MockitoSugar.mock
 
 final class AutoClosingTest extends FreeSpec {
 
-  "autoClosing without Exception" in {
-    val a = new A
-    autoClosing(a) { _ => }
-    a shouldBe 'closed
-  }
-
-  "autoClosing with Exception" in {
-    val a = new A
-    intercept[Exception] { autoClosing(a) { _ => throw new Exception } } .getSuppressed shouldBe empty
-    a shouldBe 'closed
-  }
-
-  "autoClosing with second Exception in close" in {
-    class B {
-      def close() = throw new Exception("suppressed")
+  "autoClosing" - {
+    "without Exception" in {
+      val a = new A
+      autoClosing(a) { _ ⇒ }
+      a shouldBe 'closed
     }
-    val x = intercept[Exception] { autoClosing(new B) { _ => throw new Exception("1") } }
-    x.getMessage shouldEqual "1"
-    x.getSuppressed map { _.getMessage } shouldEqual Array("suppressed")
+
+    "with Exception" in {
+      val a = new A
+      intercept[AException] {
+        autoClosing(a) { _ ⇒
+          throw new AException
+        }
+      } .getSuppressed shouldBe empty
+      a shouldBe 'closed
+    }
+
+    "with second Exception in close" in {
+      val x = intercept[AException] {
+        autoClosing(new FailingClose) { _ ⇒
+          throw new AException
+        }
+      }
+      for (suppressed ← x.getSuppressed) suppressed.asInstanceOf[ClosedException]
+    }
+  }
+
+  "multipleAutoClosing" - {
+    class AutoCloseableA extends A with AutoCloseable
+
+    "without Exception" in {
+      val closeables = List(new AutoCloseableA, new AutoCloseableA, new AutoCloseableA)
+      multipleAutoClosing(closeables) { o ⇒
+        assert(o eq closeables)
+      }
+      assert(closeables forall { _.closed })
+    }
+
+    "with Exception" in {
+      val closeables = List(new AutoCloseableA, new AutoCloseableA, new AutoCloseableA)
+      intercept[Exception] {
+        multipleAutoClosing(closeables) { _ ⇒
+          throw new Exception
+        }
+      } .getSuppressed shouldBe empty
+      assert(closeables forall { _.closed })
+    }
+
+    "with second Exception in close" in {
+      val closeables = List(new AutoCloseableA, new FailingClose, new AutoCloseableA)
+      val x = intercept[AException] {
+        multipleAutoClosing(closeables) { _ ⇒
+          throw new AException
+        }
+      }
+      assert(closeables collect { case a: A ⇒ a } forall { _.closed })
+      for (suppressed ← x.getSuppressed) {
+        suppressed.asInstanceOf[AssertionError]  // Guava Closer wraps a checked exception into an AssertionError
+          .getCause.asInstanceOf[ClosedException]
+      }
+    }
   }
 
   "closeOnError" in {
@@ -44,7 +86,7 @@ final class AutoClosingTest extends FreeSpec {
 }
 
 private object AutoClosingTest {
-  private final class A {
+  private class A {
     var closed = false
 
     def close(): Unit = {
@@ -52,4 +94,11 @@ private object AutoClosingTest {
       closed = true
     }
   }
+
+  private final class FailingClose extends AutoCloseable {
+    def close() = throw new ClosedException
+  }
+
+  private final class AException extends Exception
+  private final class ClosedException extends Exception("CLOSE ERROR")
 }
