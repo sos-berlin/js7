@@ -141,45 +141,40 @@ final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) e
   /**
     * Tries to complete `promise` with `completeWith` after timeout.
     */
-  def tryCompletePromiseAfter[A](delay: Duration, promise: Promise[A], completeWith: Try[A], name: String)(implicit ec: ExecutionContext): Unit =
+  def tryCompletePromiseAfter[A](delay: Duration, promise: Promise[A], completeWith: ⇒ Try[A], name: String)(implicit ec: ExecutionContext): Unit =
     tryCompletePromiseAt(nowPlus(delay), promise, completeWith, name)
 
   /**
     * Tries to complete `promise` with `completeWith` after timeout.
     */
-  def tryCompletePromiseAt[A](at: Instant, promise: Promise[A], completeWith: Try[A], name: String)(implicit ec: ExecutionContext): Unit = {
-    val timer = add(new Timer(chooseWakeTime(at), name, promise = promise, completeWith = completeWith))
+  def tryCompletePromiseAt[A](at: Instant, promise: Promise[A], completeWith: ⇒ Try[A], name: String)(implicit ec: ExecutionContext): Unit = {
+    val timer = addTimer(new Timer(chooseWakeTime(at), name, promise = promise, completeWith = () ⇒ completeWith))
     promise.future onComplete { _ ⇒ cancel(timer) }
   }
 
-  def delayed(duration: Duration)(implicit ec: ExecutionContext): Future[Delayed] =
-    delayedFuture[Delayed](duration)(Delayed)
+  def delayed(duration: Duration, name: String = "")(implicit ec: ExecutionContext): Future[Delayed] =
+    delayedFuture[Delayed](duration, name)(Delayed)
 
-  def delayedFuture[A](duration: Duration)(body: ⇒ A)(implicit ec: ExecutionContext): Future[A] = {
-    if (!test && duration <= Duration.ZERO)
-      Future(body)
-    else {
-      val promise = Promise[A]()
-      this.delay(duration, "delayedFuture") onElapsed {
-        promise complete Try { body }
-      }
-      promise.future
-    }
+  def delayedFuture[A](duration: Duration, name: String = "")(body: ⇒ A)(implicit ec: ExecutionContext): Future[A] =
+    timedFuture(nowPlus(duration), name)(body)
+
+  def timedFuture[A](at: Instant, name: String = "")(body: ⇒ A)(implicit ec: ExecutionContext): Future[A] = {
+    if (!test && at.toEpochMilli <= currentTimeMillis)
+      Future fromTry Try { body }
+    else
+      addTimer(at, name, completeWith = Try { body })
   }
 
   def delay(delay: Duration, name: String): Timer[Unit] =
     at(nowPlus(delay), name)
 
-  def delay[A](delay: Duration, name: String, completeWith: Try[A]): Timer[A] =
-    at(nowPlus(delay), name, completeWith = completeWith)
-
   def at(at: Instant, name: String): Timer[Unit] =
-    add(new Timer[Unit](chooseWakeTime(at), name))
+    addTimer(at, name, Timer.ElapsedFailure)
 
-  def at[A](at: Instant, name: String, completeWith: Try[A]): Timer[A] =
-    add(new Timer[A](chooseWakeTime(at), name, completeWith = completeWith))
+  private def addTimer[A](at: Instant, name: String, completeWith: ⇒ Try[A]): Timer[A] =
+    addTimer(new Timer[A](chooseWakeTime(at), name, completeWith = () ⇒ completeWith))
 
-  private[timer] def add[A](timer: Timer[A]): timer.type = {
+  private[timer] def addTimer[A](timer: Timer[A]): timer.type = {
     require(timer.at.toEpochMilli < NeverMillis)
     if (closed) throw new IllegalStateException("TimerService has already terminated")
     if (!test && timer.at.toEpochMilli <= currentTimeMillis) {
@@ -237,7 +232,7 @@ final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) e
 
 object TimerService {
   private val logger = Logger(getClass)
-  private val NeverTimer = new Timer[Nothing](Instant.ofEpochMilli(Long.MaxValue), "Never")
+  private val NeverTimer = new Timer[Nothing](Instant.ofEpochMilli(Long.MaxValue), "Never", () ⇒ Failure { sys.error("TimerServer.NeverTimer")} )
   private val NeverMillis = NeverTimer.atEpochMilli
 
   sealed trait Delayed
@@ -275,10 +270,10 @@ object TimerService {
   private def timerToOverview(timer: Timer[_]) = TimerOverview(timer.at, name = timer.name)
 
   implicit class TimeoutFuture[A](val delegate: Future[A]) extends AnyVal {
-    def timeoutAfter[B >: A](delay: Duration, name: String, completeWith: Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] =
+    def timeoutAfter[B >: A](delay: Duration, name: String, completeWith: ⇒ Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] =
       timeoutAt(nowPlus(delay), completeWith, name)
 
-    def timeoutAt[B >: A](at: Instant, completeWith: Try[B] = Timer.ElapsedFailure, name: String)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] = {
+    def timeoutAt[B >: A](at: Instant, completeWith: ⇒ Try[B] = Timer.ElapsedFailure, name: String)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] = {
       val promise = Promise[B]()
       delegate onComplete promise.tryComplete
       timerService.tryCompletePromiseAt(at, promise, completeWith, name = name)

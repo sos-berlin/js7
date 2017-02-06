@@ -24,7 +24,7 @@ final class SyncTest extends FreeSpec {
     val queue = new KeyedEventQueue(sizeLimit = 100)
     autoClosing(TimerService()) { timerService ⇒
       val sync = new Sync(timerService)
-      for (List(aEventId, bEventId) ← List(List(1L, 2L), List(3L, 4L), List(5L, 6L))) {
+      for ((aEventId, bEventId) ← List((1L, 2L), (3L, 4L), (5L, 6L))) {
         val a = sync.whenEventIsAvailable(aEventId, 99999.s)
         assert(a ne sync.whenEventIsAvailable(aEventId, 99999.s))
         assert(!a.isCompleted)
@@ -39,7 +39,8 @@ final class SyncTest extends FreeSpec {
         assert(!sync.whenEventIsAvailable(aEventId, 99999.s).isCompleted)
         assert(!sync.whenEventIsAvailable(aEventId, 99999.s).isCompleted)
       }
-      assert(waitForCondition(1.s, 10.ms) { timerService.queueSize == 3 })  // One open Timer per EventId
+      waitForCondition(1.s, 10.ms) { timerService.queueSize == 3 }  // One open Timer per EventId
+      assert(timerService.queueSize == 3)
     }
   }
 

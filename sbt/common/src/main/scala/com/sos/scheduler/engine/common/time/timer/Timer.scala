@@ -12,13 +12,15 @@ import scala.util.{Failure, Try}
 final class Timer[A] private[timer](
   val at: Instant,
   val name: String,
-  completeWith: Try[A] = ElapsedFailure,
+  completeWith: () ⇒ Try[A],
   protected val promise: Promise[A] = Promise[A]())
 extends PromiseFuture[A] {
 
   private[timer] val atEpochMilli = at.toEpochMilli
 
-  private[timer] def complete(): Unit = promise.tryComplete(completeWith)
+  private[timer] def complete(): Unit =
+    // Race condition: completeWith may be called and discarded when canceled at same time.
+    promise.tryComplete(completeWith())
 
   private[timer] def cancel(): Boolean = promise.tryComplete(CanceledFailure)
 
@@ -42,5 +44,5 @@ object Timer {
   val CanceledFailure = Failure(new CanceledException)
 
   final class ElapsedException private[Timer] extends RuntimeException with NoStackTrace
-  val ElapsedFailure = Failure(new ElapsedException)
+  private[timer] val ElapsedFailure = Failure(new ElapsedException)
 }
