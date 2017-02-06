@@ -169,6 +169,10 @@ trait AgentClient {
   private[agent] final def setSessionToken(sessionToken: SessionToken): Unit =
     sessionTokenRef.set(Some(sessionToken))
 
+  final def clearSession(): Unit = {
+    sessionTokenRef.set(None)
+  }
+
   final def hasSession: Boolean =
     sessionTokenRef.get.nonEmpty
 
