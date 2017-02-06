@@ -15,7 +15,7 @@ import java.nio.file.Path
 trait AgentConfigDirectoryProvider {
   this: HasCloser ⇒
 
-  final lazy val dataDirectory = createTempDirectory("TextAgentClientIT-") withCloser deleteDirectoryContentRecursively
+  final lazy val dataDirectory = createTempDirectory("AgentConfigDirectoryProvider-") withCloser deleteDirectoryRecursively
   private lazy val keystoreJksFile: Path = dataDirectory / "config/private/private-https.jks"
   final lazy val keystoreReference = KeystoreReference(
     keystoreJksFile.toURI.toURL,
