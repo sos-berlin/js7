@@ -22,7 +22,7 @@ abstract class EventCollector(configuration: Configuration)
   private[collector] val keyedEventQueue = new KeyedEventQueue(sizeLimit = configuration.queueSize)
   private val sync = new Sync(timerService)
 
-  private[collector] final def putEventSnapshot(snapshot: Snapshot[AnyKeyedEvent]): Unit = {
+  final def putEventSnapshot(snapshot: Snapshot[AnyKeyedEvent]): Unit = {
     keyedEventQueue.add(snapshot)
     sync.onNewEvent(snapshot.eventId)
   }
