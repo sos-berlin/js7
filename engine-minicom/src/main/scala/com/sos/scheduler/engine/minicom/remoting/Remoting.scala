@@ -20,6 +20,7 @@ import java.time.{Duration, Instant}
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
 import scala.collection.{breakOut, immutable}
+import scala.concurrent.blocking
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
@@ -168,7 +169,9 @@ extends ServerRemoting with ClientRemoting {
     try body
     finally {
       keepaliveThread.interrupt()
-      keepaliveThread.join()
+      blocking {
+        keepaliveThread.join()
+      }
     }
   }
 
