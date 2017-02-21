@@ -1,7 +1,7 @@
 package com.sos.scheduler.engine.common.async
 
 import java.time.Duration
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{Future, Promise, blocking}
 
 /**
  * Runs concurrent (in its own thread) and calls periodically a function.
@@ -45,7 +45,9 @@ final class ConcurrentCaller(pauses: TraversableOnce[Duration], function: () ⇒
 
   def close(): Unit = {
     thread.close()
-    thread.join()
+    blocking {
+      thread.join()
+    }
   }
 
   def start(): Unit = thread.start()
