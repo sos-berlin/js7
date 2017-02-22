@@ -71,8 +71,8 @@ extends AbstractModule {
   def TerminatedFutureOption: Option[Future[TaskServerMainTerminated.type]] = None
 
   @Provides @Singleton
-  def actorSystem(closer: Closer, config: Config, timerService: TimerService/*closed after ActorSystem*/): ActorSystem =
-    newActorSystem("Agent", config)(closer)
+  def actorSystem(closer: Closer, conf: AgentConfiguration, config: Config, timerService: TimerService/*closed after ActorSystem*/): ActorSystem =
+    newActorSystem(conf.name, config)(closer)
 
   @Provides @Singleton
   def timerService(closer: Closer): TimerService =

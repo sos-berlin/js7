@@ -38,6 +38,7 @@ final class AgentConfigurationTest extends FreeSpec {
       dotnet = DotnetConfiguration(),
       rpcKeepaliveDuration = None,
       killScript = Some(ProcessKillScript(temporaryDirectory / s"kill_task.$shellExt")),
+      name = "Agent",
       ConfigFactory.empty))
   }
 
