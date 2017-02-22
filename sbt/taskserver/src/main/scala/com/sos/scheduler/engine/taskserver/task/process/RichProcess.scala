@@ -22,9 +22,9 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 
 /**
- * @author Joacim Zschimmer
- */
-class RichProcess protected[process](val processConfiguration: ProcessConfiguration, process: Process)
+  * @author Joacim Zschimmer
+  */
+class RichProcess protected[process](val processConfiguration: ProcessConfiguration, process: Process, argumentsForLogging: Seq[String])
   (implicit exeuctionContext: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
@@ -36,10 +36,10 @@ extends HasCloser with ClosedFuture {
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
   private val terminatedPromise = Promise[Unit]()
 
-  logger.info(s"Process started")
+  logger.info(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
   terminatedPromise completeWith namedThreadFuture("Process watch") {
     val rc = waitForTermination()
-    logger.info(s"Process ended with $rc")
+    logger.debug(s"Process ended with $rc")
   }
 
   final def terminated: Future[Unit] = terminatedPromise.future
@@ -95,7 +95,7 @@ extends HasCloser with ClosedFuture {
 
   final def stdin: OutputStream = process.getOutputStream
 
-  override def toString = processConfiguration.agentTaskIdOption ++ List(processToString(process, pidOption)) ++ processConfiguration.fileOption mkString " "
+  override def toString = processConfiguration.agentTaskIdOption ++ List(processToString(process, pidOption)) mkString " "
 }
 
 object RichProcess {
@@ -105,7 +105,7 @@ object RichProcess {
       (implicit exeuctionContext: ExecutionContext): RichProcess =
   {
     val process = startProcessBuilder(processConfiguration, file, arguments) { _.start() }
-    new RichProcess(processConfiguration, process)
+    new RichProcess(processConfiguration, process, argumentsForLogging = file.toString +: arguments)
   }
 
   private[process] def startProcessBuilder(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
@@ -115,7 +115,6 @@ object RichProcess {
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
     processBuilder.environment ++= additionalEnvironment
-    logger.info("Start process " + (arguments map { o ⇒ s"'$o'" } mkString ", "))
     start(processBuilder)
   }
 

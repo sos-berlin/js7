@@ -7,6 +7,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCl
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.data.job.TaskId
 import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
 import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch, IUnknownFactory, InvocableIDispatch}
@@ -47,7 +48,9 @@ extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
   @invocable
   def construct(arguments: VariantArray): Unit = {
     taskArguments = TaskArguments(arguments)
-    logger.info(s"${taskServerArguments.agentTaskId} is Master's task ${taskArguments.jobName}:${taskArguments.taskId}")
+    if (taskArguments.taskId != TaskId(0)) {  // C++ JobScheduler ?
+      logger.info(s"${taskServerArguments.agentTaskId} is Master's task ${taskArguments.jobName}:${taskArguments.taskId}")
+    }
   }
 
   @invocable

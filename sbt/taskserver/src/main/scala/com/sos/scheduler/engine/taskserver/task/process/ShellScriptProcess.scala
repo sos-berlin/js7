@@ -15,8 +15,9 @@ import scala.util.control.NonFatal
 final class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
   process: Process,
-  private[process] val temporaryScriptFile: Path)
-extends RichProcess(processConfiguration, process) {
+  private[process] val temporaryScriptFile: Path,
+  argumentsForLogging: Seq[String])
+extends RichProcess(processConfiguration, process, argumentsForLogging) {
 
   private val scriptFileDeletedPromise = Promise[Boolean]()
 
@@ -40,8 +41,8 @@ object ShellScriptProcess {
     try {
       shellFile.write(scriptString, Encoding)
       val conf = processConfiguration.copy(fileOption = Some(shellFile))
-      val process  = startProcessBuilder(conf, shellFile) { _.startRobustly() }
-      new ShellScriptProcess(conf, process, shellFile)
+      val process  = startProcessBuilder(conf, shellFile, arguments = Nil) { _.startRobustly() }
+      new ShellScriptProcess(conf, process, shellFile, argumentsForLogging = shellFile.toString :: Nil)
     }
     catch { case NonFatal(t) ⇒
       RichProcess.tryDeleteFiles(List(shellFile))
