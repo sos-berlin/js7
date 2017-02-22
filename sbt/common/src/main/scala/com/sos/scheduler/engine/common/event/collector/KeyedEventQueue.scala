@@ -9,16 +9,13 @@ import scala.collection.JavaConversions._
 /**
   * @author Joacim Zschimmer
   */
-final class KeyedEventQueue(sizeLimit: Int) {
+final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
   private val queue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, Snapshot[AnyKeyedEvent]]
   private var queueSize: Int = 0
   @volatile
-  private var lastRemovedFirstId: EventId = EventId.BeforeFirst
+  private var lastRemovedFirstId: EventId = initialOldestEventId
 
-  /** Events before this EventId are lost. */
-  def oldestEventId = lastRemovedFirstId
-
-  def add(snapshot: Snapshot[AnyKeyedEvent]): Unit = {
+  def add(snapshot: Snapshot[AnyKeyedEvent]): Unit =
     synchronized {
       require(lastEventId < snapshot.eventId,
         s"EventId '${EventId.toString(snapshot.eventId)}' is not greater than last Eventid ${EventId.toString(lastEventId)}")
@@ -30,7 +27,6 @@ final class KeyedEventQueue(sizeLimit: Int) {
       queue.put(snapshot.eventId, snapshot)
       queueSize += 1
     }
-  }
 
   def hasAfter(after: EventId) = queue.navigableKeySet.higher(after) != null
 
@@ -56,7 +52,11 @@ final class KeyedEventQueue(sizeLimit: Int) {
     new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator takeWhile { _ > after } map queue.get)
 
   def lastEventId: EventId =
-    if (queue.isEmpty) EventId.BeforeFirst else queue.lastKey
+    if (queue.isEmpty) oldestEventId else queue.lastKey
+
+  /** Events before this EventId are lost. */
+  def oldestEventId: EventId =
+    lastRemovedFirstId
 
   def size: Int =
     queueSize

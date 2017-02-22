@@ -84,7 +84,7 @@ private object EventCollectorTest {
       protected val eventIdGenerator: EventIdGenerator,
       protected val timerService: TimerService,
       protected val executionContext: ExecutionContext)
-  extends EventCollector(configuration)
+  extends EventCollector(initialOldestEventId = EventId.BeforeFirst, configuration)
   with EventIdGenerating
   {
     def putEvent_(keyedEvent: AnyKeyedEvent) = putEvent(keyedEvent)

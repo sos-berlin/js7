@@ -2,6 +2,7 @@ package com.sos.scheduler.engine.common.event.collector
 
 import com.sos.scheduler.engine.common.event.collector.EventCollector._
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutureFuture
+import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.TimerService
 import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, Snapshot, SomeEventRequest}
@@ -13,14 +14,15 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-abstract class EventCollector(configuration: Configuration)
+abstract class EventCollector(initialOldestEventId: EventId, configuration: Configuration)
   (implicit
     timerService: TimerService,
     executionContext: ExecutionContext)
 {
+  private[collector] val keyedEventQueue = new KeyedEventQueue(initialOldestEventId = initialOldestEventId, sizeLimit = configuration.queueSize)
+  private val sync = new Sync(initialLastEventId = initialOldestEventId, timerService)
 
-  private[collector] val keyedEventQueue = new KeyedEventQueue(sizeLimit = configuration.queueSize)
-  private val sync = new Sync(timerService)
+  logger.debug("oldestEventId=" + EventId.toString(oldestEventId))
 
   final def putEventSnapshot(snapshot: Snapshot[AnyKeyedEvent]): Unit = {
     keyedEventQueue.add(snapshot)
@@ -150,6 +152,9 @@ abstract class EventCollector(configuration: Configuration)
       }
       .take(request.limit)
 
+  final def oldestEventId: EventId =
+    keyedEventQueue.oldestEventId
+
   final def lastEventId: EventId =
     keyedEventQueue.lastEventId
 
@@ -158,6 +163,7 @@ abstract class EventCollector(configuration: Configuration)
 }
 
 object EventCollector {
+  private val logger = Logger(getClass)
 
   final case class Configuration(
     queueSize: Int,

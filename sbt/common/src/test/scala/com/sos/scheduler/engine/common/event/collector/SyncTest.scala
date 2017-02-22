@@ -9,7 +9,7 @@ import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.event.{NoKeyEvent, Snapshot}
+import com.sos.scheduler.engine.data.event.{EventId, NoKeyEvent, Snapshot}
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -21,9 +21,9 @@ import scala.concurrent.Future
 final class SyncTest extends FreeSpec {
 
   "test" in {
-    val queue = new KeyedEventQueue(sizeLimit = 100)
+    val queue = new KeyedEventQueue(initialOldestEventId = EventId.BeforeFirst, sizeLimit = 100)
     autoClosing(TimerService()) { timerService ⇒
-      val sync = new Sync(timerService)
+      val sync = new Sync(initialLastEventId = EventId.BeforeFirst, timerService)
       for ((aEventId, bEventId) ← List((1L, 2L), (3L, 4L), (5L, 6L))) {
         val a = sync.whenEventIsAvailable(aEventId, 99999.s)
         assert(a ne sync.whenEventIsAvailable(aEventId, 99999.s))
@@ -45,9 +45,9 @@ final class SyncTest extends FreeSpec {
   }
 
   "timeout" in {
-    val queue = new KeyedEventQueue(sizeLimit = 100)
+    val queue = new KeyedEventQueue(initialOldestEventId = EventId.BeforeFirst, sizeLimit = 100)
     autoClosing(TimerService()) { timerService ⇒
-      val sync = new Sync(timerService)
+      val sync = new Sync(initialLastEventId = EventId.BeforeFirst, timerService)
       for (eventId ← 1L to 3L) {
         val a = sync.whenEventIsAvailable(eventId, 200.ms)
         val b = sync.whenEventIsAvailable(eventId, 99999.s)
@@ -68,7 +68,7 @@ final class SyncTest extends FreeSpec {
 
   if (sys.props contains "test.speed") "speed" in {
     autoClosing(TimerService()) { timerService ⇒
-      val sync = new Sync(timerService)
+      val sync = new Sync(initialLastEventId = EventId.BeforeFirst, timerService)
       val n = 10000
       val eventIdGenerator = new EventIdGenerator
       for (_ ← 1 to 10) {

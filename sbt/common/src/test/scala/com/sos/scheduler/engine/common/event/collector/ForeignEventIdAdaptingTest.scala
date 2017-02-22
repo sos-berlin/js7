@@ -18,7 +18,7 @@ final class ForeignEventIdAdaptingTest extends FreeSpec {
   "test" in {
     implicit val timerService = TimerService(idleTimeout = Some(1.s))
     val eventCollector =
-      new EventCollector(EventCollector.Configuration(queueSize = 1000, timeoutLimit = 1.h))
+      new EventCollector(initialOldestEventId = EventId.BeforeFirst, EventCollector.Configuration(queueSize = 1000, timeoutLimit = 1.h))
       with ForeignEventIdAdapting {
         protected val executionContext = ExecutionContext.global
         protected val eventIdGenerator = new EventIdGenerator

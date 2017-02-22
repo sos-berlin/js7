@@ -12,10 +12,10 @@ import scala.util.Success
 /**
   * @author Joacim Zschimmer
   */
-private[collector] final class Sync(timerService: TimerService) {
+private[collector] final class Sync(initialLastEventId: EventId, timerService: TimerService) {
 
   @volatile private var promise: Promise[Boolean] = null
-  @volatile private var lastEventId = EventId.BeforeFirst
+  @volatile private var lastEventId = initialLastEventId
 
   def onNewEvent(eventId: EventId): Unit =
     synchronized {
