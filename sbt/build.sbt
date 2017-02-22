@@ -10,7 +10,7 @@ import BuildUtils._
 val fastSbt = sys.env contains "FAST_SBT"
 
 addCommandAlias("compile-all", "; project engine-job-api; compile; project /; compile")
-addCommandAlias("test-all", "; test; ForkedTest:test")
+addCommandAlias("test-all", "; test:compile; test; ForkedTest:test")
 addCommandAlias("build", "; compile-all; test-all")
 addCommandAlias("build-quickly", "; compile-all")
 
@@ -33,7 +33,7 @@ val universalPluginSettings = List(
     "--force-local" +: (universalArchiveOptions in (Universal, packageXzTarball)).value)  // Under cygwin, tar shall not interpret C:
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
-  max = if (fastSbt) math.max(1, sys.runtime.availableProcessors / 2) else 1)
+  max = if (fastSbt) math.max(1, sys.runtime.availableProcessors * 3/8) else 1)
 
 resolvers += Resolver.mavenLocal
 
