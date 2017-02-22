@@ -6,12 +6,13 @@ declare jobschedulerHome classpath pathSeparator JAVA_HOME java
 
 declare -a javaOptions=()
 declare -a agentOptions=()
-data=
+data=/var/lib/jobscheduler/agent
 
 #if [ -z "$data" ]; then :
 #    data="$agentHome"
 #fi
 
+httpPort=
 for arg in "$@"; do
   case $arg in
     -rmx-port=*)
@@ -30,7 +31,10 @@ for arg in "$@"; do
       ;;
     -data-directory=*)
       data="${arg#*=}"
-      agentOptions+=("$arg")
+      shift
+      ;;
+    -http-port=*)
+      httpPort="${arg#*=}"
       shift
       ;;
     *)
@@ -40,6 +44,8 @@ for arg in "$@"; do
   esac
 done
 
+[ -z "$data" ] || agentOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
+[ -z "$httpPort" ] || agentOptions+=("-http-port=$httpPort")
 logs="$data/logs"
 
 crashKillScript=$([ -n "$data" ] && echo "$data/kill_tasks_after_crash.sh")
