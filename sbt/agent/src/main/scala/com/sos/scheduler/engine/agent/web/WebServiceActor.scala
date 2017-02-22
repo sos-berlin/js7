@@ -13,6 +13,7 @@ import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebS
 import com.sos.scheduler.engine.common.event.EventIdGenerator
 import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
 import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.sprayutils.WebLogDirectives.handleErrorAndLog
 import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
 import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
 import com.sos.scheduler.engine.common.time.timer.TimerService
@@ -72,7 +73,11 @@ with NoJobSchedulerEngineWebService
     routeBuilder ++= o.routeBuilder
   }
 
-  def receive = runRoute(buildRoute(gateKeeper))
+  def receive = runRoute {
+    handleErrorAndLog(subConfig = agentConfiguration.config.getConfig("jobscheduler.agent.webserver")).apply {
+      buildRoute(gateKeeper)
+    }
+  }
 }
 
 private[web] object WebServiceActor {
