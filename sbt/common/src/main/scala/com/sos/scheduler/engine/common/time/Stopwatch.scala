@@ -42,10 +42,15 @@ object Stopwatch {
   }
 
   final case class Result(n: Int, itemName: String, totalDuration: Duration) {
-    val singleDuration = totalDuration / n
+    def singleDuration = totalDuration / n
     val nanos = totalDuration.toNanos
-    val perSecond = if (nanos == 0) "∞" else (n * 1000L*1000*1000 / nanos).toString
-    override def toString = s"$perSecond $itemName/s (${totalDuration.pretty}/$n = ${singleDuration.pretty})"  }
+    def perSecond = if (nanos == 0) "∞" else if (n == 0) "?" else (n * 1000L*1000*1000 / nanos).toString
+    override def toString =
+      if (n == 0)
+        s"0 $itemName"
+      else
+        s"$perSecond $itemName/s (${totalDuration.pretty}/$n = ${singleDuration.pretty})"
+  }
 
   /**
     * Returns something like "2s/3000 items, 666µs/item, 1500 items/s"
