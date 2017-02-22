@@ -32,7 +32,7 @@ final class StandardTaskServer(
   (implicit ec: ExecutionContext)
 extends TaskServer with HasCloser {
 
-  private val logger = Logger.withPrefix(getClass, arguments.agentTaskId.toString)
+  private val logger = Logger.withPrefix[StandardTaskServer](arguments.agentTaskId.toString)
   private val terminatedPromise = Promise[Terminated.type]()
   private val master = BlockingTcpConnection.connect(arguments.masterInetSocketAddress).closeWithCloser
 

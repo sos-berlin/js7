@@ -30,7 +30,7 @@ extends Task with HasCloser {
   private val methodIsCalled = mutable.Set[String]()
   private val concurrentStdoutStderrWell = stdFiles.nonEmpty option new ConcurrentStdoutAndStderrWell(s"Job $jobName", stdFiles).closeWithCloser
   private var closeCalled = false
-  private val logger = Logger.withPrefix(getClass, toString)
+  private val logger = Logger.withPrefix[ApiProcessTask](toString)
 
   def start() = {
     concurrentStdoutStderrWell foreach { _.start() }

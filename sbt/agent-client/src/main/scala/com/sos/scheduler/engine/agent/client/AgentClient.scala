@@ -54,7 +54,7 @@ trait AgentClient {
   protected def hostConnectorSetupOption: Option[HostConnectorSetup]
   protected def userAndPasswordOption: Option[UserAndPassword]
 
-  private lazy val logger = Logger.withPrefix(classOf[AgentClient], agentUri.toString)
+  private lazy val logger = Logger.withPrefix[AgentClient](agentUri.toString)
   protected lazy val agentUris = AgentUris(agentUri.toString)
   private lazy val addLicenseKeys: RequestTransformer = if (licenseKeys.nonEmpty) addHeader(AgentUris.LicenseKeyHeaderName, licenseKeys mkString " ")
     else identity

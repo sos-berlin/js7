@@ -26,7 +26,7 @@ extends AutoCloseable {
 
   import actorSystem.dispatcher
 
-  private val logger = Logger.withPrefix(getClass, name)
+  private val logger = Logger.withPrefix[TcpToRequestResponse](name)
 
   @volatile private var actorClosed = false
   private val actor = actorSystem.actorOf(Props { new MessageTcpBridgeClient })

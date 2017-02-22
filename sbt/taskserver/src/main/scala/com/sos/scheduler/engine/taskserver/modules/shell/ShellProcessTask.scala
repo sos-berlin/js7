@@ -53,7 +53,7 @@ extends HasCloser with Task {
     stdFiles.copy(stdFileMap = processStdFileMap ++ stdFiles.stdFileMap)).closeWithCloser
   private var startCalled = false
   private val richProcessOnce = new SetOnce[RichProcess]
-  private val logger = Logger.withPrefix(getClass, toString)
+  private val logger = Logger.withPrefix[ShellProcessTask](toString)
   private var sigtermForwarder: Option[JavaShutdownHook] = None
 
   def start() = {

@@ -84,7 +84,7 @@ extends Actor with FSM[State, Data] {
   when(ExpectingMessageFromTcp) {
     case Event(MessageTcpBridge.MessageReceived(message), NoData) ⇒
       val connectionMessage = JsonParser(message.toArray[Byte]).convertTo[TunnelConnectionMessage]
-      logger = Logger.withPrefix(getClass, connectionMessage.tunnelToken.id.toString)
+      logger = Logger.withPrefix[Connector](connectionMessage.tunnelToken.id.toString)
       logger.trace(s"$connectionMessage")
       tunnelIdOnce := connectionMessage.tunnelToken.id
       parent ! AssociatedWithTunnelId(connectionMessage.tunnelToken, remoteAddress)

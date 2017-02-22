@@ -23,7 +23,7 @@ extends Actor {
   import connected.{localAddress, remoteAddress}
   import context.{become, parent, stop}
 
-  private val logger = Logger.withPrefix(getClass, s"$localAddress-$remoteAddress")
+  private val logger = Logger.withPrefix[MessageTcpBridge](s"$localAddress-$remoteAddress")
   private val messageBuilder: LengthHeaderMessageCollector = new LengthHeaderMessageCollector
 
   tcp ! Tcp.Register(self)

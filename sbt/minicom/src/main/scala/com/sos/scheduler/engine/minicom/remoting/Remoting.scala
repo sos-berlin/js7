@@ -36,7 +36,7 @@ trait Remoting extends ProxyRegistering with ProxyRemoting {
 
   protected def onReleased(iUnknown: IUnknown): Unit
 
-  private val logger = Logger.withPrefix(getClass, name)
+  private val logger = Logger.withPrefix[Remoting](name)
   private val proxyRegister = new ProxyRegister
   private lazy val createInvocable = toCreateIUnknownByCLSID(iUnknownFactories)
   private lazy val proxyClsidMap: Map[CLSID, ProxyIDispatchFactory.Fun] =

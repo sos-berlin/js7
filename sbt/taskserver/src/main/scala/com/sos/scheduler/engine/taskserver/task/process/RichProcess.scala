@@ -29,7 +29,7 @@ class RichProcess protected[process](val processConfiguration: ProcessConfigurat
 extends HasCloser with ClosedFuture {
 
   val pidOption: Option[Pid] = processToPidOption(process)
-  private val logger = Logger.withPrefix(getClass, toString)
+  private val logger = Logger.withPrefix[RichProcess](toString)
   /**
    * UTF-8 encoded stdin.
    */
