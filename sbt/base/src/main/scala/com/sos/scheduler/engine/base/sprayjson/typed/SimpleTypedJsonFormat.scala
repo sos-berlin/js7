@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.base.sprayjson.typed
 
+import com.sos.scheduler.engine.base.sprayjson.typed.TypedJsonFormat.DefaultTypeFieldName
 import spray.json.{JsObject, JsString, RootJsonWriter}
 
 /**
@@ -12,9 +13,12 @@ trait SimpleTypedJsonFormat[A] extends TypedJsonFormat[A] {
 
   protected def typelessWrite(a: A): JsObject
 
-  protected val typeField = TypedJsonFormat.DefaultTypeFieldName → JsString(typeName)
+  private val typeNameJs = JsString(typeName)
+  protected val typeField = DefaultTypeFieldName → typeNameJs
 
   final def canSerialize(e: A) = subclasses contains e.getClass
+
+  final def canDeserialize(o: JsObject) = o.fields.get(DefaultTypeFieldName) contains typeNameJs
 
   final lazy val classToJsonWriter = (subclasses map { _ → this }).toMap[Class[_], RootJsonWriter[_]]
 

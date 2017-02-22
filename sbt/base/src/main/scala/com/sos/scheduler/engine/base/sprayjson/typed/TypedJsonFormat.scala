@@ -14,6 +14,8 @@ trait TypedJsonFormat[A] extends RootJsonFormat[A] with HasOwnTypeField[A] {
 
   def canSerialize(a: A): Boolean
 
+  def canDeserialize(o: JsObject): Boolean
+
   final lazy val classes: Set[Class[_ <: A]] = classToJsonWriter.keySet map { _.asInstanceOf[Class[_ <: A]] }
 
   implicit final lazy val classJsonFormat = new JsonFormat[Class[_ <: A]] {
@@ -84,6 +86,7 @@ object TypedJsonFormat {
 
   sealed trait AsLazy[A] extends RootJsonFormat[A] with TypedJsonFormat[A] {
     def delegate: TypedJsonFormat[A]
+    final def canDeserialize(o: JsObject) = delegate.canDeserialize(o)
     final def classToJsonWriter = delegate.classToJsonWriter
     final def typeNameToJsonReader = delegate.typeNameToJsonReader
     final def typeNameToClass = delegate.typeNameToClass

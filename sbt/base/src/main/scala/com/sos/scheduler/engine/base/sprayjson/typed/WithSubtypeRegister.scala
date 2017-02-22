@@ -1,5 +1,7 @@
 package com.sos.scheduler.engine.base.sprayjson.typed
 
+import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
+import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
 import scala.collection.immutable
 import spray.json._
 
@@ -16,18 +18,40 @@ private[typed] class WithSubtypeRegister[A](
   shortenTypeOnlyValue: Boolean)
 extends TypedJsonFormat[A] {
 
+  //def ++[B](o: WithSubtypeRegister[B]): TypedJsonFormat[Any] = {
+  //  require((classToJsonWriter.keySet & o.classToJsonWriter.keySet).isEmpty)
+  //  require((typeNameToClass.keySet & o.typeNameToClass.keySet).isEmpty)
+  //  require((typeNameToClass.keySet & o.typeNameToClass.keySet).isEmpty)
+  //  require((typeNameToJsonReader.keySet & o.typeNameToJsonReader.keySet).isEmpty)
+  //  require((subtypeNames.toSet & o.subtypeNames.toSet).isEmpty)
+  //  require(typeFieldName == o.typeFieldName)
+  //  require(shortenTypeOnlyValue == o.shortenTypeOnlyValue)
+  //
+  //  new WithSubtypeRegister[Any](
+  //    superclass = classOf[Any],
+  //    classToJsonWriter = classToJsonWriter ++ o.classToJsonWriter,
+  //    typeNameToClass = typeNameToClass ++ o.typeNameToClass,
+  //    typeNameToJsonReader = typeNameToJsonReader ++ o.typeNameToJsonReader,
+  //    subtypeNames = subtypeNames ++ o.subtypeNames,
+  //    typeFieldName = typeFieldName,
+  //    shortenTypeOnlyValue = shortenTypeOnlyValue)
+  //}
+
   override def asJsObjectJsonFormat =
     new WithSubtypeRegister[A](superclass, classToJsonWriter,
       typeNameToClass, typeNameToJsonReader, subtypeNames, typeFieldName,
       shortenTypeOnlyValue = false)
 
-  override def canSerialize(a: A): Boolean =
+  def canSerialize(a: A) =
     classToJsonWriter.get(a.getClass) match {
       case Some(h: CanSerialize[A @unchecked]) ⇒ h canSerialize a
       case Some(h: TypedJsonFormat[A @unchecked]) ⇒ h canSerialize a
       case Some(_) ⇒ true
       case _ ⇒ false
     }
+
+  def canDeserialize(o: JsObject) =
+    typeNameToJsonReader contains o.fields(typeFieldName).asString
 
   def write(a: A) = {
     val jsonWriter = classToJsonWriter.getOrElse(a.getClass,

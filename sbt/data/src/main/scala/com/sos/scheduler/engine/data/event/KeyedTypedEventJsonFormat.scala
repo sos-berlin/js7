@@ -25,6 +25,8 @@ extends RootJsonFormat[KeyedEvent[E]] {
 
   def canSerialize(o: KeyedEvent[E]) = typedJsonFormat canSerialize o.event
 
+  def canDeserialize(o: JsObject) = typedJsonFormat canDeserialize o
+
   def write(keyedEvent: KeyedEvent[E]) = {
     val jsValue = typedJsonFormat.write(keyedEvent.event)
     if (NoKey == keyedEvent.key)
