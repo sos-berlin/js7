@@ -40,7 +40,7 @@ final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) e
     def startOrWake(): Unit = {
       if (_isRunning.compareAndSet(false, true)) {
         runInBackground {
-          logger.debug("Started")
+          logger.debug("Thread started")
           try loop()
           catch {
             case t: OrderedQueue.EmptyQueueException if !stopped ⇒
@@ -51,7 +51,7 @@ final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) e
               throw t
           }
           finally {
-            logger.debug("Terminated")
+            logger.debug("Thread terminated")
             _isRunning.set(false)
             if (!stopped && nonEmpty) startOrWake()
           }
