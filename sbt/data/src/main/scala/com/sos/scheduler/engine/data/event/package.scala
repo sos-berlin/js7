@@ -57,7 +57,10 @@ package object event {
       s"$eventId (${toDateTimeString(eventId)})"
 
     def toDateTimeString(eventId: EventId): String =
-      dateTimeFormatter.format(java.time.ZonedDateTime.ofInstant(toInstant(eventId), UTC))
+      eventId match {
+        case BeforeFirst ⇒ "BeforeFirst"
+        case _ ⇒ dateTimeFormatter.format(java.time.ZonedDateTime.ofInstant(toInstant(eventId), UTC))
+      }
   }
 
   type AnyKeyedEvent = KeyedEvent[Event]
