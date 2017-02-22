@@ -56,18 +56,18 @@ object ScalaUtils {
     }
 
     def toStringWithCauses: String = {
-      val throwables = mutable.Buffer[Throwable]()
+      val strings = mutable.Buffer[String]()
       var t: Throwable = delegate
       while (t != null) {
-        throwables += t
+        strings += t.toSimplifiedString
         t = t.getCause
       }
-      throwables mkString ", caused by "
+      strings mkString ", caused by: "
     }
 
     def toSimplifiedString: String = {
       lazy val msg = delegate.getMessage
-      if ((RichThrowable.isIgnorableClass(delegate.getClass) || delegate.isInstanceOf[PublicException]) && msg != null && msg != "")
+      if (msg != null && msg != "" && (RichThrowable.isIgnorableClass(delegate.getClass) || delegate.isInstanceOf[PublicException]))
         msg
       else
         delegate.toString

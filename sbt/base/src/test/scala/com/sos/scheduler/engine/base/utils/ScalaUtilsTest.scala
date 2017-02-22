@@ -40,9 +40,9 @@ final class ScalaUtilsTest extends FreeSpec {
   }
 
   "Throwable.toStringWithCauses" in {
-    assert(new RuntimeException("TEST").toStringWithCauses == "java.lang.RuntimeException: TEST")
+    assert(new RuntimeException("TEST").toStringWithCauses == "TEST")
     assert(new RuntimeException("TEST", new IllegalStateException("STATE")).toStringWithCauses ==
-      "java.lang.RuntimeException: TEST, caused by java.lang.IllegalStateException: STATE")
+      "TEST, caused by: java.lang.IllegalStateException: STATE")
   }
 
   "Throwable.toSimplifiedString" in {
