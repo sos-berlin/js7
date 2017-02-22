@@ -1,8 +1,10 @@
 package com.sos.scheduler.engine.common.scalautil
 
+import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
 import com.sos.scheduler.engine.common.log.ConvertingLogger
 import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
 import org.slf4j.LoggerFactory
+import scala.reflect.ClassTag
 
 object Logger {
 
@@ -12,7 +14,10 @@ object Logger {
   def apply(name: String): ScalaLogger =
     ScalaLogger(name)
 
-  def withPrefix(c: Class[_], prefix: String): ScalaLogger =
+  def withPrefix[A: ClassTag](prefix: String): ScalaLogger =
+    withClassAndPrefix(implicitClass[A], prefix)
+
+  def withClassAndPrefix(c: Class[_], prefix: String): ScalaLogger =
     if (prefix.isEmpty)
       apply(c)
     else
