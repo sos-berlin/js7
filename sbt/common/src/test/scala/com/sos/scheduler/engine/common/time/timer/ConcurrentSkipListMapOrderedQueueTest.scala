@@ -3,6 +3,7 @@ package com.sos.scheduler.engine.common.time.timer
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.timer.ConcurrentSkipListMapOrderedQueueTest._
+import com.sos.scheduler.engine.common.time.timer.OrderedQueueTest.Thing
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.util.Random
@@ -52,23 +53,22 @@ final class ConcurrentSkipListMapOrderedQueueTest extends FreeSpec {
       Thing(300, "300-A"), Thing(300, "300-B"), Thing(300, "300-C"))
     orderedThings foreach queue.add
     assert(orderedThings.toSeq == orderedThings)
-    assert(!queue.remove(100, Thing(200, "200-A")))
-    assert(!queue.remove(7, Thing(200, "200-A")))
-    assert(!queue.remove(100, Thing(7, "200-A")))
-    assert(queue.remove(200, Thing(200, "200-A")))
+    assert(!queue.remove(Thing(200, "200-X")))
+    assert(!queue.remove(Thing(277, "200")))
+    assert(queue.remove(Thing(200, "200-A")))
     assert(queue.toSeq == List(
       Thing(100, "100-A"), Thing(100, "100-B"),
       Thing(300, "300-A"), Thing(300, "300-B"), Thing(300, "300-C")))
-    assert(queue.remove(300, Thing(300, "300-C")))
+    assert(queue.remove(Thing(300, "300-C")))
     assert(queue.toSeq == List(
       Thing(100, "100-A"), Thing(100, "100-B"),
       Thing(300, "300-A"), Thing(300, "300-B")))
-    assert(queue.remove(300, Thing(300, "300-A")))
-    assert(queue.remove(300, Thing(300, "300-B")))
+    assert(queue.remove(Thing(300, "300-A")))
+    assert(queue.remove(Thing(300, "300-B")))
     assert(queue.toSeq == List(Thing(100, "100-A"), Thing(100, "100-B")))
-    assert(queue.remove(100, Thing(100, "100-A")))
+    assert(queue.remove(Thing(100, "100-A")))
     assert(queue.toSeq == List(Thing(100, "100-B")))
-    assert(queue.remove(100, Thing(100, "100-B")))
+    assert(queue.remove(Thing(100, "100-B")))
     assert(queue.toSeq == Nil)
     assert(queue.isEmpty)
   }

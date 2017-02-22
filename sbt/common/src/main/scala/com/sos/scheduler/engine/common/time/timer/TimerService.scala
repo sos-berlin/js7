@@ -199,7 +199,7 @@ final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) e
     */
   def cancel[A](timer: Timer[A]): Boolean = {
     timer.cancel()
-    val removed = queue.remove(timer.atEpochMilli, timer)
+    val removed = queue.remove(timer)
     clock.wake()
     removed
   }

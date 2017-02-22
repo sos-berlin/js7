@@ -16,7 +16,7 @@ extends OrderedQueue[K, V]{
 
   final def add(v: V): Unit = synchronized { delegate.add(v) }
 
-  final def remove(key: K, value: V) = synchronized { delegate.remove(key, value) }
+  final def remove(value: V) = synchronized { delegate.remove(value) }
 
   final def foreach(body: V ⇒ Unit): Unit = (delegate.toSeq: immutable.Seq[V]) foreach body
 

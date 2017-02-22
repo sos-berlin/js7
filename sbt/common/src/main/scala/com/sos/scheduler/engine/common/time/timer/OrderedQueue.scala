@@ -1,6 +1,5 @@
 package com.sos.scheduler.engine.common.time.timer
 
-import com.sos.scheduler.engine.common.time.timer.OrderedQueue._
 import scala.collection.immutable
 
 /**
@@ -16,11 +15,11 @@ trait OrderedQueue[K, V] {
 
   def add(value: V): Unit
 
-  def remove(key: K, value: V): Boolean
+  def remove(value: V): Boolean
 
   def foreach(body: V ⇒ Unit): Unit
 
-  def head: V = headOption getOrElse { throw new EmptyQueueException }
+  def head: V
 
   def headOption: Option[V]
 
@@ -37,6 +36,9 @@ object OrderedQueue {
 
     protected def lt(a: K, b: K): Boolean
 
+    def head: V =
+      headOption getOrElse { throw new EmptyQueueException }
+
     protected def removeHead(): V
 
     final def popNext(untilIncluding: K): Either[K, V] = {
@@ -47,5 +49,5 @@ object OrderedQueue {
     }
   }
 
-  final class EmptyQueueException private[OrderedQueue] extends NoSuchElementException
+  final class EmptyQueueException private[timer] extends NoSuchElementException
 }

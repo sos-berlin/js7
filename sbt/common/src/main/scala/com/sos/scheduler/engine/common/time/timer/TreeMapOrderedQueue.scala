@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
 private[timer] final class TreeMapOrderedQueue[K <: java.lang.Comparable[K], V: ClassTag](toKey_ : V ⇒ K)
 extends OrderedQueue.Implement[K, V] {
 
-  private val treeMap = new java.util.TreeMap[K, mutable.ListBuffer[V]]()
+  private val treeMap = new java.util.TreeMap[K, mutable.Buffer[V]]()
 
   def isEmpty = treeMap.isEmpty
 
@@ -34,7 +34,8 @@ extends OrderedQueue.Implement[K, V] {
     buffer += value
   }
 
-  def remove(key: K, value: V): Boolean =
+  def remove(value: V): Boolean = {
+    val key = toKey(value)
     treeMap.get(key) match {
       case null ⇒ false
       case buffer ⇒
@@ -52,6 +53,7 @@ extends OrderedQueue.Implement[K, V] {
             true
         }
     }
+  }
 
   def foreach(body: V ⇒ Unit): Unit = toSeq foreach body
 

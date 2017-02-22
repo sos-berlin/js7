@@ -26,7 +26,8 @@ extends OrderedQueue.Implement[K, V] {
     })
   }
 
-  def remove(key: K, value: V): Boolean = {
+  def remove(value: V): Boolean = {
+    val key = toKey(value)
     var removed = false
     keyToValues.compute(key, new BiFunction[K, Vector[V], Vector[V]] {
       def apply(k: K, values: Vector[V]) = {

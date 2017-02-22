@@ -1,7 +1,5 @@
 package com.sos.scheduler.engine.common.time.timer
 
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.scalautil.Logger
@@ -13,8 +11,9 @@ import com.sos.scheduler.engine.common.time.timer.TimerServiceTest._
 import java.lang.System.nanoTime
 import java.time.Instant.now
 import java.time.{Duration, Instant}
+import java.util.concurrent.TimeUnit.MINUTES
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue}
+import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, CountDownLatch}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.concurrent.ScalaFutures
@@ -28,6 +27,8 @@ import scala.util.{Random, Success}
   * @author Joacim Zschimmer
   */
 final class TimerServiceTest extends FreeSpec with ScalaFutures {
+
+  private val availableProcessors = sys.runtime.availableProcessors
 
   "Thread timeout and warm-up" in {
     new ConcurrentLinkedQueue[String]().add("WARM-UP")
@@ -144,16 +145,20 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
   "Massive parallel parallel timer enqueuing" in {
     autoClosing(TimerService()) { timerService ⇒
       timerService.delayed(20.ms) await 1.s  // Start clock thread
-      for (_ ← 1 to 10) {
-        val counter = new AtomicInteger
-        val n = 5000 * sys.runtime.availableProcessors
-        val delays = for (_ ← 1 to n) yield Random.nextInt(40).ms
+      for (_ ← 1 to 20) {
+        val m = 10000
+        val n = m * availableProcessors
+        val latch = new CountDownLatch(n)
         val stopwatch = new Stopwatch
-        for (delay ← delays) Future { timerService.delay(delay, "test") onElapsed { counter.incrementAndGet() }}
-        val ok = waitForCondition(2.s, 10.ms) { counter.get == n }
+        for (_ ← 1 to availableProcessors) {
+          Future {
+            for (delay ← Iterator.fill(m) { Random.nextInt(50).ms }) {
+              timerService.delay(delay, "test") onElapsed { latch.countDown() }
+            }
+          }
+        }
+        latch.await(1, MINUTES)
         info("Parallel: " + stopwatch.itemsPerSecondString(n, "Timer"))
-        if (!ok) logger.error(s"$counter/$n $timerService")
-        assert(counter.get == n)
       }
     }
   }
