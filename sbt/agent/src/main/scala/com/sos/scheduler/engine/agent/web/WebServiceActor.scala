@@ -1,6 +1,6 @@
 package com.sos.scheduler.engine.agent.web
 
-import akka.actor.Props
+import akka.actor.{ActorSystem, Props}
 import com.google.inject.Injector
 import com.sos.scheduler.engine.agent.command.{AgentCommandHandler, CommandExecutor, CommandMeta}
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
@@ -42,6 +42,7 @@ final private class WebServiceActor private(
   extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,
   protected val eventIdGenerator: EventIdGenerator,
+  protected val actorSystem: ActorSystem,
   implicit protected val executionContext: ExecutionContext,
   injector: Injector)
 extends HttpServiceActor
@@ -67,6 +68,7 @@ with NoJobSchedulerEngineWebService
   protected def tunnelHandlerOverview = tunnelServer.overview
   protected def tunnelOverviews = tunnelServer.tunnelOverviews
   protected def tunnelView(tunnelId: TunnelId) = tunnelServer.tunnelView(tunnelId)
+  protected def config = agentConfiguration.config
 
   for (o ← extraWebServices) {
     logger.debug(s"Adding extra route $o")
@@ -74,9 +76,7 @@ with NoJobSchedulerEngineWebService
   }
 
   def receive = runRoute {
-    handleErrorAndLog(subConfig = agentConfiguration.config.getConfig("jobscheduler.agent.webserver")).apply {
-      buildRoute(gateKeeper)
-    }
+    buildRoute(gateKeeper)
   }
 }
 
@@ -98,6 +98,7 @@ private[web] object WebServiceActor {
     extraWebServices: immutable.Seq[ExternalWebService],
     agentConfiguration: AgentConfiguration,
     eventIdGenerator: EventIdGenerator,
+    actorSystem: ActorSystem,
     executionContext: ExecutionContext,
     injector: Injector)
   {
@@ -114,6 +115,7 @@ private[web] object WebServiceActor {
         extraWebServices,
         agentConfiguration,
         eventIdGenerator,
+        actorSystem,
         executionContext,
         injector)
   }

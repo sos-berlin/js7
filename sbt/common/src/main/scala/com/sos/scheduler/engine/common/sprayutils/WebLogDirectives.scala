@@ -1,20 +1,24 @@
 package com.sos.scheduler.engine.common.sprayutils
 
-import akka.actor.ActorContext
+import akka.actor.{ActorContext, ActorSystem}
+import com.sos.scheduler.engine.base.exceptions.PublicException
+import com.sos.scheduler.engine.base.utils.ScalaUtils.RichThrowable
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.log.LogLevel
 import com.sos.scheduler.engine.common.log.LogLevel._
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.sprayutils.SprayUtils.{addHeader, passIf}
 import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigFactory}
 import java.time.Duration
 import spray.http.ContentTypes.`text/plain(UTF-8)`
 import spray.http.HttpHeaders.`Remote-Address`
+import spray.http.StatusCodes.{BadRequest, InternalServerError}
 import spray.http.{HttpEntity, HttpHeader, HttpRequest, HttpResponse, RemoteAddress, Rendering}
 import spray.routing.Directives._
 import spray.routing._
 import spray.routing.directives.LoggingMagnet
+import scala.collection.JavaConversions._
 
 /**
   * @author Joacim Zschimmer
@@ -22,14 +26,38 @@ import spray.routing.directives.LoggingMagnet
 object WebLogDirectives {
   private val webLogger = Logger("Web")
 
-  def handleErrorAndLog(subConfig: Config)(implicit routingSettings: RoutingSettings, actorContext: ActorContext): Directive0 = {
-    val logLevel = LogLevel(subConfig.getString("log.level"))
-    val withTimestamp = subConfig.getBoolean("log.elapsed-time")
-    val hasRemoteAddress = actorContext.system.settings.config.getBoolean("spray.can.server.remote-address-header")
+  val TestConfig = ConfigFactory.parseMap(Map(
+    "jobscheduler.webserver.log.level" → "debug",
+    "jobscheduler.webserver.log.elapsed-time" → false.toString,
+    "jobscheduler.webserver.verbose-error-messages" → true.toString))
+
+  def handleErrorAndLog(config: Config)(implicit routingSettings: RoutingSettings, actorContext: ActorContext): Directive0 =
+    handleErrorAndLog(config, actorContext.system)
+
+  def handleErrorAndLog(config: Config, system: ActorSystem): Directive0 = {
+    val logLevel = LogLevel(config.getString("jobscheduler.webserver.log.level"))
+    val withTimestamp = config.getBoolean("jobscheduler.webserver.log.elapsed-time")
+    val verboseErrorMessages = config.getBoolean("jobscheduler.webserver.verbose-error-messages")
+    val hasRemoteAddress = system.settings.config.getBoolean("spray.can.server.remote-address-header")
+    val exceptionHandler = ExceptionHandler {
+      case e: PublicException =>
+        requestInstance { request ⇒
+          webLogger.debug(toLogMessage(request, e), e)
+          complete((BadRequest, e.publicMessage))
+        }
+      case e ⇒
+        requestInstance { request ⇒
+          webLogger.debug(toLogMessage(request, e), e)
+          if (verboseErrorMessages)
+            complete((InternalServerError, e.toSimplifiedString))
+          else
+            complete(InternalServerError)
+        }
+    }
     mapInnerRoute { inner ⇒
       (passIf(!withTimestamp) | addHeader(`X-JobScheduler-Request-Started-At`(System.nanoTime))) {
         logRequestResponse(LoggingMagnet(log(logLevel, hasRemoteAddress = hasRemoteAddress) _)) {
-          handleExceptions(ExceptionHandler.default) {
+          handleExceptions(exceptionHandler) {
             handleRejections(RejectionHandler.Default) {
               inner
             }
@@ -89,4 +117,7 @@ object WebLogDirectives {
     val lowercaseName = name.toLowerCase
     def render[R <: Rendering](r: R): r.type = r ~~ name ~~ ':' ~~ ' ' ~~ value
   }
+
+  private def toLogMessage(request: HttpRequest, throwable: Throwable) =
+    s"Error while handling ${request.method} ${request.uri}: ${throwable.toStringWithCauses}"
 }

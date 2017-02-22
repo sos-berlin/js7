@@ -17,13 +17,13 @@ object LogLevel {
   object Error extends LogLevel
 
   def apply(string: String): LogLevel =
-    string match {
-      case "None"  ⇒ LogNone
-      case "Trace" ⇒ Trace
-      case "Debug" ⇒ Debug
-      case "Info"  ⇒ Info
-      case "Warn"  ⇒ Warn
-      case "Error" ⇒ Error
+    string.toLowerCase match {
+      case "none"  ⇒ LogNone
+      case "trace" ⇒ Trace
+      case "debug" ⇒ Debug
+      case "info"  ⇒ Info
+      case "warn"  ⇒ Warn
+      case "error" ⇒ Error
       case _ ⇒ throw new IllegalArgumentException(s"Invalid LogLevel '$string'")
     }
 
