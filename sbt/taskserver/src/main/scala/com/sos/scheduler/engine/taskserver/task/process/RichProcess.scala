@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.scheduler.engine.common.process.Processes._
 import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.scheduler.engine.common.scalautil.Futures.namedThreadFuture
 import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logger}
 import com.sos.scheduler.engine.common.system.OperatingSystem._
 import com.sos.scheduler.engine.data.job.ReturnCode
@@ -17,8 +18,7 @@ import java.nio.file.Files.delete
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
-import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
-import scala.util.Try
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 
 /**
@@ -37,13 +37,9 @@ extends HasCloser with ClosedFuture {
   private val terminatedPromise = Promise[Unit]()
 
   logger.info(s"Process started")
-  Future {
-    terminatedPromise complete Try {
-      blocking {
-        val rc = waitForTermination()
-        logger.info(s"Process ended with $rc")
-      }
-    }
+  terminatedPromise completeWith namedThreadFuture("Process watch") {
+    val rc = waitForTermination()
+    logger.info(s"Process ended with $rc")
   }
 
   final def terminated: Future[Unit] = terminatedPromise.future
@@ -73,14 +69,14 @@ extends HasCloser with ClosedFuture {
   private def executeKillScript(args: Seq[String]) = Future[Unit] {
     logger.info("Executing kill script: " + args.mkString("  "))
     val onKillProcess = new ProcessBuilder(args).redirectOutput(INHERIT).redirectError(INHERIT).start()
-    val promise = Promise[Unit]()
-      blocking { waitForProcessTermination(onKillProcess) }
+    namedThreadFuture("Kill script") {
+      waitForProcessTermination(onKillProcess)
       onKillProcess.exitValue match {
         case 0 ⇒
         case o ⇒ logger.warn(s"Kill script '${args(0)}' has returned exit code $o")
       }
-      promise.success(())
     }
+  }
 
   private def killNow(): Unit = {
     if (process.isAlive) {
