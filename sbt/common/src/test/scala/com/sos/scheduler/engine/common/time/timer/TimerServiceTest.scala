@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.scheduler.engine.common.scalautil.Logger
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.time.Stopwatch
+import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
 import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
 import com.sos.scheduler.engine.common.time.timer.TimerService._
 import com.sos.scheduler.engine.common.time.timer.TimerServiceTest._
@@ -191,8 +192,8 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       }
       addNextTimer()
       Future {
-        blocking { waitForCondition(60.s, 1.s) { now > last + 1.s } }
-        finished.tryFailure(new RuntimeException(s"STOPPED AFTER $counter"))
+        blocking { waitForCondition(60.s, 1.s) { now > last + delay + 1.s } }
+        finished.tryFailure(new RuntimeException(s"STOPPED AFTER $counter ${(now - last).pretty}"))
       }
       Await.result(finished.future, 60.seconds)
       info(s"$name: " + stopwatch.itemsPerSecondString(n, "Timer"))
@@ -263,12 +264,12 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
 
   "ArrayBlockingQueue.offer" in {
     val q = new ArrayBlockingQueue[Boolean](1)
-    Stopwatch.measureTime(1000000, "offer") {
+    measureTime(1000000, "offer", linePrefix = "ArrayBlockingQueue ") {
       q.offer(true)
       q.take()
     }
     val future = Future { blocking { while(q.take()) {} }}
-    Stopwatch.measureTime(10000, "put") {
+    measureTime(10000, "put", linePrefix = "ArrayBlockingQueue ") {
       q.put(true)
     }
     q.put(false)
