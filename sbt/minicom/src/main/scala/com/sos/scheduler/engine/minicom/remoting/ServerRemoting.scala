@@ -46,7 +46,7 @@ extends Remoting
           Future.successful(())
       }
 
-    logger.debug("Started")
+    logger.trace("Started")
     val firstRequest = connection.blockingReceiveFirstMessage()
     val result = keepaliveDurationOption match {
       case Some(keepaliveDuration) ⇒
@@ -57,7 +57,7 @@ extends Remoting
         executeAndContinue(firstRequest)
     }
     result onComplete { o ⇒
-      logger.debug(s"Ended $o")
+      logger.trace(s"Ended $o")
     }
     result
   }
