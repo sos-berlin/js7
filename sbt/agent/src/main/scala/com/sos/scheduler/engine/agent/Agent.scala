@@ -17,7 +17,7 @@ import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAu
 import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
 import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
 import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime.{MaxDuration, _}
+import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
 import com.sos.scheduler.engine.data.agent.AgentAddress
 import scala.concurrent.Future
