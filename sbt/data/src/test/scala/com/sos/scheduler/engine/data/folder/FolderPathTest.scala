@@ -1,16 +1,12 @@
 package com.sos.scheduler.engine.data.folder
 
-import com.sos.scheduler.engine.data.filebased.{TypedPath, UnknownTypedPath}
+import com.sos.scheduler.engine.data.filebased.TypedPath
 import com.sos.scheduler.engine.data.folder.FolderPathTest._
-import com.sos.scheduler.engine.data.job.JobPath
-import org.junit.runner.RunWith
 import org.scalatest.FreeSpec
-import org.scalatest.junit.JUnitRunner
 
 /**
   * @author Joacim Zschimmer
   */
-@RunWith(classOf[JUnitRunner])
 final class FolderPathTest extends FreeSpec {
 
   "subfolder" in {
@@ -27,23 +23,23 @@ final class FolderPathTest extends FreeSpec {
     assert(FolderPath.Root.isParentOf(FolderPath("/a")))
     assert(!FolderPath.Root.isParentOf(FolderPath.Root))
     assert(!FolderPath("/a").isParentOf(FolderPath("/a")))
-    assert(!FolderPath("/a").isParentOf(JobPath("/x")))
-    assert(!FolderPath("/a/b").isParentOf(JobPath("/a")))
-    assert(!FolderPath("/a/b").isParentOf(JobPath("/a/b")))
-    assert(FolderPath("/").isParentOf(JobPath("/x")))
-    assert(FolderPath("/a/b").isParentOf(JobPath("/a/b/c")))
-    assert(!FolderPath("/a/b").isParentOf(JobPath("/a/b/c/d")))
+    assert(!FolderPath("/a").isParentOf(TestPath("/x")))
+    assert(!FolderPath("/a/b").isParentOf(TestPath("/a")))
+    assert(!FolderPath("/a/b").isParentOf(TestPath("/a/b")))
+    assert(FolderPath("/").isParentOf(TestPath("/x")))
+    assert(FolderPath("/a/b").isParentOf(TestPath("/a/b/c")))
+    assert(!FolderPath("/a/b").isParentOf(TestPath("/a/b/c/d")))
   }
 
   "isAncestorOf" in {
     assert(FolderPath.Root isAncestorOf FolderPath.Root)
     assert(FolderPath("/a") isAncestorOf FolderPath("/a"))
-    assert(!FolderPath("/a").isAncestorOf(JobPath("/x")))
-    assert(!FolderPath("/a/b").isAncestorOf(JobPath("/a")))
-    assert(!FolderPath("/a/b").isAncestorOf(JobPath("/a/b")))
-    assert(FolderPath("/") isAncestorOf JobPath("/x"))
-    assert(FolderPath("/a/b") isAncestorOf JobPath("/a/b/c"))
-    assert(FolderPath("/a/b") isAncestorOf JobPath("/a/b/c/d"))
+    assert(!FolderPath("/a").isAncestorOf(TestPath("/x")))
+    assert(!FolderPath("/a/b").isAncestorOf(TestPath("/a")))
+    assert(!FolderPath("/a/b").isAncestorOf(TestPath("/a/b")))
+    assert(FolderPath("/") isAncestorOf TestPath("/x"))
+    assert(FolderPath("/a/b") isAncestorOf TestPath("/a/b/c"))
+    assert(FolderPath("/a/b") isAncestorOf TestPath("/a/b/c/d"))
   }
 
   "fromTrailingSlash" in {
@@ -82,9 +78,9 @@ final class FolderPathTest extends FreeSpec {
   }
 
   "FolderPath.parentOf" in {
-    assert(FolderPath.parentOf(UnknownTypedPath("/a")) == FolderPath.Root)
-    assert(FolderPath.parentOf(UnknownTypedPath("/folder/a")) == FolderPath("/folder"))
-    assert(FolderPath.parentOf(UnknownTypedPath("/x/folder/a")) == FolderPath("/x/folder"))
+    assert(FolderPath.parentOf(TestPath("/a")) == FolderPath.Root)
+    assert(FolderPath.parentOf(TestPath("/folder/a")) == FolderPath("/folder"))
+    assert(FolderPath.parentOf(TestPath("/x/folder/a")) == FolderPath("/x/folder"))
     intercept[IllegalStateException] { FolderPath.parentOf(FolderPath("/")) }
   }
 }

@@ -13,6 +13,13 @@ final case class FolderPath(string: String) extends TypedPath {
     FolderPath(s"${string stripSuffix "/"}/$name")
   }
 
+  /**
+    * Resolves the given path agains this FolderPath.
+    * <ul>
+    *   <li>An absolute `path` starting with "/" is used as given.
+    *   <li>A relative `path` (not starting with "/") is used relative to this `FolderPath`.
+    * </ul>
+   */
   def resolve[P <: TypedPath: TypedPath.Companion](path: String) =
     implicitly[TypedPath.Companion[P]].apply(absoluteString(this, path))
 
