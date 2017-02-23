@@ -25,8 +25,8 @@ object ScalaStax {
   }
 
   /**
-   * Fast XMLInputFactory provider - returned XMLInputFactory is mutable, do not change it.
-   */
-  private[common] def getCommonXMLInputFactory(): XMLInputFactory =
+    * Fast XMLInputFactory provider - returned XMLInputFactory is mutable, DO NOT CHANGE IT.
+    */
+  private[sos] def getCommonXMLInputFactory(): XMLInputFactory =
     xmlInputFactoryTL
 }

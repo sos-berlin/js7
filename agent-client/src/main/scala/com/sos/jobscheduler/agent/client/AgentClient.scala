@@ -139,7 +139,7 @@ trait AgentClient {
     unmarshallingPipeline[A](timeout).apply(Get(uri(agentUris)))
 
   @TestOnly
-  private[client] final def sendReceive[A: FromResponseUnmarshaller](request: HttpRequest, timeout: Duration = RequestTimeout): Future[A] =
+  private[sos] final def sendReceive[A: FromResponseUnmarshaller](request: HttpRequest, timeout: Duration = RequestTimeout): Future[A] =
     withCheckedAgentUri(request) { request ⇒
       unmarshallingPipeline[A](timeout).apply(request)
     }
@@ -160,7 +160,7 @@ trait AgentClient {
   private def httpResponsePipeline(timeout: Duration, sessionAction: SessionAction = SessionAction.Default): HttpRequest ⇒ Future[HttpResponse] =
     agentSendReceive(timeout.toFiniteDuration, sessionAction)
 
-  private[jobscheduler] def agentSendReceive(futureTimeout: Timeout)(implicit ec: ExecutionContext): SendReceive =
+  private[sos] def agentSendReceive(futureTimeout: Timeout)(implicit ec: ExecutionContext): SendReceive =
     agentSendReceive(futureTimeout, SessionAction.Default)
 
   private def agentSendReceive(futureTimeout: Timeout, sessionAction: SessionAction)(implicit ec: ExecutionContext): SendReceive = {

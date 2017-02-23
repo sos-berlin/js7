@@ -45,7 +45,7 @@ object TypedPath {
 
     val camelName: String = name stripSuffix "Path"
     final lazy val lowerCaseCamelName = camelName.substring(0, 1).toLowerCase + camelName.substring(1)
-    private final lazy val cppName: String = lowerCaseCamelName map { c ⇒ if (c.isUpper) "_" + c.toLower else c } mkString ""
+    final lazy val cppName: String = lowerCaseCamelName map { c ⇒ if (c.isUpper) "_" + c.toLower else c } mkString ""
     lazy val filenameExtension: String = s".$cppName.xml"
 
     /**
