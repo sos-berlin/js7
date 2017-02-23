@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.shared.common
+package com.sos.jobscheduler.shared.common
 
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import javax.xml.stream.events.{Attribute, EndElement}
 
 /**

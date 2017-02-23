@@ -1,26 +1,25 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
 import akka.actor.{ActorSystem, Props}
 import com.google.inject.Injector
-import com.sos.scheduler.engine.agent.command.{AgentCommandHandler, CommandExecutor, CommandMeta}
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.data.commands.Command
-import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
-import com.sos.scheduler.engine.agent.orderprocessing.OrderHandler
-import com.sos.scheduler.engine.agent.views.AgentOverview
-import com.sos.scheduler.engine.agent.web.WebServiceActor._
-import com.sos.scheduler.engine.agent.web.common.{ExternalWebService, LoginSession}
-import com.sos.scheduler.engine.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
-import com.sos.scheduler.engine.common.event.EventIdGenerator
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.WebLogDirectives.handleErrorAndLog
-import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
-import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.session.SessionToken
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.TunnelServer
+import com.sos.jobscheduler.agent.command.{AgentCommandHandler, CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.commands.Command
+import com.sos.jobscheduler.agent.data.views.TaskHandlerView
+import com.sos.jobscheduler.agent.orderprocessing.OrderHandler
+import com.sos.jobscheduler.agent.views.AgentOverview
+import com.sos.jobscheduler.agent.web.WebServiceActor._
+import com.sos.jobscheduler.agent.web.common.{ExternalWebService, LoginSession}
+import com.sos.jobscheduler.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeper
+import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.session.SessionToken
+import com.sos.jobscheduler.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.jobscheduler.tunnel.server.TunnelServer
 import java.time.Duration
 import javax.inject.{Inject, Provider, Singleton}
 import scala.collection.immutable

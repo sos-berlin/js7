@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.common.tcp
+package com.sos.jobscheduler.common.tcp
 
 import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Props}
 import akka.io.Tcp
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.akkautils.Akkas._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.tcp.LengthHeaderMessageCollector._
-import com.sos.scheduler.engine.common.tcp.MessageTcpBridge._
+import com.sos.jobscheduler.common.akkautils.Akkas._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.tcp.LengthHeaderMessageCollector._
+import com.sos.jobscheduler.common.tcp.MessageTcpBridge._
 
 /**
  * Full-duplex bridge between length-prefixed framed messages and a TCP stream.

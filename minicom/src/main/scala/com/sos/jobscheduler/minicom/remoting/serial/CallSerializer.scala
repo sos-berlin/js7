@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.minicom.remoting.calls._
-import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister
-import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
+import com.sos.jobscheduler.minicom.remoting.calls._
+import com.sos.jobscheduler.minicom.remoting.proxy.ProxyRegister
+import com.sos.jobscheduler.minicom.remoting.serial.CallDeserializer._
 
 /**
  * @author Joacim Zschimmer

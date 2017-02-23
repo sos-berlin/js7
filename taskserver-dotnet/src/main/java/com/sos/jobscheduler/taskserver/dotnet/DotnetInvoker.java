@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.dotnet;
+package com.sos.jobscheduler.taskserver.dotnet;
 
 import java.util.Optional;
 

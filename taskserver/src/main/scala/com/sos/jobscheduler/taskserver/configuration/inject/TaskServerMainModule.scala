@@ -1,21 +1,21 @@
-package com.sos.scheduler.engine.taskserver.configuration.inject
+package com.sos.jobscheduler.taskserver.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.scheduler.engine.common.configutils.Configs
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.utils.JavaResource
-import com.sos.scheduler.engine.taskserver.configuration.inject.TaskServerMainModule._
-import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
-import com.sos.scheduler.engine.taskserver.dotnet.Jni4netModuleInstanceFactory
-import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleInstanceFactory
-import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
-import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule
-import com.sos.scheduler.engine.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
-import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
+import com.sos.jobscheduler.common.configutils.Configs
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.taskserver.configuration.inject.TaskServerMainModule._
+import com.sos.jobscheduler.taskserver.data.DotnetConfiguration
+import com.sos.jobscheduler.taskserver.dotnet.Jni4netModuleInstanceFactory
+import com.sos.jobscheduler.taskserver.dotnet.api.DotnetModuleInstanceFactory
+import com.sos.jobscheduler.taskserver.moduleapi.ModuleFactoryRegister
+import com.sos.jobscheduler.taskserver.modules.dotnet.DotnetModule
+import com.sos.jobscheduler.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
+import com.sos.jobscheduler.taskserver.modules.shell.ShellModule
 import javax.inject.Singleton
 import scala.concurrent.ExecutionContext
 
@@ -68,5 +68,5 @@ final class TaskServerMainModule(dotnet: DotnetConfiguration) extends AbstractMo
 }
 
 object TaskServerMainModule {
-  private val ConfigurationResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/TaskServerMain.conf")
+  private val ConfigurationResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/TaskServerMain.conf")
 }

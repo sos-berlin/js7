@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.base.sprayjson
+package com.sos.jobscheduler.base.sprayjson
 
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
 import org.scalatest.FreeSpec

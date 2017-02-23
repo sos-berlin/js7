@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.data.folder
+package com.sos.jobscheduler.data.folder
 
-import com.sos.scheduler.engine.data.filebased.TypedPath
-import com.sos.scheduler.engine.data.folder.FolderPathTest._
+import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.data.folder.FolderPathTest._
 import org.scalatest.FreeSpec
 
 /**

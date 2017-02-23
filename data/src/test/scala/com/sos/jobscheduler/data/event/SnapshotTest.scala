@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.event
+package com.sos.jobscheduler.data.event
 
 import org.scalatest.FreeSpec
 import scala.collection.immutable

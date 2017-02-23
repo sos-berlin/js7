@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.base.convert
+package com.sos.jobscheduler.base.convert
 
-import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions.wrappedConvert
+import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import scala.collection._
 
 /**

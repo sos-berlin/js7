@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.types
+package com.sos.jobscheduler.minicom.types
 
 /**
  * A COM object.

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.auth
+package com.sos.jobscheduler.common.auth
 
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.base.generic.IsString
 
 /**
   * @author Joacim Zschimmer

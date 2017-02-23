@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.agent.configuration
+package com.sos.jobscheduler.agent.configuration
 
 import akka.actor.ActorSystem
 import com.google.common.io.Closer
-import com.sos.scheduler.engine.common.akkautils.DeadLetterActor
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.SideEffect._
+import com.sos.jobscheduler.common.akkautils.DeadLetterActor
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.SideEffect._
 import com.typesafe.config.{Config, ConfigFactory}
 import scala.concurrent.duration._
 

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.master.configuration
+package com.sos.jobscheduler.master.configuration
 
 import com.typesafe.config.ConfigFactory
 import java.time.ZoneId

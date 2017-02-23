@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import org.scalatest.FreeSpec
 import spray.http.StatusCodes.NotFound
 

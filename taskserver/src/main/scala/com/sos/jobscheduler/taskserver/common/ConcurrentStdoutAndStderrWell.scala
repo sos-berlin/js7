@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.taskserver.common
+package com.sos.jobscheduler.taskserver.common
 
-import com.sos.scheduler.engine.common.async.ConcurrentCaller
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser}
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.taskserver.common.ConcurrentStdoutAndStderrWell._
+import com.sos.jobscheduler.common.async.ConcurrentCaller
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser}
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.taskserver.common.ConcurrentStdoutAndStderrWell._
 import scala.concurrent.Future
 
 /**

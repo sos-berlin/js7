@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.tunnel.data
+package com.sos.jobscheduler.tunnel.data
 
-import com.sos.scheduler.engine.base.sprayjson.InetAddressJsonSupport._
+import com.sos.jobscheduler.base.sprayjson.InetAddressJsonSupport._
 import java.net.InetAddress
 import spray.json.DefaultJsonProtocol._
 

@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.event
+package com.sos.jobscheduler.common.event
 
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.data.event.EventId
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.event.EventId
 import java.util.concurrent.ConcurrentHashMap
 import org.scalatest.FreeSpec
 import scala.collection.JavaConversions._

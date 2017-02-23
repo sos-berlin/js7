@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.time
+package com.sos.jobscheduler.common.time
 
-import com.sos.scheduler.engine.base.convert.As
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
 import org.scalatest.FreeSpec

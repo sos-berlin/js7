@@ -1,16 +1,16 @@
-package com.sos.scheduler.engine.agent.client
+package com.sos.jobscheduler.agent.client
 
 import akka.util.Timeout
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.scheduler.engine.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
-import com.sos.scheduler.engine.agent.client.AgentClientCommandMarshallingTest._
-import com.sos.scheduler.engine.agent.command.{CommandExecutor, CommandMeta}
-import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent, Response}
-import com.sos.scheduler.engine.agent.data.commands.{AbortImmediately, Command, RequestFileOrderSourceContent, Terminate}
-import com.sos.scheduler.engine.agent.test.AgentTest
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
+import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
+import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent, Response}
+import com.sos.jobscheduler.agent.data.commands.{AbortImmediately, Command, RequestFileOrderSourceContent, Terminate}
+import com.sos.jobscheduler.agent.test.AgentTest
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import javax.inject.Singleton

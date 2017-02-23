@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.shared.event.journal
+package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.shared.event.journal.JournalingActor._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.shared.event.journal.JournalingActor._
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
 import scala.concurrent.Future

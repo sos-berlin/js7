@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.shared.filebased
+package com.sos.jobscheduler.shared.filebased
 
-import com.sos.scheduler.engine.data.filebased.TypedPath
+import com.sos.jobscheduler.data.filebased.TypedPath
 import java.nio.file.{Path, Paths}
 
 /**

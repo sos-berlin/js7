@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.filebased
+package com.sos.jobscheduler.data.filebased
 
-import com.sos.scheduler.engine.data.filebased.AbsolutePathTest._
+import com.sos.jobscheduler.data.filebased.AbsolutePathTest._
 import org.scalatest.FreeSpec
 
 /**

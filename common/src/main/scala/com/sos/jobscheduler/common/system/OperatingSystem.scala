@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.system
+package com.sos.jobscheduler.common.system
 
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.{File, FileInputStream}
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.{Path, Paths}

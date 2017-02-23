@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.agent.web.views
+package com.sos.jobscheduler.agent.web.views
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.agent.data.commands.StartTask
-import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
-import com.sos.scheduler.engine.agent.web.test.WebServiceTest
-import com.sos.scheduler.engine.data.job.TaskId
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.commands.StartTask
+import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
+import com.sos.jobscheduler.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.data.job.TaskId
+import com.sos.jobscheduler.tunnel.data.TunnelId
 import java.net.InetAddress
 import java.time.Instant
 import org.scalatest.FreeSpec

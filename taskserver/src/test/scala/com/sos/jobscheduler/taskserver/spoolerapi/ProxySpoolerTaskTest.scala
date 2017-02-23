@@ -1,16 +1,16 @@
-package com.sos.scheduler.engine.taskserver.spoolerapi
+package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout}
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
-import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
-import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
-import com.sos.scheduler.engine.taskserver.task.process.RichProcess
+import com.sos.jobscheduler.common.process.StdoutStderr.{Stderr, Stdout}
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.system.FileUtils._
+import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits._
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.minicom.remoting.proxy.ProxyRemoting
+import com.sos.jobscheduler.taskserver.data.TaskServerArguments
+import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration._
+import com.sos.jobscheduler.taskserver.task.process.RichProcess
 import org.scalatest.Matchers._
 import org.scalatest.mock.MockitoSugar.mock
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}

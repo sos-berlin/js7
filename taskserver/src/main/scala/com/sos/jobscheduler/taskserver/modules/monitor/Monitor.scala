@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.modules.monitor
+package com.sos.jobscheduler.taskserver.modules.monitor
 
-import com.sos.scheduler.engine.taskserver.moduleapi.ModuleArguments
-import com.sos.scheduler.engine.taskserver.modules.monitor.Monitor._
+import com.sos.jobscheduler.taskserver.moduleapi.ModuleArguments
+import com.sos.jobscheduler.taskserver.modules.monitor.Monitor._
 
 /**
  * @author Joacim Zschimmer

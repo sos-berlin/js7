@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.idispatch.DISPID
-import com.sos.scheduler.engine.minicom.remoting.calls._
-import com.sos.scheduler.engine.minicom.remoting.serial.ResultDeserializer._
-import com.sos.scheduler.engine.minicom.types.HRESULT._
-import com.sos.scheduler.engine.minicom.types.{COMException, HRESULT}
+import com.sos.jobscheduler.minicom.idispatch.DISPID
+import com.sos.jobscheduler.minicom.remoting.calls._
+import com.sos.jobscheduler.minicom.remoting.serial.ResultDeserializer._
+import com.sos.jobscheduler.minicom.types.HRESULT._
+import com.sos.jobscheduler.minicom.types.{COMException, HRESULT}
 import java.util.Objects.requireNonNull
 import org.scalactic.Requirements._
 import scala.collection.mutable

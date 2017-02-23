@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.data.filebased
+package com.sos.jobscheduler.data.filebased
 
-import com.sos.scheduler.engine.base.generic.IsString
-import com.sos.scheduler.engine.data.filebased.AbsolutePath._
+import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.data.filebased.AbsolutePath._
 
 trait AbsolutePath extends IsString {
 
@@ -41,9 +41,9 @@ object AbsolutePath {
 
     def apply(o: String): A
 
-    protected[engine] def isEmptyAllowed = false
-    protected[engine] def isSingleSlashAllowed = false
-    protected[engine] def isCommaAllowed = true
+    def isEmptyAllowed = false
+    def isSingleSlashAllowed = false
+    def isCommaAllowed = true
   }
 
   private[data] final case class Untyped(string: String) extends AbsolutePath {

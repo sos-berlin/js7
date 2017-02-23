@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.engine2.order
+package com.sos.jobscheduler.data.engine2.order
 
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.base.generic.IsString
 
 final case class NodeId(string: String) extends IsString
 

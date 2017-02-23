@@ -1,29 +1,29 @@
-package com.sos.scheduler.engine.master
+package com.sos.jobscheduler.master
 
 import akka.actor.ActorSystem
 import com.google.common.io.Closer
 import com.google.inject.Guice
-import com.sos.scheduler.engine.agent.Agent
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.data.engine2.order.{JobChainPath, NodeId, NodeKey, Order, OrderEvent}
-import com.sos.scheduler.engine.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent}
-import com.sos.scheduler.engine.data.order.OrderId
-import com.sos.scheduler.engine.master.RecoveryIT._
-import com.sos.scheduler.engine.master.command.MasterCommand
-import com.sos.scheduler.engine.master.configuration.MasterConfiguration
-import com.sos.scheduler.engine.master.configuration.inject.MasterModule
-import com.sos.scheduler.engine.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.engine2.order.{JobChainPath, NodeId, NodeKey, Order, OrderEvent}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent}
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.master.RecoveryIT._
+import com.sos.jobscheduler.master.command.MasterCommand
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.configuration.inject.MasterModule
+import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
 import org.scalatest.FreeSpec

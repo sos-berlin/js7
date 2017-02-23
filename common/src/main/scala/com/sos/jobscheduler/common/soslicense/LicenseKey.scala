@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.common.soslicense
+package com.sos.jobscheduler.common.soslicense
 
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.soslicense.LicenseKey._
-import com.sos.scheduler.engine.common.soslicense.Parameters._
-import com.sos.scheduler.engine.common.soslicense.UnsignedInt32._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.soslicense.LicenseKey._
+import com.sos.jobscheduler.common.soslicense.Parameters._
+import com.sos.jobscheduler.common.soslicense.UnsignedInt32._
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter.BASIC_ISO_DATE
 import scala.util.control.NonFatal
@@ -57,7 +57,7 @@ object LicenseKey {
     salt = 0)
 
   def apply(key: String): LicenseKey = apply(LicenseKeyString(key))
-  
+
   def apply(key: LicenseKeyString): LicenseKey =
     try {
       val parts = key.normalizedString split '-'

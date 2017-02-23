@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.dotnet;
+package com.sos.jobscheduler.taskserver.dotnet;
 
 public final class DotnetMonitor extends sos.spooler.Monitor_impl {
     private final DotnetApiImpl apiImpl;

@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.agent.tests
+package com.sos.jobscheduler.agent.tests
 
-import com.sos.scheduler.engine.agent.Agent
-import com.sos.scheduler.engine.agent.client.{AgentClient, SimpleAgentClient}
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, LoginResponse}
-import com.sos.scheduler.engine.agent.data.commands.{Login, Logout, NoOperation}
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.data.session.SessionToken
+import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.client.{AgentClient, SimpleAgentClient}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
+import com.sos.jobscheduler.agent.data.commands.{Login, Logout, NoOperation}
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.session.SessionToken
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import spray.http.StatusCodes.{Forbidden, Unauthorized}

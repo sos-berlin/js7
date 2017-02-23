@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.tunnel.data
+package com.sos.jobscheduler.tunnel.data
 
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._
 

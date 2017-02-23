@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.configutils
+package com.sos.jobscheduler.common.configutils
 
-import com.sos.scheduler.engine.common.configutils.Configs._
-import com.sos.scheduler.engine.common.configutils.ConfigsTest._
+import com.sos.jobscheduler.common.configutils.Configs._
+import com.sos.jobscheduler.common.configutils.ConfigsTest._
 import com.typesafe.config.{ConfigException, ConfigFactory}
 import org.scalatest.FreeSpec
 

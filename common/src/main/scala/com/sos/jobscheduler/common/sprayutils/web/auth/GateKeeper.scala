@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.common.sprayutils.web.auth
+package com.sos.jobscheduler.common.sprayutils.web.auth
 
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.User.Anonymous
-import com.sos.scheduler.engine.common.auth.{User, UserAndPassword, UserId}
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
-import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper._
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.auth.User.Anonymous
+import com.sos.jobscheduler.common.auth.{User, UserAndPassword, UserId}
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.SprayUtils._
+import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeper._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.typesafe.config.Config
 import java.time.Duration
 import scala.concurrent._

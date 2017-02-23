@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.auth
+package com.sos.jobscheduler.common.auth
 
 /**
   * User for a user.

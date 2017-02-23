@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
 import java.time.Duration
 import org.scalatest.FreeSpec

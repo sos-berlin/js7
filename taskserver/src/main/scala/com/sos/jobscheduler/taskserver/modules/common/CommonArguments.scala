@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.taskserver.modules.common
+package com.sos.jobscheduler.taskserver.modules.common
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.taskserver.common.StdFiles
-import com.sos.scheduler.engine.taskserver.modules.monitor.{Monitor, MonitorProcessor}
-import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.taskserver.common.StdFiles
+import com.sos.jobscheduler.taskserver.modules.monitor.{Monitor, MonitorProcessor}
+import com.sos.jobscheduler.taskserver.spoolerapi.TypedNamedIDispatches
 import scala.collection.immutable
 
 /**

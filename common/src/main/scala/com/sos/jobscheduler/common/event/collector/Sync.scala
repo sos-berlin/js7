@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.common.event.collector
+package com.sos.jobscheduler.common.event.collector
 
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.common.time.timer.TimerService.TimeoutFuture
-import com.sos.scheduler.engine.data.event._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.common.time.timer.TimerService.TimeoutFuture
+import com.sos.jobscheduler.data.event._
 import java.time.Instant.now
 import java.time.{Duration, Instant}
 import scala.concurrent.{ExecutionContext, Future, Promise}

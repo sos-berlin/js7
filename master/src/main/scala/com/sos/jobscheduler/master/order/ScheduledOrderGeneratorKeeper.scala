@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.master.order
+package com.sos.jobscheduler.master.order
 
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Collections._
-import com.sos.scheduler.engine.common.scalautil.xmls.FileSource
-import com.sos.scheduler.engine.data.engine2.order.Order
-import com.sos.scheduler.engine.data.order.OrderId
-import com.sos.scheduler.engine.master.configuration.MasterConfiguration
-import com.sos.scheduler.engine.master.oldruntime.InstantInterval
-import com.sos.scheduler.engine.master.order.ScheduledOrderGeneratorKeeper._
-import com.sos.scheduler.engine.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Collections._
+import com.sos.jobscheduler.common.scalautil.xmls.FileSource
+import com.sos.jobscheduler.data.engine2.order.Order
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.oldruntime.InstantInterval
+import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorKeeper._
+import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.time.Instant
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq

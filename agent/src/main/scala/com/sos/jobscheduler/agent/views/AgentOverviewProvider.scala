@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.agent.views
+package com.sos.jobscheduler.agent.views
 
 import com.google.inject.Provider
-import com.sos.scheduler.engine.agent.task.TaskHandler
-import com.sos.scheduler.engine.common.system.SystemInformations.systemInformation
-import com.sos.scheduler.engine.data.system.JavaInformation
+import com.sos.jobscheduler.agent.task.TaskHandler
+import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
+import com.sos.jobscheduler.data.system.JavaInformation
 import javax.inject.{Inject, Singleton}
 
 /**

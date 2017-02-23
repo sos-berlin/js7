@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.common.process
+package com.sos.jobscheduler.common.process
 
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.common.process.OperatingSystemSpecific.OS
-import com.sos.scheduler.engine.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
-import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.process.OperatingSystemSpecific.OS
+import com.sos.jobscheduler.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
+import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute

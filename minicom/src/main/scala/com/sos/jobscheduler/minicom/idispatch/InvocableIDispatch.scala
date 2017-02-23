@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.idispatch
+package com.sos.jobscheduler.minicom.idispatch
 
 /**
   * An IDispatch using only methods of Invocable.

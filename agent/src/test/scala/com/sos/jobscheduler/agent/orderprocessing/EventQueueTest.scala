@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.agent.orderprocessing
+package com.sos.jobscheduler.agent.orderprocessing
 
 import akka.actor.{ActorSystem, Props}
-import com.sos.scheduler.engine.agent.orderprocessing.EventQueueTest.MyNonEmptyEventSeq
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.engine2.order.OrderEvent
-import com.sos.scheduler.engine.data.engine2.order.OrderEvent.OrderReady
-import com.sos.scheduler.engine.data.event.{EventId, EventSeq, KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.data.order.OrderId
+import com.sos.jobscheduler.agent.orderprocessing.EventQueueTest.MyNonEmptyEventSeq
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.engine2.order.OrderEvent
+import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderReady
+import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.order.OrderId
 import java.time.Duration
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq

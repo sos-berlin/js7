@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.async.synchronizer
+package com.sos.jobscheduler.common.async.synchronizer
 
 import akka.actor.{ActorRefFactory, PoisonPill}
 import scala.concurrent.Future

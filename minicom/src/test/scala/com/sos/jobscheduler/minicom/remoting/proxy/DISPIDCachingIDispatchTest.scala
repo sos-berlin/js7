@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting.proxy
+package com.sos.jobscheduler.minicom.remoting.proxy
 
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch}
-import com.sos.scheduler.engine.minicom.remoting.proxy.DISPIDCachingIDispatchTest._
+import com.sos.jobscheduler.minicom.idispatch.{DISPID, DispatchType, IDispatch}
+import com.sos.jobscheduler.minicom.remoting.proxy.DISPIDCachingIDispatchTest._
 import org.scalatest.FreeSpec
 
 /**

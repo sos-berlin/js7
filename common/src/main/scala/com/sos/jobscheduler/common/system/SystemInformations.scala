@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.system
+package com.sos.jobscheduler.common.system
 
-import com.sos.scheduler.engine.base.system.SystemInformation
-import com.sos.scheduler.engine.common.utils.BeanPropertyReader
-import com.sos.scheduler.engine.common.utils.BeanPropertyReader.ConditionalConverter
+import com.sos.jobscheduler.base.system.SystemInformation
+import com.sos.jobscheduler.common.utils.BeanPropertyReader
+import com.sos.jobscheduler.common.utils.BeanPropertyReader.ConditionalConverter
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.lang.management.OperatingSystemMXBean
 

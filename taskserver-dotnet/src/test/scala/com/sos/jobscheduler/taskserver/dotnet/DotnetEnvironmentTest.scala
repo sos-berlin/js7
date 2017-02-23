@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.taskserver.dotnet
+package com.sos.jobscheduler.taskserver.dotnet
 
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
 import DotnetEnvironmentTest._
 import java.nio.file.Files.{createTempDirectory, delete}
 import org.scalatest.FreeSpec
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 
 /**
   * @author Joacim Zschimmer

@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.base.utils
+package com.sos.jobscheduler.base.utils
 
 
-import com.sos.scheduler.engine.base.utils.StackTraces._
-import com.sos.scheduler.engine.base.utils.StackTracesTest._
+import com.sos.jobscheduler.base.utils.StackTraces._
+import com.sos.jobscheduler.base.utils.StackTracesTest._
 import org.scalatest.FreeSpec
 import scala.util.Try
 

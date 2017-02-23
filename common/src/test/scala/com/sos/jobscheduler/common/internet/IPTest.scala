@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.internet
+package com.sos.jobscheduler.common.internet
 
-import com.sos.scheduler.engine.base.convert.As.convert
-import com.sos.scheduler.engine.common.internet.IP._
+import com.sos.jobscheduler.base.convert.As.convert
+import com.sos.jobscheduler.common.internet.IP._
 import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
 import org.scalatest.FreeSpec
 

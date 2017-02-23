@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
 import org.scalatest.FreeSpec
 import scala.util.Success

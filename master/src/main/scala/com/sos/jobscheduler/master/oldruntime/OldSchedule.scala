@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.master.oldruntime
+package com.sos.jobscheduler.master.oldruntime
 
 import com.google.common.collect.{AbstractIterator ⇒ GuavaIterator}
-import com.sos.scheduler.engine.common.scalautil.Collections._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.master.oldruntime.OldSchedule._
+import com.sos.jobscheduler.common.scalautil.Collections._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.master.oldruntime.OldSchedule._
 import java.time._
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._

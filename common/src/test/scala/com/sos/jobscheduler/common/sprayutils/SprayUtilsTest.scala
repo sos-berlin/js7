@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
+import com.sos.jobscheduler.common.sprayutils.SprayUtils._
 import org.scalatest.FreeSpec
 import spray.http.Uri
 import spray.routing.Directives._

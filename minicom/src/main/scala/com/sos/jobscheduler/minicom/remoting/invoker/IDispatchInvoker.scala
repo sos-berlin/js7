@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.minicom.remoting.invoker
+package com.sos.jobscheduler.minicom.remoting.invoker
 
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch
+import com.sos.jobscheduler.minicom.idispatch.IDispatch
 
 /**
  * @author Joacim Zschimmer

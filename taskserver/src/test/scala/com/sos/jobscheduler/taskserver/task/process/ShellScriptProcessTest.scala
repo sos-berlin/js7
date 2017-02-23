@@ -1,20 +1,20 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.scheduler.engine.common.process.Processes.newTemporaryShellFile
-import com.sos.scheduler.engine.common.process.StdoutStderr.Stdout
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.system.OperatingSystem.{KernelSupportsNestedShebang, isSolaris, isUnix, isWindows}
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
-import com.sos.scheduler.engine.data.job.ReturnCode
-import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
+import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
+import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
+import com.sos.jobscheduler.common.process.StdoutStderr.Stdout
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.system.FileUtils._
+import com.sos.jobscheduler.common.system.OperatingSystem.{KernelSupportsNestedShebang, isSolaris, isUnix, isWindows}
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
 import java.nio.file.Files._
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global

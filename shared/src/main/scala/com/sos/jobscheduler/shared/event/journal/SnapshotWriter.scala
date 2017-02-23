@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.shared.event.journal
+package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{Actor, ActorRef, Terminated}
-import com.sos.scheduler.engine.base.utils.ScalaUtils.RichThrowable
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.shared.event.journal.SnapshotWriter._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.shared.event.journal.SnapshotWriter._
 import scala.collection.immutable
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}

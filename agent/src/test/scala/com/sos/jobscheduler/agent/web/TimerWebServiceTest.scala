@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.web.test.WebServiceTest
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.{TimerOverview, TimerService, TimerServiceOverview}
+import com.sos.jobscheduler.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.{TimerOverview, TimerService, TimerServiceOverview}
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.collection.immutable

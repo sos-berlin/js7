@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.data.web
+package com.sos.jobscheduler.agent.data.web
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.tunnel.data.TunnelId
 import org.scalatest.FreeSpec
 
 /**

@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.shared.common.jsonseq
+package com.sos.jobscheduler.shared.common.jsonseq
 
 import com.google.common.base.Ascii
 import com.google.common.io.Files.touch
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.withTemporaryFile
-import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
-import com.sos.scheduler.engine.data.event.{Event, KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.shared.common.jsonseq.FileJsonSeqTest._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
+import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.shared.common.jsonseq.FileJsonSeqTest._
 import java.io.{FileInputStream, FileOutputStream, InputStream, OutputStream}
 import java.nio.file.Files
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}

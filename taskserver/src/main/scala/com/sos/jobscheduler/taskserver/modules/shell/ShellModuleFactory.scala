@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.modules.shell
+package com.sos.jobscheduler.taskserver.modules.shell
 
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext

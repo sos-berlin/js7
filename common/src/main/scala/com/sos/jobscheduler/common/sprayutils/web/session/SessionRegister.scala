@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.common.sprayutils.web.session
+package com.sos.jobscheduler.common.sprayutils.web.session
 
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.SecretStringGenerator
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.completeWithError
-import com.sos.scheduler.engine.data.session.SessionToken
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.auth.SecretStringGenerator
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.completeWithError
+import com.sos.jobscheduler.data.session.SessionToken
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConversions._
 import shapeless.{::, HNil}

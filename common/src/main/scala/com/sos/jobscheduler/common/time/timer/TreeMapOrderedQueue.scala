@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.time.timer
+package com.sos.jobscheduler.common.time.timer
 
 import TreeMapOrderedQueue._
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Logger
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.reflect.ClassTag

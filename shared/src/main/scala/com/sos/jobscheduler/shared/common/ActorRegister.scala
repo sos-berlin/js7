@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.shared.common
+package com.sos.jobscheduler.shared.common
 
 import akka.actor.ActorRef
 import scala.collection.mutable

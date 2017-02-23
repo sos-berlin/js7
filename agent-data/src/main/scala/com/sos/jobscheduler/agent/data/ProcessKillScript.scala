@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.agent.data
+package com.sos.jobscheduler.agent.data
 
-import com.sos.scheduler.engine.base.generic.IsString
-import com.sos.scheduler.engine.common.process.Processes.Pid
-import com.sos.scheduler.engine.data.job.TaskId
+import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.common.process.Processes.Pid
+import com.sos.jobscheduler.data.job.TaskId
 import java.nio.file.{Path, Paths}
 import scala.collection.immutable
 

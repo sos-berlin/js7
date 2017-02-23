@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.tcp
+package com.sos.jobscheduler.common.tcp
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.tcp.BlockingTcpConnection._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.tcp.BlockingTcpConnection._
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.{AsynchronousCloseException, ServerSocketChannel, SocketChannel}

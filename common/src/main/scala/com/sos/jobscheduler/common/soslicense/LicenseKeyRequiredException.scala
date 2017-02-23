@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.soslicense
+package com.sos.jobscheduler.common.soslicense
 
-import com.sos.scheduler.engine.base.exceptions.StandardPublicException
+import com.sos.jobscheduler.base.exceptions.StandardPublicException
 
 /**
  * @author Joacim Zschimmer

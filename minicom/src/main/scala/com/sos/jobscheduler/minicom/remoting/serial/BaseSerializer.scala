@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
 import akka.util.ByteStringBuilder
-import com.sos.scheduler.engine.minicom.remoting.serial.BaseSerializer._
+import com.sos.jobscheduler.minicom.remoting.serial.BaseSerializer._
 import java.nio.ByteOrder
 import java.nio.ByteOrder.BIG_ENDIAN
 import java.util.UUID

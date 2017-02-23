@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.master.order.agent
+package com.sos.jobscheduler.master.order.agent
 
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.scheduler.engine.data.engine2.agent.AgentPath
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.data.engine2.agent.AgentPath
 import javax.xml.transform.Source
 
 /**

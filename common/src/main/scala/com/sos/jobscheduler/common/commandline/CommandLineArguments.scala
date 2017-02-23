@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.commandline
+package com.sos.jobscheduler.common.commandline
 
-import com.sos.scheduler.engine.base.convert.ConvertibleMultiPartialFunction
-import com.sos.scheduler.engine.common.commandline.CommandLineArguments.{Argument, NameOnly}
+import com.sos.jobscheduler.base.convert.ConvertibleMultiPartialFunction
+import com.sos.jobscheduler.common.commandline.CommandLineArguments.{Argument, NameOnly}
 import java.util.NoSuchElementException
 import scala.collection.mutable
 

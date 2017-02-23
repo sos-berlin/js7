@@ -1,17 +1,17 @@
-package com.sos.scheduler.engine.taskserver
+package com.sos.jobscheduler.taskserver
 
 import akka.actor.ActorSystem
 import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.google.inject.Stage._
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder
-import com.sos.scheduler.engine.taskserver.configuration.inject.{TaskServerMainModule, TaskServerModule}
-import com.sos.scheduler.engine.taskserver.data.{DotnetConfiguration, TaskServerArguments}
-import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
+import com.sos.jobscheduler.taskserver.configuration.inject.{TaskServerMainModule, TaskServerModule}
+import com.sos.jobscheduler.taskserver.data.{DotnetConfiguration, TaskServerArguments}
+import com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer
 import java.net.{InetAddress, ServerSocket}
 import org.scalatest.FreeSpec
 

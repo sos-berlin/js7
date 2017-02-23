@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.shared.common.jsonseq
+package com.sos.jobscheduler.shared.common.jsonseq
 
 import com.google.common.base.Ascii
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.shared.common.jsonseq.InputStreamJsonSeqIterator._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator._
 import java.io.{BufferedReader, EOFException, InputStream, InputStreamReader}
 import scala.collection.AbstractIterator
 import scala.io

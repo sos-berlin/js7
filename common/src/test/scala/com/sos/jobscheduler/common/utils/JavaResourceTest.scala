@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.jobscheduler.common.utils
 
 import com.google.common.io.Resources.getResource
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
@@ -14,10 +14,10 @@ import org.scalatest.Matchers._
  */
 final class JavaResourceTest extends FreeSpec {
 
-  private val dirPath = "com/sos/scheduler/engine/common/utils"
-  private val path = "com/sos/scheduler/engine/common/utils/test.txt"
+  private val dirPath = "com/sos/jobscheduler/common/utils"
+  private val path = "com/sos/jobscheduler/common/utils/test.txt"
   private val expectedString = "TEST CONTENT IN → UTF-8\n"
-  private val nonExistentPath = "com/sos/scheduler/engine/common/utils/non-existent"
+  private val nonExistentPath = "com/sos/jobscheduler/common/utils/non-existent"
 
   "simpleName" in {
     JavaResource(path).simpleName shouldEqual "test.txt"

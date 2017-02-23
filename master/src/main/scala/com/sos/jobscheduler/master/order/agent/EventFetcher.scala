@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.master.order.agent
+package com.sos.jobscheduler.master.order.agent
 
-import com.sos.scheduler.engine.base.generic.Completed
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.master.order.agent.EventFetcher._
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.master.order.agent.EventFetcher._
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag

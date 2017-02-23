@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.spoolerapi
+package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch
+import com.sos.jobscheduler.minicom.idispatch.IDispatch
 import org.scalatest.FreeSpec
 
 /**

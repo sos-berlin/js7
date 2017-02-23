@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.http.server.heartbeat
+package com.sos.jobscheduler.http.server.heartbeat
 
 import akka.actor.ActorRefFactory
-import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
-import com.sos.scheduler.engine.common.sprayutils.Marshalling.marshalToHttpResponse
-import com.sos.scheduler.engine.common.time.timer.{Timer, TimerService}
-import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestHeaders._
-import com.sos.scheduler.engine.http.client.heartbeat.{HeartbeatId, HeartbeatResponseHeaders, HttpHeartbeatTiming}
-import com.sos.scheduler.engine.http.server.heartbeat.ClientSideHeartbeatService._
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService._
-import com.sos.scheduler.engine.http.server.idempotence.Idempotence
+import com.sos.jobscheduler.common.scalautil.{Logger, ScalaConcurrentHashMap}
+import com.sos.jobscheduler.common.sprayutils.Marshalling.marshalToHttpResponse
+import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
+import com.sos.jobscheduler.http.client.heartbeat.HeartbeatRequestHeaders._
+import com.sos.jobscheduler.http.client.heartbeat.{HeartbeatId, HeartbeatResponseHeaders, HttpHeartbeatTiming}
+import com.sos.jobscheduler.http.server.heartbeat.ClientSideHeartbeatService._
+import com.sos.jobscheduler.http.server.heartbeat.HeartbeatService._
+import com.sos.jobscheduler.http.server.idempotence.Idempotence
 import java.time.Instant.now
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicReference

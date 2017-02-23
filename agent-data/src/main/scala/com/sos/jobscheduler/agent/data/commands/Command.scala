@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 
 /**
  * @author Joacim Zschimmer
  */
 trait Command {
-  type Response <: com.sos.scheduler.engine.agent.data.commandresponses.Response
+  type Response <: com.sos.jobscheduler.agent.data.commandresponses.Response
 
   def toShortString = toString
 

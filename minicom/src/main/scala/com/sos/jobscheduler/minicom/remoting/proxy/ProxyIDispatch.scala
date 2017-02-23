@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.minicom.remoting.proxy
+package com.sos.jobscheduler.minicom.remoting.proxy
 
-import com.sos.scheduler.engine.base.generic.Completed
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.time.ScalaTime.MaxDuration
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch}
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime.MaxDuration
+import com.sos.jobscheduler.minicom.idispatch.{DISPID, DispatchType, IDispatch}
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
 import scala.concurrent.Future
 
 /**

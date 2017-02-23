@@ -1,19 +1,19 @@
-package com.sos.scheduler.engine.agent.orderprocessing
+package com.sos.jobscheduler.agent.orderprocessing
 
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props, Status, SupervisorStrategy}
 import akka.util.Timeout
-import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
-import com.sos.scheduler.engine.agent.data.commands.{Command, OrderCommand, RegisterAsMaster}
-import com.sos.scheduler.engine.agent.orderprocessing.AgentActor._
-import com.sos.scheduler.engine.agent.orderprocessing.job.{JobKeeper, JobRunner}
-import com.sos.scheduler.engine.agent.task.AgentTaskFactory
-import com.sos.scheduler.engine.common.akkautils.Akkas
-import com.sos.scheduler.engine.common.auth.UserId
-import com.sos.scheduler.engine.common.event.EventIdGenerator
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.engine2.order.JobPath
-import com.sos.scheduler.engine.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.agent.data.commands.{Command, OrderCommand, RegisterAsMaster}
+import com.sos.jobscheduler.agent.orderprocessing.AgentActor._
+import com.sos.jobscheduler.agent.orderprocessing.job.{JobKeeper, JobRunner}
+import com.sos.jobscheduler.agent.task.AgentTaskFactory
+import com.sos.jobscheduler.common.akkautils.Akkas
+import com.sos.jobscheduler.common.auth.UserId
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.engine2.order.JobPath
+import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
 import java.nio.file.Path
 import scala.collection.immutable.Seq
 import scala.collection.mutable

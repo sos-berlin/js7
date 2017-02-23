@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.http.client.heartbeat
+package com.sos.jobscheduler.http.client.heartbeat
 
-import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatResponseHeaders._
+import com.sos.jobscheduler.http.client.heartbeat.HeartbeatResponseHeaders._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import spray.http.HttpHeader

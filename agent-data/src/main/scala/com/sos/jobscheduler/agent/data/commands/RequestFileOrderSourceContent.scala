@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.scheduler.engine.agent.data.commandresponses.FileOrderSourceContent
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.agent.data.commandresponses.FileOrderSourceContent
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import java.time.Duration
 import scala.collection.immutable
 import spray.json.DefaultJsonProtocol._

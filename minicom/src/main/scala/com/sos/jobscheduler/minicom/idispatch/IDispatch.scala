@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.idispatch
+package com.sos.jobscheduler.minicom.idispatch
 
-import com.sos.scheduler.engine.minicom.types.HRESULT.DISP_E_UNKNOWNNAME
-import com.sos.scheduler.engine.minicom.types.{COMException, IUnknown}
+import com.sos.jobscheduler.minicom.types.HRESULT.DISP_E_UNKNOWNNAME
+import com.sos.jobscheduler.minicom.types.{COMException, IUnknown}
 
 /**
  * @author Joacim Zschimmer

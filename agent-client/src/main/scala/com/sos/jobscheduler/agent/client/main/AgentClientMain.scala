@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.agent.client.main
+package com.sos.jobscheduler.agent.client.main
 
-import com.sos.scheduler.engine.agent.client.TextAgentClient
-import com.sos.scheduler.engine.common.commandline.CommandLineArguments
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.data.agent.AgentAddress
+import com.sos.jobscheduler.agent.client.TextAgentClient
+import com.sos.jobscheduler.common.commandline.CommandLineArguments
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.data.agent.AgentAddress
 import scala.io
 import scala.util.control.NonFatal
 

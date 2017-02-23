@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
-import com.sos.scheduler.engine.common.sprayutils.XmlStringTest._
-import com.sos.scheduler.engine.common.xml.XmlUtils.removeXmlProlog
+import com.sos.jobscheduler.common.scalautil.xmls.SafeXML
+import com.sos.jobscheduler.common.sprayutils.XmlStringTest._
+import com.sos.jobscheduler.common.xml.XmlUtils.removeXmlProlog
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_16, UTF_8}
 import org.scalatest.FreeSpec

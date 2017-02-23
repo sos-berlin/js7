@@ -1,6 +1,6 @@
 package sos.spooler
 
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Logger
 import java.lang.reflect.{Method, Modifier, Type}
 import org.reflections.Reflections
 import org.scalatest.FreeSpec

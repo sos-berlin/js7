@@ -1,27 +1,27 @@
-package com.sos.scheduler.engine.master
+package com.sos.jobscheduler.master
 
 import akka.actor.{ActorSystem, Props}
 import akka.pattern.ask
 import com.google.common.io.Closer
 import com.google.inject.Guice
-import com.sos.scheduler.engine.base.generic.Completed
-import com.sos.scheduler.engine.common.event.EventIdGenerator
-import com.sos.scheduler.engine.common.event.collector.EventCollector
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.engine2.order.Order
-import com.sos.scheduler.engine.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.data.order.OrderId
-import com.sos.scheduler.engine.master.Master._
-import com.sos.scheduler.engine.master.command.MasterCommand
-import com.sos.scheduler.engine.master.configuration.MasterConfiguration
-import com.sos.scheduler.engine.master.configuration.inject.MasterModule
-import com.sos.scheduler.engine.master.oldruntime.InstantInterval
-import com.sos.scheduler.engine.master.order.{MasterOrderKeeper, ScheduledOrderGeneratorKeeper}
-import com.sos.scheduler.engine.master.web.MasterWebServer
-import com.sos.scheduler.engine.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.engine2.order.Order
+import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.master.Master._
+import com.sos.jobscheduler.master.command.MasterCommand
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.configuration.inject.MasterModule
+import com.sos.jobscheduler.master.oldruntime.InstantInterval
+import com.sos.jobscheduler.master.order.{MasterOrderKeeper, ScheduledOrderGeneratorKeeper}
+import com.sos.jobscheduler.master.web.MasterWebServer
+import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
 import java.nio.file.Files
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq

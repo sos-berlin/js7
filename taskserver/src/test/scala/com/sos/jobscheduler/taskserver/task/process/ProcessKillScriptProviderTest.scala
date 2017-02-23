@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
 import com.google.common.io.Files.touch
-import com.sos.scheduler.engine.common.process.Processes.ShellFileExtension
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.system.OperatingSystem.isUnix
+import com.sos.jobscheduler.common.process.Processes.ShellFileExtension
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.system.FileUtils._
+import com.sos.jobscheduler.common.system.OperatingSystem.isUnix
 import java.nio.file.Files
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFileAttributes

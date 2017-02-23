@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.agent.test
+package com.sos.jobscheduler.agent.test
 
 import com.google.inject.Module
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
-import com.sos.scheduler.engine.agent.Agent
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.inject.AgentModule
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
 /**

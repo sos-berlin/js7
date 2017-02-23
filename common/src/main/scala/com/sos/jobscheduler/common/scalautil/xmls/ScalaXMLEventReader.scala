@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.common.scalautil.xmls
+package com.sos.jobscheduler.common.scalautil.xmls
 
 import ScalaXMLEventReader._
-import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunction
-import com.sos.scheduler.engine.base.utils.ScalaUtils.{cast, implicitClass}
-import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader._
-import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources.stringToSource
+import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction
+import com.sos.jobscheduler.base.utils.ScalaUtils.{cast, implicitClass}
+import com.sos.jobscheduler.common.scalautil.AssignableFrom.assignableFrom
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Collections.implicits._
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader._
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
 import java.util.NoSuchElementException
 import javax.xml.stream.events.{Characters, Comment, EndDocument, EndElement, StartDocument, StartElement, XMLEvent}
 import javax.xml.stream.{Location, XMLEventReader, XMLInputFactory}
@@ -144,7 +144,7 @@ extends AutoCloseable {
   }
 
 //  import javax.xml.transform.{Result, TransformerFactory}
-//  import com.sos.scheduler.engine.common.scalautil.StringWriters.writingString
+//  import com.sos.jobscheduler.common.scalautil.StringWriters.writingString
 //  import javax.xml.transform.stax.StAXSource
 //  import javax.xml.transform.stream.StreamResult
 //  private lazy val transformerFactory = TransformerFactory.newInstance()

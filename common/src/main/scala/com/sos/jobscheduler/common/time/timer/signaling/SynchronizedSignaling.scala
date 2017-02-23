@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.time.timer.signaling
+package com.sos.jobscheduler.common.time.timer.signaling
 
 /**
   * @author Joacim Zschimmer

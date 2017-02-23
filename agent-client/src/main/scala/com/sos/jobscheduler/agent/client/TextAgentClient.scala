@@ -1,18 +1,18 @@
-package com.sos.scheduler.engine.agent.client
+package com.sos.jobscheduler.agent.client
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.agent.client.TextAgentClient._
-import com.sos.scheduler.engine.agent.data.web.AgentUris
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.{UserAndPassword, UserId}
-import com.sos.scheduler.engine.common.configutils.Configs
-import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
-import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion.yamlToJsValue
-import com.sos.scheduler.engine.common.sprayutils.https.{Https, KeystoreReference}
-import com.sos.scheduler.engine.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.JavaResource
-import com.sos.scheduler.engine.data.agent.AgentAddress
+import com.sos.jobscheduler.agent.client.TextAgentClient._
+import com.sos.jobscheduler.agent.data.web.AgentUris
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.common.configutils.Configs
+import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
+import com.sos.jobscheduler.common.sprayutils.YamlJsonConversion.yamlToJsValue
+import com.sos.jobscheduler.common.sprayutils.https.{Https, KeystoreReference}
+import com.sos.jobscheduler.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.data.agent.AgentAddress
 import java.nio.charset.StandardCharsets._
 import scala.concurrent.Future
 import scala.util.Try
@@ -85,7 +85,7 @@ extends AutoCloseable {
 }
 
 object TextAgentClient {
-  private val ConfigurationResource = JavaResource("com/sos/scheduler/engine/agent/client/main/akka.conf")
+  private val ConfigurationResource = JavaResource("com/sos/jobscheduler/agent/client/main/akka.conf")
 
   implicit val JsValueMarshaller = Marshaller.of[JsValue](`application/json`) { (value, contentType, ctx) ⇒
     ctx.marshalTo(HttpEntity(`application/json`, value.compactPrint.getBytes(UTF_8)))

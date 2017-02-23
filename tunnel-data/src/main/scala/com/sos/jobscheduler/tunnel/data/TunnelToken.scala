@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.tunnel.data
+package com.sos.jobscheduler.tunnel.data
 
-import com.sos.scheduler.engine.base.generic.{IsString, SecretString}
-import com.sos.scheduler.engine.common.auth.SecretStringGenerator
+import com.sos.jobscheduler.base.generic.{IsString, SecretString}
+import com.sos.jobscheduler.common.auth.SecretStringGenerator
 import spray.json.DefaultJsonProtocol._
 
 /**

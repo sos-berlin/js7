@@ -1,25 +1,25 @@
-package com.sos.scheduler.engine.agent.task
+package com.sos.jobscheduler.agent.task
 
 import akka.agent.{Agent ⇒ AkkaAgent}
 import akka.util.ByteString
 import com.google.common.base.Splitter
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.agent.data.commands.{StartApiTask, StartNonApiTask, StartTask}
-import com.sos.scheduler.engine.agent.task.StandardAgentTaskFactory._
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.closeOnError
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.minicom.remoting.calls.{CallCall, ReleaseCall}
-import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer
-import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer.deserializeCall
-import com.sos.scheduler.engine.minicom.types.VariantArray
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
-import com.sos.scheduler.engine.taskserver.task.{RemoteModuleInstanceServer, TaskArguments}
-import com.sos.scheduler.engine.taskserver.{OwnProcessTaskServer, StandardTaskServer}
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.{TunnelListener, TunnelServer}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.commands.{StartApiTask, StartNonApiTask, StartTask}
+import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory._
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
+import com.sos.jobscheduler.common.scalautil.Collections.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.minicom.remoting.calls.{CallCall, ReleaseCall}
+import com.sos.jobscheduler.minicom.remoting.serial.CallDeserializer
+import com.sos.jobscheduler.minicom.remoting.serial.CallDeserializer.deserializeCall
+import com.sos.jobscheduler.minicom.types.VariantArray
+import com.sos.jobscheduler.taskserver.data.TaskServerArguments
+import com.sos.jobscheduler.taskserver.task.{RemoteModuleInstanceServer, TaskArguments}
+import com.sos.jobscheduler.taskserver.{OwnProcessTaskServer, StandardTaskServer}
+import com.sos.jobscheduler.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.jobscheduler.tunnel.server.{TunnelListener, TunnelServer}
 import java.net.InetAddress
 import java.util.regex.Pattern
 import javax.inject.{Inject, Singleton}
@@ -98,7 +98,7 @@ object StandardAgentTaskFactory {
   def runInProcess: Boolean = sys.props contains InProcessName
 
   /**
-    * Resembles the behaviour of [[com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer]].
+    * Resembles the behaviour of [[com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer]].
     */
   private class MyTunnelListener(taskArgumentsPromise: Promise[TaskArguments], taskReleasePromise: Promise[Unit]) extends TunnelListener {
     def onRequest(msg: ByteString) =

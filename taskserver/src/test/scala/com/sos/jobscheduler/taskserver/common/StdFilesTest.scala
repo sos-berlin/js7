@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.common
+package com.sos.jobscheduler.taskserver.common
 
-import com.sos.scheduler.engine.common.process.StdoutStderr.Stdout
-import com.sos.scheduler.engine.taskserver.common.StdFiles.prefixLinesWithStdoutOrStderr
+import com.sos.jobscheduler.common.process.StdoutStderr.Stdout
+import com.sos.jobscheduler.taskserver.common.StdFiles.prefixLinesWithStdoutOrStderr
 import org.scalatest.FreeSpec
 
 /**

@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.shared.event.journal
+package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor._
-import com.sos.scheduler.engine.common.event.EventIdGenerator
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Snapshot}
-import com.sos.scheduler.engine.shared.event.SnapshotKeyedEventBus
-import com.sos.scheduler.engine.shared.event.journal.Journal.{Input, Output}
-import com.sos.scheduler.engine.shared.event.journal.JsonJournalActor._
-import com.sos.scheduler.engine.shared.event.journal.JsonJournalMeta.Header
-import com.sos.scheduler.engine.shared.event.journal.JsonJournalRecoverer.RecoveredJournalingActors
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Snapshot}
+import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.journal.Journal.{Input, Output}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalActor._
+import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.RecoveredJournalingActors
 import java.nio.file.Files.move
 import java.nio.file.StandardCopyOption.{ATOMIC_MOVE, REPLACE_EXISTING}
 import java.nio.file.{Path, Paths}

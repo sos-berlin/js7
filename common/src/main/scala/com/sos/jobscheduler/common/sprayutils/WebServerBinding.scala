@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
+import com.sos.jobscheduler.common.sprayutils.https.KeystoreReference
 import java.net.InetSocketAddress
 
 /**

@@ -68,9 +68,9 @@ lazy val jobscheduler = (project in file("."))
     universalPluginSettings,
     (mappings in Universal) :=
       ((mappings in Universal).value filter { case (_, path) ⇒ (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
-        recursiveFileMapping(baseDirectory.value / "master/src/main/resources/com/sos/scheduler/engine/master/installation") ++
-        recursiveFileMapping(baseDirectory.value / "agent/src/main/resources/com/sos/scheduler/engine/agent/installation") ++
-        recursiveFileMapping(baseDirectory.value / "shared/src/main/resources/com/sos/scheduler/engine/shared/installation"))
+        recursiveFileMapping(baseDirectory.value / "master/src/main/resources/com/sos/jobscheduler/master/installation") ++
+        recursiveFileMapping(baseDirectory.value / "agent/src/main/resources/com/sos/jobscheduler/agent/installation") ++
+        recursiveFileMapping(baseDirectory.value / "shared/src/main/resources/com/sos/jobscheduler/shared/installation"))
 
 lazy val `jobscheduler-docker` = project
   .settings(commonSettings)
@@ -134,7 +134,7 @@ lazy val common = project.dependsOn(base, data)
         versionCommitHash = git.gitHeadCommit.value,
         branch = git.gitCurrentBranch.value),
       "version" → version.value),
-    buildInfoPackage := "com.sos.scheduler.engine.common")
+    buildInfoPackage := "com.sos.jobscheduler.common")
 
 lazy val master = project.dependsOn(shared, common, `agent-client`)
   .configs(ForkedTest).settings(forkedSettings)
@@ -180,7 +180,7 @@ lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserve
       logbackClassic //FIXME % "test"
   }
   //.settings(
-  //mainClass in assembly := Some("com.sos.scheduler.engine.agent.main.AgentMain"),
+  //mainClass in assembly := Some("com.sos.jobscheduler.agent.main.AgentMain"),
   //test in assembly := {},
   //assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false, includeDependency = false),  // No externals
   //assemblyJarName in assembly := "jobscheduler-agent.jar",  // Without Scala binary version

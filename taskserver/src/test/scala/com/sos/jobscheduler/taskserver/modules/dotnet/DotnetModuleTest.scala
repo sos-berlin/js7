@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver.modules.dotnet
+package com.sos.jobscheduler.taskserver.modules.dotnet
 
-import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference}
-import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleLanguage, RawModuleArguments, Script}
-import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule._
+import com.sos.jobscheduler.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference}
+import com.sos.jobscheduler.taskserver.moduleapi.{ModuleLanguage, RawModuleArguments, Script}
+import com.sos.jobscheduler.taskserver.modules.dotnet.DotnetModule._
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 

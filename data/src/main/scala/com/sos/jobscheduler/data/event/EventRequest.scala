@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.event
+package com.sos.jobscheduler.data.event
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import java.time.Duration
 import scala.reflect.ClassTag
 

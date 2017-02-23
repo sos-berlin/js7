@@ -1,33 +1,33 @@
-package com.sos.scheduler.engine.agent.task
+package com.sos.jobscheduler.agent.task
 
 import akka.actor.{Actor, ActorSystem, Props}
 import akka.util.ByteString
 import com.google.inject.{Guice, Provides}
-import com.sos.scheduler.engine.agent.command.CommandMeta
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
-import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.views.TaskHandlerOverview
-import com.sos.scheduler.engine.agent.task.TaskHandlerTest._
-import com.sos.scheduler.engine.base.exceptions.PublicException
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.scheduler.engine.common.guice.GuiceImplicits._
-import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversable
-import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.soslicense.{LicenseKeyBunch, LicenseKeyParameterIsMissingException}
-import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.job.TaskId
-import com.sos.scheduler.engine.taskserver.TaskServer
-import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.TunnelHandle
+import com.sos.jobscheduler.agent.command.CommandMeta
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
+import com.sos.jobscheduler.agent.data.commands._
+import com.sos.jobscheduler.agent.data.views.TaskHandlerOverview
+import com.sos.jobscheduler.agent.task.TaskHandlerTest._
+import com.sos.jobscheduler.base.exceptions.PublicException
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.common.guice.GuiceImplicits._
+import com.sos.jobscheduler.common.guice.ScalaAbstractModule
+import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichTraversable
+import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.soslicense.{LicenseKeyBunch, LicenseKeyParameterIsMissingException}
+import com.sos.jobscheduler.common.system.OperatingSystem._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.job.TaskId
+import com.sos.jobscheduler.taskserver.TaskServer
+import com.sos.jobscheduler.taskserver.TaskServer.Terminated
+import com.sos.jobscheduler.taskserver.data.TaskServerArguments
+import com.sos.jobscheduler.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.jobscheduler.tunnel.server.TunnelHandle
 import java.net.InetAddress
 import java.time.{Duration, Instant}
 import javax.inject.Singleton

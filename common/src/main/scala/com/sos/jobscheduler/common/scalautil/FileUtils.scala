@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.{Closer, Files ⇒ GuavaFiles}
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.Collections.implicits._
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Files.{delete, isSymbolicLink}

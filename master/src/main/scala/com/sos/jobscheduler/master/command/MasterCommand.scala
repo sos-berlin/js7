@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.master.command
+package com.sos.jobscheduler.master.command
 
-import com.sos.scheduler.engine.data.engine2.order.Order
-import com.sos.scheduler.engine.master.command.MasterCommand._
+import com.sos.jobscheduler.data.engine2.order.Order
+import com.sos.jobscheduler.master.command.MasterCommand._
 
 /**
   * @author Joacim Zschimmer

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.shared.event.journal
+package com.sos.jobscheduler.shared.event.journal
 
 import java.io.{InputStream, OutputStream}
 import java.util.zip.{GZIPInputStream, GZIPOutputStream}

@@ -1,21 +1,21 @@
-package com.sos.scheduler.engine.agent.orderprocessing.job
+package com.sos.jobscheduler.agent.orderprocessing.job
 
 import akka.pattern.ask
 import com.google.inject.Guice
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
-import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
-import com.sos.scheduler.engine.agent.orderprocessing.AgentActorIT.provideAgentDataDirectory
-import com.sos.scheduler.engine.agent.orderprocessing.job.JobKeeperTest._
-import com.sos.scheduler.engine.agent.task.AgentTaskFactory
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.Stopwatch
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
+import com.sos.jobscheduler.agent.configuration.inject.AgentModule
+import com.sos.jobscheduler.agent.orderprocessing.AgentActorIT.provideAgentDataDirectory
+import com.sos.jobscheduler.agent.orderprocessing.job.JobKeeperTest._
+import com.sos.jobscheduler.agent.task.AgentTaskFactory
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch
 import org.scalatest.FreeSpec
 import scala.concurrent.duration.DurationInt
 

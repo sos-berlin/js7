@@ -1,7 +1,6 @@
-package com.sos.scheduler.engine.base.sprayjson.typed
+package com.sos.jobscheduler.base.sprayjson.typed
 
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.base.sprayjson.SprayJson.implicits.RichJsValue
 import scala.collection.immutable
 import spray.json._
 

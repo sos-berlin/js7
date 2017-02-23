@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.remoting.proxy.{HasProxyMeta, ProxyRegister}
-import com.sos.scheduler.engine.minicom.types.{CLSID, IUnknown}
+import com.sos.jobscheduler.minicom.remoting.proxy.{HasProxyMeta, ProxyRegister}
+import com.sos.jobscheduler.minicom.types.{CLSID, IUnknown}
 
 /**
  * @author Joacim Zschimmer

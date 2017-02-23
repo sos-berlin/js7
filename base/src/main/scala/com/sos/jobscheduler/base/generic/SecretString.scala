@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.base.generic
+package com.sos.jobscheduler.base.generic
 
-import com.sos.scheduler.engine.base.convert.As
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits.RichJsValue
+import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.sprayjson.SprayJson.implicits.RichJsValue
 import spray.json.{JsString, JsValue, RootJsonFormat}
 
 /**

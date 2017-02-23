@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.taskserver.spoolerapi
+package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.scheduler.engine.common.xml.VariableSets
-import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch
-import com.sos.scheduler.engine.taskserver.spoolerapi.SpoolerTask._
+import com.sos.jobscheduler.common.xml.VariableSets
+import com.sos.jobscheduler.data.message.MessageCode
+import com.sos.jobscheduler.minicom.idispatch.IDispatch
+import com.sos.jobscheduler.taskserver.spoolerapi.SpoolerTask._
 
 /**
  * @author Joacim Zschimmer

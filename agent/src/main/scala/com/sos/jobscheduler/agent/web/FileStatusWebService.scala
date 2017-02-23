@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.common.sprayutils.SimpleTypeSprayJsonSupport._
+import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.common.sprayutils.SimpleTypeSprayJsonSupport._
 import java.nio.file.Files.exists
 import java.nio.file.Paths
 import spray.http.CacheDirectives.{`max-age`, `no-cache`, `no-store`}

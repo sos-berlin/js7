@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.minicom.remoting.proxy
+package com.sos.jobscheduler.minicom.remoting.proxy
 
 import com.google.inject.Guice
-import com.sos.scheduler.engine.common.guice.GuiceImplicits._
-import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable}
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister.DuplicateKeyException
-import com.sos.scheduler.engine.minicom.types.HRESULT._
-import com.sos.scheduler.engine.minicom.types.{COMException, IUnknown}
+import com.sos.jobscheduler.common.guice.GuiceImplicits._
+import com.sos.jobscheduler.minicom.idispatch.{IDispatch, Invocable}
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.minicom.remoting.proxy.ProxyRegister.DuplicateKeyException
+import com.sos.jobscheduler.minicom.types.HRESULT._
+import com.sos.jobscheduler.minicom.types.{COMException, IUnknown}
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

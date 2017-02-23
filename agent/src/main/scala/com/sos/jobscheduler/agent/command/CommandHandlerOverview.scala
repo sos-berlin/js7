@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.command
+package com.sos.jobscheduler.agent.command
 
 import com.google.inject.ImplementedBy
 import spray.json.{JsNumber, JsObject, RootJsonWriter}

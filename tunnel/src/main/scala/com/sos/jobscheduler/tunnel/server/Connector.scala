@@ -1,16 +1,16 @@
-package com.sos.scheduler.engine.tunnel.server
+package com.sos.jobscheduler.tunnel.server
 
 import akka.actor.SupervisorStrategy._
 import akka.actor._
 import akka.io.Tcp
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.akkautils.Akkas.byteStringToTruncatedString
-import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
-import com.sos.scheduler.engine.common.tcp.MessageTcpBridge
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.{Timer, TimerService}
-import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.Connector._
+import com.sos.jobscheduler.common.akkautils.Akkas.byteStringToTruncatedString
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.tcp.MessageTcpBridge
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
+import com.sos.jobscheduler.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
+import com.sos.jobscheduler.tunnel.server.Connector._
 import java.net.InetSocketAddress
 import java.time.{Duration, Instant}
 import scala.concurrent.Promise

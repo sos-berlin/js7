@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.scalautil.xmls
+package com.sos.jobscheduler.common.scalautil.xmls
 
 import java.io.{InputStream, StringReader}
 import javax.xml.transform.Source

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.sprayutils.web.session
+package com.sos.jobscheduler.common.sprayutils.web.session
 
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.data.session.SessionToken
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.data.session.SessionToken
 import org.scalatest.FreeSpec
 import spray.http.StatusCodes.{Forbidden, Unauthorized}
 import spray.routing.Directives._

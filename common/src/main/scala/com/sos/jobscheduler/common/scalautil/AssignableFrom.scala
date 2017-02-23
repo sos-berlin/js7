@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.ScalaUtils
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 
 /**

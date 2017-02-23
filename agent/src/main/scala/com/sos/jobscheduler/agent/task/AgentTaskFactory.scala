@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.task
+package com.sos.jobscheduler.agent.task
 
 import com.google.inject.ImplementedBy
-import com.sos.scheduler.engine.agent.data.commands.StartTask
+import com.sos.jobscheduler.agent.data.commands.StartTask
 import java.net.InetAddress
 
 /**

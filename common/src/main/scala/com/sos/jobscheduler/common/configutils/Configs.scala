@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.common.configutils
+package com.sos.jobscheduler.common.configutils
 
-import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions.wrappedConvert
-import com.sos.scheduler.engine.base.convert.{As, ConvertiblePartialFunction}
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.common.ClassLoaders.currentClassLoader
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.utils.JavaResource
+import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConvert
+import com.sos.jobscheduler.base.convert.{As, ConvertiblePartialFunction}
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.ClassLoaders.currentClassLoader
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.utils.JavaResource
 import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
 import java.nio.file.Files.exists
 import java.nio.file.Path

@@ -1,18 +1,18 @@
-package com.sos.scheduler.engine.taskserver.spoolerapi
+package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
-import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch._
-import com.sos.scheduler.engine.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRemoting, SpecializedProxyIDispatch}
-import com.sos.scheduler.engine.minicom.types.CLSID
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
-import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
+import com.sos.jobscheduler.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.data.message.MessageCode
+import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits._
+import com.sos.jobscheduler.minicom.idispatch.annotation.invocable
+import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.minicom.remoting.proxy.SpecializedProxyIDispatch._
+import com.sos.jobscheduler.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRemoting, SpecializedProxyIDispatch}
+import com.sos.jobscheduler.minicom.types.CLSID
+import com.sos.jobscheduler.taskserver.data.TaskServerArguments
+import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration._
 import java.util.UUID
 
 /**

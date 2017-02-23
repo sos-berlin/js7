@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.tcp
+package com.sos.jobscheduler.common.tcp
 
-import com.sos.scheduler.engine.common.tcp.TcpUtils.{parseTcpPort, requireTcpPortNumber}
+import com.sos.jobscheduler.common.tcp.TcpUtils.{parseTcpPort, requireTcpPortNumber}
 import org.scalatest.FreeSpec
 
 /**

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.AgentTaskId
 import org.scalatest.FreeSpec
 import spray.json._
 

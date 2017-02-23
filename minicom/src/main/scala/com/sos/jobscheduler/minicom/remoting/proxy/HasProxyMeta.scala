@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.minicom.remoting.proxy
+package com.sos.jobscheduler.minicom.remoting.proxy
 
-import com.sos.scheduler.engine.minicom.types.IUnknown
+import com.sos.jobscheduler.minicom.types.IUnknown
 
 /**
   * Like the C++ class Has_reference_with_properties.

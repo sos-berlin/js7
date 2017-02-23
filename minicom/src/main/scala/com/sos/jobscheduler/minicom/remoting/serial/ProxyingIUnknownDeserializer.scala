@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.types.CLSID
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.minicom.types.CLSID
 import javax.annotation.Nullable
 import scala.collection.immutable
 

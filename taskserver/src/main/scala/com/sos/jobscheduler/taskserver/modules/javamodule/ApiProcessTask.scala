@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.taskserver.modules.javamodule
+package com.sos.jobscheduler.taskserver.modules.javamodule
 
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
-import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.taskserver.common.ConcurrentStdoutAndStderrWell
-import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
-import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiProcessTask._
-import com.sos.scheduler.engine.taskserver.modules.monitor.MonitorProcessor
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature, SpoolerOnSuccessSignature, SpoolerOpenSignature}
+import com.sos.jobscheduler.data.message.MessageCode
+import com.sos.jobscheduler.taskserver.common.ConcurrentStdoutAndStderrWell
+import com.sos.jobscheduler.taskserver.modules.common.{CommonArguments, Task}
+import com.sos.jobscheduler.taskserver.modules.javamodule.ApiProcessTask._
+import com.sos.jobscheduler.taskserver.modules.monitor.MonitorProcessor
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.control.NonFatal

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.akkautils
+package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.ActorSystem.Settings
 import akka.actor.Cancellable

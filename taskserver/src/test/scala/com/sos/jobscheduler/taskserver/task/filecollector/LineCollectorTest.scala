@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.taskserver.task.filecollector
+package com.sos.jobscheduler.taskserver.task.filecollector
 
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Closers._
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.{BufferedReader, FileInputStream, FileOutputStream, InputStreamReader, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempFile, delete}

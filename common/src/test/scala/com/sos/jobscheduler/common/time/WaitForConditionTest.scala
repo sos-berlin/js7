@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.time
+package com.sos.jobscheduler.common.time
 
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.WaitForCondition._
-import com.sos.scheduler.engine.common.time.WaitForConditionTest._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition._
+import com.sos.jobscheduler.common.time.WaitForConditionTest._
 import java.lang.System.currentTimeMillis
 import java.time.Duration
 import java.time.Instant.now

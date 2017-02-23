@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data
+package com.sos.jobscheduler.data
 
 import java.time.format.DateTimeFormatter._
 import java.time.format.DateTimeFormatterBuilder
@@ -11,7 +11,7 @@ import spray.json.{JsNumber, JsValue}
 package object event {
 
   /**
-    *  Identifies [[com.sos.scheduler.engine.data.event.Snapshot]]s taken at different times.
+    *  Identifies [[com.sos.jobscheduler.data.event.Snapshot]]s taken at different times.
     *  <p>
     *    The ID encodes the timestamp as the value of milliseconds since 1970-01-01 UTC multiplied by 1000.
     *    The accuracy is one millisecond in most cases (below 1000 events/ms).

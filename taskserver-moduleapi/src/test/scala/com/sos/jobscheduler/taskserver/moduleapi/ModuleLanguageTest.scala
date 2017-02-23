@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.moduleapi
+package com.sos.jobscheduler.taskserver.moduleapi
 
 import org.scalatest.FreeSpec
 

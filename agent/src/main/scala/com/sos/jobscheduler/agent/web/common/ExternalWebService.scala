@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.web.common
+package com.sos.jobscheduler.agent.web.common
 
 /**
  *

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.sprayutils.XmlBytesTest._
+import com.sos.jobscheduler.common.sprayutils.XmlBytesTest._
 import java.nio.charset.StandardCharsets.UTF_8
 import org.scalatest.FreeSpec
 import spray.http.HttpEntity

@@ -1,16 +1,16 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.scheduler.engine.common.process.StdoutStderr._
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.data.job.ReturnCode
-import com.sos.scheduler.engine.taskserver.task.process.JavaProcessIT._
+import com.sos.jobscheduler.common.process.StdoutStderr._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.system.FileUtils._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.taskserver.task.process.JavaProcessIT._
 import java.lang.System.{err, exit, out}
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global

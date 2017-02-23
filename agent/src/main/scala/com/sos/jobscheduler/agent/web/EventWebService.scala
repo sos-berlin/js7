@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.orderprocessing.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
-import com.sos.scheduler.engine.agent.web.EventWebService._
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.common.event.EventIdGenerator
-import com.sos.scheduler.engine.common.event.collector.EventCollector
-import com.sos.scheduler.engine.common.event.collector.EventDirectives._
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
-import com.sos.scheduler.engine.data.event.{Event, KeyedTypedEventJsonFormat}
+import com.sos.jobscheduler.agent.orderprocessing.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
+import com.sos.jobscheduler.agent.web.EventWebService._
+import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.event.collector.EventDirectives._
+import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.data.event.{Event, KeyedTypedEventJsonFormat}
 import scala.concurrent.ExecutionContext
 import spray.routing.Directives._
 

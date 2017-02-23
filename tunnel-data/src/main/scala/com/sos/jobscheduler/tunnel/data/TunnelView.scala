@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.tunnel.data
+package com.sos.jobscheduler.tunnel.data
 
-import com.sos.scheduler.engine.base.sprayjson.InetAddressJsonSupport._
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatView
+import com.sos.jobscheduler.base.sprayjson.InetAddressJsonSupport._
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.http.server.heartbeat.HeartbeatView
 import java.net.InetAddress
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._

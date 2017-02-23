@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.common.event.collector
+package com.sos.jobscheduler.common.event.collector
 
 import com.google.common.base.Splitter
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.data.event._
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.common.sprayutils.SprayUtils._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.event._
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 import shapeless.{::, HNil}

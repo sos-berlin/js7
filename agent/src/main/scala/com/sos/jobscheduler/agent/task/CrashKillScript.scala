@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.agent.task
+package com.sos.jobscheduler.agent.task
 
 import com.google.common.base.StandardSystemProperty.LINE_SEPARATOR
-import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.scheduler.engine.agent.task.CrashKillScript._
-import com.sos.scheduler.engine.common.log.LazyScalaLogger.AsLazyScalaLogger
-import com.sos.scheduler.engine.common.process.Processes.Pid
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
-import com.sos.scheduler.engine.data.job.TaskId
+import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
+import com.sos.jobscheduler.agent.task.CrashKillScript._
+import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
+import com.sos.jobscheduler.common.process.Processes.Pid
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
+import com.sos.jobscheduler.data.job.TaskId
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}

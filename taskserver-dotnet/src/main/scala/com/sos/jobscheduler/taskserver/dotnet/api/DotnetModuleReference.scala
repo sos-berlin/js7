@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.dotnet.api
+package com.sos.jobscheduler.taskserver.dotnet.api
 
 import java.nio.file.Path
 

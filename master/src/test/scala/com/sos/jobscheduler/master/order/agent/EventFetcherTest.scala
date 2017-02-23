@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.master.order.agent
+package com.sos.jobscheduler.master.order.agent
 
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.event.{EventRequest, EventSeq, KeyedEvent, NoKeyEvent, Snapshot}
-import com.sos.scheduler.engine.master.order.agent.EventFetcherTest._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, NoKeyEvent, Snapshot}
+import com.sos.jobscheduler.master.order.agent.EventFetcherTest._
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
 import scala.collection.mutable

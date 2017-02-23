@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.data.filebased
+package com.sos.jobscheduler.data.filebased
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
-import com.sos.scheduler.engine.data.filebased.TypedPath._
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.data.filebased.TypedPath._
 import java.io.File
 import scala.reflect.ClassTag
 
@@ -45,7 +45,7 @@ object TypedPath {
 
     val camelName: String = name stripSuffix "Path"
     final lazy val lowerCaseCamelName = camelName.substring(0, 1).toLowerCase + camelName.substring(1)
-    private[engine] final lazy val cppName: String = lowerCaseCamelName map { c ⇒ if (c.isUpper) "_" + c.toLower else c } mkString ""
+    private final lazy val cppName: String = lowerCaseCamelName map { c ⇒ if (c.isUpper) "_" + c.toLower else c } mkString ""
     lazy val filenameExtension: String = s".$cppName.xml"
 
     /**

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.client
+package com.sos.jobscheduler.agent.client
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.data.agent.AgentAddress
+import com.sos.jobscheduler.data.agent.AgentAddress
 import spray.http.Uri
 
 /**

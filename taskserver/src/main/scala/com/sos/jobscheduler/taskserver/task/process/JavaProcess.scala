@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils.RichAny
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.system.OperatingSystem._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichAny
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.system.OperatingSystem._
 import java.io.File
 import scala.concurrent.ExecutionContext
 

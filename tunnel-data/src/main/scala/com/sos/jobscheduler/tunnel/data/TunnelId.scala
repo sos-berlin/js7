@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.tunnel.data
+package com.sos.jobscheduler.tunnel.data
 
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.base.generic.IsString
 
 /**
  * @author Joacim Zschimmer

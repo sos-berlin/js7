@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.time.timer
+package com.sos.jobscheduler.common.time.timer
 
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.BiFunction

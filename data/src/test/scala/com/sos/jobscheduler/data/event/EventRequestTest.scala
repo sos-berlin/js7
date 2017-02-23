@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.event
+package com.sos.jobscheduler.data.event
 
-import com.sos.scheduler.engine.data.event.EventRequestTest._
+import com.sos.jobscheduler.data.event.EventRequestTest._
 import java.time.Duration
 import org.scalatest.FreeSpec
 

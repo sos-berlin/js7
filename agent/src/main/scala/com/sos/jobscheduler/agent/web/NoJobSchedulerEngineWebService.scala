@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.web.NoJobSchedulerEngineWebService._
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.agent.web.NoJobSchedulerEngineWebService._
+import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
 import spray.http.RemoteAddress
 import spray.http.StatusCodes.NotFound
 import spray.routing.Directives._

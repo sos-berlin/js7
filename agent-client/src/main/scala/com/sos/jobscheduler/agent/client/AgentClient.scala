@@ -1,27 +1,27 @@
-package com.sos.scheduler.engine.agent.client
+package com.sos.jobscheduler.agent.client
 
 import akka.actor.ActorRefFactory
 import akka.util.Timeout
-import com.sos.scheduler.engine.agent.client.AgentClient._
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent, LoginResponse, StartTaskResponse}
-import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskOverview}
-import com.sos.scheduler.engine.agent.data.web.AgentUris
-import com.sos.scheduler.engine.agent.orderprocessing.KeyedEventJsonFormats.keyedEventJsonFormat
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.common.auth.{UserAndPassword, UserId}
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.soslicense.LicenseKeyString
-import com.sos.scheduler.engine.common.sprayutils.SimpleTypeSprayJsonSupport._
-import com.sos.scheduler.engine.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
-import com.sos.scheduler.engine.data.engine2.order.{Order, OrderEvent}
-import com.sos.scheduler.engine.data.event.{EventRequest, EventSeq, KeyedEvent}
-import com.sos.scheduler.engine.data.order.OrderId
-import com.sos.scheduler.engine.data.session.SessionToken
+import com.sos.jobscheduler.agent.client.AgentClient._
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent, LoginResponse, StartTaskResponse}
+import com.sos.jobscheduler.agent.data.commands._
+import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskOverview}
+import com.sos.jobscheduler.agent.data.web.AgentUris
+import com.sos.jobscheduler.agent.orderprocessing.KeyedEventJsonFormats.keyedEventJsonFormat
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.soslicense.LicenseKeyString
+import com.sos.jobscheduler.common.sprayutils.SimpleTypeSprayJsonSupport._
+import com.sos.jobscheduler.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
+import com.sos.jobscheduler.data.engine2.order.{Order, OrderEvent}
+import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.session.SessionToken
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
 import org.jetbrains.annotations.TestOnly
@@ -160,7 +160,7 @@ trait AgentClient {
   private def httpResponsePipeline(timeout: Duration, sessionAction: SessionAction = SessionAction.Default): HttpRequest ⇒ Future[HttpResponse] =
     agentSendReceive(timeout.toFiniteDuration, sessionAction)
 
-  private[engine] def agentSendReceive(futureTimeout: Timeout)(implicit ec: ExecutionContext): SendReceive =
+  private[jobscheduler] def agentSendReceive(futureTimeout: Timeout)(implicit ec: ExecutionContext): SendReceive =
     agentSendReceive(futureTimeout, SessionAction.Default)
 
   private def agentSendReceive(futureTimeout: Timeout, sessionAction: SessionAction)(implicit ec: ExecutionContext): SendReceive = {

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting.dialog
+package com.sos.jobscheduler.minicom.remoting.dialog
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.tcp.BlockingMessageConnection
+import com.sos.jobscheduler.common.tcp.BlockingMessageConnection
 import scala.concurrent.{ExecutionContext, Future, blocking}
 
 /**

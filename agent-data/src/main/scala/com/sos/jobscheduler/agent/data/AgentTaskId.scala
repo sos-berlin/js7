@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.data
+package com.sos.jobscheduler.agent.data
 
-import com.sos.scheduler.engine.agent.data
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.agent.data
+import com.sos.jobscheduler.base.generic.IsString
 import scala.math.abs
 import scala.util.Random
 

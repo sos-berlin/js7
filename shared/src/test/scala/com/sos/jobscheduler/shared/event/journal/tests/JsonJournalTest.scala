@@ -1,21 +1,21 @@
-package com.sos.scheduler.engine.shared.event.journal.tests
+package com.sos.jobscheduler.shared.event.journal.tests
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.scheduler.engine.common.BuildInfo
-import com.sos.scheduler.engine.common.akkautils.DeadLetterActor
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.shared.common.jsonseq.InputStreamJsonSeqIterator
-import com.sos.scheduler.engine.shared.event.journal.Journal
-import com.sos.scheduler.engine.shared.event.journal.tests.JsonJournalTest._
-import com.sos.scheduler.engine.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
+import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.akkautils.DeadLetterActor
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator
+import com.sos.jobscheduler.shared.event.journal.Journal
+import com.sos.jobscheduler.shared.event.journal.tests.JsonJournalTest._
+import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
 import java.io.FileInputStream
 import java.nio.file.Files.createTempDirectory
 import org.scalatest.Matchers._

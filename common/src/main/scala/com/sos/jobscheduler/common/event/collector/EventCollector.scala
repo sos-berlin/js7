@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.common.event.collector
+package com.sos.jobscheduler.common.event.collector
 
-import com.sos.scheduler.engine.common.event.collector.EventCollector._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutureFuture
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, Snapshot, SomeEventRequest}
+import com.sos.jobscheduler.common.event.collector.EventCollector._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutureFuture
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, Snapshot, SomeEventRequest}
 import com.typesafe.config.Config
 import java.time.Instant.now
 import java.time.{Duration, Instant}

@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.base.convert.As
-import com.sos.scheduler.engine.base.utils.ScalaUtils.RichThrowable
-import com.sos.scheduler.engine.common.time.ScalaTime.parseDuration
+import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.time.ScalaTime.parseDuration
 import java.time.Duration
 import scala.annotation.tailrec
 import scala.util.control.NonFatal

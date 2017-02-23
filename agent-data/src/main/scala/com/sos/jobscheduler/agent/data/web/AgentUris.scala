@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.agent.data.web
+package com.sos.jobscheduler.agent.data.web
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.agent.data.web.AgentUris._
-import com.sos.scheduler.engine.data.agent.AgentAddress
-import com.sos.scheduler.engine.data.engine2.order.OrderEvent
-import com.sos.scheduler.engine.data.event.EventRequest
-import com.sos.scheduler.engine.data.order.OrderId
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.web.AgentUris._
+import com.sos.jobscheduler.data.agent.AgentAddress
+import com.sos.jobscheduler.data.engine2.order.OrderEvent
+import com.sos.jobscheduler.data.event.EventRequest
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.tunnel.data.TunnelId
 import spray.http.Uri
 import spray.http.Uri.Path
 

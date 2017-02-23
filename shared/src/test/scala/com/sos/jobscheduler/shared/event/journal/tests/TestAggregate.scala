@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.shared.event.journal.tests
+package com.sos.jobscheduler.shared.event.journal.tests
 
-import com.sos.scheduler.engine.shared.event.journal.tests.TestEvent._
+import com.sos.jobscheduler.shared.event.journal.tests.TestEvent._
 import spray.json.DefaultJsonProtocol._
 
 /**

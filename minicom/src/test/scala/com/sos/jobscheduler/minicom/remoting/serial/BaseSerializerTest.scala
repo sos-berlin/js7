@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
 import akka.util.ByteString
 import com.google.common.base.Charsets.US_ASCII
-import com.sos.scheduler.engine.minicom.remoting.serial.BaseSerializerTest._
+import com.sos.jobscheduler.minicom.remoting.serial.BaseSerializerTest._
 import java.util.UUID
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

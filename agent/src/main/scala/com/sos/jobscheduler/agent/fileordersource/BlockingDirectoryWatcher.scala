@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.agent.fileordersource
+package com.sos.jobscheduler.agent.fileordersource
 
-import com.sos.scheduler.engine.agent.fileordersource.BlockingDirectoryWatcher._
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.agent.fileordersource.BlockingDirectoryWatcher._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{FileSystems, Path, WatchEvent}
 import java.time.Instant

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting.dialog
+package com.sos.jobscheduler.minicom.remoting.dialog
 
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.minicom.remoting.dialog.ExclusiveLock._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.minicom.remoting.dialog.ExclusiveLock._
 import java.util.concurrent.locks.ReentrantLock
 
 /**

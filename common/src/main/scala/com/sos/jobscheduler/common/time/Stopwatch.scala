@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.time
+package com.sos.jobscheduler.common.time
 
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.lang.System.nanoTime
 import java.time.Duration
 

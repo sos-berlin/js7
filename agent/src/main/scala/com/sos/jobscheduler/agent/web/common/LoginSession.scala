@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.web.common
+package com.sos.jobscheduler.agent.web.common
 
-import com.sos.scheduler.engine.common.auth.User
+import com.sos.jobscheduler.common.auth.User
 
 /**
   * @author Joacim Zschimmer

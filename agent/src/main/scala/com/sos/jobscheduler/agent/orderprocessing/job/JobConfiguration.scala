@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.agent.orderprocessing.job
+package com.sos.jobscheduler.agent.orderprocessing.job
 
-import com.sos.scheduler.engine.agent.orderprocessing.job.JobConfiguration._
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.xmls.{FileSource, ScalaXMLEventReader}
-import com.sos.scheduler.engine.data.engine2.order.JobPath
-import com.sos.scheduler.engine.shared.common.VariablesXmlParser
+import com.sos.jobscheduler.agent.orderprocessing.job.JobConfiguration._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.xmls.{FileSource, ScalaXMLEventReader}
+import com.sos.jobscheduler.data.engine2.order.JobPath
+import com.sos.jobscheduler.shared.common.VariablesXmlParser
 import java.nio.file.Path
 import javax.xml.transform.Source
 

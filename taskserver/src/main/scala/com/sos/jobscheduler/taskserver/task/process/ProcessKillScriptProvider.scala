@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.scheduler.engine.agent.data.ProcessKillScript
-import com.sos.scheduler.engine.common.log.LazyScalaLogger.AsLazyScalaLogger
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
-import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
-import com.sos.scheduler.engine.common.utils.JavaResource
-import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider._
+import com.sos.jobscheduler.agent.data.ProcessKillScript
+import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.system.OperatingSystem._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
+import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider._
 import java.nio.file.Files.{delete, exists, setPosixFilePermissions}
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.{OWNER_EXECUTE, OWNER_READ}
@@ -48,6 +48,6 @@ final class ProcessKillScriptProvider extends HasCloser {
 
 object ProcessKillScriptProvider {
   private val logger = Logger(getClass)
-  private val WindowsScriptResource = JavaResource("com/sos/scheduler/engine/taskserver/task/process/scripts/windows/kill_task.cmd")
-  private val UnixScriptResource = JavaResource("com/sos/scheduler/engine/taskserver/task/process/scripts/unix/kill_task.sh")
+  private val WindowsScriptResource = JavaResource("com/sos/jobscheduler/taskserver/task/process/scripts/windows/kill_task.cmd")
+  private val UnixScriptResource = JavaResource("com/sos/jobscheduler/taskserver/task/process/scripts/unix/kill_task.sh")
 }

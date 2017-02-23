@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.akkautils
+package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.{Actor, ActorSystem, DeadLetter, Props, UnhandledMessage}
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Logger
 
 /**
   * @author Joacim Zschimmer

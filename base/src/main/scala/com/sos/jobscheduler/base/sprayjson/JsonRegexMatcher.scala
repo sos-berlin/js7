@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.sprayjson
+package com.sos.jobscheduler.base.sprayjson
 
 import scala.util.control.NonFatal
 import scala.util.matching.Regex

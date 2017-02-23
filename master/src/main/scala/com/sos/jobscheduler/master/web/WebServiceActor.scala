@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.master.web
+package com.sos.jobscheduler.master.web
 
 import akka.actor.Props
 import com.google.inject.Injector
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.WebLogDirectives.handleErrorAndLog
-import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
-import com.sos.scheduler.engine.master.Master
-import com.sos.scheduler.engine.master.configuration.MasterConfiguration
-import com.sos.scheduler.engine.master.web.WebServiceActor._
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.WebLogDirectives.handleErrorAndLog
+import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeper
+import com.sos.jobscheduler.master.Master
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.web.WebServiceActor._
 import com.typesafe.config.Config
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext

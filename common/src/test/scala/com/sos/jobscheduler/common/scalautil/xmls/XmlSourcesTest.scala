@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.scalautil.xmls
+package com.sos.jobscheduler.common.scalautil.xmls
 
-import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources._
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.NoSuchElementException

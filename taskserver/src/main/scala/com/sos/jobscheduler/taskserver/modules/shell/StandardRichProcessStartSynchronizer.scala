@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver.modules.shell
+package com.sos.jobscheduler.taskserver.modules.shell
 
 import akka.actor.ActorRefFactory
-import com.sos.scheduler.engine.common.async.synchronizer.OwnActorSynchronizer
-import com.sos.scheduler.engine.taskserver.task.process.RichProcess
+import com.sos.jobscheduler.common.async.synchronizer.OwnActorSynchronizer
+import com.sos.jobscheduler.taskserver.task.process.RichProcess
 import javax.inject.{Inject, Singleton}
 
 /**

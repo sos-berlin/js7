@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.event.collector
+package com.sos.jobscheduler.common.event.collector
 
 import com.google.common.collect.{AbstractIterator ⇒ GuavaIterator}
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, EventId, Snapshot}
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, Snapshot}
 import java.util.NoSuchElementException
 import scala.collection.JavaConversions._
 

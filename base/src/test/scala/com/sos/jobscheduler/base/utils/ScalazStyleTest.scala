@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.base.utils
+package com.sos.jobscheduler.base.utils
 
-import com.sos.scheduler.engine.base.utils.ScalazStyle._
+import com.sos.jobscheduler.base.utils.ScalazStyle._
 import org.scalatest.FreeSpec
 
 /**

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion._
+import com.sos.jobscheduler.common.sprayutils.YamlJsonConversion._
 import org.scalatest.FreeSpec
 import spray.json.DefaultJsonProtocol._
 import spray.json._

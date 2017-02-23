@@ -1,23 +1,23 @@
-package com.sos.scheduler.engine.taskserver.modules.shell
+package com.sos.jobscheduler.taskserver.modules.shell
 
-import com.sos.scheduler.engine.agent.data.ProcessKillScript
-import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.base.process.ProcessSignal._
-import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
-import com.sos.scheduler.engine.common.utils.JavaShutdownHook
-import com.sos.scheduler.engine.common.xml.VariableSets
-import com.sos.scheduler.engine.taskserver.common.ConcurrentStdoutAndStderrWell
-import com.sos.scheduler.engine.taskserver.data.TaskServerConfiguration._
-import com.sos.scheduler.engine.taskserver.data.TaskServerMainTerminated
-import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
-import com.sos.scheduler.engine.taskserver.modules.monitor.MonitorProcessor
-import com.sos.scheduler.engine.taskserver.modules.shell.ShellProcessTask._
-import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
-import com.sos.scheduler.engine.taskserver.task.process.{ProcessConfiguration, RichProcess}
+import com.sos.jobscheduler.agent.data.ProcessKillScript
+import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.base.process.ProcessSignal._
+import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger, SetOnce}
+import com.sos.jobscheduler.common.utils.JavaShutdownHook
+import com.sos.jobscheduler.common.xml.VariableSets
+import com.sos.jobscheduler.taskserver.common.ConcurrentStdoutAndStderrWell
+import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration._
+import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
+import com.sos.jobscheduler.taskserver.modules.common.{CommonArguments, Task}
+import com.sos.jobscheduler.taskserver.modules.monitor.MonitorProcessor
+import com.sos.jobscheduler.taskserver.modules.shell.ShellProcessTask._
+import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
+import com.sos.jobscheduler.taskserver.task.process.{ProcessConfiguration, RichProcess}
 import java.nio.file.Files._
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly

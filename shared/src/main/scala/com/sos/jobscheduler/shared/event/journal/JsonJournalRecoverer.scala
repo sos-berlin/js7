@@ -1,13 +1,13 @@
-package com.sos.scheduler.engine.shared.event.journal
+package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.ActorRef
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.{DuplicateKeyException, Logger}
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.shared.event.journal.JsonJournalMeta.Header
-import com.sos.scheduler.engine.shared.event.journal.JsonJournalRecoverer._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.{DuplicateKeyException, Logger}
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer._
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
 

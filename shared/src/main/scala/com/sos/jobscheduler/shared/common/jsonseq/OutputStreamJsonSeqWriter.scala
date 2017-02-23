@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.shared.common.jsonseq
+package com.sos.jobscheduler.shared.common.jsonseq
 
 import com.google.common.base.Ascii
 import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}

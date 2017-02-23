@@ -1,27 +1,27 @@
-package com.sos.scheduler.engine.master.order.agent
+package com.sos.jobscheduler.master.order.agent
 
 import java.time.Instant.now
 import akka.Done
 import akka.actor.{Actor, DeadLetterSuppression, Stash}
 import akka.pattern.pipe
-import com.sos.scheduler.engine.agent.client.AgentClient
-import com.sos.scheduler.engine.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, Login, Logout, RegisterAsMaster}
-import com.sos.scheduler.engine.base.generic.Completed
-import com.sos.scheduler.engine.base.utils.ScalaUtils.RichThrowable
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.engine2.agent.AgentPath
-import com.sos.scheduler.engine.data.engine2.order.{JobNet, Order, OrderEvent}
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, EventId, EventRequest, KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.data.order.OrderId
-import com.sos.scheduler.engine.master.order.agent.AgentDriver._
+import com.sos.jobscheduler.agent.client.AgentClient
+import com.sos.jobscheduler.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, Login, Logout, RegisterAsMaster}
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.engine2.agent.AgentPath
+import com.sos.jobscheduler.data.engine2.order.{JobNet, Order, OrderEvent}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.master.order.agent.AgentDriver._
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 import spray.http.Uri
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.ScalaTime._
 
 /**
   * @author Joacim Zschimmer

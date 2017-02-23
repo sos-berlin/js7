@@ -1,24 +1,25 @@
-package com.sos.scheduler.engine.agent.tests
+package com.sos.jobscheduler.agent.tests
 
 import akka.actor.ActorRefFactory
 import akka.util.Timeout
 import com.google.common.io.Closer
 import com.google.common.io.Files._
-import com.sos.scheduler.engine.agent.Agent
-import com.sos.scheduler.engine.agent.client.AgentClient
-import com.sos.scheduler.engine.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
-import com.sos.scheduler.engine.agent.configuration.{AgentConfiguration, Akkas}
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
-import com.sos.scheduler.engine.agent.data.commands.{DeleteFile, MoveFile, RequestFileOrderSourceContent}
-import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskOverview}
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.FileUtils._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.scheduler.engine.common.soslicense.LicenseKeyString
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.client.AgentClient
+import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
+import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
+import com.sos.jobscheduler.agent.data.commands.{DeleteFile, MoveFile, RequestFileOrderSourceContent}
+import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskOverview}
+import com.sos.jobscheduler.agent.tests.AgentClientIT._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.soslicense.LicenseKeyString
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.nio.file.Files
 import java.nio.file.Files._
 import java.nio.file.attribute.FileTime
@@ -27,7 +28,6 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import AgentClientIT._
 import scala.util.matching.Regex
 import spray.http.StatusCodes.InternalServerError
 import spray.httpx.UnsuccessfulResponseException

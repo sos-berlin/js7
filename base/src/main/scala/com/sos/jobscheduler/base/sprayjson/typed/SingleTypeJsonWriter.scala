@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.sprayjson.typed
+package com.sos.jobscheduler.base.sprayjson.typed
 
 import spray.json.{JsObject, JsString, RootJsonWriter}
 

@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.tunnel.server
+package com.sos.jobscheduler.tunnel.server
 
 import akka.actor.ActorSystem
 import akka.agent.Agent
 import akka.io.Tcp.Bound
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
-import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.tunnel.data._
-import com.sos.scheduler.engine.tunnel.server.TunnelServer._
+import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.tunnel.data._
+import com.sos.jobscheduler.tunnel.server.TunnelServer._
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.Duration
 import javax.inject.{Inject, Singleton}

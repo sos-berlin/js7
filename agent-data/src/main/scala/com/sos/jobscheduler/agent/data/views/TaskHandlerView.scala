@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.data.views
+package com.sos.jobscheduler.agent.data.views
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.AgentTaskId
 import scala.collection.immutable
 
 /**

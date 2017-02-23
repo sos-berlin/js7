@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.time
+package com.sos.jobscheduler.common.time
 
-import com.sos.scheduler.engine.base.convert.As
-import com.sos.scheduler.engine.base.utils.Ascii.isAsciiDigit
+import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
 import java.time.Instant.now
 import java.time._
 import java.util.concurrent.TimeUnit

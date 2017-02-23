@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.views
+package com.sos.jobscheduler.agent.views
 
-import com.sos.scheduler.engine.common.BuildInfo
+import com.sos.jobscheduler.common.BuildInfo
 import java.time.Instant
 
 /**

@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.minicom.idispatch
+package com.sos.jobscheduler.minicom.idispatch
 
-import com.sos.scheduler.engine.minicom.types.IUnknown
+import com.sos.jobscheduler.minicom.types.IUnknown
 import java.lang.reflect.Method
 import scala.collection.immutable.Seq
 
 /**
- * Public methods annotated with @[[com.sos.scheduler.engine.minicom.idispatch.annotation.invocable]] are callable via [[OverridingInvocableIDispatch]].
+ * Public methods annotated with @[[com.sos.jobscheduler.minicom.idispatch.annotation.invocable]] are callable via [[OverridingInvocableIDispatch]].
  * Nearly a [[IDispatch]], but without need to implement the `IDispatch`s methods.
  *
  * @author Joacim Zschimmer

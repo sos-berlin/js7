@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.minicom.remoting
+package com.sos.jobscheduler.minicom.remoting
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.{RichFutureFuture, _}
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.minicom.idispatch.IUnknownFactory
-import com.sos.scheduler.engine.minicom.remoting.ServerRemoting._
-import com.sos.scheduler.engine.minicom.remoting.dialog.ServerDialogConnection
-import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyIDispatchFactory
-import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.{RichFutureFuture, _}
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.minicom.idispatch.IUnknownFactory
+import com.sos.jobscheduler.minicom.remoting.ServerRemoting._
+import com.sos.jobscheduler.minicom.remoting.dialog.ServerDialogConnection
+import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatchFactory
+import com.sos.jobscheduler.minicom.types.{CLSID, IID, IUnknown}
 import java.time.{Duration, Instant}
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future, blocking}

@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.data.commands.{GetOrder, GetOrderIds, GetOrders}
-import com.sos.scheduler.engine.agent.orderprocessing.OrderHandler
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.common.event.EventIdGenerator
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
-import com.sos.scheduler.engine.data.order.OrderId
+import com.sos.jobscheduler.agent.data.commands.{GetOrder, GetOrderIds, GetOrders}
+import com.sos.jobscheduler.agent.orderprocessing.OrderHandler
+import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.sprayutils.SprayUtils._
+import com.sos.jobscheduler.data.order.OrderId
 import scala.concurrent.ExecutionContext
 import spray.json.DefaultJsonProtocol._
 import spray.routing.Directives._

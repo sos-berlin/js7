@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.async
+package com.sos.jobscheduler.common.async
 
 import java.time.Duration
 import scala.concurrent.{Future, Promise, blocking}

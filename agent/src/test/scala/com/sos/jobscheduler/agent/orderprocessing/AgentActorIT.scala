@@ -1,37 +1,37 @@
-package com.sos.scheduler.engine.agent.orderprocessing
+package com.sos.jobscheduler.agent.orderprocessing
 
 import akka.actor.{ActorRef, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Guice}
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
-import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
-import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
-import com.sos.scheduler.engine.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, RegisterAsMaster}
-import com.sos.scheduler.engine.agent.orderprocessing.AgentActorIT._
-import com.sos.scheduler.engine.agent.task.AgentTaskFactory
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.common.auth.User.Anonymous
-import com.sos.scheduler.engine.common.event.EventIdGenerator
-import com.sos.scheduler.engine.common.event.collector.EventCollector
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.engine2.agent.AgentPath
-import com.sos.scheduler.engine.data.engine2.order.JobNet.{EndNode, JobNode}
-import com.sos.scheduler.engine.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId, NodeKey, Order, OrderEvent}
-import com.sos.scheduler.engine.data.event.EventRequest
-import com.sos.scheduler.engine.data.order.OrderId
-import com.sos.scheduler.engine.shared.event.{ActorEventCollector, SnapshotKeyedEventBus}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
+import com.sos.jobscheduler.agent.configuration.inject.AgentModule
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, RegisterAsMaster}
+import com.sos.jobscheduler.agent.orderprocessing.AgentActorIT._
+import com.sos.jobscheduler.agent.task.AgentTaskFactory
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.auth.User.Anonymous
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.engine2.agent.AgentPath
+import com.sos.jobscheduler.data.engine2.order.JobNet.{EndNode, JobNode}
+import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId, NodeKey, Order, OrderEvent}
+import com.sos.jobscheduler.data.event.EventRequest
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.shared.event.{ActorEventCollector, SnapshotKeyedEventBus}
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
 import java.nio.file.Path
 import org.scalatest.FreeSpec

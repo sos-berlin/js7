@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
 object SideEffect {
   implicit class ImplicitSideEffect[A](val any: A) extends AnyVal {

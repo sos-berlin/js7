@@ -1,23 +1,23 @@
-package com.sos.scheduler.engine.agent.orderprocessing.job.task
+package com.sos.jobscheduler.agent.orderprocessing.job.task
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.agent.data.commands.{StartNonApiTask, StartTask}
-import com.sos.scheduler.engine.agent.orderprocessing.job.JobConfiguration
-import com.sos.scheduler.engine.agent.task.{AgentTask, AgentTaskFactory}
-import com.sos.scheduler.engine.base.generic.Completed
-import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.base.process.ProcessSignal.SIGKILL
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
-import com.sos.scheduler.engine.common.scalautil.SetOnce
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
-import com.sos.scheduler.engine.data.engine2.order.Order
-import com.sos.scheduler.engine.data.engine2.order.OrderEvent.OrderStepSucceeded
-import com.sos.scheduler.engine.data.job.TaskId
-import com.sos.scheduler.engine.minicom.remoting.ClientRemoting
-import com.sos.scheduler.engine.minicom.remoting.dialog.ClientDialogConnection
-import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyIDispatch
-import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
-import com.sos.scheduler.engine.tunnel.server.TunnelHandle
+import com.sos.jobscheduler.agent.data.commands.{StartNonApiTask, StartTask}
+import com.sos.jobscheduler.agent.orderprocessing.job.JobConfiguration
+import com.sos.jobscheduler.agent.task.{AgentTask, AgentTaskFactory}
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
+import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.common.scalautil.SetOnce
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.data.engine2.order.Order
+import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderStepSucceeded
+import com.sos.jobscheduler.data.job.TaskId
+import com.sos.jobscheduler.minicom.remoting.ClientRemoting
+import com.sos.jobscheduler.minicom.remoting.dialog.ClientDialogConnection
+import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatch
+import com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer
+import com.sos.jobscheduler.tunnel.server.TunnelHandle
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

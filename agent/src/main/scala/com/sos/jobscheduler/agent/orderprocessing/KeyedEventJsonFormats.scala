@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.agent.orderprocessing
+package com.sos.jobscheduler.agent.orderprocessing
 
-import com.sos.scheduler.engine.data.engine2.order.{JobnetEvent, OrderEvent}
-import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
-import com.sos.scheduler.engine.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat}
+import com.sos.jobscheduler.data.engine2.order.{JobnetEvent, OrderEvent}
+import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat}
 
 /**
   * @author Joacim Zschimmer

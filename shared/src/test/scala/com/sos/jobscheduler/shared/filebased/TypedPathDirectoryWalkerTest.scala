@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.shared.filebased
+package com.sos.jobscheduler.shared.filebased
 
-import com.sos.scheduler.engine.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.scheduler.engine.data.engine2.order.{JobChainPath, JobPath}
-import com.sos.scheduler.engine.data.filebased.TypedPath
-import com.sos.scheduler.engine.shared.filebased.TypedPathDirectoryWalker.{forEachTypedFile, matchesFile}
-import com.sos.scheduler.engine.shared.filebased.TypedPathDirectoryWalkerTest._
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobPath}
+import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.{forEachTypedFile, matchesFile}
+import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalkerTest._
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.{Path, Paths}
 import org.scalatest.FreeSpec

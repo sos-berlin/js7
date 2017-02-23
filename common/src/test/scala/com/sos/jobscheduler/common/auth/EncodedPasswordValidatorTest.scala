@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.auth
+package com.sos.jobscheduler.common.auth
 
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.EncodedPasswordValidatorTest._
-import com.sos.scheduler.engine.common.configutils.Configs.ConvertibleConfig
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.auth.EncodedPasswordValidatorTest._
+import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
 import scala.collection.JavaConversions._

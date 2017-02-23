@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.minicom.remoting.proxy
+package com.sos.jobscheduler.minicom.remoting.proxy
 
-import com.sos.scheduler.engine.base.generic.Completed
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.minicom.idispatch.{DISPID, DispatchType}
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
 import scala.concurrent.Future
 
 /**

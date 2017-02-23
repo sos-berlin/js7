@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.master.oldruntime
+package com.sos.jobscheduler.master.oldruntime
 
 import java.time.Instant
 

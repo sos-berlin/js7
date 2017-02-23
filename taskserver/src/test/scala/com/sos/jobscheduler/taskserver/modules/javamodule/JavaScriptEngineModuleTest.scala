@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.modules.javamodule
+package com.sos.jobscheduler.taskserver.modules.javamodule
 
-import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleLanguage, RawModuleArguments, Script}
-import com.sos.scheduler.engine.taskserver.modules.javamodule.JavaScriptEngineModule.{Arguments, _}
+import com.sos.jobscheduler.taskserver.moduleapi.{ModuleLanguage, RawModuleArguments, Script}
+import com.sos.jobscheduler.taskserver.modules.javamodule.JavaScriptEngineModule.{Arguments, _}
 import org.scalatest.FreeSpec
 
 /**

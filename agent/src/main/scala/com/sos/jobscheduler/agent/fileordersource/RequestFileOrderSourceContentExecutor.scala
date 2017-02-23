@@ -1,13 +1,13 @@
-package com.sos.scheduler.engine.agent.fileordersource
+package com.sos.jobscheduler.agent.fileordersource
 
-import com.sos.scheduler.engine.agent.data.commandresponses.FileOrderSourceContent
-import com.sos.scheduler.engine.agent.data.commands.RequestFileOrderSourceContent
-import com.sos.scheduler.engine.agent.fileordersource.RequestFileOrderSourceContentExecutor._
-import com.sos.scheduler.engine.common.scalautil.AutoClosing._
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.agent.data.commandresponses.FileOrderSourceContent
+import com.sos.jobscheduler.agent.data.commands.RequestFileOrderSourceContent
+import com.sos.jobscheduler.agent.fileordersource.RequestFileOrderSourceContentExecutor._
+import com.sos.jobscheduler.common.scalautil.AutoClosing._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.Collections.implicits._
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.nio.file.Files._
 import java.nio.file._
 import java.time.Instant.now

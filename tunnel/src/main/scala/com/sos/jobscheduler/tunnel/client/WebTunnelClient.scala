@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.tunnel.client
+package com.sos.jobscheduler.tunnel.client
 
 import akka.actor.ActorSystem
 import akka.util.{ByteString, Timeout}
-import com.sos.scheduler.engine.common.akkautils.Akkas
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
-import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestor
-import com.sos.scheduler.engine.tunnel.client.WebTunnelClient._
-import com.sos.scheduler.engine.tunnel.data.Http._
-import com.sos.scheduler.engine.tunnel.data.TunnelToken
+import com.sos.jobscheduler.common.akkautils.Akkas
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.ByteStringMarshallers._
+import com.sos.jobscheduler.http.client.heartbeat.HeartbeatRequestor
+import com.sos.jobscheduler.tunnel.client.WebTunnelClient._
+import com.sos.jobscheduler.tunnel.data.Http._
+import com.sos.jobscheduler.tunnel.data.TunnelToken
 import scala.concurrent.{ExecutionContext, Future}
 import spray.client.pipelining._
 import spray.http.HttpHeaders.Accept

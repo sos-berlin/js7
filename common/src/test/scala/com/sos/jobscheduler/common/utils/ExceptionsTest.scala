@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.jobscheduler.common.utils
 
-import com.sos.scheduler.engine.common.log.LazyScalaLogger.AsLazyScalaLogger
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.Exceptions._
-import com.sos.scheduler.engine.common.utils.ExceptionsTest._
+import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.Exceptions._
+import com.sos.jobscheduler.common.utils.ExceptionsTest._
 import java.io.IOException
 import java.time.Instant
 import org.scalatest.FreeSpec

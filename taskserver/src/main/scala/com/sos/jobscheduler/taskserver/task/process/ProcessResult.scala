@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.scheduler.engine.data.job.ReturnCode
+import com.sos.jobscheduler.data.job.ReturnCode
 
 /**
  * @author Joacim Zschimmer

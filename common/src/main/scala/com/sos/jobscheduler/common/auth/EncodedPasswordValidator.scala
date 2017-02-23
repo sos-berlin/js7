@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.common.auth
+package com.sos.jobscheduler.common.auth
 
 import com.google.common.hash.HashCode
 import com.google.common.hash.Hashing.sha512
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.EncodedPasswordValidator._
-import com.sos.scheduler.engine.common.configutils.Configs.ConvertibleConfig
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.auth.EncodedPasswordValidator._
+import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.typesafe.config.Config
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.util.{Failure, Success, Try}

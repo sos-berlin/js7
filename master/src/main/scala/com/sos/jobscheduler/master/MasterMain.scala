@@ -1,21 +1,21 @@
-package com.sos.scheduler.engine.master
+package com.sos.jobscheduler.master
 
 import com.google.common.io.Closer
 import com.google.inject.Guice
-import com.sos.scheduler.engine.base.generic.Completed
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAutoCloseable, RichClosersCloser}
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichArray
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.scheduler.engine.common.scalautil.SideEffect._
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.JavaShutdownHook
-import com.sos.scheduler.engine.master.MasterMain._
-import com.sos.scheduler.engine.master.configuration.MasterConfiguration
-import com.sos.scheduler.engine.master.configuration.inject.MasterModule
-import com.sos.scheduler.engine.master.oldruntime.InstantInterval
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAutoCloseable, RichClosersCloser}
+import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichArray
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.SideEffect._
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.JavaShutdownHook
+import com.sos.jobscheduler.master.MasterMain._
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.configuration.inject.MasterModule
+import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import java.time.Instant.now
 import scala.collection.immutable.Seq
 import scala.concurrent.Future

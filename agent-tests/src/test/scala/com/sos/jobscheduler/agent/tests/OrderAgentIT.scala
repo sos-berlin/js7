@@ -1,28 +1,28 @@
-package com.sos.scheduler.engine.agent.tests
+package com.sos.jobscheduler.agent.tests
 
-import com.sos.scheduler.engine.agent.Agent
-import com.sos.scheduler.engine.agent.client.AgentClient
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
-import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
-import com.sos.scheduler.engine.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, RegisterAsMaster}
-import com.sos.scheduler.engine.agent.tests.OrderAgentIT._
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.FileUtils.deleteDirectoryRecursively
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
-import com.sos.scheduler.engine.data.engine2.agent.AgentPath
-import com.sos.scheduler.engine.data.engine2.order.JobNet.{EndNode, JobNode}
-import com.sos.scheduler.engine.data.engine2.order.OrderEvent.OrderReady
-import com.sos.scheduler.engine.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId, NodeKey, Order, OrderEvent}
-import com.sos.scheduler.engine.data.event.{EventId, EventRequest, EventSeq, KeyedEvent}
-import com.sos.scheduler.engine.data.order.OrderId
+import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.client.AgentClient
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, RegisterAsMaster}
+import com.sos.jobscheduler.agent.tests.OrderAgentIT._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.data.engine2.agent.AgentPath
+import com.sos.jobscheduler.data.engine2.order.JobNet.{EndNode, JobNode}
+import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderReady
+import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId, NodeKey, Order, OrderEvent}
+import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent}
+import com.sos.jobscheduler.data.order.OrderId
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

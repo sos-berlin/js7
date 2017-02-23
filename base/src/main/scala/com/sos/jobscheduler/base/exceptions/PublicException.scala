@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.exceptions
+package com.sos.jobscheduler.base.exceptions
 
 /**
  * Exception.getMessage is allowed to be visible by the user (via a web browser).

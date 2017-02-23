@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.http.client.common
+package com.sos.jobscheduler.http.client.common
 
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.http.client.common.OwnHttpHeaderTest._
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.http.client.common.OwnHttpHeaderTest._
 import org.scalatest.FreeSpec
 import spray.http.HttpHeader
 import spray.http.HttpHeaders.RawHeader

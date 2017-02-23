@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.taskserver.dotnet
+package com.sos.jobscheduler.taskserver.dotnet
 
-import com.sos.scheduler.engine.common.system.Bitness.is32Bit
-import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.taskserver.dotnet.SimpleDotnetTest.TestErrorMessage
-import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleReference
+import com.sos.jobscheduler.common.system.Bitness.is32Bit
+import com.sos.jobscheduler.common.system.OperatingSystem._
+import com.sos.jobscheduler.taskserver.dotnet.SimpleDotnetTest.TestErrorMessage
+import com.sos.jobscheduler.taskserver.dotnet.api.DotnetModuleReference
 
 /**
   * @author Joacim Zschimmer

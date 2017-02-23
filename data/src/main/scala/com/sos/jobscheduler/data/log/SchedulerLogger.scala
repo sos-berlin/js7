@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.log
+package com.sos.jobscheduler.data.log
 
 /**
  * @author Joacim Zschimmer

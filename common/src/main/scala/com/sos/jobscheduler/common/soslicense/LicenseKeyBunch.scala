@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.soslicense
+package com.sos.jobscheduler.common.soslicense
 
 import com.google.common.base.Splitter
-import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter
-import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
+import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter
+import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
 import scala.collection.JavaConversions._
 import scala.collection.immutable
 

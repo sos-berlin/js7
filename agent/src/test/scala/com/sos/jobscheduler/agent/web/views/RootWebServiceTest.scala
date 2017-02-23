@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.agent.web.views
+package com.sos.jobscheduler.agent.web.views
 
-import com.sos.scheduler.engine.agent.views.AgentOverview
-import com.sos.scheduler.engine.agent.web.test.WebServiceTest
-import com.sos.scheduler.engine.base.system.SystemInformation
-import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers._
-import com.sos.scheduler.engine.data.system.JavaInformation
+import com.sos.jobscheduler.agent.views.AgentOverview
+import com.sos.jobscheduler.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.base.system.SystemInformation
+import com.sos.jobscheduler.common.sprayutils.JsObjectMarshallers._
+import com.sos.jobscheduler.data.system.JavaInformation
 import java.time.Instant
 import org.scalatest.FreeSpec
 import spray.http.HttpHeaders.Accept

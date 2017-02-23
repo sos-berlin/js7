@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.common.sprayutils.https
+package com.sos.jobscheduler.common.sprayutils.https
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
-import com.sos.scheduler.engine.common.scalautil.AutoClosing._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.common.scalautil.AutoClosing._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import java.security.KeyStore
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, SSLEngine, TrustManagerFactory}

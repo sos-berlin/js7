@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.common.event.collector
+package com.sos.jobscheduler.common.event.collector
 
-import com.sos.scheduler.engine.common.event.EventIdGenerator
-import com.sos.scheduler.engine.common.event.collector.EventCollectorTest._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent}
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.event.collector.EventCollectorTest._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.Implicits.global

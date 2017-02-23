@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.shared.event.journal
+package com.sos.jobscheduler.shared.event.journal
 
-import com.sos.scheduler.engine.data.event.{Event, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Snapshot}
 
 /**
   * @author Joacim Zschimmer

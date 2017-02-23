@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.agent.command
+package com.sos.jobscheduler.agent.command
 
-import com.sos.scheduler.engine.common.auth.User
-import com.sos.scheduler.engine.common.soslicense.LicenseKeyBunch
-import com.sos.scheduler.engine.data.session.SessionToken
+import com.sos.jobscheduler.common.auth.User
+import com.sos.jobscheduler.common.soslicense.LicenseKeyBunch
+import com.sos.jobscheduler.data.session.SessionToken
 import java.net.InetAddress
 
 /**

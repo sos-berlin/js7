@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.sprayutils.https
+package com.sos.jobscheduler.common.sprayutils.https
 
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.configutils.Configs.ConvertibleConfig
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.typesafe.config.Config
 import java.net.URL
 import java.nio.file.Path

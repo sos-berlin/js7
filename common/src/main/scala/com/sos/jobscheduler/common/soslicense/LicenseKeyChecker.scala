@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.soslicense
+package com.sos.jobscheduler.common.soslicense
 
-import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter
-import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
+import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter
+import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
 
 /**
  * @author Joacim Zschimmer

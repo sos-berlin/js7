@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.time.timer
+package com.sos.jobscheduler.common.time.timer
 
-import com.sos.scheduler.engine.common.time.timer.Timer._
+import com.sos.jobscheduler.common.time.timer.Timer._
 import java.time.Instant
 import scala.concurrent._
 import scala.util.control.NoStackTrace

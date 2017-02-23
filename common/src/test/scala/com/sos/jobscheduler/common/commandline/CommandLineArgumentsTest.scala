@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.commandline
+package com.sos.jobscheduler.common.commandline
 
-import com.sos.scheduler.engine.common.commandline.CommandLineArguments.parse
+import com.sos.jobscheduler.common.commandline.CommandLineArguments.parse
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 

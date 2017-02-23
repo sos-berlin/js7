@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.data
+package com.sos.jobscheduler.agent.data
 
 import java.util.concurrent.atomic.AtomicLong
 import java.util.function.LongUnaryOperator

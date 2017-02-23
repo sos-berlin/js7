@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver.modules.monitor
+package com.sos.jobscheduler.taskserver.modules.monitor
 
-import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.taskserver.modules.monitors.Monitors
-import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, TypedNamedIDispatches}
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.taskserver.modules.monitors.Monitors
+import com.sos.jobscheduler.taskserver.spoolerapi.{SpoolerLog, TypedNamedIDispatches}
 import scala.util.control.NonFatal
 
 /**

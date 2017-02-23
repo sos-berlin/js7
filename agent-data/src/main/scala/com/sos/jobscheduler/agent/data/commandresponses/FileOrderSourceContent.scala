@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.data.commandresponses
+package com.sos.jobscheduler.agent.data.commandresponses
 
 import java.time.Instant
 import scala.collection.immutable

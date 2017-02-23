@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel.server
+package com.sos.jobscheduler.tunnel.server
 
 import akka.util.ByteString
 import org.scalatest.FreeSpec

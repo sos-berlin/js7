@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.tunnel.server
+package com.sos.jobscheduler.tunnel.server
 
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.jobscheduler.tunnel.data.TunnelId
 
 /**
   * @author Joacim Zschimmer

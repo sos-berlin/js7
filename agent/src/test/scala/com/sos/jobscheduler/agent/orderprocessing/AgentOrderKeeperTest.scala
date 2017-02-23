@@ -1,22 +1,22 @@
-//package com.sos.scheduler.engine.agent.orderprocessing
+//package com.sos.jobscheduler.agent.orderprocessing
 //
 //import AgentOrderKeeperTest._
 //import akka.actor.{ActorSystem, Props}
 //import akka.util.Timeout
-//import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-//import com.sos.scheduler.engine.agent.data.commands.AddJobNet
-//import com.sos.scheduler.engine.common.auth.UserId
-//import com.sos.scheduler.engine.common.event.EventIdGenerator
-//import com.sos.scheduler.engine.common.scalautil.FileUtils.deleteDirectoryRecursively
-//import com.sos.scheduler.engine.common.scalautil.{FileUtils, Logger}
-//import com.sos.scheduler.engine.common.time.timer.TimerService
-//import com.sos.scheduler.engine.shared.event.SnapshotKeyedEventBus
+//import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+//import com.sos.jobscheduler.agent.data.commands.AddJobNet
+//import com.sos.jobscheduler.common.auth.UserId
+//import com.sos.jobscheduler.common.event.EventIdGenerator
+//import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
+//import com.sos.jobscheduler.common.scalautil.{FileUtils, Logger}
+//import com.sos.jobscheduler.common.time.timer.TimerService
+//import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
 //import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 //import scala.collection.{immutable, mutable}
-//import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-//import com.sos.scheduler.engine.common.time.ScalaTime._
-//import com.sos.scheduler.engine.data.engine2.agent.AgentPath
-//import com.sos.scheduler.engine.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId}
+//import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+//import com.sos.jobscheduler.common.time.ScalaTime._
+//import com.sos.jobscheduler.data.engine2.agent.AgentPath
+//import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId}
 //import java.nio.file.Files
 //import scala.concurrent.duration.DurationInt
 //

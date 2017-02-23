@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.scheduler.engine.agent.data.commandresponses.LoginResponse
+import com.sos.jobscheduler.agent.data.commandresponses.LoginResponse
 import spray.json.DefaultJsonProtocol._
 
 /**

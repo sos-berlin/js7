@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver
+package com.sos.jobscheduler.taskserver
 
-import com.sos.scheduler.engine.common.scalautil.AutoClosing._
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
+import com.sos.jobscheduler.common.scalautil.AutoClosing._
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.taskserver.data.TaskServerArguments
 import java.net.ServerSocket
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global

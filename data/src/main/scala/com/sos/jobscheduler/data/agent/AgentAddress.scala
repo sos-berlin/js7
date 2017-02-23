@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.agent
+package com.sos.jobscheduler.data.agent
 
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.base.generic.IsString
 import java.net.URI
 
 /**

@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver.moduleapi
+package com.sos.jobscheduler.taskserver.moduleapi
 
-import com.sos.scheduler.engine.base.generic.IsString
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.scheduler.engine.common.utils.Strings.TruncatedString
+import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.common.utils.Strings.TruncatedString
 
 /**
  * @author Joacim Zschimmer

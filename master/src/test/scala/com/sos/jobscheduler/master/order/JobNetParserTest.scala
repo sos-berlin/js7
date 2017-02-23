@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.master.order
+package com.sos.jobscheduler.master.order
 
-import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources._
-import com.sos.scheduler.engine.data.engine2.agent.AgentPath
-import com.sos.scheduler.engine.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId}
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
+import com.sos.jobscheduler.data.engine2.agent.AgentPath
+import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId}
 import org.scalatest.FreeSpec
 
 /**

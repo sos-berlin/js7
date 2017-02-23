@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel.server
+package com.sos.jobscheduler.tunnel.server
 
 import java.time.Instant
 import java.time.Instant._

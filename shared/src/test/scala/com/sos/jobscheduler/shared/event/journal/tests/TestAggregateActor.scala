@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.shared.event.journal.tests
+package com.sos.jobscheduler.shared.event.journal.tests
 
 import akka.Done
 import akka.actor.ActorRef
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
-import com.sos.scheduler.engine.shared.event.journal.KeyedJournalingActor
-import com.sos.scheduler.engine.shared.event.journal.tests.TestAggregateActor._
+import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
+import com.sos.jobscheduler.shared.event.journal.tests.TestAggregateActor._
 
 /**
   * @author Joacim Zschimmer

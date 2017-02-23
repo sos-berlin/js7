@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.jobapi.scripting
+package com.sos.jobscheduler.jobapi.scripting
 
 import com.google.common.base.Supplier
 import com.google.common.collect.ImmutableMap

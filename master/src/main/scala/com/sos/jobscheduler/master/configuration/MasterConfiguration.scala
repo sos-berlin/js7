@@ -1,17 +1,17 @@
-package com.sos.scheduler.engine.master.configuration
+package com.sos.jobscheduler.master.configuration
 
 import akka.util.Timeout
-import com.sos.scheduler.engine.base.convert.As
-import com.sos.scheduler.engine.base.convert.As._
-import com.sos.scheduler.engine.common.commandline.CommandLineArguments
-import com.sos.scheduler.engine.common.configutils.Configs
-import com.sos.scheduler.engine.common.configutils.Configs.{parseConfigIfExists, _}
-import com.sos.scheduler.engine.common.internet.IP.StringToServerInetSocketAddress
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
-import com.sos.scheduler.engine.common.time.ScalaTime.RichDuration
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
-import com.sos.scheduler.engine.common.utils.JavaResource
+import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.convert.As._
+import com.sos.jobscheduler.common.commandline.CommandLineArguments
+import com.sos.jobscheduler.common.configutils.Configs
+import com.sos.jobscheduler.common.configutils.Configs.{parseConfigIfExists, _}
+import com.sos.jobscheduler.common.internet.IP.StringToServerInetSocketAddress
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.sprayutils.WebServerBinding
+import com.sos.jobscheduler.common.time.ScalaTime.RichDuration
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.JavaResource
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Path
@@ -48,7 +48,7 @@ object MasterConfiguration {
       webServerBindings = Vector(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
 
   private[configuration] lazy val DefaultConfig = Configs.loadResource(
-    JavaResource("com/sos/scheduler/engine/master/configuration/master.conf"))
+    JavaResource("com/sos/jobscheduler/master/configuration/master.conf"))
 
   def fromCommandLine(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
     fromDataDirectory(a.optionAs[Path]("-data-directory=")) withCommandLineArguments a

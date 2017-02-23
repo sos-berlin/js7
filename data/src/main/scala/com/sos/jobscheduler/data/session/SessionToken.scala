@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.session
+package com.sos.jobscheduler.data.session
 
-import com.sos.scheduler.engine.base.generic.SecretString
+import com.sos.jobscheduler.base.generic.SecretString
 import spray.json.DefaultJsonProtocol._
 
 /**

@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.common.time.timer
+package com.sos.jobscheduler.common.time.timer
 
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.ConcurrentSkipListMapOrderedQueueTest._
-import com.sos.scheduler.engine.common.time.timer.OrderedQueueTest.Thing
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.ConcurrentSkipListMapOrderedQueueTest._
+import com.sos.jobscheduler.common.time.timer.OrderedQueueTest.Thing
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.util.Random

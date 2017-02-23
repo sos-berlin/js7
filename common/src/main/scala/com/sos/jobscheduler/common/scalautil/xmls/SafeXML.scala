@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.scalautil.xmls
+package com.sos.jobscheduler.common.scalautil.xmls
 
-import com.sos.scheduler.engine.common.xml.XxeVulnerability
+import com.sos.jobscheduler.common.xml.XxeVulnerability
 import javax.xml.parsers.SAXParserFactory
 import scala.xml.factory.XMLLoader
 

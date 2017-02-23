@@ -1,19 +1,19 @@
-package com.sos.scheduler.engine.master.configuration.inject
+package com.sos.jobscheduler.master.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.scheduler.engine.common.akkautils.DeadLetterActor
-import com.sos.scheduler.engine.common.event.collector.EventCollector
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.master.configuration.MasterConfiguration
-import com.sos.scheduler.engine.master.configuration.inject.MasterModule._
-import com.sos.scheduler.engine.shared.event.ActorEventCollector
+import com.sos.jobscheduler.common.akkautils.DeadLetterActor
+import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.web.auth.{CSRF, GateKeeper}
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.configuration.inject.MasterModule._
+import com.sos.jobscheduler.shared.event.ActorEventCollector
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import scala.concurrent.ExecutionContext

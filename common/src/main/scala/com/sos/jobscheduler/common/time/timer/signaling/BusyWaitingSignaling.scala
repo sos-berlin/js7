@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.time.timer.signaling
+package com.sos.jobscheduler.common.time.timer.signaling
 
 import java.lang.System.currentTimeMillis
 import java.util.concurrent.atomic.AtomicBoolean

@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.scheduler.engine.common.process.Processes._
-import com.sos.scheduler.engine.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.namedThreadFuture
-import com.sos.scheduler.engine.common.scalautil.{ClosedFuture, HasCloser, Logger}
-import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.data.job.ReturnCode
-import com.sos.scheduler.engine.taskserver.task.process.RichProcess._
+import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.common.process.Processes._
+import com.sos.jobscheduler.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
+import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger}
+import com.sos.jobscheduler.common.system.OperatingSystem._
+import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.taskserver.task.process.RichProcess._
 import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
 import java.lang.ProcessBuilder.Redirect.INHERIT

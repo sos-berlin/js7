@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.data.event
+package com.sos.jobscheduler.data.event
 
-import com.sos.scheduler.engine.base.sprayjson.typed.{MultipleSubtype, Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
-import com.sos.scheduler.engine.data.event.KeyedEvent.{KeyFieldName, NoKey}
-import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
+import com.sos.jobscheduler.base.sprayjson.typed.{MultipleSubtype, Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.data.event.KeyedEvent.{KeyFieldName, NoKey}
+import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
 import scala.reflect.ClassTag
 import spray.json._
 

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.modules.monitor
+package com.sos.jobscheduler.taskserver.modules.monitor
 
-import com.sos.scheduler.engine.taskserver.moduleapi.RawModuleArguments
-import com.sos.scheduler.engine.taskserver.modules.monitor.RawMonitorArguments._
+import com.sos.jobscheduler.taskserver.moduleapi.RawModuleArguments
+import com.sos.jobscheduler.taskserver.modules.monitor.RawMonitorArguments._
 
 /**
   * Arguments for a [[Monitor]] as received from the C++ engine.

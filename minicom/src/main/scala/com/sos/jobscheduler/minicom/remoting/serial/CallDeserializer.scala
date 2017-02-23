@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType}
-import com.sos.scheduler.engine.minicom.remoting.calls._
-import com.sos.scheduler.engine.minicom.remoting.serial.CallDeserializer._
-import com.sos.scheduler.engine.minicom.remoting.serial.ProxyRegistering.NoProxyingRegistering
-import com.sos.scheduler.engine.minicom.types.{CLSID, IID}
+import com.sos.jobscheduler.minicom.idispatch.{DISPID, DispatchType}
+import com.sos.jobscheduler.minicom.remoting.calls._
+import com.sos.jobscheduler.minicom.remoting.serial.CallDeserializer._
+import com.sos.jobscheduler.minicom.remoting.serial.ProxyRegistering.NoProxyingRegistering
+import com.sos.jobscheduler.minicom.types.{CLSID, IID}
 import scala.collection.immutable
 
 /**

@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.http.client.idempotence
+package com.sos.jobscheduler.http.client.idempotence
 
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestor._
-import com.sos.scheduler.engine.http.client.idempotence.IdempotentHeaders.`X-JobScheduler-Request-ID`
-import com.sos.scheduler.engine.http.client.idempotence.IdempotentRequestor._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.http.client.heartbeat.HeartbeatRequestor._
+import com.sos.jobscheduler.http.client.idempotence.IdempotentHeaders.`X-JobScheduler-Request-ID`
+import com.sos.jobscheduler.http.client.idempotence.IdempotentRequestor._
 import java.time.Duration
 import java.time.Instant._
 import scala.concurrent.Future._

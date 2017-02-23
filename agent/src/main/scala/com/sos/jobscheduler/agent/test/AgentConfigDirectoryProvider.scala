@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.agent.test
+package com.sos.jobscheduler.agent.test
 
-import com.sos.scheduler.engine.agent.test.AgentConfigDirectoryProvider._
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.closeOnError
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
-import com.sos.scheduler.engine.common.scalautil.FileUtils._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
-import com.sos.scheduler.engine.common.utils.JavaResource
+import com.sos.jobscheduler.agent.test.AgentConfigDirectoryProvider._
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
+import com.sos.jobscheduler.common.scalautil.FileUtils._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.sprayutils.https.KeystoreReference
+import com.sos.jobscheduler.common.utils.JavaResource
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import java.nio.file.Path
 
@@ -33,8 +33,8 @@ trait AgentConfigDirectoryProvider {
 
 object AgentConfigDirectoryProvider {
   // Following resources have been generated with the command line:
-  // engine-common/src/main/resources/com/sos/scheduler/engine/common/sprayutils/https/generate-self-signed-ssl-certificate-test-keystore.sh -data-directory=engine-agent/src/main/resources/com/sos/scheduler/engine/agent/test -alias=agent-https
-  val PrivateHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/config/private/private-https.jks")
-  val PublicHttpJksResource = JavaResource("com/sos/scheduler/engine/agent/test/public-https.jks")
-  val PrivateConfResource = JavaResource("com/sos/scheduler/engine/agent/test/config/private/private.conf")
+  // engine-common/src/main/resources/com/sos/jobscheduler/common/sprayutils/https/generate-self-signed-ssl-certificate-test-keystore.sh -data-directory=engine-agent/src/main/resources/com/sos/jobscheduler/agent/test -alias=agent-https
+  val PrivateHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private-https.jks")
+  val PublicHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/public-https.jks")
+  val PrivateConfResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private.conf")
 }

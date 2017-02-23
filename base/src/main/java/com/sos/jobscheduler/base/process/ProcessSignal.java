@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.base.process;
+package com.sos.jobscheduler.base.process;
 
-import com.sos.scheduler.engine.base.sprayjson.JavaEnumJsonFormat;
+import com.sos.jobscheduler.base.sprayjson.JavaEnumJsonFormat;
 import spray.json.JsonFormat;
 
 /**

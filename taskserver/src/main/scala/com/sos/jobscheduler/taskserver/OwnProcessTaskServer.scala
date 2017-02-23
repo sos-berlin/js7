@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.taskserver
+package com.sos.jobscheduler.taskserver
 
-import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.common.scalautil.SetOnce
-import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
-import com.sos.scheduler.engine.taskserver.task.process.{JavaProcess, ProcessConfiguration, RichProcess}
+import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.common.scalautil.SetOnce
+import com.sos.jobscheduler.taskserver.TaskServer.Terminated
+import com.sos.jobscheduler.taskserver.data.TaskServerArguments
+import com.sos.jobscheduler.taskserver.task.process.{JavaProcess, ProcessConfiguration, RichProcess}
 import java.io.File
 import scala.concurrent.{ExecutionContext, Promise}
 import spray.json._

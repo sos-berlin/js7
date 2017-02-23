@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.remoting.serial.variantArrayFlags._
-import com.sos.scheduler.engine.minicom.remoting.serial.variantTypes._
-import com.sos.scheduler.engine.minicom.types.HRESULT.DISP_E_BADVARTYPE
-import com.sos.scheduler.engine.minicom.types.{COMException, IUnknown, VariantArray}
+import com.sos.jobscheduler.minicom.remoting.serial.variantArrayFlags._
+import com.sos.jobscheduler.minicom.remoting.serial.variantTypes._
+import com.sos.jobscheduler.minicom.types.HRESULT.DISP_E_BADVARTYPE
+import com.sos.jobscheduler.minicom.types.{COMException, IUnknown, VariantArray}
 import org.scalactic.Requirements._
 
 /**

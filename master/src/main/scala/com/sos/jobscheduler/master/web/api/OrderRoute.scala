@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.master.web.api
+package com.sos.jobscheduler.master.web.api
 
-import com.sos.scheduler.engine.data.order.OrderId
-import com.sos.scheduler.engine.master.Master
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.master.Master
 import scala.concurrent.ExecutionContext
 import spray.http.StatusCodes.BadRequest
 import spray.httpx.SprayJsonSupport._

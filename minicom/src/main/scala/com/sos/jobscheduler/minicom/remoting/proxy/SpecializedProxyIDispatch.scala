@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.remoting.proxy
+package com.sos.jobscheduler.minicom.remoting.proxy
 
 import java.util.NoSuchElementException
 

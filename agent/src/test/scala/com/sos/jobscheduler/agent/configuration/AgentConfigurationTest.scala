@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.agent.configuration
+package com.sos.jobscheduler.agent.configuration
 
-import com.sos.scheduler.engine.agent.data.ProcessKillScript
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.scalautil.FileUtils._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
-import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
-import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
+import com.sos.jobscheduler.agent.data.ProcessKillScript
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.scalautil.FileUtils._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.sprayutils.WebServerBinding
+import com.sos.jobscheduler.common.sprayutils.https.KeystoreReference
+import com.sos.jobscheduler.common.system.FileUtils._
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.taskserver.data.DotnetConfiguration
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createTempDirectory, delete}

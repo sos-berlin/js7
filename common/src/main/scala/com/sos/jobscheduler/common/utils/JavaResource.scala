@@ -1,13 +1,13 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.jobscheduler.common.utils
 
 import com.google.common.base.Charsets._
 import com.google.common.io.ByteStreams.toByteArray
 import com.google.common.io.{ByteStreams, Resources}
 import com.google.common.io.Resources.getResource
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
-import com.sos.scheduler.engine.common.utils.JavaResource._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.utils.JavaResource._
 import java.io.File
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}

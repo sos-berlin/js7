@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.engine2.order
+package com.sos.jobscheduler.data.engine2.order
 
-import com.sos.scheduler.engine.data.filebased.TypedPath
+import com.sos.jobscheduler.data.filebased.TypedPath
 
 final case class JobChainPath(string: String)
 extends TypedPath {
@@ -13,5 +13,5 @@ extends TypedPath {
 
 object JobChainPath extends TypedPath.Companion[JobChainPath] {
 
-  override protected[engine] def isCommaAllowed = false  // Legacy of JobScheduler 1
+  override def isCommaAllowed = false  // Legacy of JobScheduler 1
 }

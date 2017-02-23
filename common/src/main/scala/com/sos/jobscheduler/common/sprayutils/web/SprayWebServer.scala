@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.common.sprayutils.web
+package com.sos.jobscheduler.common.sprayutils.web
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.io.{IO, Tcp}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.scheduler.engine.base.utils.ScalaUtils.RichAny
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
-import com.sos.scheduler.engine.common.sprayutils.https.Https.newServerSSLEngineProvider
-import com.sos.scheduler.engine.common.sprayutils.web.SprayWebServer._
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichAny
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.WebServerBinding
+import com.sos.jobscheduler.common.sprayutils.https.Https.newServerSSLEngineProvider
+import com.sos.jobscheduler.common.sprayutils.web.SprayWebServer._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.concurrent.duration._

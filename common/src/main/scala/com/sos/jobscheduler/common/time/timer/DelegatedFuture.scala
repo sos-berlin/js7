@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.time.timer
+package com.sos.jobscheduler.common.time.timer
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{CanAwait, ExecutionContext, Future}

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.dotnet;
+package com.sos.jobscheduler.taskserver.dotnet;
 
-import com.sos.scheduler.engine.taskserver.dotnet.dlls.DotnetDlls$;
+import com.sos.jobscheduler.taskserver.dotnet.dlls.DotnetDlls$;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;

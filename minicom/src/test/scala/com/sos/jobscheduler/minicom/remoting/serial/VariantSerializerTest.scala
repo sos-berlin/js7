@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.minicom.remoting.serial.VariantSerializerTest._
-import com.sos.scheduler.engine.minicom.remoting.serial.variantTypes._
-import com.sos.scheduler.engine.minicom.types.VariantArray
+import com.sos.jobscheduler.minicom.remoting.serial.VariantSerializerTest._
+import com.sos.jobscheduler.minicom.remoting.serial.variantTypes._
+import com.sos.jobscheduler.minicom.types.VariantArray
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 

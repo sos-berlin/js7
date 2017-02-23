@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.jobscheduler.common.utils
 
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder._
 import java.net.ServerSocket
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

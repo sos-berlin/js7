@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.http.server.heartbeat
+package com.sos.jobscheduler.http.server.heartbeat
 
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatId
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatView._
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.http.client.heartbeat.HeartbeatId
+import com.sos.jobscheduler.http.server.heartbeat.HeartbeatView._
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._
 

@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.soslicense
+package com.sos.jobscheduler.common.soslicense
 
-import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter
-import com.sos.scheduler.engine.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
-import com.sos.scheduler.engine.common.soslicense.Parameters._
+import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter
+import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
+import com.sos.jobscheduler.common.soslicense.Parameters._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 

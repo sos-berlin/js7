@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.concurrent
+package com.sos.jobscheduler.common.concurrent
 
 import java.util.concurrent.{ConcurrentLinkedQueue, Semaphore}
 import scala.concurrent.ExecutionContext

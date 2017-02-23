@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
 /**
 * @author Joacim Zschimmer

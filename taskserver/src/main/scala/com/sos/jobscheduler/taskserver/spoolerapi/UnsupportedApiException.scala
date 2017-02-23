@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.spoolerapi
+package com.sos.jobscheduler.taskserver.spoolerapi
 
 /**
  * @author Joacim Zschimmer

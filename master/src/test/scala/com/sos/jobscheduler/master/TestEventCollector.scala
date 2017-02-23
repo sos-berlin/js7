@@ -1,13 +1,13 @@
-package com.sos.scheduler.engine.master
+package com.sos.jobscheduler.master
 
 import akka.actor.{Actor, ActorRefFactory, Props}
-import com.sos.scheduler.engine.common.event.collector.EventCollector
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Event, EventId, Snapshot}
-import com.sos.scheduler.engine.master.TestEventCollector._
-import com.sos.scheduler.engine.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.common.event.collector.EventCollector
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, Snapshot}
+import com.sos.jobscheduler.master.TestEventCollector._
+import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
 import scala.concurrent.ExecutionContext
 
 /**

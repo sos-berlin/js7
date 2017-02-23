@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
 import com.google.common.io.Files.touch
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.{autoDeleting, withTemporaryFile}
-import com.sos.scheduler.engine.common.scalautil.FileUtilsTest._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.{autoDeleting, withTemporaryFile}
+import com.sos.jobscheduler.common.scalautil.FileUtilsTest._
 import java.io.File
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete, exists}

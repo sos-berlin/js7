@@ -1,18 +1,18 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.agent.web.TunnelWebServicesTest._
-import com.sos.scheduler.engine.agent.web.test.WebServiceTest
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
-import com.sos.scheduler.engine.common.time.ScalaTime.DurationRichInt
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatId
-import com.sos.scheduler.engine.http.server.heartbeat.{HeartbeatService, HeartbeatView}
-import com.sos.scheduler.engine.tunnel.data.Http._
-import com.sos.scheduler.engine.tunnel.data._
-import com.sos.scheduler.engine.tunnel.server.TunnelAccess
+import com.sos.jobscheduler.agent.web.TunnelWebServicesTest._
+import com.sos.jobscheduler.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.ByteStringMarshallers._
+import com.sos.jobscheduler.common.time.ScalaTime.DurationRichInt
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.http.client.heartbeat.HeartbeatId
+import com.sos.jobscheduler.http.server.heartbeat.{HeartbeatService, HeartbeatView}
+import com.sos.jobscheduler.tunnel.data.Http._
+import com.sos.jobscheduler.tunnel.data._
+import com.sos.jobscheduler.tunnel.server.TunnelAccess
 import java.net.InetAddress
 import java.time.{Duration, Instant}
 import org.scalatest.FreeSpec

@@ -1,16 +1,16 @@
-package com.sos.scheduler.engine.agent.fileordersource
+package com.sos.jobscheduler.agent.fileordersource
 
 import com.google.inject.{AbstractModule, Guice, Provides}
-import com.sos.scheduler.engine.agent.data.commandresponses.FileOrderSourceContent
-import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.fileordersource.RequestFileOrderSourceContentExecutorTest._
-import com.sos.scheduler.engine.common.guice.GuiceImplicits._
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.touchAndDeleteWithCloser
-import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.agent.data.commandresponses.FileOrderSourceContent
+import com.sos.jobscheduler.agent.data.commands._
+import com.sos.jobscheduler.agent.fileordersource.RequestFileOrderSourceContentExecutorTest._
+import com.sos.jobscheduler.common.guice.GuiceImplicits._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.touchAndDeleteWithCloser
+import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.nio.file.Files._
 import java.nio.file.Paths
 import java.nio.file.attribute.FileTime

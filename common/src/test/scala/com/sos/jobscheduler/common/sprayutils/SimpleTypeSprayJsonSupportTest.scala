@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.common.sprayutils.SimpleTypeSprayJsonSupport._
+import com.sos.jobscheduler.common.sprayutils.SimpleTypeSprayJsonSupport._
 import org.scalatest.FreeSpec
 import spray.http.ContentTypes
 import spray.http.HttpHeaders.Accept

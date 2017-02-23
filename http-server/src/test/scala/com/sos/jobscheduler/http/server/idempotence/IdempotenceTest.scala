@@ -1,19 +1,19 @@
-package com.sos.scheduler.engine.http.server.idempotence
+package com.sos.jobscheduler.http.server.idempotence
 
 import akka.actor.{ActorSystem, Props}
 import akka.io.{IO, Tcp}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.Marshalling.marshalToHttpResponse
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
-import com.sos.scheduler.engine.http.client.idempotence.IdempotentHeaders.`X-JobScheduler-Request-ID`
-import com.sos.scheduler.engine.http.client.idempotence.RequestId
-import com.sos.scheduler.engine.http.server.idempotence.IdempotenceTest._
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.Marshalling.marshalToHttpResponse
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder._
+import com.sos.jobscheduler.http.client.idempotence.IdempotentHeaders.`X-JobScheduler-Request-ID`
+import com.sos.jobscheduler.http.client.idempotence.RequestId
+import com.sos.jobscheduler.http.server.idempotence.IdempotenceTest._
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.concurrent.ScalaFutures

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.tcp
+package com.sos.jobscheduler.common.tcp
 
 import akka.util.ByteString
 

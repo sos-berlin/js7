@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.agent.web.common
+package com.sos.jobscheduler.agent.web.common
 
 import akka.actor.{ActorRefFactory, ActorSystem}
-import com.sos.scheduler.engine.common.sprayutils.WebLogDirectives.handleErrorAndLog
-import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeper
-import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
+import com.sos.jobscheduler.common.sprayutils.WebLogDirectives.handleErrorAndLog
+import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeper
+import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
 import com.typesafe.config.Config
 import spray.http.Uri.Path
 import spray.routing._

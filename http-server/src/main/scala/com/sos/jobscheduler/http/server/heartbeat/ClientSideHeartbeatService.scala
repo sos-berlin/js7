@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.http.server.heartbeat
+package com.sos.jobscheduler.http.server.heartbeat
 
-import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestHeaders.`X-JobScheduler-Heartbeat`
+import com.sos.jobscheduler.http.client.heartbeat.HeartbeatRequestHeaders.`X-JobScheduler-Heartbeat`
 import java.time.Duration
 import spray.http.HttpResponse
 import spray.http.StatusCodes._

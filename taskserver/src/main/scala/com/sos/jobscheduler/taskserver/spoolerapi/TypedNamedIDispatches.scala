@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.taskserver.spoolerapi
+package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichPairTraversable
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch
-import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches
-import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches._
+import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichPairTraversable
+import com.sos.jobscheduler.minicom.idispatch.IDispatch
+import com.sos.jobscheduler.taskserver.moduleapi.NamedIDispatches
+import com.sos.jobscheduler.taskserver.moduleapi.NamedIDispatches._
 
 /**
  * @author Joacim Zschimmer

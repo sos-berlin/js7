@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel.data
+package com.sos.jobscheduler.tunnel.data
 
 import akka.util.ByteString
 import spray.json.DefaultJsonProtocol.jsonFormat1

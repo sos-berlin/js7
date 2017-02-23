@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.sprayutils.web.auth
+package com.sos.jobscheduler.common.sprayutils.web.auth
 
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils._
-import com.sos.scheduler.engine.common.sprayutils.web.auth.CSRF._
+import com.sos.jobscheduler.common.sprayutils.SprayUtils._
+import com.sos.jobscheduler.common.sprayutils.web.auth.CSRF._
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
 import scala.PartialFunction.cond

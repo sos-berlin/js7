@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
 /**
  * @author Joacim Zschimmer

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.minicom.remoting.proxy
+package com.sos.jobscheduler.minicom.remoting.proxy
 
-import com.sos.scheduler.engine.minicom.types.CLSID
+import com.sos.jobscheduler.minicom.types.CLSID
 
 /**
   * Like the C++ class Reference_with_properties.

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.http.client.idempotence
+package com.sos.jobscheduler.http.client.idempotence
 
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.http.client.idempotence.IdempotentHeaders.`X-JobScheduler-Request-ID`
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.http.client.idempotence.IdempotentHeaders.`X-JobScheduler-Request-ID`
 import org.scalatest.FreeSpec
 
 /**

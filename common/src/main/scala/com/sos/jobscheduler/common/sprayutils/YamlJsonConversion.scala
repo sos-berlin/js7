@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.valueToJsValue
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.base.sprayjson.SprayJson.valueToJsValue
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import org.yaml.snakeyaml.DumperOptions.FlowStyle
 import org.yaml.snakeyaml.nodes.Tag
 import org.yaml.snakeyaml.{DumperOptions, Yaml}

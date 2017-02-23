@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.configuration.inject
+package com.sos.jobscheduler.taskserver.configuration.inject
 
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.scheduler.engine.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
+import com.sos.jobscheduler.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
 import javax.inject.Singleton
 import scala.concurrent.Future
 

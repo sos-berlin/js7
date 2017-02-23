@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
 import com.google.common.io.Closer
-import com.sos.scheduler.engine.common.scalautil.AutoClosing._
-import com.sos.scheduler.engine.common.scalautil.AutoClosingTest._
+import com.sos.jobscheduler.common.scalautil.AutoClosing._
+import com.sos.jobscheduler.common.scalautil.AutoClosingTest._
 import java.io.Closeable
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec

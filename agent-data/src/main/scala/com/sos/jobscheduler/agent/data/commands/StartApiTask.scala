@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.scheduler.engine.agent.data.commands.StartTask.Meta
+import com.sos.jobscheduler.agent.data.commands.StartTask.Meta
 import spray.json.DefaultJsonProtocol._
 
 /**

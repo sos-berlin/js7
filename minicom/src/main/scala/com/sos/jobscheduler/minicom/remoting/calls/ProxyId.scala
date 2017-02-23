@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.remoting.calls
+package com.sos.jobscheduler.minicom.remoting.calls
 
 import org.jetbrains.annotations.TestOnly
 import scala.util.Random

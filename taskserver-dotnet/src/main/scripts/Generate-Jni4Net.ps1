@@ -32,7 +32,7 @@ $Jni4Net = "$Target\jni4net"
 $Jni4NetForked = "$Target\jni4net_forked"
 
 # Target DLL directory
-$ProxyDllResultDirectory = mkdir "$Classes/com/sos/scheduler/engine/taskserver/dotnet/dlls" -force
+$ProxyDllResultDirectory = mkdir "$Classes/com/sos/jobscheduler/taskserver/dotnet/dlls" -force
 
 # Target .Net adapter DLL path, same name as in DotnetDlls.scala
 $ResultAdapterAssemblyDll = Join-Path $ProxyDllResultDirectory "com.sos-berlin.engine.engine-job-api-dotnet.dll"  # Same name as in AssemblyInfo.cs

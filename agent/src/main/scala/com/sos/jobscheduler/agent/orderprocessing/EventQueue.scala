@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.agent.orderprocessing
+package com.sos.jobscheduler.agent.orderprocessing
 
 import akka.actor.{Actor, Status}
-import com.sos.scheduler.engine.agent.orderprocessing.EventQueue._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.{Timer, TimerService}
-import com.sos.scheduler.engine.data.engine2.order.OrderEvent
-import com.sos.scheduler.engine.data.engine2.order.OrderEvent.OrderDetached
-import com.sos.scheduler.engine.data.event.{EventId, EventSeq, KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.data.order.OrderId
+import com.sos.jobscheduler.agent.orderprocessing.EventQueue._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
+import com.sos.jobscheduler.data.engine2.order.OrderEvent
+import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderDetached
+import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.order.OrderId
 import java.time.Duration
 import scala.collection.JavaConversions._
 import scala.collection.immutable.Seq

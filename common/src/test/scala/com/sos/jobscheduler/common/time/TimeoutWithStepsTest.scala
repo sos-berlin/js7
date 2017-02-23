@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.time
+package com.sos.jobscheduler.common.time
 
-import com.sos.scheduler.engine.common.time.TimeoutWithSteps._
+import com.sos.jobscheduler.common.time.TimeoutWithSteps._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 

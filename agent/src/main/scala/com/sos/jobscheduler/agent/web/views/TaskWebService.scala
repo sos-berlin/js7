@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.agent.web.views
+package com.sos.jobscheduler.agent.web.views
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
-import com.sos.scheduler.engine.common.utils.IntelliJUtils._
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.views.TaskHandlerView
+import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.common.utils.IntelliJUtils._
 import spray.http.CacheDirectives.`max-age`
 import spray.http.HttpHeaders.`Cache-Control`
 import spray.json.DefaultJsonProtocol._

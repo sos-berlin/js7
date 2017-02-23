@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.data.views
+package com.sos.jobscheduler.agent.data.views
 
 import spray.json.DefaultJsonProtocol._
 

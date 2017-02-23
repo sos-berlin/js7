@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.engine2.agent
+package com.sos.jobscheduler.data.engine2.agent
 
-import com.sos.scheduler.engine.data.filebased.TypedPath
+import com.sos.jobscheduler.data.filebased.TypedPath
 
 /**
   * @author Joacim Zschimmer

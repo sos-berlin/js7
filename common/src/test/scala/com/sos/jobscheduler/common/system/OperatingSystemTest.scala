@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.system
+package com.sos.jobscheduler.common.system
 
-import com.sos.scheduler.engine.common.system.OperatingSystem._
+import com.sos.jobscheduler.common.system.OperatingSystem._
 import java.io.File
 import java.io.File.pathSeparator
 import org.scalatest.FreeSpec

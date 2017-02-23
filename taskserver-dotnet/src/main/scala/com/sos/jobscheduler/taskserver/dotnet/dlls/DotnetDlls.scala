@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.dotnet.dlls
+package com.sos.jobscheduler.taskserver.dotnet.dlls
 
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.utils.JavaResource
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.utils.JavaResource
 import java.nio.file.Path
 
 /**
@@ -10,7 +10,7 @@ import java.nio.file.Path
 object DotnetDlls {
 
   val DllName = "com.sos-berlin.engine.engine-job-api-dotnet.dll"
-  private val Dir = "com/sos/scheduler/engine/taskserver/dotnet/dlls"
+  private val Dir = "com/sos/jobscheduler/taskserver/dotnet/dlls"
   private val Jni4netDlls = Set(
       sys.props.get("sun.arch.data.model") match {
         case Some("64") ⇒ JavaResource(s"$Dir/jni4net.n.w64.v40-0.8.8.0.dll")

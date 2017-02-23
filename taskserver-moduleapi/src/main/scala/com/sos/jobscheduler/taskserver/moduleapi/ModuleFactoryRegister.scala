@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.moduleapi
+package com.sos.jobscheduler.taskserver.moduleapi
 
-import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister._
+import com.sos.jobscheduler.taskserver.moduleapi.ModuleFactoryRegister._
 import scala.collection.immutable
 
 /**

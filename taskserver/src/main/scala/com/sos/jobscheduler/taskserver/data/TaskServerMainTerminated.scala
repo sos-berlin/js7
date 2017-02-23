@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.data
+package com.sos.jobscheduler.taskserver.data
 
 /**
   * For Future[Terminated], succeeds when TaskServer has terminated.

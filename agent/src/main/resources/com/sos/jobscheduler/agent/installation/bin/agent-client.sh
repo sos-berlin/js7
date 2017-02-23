@@ -5,6 +5,6 @@ set -e
 
 "$java"\
   -classpath "$lib/*"\
-  -Dlogback.configurationFile="com/sos/scheduler/engine/agent/client/main/logback.xml"\
-  com.sos.scheduler.engine.agent.client.main.AgentClientMain\
+  -Dlogback.configurationFile="com/sos/jobscheduler/agent/client/main/logback.xml"\
+  com.sos.jobscheduler.agent.client.main.AgentClientMain\
   "$@"

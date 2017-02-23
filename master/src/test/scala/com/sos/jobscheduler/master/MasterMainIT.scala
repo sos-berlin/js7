@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.master
+package com.sos.jobscheduler.master
 
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.{FreeTcpPortFinder, JavaResource}
-import com.sos.scheduler.engine.master.MasterMainIT._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.{FreeTcpPortFinder, JavaResource}
+import com.sos.jobscheduler.master.MasterMainIT._
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 
@@ -25,5 +25,5 @@ final class MasterMainIT extends FreeSpec {
 }
 
 object MasterMainIT {
-  private val DataResource = JavaResource("com/sos/scheduler/engine/master/installation/data")
+  private val DataResource = JavaResource("com/sos/jobscheduler/master/installation/data")
 }

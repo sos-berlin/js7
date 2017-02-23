@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.modules.javamodule
+package com.sos.jobscheduler.taskserver.modules.javamodule
 
-import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
+import com.sos.jobscheduler.taskserver.moduleapi.{ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
 import sos.spooler.jobs.{ScriptAdapterJob, ScriptAdapterMonitor}
 
 /**

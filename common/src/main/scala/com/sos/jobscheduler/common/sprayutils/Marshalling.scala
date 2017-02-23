@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
 import akka.actor.ActorRefFactory
 import spray.http.HttpResponse

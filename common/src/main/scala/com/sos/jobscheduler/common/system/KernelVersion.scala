@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.system
+package com.sos.jobscheduler.common.system
 
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichTraversableOnce
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import scala.collection.immutable
 import scala.util.control.NonFatal
 

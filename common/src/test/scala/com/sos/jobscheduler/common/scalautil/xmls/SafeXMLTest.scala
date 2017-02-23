@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.scalautil.xmls
+package com.sos.jobscheduler.common.scalautil.xmls
 
-import com.sos.scheduler.engine.common.scalautil.xmls.SafeXMLTest._
+import com.sos.jobscheduler.common.scalautil.xmls.SafeXMLTest._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.xml.sax.SAXParseException

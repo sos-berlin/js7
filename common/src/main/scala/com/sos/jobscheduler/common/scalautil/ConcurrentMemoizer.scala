@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
 /**
   * Memoizes all computed results - fast, but in case of concurrent calls, results may be computed twice.

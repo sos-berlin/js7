@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.common.process
+package com.sos.jobscheduler.common.process
 
-import com.sos.scheduler.engine.common.process.Processes._
-import com.sos.scheduler.engine.common.process.ProcessesIT._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits.RichPath
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutures
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.common.process.Processes._
+import com.sos.jobscheduler.common.process.ProcessesIT._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import org.scalatest.FreeSpec

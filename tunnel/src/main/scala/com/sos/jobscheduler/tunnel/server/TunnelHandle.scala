@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.tunnel.server
+package com.sos.jobscheduler.tunnel.server
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken, TunnelView}
+import com.sos.jobscheduler.http.server.heartbeat.HeartbeatService
+import com.sos.jobscheduler.tunnel.data.{TunnelId, TunnelToken, TunnelView}
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.{Duration, Instant}
 import scala.concurrent.Future

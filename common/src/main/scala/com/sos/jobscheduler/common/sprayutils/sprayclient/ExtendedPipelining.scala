@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.sos.scheduler.engine.common.sprayutils.sprayclient
+package com.sos.jobscheduler.common.sprayutils.sprayclient
 
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.io.IO

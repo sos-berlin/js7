@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.xml
+package com.sos.jobscheduler.common.xml
 
-import com.sos.scheduler.engine.common.xml.VariableSets.{parseXml, toParamsXmlElem, toXmlElem}
+import com.sos.jobscheduler.common.xml.VariableSets.{parseXml, toParamsXmlElem, toXmlElem}
 import org.scalatest.FreeSpec
 
 /**

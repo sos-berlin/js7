@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.minicom.types
+package com.sos.jobscheduler.minicom.types
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import scala.collection.immutable
 import scala.collection.immutable.IndexedSeq
 import scala.reflect.ClassTag

@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.shared.event
+package com.sos.jobscheduler.shared.event
 
 import akka.actor.ActorRef
 import akka.event.{EventBus, SubchannelClassification}
 import akka.util.Subclassification
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Snapshot, Event ⇒ EngineEvent}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Snapshot, Event ⇒ EngineEvent}
 import javax.inject.Singleton
 
 /**

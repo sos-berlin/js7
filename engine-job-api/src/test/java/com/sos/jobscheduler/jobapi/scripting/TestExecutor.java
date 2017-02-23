@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.jobapi.scripting;
+package com.sos.jobscheduler.jobapi.scripting;
 
 class TestExecutor {
     private final JobScriptInstanceAdapter adapter;

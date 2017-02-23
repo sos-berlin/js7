@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.convert
+package com.sos.jobscheduler.base.convert
 
 import java.nio.file.{Path, Paths}
 import org.scalatest.FreeSpec

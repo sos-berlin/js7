@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.scheduler.engine.common.process.Processes.Pid
-import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
+import com.sos.jobscheduler.common.process.Processes.Pid
+import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
 import java.nio.file.Path
 import scala.collection.immutable
 

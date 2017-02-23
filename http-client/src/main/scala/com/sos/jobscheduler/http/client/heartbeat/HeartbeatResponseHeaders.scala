@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.http.client.heartbeat
+package com.sos.jobscheduler.http.client.heartbeat
 
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.http.client.common.{OwnHttpHeader, OwnHttpHeaderCompanion}
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.http.client.common.{OwnHttpHeader, OwnHttpHeaderCompanion}
 import spray.http.HttpHeader
 
 /**

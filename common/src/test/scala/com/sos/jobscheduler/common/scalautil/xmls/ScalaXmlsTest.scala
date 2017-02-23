@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.common.scalautil.xmls
+package com.sos.jobscheduler.common.scalautil.xmls
 
 import akka.util.ByteString
 import com.google.common.base.Charsets.{ISO_8859_1, UTF_8}
 import com.google.common.io.Files.{toString ⇒ fileToString}
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXmls.implicits._
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import java.io.File
 import java.nio.file.Files.delete
 import java.nio.file.Path

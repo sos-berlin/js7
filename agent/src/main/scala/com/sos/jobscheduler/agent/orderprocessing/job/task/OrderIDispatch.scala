@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.orderprocessing.job.task
+package com.sos.jobscheduler.agent.orderprocessing.job.task
 
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, InvocableIDispatch}
+import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, InvocableIDispatch}
 import scala.collection.mutable
 
 /**

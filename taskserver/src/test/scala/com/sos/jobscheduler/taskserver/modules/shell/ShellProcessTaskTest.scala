@@ -1,30 +1,30 @@
-package com.sos.scheduler.engine.taskserver.modules.shell
+package com.sos.jobscheduler.taskserver.modules.shell
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.scalautil.xmls.SafeXML
-import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.system.OperatingSystem._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
-import com.sos.scheduler.engine.data.log.SchedulerLogLevel
-import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.minicom.idispatch.{IDispatch, Invocable, InvocableIDispatch, PublicMethodsAreInvocable}
-import com.sos.scheduler.engine.taskserver.common.StdFiles
-import com.sos.scheduler.engine.taskserver.moduleapi.NamedIDispatches._
-import com.sos.scheduler.engine.taskserver.moduleapi.Script
-import com.sos.scheduler.engine.taskserver.modules.common.CommonArguments
-import com.sos.scheduler.engine.taskserver.modules.javamodule.TestJavaModule
-import com.sos.scheduler.engine.taskserver.modules.monitor.Monitor
-import com.sos.scheduler.engine.taskserver.modules.shell.ShellProcessTaskTest.{Setting, _}
-import com.sos.scheduler.engine.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedIDispatches}
-import com.sos.scheduler.engine.taskserver.task.TaskArguments
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.scalautil.xmls.SafeXML
+import com.sos.jobscheduler.common.system.FileUtils._
+import com.sos.jobscheduler.common.system.OperatingSystem._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.data.log.SchedulerLogLevel
+import com.sos.jobscheduler.data.message.MessageCode
+import com.sos.jobscheduler.minicom.idispatch.{IDispatch, Invocable, InvocableIDispatch, PublicMethodsAreInvocable}
+import com.sos.jobscheduler.taskserver.common.StdFiles
+import com.sos.jobscheduler.taskserver.moduleapi.NamedIDispatches._
+import com.sos.jobscheduler.taskserver.moduleapi.Script
+import com.sos.jobscheduler.taskserver.modules.common.CommonArguments
+import com.sos.jobscheduler.taskserver.modules.javamodule.TestJavaModule
+import com.sos.jobscheduler.taskserver.modules.monitor.Monitor
+import com.sos.jobscheduler.taskserver.modules.shell.ShellProcessTaskTest.{Setting, _}
+import com.sos.jobscheduler.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedIDispatches}
+import com.sos.jobscheduler.taskserver.task.TaskArguments
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable

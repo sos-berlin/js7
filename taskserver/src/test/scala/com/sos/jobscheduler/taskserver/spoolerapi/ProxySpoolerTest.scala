@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.taskserver.spoolerapi
+package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRemoting
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
+import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits._
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.minicom.remoting.proxy.ProxyRemoting
+import com.sos.jobscheduler.taskserver.data.TaskServerArguments
 import java.io.File
 import java.nio.file.Paths
 import org.scalatest.Matchers._

@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
-import com.sos.scheduler.engine.data.engine2.order.{JobNet, Order}
-import com.sos.scheduler.engine.data.order.OrderId
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.data.engine2.order.{JobNet, Order}
+import com.sos.jobscheduler.data.order.OrderId
 import scala.collection.immutable.Seq
 import spray.json.DefaultJsonProtocol._
 
@@ -49,15 +49,15 @@ final case class GetOrder(orderId: OrderId) extends OrderCommand {
 }
 
 object GetOrder {
-  final case class Response(order: Order[Order.State]) extends com.sos.scheduler.engine.agent.data.commandresponses.Response
+  final case class Response(order: Order[Order.State]) extends com.sos.jobscheduler.agent.data.commandresponses.Response
 }
 
 case object GetOrderIds extends OrderCommand {
   val SerialTypeName = "GetOrderIds"
-  final case class Response(orders: Seq[OrderId]) extends com.sos.scheduler.engine.agent.data.commandresponses.Response
+  final case class Response(orders: Seq[OrderId]) extends com.sos.jobscheduler.agent.data.commandresponses.Response
 }
 
 case object GetOrders extends OrderCommand {
   val SerialTypeName = "GetOrders"
-  final case class Response(order: Seq[Order[Order.State]]) extends com.sos.scheduler.engine.agent.data.commandresponses.Response
+  final case class Response(order: Seq[Order[Order.State]]) extends com.sos.jobscheduler.agent.data.commandresponses.Response
 }

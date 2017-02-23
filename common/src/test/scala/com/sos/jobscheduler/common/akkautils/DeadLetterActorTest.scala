@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.common.akkautils
+package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.{Actor, ActorSystem, Props}
-import com.sos.scheduler.engine.common.akkautils.DeadLetterActorTest._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.common.akkautils.DeadLetterActorTest._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import org.scalatest.FreeSpec
 import scala.collection.mutable
 

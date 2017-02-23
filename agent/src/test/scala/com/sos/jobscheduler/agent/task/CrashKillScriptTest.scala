@@ -1,13 +1,13 @@
-package com.sos.scheduler.engine.agent.task
+package com.sos.jobscheduler.agent.task
 
-import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.scheduler.engine.common.process.Processes.Pid
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.FileUtils.autoDeleting
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.data.job.TaskId
+import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
+import com.sos.jobscheduler.common.process.Processes.Pid
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.data.job.TaskId
 import java.nio.file.Files.{delete, exists, size}
 import java.nio.file.{Files, Paths}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}

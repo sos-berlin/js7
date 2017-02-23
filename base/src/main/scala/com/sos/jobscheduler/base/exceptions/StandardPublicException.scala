@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.exceptions
+package com.sos.jobscheduler.base.exceptions
 
 /**
  * @author Joacim Zschimmer

@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.invoker.IDispatchInvoker
-import com.sos.scheduler.engine.minicom.remoting.serial.variantArrayFlags.{FADF_HAVEVARTYPE, FADF_VARIANT}
-import com.sos.scheduler.engine.minicom.remoting.serial.variantTypes._
-import com.sos.scheduler.engine.minicom.types.{IUnknown, VariantArray}
+import com.sos.jobscheduler.minicom.idispatch.IDispatch
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.minicom.remoting.invoker.IDispatchInvoker
+import com.sos.jobscheduler.minicom.remoting.serial.variantArrayFlags.{FADF_HAVEVARTYPE, FADF_VARIANT}
+import com.sos.jobscheduler.minicom.remoting.serial.variantTypes._
+import com.sos.jobscheduler.minicom.types.{IUnknown, VariantArray}
 import scala.runtime.BoxedUnit.UNIT
 
 /**

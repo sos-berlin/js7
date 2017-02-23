@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.http.client.common
+package com.sos.jobscheduler.http.client.common
 
 import spray.http.{HttpHeader, Rendering}
 

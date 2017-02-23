@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
 import java.nio.charset.StandardCharsets.UTF_8
 import spray.http.HttpCharsets.`UTF-8`

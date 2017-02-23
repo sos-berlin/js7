@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.tunnel.server
+package com.sos.jobscheduler.tunnel.server
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
+import com.sos.jobscheduler.http.server.heartbeat.HeartbeatService
 import java.time.Duration
 import scala.concurrent.Future
 

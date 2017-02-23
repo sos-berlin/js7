@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.order
+package com.sos.jobscheduler.data.order
 
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.base.generic.IsString
 
 final case class OrderId(string: String) extends IsString {
   override def toString = s"Order:$string"

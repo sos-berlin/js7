@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.agent.orderprocessing.job
+package com.sos.jobscheduler.agent.orderprocessing.job
 
-import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources._
-import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.data.engine2.order.JobPath
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
+import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.data.engine2.order.JobPath
 import org.scalatest.FreeSpec
 
 /**

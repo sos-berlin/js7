@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.spoolerapi
+package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.scheduler.engine.data.message.MessageCode
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch}
+import com.sos.jobscheduler.data.message.MessageCode
+import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, IDispatch}
 import org.scalatest.FreeSpec
 
 /**

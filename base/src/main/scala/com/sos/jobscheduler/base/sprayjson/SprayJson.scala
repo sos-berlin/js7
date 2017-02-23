@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.base.sprayjson
+package com.sos.jobscheduler.base.sprayjson
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import java.nio.file.{Path, Paths}
 import scala.collection.JavaConversions._
 import spray.json._

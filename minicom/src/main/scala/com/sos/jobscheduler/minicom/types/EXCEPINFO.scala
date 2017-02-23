@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.types
+package com.sos.jobscheduler.minicom.types
 
 /**
  * Like Microsoft's COM EXCEPINFO.

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.scheduler
+package com.sos.jobscheduler.data.scheduler
 
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.base.generic.IsString
 
 final case class SchedulerId(string: String) extends IsString
 

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.log
+package com.sos.jobscheduler.common.log
 
 import org.slf4j.{Marker, Logger ⇒ ScalaLogger}
 

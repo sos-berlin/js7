@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.master.oldruntime
+package com.sos.jobscheduler.master.oldruntime
 
-import com.sos.scheduler.engine.base.convert.As
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import java.time._
 import javax.xml.stream.XMLEventReader
 

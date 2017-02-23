@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.shared.event.journal
+package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.ActorRef
-import com.sos.scheduler.engine.data.event.{AnyKeyedEvent, Snapshot}
-import com.sos.scheduler.engine.shared.event.journal.JsonJournalRecoverer.RecoveredJournalingActors
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Snapshot}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.RecoveredJournalingActors
 import scala.collection.immutable.Seq
 
 /**

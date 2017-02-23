@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.common.event.collector
+package com.sos.jobscheduler.common.event.collector
 
-import com.sos.scheduler.engine.common.event.collector.EventDirectives.eventRequest
-import com.sos.scheduler.engine.common.event.collector.EventDirectivesTest._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
-import com.sos.scheduler.engine.data.event.{Event, EventId, EventRequest, KeyedEvent}
+import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
+import com.sos.jobscheduler.common.event.collector.EventDirectivesTest._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent}
 import org.scalatest.FreeSpec
 import spray.json.DefaultJsonProtocol._
 import spray.routing.Directives._

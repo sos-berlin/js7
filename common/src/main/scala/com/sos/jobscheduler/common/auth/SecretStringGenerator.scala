@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.auth
+package com.sos.jobscheduler.common.auth
 
-import com.sos.scheduler.engine.base.generic.SecretString
+import com.sos.jobscheduler.base.generic.SecretString
 import java.security.SecureRandom
 import java.util.Base64
 

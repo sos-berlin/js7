@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.{FutureNotSucceededException, NoFuture, catchInFuture}
-import com.sos.scheduler.engine.common.scalautil.Futures.namedThreadFuture
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.{FutureNotSucceededException, NoFuture, catchInFuture}
+import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import java.util.concurrent.TimeoutException
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

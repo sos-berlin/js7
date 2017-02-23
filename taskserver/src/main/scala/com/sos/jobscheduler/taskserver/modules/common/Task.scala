@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.modules.common
+package com.sos.jobscheduler.taskserver.modules.common
 
-import com.sos.scheduler.engine.common.process.Processes.Pid
+import com.sos.jobscheduler.common.process.Processes.Pid
 import scala.concurrent.Future
 
 /**

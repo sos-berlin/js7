@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.FreeSpec
 import spray.json._
 

@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
-import com.sos.scheduler.engine.common.time.timer.TimerService
+import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.common.time.timer.TimerService
 import scala.concurrent.ExecutionContext
 import spray.http.CacheDirectives.`max-age`
 import spray.http.HttpHeaders.`Cache-Control`

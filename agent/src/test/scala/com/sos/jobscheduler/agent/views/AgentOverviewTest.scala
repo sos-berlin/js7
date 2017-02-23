@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.views
+package com.sos.jobscheduler.agent.views
 
-import com.sos.scheduler.engine.base.system.SystemInformation
-import com.sos.scheduler.engine.data.system.JavaInformation
+import com.sos.jobscheduler.base.system.SystemInformation
+import com.sos.jobscheduler.data.system.JavaInformation
 import java.time.Instant
 import org.scalatest.FreeSpec
 import spray.json._

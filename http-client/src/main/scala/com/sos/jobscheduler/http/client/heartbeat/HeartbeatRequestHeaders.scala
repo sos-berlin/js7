@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.http.client.heartbeat
+package com.sos.jobscheduler.http.client.heartbeat
 
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.http.client.common.{OwnHttpHeader, OwnHttpHeaderCompanion}
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.http.client.common.{OwnHttpHeader, OwnHttpHeaderCompanion}
 import java.time.Duration
 
 /**

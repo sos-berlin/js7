@@ -1,22 +1,22 @@
-package com.sos.scheduler.engine.tunnel
+package com.sos.jobscheduler.tunnel
 
 import akka.actor.{ActorSystem, Props}
 import akka.agent.Agent
 import akka.io.{IO, Tcp}
 import akka.util.{ByteString, Timeout}
-import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.tcp.BlockingTcpConnection
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.Stopwatch.measureTime
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
-import com.sos.scheduler.engine.tunnel.TcpHttpTcpTunnelIT._
-import com.sos.scheduler.engine.tunnel.client.{TcpToHttpBridge, WebTunnelClient}
-import com.sos.scheduler.engine.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
-import com.sos.scheduler.engine.tunnel.server.{TunnelAccess, TunnelListener, TunnelServer}
-import com.sos.scheduler.engine.tunnel.web.TunnelWebServices._
+import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.tcp.BlockingTcpConnection
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch.measureTime
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.http.server.heartbeat.HeartbeatService
+import com.sos.jobscheduler.tunnel.TcpHttpTcpTunnelIT._
+import com.sos.jobscheduler.tunnel.client.{TcpToHttpBridge, WebTunnelClient}
+import com.sos.jobscheduler.tunnel.data.{TunnelConnectionMessage, TunnelId, TunnelToken}
+import com.sos.jobscheduler.tunnel.server.{TunnelAccess, TunnelListener, TunnelServer}
+import com.sos.jobscheduler.tunnel.web.TunnelWebServices._
 import java.net.InetSocketAddress
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

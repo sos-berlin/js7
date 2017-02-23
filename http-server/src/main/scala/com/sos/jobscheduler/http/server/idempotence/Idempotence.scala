@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.http.server.idempotence
+package com.sos.jobscheduler.http.server.idempotence
 
 import akka.actor.ActorRefFactory
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.timer.{Timer, TimerService}
-import com.sos.scheduler.engine.http.client.idempotence.IdempotentHeaders.`X-JobScheduler-Request-ID`
-import com.sos.scheduler.engine.http.client.idempotence.RequestId
-import com.sos.scheduler.engine.http.server.idempotence.Idempotence._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
+import com.sos.jobscheduler.http.client.idempotence.IdempotentHeaders.`X-JobScheduler-Request-ID`
+import com.sos.jobscheduler.http.client.idempotence.RequestId
+import com.sos.jobscheduler.http.server.idempotence.Idempotence._
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicReference
 import org.jetbrains.annotations.TestOnly

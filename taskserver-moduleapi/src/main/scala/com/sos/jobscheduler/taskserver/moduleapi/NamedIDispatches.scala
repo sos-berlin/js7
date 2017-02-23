@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.moduleapi
+package com.sos.jobscheduler.taskserver.moduleapi
 
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch
+import com.sos.jobscheduler.minicom.idispatch.IDispatch
 
 /**
   * @author Joacim Zschimmer

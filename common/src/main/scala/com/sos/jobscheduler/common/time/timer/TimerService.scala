@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.common.time.timer
+package com.sos.jobscheduler.common.time.timer
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils.someUnless
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion.ToYamlString
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.timer.Timer.nowMillis
-import com.sos.scheduler.engine.common.time.timer.TimerService._
-import com.sos.scheduler.engine.common.time.timer.signaling.SynchronizedSignaling
+import com.sos.jobscheduler.base.utils.ScalaUtils.someUnless
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.YamlJsonConversion.ToYamlString
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.timer.Timer.nowMillis
+import com.sos.jobscheduler.common.time.timer.TimerService._
+import com.sos.jobscheduler.common.time.timer.signaling.SynchronizedSignaling
 import java.lang.System.currentTimeMillis
 import java.time.{Duration, Instant}
 import java.util.concurrent.atomic.AtomicBoolean

@@ -1,13 +1,13 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorRefFactory
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
-import com.sos.scheduler.engine.tunnel.data.TunnelView._
-import com.sos.scheduler.engine.tunnel.data._
-import com.sos.scheduler.engine.tunnel.server.TunnelAccess
-import com.sos.scheduler.engine.tunnel.web.TunnelWebServices._
+import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.tunnel.data.TunnelView._
+import com.sos.jobscheduler.tunnel.data._
+import com.sos.jobscheduler.tunnel.server.TunnelAccess
+import com.sos.jobscheduler.tunnel.web.TunnelWebServices._
 import java.time.Duration
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}

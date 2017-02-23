@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.generic
+package com.sos.jobscheduler.base.generic
 
 import org.scalatest.FreeSpec
 

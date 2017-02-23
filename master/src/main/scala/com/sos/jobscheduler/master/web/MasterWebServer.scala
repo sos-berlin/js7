@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.master.web
+package com.sos.jobscheduler.master.web
 
 import akka.actor.ActorSystem
 import com.google.inject.Injector
-import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
-import com.sos.scheduler.engine.common.sprayutils.web.SprayWebServer
-import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
-import com.sos.scheduler.engine.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.common.sprayutils.WebServerBinding
+import com.sos.jobscheduler.common.sprayutils.web.SprayWebServer
+import com.sos.jobscheduler.common.sprayutils.web.auth.{CSRF, GateKeeper}
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 

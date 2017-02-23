@@ -1,13 +1,13 @@
-package com.sos.scheduler.engine.taskserver.spoolerapi
+package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.scheduler.engine.data.log.SchedulerLogLevel
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits._
-import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.proxy.SpecializedProxyIDispatch.forEachProperty
-import com.sos.scheduler.engine.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRemoting, SpecializedProxyIDispatch}
-import com.sos.scheduler.engine.minicom.types.CLSID
+import com.sos.jobscheduler.data.log.SchedulerLogLevel
+import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits._
+import com.sos.jobscheduler.minicom.idispatch.annotation.invocable
+import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.minicom.remoting.proxy.SpecializedProxyIDispatch.forEachProperty
+import com.sos.jobscheduler.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRemoting, SpecializedProxyIDispatch}
+import com.sos.jobscheduler.minicom.types.CLSID
 import java.util.UUID
 
 /**
@@ -16,7 +16,7 @@ import java.util.UUID
 final class ProxySpoolerLog private(protected val remoting: ProxyRemoting, val id: ProxyId, val name: String, initialMinimumLevel: SchedulerLogLevel)
 extends SpoolerLog with SpecializedProxyIDispatch with AnnotatedInvocable with OverridingInvocableIDispatch {
 
-  import com.sos.scheduler.engine.taskserver.spoolerapi.ProxySpoolerLog._
+  import com.sos.jobscheduler.taskserver.spoolerapi.ProxySpoolerLog._
 
   private var _minimumLevel = initialMinimumLevel
 

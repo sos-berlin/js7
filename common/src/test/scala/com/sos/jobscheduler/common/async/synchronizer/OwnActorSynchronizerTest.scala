@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.common.async.synchronizer
+package com.sos.jobscheduler.common.async.synchronizer
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.common.scalautil.Closers._
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutures
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.common.scalautil.Closers._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
+import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.FreeSpec
 import scala.collection.immutable.IndexedSeq
 import scala.concurrent.Future

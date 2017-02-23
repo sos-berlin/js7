@@ -1,31 +1,31 @@
-package com.sos.scheduler.engine.agent
+package com.sos.jobscheduler.agent
 
 import com.google.common.io.Closer
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Module}
-import com.sos.scheduler.engine.agent.Agent._
-import com.sos.scheduler.engine.agent.command.CommandExecutor
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
-import com.sos.scheduler.engine.agent.data.commandresponses.Response
-import com.sos.scheduler.engine.agent.data.commands.Command
-import com.sos.scheduler.engine.agent.task.TaskHandler
-import com.sos.scheduler.engine.agent.views.AgentStartInformation
-import com.sos.scheduler.engine.agent.web.AgentWebServer
-import com.sos.scheduler.engine.common.guice.GuiceImplicits._
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder._
-import com.sos.scheduler.engine.data.agent.AgentAddress
+import com.sos.jobscheduler.agent.Agent._
+import com.sos.jobscheduler.agent.command.CommandExecutor
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.inject.AgentModule
+import com.sos.jobscheduler.agent.data.commandresponses.Response
+import com.sos.jobscheduler.agent.data.commands.Command
+import com.sos.jobscheduler.agent.task.TaskHandler
+import com.sos.jobscheduler.agent.views.AgentStartInformation
+import com.sos.jobscheduler.agent.web.AgentWebServer
+import com.sos.jobscheduler.common.guice.GuiceImplicits._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder._
+import com.sos.jobscheduler.data.agent.AgentAddress
 import scala.concurrent.Future
 
 /**
  * JobScheduler Agent.
  *
- * Integration test in engine-tests, for example com.sos.scheduler.engine.tests.jira.js1291.JS1291AgentIT.
+ * Integration test in engine-tests, for example com.sos.jobscheduler.tests.jira.js1291.JS1291AgentIT.
  *
  * @author Joacim Zschimmer
  */

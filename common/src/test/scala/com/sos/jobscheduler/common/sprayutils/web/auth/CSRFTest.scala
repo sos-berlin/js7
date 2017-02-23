@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.sprayutils.web.auth
+package com.sos.jobscheduler.common.sprayutils.web.auth
 
 import org.scalatest.FreeSpec
 import spray.http.HttpCharsets.`UTF-8`

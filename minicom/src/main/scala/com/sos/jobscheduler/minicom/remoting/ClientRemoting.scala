@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.minicom.remoting
+package com.sos.jobscheduler.minicom.remoting
 
-import com.sos.scheduler.engine.minicom.idispatch.IUnknownFactory
-import com.sos.scheduler.engine.minicom.remoting.dialog.ClientDialogConnection
-import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyIDispatchFactory
-import com.sos.scheduler.engine.minicom.types.IUnknown
+import com.sos.jobscheduler.minicom.idispatch.IUnknownFactory
+import com.sos.jobscheduler.minicom.remoting.dialog.ClientDialogConnection
+import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatchFactory
+import com.sos.jobscheduler.minicom.types.IUnknown
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext
 

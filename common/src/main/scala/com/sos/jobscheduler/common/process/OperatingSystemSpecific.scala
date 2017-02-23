@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.process
+package com.sos.jobscheduler.common.process
 
-import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
-import com.sos.scheduler.engine.common.system.OperatingSystem._
+import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.common.system.OperatingSystem._
 import java.nio.file.Files._
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions._

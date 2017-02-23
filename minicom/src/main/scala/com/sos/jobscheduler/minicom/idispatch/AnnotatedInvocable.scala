@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.idispatch
+package com.sos.jobscheduler.minicom.idispatch
 
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.minicom.idispatch.annotation.invocable
 import java.lang.reflect.Method
 import scala.collection.immutable.Seq
 

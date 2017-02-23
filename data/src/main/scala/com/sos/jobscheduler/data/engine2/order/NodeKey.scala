@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.engine2.order
+package com.sos.jobscheduler.data.engine2.order
 
 import spray.json.DefaultJsonProtocol._
 

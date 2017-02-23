@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.shared.common
+package com.sos.jobscheduler.shared.common
 
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources._
-import com.sos.scheduler.engine.common.time.Stopwatch
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
+import com.sos.jobscheduler.common.time.Stopwatch
 import org.scalatest.FreeSpec
 
 /**

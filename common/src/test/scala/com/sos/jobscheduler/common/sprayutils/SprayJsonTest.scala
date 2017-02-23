@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.implicits._
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonTest._
+import com.sos.jobscheduler.base.sprayjson.SprayJson.JsonFormats._
+import com.sos.jobscheduler.base.sprayjson.SprayJson.implicits._
+import com.sos.jobscheduler.common.sprayutils.SprayJsonTest._
 import org.scalatest.FreeSpec
 import spray.json.DefaultJsonProtocol._
 import spray.json._

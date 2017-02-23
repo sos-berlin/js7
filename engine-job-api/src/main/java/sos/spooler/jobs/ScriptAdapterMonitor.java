@@ -1,7 +1,7 @@
 package sos.spooler.jobs;
 
 import com.google.common.collect.ImmutableMap;
-import com.sos.scheduler.engine.jobapi.scripting.JobScriptInstanceAdapter;
+import com.sos.jobscheduler.jobapi.scripting.JobScriptInstanceAdapter;
 import sos.spooler.Monitor_impl;
 
 /**

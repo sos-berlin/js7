@@ -1,20 +1,20 @@
-package com.sos.scheduler.engine.taskserver
+package com.sos.jobscheduler.taskserver
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.scheduler.engine.common.scalautil.Futures.namedThreadFuture
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.tcp.BlockingTcpConnection
-import com.sos.scheduler.engine.common.time.ScalaTime.MaxDuration
-import com.sos.scheduler.engine.minicom.remoting.dialog.StandardServerDialogConnection
-import com.sos.scheduler.engine.minicom.remoting.{Remoting, ServerRemoting}
-import com.sos.scheduler.engine.taskserver.TaskServer.Terminated
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments
-import com.sos.scheduler.engine.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
-import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
-import com.sos.scheduler.engine.tunnel.data.TunnelConnectionMessage
+import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.tcp.BlockingTcpConnection
+import com.sos.jobscheduler.common.time.ScalaTime.MaxDuration
+import com.sos.jobscheduler.minicom.remoting.dialog.StandardServerDialogConnection
+import com.sos.jobscheduler.minicom.remoting.{Remoting, ServerRemoting}
+import com.sos.jobscheduler.taskserver.TaskServer.Terminated
+import com.sos.jobscheduler.taskserver.data.TaskServerArguments
+import com.sos.jobscheduler.taskserver.spoolerapi.{ProxySpooler, ProxySpoolerLog, ProxySpoolerTask}
+import com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer
+import com.sos.jobscheduler.tunnel.data.TunnelConnectionMessage
 import java.nio.channels.AsynchronousCloseException
 import scala.concurrent._
 import scala.util.{Failure, Success}

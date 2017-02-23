@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.filebased
+package com.sos.jobscheduler.data.filebased
 
-import com.sos.scheduler.engine.data.filebased.TypedPathTest._
+import com.sos.jobscheduler.data.filebased.TypedPathTest._
 import org.scalatest.FreeSpec
 
 /**
@@ -36,6 +36,6 @@ private object TypedPathTest {
     def companion = BPath
   }
   object BPath extends TypedPath.Companion[BPath] {
-    override protected[engine] def isCommaAllowed = false
+    override def isCommaAllowed = false
   }
 }

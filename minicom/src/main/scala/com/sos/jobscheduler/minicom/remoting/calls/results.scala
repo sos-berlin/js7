@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting.calls
+package com.sos.jobscheduler.minicom.remoting.calls
 
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, IDispatch}
-import com.sos.scheduler.engine.minicom.types.IUnknown
+import com.sos.jobscheduler.minicom.idispatch.{DISPID, IDispatch}
+import com.sos.jobscheduler.minicom.types.IUnknown
 import scala.collection.immutable
 
 /**

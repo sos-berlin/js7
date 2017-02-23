@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.agent.fileordersource
+package com.sos.jobscheduler.agent.fileordersource
 
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAutoCloseable, _}
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.touchAndDeleteWithCloser
-import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAutoCloseable, _}
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.touchAndDeleteWithCloser
+import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.nio.file.Files
 import java.nio.file.Files.delete
 import java.time.Instant.now

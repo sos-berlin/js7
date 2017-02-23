@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.minicom.idispatch
+package com.sos.jobscheduler.minicom.idispatch
 
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits.RichIDispatch
-import com.sos.scheduler.engine.minicom.idispatch.InvocableIDispatchTest._
-import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.types.HRESULT._
-import com.sos.scheduler.engine.minicom.types.{COMException, VariantArray}
+import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits.RichIDispatch
+import com.sos.jobscheduler.minicom.idispatch.InvocableIDispatchTest._
+import com.sos.jobscheduler.minicom.idispatch.annotation.invocable
+import com.sos.jobscheduler.minicom.types.HRESULT._
+import com.sos.jobscheduler.minicom.types.{COMException, VariantArray}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.annotation.meta.{getter, setter}

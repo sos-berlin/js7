@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.convert
+package com.sos.jobscheduler.base.convert
 
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

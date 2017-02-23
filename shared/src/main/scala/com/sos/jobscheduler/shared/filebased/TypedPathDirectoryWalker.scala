@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.shared.filebased
+package com.sos.jobscheduler.shared.filebased
 
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.data.filebased.TypedPath
-import com.sos.scheduler.engine.shared.filebased.TypedPaths.fileToTypedPath
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.shared.filebased.TypedPaths.fileToTypedPath
 import java.nio.file
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes

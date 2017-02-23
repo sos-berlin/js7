@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.system;
+package com.sos.jobscheduler.common.system;
 
 public enum CpuArchitecture {
     x86 ("x86", "Win32"),

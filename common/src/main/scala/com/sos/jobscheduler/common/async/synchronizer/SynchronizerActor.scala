@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.async.synchronizer
+package com.sos.jobscheduler.common.async.synchronizer
 
 import akka.actor.{Actor, Props}
-import com.sos.scheduler.engine.common.async.synchronizer.SynchronizerActor._
+import com.sos.jobscheduler.common.async.synchronizer.SynchronizerActor._
 import scala.concurrent.Promise
 import scala.util.Try
 

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.event.collector
+package com.sos.jobscheduler.common.event.collector
 
-import com.sos.scheduler.engine.common.event.collector.KeyedEventQueueTest._
-import com.sos.scheduler.engine.data.event.{EventId, KeyedEvent, NoKeyEvent, Snapshot}
+import com.sos.jobscheduler.common.event.collector.KeyedEventQueueTest._
+import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, NoKeyEvent, Snapshot}
 import org.scalatest.FreeSpec
 
 /**

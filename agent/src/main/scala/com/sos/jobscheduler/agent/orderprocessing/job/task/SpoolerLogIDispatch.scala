@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.agent.orderprocessing.job.task
+package com.sos.jobscheduler.agent.orderprocessing.job.task
 
-import com.sos.scheduler.engine.agent.orderprocessing.job.task.SpoolerLogIDispatch._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, InvocableIDispatch}
-import com.sos.scheduler.engine.minicom.remoting.proxy.{HasProxyMeta, ProxyMeta}
-import com.sos.scheduler.engine.taskserver.spoolerapi.ProxySpoolerLog
+import com.sos.jobscheduler.agent.orderprocessing.job.task.SpoolerLogIDispatch._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.minicom.idispatch.annotation.invocable
+import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, InvocableIDispatch}
+import com.sos.jobscheduler.minicom.remoting.proxy.{HasProxyMeta, ProxyMeta}
+import com.sos.jobscheduler.taskserver.spoolerapi.ProxySpoolerLog
 
 /**
   * @author Joacim Zschimmer

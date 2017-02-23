@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.ConcurrentMemoizerTest._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.common.scalautil.ConcurrentMemoizerTest._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.FreeSpec
 import scala.collection.mutable

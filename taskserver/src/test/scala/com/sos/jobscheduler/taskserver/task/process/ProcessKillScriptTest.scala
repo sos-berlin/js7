@@ -1,18 +1,18 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.base.process.ProcessSignal.SIGKILL
-import com.sos.scheduler.engine.common.process.Processes
-import com.sos.scheduler.engine.common.process.Processes.{Pid, processToPidOption}
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.system.OperatingSystem.{isSolaris, isUnix, isWindows}
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.JavaResource
-import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptTest._
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
+import com.sos.jobscheduler.common.process.Processes
+import com.sos.jobscheduler.common.process.Processes.{Pid, processToPidOption}
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.system.FileUtils._
+import com.sos.jobscheduler.common.system.OperatingSystem.{isSolaris, isUnix, isWindows}
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptTest._
 import java.io.InputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.file.Files._
@@ -81,8 +81,8 @@ private object ProcessKillScriptTest {
   private val logger = Logger(getClass)
   private val TestAgentTaskId = AgentTaskId("1-TEST")
   private def Script =
-    (if (isWindows) JavaResource("com/sos/scheduler/engine/taskserver/task/process/scripts/windows/test.cmd")
-               else JavaResource("com/sos/scheduler/engine/taskserver/task/process/scripts/unix/test.sh"))
+    (if (isWindows) JavaResource("com/sos/jobscheduler/taskserver/task/process/scripts/windows/test.cmd")
+               else JavaResource("com/sos/jobscheduler/taskserver/task/process/scripts/unix/test.sh"))
     .asUTF8String
   private val SIGKILLexitValue = if (isWindows) 1 else if (isSolaris) SIGKILL.value else 128 + SIGKILL.value
 

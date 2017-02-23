@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.moduleapi
+package com.sos.jobscheduler.taskserver.moduleapi
 
 import java.nio.file.{Path, Paths}
 import org.scalatest.FreeSpec

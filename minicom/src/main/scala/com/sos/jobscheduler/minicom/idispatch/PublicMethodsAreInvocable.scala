@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.idispatch
+package com.sos.jobscheduler.minicom.idispatch
 
 import java.lang.reflect.Method
 import scala.collection.immutable.Seq

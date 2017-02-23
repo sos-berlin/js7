@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver.dotnet;
+package com.sos.jobscheduler.taskserver.dotnet;
 
-import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleInstanceFactory;
-import com.sos.scheduler.engine.taskserver.dotnet.api.DotnetModuleReference;
-import com.sos.scheduler.engine.taskserver.dotnet.api.TaskContext;
+import com.sos.jobscheduler.taskserver.dotnet.api.DotnetModuleInstanceFactory;
+import com.sos.jobscheduler.taskserver.dotnet.api.DotnetModuleReference;
+import com.sos.jobscheduler.taskserver.dotnet.api.TaskContext;
 import java.nio.file.Path;
 
 public final class Jni4netModuleInstanceFactory implements

@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.shared.event.journal
+package com.sos.jobscheduler.shared.event.journal
 
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.shared.common.jsonseq.OutputStreamJsonSeqWriter
-import com.sos.scheduler.engine.shared.event.journal.FileJsonWriter._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.shared.common.jsonseq.OutputStreamJsonSeqWriter
+import com.sos.jobscheduler.shared.event.journal.FileJsonWriter._
 import java.io.{FileOutputStream, OutputStream}
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean

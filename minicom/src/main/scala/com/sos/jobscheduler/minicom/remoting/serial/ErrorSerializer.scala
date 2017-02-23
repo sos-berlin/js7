@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.minicom.remoting.calls.MessageClass
-import com.sos.scheduler.engine.minicom.types.COMException
-import com.sos.scheduler.engine.minicom.types.HRESULT.DISP_E_EXCEPTION
+import com.sos.jobscheduler.minicom.remoting.calls.MessageClass
+import com.sos.jobscheduler.minicom.types.COMException
+import com.sos.jobscheduler.minicom.types.HRESULT.DISP_E_EXCEPTION
 
 /**
  * @author Joacim Zschimmer

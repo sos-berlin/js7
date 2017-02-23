@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.base.sprayjson
+package com.sos.jobscheduler.base.sprayjson
 
-import com.sos.scheduler.engine.base.sprayjson.InetAddressJsonSupport._
+import com.sos.jobscheduler.base.sprayjson.InetAddressJsonSupport._
 import java.net.{InetAddress, InetSocketAddress}
 import org.scalatest.FreeSpec
 import spray.json._

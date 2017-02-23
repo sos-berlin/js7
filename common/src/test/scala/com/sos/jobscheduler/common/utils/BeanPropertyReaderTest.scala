@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.jobscheduler.common.utils
 
-import com.sos.scheduler.engine.common.utils.BeanPropertyReader.Keep
+import com.sos.jobscheduler.common.utils.BeanPropertyReader.Keep
 import org.scalatest.FreeSpec
 
 /**

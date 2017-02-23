@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
 import akka.actor.{ActorContext, ActorSystem}
-import com.sos.scheduler.engine.base.exceptions.PublicException
-import com.sos.scheduler.engine.base.utils.ScalaUtils.RichThrowable
-import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.scheduler.engine.common.log.LogLevel
-import com.sos.scheduler.engine.common.log.LogLevel._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.{addHeader, passIf}
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.base.exceptions.PublicException
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.log.LogLevel
+import com.sos.jobscheduler.common.log.LogLevel._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.{addHeader, passIf}
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.typesafe.config.{Config, ConfigFactory}
 import java.time.Duration
 import spray.http.ContentTypes.`text/plain(UTF-8)`

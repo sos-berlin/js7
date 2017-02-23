@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion.toYaml
+import com.sos.jobscheduler.common.sprayutils.YamlJsonConversion.toYaml
 import java.lang.StringBuilder
 import spray.json._
 

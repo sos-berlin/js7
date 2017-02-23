@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.language.implicitConversions
 import scala.reflect.ClassTag

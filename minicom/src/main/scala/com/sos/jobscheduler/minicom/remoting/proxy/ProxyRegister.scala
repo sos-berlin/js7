@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.minicom.remoting.proxy
+package com.sos.jobscheduler.minicom.remoting.proxy
 
 import com.google.common.collect.HashBiMap
-import com.sos.scheduler.engine.common.scalautil.AssignableFrom.assignableFrom
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.minicom.remoting.calls.ProxyId
-import com.sos.scheduler.engine.minicom.remoting.proxy.ProxyRegister._
-import com.sos.scheduler.engine.minicom.types.HRESULT.E_POINTER
-import com.sos.scheduler.engine.minicom.types.{COMException, IUnknown}
+import com.sos.jobscheduler.common.scalautil.AssignableFrom.assignableFrom
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
+import com.sos.jobscheduler.minicom.remoting.proxy.ProxyRegister._
+import com.sos.jobscheduler.minicom.types.HRESULT.E_POINTER
+import com.sos.jobscheduler.minicom.types.{COMException, IUnknown}
 import javax.annotation.Nullable
 import scala.collection.JavaConversions._
 import scala.collection.immutable

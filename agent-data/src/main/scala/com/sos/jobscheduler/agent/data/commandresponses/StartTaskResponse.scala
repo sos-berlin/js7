@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.data.commandresponses
+package com.sos.jobscheduler.agent.data.commandresponses
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.tunnel.data.TunnelToken
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.tunnel.data.TunnelToken
 import spray.json.DefaultJsonProtocol._
 
 /**

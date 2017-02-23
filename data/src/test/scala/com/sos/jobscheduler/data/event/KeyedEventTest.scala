@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.data.event
+package com.sos.jobscheduler.data.event
 
-import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.data.event.KeyedEventTest._
+import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.data.event.KeyedEventTest._
 import org.scalatest.FreeSpec
 import spray.json.DefaultJsonProtocol._
 import spray.json._

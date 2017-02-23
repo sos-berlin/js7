@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.event
+package com.sos.jobscheduler.data.event
 
 import java.time.Instant
 import org.scalatest.FreeSpec

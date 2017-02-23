@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.engine2.order
+package com.sos.jobscheduler.data.engine2.order
 
-import com.sos.scheduler.engine.data.order.OrderId
+import com.sos.jobscheduler.data.order.OrderId
 import org.scalatest.FreeSpec
 import spray.json._
 

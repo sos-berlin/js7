@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.taskserver.task.process
+package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.RichFutures
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
-import com.sos.scheduler.engine.data.job.ReturnCode
-import com.sos.scheduler.engine.taskserver.task.process.ShellScriptProcess.startShellScript
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
 import org.scalatest.FreeSpec
 import scala.concurrent.forkjoin.ForkJoinPool
 import scala.concurrent.{ExecutionContext, Future}

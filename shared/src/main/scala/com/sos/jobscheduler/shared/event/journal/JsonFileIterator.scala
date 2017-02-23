@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.shared.event.journal
+package com.sos.jobscheduler.shared.event.journal
 
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.shared.common.jsonseq.InputStreamJsonSeqIterator
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator
 import java.io.{BufferedInputStream, FileInputStream, InputStream}
 import java.nio.file.Path
 import spray.json.{JsObject, JsValue}

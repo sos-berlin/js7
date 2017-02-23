@@ -1,19 +1,21 @@
-package com.sos.scheduler.engine.agent.tests
+package com.sos.jobscheduler.agent.tests
 
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.scheduler.engine.agent.command.{CommandExecutor, CommandMeta}
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
-import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate}
-import com.sos.scheduler.engine.agent.test.{AgentConfigDirectoryProvider, AgentTest}
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.{User, UserAndPassword, UserId}
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.sprayutils.web.auth.SimpleUserPassAuthenticator
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
-import com.sos.scheduler.engine.data.agent.AgentAddress
+import com.sos.jobscheduler.agent.client.TextAgentClient
+import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.agent.data.commands.{Command, Terminate}
+import com.sos.jobscheduler.agent.test.{AgentConfigDirectoryProvider, AgentTest}
+import com.sos.jobscheduler.agent.tests.TextAgentClientIT._
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.auth.{User, UserAndPassword, UserId}
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.sprayutils.web.auth.SimpleUserPassAuthenticator
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.data.agent.AgentAddress
 import javax.inject.Singleton
 import org.scalatest.Assertions._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -23,8 +25,6 @@ import spray.can.Http
 import spray.http.StatusCodes._
 import spray.httpx.UnsuccessfulResponseException
 import spray.routing.authentication._
-import TextAgentClientIT._
-import com.sos.scheduler.engine.agent.client.TextAgentClient
 
 /**
  * @author Joacim Zschimmer

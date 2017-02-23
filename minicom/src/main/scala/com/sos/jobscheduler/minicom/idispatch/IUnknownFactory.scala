@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.minicom.idispatch
+package com.sos.jobscheduler.minicom.idispatch
 
-import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
+import com.sos.jobscheduler.minicom.types.{CLSID, IID, IUnknown}
 
 /**
  * @author Joacim Zschimmer

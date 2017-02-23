@@ -1,27 +1,27 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
 import com.google.inject.Guice
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
-import com.sos.scheduler.engine.agent.configuration.inject.AgentModule
-import com.sos.scheduler.engine.agent.data.views.TaskHandlerOverview
-import com.sos.scheduler.engine.agent.test.AgentConfigDirectoryProvider
-import com.sos.scheduler.engine.agent.views.AgentOverview
-import com.sos.scheduler.engine.agent.web.AgentWebServerIT._
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
-import com.sos.scheduler.engine.common.guice.GuiceImplicits._
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
-import com.sos.scheduler.engine.common.sprayutils.https.{Https, KeystoreReference}
-import com.sos.scheduler.engine.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.Stopwatch
-import com.sos.scheduler.engine.common.time.timer.TimerServiceOverview
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPorts
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
+import com.sos.jobscheduler.agent.configuration.inject.AgentModule
+import com.sos.jobscheduler.agent.data.views.TaskHandlerOverview
+import com.sos.jobscheduler.agent.test.AgentConfigDirectoryProvider
+import com.sos.jobscheduler.agent.views.AgentOverview
+import com.sos.jobscheduler.agent.web.AgentWebServerIT._
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.common.guice.GuiceImplicits._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.sprayutils.WebServerBinding
+import com.sos.jobscheduler.common.sprayutils.https.{Https, KeystoreReference}
+import com.sos.jobscheduler.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.time.timer.TimerServiceOverview
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPorts
 import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.time.Instant.now

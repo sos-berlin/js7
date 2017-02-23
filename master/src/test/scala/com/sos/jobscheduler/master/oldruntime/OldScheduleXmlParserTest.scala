@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.master.oldruntime
+package com.sos.jobscheduler.master.oldruntime
 
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources._
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.{LocalTime, ZoneId}
 import org.scalatest.FreeSpec
 

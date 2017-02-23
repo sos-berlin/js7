@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.base.exceptions.StandardPublicException
-import com.sos.scheduler.engine.common.sprayutils.WebLogDirectives.handleErrorAndLog
+import com.sos.jobscheduler.base.exceptions.StandardPublicException
+import com.sos.jobscheduler.common.sprayutils.WebLogDirectives.handleErrorAndLog
 import org.scalatest.FreeSpec
 import spray.http.StatusCodes.{BadRequest, InternalServerError}
 import spray.routing.Directives._

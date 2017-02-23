@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.taskserver.data
+package com.sos.jobscheduler.taskserver.data
 
-import com.sos.scheduler.engine.agent.data.commands.StartTask
-import com.sos.scheduler.engine.data.job.TaskId
+import com.sos.jobscheduler.agent.data.commands.StartTask
+import com.sos.jobscheduler.data.job.TaskId
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 import spray.json._

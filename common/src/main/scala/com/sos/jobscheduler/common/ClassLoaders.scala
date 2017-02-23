@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common
+package com.sos.jobscheduler.common
 
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Logger
 
 /**
  * @author Joacim Zschimmer

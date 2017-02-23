@@ -1,22 +1,22 @@
-package com.sos.scheduler.engine.agent.configuration.inject
+package com.sos.jobscheduler.agent.configuration.inject
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Injector, Provides}
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.configuration.Akkas.newActorSystem
-import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
-import com.sos.scheduler.engine.agent.task.{StandardAgentTaskFactory, TaskHandler}
-import com.sos.scheduler.engine.agent.web.common.{ExternalWebService, LoginSession}
-import com.sos.scheduler.engine.common.auth.EncodedPasswordValidator
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
-import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
-import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.taskserver.data.TaskServerMainTerminated
-import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
-import com.sos.scheduler.engine.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
-import com.sos.scheduler.engine.taskserver.modules.shell.ShellModule
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
+import com.sos.jobscheduler.agent.data.views.TaskHandlerView
+import com.sos.jobscheduler.agent.task.{StandardAgentTaskFactory, TaskHandler}
+import com.sos.jobscheduler.agent.web.common.{ExternalWebService, LoginSession}
+import com.sos.jobscheduler.common.auth.EncodedPasswordValidator
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.common.sprayutils.web.auth.{CSRF, GateKeeper}
+import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
+import com.sos.jobscheduler.taskserver.moduleapi.ModuleFactoryRegister
+import com.sos.jobscheduler.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
+import com.sos.jobscheduler.taskserver.modules.shell.ShellModule
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import scala.collection.immutable

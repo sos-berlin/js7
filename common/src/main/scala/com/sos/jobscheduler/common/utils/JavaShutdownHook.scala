@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.jobscheduler.common.utils
 
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.utils.JavaShutdownHook._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.utils.JavaShutdownHook._
 import scala.util.control.NonFatal
 
 /**

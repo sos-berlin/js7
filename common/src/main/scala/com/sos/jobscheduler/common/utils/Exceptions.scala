@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.jobscheduler.common.utils
 
 import java.time.{Duration, Instant}
 import scala.util.control.NonFatal

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.http.client.idempotence
+package com.sos.jobscheduler.http.client.idempotence
 
 import org.scalatest.FreeSpec
 

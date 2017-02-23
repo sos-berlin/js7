@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.concurrent
+package com.sos.jobscheduler.common.concurrent
 
 import java.lang.Math._
 import java.util.concurrent.atomic.AtomicInteger

@@ -1,16 +1,16 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.jobscheduler.taskserver.task
 
-import com.sos.scheduler.engine.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
-import com.sos.scheduler.engine.base.utils.ScalaUtils._
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.RichTraversableOnce
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.xml.VariableSets
-import com.sos.scheduler.engine.data.job.TaskId
-import com.sos.scheduler.engine.data.log.SchedulerLogLevel
-import com.sos.scheduler.engine.minicom.types.{VariantArray, variant}
-import com.sos.scheduler.engine.taskserver.moduleapi._
-import com.sos.scheduler.engine.taskserver.modules.monitor.{Monitor, RawMonitorArguments}
-import com.sos.scheduler.engine.taskserver.task.TaskArguments._
+import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
+import com.sos.jobscheduler.base.utils.ScalaUtils._
+import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichTraversableOnce
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.xml.VariableSets
+import com.sos.jobscheduler.data.job.TaskId
+import com.sos.jobscheduler.data.log.SchedulerLogLevel
+import com.sos.jobscheduler.minicom.types.{VariantArray, variant}
+import com.sos.jobscheduler.taskserver.moduleapi._
+import com.sos.jobscheduler.taskserver.modules.monitor.{Monitor, RawMonitorArguments}
+import com.sos.jobscheduler.taskserver.task.TaskArguments._
 import java.nio.file.Paths
 import scala.collection.{immutable, mutable}
 import scala.util.Sorting.stableSort

@@ -1,17 +1,17 @@
-package com.sos.scheduler.engine.agent.orderprocessing
+package com.sos.jobscheduler.agent.orderprocessing
 
 import akka.actor.{ActorRef, Status, Terminated}
-import com.sos.scheduler.engine.agent.orderprocessing.OrderActor._
-import com.sos.scheduler.engine.agent.orderprocessing.job.JobRunner
-import com.sos.scheduler.engine.base.generic.Completed
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.data.engine2.agent.AgentPath
-import com.sos.scheduler.engine.data.engine2.order.JobNet.JobNode
-import com.sos.scheduler.engine.data.engine2.order.OrderEvent._
-import com.sos.scheduler.engine.data.engine2.order.{Order, OrderEvent}
-import com.sos.scheduler.engine.data.order.OrderId
-import com.sos.scheduler.engine.shared.event.journal.KeyedJournalingActor
+import com.sos.jobscheduler.agent.orderprocessing.OrderActor._
+import com.sos.jobscheduler.agent.orderprocessing.job.JobRunner
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.data.engine2.agent.AgentPath
+import com.sos.jobscheduler.data.engine2.order.JobNet.JobNode
+import com.sos.jobscheduler.data.engine2.order.OrderEvent._
+import com.sos.jobscheduler.data.engine2.order.{Order, OrderEvent}
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 
 /**
   * @author Joacim Zschimmer

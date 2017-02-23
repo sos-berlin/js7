@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.command
+package com.sos.jobscheduler.agent.command
 
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.base.generic.IsString
 
 /**
  * @author Joacim Zschimmer

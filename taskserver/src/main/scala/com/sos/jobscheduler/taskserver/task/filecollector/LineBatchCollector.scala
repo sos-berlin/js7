@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.task.filecollector
+package com.sos.jobscheduler.taskserver.task.filecollector
 
 import com.google.common.collect.{AbstractIterator ⇒ GuavaAbstractIterator}
 import java.io.BufferedReader

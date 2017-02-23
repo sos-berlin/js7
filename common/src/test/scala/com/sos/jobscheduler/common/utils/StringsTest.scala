@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.jobscheduler.common.utils
 
-import com.sos.scheduler.engine.common.utils.Strings._
+import com.sos.jobscheduler.common.utils.Strings._
 import org.scalatest.FreeSpec
 
 /**

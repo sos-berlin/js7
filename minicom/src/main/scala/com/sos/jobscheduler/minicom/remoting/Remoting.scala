@@ -1,22 +1,22 @@
-package com.sos.scheduler.engine.minicom.remoting
+package com.sos.jobscheduler.minicom.remoting
 
 import akka.util.ByteString
-import com.sos.scheduler.engine.base.generic.Completed
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.minicom.idispatch.IDispatch.implicits.RichIDispatch
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, DispatchType, IDispatch, IUnknownFactory}
-import com.sos.scheduler.engine.minicom.remoting.Remoting._
-import com.sos.scheduler.engine.minicom.remoting.calls._
-import com.sos.scheduler.engine.minicom.remoting.dialog.ClientDialogConnection
-import com.sos.scheduler.engine.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRegister, ProxyRemoting, SimpleProxyIDispatch}
-import com.sos.scheduler.engine.minicom.remoting.serial.CallSerializer.serializeCall
-import com.sos.scheduler.engine.minicom.remoting.serial.ErrorSerializer.serializeError
-import com.sos.scheduler.engine.minicom.remoting.serial.ResultSerializer.serializeResult
-import com.sos.scheduler.engine.minicom.remoting.serial.{CallDeserializer, ProxyRegistering, ProxyingIUnknownDeserializer, ResultDeserializer}
-import com.sos.scheduler.engine.minicom.types.{CLSID, IID, IUnknown}
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits.RichIDispatch
+import com.sos.jobscheduler.minicom.idispatch.{DISPID, DispatchType, IDispatch, IUnknownFactory}
+import com.sos.jobscheduler.minicom.remoting.Remoting._
+import com.sos.jobscheduler.minicom.remoting.calls._
+import com.sos.jobscheduler.minicom.remoting.dialog.ClientDialogConnection
+import com.sos.jobscheduler.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRegister, ProxyRemoting, SimpleProxyIDispatch}
+import com.sos.jobscheduler.minicom.remoting.serial.CallSerializer.serializeCall
+import com.sos.jobscheduler.minicom.remoting.serial.ErrorSerializer.serializeError
+import com.sos.jobscheduler.minicom.remoting.serial.ResultSerializer.serializeResult
+import com.sos.jobscheduler.minicom.remoting.serial.{CallDeserializer, ProxyRegistering, ProxyingIUnknownDeserializer, ResultDeserializer}
+import com.sos.jobscheduler.minicom.types.{CLSID, IID, IUnknown}
 import org.scalactic.Requirements._
 import scala.collection.{breakOut, immutable}
 import scala.concurrent.{ExecutionContext, Future}

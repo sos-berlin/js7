@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.sprayjson
+package com.sos.jobscheduler.base.sprayjson
 
 import scala.collection.breakOut
 import scala.reflect.ClassTag

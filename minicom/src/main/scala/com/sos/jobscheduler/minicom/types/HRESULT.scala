@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.types
+package com.sos.jobscheduler.minicom.types
 
 /**
  * COM 32bit result and error code, like Microsoft's HRESULT.

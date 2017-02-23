@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.agent.orderprocessing.job
+package com.sos.jobscheduler.agent.orderprocessing.job
 
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.base.generic.IsString
 
 /**
   * @author Joacim Zschimmer

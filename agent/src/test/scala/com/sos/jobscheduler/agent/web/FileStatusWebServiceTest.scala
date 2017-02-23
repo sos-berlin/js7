@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.web.test.WebServiceTest
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAny
-import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
-import com.sos.scheduler.engine.common.sprayutils.SimpleTypeSprayJsonSupport._
+import com.sos.jobscheduler.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.sprayutils.SimpleTypeSprayJsonSupport._
 import java.nio.file.Files
 import java.nio.file.Files.createTempFile
 import org.scalatest.FreeSpec

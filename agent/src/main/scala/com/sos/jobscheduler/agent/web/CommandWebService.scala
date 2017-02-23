@@ -1,14 +1,14 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.command.CommandMeta
-import com.sos.scheduler.engine.agent.data.commandresponses.Response
-import com.sos.scheduler.engine.agent.data.commands.Command
-import com.sos.scheduler.engine.agent.data.web.AgentUris.LicenseKeyHeaderName
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.soslicense.LicenseKeyBunch
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.data.session.SessionToken
+import com.sos.jobscheduler.agent.command.CommandMeta
+import com.sos.jobscheduler.agent.data.commandresponses.Response
+import com.sos.jobscheduler.agent.data.commands.Command
+import com.sos.jobscheduler.agent.data.web.AgentUris.LicenseKeyHeaderName
+import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.soslicense.LicenseKeyBunch
+import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.data.session.SessionToken
 import scala.concurrent.{ExecutionContext, Future}
 import spray.http.RemoteAddress
 import spray.routing.Directives._

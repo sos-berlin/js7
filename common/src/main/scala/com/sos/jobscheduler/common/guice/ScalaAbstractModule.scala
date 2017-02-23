@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.guice
+package com.sos.jobscheduler.common.guice
 
 import com.google.inject.Scopes.SINGLETON
 import com.google.inject.{AbstractModule, Provider}
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 
 abstract class ScalaAbstractModule extends AbstractModule {

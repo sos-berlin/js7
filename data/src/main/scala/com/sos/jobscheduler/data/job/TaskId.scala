@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.job
+package com.sos.jobscheduler.data.job
 
-import com.sos.scheduler.engine.base.generic.GenericInt
+import com.sos.jobscheduler.base.generic.GenericInt
 import spray.json.{JsNumber, JsString, JsValue, JsonFormat}
 
 final case class TaskId(number: Int) extends GenericInt {

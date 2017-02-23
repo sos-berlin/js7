@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver.modules.monitors
+package com.sos.jobscheduler.taskserver.modules.monitors
 
-import com.sos.scheduler.engine.taskserver.moduleapi.ModuleArguments
-import com.sos.scheduler.engine.taskserver.modules.javamodule.ApiModule
-import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
+import com.sos.jobscheduler.taskserver.moduleapi.ModuleArguments
+import com.sos.jobscheduler.taskserver.modules.javamodule.ApiModule
+import com.sos.jobscheduler.taskserver.spoolerapi.TypedNamedIDispatches
 
 /**
   * @author Joacim Zschimmer

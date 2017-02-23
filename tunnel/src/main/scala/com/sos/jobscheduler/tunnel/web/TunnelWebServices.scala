@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.tunnel.web
+package com.sos.jobscheduler.tunnel.web
 
 import akka.actor.ActorRefFactory
 import akka.util.ByteString
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.ByteStringMarshallers._
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
-import com.sos.scheduler.engine.tunnel.data.Http.SecretHeaderName
-import com.sos.scheduler.engine.tunnel.data._
-import com.sos.scheduler.engine.tunnel.server.{TunnelAccess, TunnelException}
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.ByteStringMarshallers._
+import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
+import com.sos.jobscheduler.tunnel.data.Http.SecretHeaderName
+import com.sos.jobscheduler.tunnel.data._
+import com.sos.jobscheduler.tunnel.server.{TunnelAccess, TunnelException}
 import java.time.Duration
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}

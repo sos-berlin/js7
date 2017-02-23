@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.tunnel.server
+package com.sos.jobscheduler.tunnel.server
 
 import akka.actor.ActorRef
 import akka.agent.Agent
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.log.LazyScalaLogger.AsLazyScalaLogger
-import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.common.utils.Exceptions._
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatService
-import com.sos.scheduler.engine.tunnel.data.{TunnelStatistics, TunnelToken, TunnelView}
-import com.sos.scheduler.engine.tunnel.server.Handle._
+import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.common.utils.Exceptions._
+import com.sos.jobscheduler.http.server.heartbeat.HeartbeatService
+import com.sos.jobscheduler.tunnel.data.{TunnelStatistics, TunnelToken, TunnelView}
+import com.sos.jobscheduler.tunnel.server.Handle._
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.{Duration, Instant}
 import scala.concurrent.{ExecutionContext, Promise}

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.event
+package com.sos.jobscheduler.common.event
 
-import com.sos.scheduler.engine.data.event.{EventId, EventSeq, Snapshot}
+import com.sos.jobscheduler.data.event.{EventId, EventSeq, Snapshot}
 import java.lang.System._
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.{Inject, Singleton}

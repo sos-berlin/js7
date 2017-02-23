@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.minicom.idispatch
+package com.sos.jobscheduler.minicom.idispatch
 
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
-import com.sos.scheduler.engine.minicom.idispatch.OverridingInvocableIDispatch._
-import com.sos.scheduler.engine.minicom.types.HRESULT._
-import com.sos.scheduler.engine.minicom.types.{COMException, VariantArray}
+import com.sos.jobscheduler.common.scalautil.Collections.implicits._
+import com.sos.jobscheduler.minicom.idispatch.OverridingInvocableIDispatch._
+import com.sos.jobscheduler.minicom.types.HRESULT._
+import com.sos.jobscheduler.minicom.types.{COMException, VariantArray}
 import java.lang.reflect.{InvocationTargetException, Method, ParameterizedType, Type}
 
 /**

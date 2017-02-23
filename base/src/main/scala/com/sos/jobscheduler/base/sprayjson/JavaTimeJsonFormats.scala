@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.sprayjson
+package com.sos.jobscheduler.base.sprayjson
 
 import java.time.format.DateTimeFormatter
 import java.time.{Duration, Instant}

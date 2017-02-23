@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.agent.web.views
+package com.sos.jobscheduler.agent.web.views
 
-import com.sos.scheduler.engine.agent.command.{CommandHandlerOverview, CommandRunOverview, InternalCommandId}
-import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate}
-import com.sos.scheduler.engine.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.agent.command.{CommandHandlerOverview, CommandRunOverview, InternalCommandId}
+import com.sos.jobscheduler.agent.data.commands.{Command, Terminate}
+import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import java.time.Instant
 import org.scalatest.FreeSpec
 import spray.http.HttpHeaders.Accept

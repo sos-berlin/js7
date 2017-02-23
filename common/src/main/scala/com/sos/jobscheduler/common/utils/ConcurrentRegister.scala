@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.utils
+package com.sos.jobscheduler.common.utils
 
-import com.sos.scheduler.engine.base.utils.HasKey
-import com.sos.scheduler.engine.common.scalautil.ScalaConcurrentHashMap
+import com.sos.jobscheduler.base.utils.HasKey
+import com.sos.jobscheduler.common.scalautil.ScalaConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**

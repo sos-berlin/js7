@@ -1,18 +1,18 @@
-package com.sos.scheduler.engine.taskserver
+package com.sos.jobscheduler.taskserver
 
 import akka.actor.ActorSystem
 import com.google.common.io.{ByteStreams, Closer}
 import com.google.inject.Guice
 import com.google.inject.Stage._
-import com.sos.scheduler.engine.common.commandline.CommandLineArguments
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.common.scalautil.AutoClosing._
-import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.taskserver.configuration.inject.{TaskServerMainModule, TaskServerModule}
-import com.sos.scheduler.engine.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
-import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer
+import com.sos.jobscheduler.common.commandline.CommandLineArguments
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.AutoClosing._
+import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.taskserver.configuration.inject.{TaskServerMainModule, TaskServerModule}
+import com.sos.jobscheduler.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
+import com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer
 import scala.concurrent.Promise
 import spray.json._
 

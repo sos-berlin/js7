@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.serial
+package com.sos.jobscheduler.base.serial
 
 /**
   * @author Joacim Zschimmer

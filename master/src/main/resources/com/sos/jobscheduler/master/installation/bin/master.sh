@@ -52,7 +52,7 @@ fi
 if [ -f "$configDirectory/logback.xml" ]; then :
   logbackConfig="file:$configDirectory/logback.xml"
 else
-  logbackConfig="com/sos/scheduler/engine/master/logback.xml"
+  logbackConfig="com/sos/jobscheduler/master/logback.xml"
 fi
 
 logbackArg="-Dlogback.configurationFile=$logbackConfig"
@@ -62,7 +62,7 @@ execute=(
   "$java"
   "${javaOptions[@]}"
   -classpath "$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
-  com.sos.scheduler.engine.master.MasterMain "${masterOptions[@]}"
+  com.sos.jobscheduler.master.MasterMain "${masterOptions[@]}"
 )
 echo "${execute[@]}"
 exec "${execute[@]}"

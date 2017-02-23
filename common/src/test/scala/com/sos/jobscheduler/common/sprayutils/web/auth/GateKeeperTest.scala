@@ -1,13 +1,13 @@
-package com.sos.scheduler.engine.common.sprayutils.web.auth
+package com.sos.jobscheduler.common.sprayutils.web.auth
 
 import akka.actor.ActorSystem
 import akka.testkit.TestDuration
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.{UserAndPassword, UserId}
-import com.sos.scheduler.engine.common.sprayutils.JsObjectMarshallers.JsObjectMarshaller
-import com.sos.scheduler.engine.common.sprayutils.web.auth.GateKeeperTest._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.common.sprayutils.JsObjectMarshallers.JsObjectMarshaller
+import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeperTest._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
 import java.time.Instant.now
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext

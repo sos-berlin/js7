@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.scalautil.xmls
+package com.sos.jobscheduler.common.scalautil.xmls
 
 import akka.util.ByteString
 import com.google.common.base.Charsets.UTF_8
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Path

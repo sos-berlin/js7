@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.idispatch
+package com.sos.jobscheduler.minicom.idispatch
 
-import com.sos.scheduler.engine.minicom.types.COMException
-import com.sos.scheduler.engine.minicom.types.HRESULT.E_INVALIDARG
+import com.sos.jobscheduler.minicom.types.COMException
+import com.sos.jobscheduler.minicom.types.HRESULT.E_INVALIDARG
 import scala.collection.{immutable, mutable}
 
 /**

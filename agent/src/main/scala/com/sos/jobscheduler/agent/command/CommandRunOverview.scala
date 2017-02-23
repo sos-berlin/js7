@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.command
+package com.sos.jobscheduler.agent.command
 
-import com.sos.scheduler.engine.agent.data.commands.Command
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.agent.data.commands.Command
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._
 

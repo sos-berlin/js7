@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.scalautil.xmls
+package com.sos.jobscheduler.common.scalautil.xmls
 
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.{BufferedInputStream, FileInputStream}
 import java.nio.file.Path
 import javax.xml.transform.stream.StreamSource

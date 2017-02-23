@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting.proxy
+package com.sos.jobscheduler.minicom.remoting.proxy
 
-import com.sos.scheduler.engine.common.scalautil.ScalaConcurrentHashMap
-import com.sos.scheduler.engine.minicom.idispatch.{DISPID, IDispatch}
+import com.sos.jobscheduler.common.scalautil.ScalaConcurrentHashMap
+import com.sos.jobscheduler.minicom.idispatch.{DISPID, IDispatch}
 
 /**
   * @author Joacim Zschimmer

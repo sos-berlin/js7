@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.tunnel.data
+package com.sos.jobscheduler.tunnel.data
 
 import java.net.InetAddress
 import org.scalatest.FreeSpec

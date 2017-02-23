@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.system
+package com.sos.jobscheduler.common.system
 
 import java.nio.file.Paths
 

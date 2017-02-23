@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.agent.Agent
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.FreeSpec
 import spray.client.pipelining._
 import spray.http.HttpResponse

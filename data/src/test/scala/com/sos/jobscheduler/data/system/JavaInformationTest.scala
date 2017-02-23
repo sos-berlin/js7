@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.data.system
+package com.sos.jobscheduler.data.system
 
 import org.scalatest.FreeSpec
 import spray.json._

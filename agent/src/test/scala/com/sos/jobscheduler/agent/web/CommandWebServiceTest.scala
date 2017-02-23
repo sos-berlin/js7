@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.agent.web
+package com.sos.jobscheduler.agent.web
 
-import com.sos.scheduler.engine.agent.command.CommandMeta
-import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
-import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.web.CommandWebServiceTest._
-import com.sos.scheduler.engine.agent.web.test.WebServiceTest
-import com.sos.scheduler.engine.base.exceptions.StandardPublicException
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.agent.command.CommandMeta
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
+import com.sos.jobscheduler.agent.data.commands._
+import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
+import com.sos.jobscheduler.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.base.exceptions.StandardPublicException
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
 import org.scalatest.FreeSpec
 import scala.concurrent.Future

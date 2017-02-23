@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.sprayutils.web.auth
+package com.sos.jobscheduler.common.sprayutils.web.auth
 
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.common.auth.{SimpleUser, User, UserAndPassword, UserId}
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.auth.{SimpleUser, User, UserAndPassword, UserId}
 import scala.concurrent.Future
 import spray.routing.authentication._
 

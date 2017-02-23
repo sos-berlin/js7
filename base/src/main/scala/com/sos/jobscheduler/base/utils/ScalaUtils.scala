@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.base.utils
+package com.sos.jobscheduler.base.utils
 
-import com.sos.scheduler.engine.base.exceptions.PublicException
+import com.sos.jobscheduler.base.exceptions.PublicException
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 import scala.collection.mutable

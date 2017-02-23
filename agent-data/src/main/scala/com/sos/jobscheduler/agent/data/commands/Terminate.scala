@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
 import spray.json.DefaultJsonProtocol._
 

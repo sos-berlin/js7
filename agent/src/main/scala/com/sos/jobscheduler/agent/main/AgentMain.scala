@@ -1,18 +1,18 @@
-package com.sos.scheduler.engine.agent.main
+package com.sos.jobscheduler.agent.main
 
-import com.sos.scheduler.engine.agent.Agent
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.data.commands.Terminate
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.Closers.{EmptyAutoCloseable, withCloser}
-import com.sos.scheduler.engine.common.scalautil.Futures.awaitResult
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
-import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.JavaShutdownHook
-import com.sos.scheduler.engine.taskserver.dotnet.DotnetEnvironment
+import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.commands.Terminate
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.Closers.{EmptyAutoCloseable, withCloser}
+import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.JavaShutdownHook
+import com.sos.jobscheduler.taskserver.dotnet.DotnetEnvironment
 import scala.util.control.NonFatal
 
 /**

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.remoting.serial.BaseDeserializer._
-import com.sos.scheduler.engine.minicom.types.{EXCEPINFO, HRESULT}
+import com.sos.jobscheduler.minicom.remoting.serial.BaseDeserializer._
+import com.sos.jobscheduler.minicom.types.{EXCEPINFO, HRESULT}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.util.UUID

@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.agent.data.views
+package com.sos.jobscheduler.agent.data.views
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.agent.data.commands.StartTask
-import com.sos.scheduler.engine.base.sprayjson.InetAddressJsonSupport._
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits.InstantJsonFormat
-import com.sos.scheduler.engine.tunnel.data.TunnelId
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.commands.StartTask
+import com.sos.jobscheduler.base.sprayjson.InetAddressJsonSupport._
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits.InstantJsonFormat
+import com.sos.jobscheduler.tunnel.data.TunnelId
 import java.net.InetAddress
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._

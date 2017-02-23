@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.ScalaThreadLocal.threadLocal
+import com.sos.jobscheduler.common.scalautil.ScalaThreadLocal.threadLocal
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.AsyncAssertions.Waiter
 

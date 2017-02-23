@@ -1,27 +1,27 @@
-package com.sos.scheduler.engine.agent.configuration
+package com.sos.jobscheduler.agent.configuration
 
 import akka.util.Timeout
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration._
-import com.sos.scheduler.engine.agent.data.ProcessKillScript
-import com.sos.scheduler.engine.agent.web.common.ExternalWebService
-import com.sos.scheduler.engine.base.convert.As
-import com.sos.scheduler.engine.base.convert.As.asAbsolutePath
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
-import com.sos.scheduler.engine.common.commandline.CommandLineArguments
-import com.sos.scheduler.engine.common.configutils.Configs
-import com.sos.scheduler.engine.common.configutils.Configs._
-import com.sos.scheduler.engine.common.internet.IP._
-import com.sos.scheduler.engine.common.process.Processes.ShellFileExtension
-import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
-import com.sos.scheduler.engine.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
-import com.sos.scheduler.engine.common.sprayutils.WebServerBinding
-import com.sos.scheduler.engine.common.sprayutils.https.KeystoreReference
-import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
-import com.sos.scheduler.engine.common.utils.JavaResource
-import com.sos.scheduler.engine.taskserver.data.DotnetConfiguration
-import com.sos.scheduler.engine.taskserver.task.process.ProcessKillScriptProvider
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
+import com.sos.jobscheduler.agent.data.ProcessKillScript
+import com.sos.jobscheduler.agent.web.common.ExternalWebService
+import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.convert.As.asAbsolutePath
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.common.commandline.CommandLineArguments
+import com.sos.jobscheduler.common.configutils.Configs
+import com.sos.jobscheduler.common.configutils.Configs._
+import com.sos.jobscheduler.common.internet.IP._
+import com.sos.jobscheduler.common.process.Processes.ShellFileExtension
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
+import com.sos.jobscheduler.common.sprayutils.WebServerBinding
+import com.sos.jobscheduler.common.sprayutils.https.KeystoreReference
+import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.taskserver.data.DotnetConfiguration
+import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectory, exists}
@@ -156,7 +156,7 @@ object AgentConfiguration {
   val InvalidAuthenticationDelay = 1.s
   private val DelayUntilFinishFile = EmptyPath  // Marker for finish
   private[configuration] lazy val DefaultsConfig = Configs.loadResource(
-    JavaResource("com/sos/scheduler/engine/agent/configuration/agent.conf"))
+    JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
   def apply(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
     fromDataDirectory(a.optionAs[Path]("-data-directory=")) withCommandLineArguments a
@@ -206,7 +206,7 @@ object AgentConfiguration {
   private def defaultLogDirectory(data: Path) = data / "logs"
 
   object forTest {
-    private val TaskServerLogbackResource = JavaResource("com/sos/scheduler/engine/taskserver/configuration/logback.xml")
+    private val TaskServerLogbackResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/logback.xml")
 
     def apply(data: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
       fromDataDirectory(data, config).copy(

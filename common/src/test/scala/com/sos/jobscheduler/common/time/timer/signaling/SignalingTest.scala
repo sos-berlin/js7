@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.time.timer.signaling
+package com.sos.jobscheduler.common.time.timer.signaling
 
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

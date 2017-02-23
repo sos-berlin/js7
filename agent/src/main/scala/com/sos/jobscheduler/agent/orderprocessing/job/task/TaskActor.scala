@@ -1,13 +1,13 @@
-//package com.sos.scheduler.engine.agent.orderprocessing.job.task
+//package com.sos.jobscheduler.agent.orderprocessing.job.task
 //
 //import akka.actor.{Actor, ActorRef, FSM, Props}
-//import com.sos.scheduler.engine.data.engine2.order.Order
-//import com.sos.scheduler.engine.agent.orderprocessing.job.JobConfiguration
-//import com.sos.scheduler.engine.agent.orderprocessing.job.task.TaskActor._
-//import com.sos.scheduler.engine.agent.task.AgentTaskFactory
-//import com.sos.scheduler.engine.base.process.ProcessSignal
-//import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
-//import com.sos.scheduler.engine.data.job.TaskId
+//import com.sos.jobscheduler.data.engine2.order.Order
+//import com.sos.jobscheduler.agent.orderprocessing.job.JobConfiguration
+//import com.sos.jobscheduler.agent.orderprocessing.job.task.TaskActor._
+//import com.sos.jobscheduler.agent.task.AgentTaskFactory
+//import com.sos.jobscheduler.base.process.ProcessSignal
+//import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+//import com.sos.jobscheduler.data.job.TaskId
 //import scala.concurrent.blocking
 //import scala.util.Try
 //

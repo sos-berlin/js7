@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.taskserver.modules.shell
+package com.sos.jobscheduler.taskserver.modules.shell
 
-import com.sos.scheduler.engine.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
-import com.sos.scheduler.engine.taskserver.moduleapi.{Module, ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
-import com.sos.scheduler.engine.taskserver.modules.common.CommonArguments
+import com.sos.jobscheduler.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
+import com.sos.jobscheduler.taskserver.moduleapi.{Module, ModuleArguments, ModuleFactory, ModuleLanguage, RawModuleArguments, Script}
+import com.sos.jobscheduler.taskserver.modules.common.CommonArguments
 import javax.inject.Inject
 import scala.concurrent.{ExecutionContext, Future}
 

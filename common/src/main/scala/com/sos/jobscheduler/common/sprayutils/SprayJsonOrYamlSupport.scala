@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Logger
 import scala.language.implicitConversions
 import spray.http.ContentType
 import spray.http.ContentTypes.{`application/json`, `text/plain(UTF-8)`, `text/plain`}

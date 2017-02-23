@@ -1,16 +1,16 @@
-package com.sos.scheduler.engine.taskserver.data
+package com.sos.jobscheduler.taskserver.data
 
-import com.sos.scheduler.engine.agent.data.commands.StartTask
-import com.sos.scheduler.engine.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.scheduler.engine.base.generic.SecretString
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
-import com.sos.scheduler.engine.common.process.StdoutStderr.StdoutStderrType
-import com.sos.scheduler.engine.common.scalautil.FileUtils.EmptyPath
-import com.sos.scheduler.engine.common.system.FileUtils._
-import com.sos.scheduler.engine.common.tcp.TcpUtils.parseTcpPort
-import com.sos.scheduler.engine.taskserver.data.TaskServerArguments.toInetSocketAddress
-import com.sos.scheduler.engine.tunnel.data.{TunnelId, TunnelToken}
+import com.sos.jobscheduler.agent.data.commands.StartTask
+import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
+import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.base.sprayjson.SprayJson.JsonFormats._
+import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.common.scalautil.FileUtils.EmptyPath
+import com.sos.jobscheduler.common.system.FileUtils._
+import com.sos.jobscheduler.common.tcp.TcpUtils.parseTcpPort
+import com.sos.jobscheduler.taskserver.data.TaskServerArguments.toInetSocketAddress
+import com.sos.jobscheduler.tunnel.data.{TunnelId, TunnelToken}
 import java.net.InetSocketAddress
 import java.nio.file.Path
 import java.time.Duration

@@ -1,23 +1,23 @@
-package com.sos.scheduler.engine.http.server.heartbeat
+package com.sos.jobscheduler.http.server.heartbeat
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.io.{IO, Tcp}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Futures._
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
-import com.sos.scheduler.engine.common.sprayutils.YamlJsonConversion.ToYamlString
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.time.WaitForCondition.waitForCondition
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.common.utils.Exceptions.repeatUntilNoException
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
-import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatRequestor.HttpRequestTimeoutException
-import com.sos.scheduler.engine.http.client.heartbeat.{HeartbeatId, HeartbeatRequestor, HttpHeartbeatTiming}
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatIT._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.common.sprayutils.YamlJsonConversion.ToYamlString
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.common.utils.Exceptions.repeatUntilNoException
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.http.client.heartbeat.HeartbeatRequestor.HttpRequestTimeoutException
+import com.sos.jobscheduler.http.client.heartbeat.{HeartbeatId, HeartbeatRequestor, HttpHeartbeatTiming}
+import com.sos.jobscheduler.http.server.heartbeat.HeartbeatIT._
 import java.time.Duration
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable

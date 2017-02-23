@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.guice
+package com.sos.jobscheduler.common.guice
 
 import com.google.inject.Injector
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 
 object GuiceImplicits {

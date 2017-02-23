@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.event
+package com.sos.jobscheduler.data.event
 
-import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.language.higherKinds

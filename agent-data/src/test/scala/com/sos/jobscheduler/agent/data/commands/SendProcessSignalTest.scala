@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.data.commands
+package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.scheduler.engine.agent.data.AgentTaskId
-import com.sos.scheduler.engine.base.process.ProcessSignal.SIGTERM
+import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.base.process.ProcessSignal.SIGTERM
 import org.scalatest.FreeSpec
 import spray.json._
 

@@ -1,21 +1,21 @@
-package com.sos.scheduler.engine.shared.event.journal.tests
+package com.sos.jobscheduler.shared.event.journal.tests
 
 import akka.Done
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props, Stash, SupervisorStrategy, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.common.event.EventIdGenerator
-import com.sos.scheduler.engine.common.scalautil.AutoClosing.autoClosing
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.scheduler.engine.common.scalautil.Logger
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
-import com.sos.scheduler.engine.data.event.{KeyedEvent, Snapshot}
-import com.sos.scheduler.engine.shared.event.SnapshotKeyedEventBus
-import com.sos.scheduler.engine.shared.event.journal.tests.TestActor._
-import com.sos.scheduler.engine.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
-import com.sos.scheduler.engine.shared.event.journal.{Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer}
+import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
+import com.sos.jobscheduler.data.event.{KeyedEvent, Snapshot}
+import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.journal.tests.TestActor._
+import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
+import com.sos.jobscheduler.shared.event.journal.{Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer}
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.duration.DurationInt

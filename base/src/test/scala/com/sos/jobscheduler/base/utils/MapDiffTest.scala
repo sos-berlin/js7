@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.base.utils
+package com.sos.jobscheduler.base.utils
 
 import org.scalatest.FreeSpec
 import spray.json.DefaultJsonProtocol._

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.taskserver.dotnet;
+package com.sos.jobscheduler.taskserver.dotnet;
 
-import com.sos.scheduler.engine.taskserver.dotnet.api.TaskContext;
+import com.sos.jobscheduler.taskserver.dotnet.api.TaskContext;
 
 public final class DotnetJob extends sos.spooler.Job_impl {
     private final DotnetApiImpl apiImpl;

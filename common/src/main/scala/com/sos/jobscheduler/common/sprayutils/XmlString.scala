@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.sprayutils
+package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.scheduler.engine.common.xml.XmlUtils.xmlByteStringToString
+import com.sos.jobscheduler.common.xml.XmlUtils.xmlByteStringToString
 import spray.http.HttpCharsets._
 import spray.http.MediaTypes._
 import spray.http.{ContentType, HttpEntity}

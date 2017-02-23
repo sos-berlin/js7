@@ -1,9 +1,9 @@
-package com.sos.scheduler.engine.jobapi.scripting
+package com.sos.jobscheduler.jobapi.scripting
 
 import com.google.common.base.Supplier
 import com.google.common.collect.ImmutableMap
-import com.sos.scheduler.engine.common.utils.JavaResource
-import com.sos.scheduler.engine.jobapi.scripting.ScriptInstanceTest._
+import com.sos.jobscheduler.common.utils.JavaResource
+import com.sos.jobscheduler.jobapi.scripting.ScriptInstanceTest._
 import org.scalatest.Matchers._
 import org.scalatest.{FreeSpec, OneInstancePerTest}
 import scala.collection.JavaConversions._
@@ -120,8 +120,8 @@ final class ScriptInstanceTest extends FreeSpec with OneInstancePerTest {
 }
 
 private object ScriptInstanceTest {
-  private val javaScriptResource = JavaResource.apply("com/sos/scheduler/engine/jobapi/scripting/test.js")
-  private val groovyResource = JavaResource.apply("com/sos/scheduler/engine/jobapi/scripting/test.groovy")
+  private val javaScriptResource = JavaResource.apply("com/sos/jobscheduler/jobapi/scripting/test.js")
+  private val groovyResource = JavaResource.apply("com/sos/jobscheduler/jobapi/scripting/test.groovy")
 
   private final class JavaScriptLogger {
     val lines = mutable.Buffer[String]()

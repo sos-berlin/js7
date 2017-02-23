@@ -1,11 +1,11 @@
-package com.sos.scheduler.engine.data.engine2.order
+package com.sos.jobscheduler.data.engine2.order
 
-import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.base.utils.MapDiff
-import com.sos.scheduler.engine.data.engine2.agent.AgentPath
-import com.sos.scheduler.engine.data.engine2.order.Order.{Idle, Outcome, State}
-import com.sos.scheduler.engine.data.event.Event
-import com.sos.scheduler.engine.data.order.OrderId
+import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.utils.MapDiff
+import com.sos.jobscheduler.data.engine2.agent.AgentPath
+import com.sos.jobscheduler.data.engine2.order.Order.{Idle, Outcome, State}
+import com.sos.jobscheduler.data.event.Event
+import com.sos.jobscheduler.data.order.OrderId
 import spray.json.DefaultJsonProtocol._
 
 /**

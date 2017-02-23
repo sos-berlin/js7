@@ -1,15 +1,15 @@
-package com.sos.scheduler.engine.tunnel.server
+package com.sos.jobscheduler.tunnel.server
 
 import akka.actor.SupervisorStrategy.stoppingStrategy
 import akka.actor.{Actor, ActorRef, Props, Terminated}
 import akka.agent.Agent
 import akka.io.{IO, Tcp}
 import akka.util.ByteString
-import com.sos.scheduler.engine.common.scalautil.Collections.implicits._
-import com.sos.scheduler.engine.common.scalautil.{Logger, SetOnce}
-import com.sos.scheduler.engine.common.time.timer.TimerService
-import com.sos.scheduler.engine.tunnel.data._
-import com.sos.scheduler.engine.tunnel.server.ConnectorHandler._
+import com.sos.jobscheduler.common.scalautil.Collections.implicits._
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.tunnel.data._
+import com.sos.jobscheduler.tunnel.server.ConnectorHandler._
 import java.net.{InetAddress, InetSocketAddress}
 import java.time.Duration
 import scala.PartialFunction.cond

@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.agent.client
+package com.sos.jobscheduler.agent.client
 
 import akka.actor.ActorRefFactory
-import com.sos.scheduler.engine.agent.client.AgentClientTest._
+import com.sos.jobscheduler.agent.client.AgentClientTest._
 import org.scalatest.FreeSpec
 import spray.client.pipelining.Get
 import spray.http.{HttpResponse, Uri}

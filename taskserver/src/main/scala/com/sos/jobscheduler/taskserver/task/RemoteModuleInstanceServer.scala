@@ -1,25 +1,25 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.jobscheduler.taskserver.task
 
-import com.sos.scheduler.engine.base.process.ProcessSignal
-import com.sos.scheduler.engine.base.utils.ScalaUtils.cast
-import com.sos.scheduler.engine.common.process.Processes.Pid
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.scheduler.engine.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger, SetOnce}
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.data.job.TaskId
-import com.sos.scheduler.engine.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
-import com.sos.scheduler.engine.minicom.idispatch.annotation.invocable
-import com.sos.scheduler.engine.minicom.idispatch.{AnnotatedInvocable, IDispatch, IUnknownFactory, InvocableIDispatch}
-import com.sos.scheduler.engine.minicom.types.{CLSID, IID, VariantArray}
-import com.sos.scheduler.engine.taskserver.common.StdFiles
-import com.sos.scheduler.engine.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
-import com.sos.scheduler.engine.taskserver.moduleapi.ModuleFactoryRegister
-import com.sos.scheduler.engine.taskserver.modules.common.{CommonArguments, Task}
-import com.sos.scheduler.engine.taskserver.modules.javamodule.{ApiModule, ApiProcessTask}
-import com.sos.scheduler.engine.taskserver.modules.monitor.Monitor
-import com.sos.scheduler.engine.taskserver.modules.shell.{RichProcessStartSynchronizer, ShellModule, ShellProcessTask}
-import com.sos.scheduler.engine.taskserver.spoolerapi.TypedNamedIDispatches
+import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.common.process.Processes.Pid
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger, SetOnce}
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.job.TaskId
+import com.sos.jobscheduler.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
+import com.sos.jobscheduler.minicom.idispatch.annotation.invocable
+import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, IDispatch, IUnknownFactory, InvocableIDispatch}
+import com.sos.jobscheduler.minicom.types.{CLSID, IID, VariantArray}
+import com.sos.jobscheduler.taskserver.common.StdFiles
+import com.sos.jobscheduler.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
+import com.sos.jobscheduler.taskserver.moduleapi.ModuleFactoryRegister
+import com.sos.jobscheduler.taskserver.modules.common.{CommonArguments, Task}
+import com.sos.jobscheduler.taskserver.modules.javamodule.{ApiModule, ApiProcessTask}
+import com.sos.jobscheduler.taskserver.modules.monitor.Monitor
+import com.sos.jobscheduler.taskserver.modules.shell.{RichProcessStartSynchronizer, ShellModule, ShellProcessTask}
+import com.sos.jobscheduler.taskserver.spoolerapi.TypedNamedIDispatches
 import java.util.UUID
 import javax.inject.{Inject, Singleton}
 import org.scalactic.Requirements._
@@ -36,7 +36,7 @@ final class RemoteModuleInstanceServer private(
   taskServerMainTerminatedOption: Option[Future[TaskServerMainTerminated.type]])
   (implicit ec: ExecutionContext)
 extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
-  import com.sos.scheduler.engine.taskserver.task.RemoteModuleInstanceServer._
+  import com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer._
 
   private var taskArguments: TaskArguments = null
   private val taskOnce = new SetOnce[Task]

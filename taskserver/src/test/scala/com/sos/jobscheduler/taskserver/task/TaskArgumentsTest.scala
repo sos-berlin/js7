@@ -1,16 +1,16 @@
-package com.sos.scheduler.engine.taskserver.task
+package com.sos.jobscheduler.taskserver.task
 
 import com.google.inject.{AbstractModule, Guice, Provides}
-import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
-import com.sos.scheduler.engine.data.job.TaskId
-import com.sos.scheduler.engine.data.log.SchedulerLogLevel
-import com.sos.scheduler.engine.minicom.types.VariantArray
-import com.sos.scheduler.engine.taskserver.data.TaskServerMainTerminated
-import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
-import com.sos.scheduler.engine.taskserver.moduleapi.{ModuleFactoryRegister, Script}
-import com.sos.scheduler.engine.taskserver.modules.dotnet.DotnetModule
-import com.sos.scheduler.engine.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
-import com.sos.scheduler.engine.taskserver.modules.shell.{RichProcessStartSynchronizer, ShellModule}
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.data.job.TaskId
+import com.sos.jobscheduler.data.log.SchedulerLogLevel
+import com.sos.jobscheduler.minicom.types.VariantArray
+import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
+import com.sos.jobscheduler.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
+import com.sos.jobscheduler.taskserver.moduleapi.{ModuleFactoryRegister, Script}
+import com.sos.jobscheduler.taskserver.modules.dotnet.DotnetModule
+import com.sos.jobscheduler.taskserver.modules.javamodule.{JavaScriptEngineModule, StandardJavaModule}
+import com.sos.jobscheduler.taskserver.modules.shell.{RichProcessStartSynchronizer, ShellModule}
 import java.nio.file.Paths
 import javax.inject.Singleton
 import org.scalatest.FreeSpec

@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.common.time.timer.signaling
+package com.sos.jobscheduler.common.time.timer.signaling
 
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.TimeUnit._

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.xml
+package com.sos.jobscheduler.common.xml
 
-import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import javax.xml.stream.XMLEventReader
 import scala.xml.{TopScope, UnprefixedAttribute}
 

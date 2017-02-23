@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.process
+package com.sos.jobscheduler.common.process
 
-import com.sos.scheduler.engine.common.process.Processes.Pid
-import com.sos.scheduler.engine.common.system.OperatingSystem._
+import com.sos.jobscheduler.common.process.Processes.Pid
+import com.sos.jobscheduler.common.system.OperatingSystem._
 import javax.lang.model.SourceVersion
 
 /**

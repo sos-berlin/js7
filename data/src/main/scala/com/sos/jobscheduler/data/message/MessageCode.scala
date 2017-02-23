@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.data.message
+package com.sos.jobscheduler.data.message
 
-import com.sos.scheduler.engine.base.generic.IsString
+import com.sos.jobscheduler.base.generic.IsString
 
 /**
  * @author Joacim Zschimmer

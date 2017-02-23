@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.base.utils
+package com.sos.jobscheduler.base.utils
 
-import com.sos.scheduler.engine.base.exceptions.StandardPublicException
-import com.sos.scheduler.engine.base.utils.ScalaUtils._
-import com.sos.scheduler.engine.base.utils.ScalaUtils.implicits._
+import com.sos.jobscheduler.base.exceptions.StandardPublicException
+import com.sos.jobscheduler.base.utils.ScalaUtils._
+import com.sos.jobscheduler.base.utils.ScalaUtils.implicits._
 import java.util.concurrent.atomic.AtomicBoolean
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._

@@ -1,16 +1,16 @@
-package com.sos.scheduler.engine.agent.tests
+package com.sos.jobscheduler.agent.tests
 
-import com.sos.scheduler.engine.agent.client.main.AgentClientMain
-import com.sos.scheduler.engine.agent.command.{CommandExecutor, CommandMeta}
-import com.sos.scheduler.engine.agent.data.commandresponses.EmptyResponse
-import com.sos.scheduler.engine.agent.data.commands.{Command, Terminate}
-import com.sos.scheduler.engine.agent.test.AgentTest
-import com.sos.scheduler.engine.agent.tests.AgentClientMainIT._
-import com.sos.scheduler.engine.common.guice.ScalaAbstractModule
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.scheduler.engine.common.scalautil.HasCloser
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
+import com.sos.jobscheduler.agent.client.main.AgentClientMain
+import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.agent.data.commands.{Command, Terminate}
+import com.sos.jobscheduler.agent.test.AgentTest
+import com.sos.jobscheduler.agent.tests.AgentClientMainIT._
+import com.sos.jobscheduler.common.guice.ScalaAbstractModule
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.Future

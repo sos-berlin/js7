@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.common.akkautils
+package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.{ActorPath, ActorSystem}
 import akka.util.{ByteString, Timeout}
-import com.sos.scheduler.engine.common.akkautils.Akkas._
+import com.sos.jobscheduler.common.akkautils.Akkas._
 import com.typesafe.config.ConfigFactory
 import java.util.concurrent.TimeUnit
 import org.scalatest.FreeSpec

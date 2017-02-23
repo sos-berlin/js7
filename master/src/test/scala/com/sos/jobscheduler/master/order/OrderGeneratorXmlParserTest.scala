@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.master.order
+package com.sos.jobscheduler.master.order
 
-import com.sos.scheduler.engine.common.scalautil.xmls.XmlSources._
-import com.sos.scheduler.engine.common.time.ScalaTime._
-import com.sos.scheduler.engine.data.engine2.order.{JobChainPath, NodeId, NodeKey}
-import com.sos.scheduler.engine.master.oldruntime.OldSchedule.EveryDay
-import com.sos.scheduler.engine.master.oldruntime.{OldSchedule, Period, PeriodSeq}
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.engine2.order.{JobChainPath, NodeId, NodeKey}
+import com.sos.jobscheduler.master.oldruntime.OldSchedule.EveryDay
+import com.sos.jobscheduler.master.oldruntime.{OldSchedule, Period, PeriodSeq}
 import java.time.ZoneId
 import org.scalatest.FreeSpec
 

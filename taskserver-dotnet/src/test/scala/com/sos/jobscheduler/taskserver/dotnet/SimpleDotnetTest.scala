@@ -1,13 +1,13 @@
-package com.sos.scheduler.engine.taskserver.dotnet
+package com.sos.jobscheduler.taskserver.dotnet
 
-import com.sos.scheduler.engine.common.log.LazyScalaLogger.AsLazyScalaLogger
-import com.sos.scheduler.engine.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.scheduler.engine.common.scalautil.SideEffect.ImplicitSideEffect
-import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
-import com.sos.scheduler.engine.common.system.FileUtils.temporaryDirectory
-import com.sos.scheduler.engine.common.utils.Exceptions.ignoreException
-import com.sos.scheduler.engine.taskserver.dotnet.SimpleDotnetTest._
-import com.sos.scheduler.engine.taskserver.dotnet.api.{DotnetModuleReference, TaskContext}
+import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
+import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
+import com.sos.jobscheduler.taskserver.dotnet.SimpleDotnetTest._
+import com.sos.jobscheduler.taskserver.dotnet.api.{DotnetModuleReference, TaskContext}
 import org.mockito.Mockito._
 import org.scalatest.mock.MockitoSugar.mock
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}

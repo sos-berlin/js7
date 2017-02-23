@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.shared.event.journal.tests
+package com.sos.jobscheduler.shared.event.journal.tests
 
-import com.sos.scheduler.engine.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.scheduler.engine.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
-import com.sos.scheduler.engine.data.event.{Event, KeyedEvent}
+import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
 import spray.json.DefaultJsonProtocol._
 
 /**

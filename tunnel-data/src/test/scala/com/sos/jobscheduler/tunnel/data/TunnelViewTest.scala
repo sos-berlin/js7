@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.tunnel.data
+package com.sos.jobscheduler.tunnel.data
 
-import com.sos.scheduler.engine.http.client.heartbeat.HeartbeatId
-import com.sos.scheduler.engine.http.server.heartbeat.HeartbeatView
+import com.sos.jobscheduler.http.client.heartbeat.HeartbeatId
+import com.sos.jobscheduler.http.server.heartbeat.HeartbeatView
 import java.net.InetAddress
 import java.time.Instant
 import org.scalatest.FreeSpec

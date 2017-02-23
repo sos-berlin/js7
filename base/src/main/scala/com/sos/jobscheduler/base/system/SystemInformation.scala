@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.base.system
+package com.sos.jobscheduler.base.system
 
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.JsonFormats._
+import com.sos.jobscheduler.base.sprayjson.SprayJson.JsonFormats._
 import spray.json.DefaultJsonProtocol._
 
 final case class SystemInformation(

@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
-import com.sos.scheduler.engine.common.scalautil.SideEffect._
+import com.sos.jobscheduler.common.scalautil.SideEffect._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 

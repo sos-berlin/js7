@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.base.generic
+package com.sos.jobscheduler.base.generic
 
-import com.sos.scheduler.engine.base.convert.As
+import com.sos.jobscheduler.base.convert.As
 import spray.json._
 
 /**

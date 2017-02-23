@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.common.scalautil
+package com.sos.jobscheduler.common.scalautil
 
-import com.sos.scheduler.engine.base.utils.StackTraces._
-import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.jobscheduler.base.utils.StackTraces._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
 import java.util.concurrent.TimeoutException
 import scala.collection.generic.CanBuildFrom

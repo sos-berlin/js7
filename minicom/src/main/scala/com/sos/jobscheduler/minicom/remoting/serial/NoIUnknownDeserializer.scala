@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.minicom.remoting.serial
+package com.sos.jobscheduler.minicom.remoting.serial
 
-import com.sos.scheduler.engine.minicom.types.IUnknown
+import com.sos.jobscheduler.minicom.types.IUnknown
 
 /**
  * @author Joacim Zschimmer

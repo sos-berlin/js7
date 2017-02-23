@@ -1,7 +1,7 @@
-package com.sos.scheduler.engine.base.sprayjson.typed
+package com.sos.jobscheduler.base.sprayjson.typed
 
-import com.sos.scheduler.engine.base.sprayjson.SprayJson.lazyRootFormat
-import com.sos.scheduler.engine.base.sprayjson.typed.TypedJsonFormatTest._
+import com.sos.jobscheduler.base.sprayjson.SprayJson.lazyRootFormat
+import com.sos.jobscheduler.base.sprayjson.typed.TypedJsonFormatTest._
 import org.scalatest.FreeSpec
 import spray.json.DefaultJsonProtocol._
 import spray.json._

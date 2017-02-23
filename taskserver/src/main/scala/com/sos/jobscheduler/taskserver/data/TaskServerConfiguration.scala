@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.taskserver.data
+package com.sos.jobscheduler.taskserver.data
 
 import java.nio.charset.StandardCharsets._
 

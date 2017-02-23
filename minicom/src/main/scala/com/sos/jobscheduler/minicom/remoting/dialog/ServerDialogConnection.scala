@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.minicom.remoting.dialog
+package com.sos.jobscheduler.minicom.remoting.dialog
 
 import akka.util.ByteString
 

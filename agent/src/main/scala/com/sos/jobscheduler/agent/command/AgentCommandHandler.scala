@@ -1,18 +1,18 @@
-package com.sos.scheduler.engine.agent.command
+package com.sos.jobscheduler.agent.command
 
-import com.sos.scheduler.engine.agent.command.AgentCommandHandler._
-import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
-import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, LoginResponse}
-import com.sos.scheduler.engine.agent.data.commands._
-import com.sos.scheduler.engine.agent.fileordersource.{FileCommandExecutor, RequestFileOrderSourceContentExecutor}
-import com.sos.scheduler.engine.agent.orderprocessing.OrderHandler
-import com.sos.scheduler.engine.agent.task.TaskHandler
-import com.sos.scheduler.engine.agent.web.common.LoginSession
-import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.scheduler.engine.common.auth.User
-import com.sos.scheduler.engine.common.scalautil.{Logger, ScalaConcurrentHashMap}
-import com.sos.scheduler.engine.common.sprayutils.web.session.SessionRegister
-import com.sos.scheduler.engine.data.session.SessionToken
+import com.sos.jobscheduler.agent.command.AgentCommandHandler._
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
+import com.sos.jobscheduler.agent.data.commands._
+import com.sos.jobscheduler.agent.fileordersource.{FileCommandExecutor, RequestFileOrderSourceContentExecutor}
+import com.sos.jobscheduler.agent.orderprocessing.OrderHandler
+import com.sos.jobscheduler.agent.task.TaskHandler
+import com.sos.jobscheduler.agent.web.common.LoginSession
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.common.auth.User
+import com.sos.jobscheduler.common.scalautil.{Logger, ScalaConcurrentHashMap}
+import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
+import com.sos.jobscheduler.data.session.SessionToken
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}

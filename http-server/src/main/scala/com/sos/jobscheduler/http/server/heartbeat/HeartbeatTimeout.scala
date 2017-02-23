@@ -1,6 +1,6 @@
-package com.sos.scheduler.engine.http.server.heartbeat
+package com.sos.jobscheduler.http.server.heartbeat
 
-import com.sos.scheduler.engine.http.client.heartbeat.{HeartbeatId, HttpHeartbeatTiming}
+import com.sos.jobscheduler.http.client.heartbeat.{HeartbeatId, HttpHeartbeatTiming}
 import java.time.Instant
 
 /**

@@ -1,10 +1,10 @@
-package com.sos.scheduler.engine.agent.web.views
+package com.sos.jobscheduler.agent.web.views
 
-import com.sos.scheduler.engine.agent.command.{CommandHandlerOverview, CommandRunOverview}
-import com.sos.scheduler.engine.agent.web.common.AgentWebService
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
-import com.sos.scheduler.engine.common.utils.IntelliJUtils._
+import com.sos.jobscheduler.agent.command.{CommandHandlerOverview, CommandRunOverview}
+import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.common.utils.IntelliJUtils._
 import scala.collection.immutable
 import spray.http.CacheDirectives.`max-age`
 import spray.http.HttpHeaders.`Cache-Control`

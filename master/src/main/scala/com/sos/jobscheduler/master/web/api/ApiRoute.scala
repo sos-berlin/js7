@@ -1,8 +1,8 @@
-package com.sos.scheduler.engine.master.web.api
+package com.sos.jobscheduler.master.web.api
 
-import com.sos.scheduler.engine.common.BuildInfo
-import com.sos.scheduler.engine.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.scheduler.engine.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
 import spray.json.DefaultJsonProtocol._
 import spray.routing.Directives._
 import spray.routing.Route

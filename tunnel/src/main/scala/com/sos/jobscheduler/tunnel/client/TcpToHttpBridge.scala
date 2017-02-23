@@ -1,12 +1,12 @@
-package com.sos.scheduler.engine.tunnel.client
+package com.sos.jobscheduler.tunnel.client
 
 import akka.actor.ActorSystem
-import com.sos.scheduler.engine.common.tcp.TcpToRequestResponse
-import com.sos.scheduler.engine.tunnel.data.TunnelToken
+import com.sos.jobscheduler.common.tcp.TcpToRequestResponse
+import com.sos.jobscheduler.tunnel.data.TunnelToken
 import java.net.InetSocketAddress
 
 /**
- * A remote task started by [[com.sos.scheduler.engine.client.agent.HttpRemoteProcessStarter]], with API calls tunnelled via HTTP and Agent.
+ * A remote task started by [[com.sos.jobscheduler.client.agent.HttpRemoteProcessStarter]], with API calls tunnelled via HTTP and Agent.
  *
  * @author Joacim Zschimmer
  */

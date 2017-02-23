@@ -1,4 +1,4 @@
-package com.sos.scheduler.engine.agent.data
+package com.sos.jobscheduler.agent.data
 
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
