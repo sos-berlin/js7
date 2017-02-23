@@ -1,28 +1,9 @@
-# .gitignore
-
-# SUBVERSION
-.svn/
-
-# MAVEN
-.surefire-*
+# SBT
 /target/
-
-# ECLIPSE
-.classpath
-.project
-.settings/
-.scala_dependencies
+/project/target/
+/*/target/
+/*/project/target/
 
 # INTELLIJ IDEA
 /.idea/
-/classes/
-*.iml
-
-# Old Intellij IDEA 15
-/out/
-
-# To allow source code switching from newer branches
-/engine-agent-gui/target/
-/engine-agent-gui/node_modules/
-/engine-plugins/engine-plugins-legacy/target/
-/engine-web/target/
+/out
