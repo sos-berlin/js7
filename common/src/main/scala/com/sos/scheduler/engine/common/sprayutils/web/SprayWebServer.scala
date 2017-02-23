@@ -14,9 +14,7 @@ import java.net.InetSocketAddress
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Success
 import spray.can.Http
-import spray.can.Http.Unbind
 import spray.can.server.ServerSettings
 import spray.http.Uri
 import spray.io.ServerSSLEngineProvider

@@ -5,6 +5,7 @@ import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.fileordersource.{FileCommandExecutor, RequestFileOrderSourceContentExecutor}
+import com.sos.scheduler.engine.agent.orderprocessing.OrderHandler
 import com.sos.scheduler.engine.agent.task.TaskHandler
 import com.sos.scheduler.engine.agent.web.common.LoginSession
 import com.sos.scheduler.engine.base.sprayjson.JavaTimeJsonFormats.implicits._
@@ -29,6 +30,7 @@ import spray.json.DefaultJsonProtocol._
 final class AgentCommandHandler @Inject private(
   sessionRegister: SessionRegister[LoginSession],
   taskHandler: TaskHandler,
+  orderHandler: OrderHandler,
   executeRequestFileOrderSourceContent: RequestFileOrderSourceContentExecutor,
   agentConfiguration: AgentConfiguration)
   (implicit ec: ExecutionContext)
@@ -64,6 +66,7 @@ with CommandHandlerDetailed {
       case command: TaskCommand ⇒ taskHandler.execute(command, meta)
       case command: TerminateOrAbort ⇒ taskHandler.execute(command, meta)
       case command: RequestFileOrderSourceContent ⇒ executeRequestFileOrderSourceContent(command)
+      case command @ (_: OrderCommand | _: RegisterAsMaster.type) ⇒ orderHandler.execute(meta.user.id, command)
     }) map { response ⇒
       logger.debug(s"Response to $id ${command.getClass.getSimpleName}: $response")
       response.asInstanceOf[command.Response]

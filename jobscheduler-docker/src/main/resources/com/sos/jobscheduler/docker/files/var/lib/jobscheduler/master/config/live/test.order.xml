@@ -1,0 +1,6 @@
+<order job_chain="test" state="100">
+  <params>
+    <param name="x" value="XXX"/>
+  </params>
+  <run_time absolute_repeat="5"/>
+</order>

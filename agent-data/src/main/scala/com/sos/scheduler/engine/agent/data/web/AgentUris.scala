@@ -3,6 +3,9 @@ package com.sos.scheduler.engine.agent.data.web
 import com.sos.scheduler.engine.agent.data.AgentTaskId
 import com.sos.scheduler.engine.agent.data.web.AgentUris._
 import com.sos.scheduler.engine.data.agent.AgentAddress
+import com.sos.scheduler.engine.data.engine2.order.OrderEvent
+import com.sos.scheduler.engine.data.event.EventRequest
+import com.sos.scheduler.engine.data.order.OrderId
 import com.sos.scheduler.engine.tunnel.data.TunnelId
 import spray.http.Uri
 import spray.http.Uri.Path
@@ -38,6 +41,23 @@ final class AgentUris private(agentUri: AgentAddress) {
 
     def apply(id: TunnelId) = uriString(Path(s"$Api/tunnel") / id.string)
   }
+
+  object order {
+    def apply(orderId: OrderId): String =
+      uriString(Uri(path = Path(s"$Api/order") / orderId.string))
+
+    def ids: String =
+      uriString(Uri(path = Path(s"$Api/order/"), query = Uri.Query("return" → "OrderId")))
+
+    def events: String =
+      uriString(Uri(path = Path(s"$Api/order/"), query = Uri.Query("return" → "OrderEvent")))
+
+    def orders: String =
+      uriString(Uri(path = Path(s"$Api/order/"), query = Uri.Query("return" → "Order")))
+  }
+
+  def mastersEvents(request: EventRequest[OrderEvent]) =
+    uriString(Uri(path = Uri.Path(s"$Api/master/event"), query = Uri.Query(request.toQueryParameters: _*)))
 
   def apply(relativeUri: String) = uriString(Path(stripLeadingSlash(relativeUri)))
 

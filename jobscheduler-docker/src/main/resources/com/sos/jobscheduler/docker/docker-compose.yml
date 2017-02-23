@@ -1,0 +1,40 @@
+version: '2'
+services:
+  master:
+    build: .
+    image: jobscheduler
+    container_name: jobscheduler-master
+    command: ["master"]
+    networks:
+    - default
+    ports:
+    - "4444:4444"
+    volumes:
+      - master:/var/lib/jobscheduler/master
+    working_dir: /var/lib/jobscheduler/master
+  agent-1:
+    build: .
+    image: jobscheduler
+    container_name: jobscheduler-agent-1
+    command: ["agent"]
+    hostname: agent-1
+    ports:
+    - "5001:4444"
+    volumes:
+      - agent-1:/var/lib/jobscheduler/agent
+    working_dir: /var/lib/jobscheduler/agent
+  agent-2:
+    build: .
+    image: jobscheduler
+    container_name: jobscheduler-agent-2
+    command: ["agent"]
+    hostname: agent-2
+    ports:
+    - "5002:4444"
+    volumes:
+      - agent-2:/var/lib/jobscheduler/agent
+    working_dir: /var/lib/jobscheduler/agent
+volumes:
+  master:
+  agent-1:
+  agent-2:

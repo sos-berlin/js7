@@ -1,0 +1,177 @@
+package com.sos.scheduler.engine.master
+
+import akka.actor.ActorSystem
+import com.google.common.io.Closer
+import com.google.inject.Guice
+import com.sos.scheduler.engine.agent.Agent
+import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
+import com.sos.scheduler.engine.common.guice.GuiceImplicits.RichInjector
+import com.sos.scheduler.engine.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
+import com.sos.scheduler.engine.common.scalautil.Closers.withCloser
+import com.sos.scheduler.engine.common.scalautil.FileUtils.deleteDirectoryRecursively
+import com.sos.scheduler.engine.common.scalautil.FileUtils.implicits._
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
+import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.scheduler.engine.common.scalautil.{HasCloser, Logger}
+import com.sos.scheduler.engine.common.system.OperatingSystem.isWindows
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.data.engine2.order.{JobChainPath, NodeId, NodeKey, Order, OrderEvent}
+import com.sos.scheduler.engine.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent}
+import com.sos.scheduler.engine.data.order.OrderId
+import com.sos.scheduler.engine.master.RecoveryIT._
+import com.sos.scheduler.engine.master.command.MasterCommand
+import com.sos.scheduler.engine.master.configuration.MasterConfiguration
+import com.sos.scheduler.engine.master.configuration.inject.MasterModule
+import com.sos.scheduler.engine.shared.event.SnapshotKeyedEventBus
+import java.nio.file.Files.{createDirectories, createTempDirectory}
+import java.nio.file.Path
+import org.scalatest.FreeSpec
+import org.scalatest.Matchers._
+import scala.collection.immutable.Seq
+import scala.concurrent.ExecutionContext.Implicits.global
+
+/**
+  * @author Joacim Zschimmer
+  */
+final class RecoveryIT extends FreeSpec {
+
+  private val eventCollector = new TestEventCollector
+
+  "test" in {
+    //while (true)
+    autoClosing(new DataDirectoryProvider) { dataDirectoryProvider ⇒
+      withCloser { implicit closer ⇒
+        import dataDirectoryProvider.dataDir
+
+        var lastEventId = EventId.BeforeFirst
+        val agentConfs = for (name ← AgentNames) yield AgentConfiguration.forTest().copy(
+          name = name,
+          dataDirectory = Some(dataDir / name),
+          experimentalOrdersEnabled = true)
+
+        (dataDir / "master/config/live/fast.job_chain.xml").xml = QuickJobChainElem
+        (dataDir / "master/config/live/test.job_chain.xml").xml = TestJobChainElem
+        (dataDir / "master/config/live/test-agent-111.agent.xml").xml = <agent uri={agentConfs(0).localUri.toString}/>
+        (dataDir / "master/config/live/test-agent-222.agent.xml").xml = <agent uri={agentConfs(1).localUri.toString}/>
+
+        runMaster(dataDir) { master ⇒
+          lastEventId = eventCollector.oldestEventId
+          runAgents(agentConfs) { _ ⇒
+            master.executeCommand(MasterCommand.AddOrderIfNew(FastOrder)) await 99.s
+            master.executeCommand(MasterCommand.AddOrderIfNew(TestOrder)) await 99.s
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = lastEventId, 99.s), _.key == FastOrderId) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key == TestOrderId) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key == TestOrderId) await 99.s)
+          }
+          logger.info("\n\n*** RESTARTING AGENTS ***\n")
+          runAgents(agentConfs) { _ ⇒
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key == TestOrderId) await 99.s)
+          }
+        }
+
+        for (i ← 1 to 2) {
+          val myLastEventId = lastEventId
+          sys.runtime.gc()  // For a clean memory view
+          logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
+          runAgents(agentConfs) { _ ⇒
+            runMaster(dataDir) { master ⇒
+              //logger.debug("************************* " + EventId.toString(eventCollector.oldestEventId) + ", " + EventId.toString(lastEventId))
+              lastEventIdOf(eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = myLastEventId, 99.s), _.key == TestOrderId) await 99.s)
+              master.getOrder(TestOrderId) await 99.s shouldEqual
+                Some(Order(
+                  TestOrderId,
+                  NodeKey(TestJobChainPath, NodeId("END")),
+                  Order.Finished,
+                  Map("result" → "TEST-RESULT-VALUE-agent-222"),
+                  Order.Good(true)))
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private def runMaster(dataDir: Path)(body: Master ⇒ Unit): Unit = {
+    withCloser { implicit closer ⇒
+      val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(data = Some(dataDir / "master"))))
+      eventCollector.start(injector.instance[ActorSystem], injector.instance[SnapshotKeyedEventBus])
+      logger.debug("Close")
+      injector.instance[Closer].closeWithCloser
+      val master = injector.instance[Master]
+      master.start() await 99.s
+      body(master)
+    }
+  }
+
+  private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[Agent] ⇒ Unit): Unit = {
+    multipleAutoClosing(for (o ← confs) yield new Agent(o)) { agents ⇒
+      (for (a ← agents) yield a.start()) await 10.s
+      body(agents)
+    }
+  }
+}
+
+private object RecoveryIT {
+  private val AgentNames = List("agent-111", "agent-222")
+  private val TestJobChainPath = JobChainPath("/test")
+  private val FastJobChainPath = JobChainPath("/fast")
+
+  private val FastOrderId = OrderId("FAST-ORDER")
+  private val FastOrder = Order(FastOrderId, NodeKey(FastJobChainPath, NodeId("100")), Order.Waiting)
+  private val TestOrderId = OrderId("TEST-ORDER")
+  private val TestOrder = Order(TestOrderId, NodeKey(TestJobChainPath, NodeId("100")), Order.Waiting)
+
+  private val TestJobChainElem =
+    <job_chain>
+      <job_chain_node state="100" agent="test-agent-111" job="/test"/>
+      <job_chain_node state="110" agent="test-agent-111" job="/test"/>
+      <job_chain_node state="130" agent="test-agent-111" job="/test"/>
+      <job_chain_node state="200" agent="test-agent-222" job="/test"/>
+      <job_chain_node state="210" agent="test-agent-222" job="/test"/>
+      <job_chain_node.end state="END"/>
+    </job_chain>
+
+  private val QuickJobChainElem =
+    <job_chain>
+      <job_chain_node state="100" agent="test-agent-111" job="/test"/>
+      <job_chain_node.end state="END"/>
+    </job_chain>
+
+  private val logger = Logger(getClass)
+
+  private class DataDirectoryProvider extends HasCloser {
+    val dataDir = createTempDirectory("test-") withCloser deleteDirectoryRecursively
+    closeOnError(closer) {
+      createDirectories(dataDir / "master/config/live")
+      for (agentName ← AgentNames) createDirectories(dataDir / s"$agentName/config/live")
+    }
+
+    private val testScript =
+      if (isWindows) """
+        |@echo off
+        |ping -n 2 127.0.0.1 >nul
+        |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
+        |""".stripMargin
+      else """
+        |sleep 1
+        |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
+        |""".stripMargin
+
+    for (agentName ← AgentNames) {
+      (dataDir / s"$agentName/config/live/test.job.xml").xml =
+        <job>
+          <params>
+            <param name="var1" value={s"VALUE-$agentName"}/>
+          </params>
+          <script language="shell">{testScript}</script>
+        </job>
+    }
+  }
+
+  private def lastEventIdOf[E <: Event](eventSeq: EventSeq[Iterator, KeyedEvent[E]]): EventId =
+    eventSeq match {
+      case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[E]] ⇒
+        eventSeq.eventSnapshots.toVector.last.eventId
+    }
+}

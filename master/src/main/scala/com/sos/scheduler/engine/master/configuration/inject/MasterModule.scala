@@ -1,0 +1,87 @@
+package com.sos.scheduler.engine.master.configuration.inject
+
+import akka.actor.{ActorRefFactory, ActorSystem}
+import com.google.common.io.Closer
+import com.google.inject.{AbstractModule, Provides}
+import com.sos.scheduler.engine.common.akkautils.DeadLetterActor
+import com.sos.scheduler.engine.common.event.collector.EventCollector
+import com.sos.scheduler.engine.common.scalautil.Closers.implicits._
+import com.sos.scheduler.engine.common.scalautil.Futures.implicits._
+import com.sos.scheduler.engine.common.scalautil.Logger
+import com.sos.scheduler.engine.common.sprayutils.web.auth.{CSRF, GateKeeper}
+import com.sos.scheduler.engine.common.time.ScalaTime._
+import com.sos.scheduler.engine.common.time.timer.TimerService
+import com.sos.scheduler.engine.master.configuration.MasterConfiguration
+import com.sos.scheduler.engine.master.configuration.inject.MasterModule._
+import com.sos.scheduler.engine.shared.event.ActorEventCollector
+import com.typesafe.config.Config
+import javax.inject.Singleton
+import scala.concurrent.ExecutionContext
+import scala.util.control.NonFatal
+
+/**
+  * @author Joacim Zschimmer
+  */
+final class MasterModule(configuration: MasterConfiguration) extends AbstractModule {
+
+  def configure() = {
+    bind(classOf[EventCollector]).to(classOf[ActorEventCollector]).asEagerSingleton()
+  }
+
+  @Provides @Singleton
+  def eventCollectorConfiguration(config: Config): EventCollector.Configuration =
+    EventCollector.Configuration.fromSubConfig(config.getConfig("jobscheduler.master.event"))
+
+  @Provides @Singleton
+  def csrfConfiguration(config: Config): CSRF.Configuration =
+    CSRF.Configuration.fromSubConfig(config.getConfig("jobscheduler.master.webserver.csrf"))
+
+  @Provides @Singleton
+  def gateKeeperConfiguration: GateKeeper.Configuration =
+    GateKeeper.Configuration.fromSubConfig(configuration.config.getConfig("jobscheduler.master.webserver.auth"))
+
+  @Provides @Singleton
+  def executionContext(actorSystem: ActorSystem): ExecutionContext =
+    actorSystem.dispatcher
+
+  @Provides @Singleton
+  def actorRefFactory(actorSystem: ActorSystem): ActorRefFactory =
+    actorSystem
+
+  @Provides @Singleton
+  def actorSystem(implicit closer: Closer, timerService: TimerService/*closed after ActorSystem*/): ActorSystem = {
+    val actorSystem = ActorSystem("Master", configuration.config)
+    closer.onClose {
+      logger.debug("ActorSystem.terminate ...")
+      try {
+        actorSystem.terminate() await 3.s
+        logger.debug("ActorSystem terminated")
+      }
+      catch {
+        case NonFatal(t) ⇒ logger.warn(s"ActorSystem.terminate(): $t")
+      }
+    }
+    DeadLetterActor.subscribe(actorSystem)
+    actorSystem
+  }
+
+  @Provides @Singleton
+  def timerService(closer: Closer): TimerService =
+    TimerService() closeWithCloser closer
+
+  @Provides @Singleton
+  def config(): Config =
+    configuration.config
+
+  @Provides @Singleton
+  def masterConfiguration(): MasterConfiguration =
+    configuration
+
+  @Provides @Singleton
+  def closer(): Closer =
+    Closer.create()   // Not thread-safe !!!
+}
+
+object MasterModule {
+  private val logger = Logger(getClass)
+}

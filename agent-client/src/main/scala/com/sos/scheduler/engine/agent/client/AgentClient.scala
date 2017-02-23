@@ -8,6 +8,7 @@ import com.sos.scheduler.engine.agent.data.commandresponses.{EmptyResponse, File
 import com.sos.scheduler.engine.agent.data.commands._
 import com.sos.scheduler.engine.agent.data.views.{TaskHandlerOverview, TaskOverview}
 import com.sos.scheduler.engine.agent.data.web.AgentUris
+import com.sos.scheduler.engine.agent.orderprocessing.KeyedEventJsonFormats.keyedEventJsonFormat
 import com.sos.scheduler.engine.base.generic.SecretString
 import com.sos.scheduler.engine.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.scheduler.engine.common.auth.{UserAndPassword, UserId}
@@ -17,12 +18,16 @@ import com.sos.scheduler.engine.common.sprayutils.SimpleTypeSprayJsonSupport._
 import com.sos.scheduler.engine.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
 import com.sos.scheduler.engine.common.time.ScalaTime._
 import com.sos.scheduler.engine.common.utils.IntelliJUtils.intelliJuseImports
+import com.sos.scheduler.engine.data.engine2.order.{Order, OrderEvent}
+import com.sos.scheduler.engine.data.event.{EventRequest, EventSeq, KeyedEvent}
+import com.sos.scheduler.engine.data.order.OrderId
 import com.sos.scheduler.engine.data.session.SessionToken
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
 import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
 import scala.collection.immutable
+import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 import spray.can.Http.HostConnectorSetup
 import spray.client.pipelining._
@@ -82,7 +87,7 @@ trait AgentClient {
           sessionTokenRef.compareAndSet(tokenOption, None)  // Changes nothing in case of a concurrent successful Login
           response
         }
-      case (_: DeleteFile | _: MoveFile | NoOperation | _: SendProcessSignal | _: CloseTask | _: Terminate | AbortImmediately) ⇒
+      case (_: DeleteFile | Logout | _: MoveFile | NoOperation | _: OrderCommand | RegisterAsMaster | _: SendProcessSignal | _: CloseTask | _: Terminate | AbortImmediately) ⇒
         unmarshallingPipeline[EmptyResponse.type](RequestTimeout).apply(Post(agentUris.command, command: Command))
     }
     response map { _.asInstanceOf[command.Response] } recover {
@@ -111,6 +116,23 @@ trait AgentClient {
     final def tasks: Future[immutable.Seq[TaskOverview]] = get[immutable.Seq[TaskOverview]](_.task.tasks)
 
     final def apply(id: AgentTaskId): Future[TaskOverview] = get[TaskOverview](_.task(id))
+  }
+
+  final def order(orderId: OrderId): Future[Order[Order.State]] =
+    get[Order[Order.State]](_.order(orderId))
+
+  final def orderIds(): Future[Seq[OrderId]] =
+    get[Seq[OrderId]](_.order.ids)
+
+  final def orders(): Future[Seq[Order[Order.State]]] =
+    get[Seq[Order[Order.State]]](_.order.orders)
+
+  final def mastersEvents(request: EventRequest[OrderEvent]): Future[EventSeq[Seq, KeyedEvent[OrderEvent]]] = {
+    val timeout = request match {
+      case o: EventRequest[_] ⇒ o.timeout + 10.s
+      case _ ⇒ RequestTimeout
+    }
+    get[EventSeq[Seq, KeyedEvent[OrderEvent]]](_.mastersEvents(request), timeout)
   }
 
   final def get[A: FromResponseUnmarshaller](uri: AgentUris ⇒ String, timeout: Duration = RequestTimeout): Future[A] =

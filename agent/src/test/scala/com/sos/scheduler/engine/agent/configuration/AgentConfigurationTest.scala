@@ -15,6 +15,7 @@ import java.net.InetSocketAddress
 import java.nio.file.Files.{createTempDirectory, delete}
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
+import scala.concurrent.duration.DurationInt
 
 /**
  * @author Joacim Zschimmer
@@ -38,7 +39,12 @@ final class AgentConfigurationTest extends FreeSpec {
       dotnet = DotnetConfiguration(),
       rpcKeepaliveDuration = None,
       killScript = Some(ProcessKillScript(temporaryDirectory / s"kill_task.$shellExt")),
+      experimentalOrdersEnabled = false,
+      startupTimeout = 900.s,
+      commandTimeout = 60.s,
+      akkaAskTimeout = 60.seconds,
       name = "Agent",
+      journalSyncOnCommit = true,
       ConfigFactory.empty))
   }
 

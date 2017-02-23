@@ -11,8 +11,8 @@ val fastSbt = sys.env contains "FAST_SBT"
 
 addCommandAlias("compile-all", "; project engine-job-api; compile; project /; compile")
 addCommandAlias("test-all", "; test:compile; test; ForkedTest:test")
-addCommandAlias("build", "; compile-all; test-all")
-addCommandAlias("build-quickly", "; compile-all")
+addCommandAlias("build", "; compile-all; test-all; universal:packageZipTarball")
+addCommandAlias("build-quickly", "; compile-all; universal:packageZipTarball")
 
 val commonSettings = List(
   organization := "com.sos-berlin.jobscheduler.engine",
@@ -42,7 +42,10 @@ lazy val jobscheduler = (project in file("."))
     agent,
     base,
     common,
+    shared,
     data,
+    `jobscheduler-docker`,
+    master,
     `agent-client`,
     `agent-data`,
     `agent-test`,
@@ -59,6 +62,24 @@ lazy val jobscheduler = (project in file("."))
   .settings(
     commonSettings)
     //publishM2 := {})  // This project is only a build wrapper
+  .dependsOn(master,agent)
+  .enablePlugins(JavaAppPackaging)
+  .settings(
+    universalPluginSettings,
+    (mappings in Universal) :=
+      ((mappings in Universal).value filter { case (_, path) ⇒ (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
+        recursiveFileMapping(baseDirectory.value / "master/src/main/resources/com/sos/scheduler/engine/master/installation") ++
+        recursiveFileMapping(baseDirectory.value / "agent/src/main/resources/com/sos/scheduler/engine/agent/installation") ++
+        recursiveFileMapping(baseDirectory.value / "shared/src/main/resources/com/sos/scheduler/engine/shared/installation"))
+
+lazy val `jobscheduler-docker` = project
+  .settings(commonSettings)
+  .enablePlugins(JavaAppPackaging)
+  .settings(
+    universalPluginSettings,
+    (topLevelDirectory in Universal) := None,
+    (mappings in Universal) :=
+      recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/docker"))
 
 lazy val base = project
   .settings(commonSettings)
@@ -111,10 +132,28 @@ lazy val common = project.dependsOn(base, data)
       "buildVersion" → VersionFormatter.buildVersion(
         version = version.value,
         versionCommitHash = git.gitHeadCommit.value,
-        branch = git.gitCurrentBranch.value)),
+        branch = git.gitCurrentBranch.value),
+      "version" → version.value),
     buildInfoPackage := "com.sos.scheduler.engine.common")
 
-lazy val agent = project.dependsOn(`agent-data`, common, data, taskserver, tunnel)
+lazy val master = project.dependsOn(shared, common, `agent-client`)
+  .configs(ForkedTest).settings(forkedSettings)
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies +=
+      Dependencies.scalaTest % "test")
+
+lazy val shared = project.dependsOn(common)
+  .configs(ForkedTest).settings(forkedSettings)
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      scalaTest % "test" ++
+      logbackClassic
+  }
+
+lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserver, tunnel)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -125,6 +164,8 @@ lazy val agent = project.dependsOn(`agent-data`, common, data, taskserver, tunne
       javaxAnnotations % "compile" ++
       sprayJson ++
       akkaActor ++
+    //akkaPersistence ++
+    //akkaPersistenceInmemory ++
       akkaSlf4j ++
       sprayCan ++
       sprayHttp ++

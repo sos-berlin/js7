@@ -6,6 +6,7 @@ import com.sos.scheduler.engine.agent.command.{AgentCommandHandler, CommandExecu
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration
 import com.sos.scheduler.engine.agent.data.commands.Command
 import com.sos.scheduler.engine.agent.data.views.TaskHandlerView
+import com.sos.scheduler.engine.agent.orderprocessing.OrderHandler
 import com.sos.scheduler.engine.agent.views.AgentOverview
 import com.sos.scheduler.engine.agent.web.WebServiceActor._
 import com.sos.scheduler.engine.agent.web.common.{ExternalWebService, LoginSession}
@@ -38,6 +39,7 @@ final private class WebServiceActor private(
   protected val sessionRegister: SessionRegister[LoginSession],
   protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
+  protected val orderHandler: OrderHandler,
   protected val timerService: TimerService,
   extraWebServices: immutable.Seq[ExternalWebService],
   agentConfiguration: AgentConfiguration,
@@ -49,13 +51,16 @@ extends HttpServiceActor
 with TimerWebService
 with CommandWebService
 with TunnelWebService
+with MastersEventWebService
 with FileStatusWebService
+with OrderWebService
 with RootWebService
 with TaskWebService
 with CommandViewWebService
 with NoJobSchedulerEngineWebService
 {
   protected val uriPathPrefix = agentConfiguration.uriPathPrefix
+  protected def akkaAskTimeout = agentConfiguration.akkaAskTimeout
 
   protected def sessionTokenIsValid(sessionToken: SessionToken) = sessionRegister contains sessionToken
 
@@ -94,6 +99,7 @@ private[web] object WebServiceActor {
     sessionRegister: SessionRegister[LoginSession],
     taskHandlerView: TaskHandlerView,
     commandHandler: AgentCommandHandler,
+    orderHandler: OrderHandler,
     timerService: TimerService,
     extraWebServices: immutable.Seq[ExternalWebService],
     agentConfiguration: AgentConfiguration,
@@ -111,6 +117,7 @@ private[web] object WebServiceActor {
         sessionRegister,
         taskHandlerView,
         commandHandler,
+        orderHandler,
         timerService,
         extraWebServices,
         agentConfiguration,

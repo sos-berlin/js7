@@ -1,5 +1,6 @@
 package com.sos.scheduler.engine.agent.configuration
 
+import akka.util.Timeout
 import com.sos.scheduler.engine.agent.configuration.AgentConfiguration._
 import com.sos.scheduler.engine.agent.data.ProcessKillScript
 import com.sos.scheduler.engine.agent.web.common.ExternalWebService
@@ -48,7 +49,12 @@ final case class AgentConfiguration(
   dotnet: DotnetConfiguration,
   rpcKeepaliveDuration: Option[Duration],
   killScript: Option[ProcessKillScript],
+  experimentalOrdersEnabled: Boolean,
+  startupTimeout: Duration,
+  commandTimeout: Duration,
+  implicit val akkaAskTimeout: Timeout,
   name: String,
+  journalSyncOnCommit: Boolean,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
 {
   require(!(uriPathPrefix.startsWith("/") || uriPathPrefix.endsWith("/")))
@@ -97,6 +103,10 @@ final case class AgentConfiguration(
     copy(externalWebServiceClasses = externalWebServiceClasses ++ classes)
 
   def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
+
+  def liveDirectoryOption: Option[Path] = configDirectory map { _ / "live" }
+
+  def stateDirectoryOption: Option[Path] = dataDirectory map { _ / "state" }
 
   private def configDirectory = dataDirectory map { _ / "config" }
 
@@ -168,7 +178,12 @@ object AgentConfiguration {
       rpcKeepaliveDuration = c.durationOption("task.rpc.keepalive.duration"),
       jobJavaOptions = c.stringSeq("task.java.options"),
       killScript = Some(ProcessKillScript(DelayUntilFinishFile)),  // Changed below
+      experimentalOrdersEnabled = c.getBoolean("experimental-orders"),
+      startupTimeout = c.getDuration("startup-timeout"),
+      commandTimeout = c.getDuration("command-timeout"),
+      akkaAskTimeout = c.getDuration("akka-ask-timeout").toFiniteDuration,
       name = "Agent",
+      journalSyncOnCommit = c.getBoolean("journal.sync"),
       config = config)
     v = v.withKillScript(c.optionAs[String]("task.kill.script"))
     for (o ← c.optionAs("webserver.https.port")(StringToServerInetSocketAddress)) {

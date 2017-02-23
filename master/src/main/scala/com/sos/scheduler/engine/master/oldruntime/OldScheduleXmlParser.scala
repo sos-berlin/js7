@@ -1,0 +1,60 @@
+package com.sos.scheduler.engine.master.oldruntime
+
+import com.sos.scheduler.engine.base.convert.As
+import com.sos.scheduler.engine.common.scalautil.xmls.ScalaXMLEventReader
+import java.time._
+import javax.xml.stream.XMLEventReader
+
+object OldScheduleXmlParser{
+
+  private implicit val StringAsDayOfWeek = As[String, DayOfWeek](
+    (for (dayOfWeek ← DayOfWeek.values) yield dayOfWeek.toString.toLowerCase → dayOfWeek).toMap)
+  private implicit val StringAsZoneId = As[String, ZoneId](o ⇒ ZoneId.of(o))
+
+  private implicit val StringAsLocalTime: As[String, LocalTime] = {
+    val ParseRegex = """([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?""".r
+    As {
+      case ParseRegex(hours, minutes, seconds) ⇒
+        LocalTime.of(hours.toInt, minutes.toInt, (Option(seconds) getOrElse "0").toInt)
+      case o ⇒ throw new IllegalArgumentException(s"Not a local time: '$o'")
+    }
+  }
+
+  def parse(xmlEventReader: XMLEventReader, defaultTimeZone: ZoneId): OldSchedule = {
+    val eventReader = new ScalaXMLEventReader(xmlEventReader)
+    import eventReader._
+
+    def parsePeriod(default: Period): Period =
+      parseElement("period") {
+        parsePeriodAttributes(default)
+      }
+
+    def parsePeriodAttributes(default: Period): Period =
+      Period(
+        begin = attributeMap.as[LocalTime]("begin", default.begin),
+        end = attributeMap.as[ExtendedLocalTime]("end", default.end),
+        repeat = attributeMap.optionAs[Int]("repeat") map { o ⇒ Duration.ofSeconds(o) } orElse default.repeat,
+        absoluteRepeat = attributeMap.optionAs[Int]("absolute_repeat") map { o ⇒ Duration.ofSeconds(o) } orElse default.absoluteRepeat,
+        startOnce = attributeMap.as[Boolean]("start_once", default.startOnce))
+
+    parseElement("run_time") {
+      val timeZone = attributeMap.as[ZoneId]("time_zone", defaultTimeZone)
+      val defaultPeriod = parsePeriodAttributes(Period.Default)
+      val elements = forEachStartElement {
+        case "period" ⇒ parsePeriod(defaultPeriod)
+        //case "weekdays" => parseElement() {
+        //  forEachStartElement {
+        //    case "day" => parseElement() {
+        //      builder.dayOfWeekPeriods(DayOfWeek(attributeMap.as[DayOfWeek]("day"))) = parseSchedulePeriodSeq(defaultPeriod)
+        //    }
+        //  }
+        //}
+      }
+      val periodSeq = PeriodSeq(elements.byClass[Period] match {
+        case seq if seq.isEmpty ⇒ List(defaultPeriod)
+        case seq ⇒ seq
+      })
+      OldSchedule(timeZone, periodSeq, startOnce = defaultPeriod.startOnce)
+    }
+  }
+}

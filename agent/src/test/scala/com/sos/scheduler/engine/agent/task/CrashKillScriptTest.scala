@@ -11,6 +11,7 @@ import com.sos.scheduler.engine.data.job.TaskId
 import java.nio.file.Files.{delete, exists, size}
 import java.nio.file.{Files, Paths}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import scala.io
 
 /**
   * JS-1551.
