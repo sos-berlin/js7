@@ -13,6 +13,7 @@ addCommandAlias("compile-all", "; project engine-job-api; compile; project /; co
 addCommandAlias("test-all", "; test:compile; test; ForkedTest:test")
 addCommandAlias("build", "; compile-all; test-all; universal:packageZipTarball")
 addCommandAlias("build-quickly", "; compile-all; universal:packageZipTarball")
+addCommandAlias("pack", "universal:packageZipTarball")
 
 val commonSettings = List(
   organization := "com.sos-berlin.jobscheduler.engine",
