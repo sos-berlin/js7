@@ -1,9 +1,9 @@
-//package com.sos.jobscheduler.agent.orderprocessing.job.task
+//package com.sos.jobscheduler.agent.scheduler.job.task
 //
 //import akka.actor.{Actor, ActorRef, FSM, Props}
 //import com.sos.jobscheduler.data.engine2.order.Order
-//import com.sos.jobscheduler.agent.orderprocessing.job.JobConfiguration
-//import com.sos.jobscheduler.agent.orderprocessing.job.task.TaskActor._
+//import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
+//import com.sos.jobscheduler.agent.scheduler.job.task.TaskActor._
 //import com.sos.jobscheduler.agent.task.AgentTaskFactory
 //import com.sos.jobscheduler.base.process.ProcessSignal
 //import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}

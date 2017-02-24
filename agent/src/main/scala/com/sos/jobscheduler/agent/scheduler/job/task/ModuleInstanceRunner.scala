@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.orderprocessing.job.task
+package com.sos.jobscheduler.agent.scheduler.job.task
 
-import com.sos.jobscheduler.agent.orderprocessing.job.JobConfiguration
-import com.sos.jobscheduler.agent.orderprocessing.job.task.ModuleInstanceRunner._
+import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
+import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader

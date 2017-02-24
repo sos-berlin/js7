@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.orderprocessing.job.task
+package com.sos.jobscheduler.agent.scheduler.job.task
 
 import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, InvocableIDispatch}
 import scala.collection.mutable

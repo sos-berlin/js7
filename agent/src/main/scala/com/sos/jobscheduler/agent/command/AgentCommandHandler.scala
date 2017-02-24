@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.jobscheduler.agent.data.commands._
 import com.sos.jobscheduler.agent.fileordersource.{FileCommandExecutor, RequestFileOrderSourceContentExecutor}
-import com.sos.jobscheduler.agent.orderprocessing.OrderHandler
+import com.sos.jobscheduler.agent.scheduler.OrderHandler
 import com.sos.jobscheduler.agent.task.TaskHandler
 import com.sos.jobscheduler.agent.web.common.LoginSession
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._

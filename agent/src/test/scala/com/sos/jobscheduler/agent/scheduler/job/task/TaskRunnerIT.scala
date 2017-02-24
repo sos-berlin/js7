@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.agent.orderprocessing.job.task
+package com.sos.jobscheduler.agent.scheduler.job.task
 
 import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.orderprocessing.job.JobConfiguration
-import com.sos.jobscheduler.agent.orderprocessing.job.task.TaskRunnerIT._
+import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerIT._
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector

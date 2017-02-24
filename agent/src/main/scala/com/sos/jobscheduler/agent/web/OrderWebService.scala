@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.web
 
 import com.sos.jobscheduler.agent.data.commands.{GetOrder, GetOrderIds, GetOrders}
-import com.sos.jobscheduler.agent.orderprocessing.OrderHandler
+import com.sos.jobscheduler.agent.scheduler.OrderHandler
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._

@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.orderprocessing
+package com.sos.jobscheduler.agent.scheduler.event
 
 import akka.actor.{ActorSystem, Props}
-import com.sos.jobscheduler.agent.orderprocessing.EventQueueTest.MyNonEmptyEventSeq
+import com.sos.jobscheduler.agent.scheduler.event.EventQueueTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService

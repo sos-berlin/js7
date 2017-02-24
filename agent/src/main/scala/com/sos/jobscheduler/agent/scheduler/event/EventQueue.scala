@@ -1,7 +1,7 @@
-package com.sos.jobscheduler.agent.orderprocessing
+package com.sos.jobscheduler.agent.scheduler.event
 
 import akka.actor.{Actor, Status}
-import com.sos.jobscheduler.agent.orderprocessing.EventQueue._
+import com.sos.jobscheduler.agent.scheduler.event.EventQueue._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}

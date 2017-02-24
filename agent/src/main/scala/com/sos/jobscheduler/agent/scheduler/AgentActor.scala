@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.agent.orderprocessing
+package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props, Status, SupervisorStrategy}
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.{Command, OrderCommand, RegisterAsMaster}
-import com.sos.jobscheduler.agent.orderprocessing.AgentActor._
-import com.sos.jobscheduler.agent.orderprocessing.job.{JobKeeper, JobRunner}
+import com.sos.jobscheduler.agent.scheduler.AgentActor._
+import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobRunner}
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.akkautils.Akkas
 import com.sos.jobscheduler.common.auth.UserId

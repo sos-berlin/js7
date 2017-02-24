@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.agent.orderprocessing.job
+package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.pattern.ask
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.orderprocessing.AgentActorIT.provideAgentDataDirectory
-import com.sos.jobscheduler.agent.orderprocessing.job.JobKeeperTest._
+import com.sos.jobscheduler.agent.scheduler.AgentActorIT.provideAgentDataDirectory
+import com.sos.jobscheduler.agent.scheduler.job.JobKeeperTest._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny

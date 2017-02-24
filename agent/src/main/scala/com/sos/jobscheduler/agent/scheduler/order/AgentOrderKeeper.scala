@@ -1,13 +1,14 @@
-package com.sos.jobscheduler.agent.orderprocessing
+package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand}
-import com.sos.jobscheduler.agent.orderprocessing.AgentOrderKeeper._
-import com.sos.jobscheduler.agent.orderprocessing.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
-import com.sos.jobscheduler.agent.orderprocessing.job.JobRunner
+import com.sos.jobscheduler.agent.scheduler.AgentOrderKeeper._
+import com.sos.jobscheduler.agent.scheduler.event.EventQueue
+import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
+import com.sos.jobscheduler.agent.scheduler.job.JobRunner
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName

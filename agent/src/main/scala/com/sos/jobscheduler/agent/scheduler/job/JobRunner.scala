@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.agent.orderprocessing.job
+package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, Props}
-import com.sos.jobscheduler.agent.orderprocessing.job.JobRunner._
-import com.sos.jobscheduler.agent.orderprocessing.job.task.TaskRunner
+import com.sos.jobscheduler.agent.scheduler.job.JobRunner._
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.akkautils.Akkas.{decodeActorName, encodeAsActorName}
 import com.sos.jobscheduler.common.scalautil.Logger

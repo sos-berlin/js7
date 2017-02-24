@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.orderprocessing
+package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.pattern.ask

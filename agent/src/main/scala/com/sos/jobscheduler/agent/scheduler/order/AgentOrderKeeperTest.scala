@@ -1,4 +1,4 @@
-//package com.sos.jobscheduler.agent.orderprocessing
+//package com.sos.jobscheduler.agent.scheduler
 //
 //import AgentOrderKeeperTest._
 //import akka.actor.{ActorSystem, Props}

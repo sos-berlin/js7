@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.orderprocessing.job.task
+package com.sos.jobscheduler.agent.scheduler.job.task
 
 import com.sos.jobscheduler.common.xml.VariableSets
 import com.sos.jobscheduler.minicom.idispatch.annotation.invocable

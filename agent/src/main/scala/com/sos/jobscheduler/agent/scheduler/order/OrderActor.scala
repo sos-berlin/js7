@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.agent.orderprocessing
+package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{ActorRef, Status, Terminated}
-import com.sos.jobscheduler.agent.orderprocessing.OrderActor._
-import com.sos.jobscheduler.agent.orderprocessing.job.JobRunner
+import com.sos.jobscheduler.agent.scheduler.OrderActor._
+import com.sos.jobscheduler.agent.scheduler.job.JobRunner
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.common.scalautil.Logger

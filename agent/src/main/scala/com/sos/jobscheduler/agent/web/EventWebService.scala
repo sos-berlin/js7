@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.web
 
-import com.sos.jobscheduler.agent.orderprocessing.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
+import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.web.EventWebService._
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.common.event.EventIdGenerator

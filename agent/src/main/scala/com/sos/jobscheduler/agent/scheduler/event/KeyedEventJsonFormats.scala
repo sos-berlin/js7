@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.orderprocessing
+package com.sos.jobscheduler.agent.scheduler.event
 
 import com.sos.jobscheduler.data.engine2.order.{JobnetEvent, OrderEvent}
 import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.orderprocessing.job
+package com.sos.jobscheduler.agent.scheduler.job
 
 import com.sos.jobscheduler.base.generic.IsString
 

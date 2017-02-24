@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.agent.orderprocessing.job.task
+package com.sos.jobscheduler.agent.scheduler.job.task
 
 import akka.util.ByteString
 import com.sos.jobscheduler.agent.data.commands.{StartNonApiTask, StartTask}
-import com.sos.jobscheduler.agent.orderprocessing.job.JobConfiguration
+import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.task.{AgentTask, AgentTaskFactory}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal

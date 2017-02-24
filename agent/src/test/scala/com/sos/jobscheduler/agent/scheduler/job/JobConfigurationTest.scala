@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.orderprocessing.job
+package com.sos.jobscheduler.agent.scheduler.job
 
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.Stopwatch

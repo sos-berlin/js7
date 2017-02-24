@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.agent.orderprocessing
+package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{ActorRef, Props}
 import akka.pattern.ask
@@ -10,7 +10,7 @@ import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, RegisterAsMaster}
-import com.sos.jobscheduler.agent.orderprocessing.AgentActorIT._
+import com.sos.jobscheduler.agent.scheduler.AgentActorIT._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.auth.User.Anonymous

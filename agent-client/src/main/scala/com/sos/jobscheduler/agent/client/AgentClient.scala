@@ -8,7 +8,7 @@ import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrde
 import com.sos.jobscheduler.agent.data.commands._
 import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
-import com.sos.jobscheduler.agent.orderprocessing.KeyedEventJsonFormats.keyedEventJsonFormat
+import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonFormat
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
