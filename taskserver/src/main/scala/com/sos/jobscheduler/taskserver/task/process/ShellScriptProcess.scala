@@ -5,7 +5,6 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration.Encoding
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
 import java.nio.file.Path
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Promise}
 import scala.util.control.NonFatal
 
@@ -17,6 +16,7 @@ final class ShellScriptProcess private(
   process: Process,
   private[process] val temporaryScriptFile: Path,
   argumentsForLogging: Seq[String])
+  (implicit executionContext: ExecutionContext)
 extends RichProcess(processConfiguration, process, argumentsForLogging) {
 
   private val scriptFileDeletedPromise = Promise[Boolean]()
@@ -35,7 +35,7 @@ object ShellScriptProcess {
     processConfiguration: ProcessConfiguration = ProcessConfiguration(),
     name: String = "shell-script",
     scriptString: String)
-    (implicit exeuctionContext: ExecutionContext): ShellScriptProcess =
+    (implicit executionContext: ExecutionContext): ShellScriptProcess =
   {
     val shellFile = newTemporaryShellFile(name)
     try {

@@ -18,14 +18,14 @@ import java.nio.file.Files.delete
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
 class RichProcess protected[process](val processConfiguration: ProcessConfiguration, process: Process, argumentsForLogging: Seq[String])
-  (implicit exeuctionContext: ExecutionContext)
+  (implicit executionContext: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
   val pidOption: Option[Pid] = processToPidOption(process)
@@ -66,7 +66,7 @@ extends HasCloser with ClosedFuture {
       }
     }
 
-  private def executeKillScript(args: Seq[String]) = Future[Unit] {
+  private def executeKillScript(args: Seq[String]) = {
     logger.info("Executing kill script: " + args.mkString("  "))
     val onKillProcess = new ProcessBuilder(args).redirectOutput(INHERIT).redirectError(INHERIT).start()
     namedThreadFuture("Kill script") {
@@ -124,7 +124,9 @@ object RichProcess {
 
   private def waitForProcessTermination(process: Process): Unit = {
     logger.debug(s"waitFor ${processToString(process)} ...")
-    process.waitFor()
+    blocking {
+      process.waitFor()
+    }
     logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
   }
 
