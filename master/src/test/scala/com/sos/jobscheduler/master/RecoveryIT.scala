@@ -5,6 +5,7 @@ import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.commands.Terminate
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
@@ -108,6 +109,8 @@ final class RecoveryIT extends FreeSpec {
     multipleAutoClosing(for (o ← confs) yield new Agent(o)) { agents ⇒
       (for (a ← agents) yield a.start()) await 10.s
       body(agents)
+      (for (a ← agents) yield a.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(1.s)))) await 10.s
+      (for (a ← agents) yield a.terminated) await 10.s
     }
   }
 }
