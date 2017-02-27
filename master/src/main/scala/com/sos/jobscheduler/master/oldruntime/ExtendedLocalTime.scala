@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.oldruntime
 
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.master.oldruntime.ExtendedLocalTime._
-import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
+import java.time.{Duration, LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.language.implicitConversions
 
 /**
@@ -14,6 +14,9 @@ sealed abstract case class ExtendedLocalTime(toNanoOfDay: Long)
 extends Ordered[ExtendedLocalTime]
 {
   require(toNanoOfDay >= 0, "ExtendedLocalTime must not be negative")
+
+  def +(o: Duration): ExtendedLocalTime =
+    ExtendedLocalTime.ofNanoOfDay(toNanoOfDay + o.toNanos)
 
   def atDate(date: LocalDate): LocalDateTime =
     LocalDateTime.of(date plusDays days, localTime)

@@ -10,8 +10,8 @@ import scala.collection.JavaConversions._
 
 final case class OldSchedule(
   timeZone: ZoneId,
-  weekdays: PartialFunction[DayOfWeek, PeriodSeq],
-  startOnce: Boolean)
+  weekdays: PartialFunction[DayOfWeek, PeriodSeq])
+  //startOnce: Boolean = false)
 extends Schedule {
 
   def firstInstant(from: Instant): Option[Instant] =
@@ -30,7 +30,7 @@ extends Schedule {
           @tailrec def find(): Instant = {
             if (remaining > 0 && from < instantInterval.until) {
               val local = LocalDateTime.ofInstant(from, timeZone)
-              periodSeq(local.toLocalDate).nextLocalTime(local.toLocalTime) map {
+              periodSeq(local.toLocalDate) flatMap { _.nextLocalTime(local.toLocalTime) } map {
                 _.atDate(local.toLocalDate).toInstant(timeZone)
               } match {
                 case Some(o) if o < instantInterval.until ⇒
@@ -51,14 +51,17 @@ extends Schedule {
       })
 
   private def periodSeq(date: LocalDate) =
-    weekdays(date.getDayOfWeek)
+    weekdays.lift(date.getDayOfWeek)
 }
 
 object OldSchedule {
   private val PredictionLimit = 366*24.h
 
-  def apply(timeZone: ZoneId, periodSeq: PeriodSeq, startOnce: Boolean) =
-    new OldSchedule(timeZone, EveryDay(periodSeq), startOnce)
+  def empty(timeZone: ZoneId): OldSchedule =
+    OldSchedule(timeZone, Map())
+
+  def daily(timeZone: ZoneId, periodSeq: PeriodSeq/*, startOnce: Boolean = false*/) =
+    new OldSchedule(timeZone, EveryDay(periodSeq)/*, startOnce*/)
 
   /**
     * Unlike bare PartialFunction, EveryDay implements toString and equals

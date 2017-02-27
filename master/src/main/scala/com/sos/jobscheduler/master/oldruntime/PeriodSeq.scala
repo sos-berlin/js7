@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.oldruntime
 import com.sos.jobscheduler.master.oldruntime.PeriodSeq._
 import java.time._
 import scala.collection.immutable
+import scala.language.implicitConversions
 
 abstract sealed case class PeriodSeq(orderedSeq: immutable.Seq[Period]) {
 
@@ -17,13 +18,18 @@ abstract sealed case class PeriodSeq(orderedSeq: immutable.Seq[Period]) {
 //    nextPeriod(timeOfDay)  map periodToInterval(date)
 //  }
 
-  //def nextPeriod(from: LocalTime): Option[Period] =
+  //def nextPeriod(from: LocalTime): Option[RepeatPeriod] =
   //  orderedSeq find { _ contains from }
 }
 
 object PeriodSeq {
+  val Empty = PeriodSeq(Nil)
+
   def apply(o: Seq[Period]) =
     new PeriodSeq(o.sorted.to[immutable.Seq]) {}
+
+  implicit def fromPeriod(period: Period): PeriodSeq =
+    PeriodSeq(List(period))
 
   private def requireOrderedAndNotOverlapping(orderedPeriods: Iterable[Period]): Unit = {
     if (orderedPeriods.size > 2) {

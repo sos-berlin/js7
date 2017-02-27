@@ -4,7 +4,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.engine2.order.{JobChainPath, NodeId, NodeKey}
 import com.sos.jobscheduler.master.oldruntime.OldSchedule.EveryDay
-import com.sos.jobscheduler.master.oldruntime.{OldSchedule, Period, PeriodSeq}
+import com.sos.jobscheduler.master.oldruntime.{OldSchedule, RepeatPeriod, PeriodSeq}
 import java.time.ZoneId
 import org.scalatest.FreeSpec
 
@@ -30,6 +30,6 @@ final class OrderGeneratorXmlParserTest extends FreeSpec {
       path,
       NodeKey(JobChainPath("/JOBCHAIN"), NodeId("NODEID")),
       Map("a" → "AAA"),
-      OldSchedule(timeZone, EveryDay(PeriodSeq(List(Period(absoluteRepeat = Some(10.s))))), startOnce = false)))
+      OldSchedule(timeZone, EveryDay(PeriodSeq(List(RepeatPeriod.wholeDay(10.s)))))))
   }
 }

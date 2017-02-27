@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.scalautil.xmls
 
-import ScalaXMLEventReader._
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunction
 import com.sos.jobscheduler.base.utils.ScalaUtils.{cast, implicitClass}
 import com.sos.jobscheduler.common.scalautil.AssignableFrom.assignableFrom
@@ -158,7 +157,7 @@ extends AutoCloseable {
 
   def requireStartElement(name: String): StartElement = {
     val e = peek.asStartElement
-    require(e.getName.getLocalPart == name)
+    require(e.getName.getLocalPart == name, s"Not the expected XML element <$name>: <${e.getName}>")
     e
   }
 
