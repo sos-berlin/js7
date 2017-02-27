@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec "$0".sh" "$@"
+exec "$0".sh" -http-port=4444 "$@"

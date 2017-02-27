@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -e
 
-exec /opt/jobscheduler/bin/agent.sh "$@"
+exec /opt/jobscheduler/bin/agent.sh -http-port=4444 "$@"
