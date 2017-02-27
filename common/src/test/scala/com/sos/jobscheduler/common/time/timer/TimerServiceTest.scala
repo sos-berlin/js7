@@ -159,7 +159,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
           }
         }
         latch.await(1, MINUTES)
-        info("Parallel: " + stopwatch.itemsPerSecondString(n, "Timer"))
+        info("Parallel: " + stopwatch.itemsPerSecondString(n, "Timers"))
       }
     }
   }
@@ -196,7 +196,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         finished.tryFailure(new RuntimeException(s"STOPPED AFTER $counter ${(now - last).pretty}"))
       }
       Await.result(finished.future, 60.seconds)
-      info(s"$name: " + stopwatch.itemsPerSecondString(n, "Timer"))
+      info(s"$name: " + stopwatch.itemsPerSecondString(n, "Timers"))
       assert(counter.get == n)
       timerService.overview
     }

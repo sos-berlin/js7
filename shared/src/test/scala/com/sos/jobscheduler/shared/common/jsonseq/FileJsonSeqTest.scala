@@ -82,7 +82,7 @@ final class FileJsonSeqTest extends FreeSpec {
           for (i ← 1 to n) {
             Snapshot(i, KeyedEvent(x)(i.toString)).toJson
           }
-          info("toJson: " + stopwatch.itemsPerSecondString(n, "document"))
+          info("toJson: " + stopwatch.itemsPerSecondString(n, "documents"))
         }
       }
 
@@ -105,7 +105,7 @@ final class FileJsonSeqTest extends FreeSpec {
                 w.writeJson(Snapshot(i, KeyedEvent(x)(i.toString)).toJson)
               }
               w.flush()
-              info("OutputStreamJsonSeqWriter: " + stopwatch.itemsPerSecondString(n, "event"))
+              info("OutputStreamJsonSeqWriter: " + stopwatch.itemsPerSecondString(n, "events"))
             }
           }
           info(Files.size(file) + " bytes,  " + Files.size(file) / (m*n) + "/document")
@@ -121,7 +121,7 @@ final class FileJsonSeqTest extends FreeSpec {
                 w.writeJson(Snapshot(i, KeyedEvent(x)(i.toString)).toJson)
                 w.flush()
               }
-              info("flush: " + stopwatch.itemsPerSecondString(n, "event"))
+              info("flush: " + stopwatch.itemsPerSecondString(n, "events"))
             }
             info(Files.size(file) + " bytes,  " + Files.size(file) / (m*n) + "/document")
           }
@@ -135,7 +135,7 @@ final class FileJsonSeqTest extends FreeSpec {
               for (_ ← 1 to n) {
                 dummy += iterator.next().asJsObject.fields.size
               }
-              info("read: " + stopwatch.itemsPerSecondString(n, "event"))
+              info("read: " + stopwatch.itemsPerSecondString(n, "events"))
               assert(dummy == n * (3 + 6))  // To avoid loop optimiziation
             }
             assert(!iterator.hasNext)
@@ -156,7 +156,7 @@ final class FileJsonSeqTest extends FreeSpec {
                 w.flush()
                 fileOut.getFD.sync()
               }
-              info("sync: " + stopwatch.itemsPerSecondString(n, "event"))
+              info("sync: " + stopwatch.itemsPerSecondString(n, "events"))
             }
           }
         }

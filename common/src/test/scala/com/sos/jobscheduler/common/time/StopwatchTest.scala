@@ -10,6 +10,7 @@ import org.scalatest.FreeSpec
 final class StopwatchTest extends FreeSpec {
 
   "itemsPerSecondString" in {
-      assert(itemsPerSecondString(2.s, 3000, "item") == "2s/3000 items, 666µs/item, 1500 items/s")
+      assert(itemsPerSecondString(2.s, 3000, "items") == "2s/3000 items (666µs) 1500 items/s")
+      assert(itemsPerSecondString(2.s, 3000) == "2s/3000 ops (666µs) 1500 ops/s")
   }
 }

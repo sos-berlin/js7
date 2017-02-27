@@ -68,7 +68,7 @@ final class AgentActorIT extends FreeSpec {
 
         (for (orderId ← orderIds) yield
           eventCollector.whenForKey[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 1.h), orderId)) await 99.s
-        info(stopwatch.itemsPerSecondString(n, "Order"))
+        info(stopwatch.itemsPerSecondString(n, "Orders"))
         (for (orderId ← orderIds) yield
           (main ? AgentActor.Input.CommandFromMaster(MasterUserId, DetachOrder(orderId))).mapTo[EmptyResponse.type]) await 99.s
       }

@@ -169,7 +169,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
       logger.info(s"${m * n} $result")
       val stopwatch = new Stopwatch
       (for (_ ← 1 to m) yield Future { for (i ← 1 to n) p(get) await 10.s }) await 60.s
-      logger.info(stopwatch.itemsPerSecondString(m * n, "request"))
+      logger.info(stopwatch.itemsPerSecondString(m * n, "requests"))
     }
   }
 }

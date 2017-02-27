@@ -78,7 +78,7 @@ final class SyncTest extends FreeSpec {
         eventIds foreach sync.onNewEvent
         val result = futures await 99.s
         assert(result forall identity)
-        info(stopwatch.itemsPerSecondString(n, "event"))
+        info(stopwatch.itemsPerSecondString(n, "events"))
       }
     }
   }
