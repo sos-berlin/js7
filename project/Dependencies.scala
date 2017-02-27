@@ -27,6 +27,7 @@ object Dependencies {
   val typesafeConfig      = "com.typesafe" % "config" % "1.3.1"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaAgent           = "com.typesafe.akka" %% "akka-agent" % akkaVersion
+  val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion
   val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
   val sprayCan            = "io.spray" %% "spray-can"     % sprayVersion
   val sprayHttp           = "io.spray" %% "spray-http"    % sprayVersion
@@ -34,7 +35,7 @@ object Dependencies {
   val sprayRouting        = "io.spray" %% "spray-routing" % sprayVersion
   val sprayClient         = "io.spray" %% "spray-client"  % sprayVersion
   val sprayTestkit        = "io.spray" %% "spray-testkit" % sprayVersion
-  val sprayJson           = "io.spray" %% "spray-json" % "1.3.2" :: scalaReflect :: Nil
+  val sprayJson           = "io.spray" %% "spray-json" % "1.3.3" :: scalaReflect :: Nil
 
   val mockito             = "org.mockito" % "mockito-core" % "1.10.19"
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
