@@ -6,12 +6,14 @@ import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 /**
   * @author Joacim Zschimmer
   */
-trait GzipCompression {
-  this: JsonJournalMeta ⇒
+trait GzipCompression extends StreamConversion {
 
-  override protected def convertOutputStream(out: OutputStream) =
+  override def convertOutputStream(out: OutputStream) =
     new GZIPOutputStream(out, /*syncFlush=*/true)
 
-  override protected def convertInputStream(in: InputStream) =
+  override def convertInputStream(in: InputStream) =
     new GZIPInputStream(in)
+
+  override def isCorruptOrIncompleteException(exception: Exception): Boolean =
+    exception.isInstanceOf[java.util.zip.ZipException] || super.isCorruptOrIncompleteException(exception)
 }

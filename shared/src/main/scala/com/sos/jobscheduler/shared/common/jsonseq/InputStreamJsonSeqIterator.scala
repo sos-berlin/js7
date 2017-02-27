@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.shared.common.jsonseq
 
 import com.google.common.base.Ascii
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator._
 import java.io.{BufferedReader, EOFException, InputStream, InputStreamReader}
+import java.nio.charset.StandardCharsets.UTF_8
 import scala.collection.AbstractIterator
 import scala.io
+import scala.util.Try
 import spray.json._
 
 /**
@@ -21,47 +21,33 @@ import spray.json._
   */
 final class InputStreamJsonSeqIterator(in: InputStream) extends AbstractIterator[JsValue] {
 
-  private val reader = new BufferedReader(new InputStreamReader(in))
+  private val reader = new BufferedReader(new InputStreamReader(in, UTF_8))
 
   private var lineNumber = 0
-  private var nextLineOption: Option[String] = readJsonString()
+  private var nextJsValue: Try[Option[JsValue]] = readJsValue()
 
-  def hasNext = nextLineOption.nonEmpty
+  def hasNext = nextJsValue.get.nonEmpty
 
   def next() = {
-    val result = nextLineOption getOrElse { throw new NoSuchElementException("InputStreamJsonSeqIterator") }
-    nextLineOption = readJsonString()
-    result.parseJson
+    val result = nextJsValue.get getOrElse { throw new NoSuchElementException("InputStreamJsonSeqIterator") }
+    nextJsValue = readJsValue()
+    result
   }
 
-  private def readJsonString(): Option[String] = {
+  private def readJsValue(): Try[Option[JsValue]] = Try {
     lineNumber += 1
-    try reader.read() match {
+    reader.read() match {
       case Ascii.RS ⇒
-        val line = Option(reader.readLine()) getOrElse throwCorrupted()
+        val line = reader.readLine()
+        if (line == null) throw new EOFException("Unexpected end of file in the middle of an entry: RS but no LF")
         // BufferedReader#readLine separates the lines also by CR, CR/LF and EOF. RFC 7464 requires strict LF !!!
-        //val valid = line.nonEmpty && line.last == '\n'
-        //if (!valid) throwCorrupted()
-        Some(line)
+        Some(line.parseJson)
       case -1 ⇒
         None  // EOF
-      case _ ⇒
-        throwCorrupted()
+      case o ⇒
+        throwCorrupted(s"Invalid character \\u${Integer.toHexString(o)}")
     }
-    //catch {
-    //  TODO Bei einem Fehler können wir das Journal nicht fortschreiben. Wir müssen es neu aufbauen.
-    //  case _: EOFException ⇒
-    //    logger.warn("Journal is truncated. Restart from improper termination is assumed, using the events read so far.")  // TODO Bestätigen lassen?
-    //    None
-    //  case t: java.util.zip.ZipException ⇒
-    //    logger.warn(s"Journal is corrupt . Restart from improper termination is assumed, using the events read so far. $t", t)  // TODO Bestätigen lassen?
-    //    None
-    //}
   }
 
-  private def throwCorrupted() = sys.error(s"JSON sequence is corrupted at line $lineNumber")
-}
-
-object InputStreamJsonSeqIterator {
-  private val logger = Logger(getClass)
+  private def throwCorrupted(extra: String) = sys.error(s"JSON sequence is corrupted at line $lineNumber. $extra")
 }

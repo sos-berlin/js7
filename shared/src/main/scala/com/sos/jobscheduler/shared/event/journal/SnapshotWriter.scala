@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{Actor, ActorRef, Terminated}
+import akka.util.ByteString
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.shared.event.journal.SnapshotWriter._
 import scala.collection.immutable
+import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 import spray.json._
@@ -12,10 +14,12 @@ import spray.json._
 /**
   * @author Joacim Zschimmer
   */
-final class SnapshotWriter(write: JsValue ⇒ Unit, journalingActors: immutable.Iterable[ActorRef], jsonFormat: JsonFormat[Any]) extends Actor {
+final class SnapshotWriter(write: ByteString ⇒ Unit, journalingActors: immutable.Iterable[ActorRef], jsonFormat: JsonFormat[Any])
+extends Actor {
 
   private var remaining = journalingActors.size
   private var snapshotCount = 0
+  private val pipeline = new ParallelExecutingPipeline[(Any, ByteString)](o ⇒ write(o._2))(ExecutionContext.global)
 
   self ! Internal.Start
 
@@ -26,7 +30,6 @@ final class SnapshotWriter(write: JsValue ⇒ Unit, journalingActors: immutable.
       } else {
         for (a ← journalingActors) {
           context.watch(a)
-          logger.trace(s"Get snapshots from ${a.path}")
           a ! JournalingActor.Input.GetSnapshot
         }
       }
@@ -39,7 +42,7 @@ final class SnapshotWriter(write: JsValue ⇒ Unit, journalingActors: immutable.
       context.unwatch(sender())
       abortOnError {
         for (snapshot ← snapshots) {
-          write(jsonFormat.write(snapshot))
+          pipeline.add { snapshot → ByteString(CompactPrinter(jsonFormat.write(snapshot))) }
           logger.debug(s"Stored $snapshot")  // Without sync
           snapshotCount += 1
         }
@@ -55,7 +58,7 @@ final class SnapshotWriter(write: JsValue ⇒ Unit, journalingActors: immutable.
   }
 
   private def end(): Unit = {
-    // Versiegeln ???
+    pipeline.flush()
     context.parent ! Output.Finished(Success(snapshotCount))
     context.stop(self)
   }

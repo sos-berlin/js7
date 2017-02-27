@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.ActorRef
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.{DuplicateKeyException, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Snapshot}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer._
 import java.nio.file.{Files, Path}
@@ -31,6 +31,7 @@ extends AutoCloseable with Iterator[Recovering]
   private val keyToActor = mutable.Map[Any, ActorRef]()
   private var buffer = readNext()
   private var closed = false
+  private var lastEventId: EventId = EventId.BeforeFirst
   private var snapshotCount = 0
   private var eventCount = 0
 
@@ -39,14 +40,14 @@ extends AutoCloseable with Iterator[Recovering]
     if (!closed) {
       closed = true
       logSpeed()
-      logger.debug(s"$snapshotCount snapshots and $eventCount events read")
+      val eventIdMessage = if (eventCount > 0) s" Last EventId is ${EventId.toString(lastEventId)}" else ""
+      logger.info(s"$snapshotCount snapshots and $eventCount events read.$eventIdMessage")
     }
   }
 
   private def logSpeed() = {
-    val duration = stopwatch.duration
-    if (duration >= 1.s) {
-      logger.debug("Speed: " + Stopwatch.Result(snapshotCount + eventCount, "snapshots+events", duration))
+    if (stopwatch.duration >= 1.s) {
+      logger.debug("Speed: " + stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events"))
     }
   }
 
@@ -65,29 +66,41 @@ extends AutoCloseable with Iterator[Recovering]
   }
 
   private def readNext(): Option[Recovering] =
-    if (!jsonIterator.hasNext)
-      None
-    else {
-      val jsValue = jsonIterator.next()
-      if (eventJsonFormat canDeserialize jsValue.asJsObject) {
-        eventCount += 1
-        val eventSnapshot = jsValue.convertTo[Snapshot[AnyKeyedEvent]]
-        val KeyedEvent(key, event) = eventSnapshot.value
-        keyToActor.get(key) match {
-          case None ⇒
-            Some(RecoveringForUnknownKey(eventSnapshot))
-          case Some(a) ⇒
-            a ! JournalingActor.Input.RecoverFromEvent(eventSnapshot)
-            if (isDeletedEvent(event)) {
-              keyToActor -= key
-              Some(RecoveringDeleted(eventSnapshot))
-            } else
-              Some(RecoveringChanged(eventSnapshot))
+    try
+      if (!jsonIterator.hasNext)
+        None
+      else {
+        val jsValue = jsonIterator.next()
+        if (eventJsonFormat canDeserialize jsValue.asJsObject) {
+          eventCount += 1
+          val eventSnapshot = jsValue.convertTo[Snapshot[AnyKeyedEvent]]
+          if (eventSnapshot.eventId <= lastEventId)
+            sys.error(s"Journal is corrupted, EventIds are out of order: ${EventId.toString(lastEventId)} >= ${EventId.toString(eventSnapshot.eventId)}")
+          lastEventId = eventSnapshot.eventId
+          val KeyedEvent(key, event) = eventSnapshot.value
+          keyToActor.get(key) match {
+            case None ⇒
+              Some(RecoveringForUnknownKey(eventSnapshot))
+            case Some(a) ⇒
+              a ! JournalingActor.Input.RecoverFromEvent(eventSnapshot)
+              if (isDeletedEvent(event)) {
+                keyToActor -= key
+                Some(RecoveringDeleted(eventSnapshot))
+              } else
+                Some(RecoveringChanged(eventSnapshot))
+          }
+        } else {
+          snapshotCount += 1
+          Some(RecoveringSnapshot(snapshotJsonFormat.read(jsValue)))
         }
-      } else {
-        snapshotCount += 1
-        Some(RecoveringSnapshot(snapshotJsonFormat.read(jsValue)))
       }
+    catch {
+      case t: Exception if meta.isIncompleteException(t) ⇒
+        logger.info(s"Journal is incomplete. Sudden termination is assumed, using the events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}")
+        None
+      case t: Exception if meta.isCorruptOrIncompleteException(t) ⇒
+        logger.warn(s"Journal is corrupt or incomplete. Sudden termination is assumed, using the events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}")
+        None
     }
 
   def addActorForSnapshot(snapshot: Any, actorRef: ActorRef): Unit = {
@@ -179,7 +192,7 @@ object JsonJournalRecoverer {
   //    name = "JsonJournalRecoverer")
   //}
 
-  private def toMB(size: Long): String = size match {
+  private[journal] def toMB(size: Long): String = size match {
     case _ if size < 1000 * 1000 ⇒ "<1MB"
     case _ ⇒ (size + 999999) / (1000 * 1000) + "MB"
   }

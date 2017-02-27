@@ -43,9 +43,10 @@ extends KeyedJournalingActor[TestEvent] {
 
   private def update(event: TestEvent): Unit = {
     event match {
-      case TestEvent.Added(string) ⇒
+      case event: TestEvent.Added ⇒
         assert(aggregate == null)
-        aggregate = TestAggregate(key, string)
+        import event._
+        aggregate = TestAggregate(key, string, a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r)
 
       case TestEvent.Removed ⇒
         aggregate = null

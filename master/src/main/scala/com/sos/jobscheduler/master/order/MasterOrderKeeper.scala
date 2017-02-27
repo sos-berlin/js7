@@ -27,7 +27,7 @@ import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentParser}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.{Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -346,12 +346,13 @@ object MasterOrderKeeper {
   //Subtype[JobNet])
 
   private val MyJournalMeta = new JsonJournalMeta(
-    SnapshotJsonFormat,
-    MasterKeyedEventJsonFormat,
-    snapshotToKey = {
-      case order: Order[_] ⇒ order.id
-    },
-    isDeletedEvent = Set(/*OrderEvent.OrderRemoved fehlt*/))
+      SnapshotJsonFormat,
+      MasterKeyedEventJsonFormat,
+      snapshotToKey = {
+        case order: Order[_] ⇒ order.id
+      },
+      isDeletedEvent = Set(/*OrderEvent.OrderRemoved fehlt*/))
+    with GzipCompression
 
   private val logger = Logger(getClass)
 

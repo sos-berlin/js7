@@ -26,7 +26,7 @@ import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{RecoveringChanged, RecoveringDeleted, RecoveringForUnknownKey, RecoveringSnapshot}
-import com.sos.jobscheduler.shared.event.journal.{Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant.now
@@ -361,13 +361,14 @@ object AgentOrderKeeper {
     Subtype[EventQueue.CompleteSnapshot])
 
   private val MyJournalMeta = new JsonJournalMeta(
-    SnapshotJsonFormat,
-    AgentKeyedEventJsonFormat,
-    snapshotToKey = {
-      case jobnet: JobNet ⇒ jobnet.path
-      case order: Order[_] ⇒ order.id
-    },
-    isDeletedEvent = Set(OrderEvent.OrderDetached))
+      SnapshotJsonFormat,
+      AgentKeyedEventJsonFormat,
+      snapshotToKey = {
+        case jobnet: JobNet ⇒ jobnet.path
+        case order: Order[_] ⇒ order.id
+      },
+      isDeletedEvent = Set(OrderEvent.OrderDetached))
+    with GzipCompression
 
   sealed trait Input
   object Input {

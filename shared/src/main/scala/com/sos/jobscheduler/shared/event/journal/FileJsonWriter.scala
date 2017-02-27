@@ -1,19 +1,20 @@
 package com.sos.jobscheduler.shared.event.journal
 
+import akka.util.ByteString
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.shared.common.jsonseq.OutputStreamJsonSeqWriter
 import com.sos.jobscheduler.shared.event.journal.FileJsonWriter._
-import java.io.{FileOutputStream, OutputStream}
+import java.io.{BufferedOutputStream, FileOutputStream, OutputStream}
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
-import spray.json.{JsObject, JsValue}
+import spray.json._
 
 /**
   * @author Joacim Zschimmer
   */
 final class FileJsonWriter(
-  header: JsObject,
+  header: JsonJournalHeader,
   convertOutput: OutputStream ⇒ OutputStream,
   val file: Path,
   val syncOnFlush: Boolean,
@@ -21,18 +22,20 @@ final class FileJsonWriter(
 extends AutoCloseable {
 
   private val out = new FileOutputStream(file, append)
-  private val convertingOut = convertOutput(out)
+  private val bufferedOut = new BufferedOutputStream(out)
+  private val convertingOut = convertOutput(bufferedOut)
   private val writer = new OutputStreamJsonSeqWriter(convertingOut)
   private val closed = new AtomicBoolean
   private var flushed = false
 
   if (!append) {
-    writer.writeJson(header)
+    writer.writeJson(ByteString.fromString(header.toJson.compactPrint))
+    flush()
   }
 
-  def writeJson(jsValue: JsValue): Unit = {
+  def writeJson(json: ByteString): Unit = {
     flushed = false
-    writer.writeJson(jsValue)
+    writer.writeJson(json)
   }
 
   def close() = {

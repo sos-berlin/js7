@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Snapshot}
 import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.tests.TestActor._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
-import com.sos.jobscheduler.shared.event.journal.{Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer}
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.duration.DurationInt
@@ -30,9 +30,9 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
   override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 0) {
     case _ ⇒ SupervisorStrategy.Stop
   }
-  private implicit val askTimeout = Timeout(15.seconds)
+  private implicit val askTimeout = Timeout(999.seconds)
   private val journalActor = context.actorOf(
-    Props { new JsonJournalActor(TestJsonJournalMeta, journalFile, syncOnCommit = false, new EventIdGenerator, new SnapshotKeyedEventBus) },
+    Props { new JsonJournalActor(TestJsonJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new SnapshotKeyedEventBus) },
     "Journal")
   private val keyToAggregate = mutable.Map[String, ActorRef]()
 
@@ -71,14 +71,17 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
   }
 
   private def ready: Receive = {
-    case (key: String, command: TestAggregateActor.Command.Add) ⇒
+    case Input.WaitUntilReady ⇒
+      sender() ! Done
+
+    case Input.Forward(key: String, command: TestAggregateActor.Command.Add) ⇒
       assert(!keyToAggregate.contains(key))
       val actor = context.actorOf(Props { new TestAggregateActor(key, journalActor) })
       context.watch(actor)
       keyToAggregate += key → actor
       (actor ? command).mapTo[Done] pipeTo sender()
 
-    case (key: String, command: TestAggregateActor.Command) ⇒
+    case Input.Forward(key: String, command: TestAggregateActor.Command) ⇒
       (keyToAggregate(key) ? command).mapTo[Done] pipeTo sender()
 
     case Input.GetAll ⇒
@@ -103,15 +106,18 @@ private[tests] object TestActor {
   val SnapshotJsonFormat = TypedJsonFormat[Any](
     Subtype[TestAggregate])
   private val TestJsonJournalMeta = new JsonJournalMeta(
-    snapshotJsonFormat = SnapshotJsonFormat,
-    eventJsonFormat = TestKeyedEventJsonFormat,
-    snapshotToKey = {
-      case a: TestAggregate ⇒ a.key
-    },
-    isDeletedEvent = Set(TestEvent.Removed))
+      snapshotJsonFormat = SnapshotJsonFormat,
+      eventJsonFormat = TestKeyedEventJsonFormat,
+      snapshotToKey = {
+        case a: TestAggregate ⇒ a.key
+      },
+      isDeletedEvent = Set(TestEvent.Removed))
+    with GzipCompression
   private val logger = Logger(getClass)
 
   object Input {
+    final case object WaitUntilReady
+    final case class Forward(key: String, command: TestAggregateActor.Command)
     final case object GetAll
   }
 }

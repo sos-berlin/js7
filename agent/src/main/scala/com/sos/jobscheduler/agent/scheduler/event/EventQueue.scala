@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.event
 
 import akka.actor.{Actor, Status}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue._
+import com.sos.jobscheduler.base.sprayjson.typed.NamedJsonFormat.ToTypeJsonFormat
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
@@ -110,7 +111,7 @@ object EventQueue {
   final case class CompleteSnapshot(lastKnownEventId: EventId, eventSnapshots: Seq[EventSnapshot])
 
   object CompleteSnapshot {
-    implicit val jsonFormat = jsonFormat2(apply)  // TODO Eindeutiger TYPE
+    implicit val jsonFormat = jsonFormat2(apply) withTypeName "EventQueue.Snapshot"
   }
 
   private object Internal {
