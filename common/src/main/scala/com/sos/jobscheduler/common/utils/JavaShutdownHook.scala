@@ -19,7 +19,7 @@ final class JavaShutdownHook private(onShutdown: () ⇒ Unit, name: String) exte
   def close(): Unit =
     try Runtime.getRuntime.removeShutdownHook(hook)
     catch {
-      case t: IllegalStateException ⇒ logger.trace(s"removeShutdownHook: $t", t) // "Shutdown in progress"
+      case t: IllegalStateException ⇒ logger.trace(s"removeShutdownHook: $t") // "Shutdown in progress"
       case NonFatal(t) ⇒ logger.warn(s"removeShutdownHook: $t", t)
     }
 }
