@@ -63,7 +63,7 @@ object SimpleTypedJsonFormatTest {
   private object AJsonFormat extends SimpleTypedJsonFormat[A] {
     protected def typeName = "TEST-A"
 
-    protected def typelessWrite(a: A) = a match {
+    protected def typelessWrite(a: A) = (a: @unchecked) match {
       case x: X ⇒ x.toJson.asJsObject
       case y: Y ⇒ y.toJson.asJsObject
     }
