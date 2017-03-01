@@ -40,8 +40,9 @@ extends AutoCloseable with Iterator[Recovering]
     if (!closed) {
       closed = true
       logSpeed()
-      val eventIdMessage = if (eventCount > 0) s" Last EventId is ${EventId.toString(lastEventId)}" else ""
-      logger.info(s"$snapshotCount snapshots and $eventCount events read.$eventIdMessage")
+      if (eventCount > 0) {
+        logger.info(s"Recovered last EventId is ${EventId.toString(lastEventId)} ($snapshotCount snapshots and $eventCount events read)")
+      }
     }
   }
 
@@ -82,7 +83,7 @@ extends AutoCloseable with Iterator[Recovering]
             case None ⇒
               Some(RecoveringForUnknownKey(eventSnapshot))
             case Some(a) ⇒
-              a ! JournalingActor.Input.RecoverFromEvent(eventSnapshot)
+              a ! KeyedJournalingActor.Input.RecoverFromEvent(eventSnapshot)
               if (isDeletedEvent(event)) {
                 keyToActor -= key
                 Some(RecoveringDeleted(eventSnapshot))
@@ -96,10 +97,10 @@ extends AutoCloseable with Iterator[Recovering]
       }
     catch {
       case t: Exception if meta.isIncompleteException(t) ⇒
-        logger.info(s"Journal is incomplete. Sudden termination is assumed, using the events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}")
+        logger.info(s"Journal has not been completed. Assuming sudden termination, using the events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}")
         None
-      case t: Exception if meta.isCorruptOrIncompleteException(t) ⇒
-        logger.warn(s"Journal is corrupt or incomplete. Sudden termination is assumed, using the events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}")
+      case t: Exception if meta.isCorruptException(t) ⇒
+        logger.warn(s"Journal is corrupt or has not been completed. Assuming sudden termination, using the events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}")
         None
     }
 
@@ -107,7 +108,7 @@ extends AutoCloseable with Iterator[Recovering]
     val key = snapshotToKey(snapshot)
     if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate snapshot in journal file: '$key'")
     keyToActor += key → actorRef
-    actorRef ! JournalingActor.Input.RecoverFromSnapshot(snapshot)
+    actorRef ! KeyedJournalingActor.Input.RecoverFromSnapshot(snapshot)
   }
 
   def addActorForFirstEvent(eventSnapshot: Snapshot[AnyKeyedEvent], actorRef: ActorRef): Unit = {
@@ -115,7 +116,7 @@ extends AutoCloseable with Iterator[Recovering]
     import keyedEvent.key
     if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate key: '$key'")
     keyToActor += key → actorRef
-    actorRef ! JournalingActor.Input.RecoverFromEvent(eventSnapshot)
+    actorRef ! KeyedJournalingActor.Input.RecoverFromEvent(eventSnapshot)
   }
 
   //def startJournalAndFinishRecovery(parent: Actor, journalActor: ActorRef): Unit = {

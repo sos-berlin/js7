@@ -5,9 +5,16 @@ import java.time._
 import scala.language.implicitConversions
 
 /**
+  * Right half-open interval of instants.
+  *
   * @author Joacim Zschimmer
   */
-final case class InstantInterval(from: Instant, until: Instant)
+final case class InstantInterval(from: Instant, until: Instant) {
+
+  def +(duration: Duration) = InstantInterval(from + duration, until + duration)
+
+  override def toString = s"[$from, $until)"
+}
 
 object InstantInterval {
   def apply(from: Instant, duration: Duration): InstantInterval =

@@ -13,10 +13,9 @@ import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.master.MasterMain._
+import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
-import com.sos.jobscheduler.master.oldruntime.InstantInterval
-import java.time.Instant.now
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 
@@ -40,7 +39,7 @@ final class MasterMain(conf: MasterConfiguration) extends HasCloser {
 
   def run(): Nothing = {
     start() await 1.h
-    master.addScheduledOrders(InstantInterval(now, 5 * 60.s))   // TODO schedule orders every period
+    master.executeCommand(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration))  // Will block on recovery until Agents are started: await 99.s
     while (true) sleep(100 * 365 * 24.h)
     sys.error("Unreachable code for now")
   }
@@ -51,6 +50,7 @@ final class MasterMain(conf: MasterConfiguration) extends HasCloser {
 }
 
 object MasterMain {
+  private val OrderScheduleDuration = 1 * 60.s
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {

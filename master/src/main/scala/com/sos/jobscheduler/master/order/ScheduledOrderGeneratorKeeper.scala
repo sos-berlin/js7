@@ -34,7 +34,7 @@ final class ScheduledOrderGeneratorKeeper @Inject private(masterConfiguration: M
 
   def generateOrders(instantInterval: InstantInterval): Seq[Order[Order.Scheduled]] =
     (for (orderGenerator ← orderGenerators.values;
-         instant ← orderGenerator.schedule.instants(instantInterval)) yield
+          instant ← orderGenerator.schedule.instants(instantInterval)) yield
       Order(
         toOrderId(orderGenerator.path, instant),
         orderGenerator.nodeKey,
@@ -44,6 +44,8 @@ final class ScheduledOrderGeneratorKeeper @Inject private(masterConfiguration: M
 }
 
 object ScheduledOrderGeneratorKeeper {
+  private val Separator = "@"
+
   private def toOrderId(path: OrderGeneratorPath, instant: Instant) =
-    OrderId(s"${path.withoutStartingSlash}#$instant")
+    OrderId(s"${path.string}$Separator$instant")
 }

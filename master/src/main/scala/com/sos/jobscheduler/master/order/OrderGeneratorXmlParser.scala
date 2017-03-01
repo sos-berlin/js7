@@ -29,7 +29,7 @@ object OrderGeneratorXmlParser {
         ScheduledOrderGenerator(
           path,
           nodeKey,
-          elements.one[Map[String, String]]("params"),
+          elements.option[Map[String, String]]("params") getOrElse Map(),
           elements.one[OldSchedule])
       }
     }

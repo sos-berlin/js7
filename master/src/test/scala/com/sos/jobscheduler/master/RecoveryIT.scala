@@ -41,11 +41,11 @@ final class RecoveryIT extends FreeSpec {
 
   "test" in {
     //while (true)
+    var lastEventId = EventId.BeforeFirst
     autoClosing(new DataDirectoryProvider) { dataDirectoryProvider ⇒
       withCloser { implicit closer ⇒
         import dataDirectoryProvider.dataDir
 
-        var lastEventId = EventId.BeforeFirst
         val agentConfs = for (name ← AgentNames) yield AgentConfiguration.forTest().copy(
           name = name,
           dataDirectory = Some(dataDir / name),
@@ -53,21 +53,23 @@ final class RecoveryIT extends FreeSpec {
 
         (dataDir / "master/config/live/fast.job_chain.xml").xml = QuickJobChainElem
         (dataDir / "master/config/live/test.job_chain.xml").xml = TestJobChainElem
+        (dataDir / "master/config/live/test.order.xml").xml = TestOrderGeneratorElem
         (dataDir / "master/config/live/test-agent-111.agent.xml").xml = <agent uri={agentConfs(0).localUri.toString}/>
         (dataDir / "master/config/live/test-agent-222.agent.xml").xml = <agent uri={agentConfs(1).localUri.toString}/>
 
         runMaster(dataDir) { master ⇒
-          lastEventId = eventCollector.oldestEventId
+          if (lastEventId == EventId.BeforeFirst) {
+            lastEventId = eventCollector.oldestEventId
+          }
           runAgents(agentConfs) { _ ⇒
             master.executeCommand(MasterCommand.AddOrderIfNew(FastOrder)) await 99.s
-            master.executeCommand(MasterCommand.AddOrderIfNew(TestOrder)) await 99.s
             lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = lastEventId, 99.s), _.key == FastOrderId) await 99.s)
-            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key == TestOrderId) await 99.s)
-            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key == TestOrderId) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobChainPath.string) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobChainPath.string) await 99.s)
           }
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(agentConfs) { _ ⇒
-            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key == TestOrderId) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobChainPath.string) await 99.s)
           }
         }
 
@@ -77,11 +79,13 @@ final class RecoveryIT extends FreeSpec {
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
           runAgents(agentConfs) { _ ⇒
             runMaster(dataDir) { master ⇒
-              //logger.debug("************************* " + EventId.toString(eventCollector.oldestEventId) + ", " + EventId.toString(lastEventId))
-              lastEventIdOf(eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = myLastEventId, 99.s), _.key == TestOrderId) await 99.s)
-              master.getOrder(TestOrderId) await 99.s shouldEqual
+              val eventSeq = eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = myLastEventId, 99.s), _.key.string startsWith TestJobChainPath.string) await 99.s
+              val orderId = (eventSeq: @unchecked) match {
+                case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderEvent.OrderFinished.type]] ⇒ eventSeq.eventSnapshots.toVector.last.value.key
+              }
+              master.getOrder(orderId) await 99.s shouldEqual
                 Some(Order(
-                  TestOrderId,
+                  orderId,
                   NodeKey(TestJobChainPath, NodeId("END")),
                   Order.Finished,
                   Map("result" → "TEST-RESULT-VALUE-agent-222"),
@@ -101,6 +105,7 @@ final class RecoveryIT extends FreeSpec {
       injector.instance[Closer].closeWithCloser
       val master = injector.instance[Master]
       master.start() await 99.s
+      master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s))  // Will block on recovery until Agents are started: await 99.s
       body(master)
     }
   }
@@ -122,8 +127,6 @@ private object RecoveryIT {
 
   private val FastOrderId = OrderId("FAST-ORDER")
   private val FastOrder = Order(FastOrderId, NodeKey(FastJobChainPath, NodeId("100")), Order.Waiting)
-  private val TestOrderId = OrderId("TEST-ORDER")
-  private val TestOrder = Order(TestOrderId, NodeKey(TestJobChainPath, NodeId("100")), Order.Waiting)
 
   private val TestJobChainElem =
     <job_chain>
@@ -134,6 +137,11 @@ private object RecoveryIT {
       <job_chain_node state="210" agent="test-agent-222" job="/test"/>
       <job_chain_node.end state="END"/>
     </job_chain>
+
+  private val TestOrderGeneratorElem =
+    <order job_chain={TestJobChainPath.string} state="100">
+      <run_time><period absolute_repeat="3"/></run_time>
+    </order>
 
   private val QuickJobChainElem =
     <job_chain>
@@ -163,7 +171,7 @@ private object RecoveryIT {
 
     for (agentName ← AgentNames) {
       (dataDir / s"$agentName/config/live/test.job.xml").xml =
-        <job>
+        <job tasks="3">
           <params>
             <param name="var1" value={s"VALUE-$agentName"}/>
           </params>

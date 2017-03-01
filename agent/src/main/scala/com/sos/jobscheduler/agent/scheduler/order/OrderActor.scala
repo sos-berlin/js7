@@ -23,7 +23,7 @@ extends KeyedJournalingActor[OrderEvent] {
   private var order: Order[Order.State] = null
 
   protected def key = orderId
-  protected def snapshot = order
+  protected def snapshot = Option(order)
 
   protected def recoverFromSnapshot(snapshot: Any) = {
     assert(order == null)

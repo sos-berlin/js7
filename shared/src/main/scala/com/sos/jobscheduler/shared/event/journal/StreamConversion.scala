@@ -16,6 +16,6 @@ trait StreamConversion {
   def isIncompleteException(exception: Exception): Boolean =
     exception.isInstanceOf[EOFException]
 
-  def isCorruptOrIncompleteException(exception: Exception): Boolean =
+  def isCorruptException(exception: Exception): Boolean =
     false
 }

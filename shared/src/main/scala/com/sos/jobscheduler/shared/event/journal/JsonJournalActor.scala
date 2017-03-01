@@ -67,6 +67,7 @@ extends Actor with Stash {
       val sender = this.sender()
       becomeTakingSnapshot {
         context.become(ready)
+        //for (a ← keyToJournalingActor.values) a ! KeyedJournalingActor.Input.FinishRecovery
         sender ! Output.Ready
         logger.info(s"Ready, writing ${if (jsonWriter.syncOnFlush) "(with sync)" else "(without sync)"} journal file '${jsonWriter.file}'")
       }
@@ -90,7 +91,7 @@ extends Actor with Stash {
         case Success(jsValues) ⇒
           writeToDisk(jsValues, replyTo)
           writtenBuffer += Written(eventSnapshots, replyTo, sender())
-          self.forward(Internal.Commit(writtenBuffer.length))  // Sync after possibly outstanding Input.Store messages
+          self.forward(Internal.Commit(writtenBuffer.length))  // Commit after possibly outstanding Input.Store messages
           statistics.commits += 1
 
         case Failure(t) ⇒
@@ -149,23 +150,15 @@ extends Actor with Stash {
     context.actorOf(
       Props { new SnapshotWriter(myJsonWriter.writeJson, keyToJournalingActor.values.toSet ++ keylessJournalingActors, snapshotJsonFormat) },
       "SnapshotWriter")
-    context.become(takingSnapshot(myJsonWriter, commander = sender(), andThen, new Stopwatch))
+    context.become(takingSnapshot(myJsonWriter, commander = sender(), () ⇒ andThen, new Stopwatch))
   }
 
-  private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
-    case Input.RegisterMe(None) ⇒
-      keylessJournalingActors += sender()
-
-    case Input.RegisterMe(Some(key)) ⇒
-      keyToJournalingActor += key → sender()
-  }
-
-  private def takingSnapshot(myJsonWriter: FileJsonWriter, commander: ActorRef, andThen: ⇒ Unit, stopwatch: Stopwatch): Receive = {
+  private def takingSnapshot(myJsonWriter: FileJsonWriter, commander: ActorRef, andThen: () ⇒ Unit, stopwatch: Stopwatch): Receive = {
     case SnapshotWriter.Output.Finished(done) ⇒
       myJsonWriter.close()
       val snapshotCount = done.get  // Crash !!!
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "objects"))
-      logger.info(s"Snapshot contains $snapshotCount objects")
+      logger.debug(s"Snapshot contains $snapshotCount objects")
 
       if (jsonWriter != null) {
         jsonWriter.close()
@@ -174,7 +167,7 @@ extends Actor with Stash {
 
       jsonWriter = newJsonWriter(file, append = true)
       unstashAll()
-      andThen
+      andThen()
 
     case _ ⇒
       stash()
@@ -192,6 +185,14 @@ extends Actor with Stash {
       errorReplyTo.forward(Output.StoreFailure(tt))  // TODO Handle message in JournaledActor
       throw tt  // Stop Actor
     }
+
+  private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
+    case Input.RegisterMe(None) ⇒
+      keylessJournalingActors += sender()
+
+    case Input.RegisterMe(Some(key)) ⇒
+      keyToJournalingActor += key → sender()
+  }
 }
 
 object JsonJournalActor {

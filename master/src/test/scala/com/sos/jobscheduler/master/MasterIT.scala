@@ -21,13 +21,12 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.engine2.order.{JobChainPath, NodeId, NodeKey, Order, OrderEvent}
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Snapshot}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.MasterIT._
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
-import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.order.MasterOrderKeeper
 import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
 import java.nio.file.Files.{createDirectories, createTempDirectory}
@@ -84,7 +83,7 @@ final class MasterIT extends FreeSpec {
         val eventGatherer = new TestEventGatherer(injector)
         val master = injector.instance[Master]
         master.start() await 99.s
-        val order = Order(
+        val adHocOrder = Order(
           TestOrderId,
           NodeKey(TestJobChainPath, NodeId("100")),
           Order.Waiting)
@@ -92,13 +91,11 @@ final class MasterIT extends FreeSpec {
         sleep(3.s)
         master.orderKeeper ! MasterOrderKeeper.Input.SuspendDetaching
         agents(1).start() await 10.s  // Start early to recover orders
-        master.executeCommand(MasterCommand.AddOrderIfNew(order)) await 10.s
+        master.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
 
-        // Without order recovery: sleep(5.s)
         master.eventCollector.when[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
         assert(agentClients(0).orders() await 99.s map { _.id } contains TestOrderId)
         master.orderKeeper ! MasterOrderKeeper.Input.ContinueDetaching
-        // Without order recovery: agents(1).start() await 10.s  // Start late to test late Agent connection
 
         master.eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
         master.getOrder(TestOrderId) await 10.s shouldEqual
@@ -109,17 +106,17 @@ final class MasterIT extends FreeSpec {
             Map("result" → "TEST-RESULT-VALUE-agent-222"),
             Order.Good(true)))
 
-        val scheduledOrders = master.addScheduledOrders(InstantInterval(now, TestDuration))
-        val orderIds = order.id +: (scheduledOrders map { _.id })
-        val orderCount = orderIds.size
-        sleep(TestDuration)  // Time to show DeadLetter ?
+        master.executeCommand(MasterCommand.ScheduleOrdersEvery(TestDuration / 2)) await 99.s  // Needing 2 consecutive order generations
+        val expectedOrderCount = 1 + TestDuration.getSeconds.toInt  // Expecting one finished order per second
+        //sleep(TestDuration)  // Time to show DeadLetter ?
+        waitForCondition(TestDuration + 10.s, 100.ms) { eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].size == expectedOrderCount }
         logger.info("Events:\n" + ((eventGatherer.events map { _.toString }) mkString "\n"))
-        waitForCondition(TestDuration + 10.s, 100.ms) { eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].size == orderCount }
+        val orderIds = eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].toVector
         for (line ← (for (orderId ← orderIds.sorted) yield for (o ← master.getOrder(orderId)) yield s"$orderId -> $o") await 99.s)
           logger.info(line)
-        assert(eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].size == orderCount)
-        val addedOrderIds = eventGatherer.orderIdsOf[OrderEvent.OrderAdded]
-        assert(addedOrderIds.size == orderCount)
+        assert(orderIds.size >= expectedOrderCount)
+        val addedOrderIds = eventGatherer.orderIdsOf[OrderEvent.OrderAdded] filter orderIds.toSet
+        assert(addedOrderIds.size == orderIds.size)
         assert(eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type] == addedOrderIds)
       }
     }
