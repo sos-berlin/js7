@@ -21,7 +21,10 @@ final class OldScheduleXmlParserTest extends FreeSpec {
   }
 
   "Simple" in {
-    val x = <run_time absolute_repeat="10"/>
+    val x =
+      <run_time>
+        <period absolute_repeat="10"/>
+      </run_time>
     assert(parse(x) == OldSchedule.daily(timeZone, RepeatPeriod.wholeDay(10.s)))
   }
 
@@ -37,12 +40,6 @@ final class OldScheduleXmlParserTest extends FreeSpec {
       RepeatPeriod(LocalTime.of( 9, 0), ExtendedLocalTime.of(17, 0), 2.s),
       RepeatPeriod(LocalTime.of(19, 0), ExtendedLocalTime.of(22, 0), 3.s)))
     assert(parse(x) == OldSchedule.daily(timeZone, periodSeq))
-  }
-
-  "absolute_repeat only" in {
-    val x =
-      <run_time absolute_repeat="3600"/>
-    assert(parse(x) == OldSchedule.daily(timeZone, RepeatPeriod.wholeDay(1.h)))
   }
 
   "weekdays" in {

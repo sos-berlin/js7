@@ -31,45 +31,34 @@ object OldScheduleXmlParser{
 
     def parsePeriod(): Period =
       parseElement("period") {
-        parsePeriodAttributes()
-      }
-
-    def parsePeriodAttributes(): Period =
-      attributeMap.optionAs[LocalTime]("single_start") match {
-        case Some(singleStart) ⇒
-          SingleStartPeriod(singleStart)
-        case None ⇒
-          RepeatPeriod(
-            begin = attributeMap.as[LocalTime]("begin"),
-            end = attributeMap.as[ExtendedLocalTime]("end"),
-            absoluteRepeat = Duration.ofSeconds(attributeMap.as[Int]("absolute_repeat")))
-            //startOnce = attributeMap.as[Boolean]("start_once", default.startOnce))
+        attributeMap.optionAs[LocalTime]("single_start") match {
+          case Some(singleStart) ⇒
+            SingleStartPeriod(singleStart)
+          case None ⇒
+            RepeatPeriod(
+              begin = attributeMap.as[LocalTime]("begin", LocalTime.MIN),
+              end = attributeMap.as[ExtendedLocalTime]("end", ExtendedLocalTime.EndOfDay),
+              absoluteRepeat = Duration.ofSeconds(attributeMap.as[Int]("absolute_repeat")))
+              //startOnce = attributeMap.as[Boolean]("start_once", default.startOnce))
+        }
       }
 
     parseElement("run_time") {
       val timeZone = attributeMap.as[ZoneId]("time_zone", defaultTimeZone)
-      attributeMap.optionAs[Int]("absolute_repeat") map { o ⇒ Duration.ofSeconds(o) } match {
-        case Some(repeat) ⇒
-          OldSchedule.daily(timeZone, PeriodSeq(List(RepeatPeriod(
-            attributeMap.as[LocalTime]("begin", LocalTime.MIN),
-            attributeMap.as[ExtendedLocalTime]("end", ExtendedLocalTime.EndOfDay),
-            repeat))))
-        case None ⇒
-          if (peek.isEndElement)
-            OldSchedule.empty(timeZone)
-          else
-          if (peek.asStartElement().getName.getLocalPart == "period")
-            OldSchedule.daily(timeZone, parsePeriodSeq())
-          else
-            OldSchedule(
-              timeZone,
-              parseElement("weekdays") {
-                parseEachRepeatingElement[(DayOfWeek, PeriodSeq)]("day") {
-                  val dayOfWeek = attributeMap.as[DayOfWeek]("day")
-                  dayOfWeek → parsePeriodSeq()
-                }
-              } .toMap)
-      }
+      if (peek.isEndElement)
+        OldSchedule.empty(timeZone)
+      else
+      if (peek.asStartElement().getName.getLocalPart == "period")
+        OldSchedule.daily(timeZone, parsePeriodSeq())
+      else
+        OldSchedule(
+          timeZone,
+          parseElement("weekdays") {
+            parseEachRepeatingElement[(DayOfWeek, PeriodSeq)]("day") {
+              val dayOfWeek = attributeMap.as[DayOfWeek]("day")
+              dayOfWeek → parsePeriodSeq()
+            }
+          } .toMap)
     }
   }
 }
