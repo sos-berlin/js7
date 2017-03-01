@@ -36,6 +36,7 @@ done
 
 [ -z "$data" ] || masterOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
 [ -z "$httpPort" ] || masterOptions+=("-http-port=$httpPort")
+logs="$data/logs"
 
 configDirectory="$data"/config
 if [ ! -d "$configDirectory" ]; then :
@@ -49,6 +50,7 @@ if [ ! -d "$liveDirectory" ]; then :
   exit 1
 fi
 
+export SCHEDULER_LOGS="$logs"  # Used in logback.xml
 if [ -f "$configDirectory/logback.xml" ]; then :
   logbackConfig="file:$configDirectory/logback.xml"
 else
