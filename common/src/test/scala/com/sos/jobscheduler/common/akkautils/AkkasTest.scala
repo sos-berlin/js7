@@ -56,6 +56,7 @@ final class AkkasTest extends FreeSpec {
     intercept[IllegalArgumentException] { encodeAsActorName("") }
     assert(encodeAsActorName("a") == "a")
     assert(encodeAsActorName("$/$") == "%24%2F$")
+    assert(encodeAsActorName("%%@") == "%25%25@")
     assert(decodeActorName("%24%2F$") == "$/$")
     assert(encodeAsActorName("folder/subfolder/jobname") == "folder%2Fsubfolder%2Fjobname")
     assert(encodeAsActorName("a?b=!&c=ö[]{}") == "a%3Fb=!&c=%C3%B6%5B%5D%7B%7D")
