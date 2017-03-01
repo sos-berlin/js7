@@ -13,7 +13,8 @@ private[tests] final class TestAggregateActor(protected val key: String, val jou
 extends KeyedJournalingActor[TestEvent] {
 
   private var aggregate: TestAggregate = null
-  protected def snapshot = aggregate
+
+  protected def snapshot = Option(aggregate)
 
   protected def recoverFromSnapshot(o: Any) = {
     aggregate = cast[TestAggregate](o)
@@ -24,14 +25,24 @@ extends KeyedJournalingActor[TestEvent] {
 
   def receive = {
     case command: Command ⇒
-      persist(commandToEvent(command)) { event ⇒
-        update(event)
-        sender() ! Done
+      commandToEvent(command) match {
+        case event: TestEvent.Removed.type ⇒
+          persist(event) { event ⇒  // Test without afterLastPersist because the event stops the actor immediately
+            update(event)
+            sender() ! Done
+          }
+        case event ⇒
+          persist(event)(update)
+          afterLastPersist {   // Different to Removed case, simply to test afterLastPersist. Removed stops the actor.
+            sender() ! Done
+          }
       }
 
     case Input.Get ⇒
       assert(aggregate != null)
-      sender() ! aggregate
+      afterLastPersist {  // For testing
+        sender() ! aggregate
+      }
   }
 
   private def commandToEvent(command: Command): TestEvent =

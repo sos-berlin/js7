@@ -70,7 +70,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
 
       execute(actor, "D", TestAggregateActor.Command.Add("DDD"))
 
-      (actor ? Journal.Input.TakeSnapshot).mapTo[Journal.Output.SnapshotTaken.type] await 99.s
+      (actor ? TestActor.Input.TakeSnapshot).mapTo[Journal.Output.SnapshotTaken.type] await 99.s
       assert(journalAggregates == Set(
         TestAggregate("A", "AAAaaa"),
         TestAggregate("C", "CCC"),
@@ -149,7 +149,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
         try iterator foreach builder.+=
         catch {
           case _: EOFException ⇒ None
-          case t: java.util.zip.ZipException ⇒ None
+          case _: java.util.zip.ZipException ⇒ None
         }
       }
     }
