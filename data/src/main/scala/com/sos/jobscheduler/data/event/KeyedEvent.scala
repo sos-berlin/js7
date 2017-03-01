@@ -15,10 +15,11 @@ final case class KeyedEvent[+E <: Event](key: E#Key, event: E)
 object KeyedEvent {
   private[event] val KeyFieldName = "key"
 
-  object NoKey {
-    implicit val NoKeyJsonFormat = new JsonFormat[NoKey.type] {
+  sealed trait NoKey
+  case object NoKey extends NoKey {
+    implicit val NoKeyJsonFormat = new JsonFormat[NoKey] {
       def read(json: JsValue) = sys.error("NoKey")
-      def write(obj: NoKey.type) = sys.error("NoKey")
+      def write(obj: NoKey) = sys.error("NoKey")
     }
 
     override def toString = "NoKey"
@@ -26,9 +27,9 @@ object KeyedEvent {
 
   def apply[E <: Event](event: E)(key: event.Key) = new KeyedEvent(key, event)
 
-  def apply[E <: Event { type Key = NoKey.type }](event: E) = new KeyedEvent[E](NoKey, event)
+  def apply[E <: Event { type Key = NoKey }](event: E) = new KeyedEvent[E](NoKey, event)
 
-  def of[E <: Event { type Key = NoKey.type }](event: E) = new KeyedEvent[E](NoKey, event)
+  def of[E <: Event { type Key = NoKey }](event: E) = new KeyedEvent[E](NoKey, event)
 
   def typedJsonFormat[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*) =
     new KeyedTypedEventJsonFormat[E](subtypes.toVector)

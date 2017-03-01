@@ -7,7 +7,7 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 trait NoKeyEvent extends Event {
-  final type Key = NoKey.type
+  final type Key = NoKey
 }
 
 object NoKeyEvent {
