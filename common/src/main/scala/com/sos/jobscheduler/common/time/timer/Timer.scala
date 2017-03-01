@@ -38,6 +38,8 @@ extends PromiseFuture[A] {
 }
 
 object Timer {
+  def empty[A] = new Timer[A](Instant.now, "empty", completeWith = () ⇒ Failure(throw new NotImplementedError))
+
   private[timer] def nowMillis = System.currentTimeMillis
 
   private final class CanceledException private[Timer] extends RuntimeException with NoStackTrace
