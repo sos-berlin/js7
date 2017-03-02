@@ -21,10 +21,10 @@ import com.sos.jobscheduler.data.engine2.order.JobNet.{JobNode, Node}
 import com.sos.jobscheduler.data.engine2.order.JobnetEvent.JobnetAttached
 import com.sos.jobscheduler.data.engine2.order.OrderEvent.{OrderAttached, OrderNodeChanged, OrderStepEnded}
 import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobNet, JobPath, JobnetEvent, NodeId, NodeKey, Order, OrderEvent}
-import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.shared.common.ActorRegister
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{RecoveringChanged, RecoveringDeleted, RecoveringForUnknownKey, RecoveringSnapshot}
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
@@ -44,7 +44,7 @@ final class AgentOrderKeeper(
   journalFile: Path,
   implicit private val askTimeout: Timeout,
   syncOnCommit: Boolean,
-  keyedEventBus: SnapshotKeyedEventBus,
+  keyedEventBus: StampedKeyedEventBus,
   eventIdGenerator: EventIdGenerator,
   timerService: TimerService)
 extends KeyedEventJournalingActor[JobnetEvent] with Stash {
@@ -85,23 +85,23 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           case RecoveringSnapshot(snapshot: EventQueue.CompleteSnapshot) ⇒
             eventsForMaster ! snapshot  // TODO FinishRecovery for synchronization ?
 
-          case RecoveringForUnknownKey(Snapshot(_, KeyedEvent(path: JobChainPath, event: JobnetEvent.JobnetAttached))) ⇒
+          case RecoveringForUnknownKey(Stamped(_, KeyedEvent(path: JobChainPath, event: JobnetEvent.JobnetAttached))) ⇒
             pathToJobnet += path → JobNet.fromJobnetAttached(path, event)
 
-          case RecoveringForUnknownKey(eventSnapshot @ Snapshot(_, KeyedEvent(orderId: OrderId, event: OrderEvent.OrderAttached))) ⇒
+          case RecoveringForUnknownKey(stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent.OrderAttached))) ⇒
             val actor = addOrderActor(orderId)
             orderRegister += orderId → OrderEntry(orderId, actor, event.nodeKey.jobChainPath, event.nodeKey.nodeId)
-            journal.addActorForFirstEvent(eventSnapshot, actor)
-            eventsForMaster ! eventSnapshot
+            journal.addActorForFirstEvent(stamped, actor)
+            eventsForMaster ! stamped
 
-          case RecoveringDeleted(eventSnapshot @ Snapshot(_, KeyedEvent(orderId: OrderId, OrderEvent.OrderDetached))) ⇒
+          case RecoveringDeleted(stamped @ Stamped(_, KeyedEvent(orderId: OrderId, OrderEvent.OrderDetached))) ⇒
             // OrderActor stops itself
             context.unwatch(orderRegister(orderId).actor)
             orderRegister -= orderId
-            eventsForMaster ! eventSnapshot
+            eventsForMaster ! stamped
 
-          case RecoveringChanged(eventSnapshot @ Snapshot(_, KeyedEvent(_: OrderId, _: OrderEvent))) ⇒
-            eventsForMaster ! eventSnapshot
+          case RecoveringChanged(stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent))) ⇒
+            eventsForMaster ! stamped
         }
         journal.recoveredJournalingActors
       }
@@ -154,8 +154,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       orderEntry.timer = None
       onOrderAvailable(orderEntry)
 
-    case eventSnapshot @ Snapshot(_, KeyedEvent(orderId: OrderId, _: OrderEvent)) if orderRegister contains orderId ⇒
-      eventsForMaster ! eventSnapshot
+    case stamped @ Stamped(_, KeyedEvent(orderId: OrderId, _: OrderEvent)) if orderRegister contains orderId ⇒
+      eventsForMaster ! stamped
 
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
       eventsForMaster.forward(EventQueue.Input.RequestEvents(after, timeout, limit, promise))

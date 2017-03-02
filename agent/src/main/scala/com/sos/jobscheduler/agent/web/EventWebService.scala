@@ -27,7 +27,7 @@ private trait EventWebService extends AgentWebService {
       pathEnd {
         eventRequest[Event](defaultReturnType = Some("Event")).apply { request ⇒
           complete {
-            eventIdGenerator.wrapInSnapshot {
+            eventIdGenerator.stampEventSeq {
               eventCollector.byPredicate[Event](
                 request,
                 predicate = KeyedEventJsonFormat.canSerialize)

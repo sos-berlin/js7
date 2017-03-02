@@ -3,16 +3,16 @@ package com.sos.jobscheduler.shared.event
 import akka.actor.ActorRef
 import akka.event.{EventBus, SubchannelClassification}
 import akka.util.Subclassification
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Snapshot, Event ⇒ EngineEvent}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped, Event ⇒ EngineEvent}
 import javax.inject.Singleton
 
 /**
   * @author Joacim Zschimmer
   */
 @Singleton
-final class SnapshotKeyedEventBus extends EventBus with SubchannelClassification {
+final class StampedKeyedEventBus extends EventBus with SubchannelClassification {
 
-  type Event = Snapshot[AnyKeyedEvent]
+  type Event = Stamped[AnyKeyedEvent]
   type Classifier = Class[_ <: EngineEvent]
   type Subscriber = ActorRef
 
@@ -24,9 +24,9 @@ final class SnapshotKeyedEventBus extends EventBus with SubchannelClassification
       y isAssignableFrom x
   }
 
-  protected def classify(snapshot: Snapshot[AnyKeyedEvent]) =
+  protected def classify(snapshot: Stamped[AnyKeyedEvent]) =
     snapshot.value.event.getClass
 
-  protected def publish(eventSnapshot: Snapshot[AnyKeyedEvent], subscriber: ActorRef) =
-    subscriber ! eventSnapshot
+  protected def publish(eventStamped: Stamped[AnyKeyedEvent], subscriber: ActorRef) =
+    subscriber ! eventStamped
 }

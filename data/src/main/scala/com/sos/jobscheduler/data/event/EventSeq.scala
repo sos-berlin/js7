@@ -13,16 +13,16 @@ trait EventSeq[+M[_], +E]
 
 object EventSeq {
 
-  final case class NonEmpty[M[_] <: TraversableOnce[_], E](eventSnapshots: M[Snapshot[E]])
+  final case class NonEmpty[M[_] <: TraversableOnce[_], E](stampeds: M[Stamped[E]])
   extends EventSeq[M, E] {
-    assert(eventSnapshots.nonEmpty)
+    assert(stampeds.nonEmpty)
   }
 
   private implicit def nonEmptyJsonFormat[E: RootJsonFormat]: RootJsonFormat[NonEmpty[Seq, E]] =
-    //Does not compile: jsonFormat1((eventSnapshots: Seq[Snapshot[E]]) ⇒ NonEmpty(eventSnapshots)), // Error: kinds of the type arguments (scala.collection.immutable.Seq) do not conform to the expected kinds of the type parameters (type T) ...
+    //Does not compile: jsonFormat1((stampeds: Seq[Stamped[E]]) ⇒ NonEmpty(stampeds)), // Error: kinds of the type arguments (scala.collection.immutable.Seq) do not conform to the expected kinds of the type parameters (type T) ...
     new RootJsonFormat[NonEmpty[Seq, E]] {
-      def write(o: NonEmpty[Seq, E]) = JsObject("eventSnapshots" → o.eventSnapshots.toJson)
-      def read(json: JsValue) = NonEmpty(json.asJsObject.fields("eventSnapshots").convertTo[Seq[Snapshot[E]]])
+      def write(o: NonEmpty[Seq, E]) = JsObject("eventSnapshots" → o.stampeds.toJson)
+      def read(json: JsValue) = NonEmpty(json.asJsObject.fields("eventSnapshots").convertTo[Seq[Stamped[E]]])
     }
 
   final case class Empty(lastEventId: EventId)

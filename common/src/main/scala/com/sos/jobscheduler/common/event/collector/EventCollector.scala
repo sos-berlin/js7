@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutureFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, Snapshot, SomeEventRequest}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, ReverseEventRequest, SomeEventRequest, Stamped}
 import com.typesafe.config.Config
 import java.time.Instant.now
 import java.time.{Duration, Instant}
@@ -24,9 +24,9 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
 
   logger.debug("oldestEventId=" + EventId.toString(oldestEventId))
 
-  final def putEventSnapshot(snapshot: Snapshot[AnyKeyedEvent]): Unit = {
-    keyedEventQueue.add(snapshot)
-    sync.onNewEvent(snapshot.eventId)
+  final def addStamped(stamped: Stamped[AnyKeyedEvent]): Unit = {
+    keyedEventQueue.add(stamped)
+    sync.onNewEvent(stamped.eventId)
   }
 
   final def byPredicate[E <: Event](request: SomeEventRequest[E], predicate: KeyedEvent[E] ⇒ Boolean): Future[EventSeq[Iterator, KeyedEvent[E]]] =
@@ -101,16 +101,16 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
 
   private def collectEventsSince[A](after: EventId, collect: PartialFunction[AnyKeyedEvent, A], limit: Int): EventSeq[Iterator, A] = {
     require(limit >= 0, "limit must be >= 0")
-    val eventSnapshotOption = keyedEventQueue.after(after)
+    val stampedsOption = keyedEventQueue.after(after)
     var lastEventId = after
-    eventSnapshotOption match {
-      case Some(eventSnapshots) ⇒
+    stampedsOption match {
+      case Some(stampeds) ⇒
         val eventIterator =
-          eventSnapshots
+          stampeds
             .map { o ⇒ lastEventId = o.eventId; o }
             .collect {
               case snapshot if collect.isDefinedAt(snapshot.value) ⇒
-                Snapshot(snapshot.eventId, collect(snapshot.value))
+                Stamped(snapshot.eventId, collect(snapshot.value))
             }
             .take(limit)
         if (eventIterator.nonEmpty)
@@ -125,12 +125,12 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
   final def reverse[E <: Event](
     request: ReverseEventRequest[E],
     predicate: KeyedEvent[E] ⇒ Boolean = (_: KeyedEvent[E]) ⇒ true)
-  : Iterator[Snapshot[KeyedEvent[E]]]
+  : Iterator[Stamped[KeyedEvent[E]]]
   =
     keyedEventQueue.reverseEvents(after = request.after)
       .collect {
         case snapshot if request matchesClass snapshot.value.event.getClass ⇒
-          snapshot.asInstanceOf[Snapshot[KeyedEvent[E]]]
+          snapshot.asInstanceOf[Stamped[KeyedEvent[E]]]
       }
       .filter(snapshot ⇒ predicate(snapshot.value))
       .take(request.limit)
@@ -139,16 +139,16 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
     request: ReverseEventRequest[E],
     key: E#Key,
     predicate: E ⇒ Boolean = (_: E) ⇒ true)
-  : Iterator[Snapshot[E]]
+  : Iterator[Stamped[E]]
   =
     keyedEventQueue.reverseEvents(after = request.after)
       .collect {
         case snapshot if request matchesClass snapshot.value.event.getClass ⇒
-          snapshot.asInstanceOf[Snapshot[KeyedEvent[E]]]
+          snapshot.asInstanceOf[Stamped[KeyedEvent[E]]]
       }
       .collect {
-        case Snapshot(eventId, KeyedEvent(`key`, event)) if predicate(event) ⇒
-          Snapshot(eventId, event)
+        case Stamped(eventId, KeyedEvent(`key`, event)) if predicate(event) ⇒
+          Stamped(eventId, event)
       }
       .take(request.limit)
 

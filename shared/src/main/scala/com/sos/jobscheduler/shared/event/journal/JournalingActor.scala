@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Stash}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.JournalingActor._
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
@@ -16,8 +16,7 @@ import scala.util.{Failure, Success}
   */
 trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
 
-  protected type EventSnapshot = Snapshot[KeyedEvent[E]]
-  private case class Elem(keyedEvent: KeyedEvent[E], callback: Snapshot[KeyedEvent[E]] ⇒ Unit)
+  private case class Elem(keyedEvent: KeyedEvent[E], callback: Stamped[KeyedEvent[E]] ⇒ Unit)
 
   protected def journalActor: ActorRef
   protected def snapshots: Future[Iterable[Any]]
@@ -36,9 +35,9 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
   def journalStash(message: Any): Unit =
     receiveJournalMessage.applyOrElse(message, (_: Any) ⇒ super.stash())
 
-  private[event] final def persistKeyedEvent[EE <: E](keyedEvent: KeyedEvent[EE])(callback: Snapshot[KeyedEvent[EE]] ⇒ Unit): Unit = {
+  private[event] final def persistKeyedEvent[EE <: E](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ Unit): Unit = {
     startBuffering()
-    buffer += Elem(keyedEvent, callback.asInstanceOf[Snapshot[KeyedEvent[E]] ⇒ Unit])
+    buffer += Elem(keyedEvent, callback.asInstanceOf[Stamped[KeyedEvent[E]] ⇒ Unit])
   }
 
   protected final def afterLastPersist(callback: ⇒ Unit): Unit = {
@@ -77,7 +76,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
       }
       context.unbecome()
       for ((elem, snapshot) ← buffer zip snapshots) {
-        elem.callback(snapshot.asInstanceOf[Snapshot[KeyedEvent[E]]])
+        elem.callback(snapshot.asInstanceOf[Stamped[KeyedEvent[E]]])
       }
       buffer = null
       finishPersisting()

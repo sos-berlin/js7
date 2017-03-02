@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{EventId, NoKeyEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{EventId, NoKeyEvent, Stamped}
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,7 +30,7 @@ final class SyncTest extends FreeSpec {
         assert(!a.isCompleted)
         val b = sync.whenEventIsAvailable(bEventId, 99999.s)
         assert(!b.isCompleted)
-        queue.add(Snapshot(aEventId, TestEvent))
+        queue.add(Stamped(aEventId, TestEvent))
         sync.onNewEvent(aEventId)
         a await 1.s
         assert(a.isCompleted)
@@ -56,7 +56,7 @@ final class SyncTest extends FreeSpec {
         a await 400.ms
         assert(!a.successValue)  // false: Timed out
         assert(!b.isCompleted)
-        queue.add(Snapshot(eventId, TestEvent))
+        queue.add(Stamped(eventId, TestEvent))
         sync.onNewEvent(eventId)
         b await 1.s
         assert(b.isCompleted)

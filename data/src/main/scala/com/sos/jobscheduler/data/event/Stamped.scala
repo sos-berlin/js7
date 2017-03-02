@@ -7,23 +7,23 @@ import spray.json._
   *
   * @author Joacim Zschimmer
   */
-final case class Snapshot[+A](eventId: EventId, value: A) {
+final case class Stamped[+A](eventId: EventId, value: A) {
 
-  def map[B](f: A ⇒ B): Snapshot[B] = Snapshot(eventId, f(value))
+  def map[B](f: A ⇒ B): Stamped[B] = Stamped(eventId, f(value))
 
   def instant = EventId.toInstant(eventId)
 
-  override def toString = s"Snapshot($instant $value)"
+  override def toString = s"Stamped($instant $value)"
 }
 
-object Snapshot {
+object Stamped {
   val EventIdJsonName = "eventId"
   val ElementsJsonName = "elements"
 
-  implicit def jsonFormat[A: RootJsonFormat]: RootJsonFormat[Snapshot[A]] =
-    new RootJsonFormat[Snapshot[A]] {
+  implicit def jsonFormat[A: RootJsonFormat]: RootJsonFormat[Stamped[A]] =
+    new RootJsonFormat[Stamped[A]] {
 
-      def write(o: Snapshot[A]) = {
+      def write(o: Stamped[A]) = {
         val contentFields = implicitly[RootJsonFormat[A]].write(o.value) match {
           case JsObject(fields) ⇒ fields
           case array: JsArray ⇒ Map(ElementsJsonName → array)
@@ -36,7 +36,7 @@ object Snapshot {
         val jsObject = jsValue.asJsObject
         val eventId = EventId.fromJsValue(jsObject.fields(EventIdJsonName))
         val content = jsObject.fields.getOrElse(ElementsJsonName, jsObject)
-        Snapshot(eventId, content.convertTo[A])
+        Stamped(eventId, content.convertTo[A])
       }
     }
 }

@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.engine2.order.OrderEvent
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.{Files, Path}
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq
@@ -27,7 +27,7 @@ final class OrderHandler @Inject private(
   conf: AgentConfiguration)
   (implicit
     timerService: TimerService,
-    eventBus: SnapshotKeyedEventBus,
+    eventBus: StampedKeyedEventBus,
     newTask: AgentTaskFactory,
     eventIdGenerator: EventIdGenerator,
     actorRefFactory: ActorRefFactory,

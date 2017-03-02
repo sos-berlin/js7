@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.engine2.order.OrderEvent
 import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderDetached
-import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
 import java.time.Duration
 import scala.collection.JavaConversions._
@@ -23,19 +23,19 @@ import spray.json.DefaultJsonProtocol._
 final class EventQueue(timerService: TimerService) extends Actor {
 
   private implicit val executionContext = context.dispatcher
-  private val eventQueue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, EventSnapshot]
+  private val eventQueue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, StampedEvent]
   private val requestors = mutable.Map[Promise[MyEventSeq], Timer[Unit]]()
   private var lastKnownEventId = EventId.BeforeFirst
 
   def receive = {
-    case msg @ Snapshot(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
-      val eventSnapshot = msg.asInstanceOf[Snapshot[KeyedEvent[OrderEvent]]]
-      eventSnapshot.value match {
+    case msg @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
+      val stamped = msg.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
+      stamped.value match {
         case KeyedEvent(orderId: OrderId, OrderDetached) ⇒
           // Master posts its own OrderDetached
           removeEventsFor(orderId)
         case _ ⇒
-          add(eventSnapshot)
+          add(stamped)
       }
 
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
@@ -44,9 +44,9 @@ final class EventQueue(timerService: TimerService) extends Actor {
         logger.debug(error)
         sender() ! Status.Failure(new IllegalArgumentException(error))  // TODO Does requester handle Status.Failure ?
       } else {
-        val eventSnapshots = (eventQueue.navigableKeySet.tailSet(after, false).iterator take limit map eventQueue.get).toVector
-        if (eventSnapshots.nonEmpty) {
-          promise.success(EventSeq.NonEmpty(eventSnapshots))
+        val stampeds = (eventQueue.navigableKeySet.tailSet(after, false).iterator take limit map eventQueue.get).toVector
+        if (stampeds.nonEmpty) {
+          promise.success(EventSeq.NonEmpty(stampeds))
         } else
         if (timeout <= 0.s) {
           promise.success(EventSeq.Empty(lastEventId = after))
@@ -66,18 +66,18 @@ final class EventQueue(timerService: TimerService) extends Actor {
     case Input.GetSnapshot ⇒
       sender() ! CompleteSnapshot(lastKnownEventId, eventQueue.values.toVector)
 
-    case CompleteSnapshot(eventId, eventSnapshots) ⇒
+    case CompleteSnapshot(eventId, stampedEvents) ⇒
       assert(eventQueue.isEmpty)
       lastKnownEventId = eventId
-      eventQueue ++= eventSnapshots map { o ⇒ java.lang.Long.valueOf(o.eventId) → o }
-      logger.debug(s"${eventSnapshots.size} events recovered, lastKnownEventId=${EventId.toString(lastKnownEventId)}")
+      eventQueue ++= stampedEvents map { o ⇒ java.lang.Long.valueOf(o.eventId) → o }
+      logger.debug(s"${stampedEvents.size} events recovered, lastKnownEventId=${EventId.toString(lastKnownEventId)}")
   }
 
-  private def add(eventSnapshot: Snapshot[KeyedEvent[OrderEvent]]): Unit = {
-    eventQueue.put(eventSnapshot.eventId, eventSnapshot)
+  private def add(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit = {
+    eventQueue.put(stamped.eventId, stamped)
     for ((promise, timer) ← requestors) {
       timerService.cancel(timer)
-      promise.success(EventSeq.NonEmpty(List(eventSnapshot)))
+      promise.success(EventSeq.NonEmpty(List(stamped)))
     }
     requestors.clear()
   }
@@ -99,7 +99,7 @@ final class EventQueue(timerService: TimerService) extends Actor {
 object EventQueue {
   private val logger = Logger(getClass)
 
-  private type EventSnapshot = Snapshot[KeyedEvent[OrderEvent]]
+  private type StampedEvent = Stamped[KeyedEvent[OrderEvent]]
   type MyEventSeq = EventSeq[Seq, KeyedEvent[OrderEvent]]
 
   sealed trait Input
@@ -108,7 +108,7 @@ object EventQueue {
     final case object GetSnapshot
   }
 
-  final case class CompleteSnapshot(lastKnownEventId: EventId, eventSnapshots: Seq[EventSnapshot])
+  final case class CompleteSnapshot(lastKnownEventId: EventId, stampedEvents: Seq[StampedEvent])
 
   object CompleteSnapshot {
     implicit val jsonFormat = jsonFormat2(apply) withTypeName "EventQueue.Snapshot"

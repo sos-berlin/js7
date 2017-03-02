@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.engine2.order.Order
-import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -20,7 +20,7 @@ import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.order.{MasterOrderKeeper, ScheduledOrderGeneratorKeeper}
 import com.sos.jobscheduler.master.web.MasterWebServer
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.Files
 import javax.inject.{Inject, Singleton}
 import org.jetbrains.annotations.TestOnly
@@ -39,7 +39,7 @@ final class Master @Inject private
   scheduledOrderGeneratorKeeper: ScheduledOrderGeneratorKeeper,
   val eventCollector: EventCollector,
   eventIdGenerator: EventIdGenerator,
-  keyedEventBus: SnapshotKeyedEventBus,
+  keyedEventBus: StampedKeyedEventBus,
   timerService: TimerService,
   actorSystem: ActorSystem,
   executionContext: ExecutionContext,
@@ -63,8 +63,8 @@ final class Master @Inject private
   def executeCommand(command: MasterCommand): Future[command.MyResponse] =
     (orderKeeper ? command) map { _.asInstanceOf[command.MyResponse] }
 
-  def events[E <: Event](request: EventRequest[E]): Future[Snapshot[EventSeq[Seq, KeyedEvent[E]]]] =
-    eventIdGenerator.wrapInSnapshot(eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true))
+  def events[E <: Event](request: EventRequest[E]): Future[Stamped[EventSeq[Seq, KeyedEvent[E]]]] =
+    eventIdGenerator.stampEventSeq(eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true))
 
   def getOrder(orderId: OrderId): Future[Option[Order[Order.State]]] =
     (orderKeeper ? MasterOrderKeeper.Command.Get(orderId)).mapTo[Option[Order[Order.State]]]

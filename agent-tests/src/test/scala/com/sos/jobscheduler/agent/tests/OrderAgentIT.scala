@@ -71,7 +71,7 @@ final class OrderAgentIT extends FreeSpec {
 
           waitForCondition(10.s, 100.ms) {
             agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.s)) await 99.s match {
-              case EventSeq.NonEmpty(eventSnapshots) if eventSnapshots map { _.value } contains KeyedEvent(OrderReady)(order.id) ⇒
+              case EventSeq.NonEmpty(stampeds) if stampeds map { _.value } contains KeyedEvent(OrderReady)(order.id) ⇒
                 true
               case _ ⇒
                 false

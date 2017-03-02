@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator
 import com.sos.jobscheduler.shared.event.journal.Journal
 import com.sos.jobscheduler.shared.event.journal.tests.JsonJournalTest._
@@ -126,7 +126,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
   private def journalKeyedEvents =
     journalJsValues collect {
       case o: JsObject if TestKeyedEventJsonFormat canDeserialize o ⇒
-        o.convertTo[Snapshot[AnyKeyedEvent]].value
+        o.convertTo[Stamped[AnyKeyedEvent]].value
     }
 
   private def journalAggregates =

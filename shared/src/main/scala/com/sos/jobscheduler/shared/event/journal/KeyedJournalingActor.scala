@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor._
 import scala.concurrent.Future
 
@@ -34,7 +34,7 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
       registered = true
       recoverFromSnapshot(o)
 
-    case Input.RecoverFromEvent(Snapshot(_, KeyedEvent(k, event))) ⇒
+    case Input.RecoverFromEvent(Stamped(_, KeyedEvent(k, event))) ⇒
       assert(k == key)
       registered = true
       recoverFromEvent(event.asInstanceOf[E])
@@ -50,7 +50,7 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
 object KeyedJournalingActor {
   private[journal] object Input {
     final case class RecoverFromSnapshot(snapshot: Any)
-    final case class RecoverFromEvent(eventSnapshot: Snapshot[AnyKeyedEvent])
+    final case class RecoverFromEvent(eventStamped: Stamped[AnyKeyedEvent])
     //final case object FinishRecovery
   }
 }

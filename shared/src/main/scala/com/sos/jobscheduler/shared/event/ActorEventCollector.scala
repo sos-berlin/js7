@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, Stamped}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 import ActorEventCollector._
@@ -19,7 +19,7 @@ final class ActorEventCollector @Inject private(
   timerService: TimerService,
   executionContext: ExecutionContext,
   protected val eventIdGenerator: EventIdGenerator,
-  keyedEventBus: SnapshotKeyedEventBus,
+  keyedEventBus: StampedKeyedEventBus,
   actorSystem: ActorSystem)
 extends EventCollector(initialOldestEventId = eventIdGenerator.next(), configuration)(timerService, executionContext)
 with AutoCloseable {
@@ -40,7 +40,8 @@ with AutoCloseable {
         }
 
         def receive = {
-          case event: Snapshot[AnyKeyedEvent] ⇒ putEventSnapshot(event)
+          case event @ Stamped(_, _: AnyKeyedEvent) ⇒
+            addStamped(event.asInstanceOf[Stamped[AnyKeyedEvent]])
         }
       }
     },

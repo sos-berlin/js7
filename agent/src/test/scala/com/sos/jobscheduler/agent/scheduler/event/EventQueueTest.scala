@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.engine2.order.OrderEvent
 import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderReady
-import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
 import java.time.Duration
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -33,25 +33,25 @@ final class EventQueueTest extends FreeSpec with BeforeAndAfterAll {
     assert((requestEvents(after = EventId.BeforeFirst, timeout = 10.ms) await 99.s) == EventSeq.Empty(EventId.BeforeFirst))
 
     val aKeyedEvent = KeyedEvent(OrderReady)(OrderId("1"))
-    eventQueue ! Snapshot(111, aKeyedEvent)
+    eventQueue ! Stamped(111, aKeyedEvent)
     val aEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
-    assert((aEventSeq.eventSnapshots map { _.value }) == List(aKeyedEvent))
-    val aEventId = aEventSeq.eventSnapshots.last.eventId
+    assert((aEventSeq.stampeds map { _.value }) == List(aKeyedEvent))
+    val aEventId = aEventSeq.stampeds.last.eventId
     assert(aEventId == 111)
 
     val whenBEventSeq = requestEvents(after = aEventId, timeout = 99.s).mapTo[EventSeq.NonEmpty[Seq, KeyedEvent[OrderEvent]]]
     sleep(50.ms)
     val bKeyedEvent = KeyedEvent(OrderReady)(OrderId("1"))
-    eventQueue ! Snapshot(222, bKeyedEvent)
+    eventQueue ! Stamped(222, bKeyedEvent)
     val bEventSeq = whenBEventSeq await 99.s
-    assert((bEventSeq.eventSnapshots map { _.value }) == List(bKeyedEvent))
-    assert(bEventSeq.eventSnapshots.last.eventId > EventId.BeforeFirst)
+    assert((bEventSeq.stampeds map { _.value }) == List(bKeyedEvent))
+    assert(bEventSeq.stampeds.last.eventId > EventId.BeforeFirst)
 
     val cEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
-    assert((cEventSeq.eventSnapshots map { _.value }) == List(aKeyedEvent, bKeyedEvent))
+    assert((cEventSeq.stampeds map { _.value }) == List(aKeyedEvent, bKeyedEvent))
 
     val dEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s, limit = 1) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
-    assert((dEventSeq.eventSnapshots map { _.value }) == List(aKeyedEvent))
+    assert((dEventSeq.stampeds map { _.value }) == List(aKeyedEvent))
   }
 
   private def requestEvents(after: EventId, timeout: Duration, limit: Int = Int.MaxValue): Future[EventSeq[Seq, KeyedEvent[OrderEvent]]] = {

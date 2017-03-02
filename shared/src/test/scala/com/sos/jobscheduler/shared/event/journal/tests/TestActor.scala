@@ -11,8 +11,8 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
-import com.sos.jobscheduler.data.event.{KeyedEvent, Snapshot}
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.tests.TestActor._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer}
@@ -32,7 +32,7 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
   }
   private implicit val askTimeout = Timeout(999.seconds)
   private val journalActor = context.actorOf(
-    Props { new JsonJournalActor(TestJsonJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new SnapshotKeyedEventBus) },
+    Props { new JsonJournalActor(TestJsonJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new StampedKeyedEventBus) },
     "Journal")
   private val keyToAggregate = mutable.Map[String, ActorRef]()
 
@@ -49,8 +49,8 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
           case RecoveringSnapshot(snapshot: TestAggregate) ⇒
             journal.addActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
 
-          case RecoveringForUnknownKey(eventSnapshot @ Snapshot(_, KeyedEvent(key: String, _: TestEvent.Added))) ⇒
-            journal.addActorForFirstEvent(eventSnapshot, newAggregateActor(key))
+          case RecoveringForUnknownKey(stamped @ Stamped(_, KeyedEvent(key: String, _: TestEvent.Added))) ⇒
+            journal.addActorForFirstEvent(stamped, newAggregateActor(key))
 
           case _: RecoveringForKnownKey ⇒
         }

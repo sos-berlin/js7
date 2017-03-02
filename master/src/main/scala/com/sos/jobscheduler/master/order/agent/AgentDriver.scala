@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.order.agent
 
-import java.time.Instant.now
 import akka.Done
 import akka.actor.{Actor, DeadLetterSuppression, Stash}
 import akka.pattern.pipe
@@ -13,15 +12,15 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.engine2.agent.AgentPath
 import com.sos.jobscheduler.data.engine2.order.{JobNet, Order, OrderEvent}
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.order.agent.AgentDriver._
+import java.time.Instant.now
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 import spray.http.Uri
-import com.sos.jobscheduler.common.time.ScalaTime._
 
 /**
   * @author Joacim Zschimmer
@@ -150,9 +149,9 @@ with Stash {
 
     case Internal.CommandReady ⇒
 
-    case Internal.AgentEvent(eventSnapshot) ⇒
-      context.parent ! Output.EventFromAgent(eventSnapshot)  // TODO Possible Akka Mailbox overflow. Use reactive stream ?
-      lastEventId = eventSnapshot.eventId
+    case Internal.AgentEvent(stamped) ⇒
+      context.parent ! Output.EventFromAgent(stamped)  // TODO Possible Akka Mailbox overflow. Use reactive stream ?
+      lastEventId = stamped.eventId
   }
 
   private def startEventFetcher(): Unit = {
@@ -160,7 +159,7 @@ with Stash {
     logger.info(s"Fetching events after ${EventId.toString(lastEventId)}")
     eventFetcher = new EventFetcher[OrderEvent](lastEventId) {
       def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request)
-      def onEvent(eventSnapshot: Snapshot[KeyedEvent[OrderEvent]]) = self ! Internal.AgentEvent(eventSnapshot)
+      def onEvent(stamped: Stamped[KeyedEvent[OrderEvent]]) = self ! Internal.AgentEvent(stamped)
     }
     eventFetcher.start().onComplete {
       o ⇒ self ! Internal.EventFetcherTerminated(o)
@@ -254,7 +253,7 @@ private[master] object AgentDriver {
   }
 
   object Output {
-    final case class EventFromAgent(eventSnapshot: Snapshot[AnyKeyedEvent])
+    final case class EventFromAgent(stamped: Stamped[AnyKeyedEvent])
     final case object Recovered
     final case class OrderDetached(orderId: OrderId)
   }
@@ -268,7 +267,7 @@ private[master] object AgentDriver {
     final case class OrderAttachedToAgent(command: Input.AttachOrder, result: Try[Done])
     final case object CommandReady
     final case class OrderDetached(orderId: OrderId)
-    final case class AgentEvent(eventSnapshot: Snapshot[KeyedEvent[OrderEvent]])
+    final case class AgentEvent(stamped: Stamped[KeyedEvent[OrderEvent]])
     final case class EventFetcherTerminated(completed: Try[Completed]) extends DeadLetterSuppression
   }
 }

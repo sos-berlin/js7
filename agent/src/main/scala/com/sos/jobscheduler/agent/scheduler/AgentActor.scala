@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.engine2.order.JobPath
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.Path
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -29,7 +29,7 @@ final class AgentActor(
   syncOnCommit: Boolean)
   (implicit
     timerService: TimerService,
-    keyedEventBus: SnapshotKeyedEventBus,
+    keyedEventBus: StampedKeyedEventBus,
     eventIdGenerator: EventIdGenerator,
     newTask: AgentTaskFactory,
     executionContext: ExecutionContext)

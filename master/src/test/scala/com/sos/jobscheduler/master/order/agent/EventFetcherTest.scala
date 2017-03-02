@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.order.agent
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, NoKeyEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, NoKeyEvent, Stamped}
 import com.sos.jobscheduler.master.order.agent.EventFetcherTest._
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
@@ -18,7 +18,7 @@ final class EventFetcherTest extends FreeSpec {
 
   "test" in {
     implicit val timerService = TimerService(idleTimeout = Some(1.s))
-    val collector = mutable.Buffer[Snapshot[KeyedEvent[TestEvent]]]()
+    val collector = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
     val aBarrier, bBarrier, cBarrier, dBarrier = new CountDownLatch(1)
     val fetcher = new EventFetcher[TestEvent](after = 100) {
       var step = 0
@@ -29,8 +29,8 @@ final class EventFetcherTest extends FreeSpec {
             case 1 ⇒
               assert(request.after == 100)
               EventSeq.NonEmpty(List(
-                Snapshot(101, KeyedEvent(AEvent(1))),
-                Snapshot(102, KeyedEvent(AEvent(2)))))
+                Stamped(101, KeyedEvent(AEvent(1))),
+                Stamped(102, KeyedEvent(AEvent(2)))))
             case 2 ⇒
               aBarrier.countDown()
               bBarrier.await()
@@ -39,7 +39,7 @@ final class EventFetcherTest extends FreeSpec {
             case 3 ⇒
               assert(request.after == 200)
               EventSeq.NonEmpty(List(
-                Snapshot(201, KeyedEvent(AEvent(3)))))
+                Stamped(201, KeyedEvent(AEvent(3)))))
             case 4 ⇒
               cBarrier.countDown()
               dBarrier.await()
@@ -48,15 +48,15 @@ final class EventFetcherTest extends FreeSpec {
           }
         }
 
-      def onEvent(eventSnapshot: Snapshot[KeyedEvent[TestEvent]]) =
-        collector += eventSnapshot
+      def onEvent(stamped: Stamped[KeyedEvent[TestEvent]]) =
+        collector += stamped
     }
 
     val whenCompleted = fetcher.start()
     aBarrier.await()
     assert(collector == List(
-      Snapshot(101, KeyedEvent(AEvent(1))),
-      Snapshot(102, KeyedEvent(AEvent(2)))))
+      Stamped(101, KeyedEvent(AEvent(1))),
+      Stamped(102, KeyedEvent(AEvent(2)))))
     bBarrier.countDown()
     cBarrier.await()
     assert(!whenCompleted.isCompleted)
@@ -64,9 +64,9 @@ final class EventFetcherTest extends FreeSpec {
     fetcher.close()
     whenCompleted await 3.s
     assert(collector == List(
-      Snapshot(101, KeyedEvent(AEvent(1))),
-      Snapshot(102, KeyedEvent(AEvent(2))),
-      Snapshot(201, KeyedEvent(AEvent(3)))))
+      Stamped(101, KeyedEvent(AEvent(1))),
+      Stamped(102, KeyedEvent(AEvent(2))),
+      Stamped(201, KeyedEvent(AEvent(3)))))
   }
 }
 

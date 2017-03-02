@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.event.collector
 
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped}
 
 /**
   * @author Joacim Zschimmer
@@ -11,14 +11,14 @@ trait ForeignEventIdAdapting {
 
   protected val eventIdGenerator: EventIdGenerator
 
-  final def putForeignEventSnapshot(snapshot: Snapshot[AnyKeyedEvent]): Unit = {
-    putEventSnapshot(adapt(snapshot))
+  final def putForeignEventStamped(snapshot: Stamped[AnyKeyedEvent]): Unit = {
+    addStamped(adapt(snapshot))
   }
 
-  private def adapt(snapshot: Snapshot[AnyKeyedEvent]): Snapshot[AnyKeyedEvent] = {
+  private def adapt(snapshot: Stamped[AnyKeyedEvent]): Stamped[AnyKeyedEvent] = {
     if (lastEventId < snapshot.eventId)
       snapshot
     else
-      Snapshot(lastEventId + 1, snapshot.value)
+      Stamped(lastEventId + 1, snapshot.value)
   }
 }

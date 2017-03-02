@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.event.collector
 
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped}
 
 /**
   * @author Joacim Zschimmer
@@ -13,6 +13,6 @@ trait EventIdGenerating {
 
   protected final def putEvent(keyedEvent: AnyKeyedEvent): Unit = {
     val eventId = eventIdGenerator.next()
-    putEventSnapshot(Snapshot(eventId, keyedEvent))
+    addStamped(Stamped(eventId, keyedEvent))
   }
 }

@@ -31,7 +31,7 @@ import com.sos.jobscheduler.data.engine2.order.JobNet.{EndNode, JobNode}
 import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId, NodeKey, Order, OrderEvent}
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.shared.event.{ActorEventCollector, SnapshotKeyedEventBus}
+import com.sos.jobscheduler.shared.event.{ActorEventCollector, StampedKeyedEventBus}
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
 import java.nio.file.Path
 import org.scalatest.FreeSpec
@@ -81,7 +81,7 @@ final class AgentActorIT extends FreeSpec {
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
     implicit val agentTaskFactory = injector.instance[AgentTaskFactory]
     implicit val timerService = TimerService(idleTimeout = Some(1.s))
-    implicit val keyedEventBus = injector.instance[SnapshotKeyedEventBus]
+    implicit val keyedEventBus = injector.instance[StampedKeyedEventBus]
     implicit val eventIdGenerator = injector.instance[EventIdGenerator]
 
     val eventCollector = injector.createChildInjector(new AbstractModule {

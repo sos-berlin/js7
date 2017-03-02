@@ -21,7 +21,7 @@ final class EventSeqTest extends FreeSpec {
   "JSON EventSeq.NonEmpty" in {
     check(
       EventSeq.NonEmpty(List(
-        Snapshot(1, KeyedEvent(TestEvent)("KEY")))),
+        Stamped(1, KeyedEvent(TestEvent)("KEY")))),
       """{
         "TYPE": "NonEmpty",
         "eventSnapshots": [

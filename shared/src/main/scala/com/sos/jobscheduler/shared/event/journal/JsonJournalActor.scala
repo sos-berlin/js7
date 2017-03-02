@@ -7,8 +7,8 @@ import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Snapshot}
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped}
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.Journal.{Input, Output}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalActor._
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
@@ -30,7 +30,7 @@ final class JsonJournalActor(
   file: Path,
   syncOnCommit: Boolean,
   eventIdGenerator: EventIdGenerator,
-  keyedEventBus: SnapshotKeyedEventBus)
+  keyedEventBus: StampedKeyedEventBus)
 extends Actor with Stash {
 
   import meta.{convertOutputStream, eventJsonFormat, snapshotJsonFormat}
@@ -84,13 +84,13 @@ extends Actor with Stash {
       handleRegisterMe(msg)
 
     case Input.Store(keyedEvents, replyTo) ⇒
-      val eventSnapshots = keyedEvents map eventIdGenerator.newSnapshot
+      val stampeds = keyedEvents map eventIdGenerator.stamp
       Try {
-        eventSnapshots map { _.toJson }
+        stampeds map { _.toJson }
       } match {
         case Success(jsValues) ⇒
           writeToDisk(jsValues, replyTo)
-          writtenBuffer += Written(eventSnapshots, replyTo, sender())
+          writtenBuffer += Written(stampeds, replyTo, sender())
           self.forward(Internal.Commit(writtenBuffer.length))  // Commit after possibly outstanding Input.Store messages
           statistics.commits += 1
 
@@ -112,12 +112,12 @@ extends Actor with Stash {
             throw tt;
         }
         statistics.flushes += 1
-        logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.eventSnapshots.size }).sum} events")
-        for (Written(eventSnapshots, replyTo, sender) ← writtenBuffer) {
-          replyTo.tell(Output.Stored(eventSnapshots), sender)
-          for (eventSnapshot ← eventSnapshots) {
-            logger.trace(s"STORED $eventSnapshot")
-            keyedEventBus.publish(eventSnapshot)
+        logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.stampedEvents.size }).sum} events")
+        for (Written(stampeds, replyTo, sender) ← writtenBuffer) {
+          replyTo.tell(Output.Stored(stampeds), sender)
+          for (stamped ← stampeds) {
+            logger.trace(s"STORED $stamped")
+            keyedEventBus.publish(stamped)
           }
         }
         writtenBuffer.clear()
@@ -202,5 +202,5 @@ object JsonJournalActor {
     final case class Commit(writtenLevel: Int)
   }
 
-  private case class Written(eventSnapshots: Seq[Snapshot[AnyKeyedEvent]], replyTo: ActorRef, sender: ActorRef)
+  private case class Written(stampedEvents: Seq[Stamped[AnyKeyedEvent]], replyTo: ActorRef, sender: ActorRef)
 }

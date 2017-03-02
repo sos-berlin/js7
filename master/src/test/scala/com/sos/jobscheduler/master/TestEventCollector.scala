@@ -5,9 +5,9 @@ import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, Stamped}
 import com.sos.jobscheduler.master.TestEventCollector._
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import scala.concurrent.ExecutionContext
 
 /**
@@ -20,7 +20,7 @@ extends EventCollector(
   TimerService(idleTimeout = Some(1.s)),
   ExecutionContext.global)
 {
-  def start(actorRefFactory: ActorRefFactory, keyedEventBus: SnapshotKeyedEventBus): Unit = {
+  def start(actorRefFactory: ActorRefFactory, keyedEventBus: StampedKeyedEventBus): Unit = {
     actorRefFactory.actorOf(
       Props {
         new Actor {
@@ -37,9 +37,9 @@ extends EventCollector(
           }
 
           def receive = {
-            case event: Snapshot[AnyKeyedEvent] ⇒
+            case event: Stamped[AnyKeyedEvent] ⇒
               logger.debug(event.toString)
-              putEventSnapshot(event)
+              addStamped(event)
           }
         }
       },

@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.master.order.agent.EventFetcher._
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
@@ -21,7 +21,7 @@ extends AutoCloseable {
 
   def fetchEvents(request: EventRequest[E]): Future[EventSeq[Seq, KeyedEvent[E]]]
 
-  def onEvent(eventSnapshot: Snapshot[KeyedEvent[E]]): Unit
+  def onEvent(stamped: Stamped[KeyedEvent[E]]): Unit
 
   private var count = 0
   @volatile private var closed = false
@@ -36,13 +36,13 @@ extends AutoCloseable {
       for (_ ← timerService.delayed(delay);
            eventSeq ← fetchEvents(EventRequest.singleClass(after = after, EventTimeout));
            completed ← eventSeq match {
-              case EventSeq.NonEmpty(eventSnapshots) ⇒
-                for (eventSnapshot ← eventSnapshots if !closed) {
+              case EventSeq.NonEmpty(stampeds) ⇒
+                for (stamped ← stampeds if !closed) {
                   count += 1
-                  logger.trace(s"#$count $eventSnapshot")
-                  onEvent(eventSnapshot)
+                  logger.trace(s"#$count $stampeds")
+                  onEvent(stamped)
                 }
-                fetch(eventSnapshots.last.eventId)
+                fetch(stampeds.last.eventId)
               case EventSeq.Empty(lastEventId) ⇒
                 fetch(lastEventId)
               case EventSeq.Torn ⇒  // Agent's event stream never tears (maybe we should replace EventSeq something simpler)

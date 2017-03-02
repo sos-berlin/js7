@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.event.collector
 
 import com.google.common.collect.{AbstractIterator ⇒ GuavaIterator}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, Stamped}
 import java.util.NoSuchElementException
 import scala.collection.JavaConversions._
 
@@ -10,12 +10,12 @@ import scala.collection.JavaConversions._
   * @author Joacim Zschimmer
   */
 final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
-  private val queue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, Snapshot[AnyKeyedEvent]]
+  private val queue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, Stamped[AnyKeyedEvent]]
   private var queueSize: Int = 0
   @volatile
   private var lastRemovedFirstId: EventId = initialOldestEventId
 
-  def add(snapshot: Snapshot[AnyKeyedEvent]): Unit =
+  def add(snapshot: Stamped[AnyKeyedEvent]): Unit =
     synchronized {
       require(lastEventId < snapshot.eventId,
         s"EventId '${EventId.toString(snapshot.eventId)}' is not greater than last Eventid ${EventId.toString(lastEventId)}")
@@ -36,19 +36,19 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
     * <p>
     *   None is returned if the queue has torn at its front (`after` < `oldestEventId`).
     */
-  def after(after: EventId): Option[Iterator[Snapshot[AnyKeyedEvent]]] = {
+  def after(after: EventId): Option[Iterator[Stamped[AnyKeyedEvent]]] = {
     val result = new EventIterator(after, queue.navigableKeySet.tailSet(after, false).iterator map queue.get)
     try {
       // hasNext and peek may throw NoSuchElementException in case of race condition ?
       if (result.hasNext) result.peek
-      // result is empty or has the first Snapshot in its head buffer.
+      // result is empty or has the first Stamped in its head buffer.
       after >= oldestEventId option result
     } catch { case _: NoSuchElementException ⇒
       None
     }
   }
 
-  def reverseEvents(after: EventId): Iterator[Snapshot[AnyKeyedEvent]] =
+  def reverseEvents(after: EventId): Iterator[Stamped[AnyKeyedEvent]] =
     new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator takeWhile { _ > after } map queue.get)
 
   def lastEventId: EventId =
@@ -61,8 +61,8 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
   def size: Int =
     queueSize
 
-  private class EventIterator(firstEventId: EventId, snapshots: Iterator[Snapshot[AnyKeyedEvent]])
-  extends GuavaIterator[Snapshot[AnyKeyedEvent]] {
+  private class EventIterator(firstEventId: EventId, snapshots: Iterator[Stamped[AnyKeyedEvent]])
+  extends GuavaIterator[Stamped[AnyKeyedEvent]] {
     private var lastReturnedEventId = firstEventId
 
     def computeNext() =

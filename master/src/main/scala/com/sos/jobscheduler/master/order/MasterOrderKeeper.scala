@@ -18,7 +18,7 @@ import com.sos.jobscheduler.data.engine2.order.JobNet.{EndNode, JobNode}
 import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderAdded
 import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobNet, Order, OrderEvent}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.KeyedEventJsonFormats.MasterKeyedEventJsonFormat
 import com.sos.jobscheduler.master.command.MasterCommand
@@ -27,7 +27,7 @@ import com.sos.jobscheduler.master.order.MasterOrderKeeper._
 import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentParser}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.common.ActorRegister
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.time.Duration
@@ -44,7 +44,7 @@ final class MasterOrderKeeper(
     timerService: TimerService,
     eventIdGenerator: EventIdGenerator,
     eventCollector: EventCollector,
-    keyedEventBus: SnapshotKeyedEventBus)
+    keyedEventBus: StampedKeyedEventBus)
 extends KeyedEventJournalingActor[Event]
 with Stash {
 
@@ -112,10 +112,10 @@ with Stash {
           case RecoveringSnapshot(o: OrderScheduleEndedAt) ⇒
             journal.addActorForSnapshot(o, orderScheduleGenerator)
 
-          case RecoveringForUnknownKey(eventSnapshot @ Snapshot(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
-            journal.addActorForFirstEvent(eventSnapshot, orderScheduleGenerator)
+          case RecoveringForUnknownKey(stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
+            journal.addActorForFirstEvent(stamped, orderScheduleGenerator)
 
-          case RecoveringChanged(Snapshot(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
+          case RecoveringChanged(Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
 
           case RecoveringSnapshot(order: Order[Order.State]) ⇒
           orderRegister += order.id → OrderEntry(order)
@@ -124,7 +124,7 @@ with Stash {
           agentRegister(agentPath).lastAgentEventId = eventId
           //journal.addActorForSnapshot(snapshot, agentRegister(agentPath).actor)
 
-          case RecoveringForUnknownKey(Snapshot(_, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
+          case RecoveringForUnknownKey(Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
             event match {
               case event: OrderEvent.OrderAdded ⇒
                 onOrderAdded(orderId, event)
@@ -133,7 +133,7 @@ with Stash {
             }
             lastRecoveredOrderEvents += orderId → event
 
-          case RecoveringForUnknownKey(Snapshot(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId)))) ⇒
+          case RecoveringForUnknownKey(Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId)))) ⇒
             agentRegister(agentPath).lastAgentEventId = agentEventId
         }
         journal.recoveredJournalingActors
@@ -254,7 +254,7 @@ with Stash {
           }
       }
 
-    case msg @ AgentDriver.Output.EventFromAgent(Snapshot(agentEventId, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
+    case msg @ AgentDriver.Output.EventFromAgent(Stamped(agentEventId, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
       val agentEntry = agentRegister(sender())
       import agentEntry.agentPath
       if (orderRegister contains orderId) {
@@ -282,7 +282,7 @@ with Stash {
     case msg @ Journal.Output.SerializationFailure(throwable) ⇒
       logger.error(msg.toString, throwable) // Ignore this ???
 
-    case Snapshot(_, keyedEvent: AnyKeyedEvent) ⇒
+    case Stamped(_, keyedEvent: AnyKeyedEvent) ⇒
       keyedEvent match {
         case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
           handleOrderEvent(orderId, event)
@@ -369,8 +369,8 @@ with Stash {
           val idleOrder = orderEntry.order.castState[Order.Idle]  // ???
           tryAttachOrderToAgent(idleOrder, jobNet, node.agentPath)
         case _: EndNode ⇒
-          persist(KeyedEvent(OrderEvent.OrderFinished)(orderId)) { eventSnapshot ⇒
-            logger.info(eventSnapshot.toString)
+          persist(KeyedEvent(OrderEvent.OrderFinished)(orderId)) { stamped ⇒
+            logger.info(stamped.toString)
           }
       }
     }

@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.{DuplicateKeyException, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer._
 import java.nio.file.{Files, Path}
@@ -74,21 +74,21 @@ extends AutoCloseable with Iterator[Recovering]
         val jsValue = jsonIterator.next()
         if (eventJsonFormat canDeserialize jsValue.asJsObject) {
           eventCount += 1
-          val eventSnapshot = jsValue.convertTo[Snapshot[AnyKeyedEvent]]
-          if (eventSnapshot.eventId <= lastEventId)
-            sys.error(s"Journal is corrupted, EventIds are out of order: ${EventId.toString(lastEventId)} >= ${EventId.toString(eventSnapshot.eventId)}")
-          lastEventId = eventSnapshot.eventId
-          val KeyedEvent(key, event) = eventSnapshot.value
+          val eventStamped = jsValue.convertTo[Stamped[AnyKeyedEvent]]
+          if (eventStamped.eventId <= lastEventId)
+            sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(lastEventId)} >= ${EventId.toString(eventStamped.eventId)}")
+          lastEventId = eventStamped.eventId
+          val KeyedEvent(key, event) = eventStamped.value
           keyToActor.get(key) match {
             case None ⇒
-              Some(RecoveringForUnknownKey(eventSnapshot))
+              Some(RecoveringForUnknownKey(eventStamped))
             case Some(a) ⇒
-              a ! KeyedJournalingActor.Input.RecoverFromEvent(eventSnapshot)
+              a ! KeyedJournalingActor.Input.RecoverFromEvent(eventStamped)
               if (isDeletedEvent(event)) {
                 keyToActor -= key
-                Some(RecoveringDeleted(eventSnapshot))
+                Some(RecoveringDeleted(eventStamped))
               } else
-                Some(RecoveringChanged(eventSnapshot))
+                Some(RecoveringChanged(eventStamped))
           }
         } else {
           snapshotCount += 1
@@ -111,12 +111,12 @@ extends AutoCloseable with Iterator[Recovering]
     actorRef ! KeyedJournalingActor.Input.RecoverFromSnapshot(snapshot)
   }
 
-  def addActorForFirstEvent(eventSnapshot: Snapshot[AnyKeyedEvent], actorRef: ActorRef): Unit = {
-    val keyedEvent = eventSnapshot.value
+  def addActorForFirstEvent(stampedEvent: Stamped[AnyKeyedEvent], actorRef: ActorRef): Unit = {
+    val keyedEvent = stampedEvent.value
     import keyedEvent.key
     if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate key: '$key'")
     keyToActor += key → actorRef
-    actorRef ! KeyedJournalingActor.Input.RecoverFromEvent(eventSnapshot)
+    actorRef ! KeyedJournalingActor.Input.RecoverFromEvent(stampedEvent)
   }
 
   //def startJournalAndFinishRecovery(parent: Actor, journalActor: ActorRef): Unit = {
@@ -134,28 +134,28 @@ object JsonJournalRecoverer {
   sealed trait Recovering
   final case class RecoveringSnapshot(snapshot: Any) extends Recovering
   sealed trait RecoveringEvent extends Recovering {
-    def eventSnapshot: Snapshot[AnyKeyedEvent]
+    def eventStamped: Stamped[AnyKeyedEvent]
   }
-  final case class RecoveringForUnknownKey(eventSnapshot: Snapshot[AnyKeyedEvent]) extends Recovering
+  final case class RecoveringForUnknownKey(stampedEvent: Stamped[AnyKeyedEvent]) extends Recovering
   sealed trait RecoveringForKnownKey extends Recovering {
-    def eventSnapshot: Snapshot[AnyKeyedEvent]
+    def stampedEvent: Stamped[AnyKeyedEvent]
   }
-  final case class RecoveringChanged(eventSnapshot: Snapshot[AnyKeyedEvent]) extends RecoveringForKnownKey
-  final case class RecoveringDeleted(eventSnapshot: Snapshot[AnyKeyedEvent]) extends RecoveringForKnownKey
+  final case class RecoveringChanged(stampedEvent: Stamped[AnyKeyedEvent]) extends RecoveringForKnownKey
+  final case class RecoveringDeleted(stampedEvent: Stamped[AnyKeyedEvent]) extends RecoveringForKnownKey
 
   //sealed trait RecoverResult
   //final case class AddActorForSnapshot(snapshot: Any, actorRef: ActorRef) extends RecoverResult
-  //final case class AddActorForFirstEvent(eventSnapshot: Snapshot[AnyKeyedEvent], actorRef: ActorRef) extends RecoverResult
+  //final case class AddActorForFirstEvent(stampedEvent: Stamped[AnyKeyedEvent], actorRef: ActorRef) extends RecoverResult
   //final case object Ignore extends RecoverResult
   //
   //def recover(meta: JsonJournalMeta, file: Path)(recover: PartialFunction[Recovered, RecoverResult]): RecoveredJournalingActors =
   //  autoClosing(new JsonJournalRecoverer(meta, file)) { journal ⇒
   //    for (recovered ← journal) {
   //      recover(recovered) match {
-  //        case AddActorForSnapshot(snapshot, actorRef) ⇒
-  //          journal.addActorForSnapshot(snapshot, actorRef)
-  //        case AddActorForFirstEvent(eventSnapshot, actorRef) ⇒
-  //          journal.addActorForFirstEvent(eventSnapshot, actorRef)
+  //        case AddActorForSnapshot(stamped, actorRef) ⇒
+  //          journal.addActorForSnapshot(stamped, actorRef)
+  //        case AddActorForFirstEvent(stampedEvent, actorRef) ⇒
+  //          journal.addActorForFirstEvent(stampedEvent, actorRef)
   //        case Ignore ⇒
   //      }
   //    }

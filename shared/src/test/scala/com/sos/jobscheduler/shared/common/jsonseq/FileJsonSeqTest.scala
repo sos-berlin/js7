@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.common.jsonseq.FileJsonSeqTest._
 import java.io.{FileInputStream, FileOutputStream, InputStream, OutputStream}
 import java.nio.file.Files
@@ -80,7 +80,7 @@ final class FileJsonSeqTest extends FreeSpec {
         val stopwatch = new Stopwatch
         for (_ ← 1 to 2) {
           for (i ← 1 to n) {
-            Snapshot(i, KeyedEvent(x)(i.toString)).toJson
+            Stamped(i, KeyedEvent(x)(i.toString)).toJson
           }
           info("toJson: " + stopwatch.itemsPerSecondString(n, "documents"))
         }
@@ -102,7 +102,7 @@ final class FileJsonSeqTest extends FreeSpec {
             val stopwatch = new Stopwatch
             for (_ ← 1 to m) {
               for (i ← 1 to n) {
-                w.writeJson(Snapshot(i, KeyedEvent(x)(i.toString)).toJson)
+                w.writeJson(Stamped(i, KeyedEvent(x)(i.toString)).toJson)
               }
               w.flush()
               info("OutputStreamJsonSeqWriter: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -118,7 +118,7 @@ final class FileJsonSeqTest extends FreeSpec {
             val stopwatch = new Stopwatch
             for (_ ← 1 to m) {
               for (i ← 1 to n) {
-                w.writeJson(Snapshot(i, KeyedEvent(x)(i.toString)).toJson)
+                w.writeJson(Stamped(i, KeyedEvent(x)(i.toString)).toJson)
                 w.flush()
               }
               info("flush: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -152,7 +152,7 @@ final class FileJsonSeqTest extends FreeSpec {
             for (_ ← 1 to 2) {
               val n = 100
               for (i ← 1 to n) {
-                w.writeJson(Snapshot(i, KeyedEvent(x)(i.toString)).toJson)
+                w.writeJson(Stamped(i, KeyedEvent(x)(i.toString)).toJson)
                 w.flush()
                 fileOut.getFD.sync()
               }

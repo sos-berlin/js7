@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.event
 
-import com.sos.jobscheduler.data.event.{EventId, EventSeq, Snapshot}
+import com.sos.jobscheduler.data.event.{EventId, EventSeq, Stamped}
 import java.lang.System._
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.{Inject, Singleton}
@@ -32,20 +32,20 @@ final class EventIdGenerator @Inject extends Iterator[EventId] {
   }
 
   /**
-    * Wraps `EventCollector`'s `EventSeq` (Iterator-based) into a Snapshot with own `EventId`.
+    * Wraps `EventCollector`'s `EventSeq` (Iterator-based) into a Stamped with own `EventId`.
     */
-  def wrapInSnapshot[E](future: ⇒ Future[EventSeq[Iterator, E]])(implicit ec: ExecutionContext): Future[Snapshot[EventSeq[Seq, E]]] = {
+  def stampEventSeq[E](future: ⇒ Future[EventSeq[Iterator, E]])(implicit ec: ExecutionContext): Future[Stamped[EventSeq[Seq, E]]] = {
     val eventId = next()
     for (eventSeq ← future) yield
       eventSeq match {
         case EventSeq.NonEmpty(eventsIterator) ⇒
-          Snapshot(math.max(eventId, lastUsedEventId), EventSeq.NonEmpty(eventsIterator.toVector))
+          Stamped(math.max(eventId, lastUsedEventId), EventSeq.NonEmpty(eventsIterator.toVector))
         case o: EventSeq.Empty ⇒
-          newSnapshot(o)
+          stamp(o)
         case EventSeq.Torn ⇒
-          newSnapshot(EventSeq.Torn)
+          stamp(EventSeq.Torn)
       }
   }
 
-  def newSnapshot[A](a: A) = Snapshot(next(), a)
+  def stamp[A](a: A) = Stamped(next(), a)
 }

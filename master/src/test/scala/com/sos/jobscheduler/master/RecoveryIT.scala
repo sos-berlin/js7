@@ -24,7 +24,7 @@ import com.sos.jobscheduler.master.RecoveryIT._
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
 import org.scalatest.FreeSpec
@@ -81,7 +81,7 @@ final class RecoveryIT extends FreeSpec {
             runMaster(dataDir) { master ⇒
               val eventSeq = eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = myLastEventId, 99.s), _.key.string startsWith TestJobChainPath.string) await 99.s
               val orderId = (eventSeq: @unchecked) match {
-                case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderEvent.OrderFinished.type]] ⇒ eventSeq.eventSnapshots.toVector.last.value.key
+                case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderEvent.OrderFinished.type]] ⇒ eventSeq.stampeds.toVector.last.value.key
               }
               master.getOrder(orderId) await 99.s shouldEqual
                 Some(Order(
@@ -100,7 +100,7 @@ final class RecoveryIT extends FreeSpec {
   private def runMaster(dataDir: Path)(body: Master ⇒ Unit): Unit = {
     withCloser { implicit closer ⇒
       val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(data = Some(dataDir / "master"))))
-      eventCollector.start(injector.instance[ActorSystem], injector.instance[SnapshotKeyedEventBus])
+      eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
       logger.debug("Close")
       injector.instance[Closer].closeWithCloser
       val master = injector.instance[Master]
@@ -183,6 +183,6 @@ private object RecoveryIT {
   private def lastEventIdOf[E <: Event](eventSeq: EventSeq[Iterator, KeyedEvent[E]]): EventId =
     eventSeq match {
       case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[E]] ⇒
-        eventSeq.eventSnapshots.toVector.last.eventId
+        eventSeq.stampeds.toVector.last.eventId
     }
 }

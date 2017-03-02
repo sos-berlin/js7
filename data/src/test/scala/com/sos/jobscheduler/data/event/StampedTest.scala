@@ -8,17 +8,17 @@ import spray.json._
 /**
   * @author Joacim Zschimmer
   */
-final class SnapshotTest extends FreeSpec {
+final class StampedTest extends FreeSpec {
 
   "map" in {
     val eventId = EventId(100)
-    assert((Snapshot(eventId, 3) map { _.toString }) == Snapshot(eventId, "3"))
+    assert((Stamped(eventId, 3) map { _.toString }) == Stamped(eventId, "3"))
   }
 
   "Pattern matching ignores EventId" in {
     assertResult(3) {
-      Snapshot(EventId(100), 3) match {
-        case Snapshot(_, o) ⇒ o
+      Stamped(EventId(100), 3) match {
+        case Stamped(_, o) ⇒ o
       }
     }
   }
@@ -26,22 +26,22 @@ final class SnapshotTest extends FreeSpec {
   "JSON with object" in {
     case class A(number: Int)
     implicit val aJsonFormat = jsonFormat1(A)
-    val o = Snapshot(EventId(777), A(111))
+    val o = Stamped(EventId(777), A(111))
     val json = """{
       "eventId": 777,
       "number": 111
     }""".parseJson
     assert(o.toJson == json)
-    assert(o == json.convertTo[Snapshot[A]])
+    assert(o == json.convertTo[Stamped[A]])
   }
 
   "JSON with array" in {
-    val o = Snapshot(EventId(777), List(111, 222))
+    val o = Stamped(EventId(777), List(111, 222))
     val json = """{
       "eventId": 777,
       "elements": [111, 222]
     }""".parseJson
     assert(o.toJson == json)
-    assert(o == json.convertTo[Snapshot[immutable.Seq[Int]]])
+    assert(o == json.convertTo[Stamped[immutable.Seq[Int]]])
   }
 }

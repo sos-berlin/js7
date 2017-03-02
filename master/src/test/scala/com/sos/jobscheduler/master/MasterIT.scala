@@ -21,14 +21,14 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.engine2.order.{JobChainPath, NodeId, NodeKey, Order, OrderEvent}
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Snapshot}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.MasterIT._
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.order.MasterOrderKeeper
-import com.sos.jobscheduler.shared.event.SnapshotKeyedEventBus
+import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.time.Instant
 import java.time.Instant.now
@@ -172,9 +172,9 @@ private object MasterIT {
 
     injector.instance[ActorSystem] actorOf Props {
       new Actor {
-        injector.instance[SnapshotKeyedEventBus].subscribe(self, classOf[Event])
+        injector.instance[StampedKeyedEventBus].subscribe(self, classOf[Event])
         def receive = {
-          case Snapshot(_, e: AnyKeyedEvent) ⇒ events.add(Entry(now, e))
+          case Stamped(_, e: AnyKeyedEvent) ⇒ events.add(Entry(now, e))
         }
       }
     }
