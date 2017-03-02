@@ -68,7 +68,9 @@ final class MasterIT extends FreeSpec {
             <params>
               <param name="x" value="XXX"/>
             </params>
-            <run_time absolute_repeat="1"/>
+            <run_time>
+              <period absolute_repeat="1"/>
+            </run_time>
           </order>
         (dataDir / "master/config/live/test-agent-111.agent.xml").xml =
           <agent uri={agents(0).localUri.string}/>
