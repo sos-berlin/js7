@@ -30,10 +30,10 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
     assert(keyedEventQueue.after(after = EventId.BeforeFirst).get.isEmpty)
     eventCollector.putEvent_(KeyedEvent(A1)("1"))
     eventCollector.putEvent_(KeyedEvent(A1)("2"))
-    val snapshots = keyedEventQueue.after(after = EventId.BeforeFirst).get.toVector
-    assert((snapshots map { _.value }) == Vector(KeyedEvent(A1)("1"), KeyedEvent(A1)("2")))
-    assert((keyedEventQueue.after(after = snapshots(0).eventId).get.toVector map { _.value }) == Vector(KeyedEvent(A1)("2")))
-    assert((keyedEventQueue.after(after = snapshots(1).eventId).get.toVector map { _.value }).isEmpty)
+    val stampedEventSeq = keyedEventQueue.after(after = EventId.BeforeFirst).get.toVector
+    assert((stampedEventSeq map { _.value }) == Vector(KeyedEvent(A1)("1"), KeyedEvent(A1)("2")))
+    assert((keyedEventQueue.after(after = stampedEventSeq(0).eventId).get.toVector map { _.value }) == Vector(KeyedEvent(A1)("2")))
+    assert((keyedEventQueue.after(after = stampedEventSeq(1).eventId).get.toVector map { _.value }).isEmpty)
   }
 
   "eventCollector.when with torn event stream" in {

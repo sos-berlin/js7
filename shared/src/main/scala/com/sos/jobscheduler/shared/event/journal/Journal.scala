@@ -20,7 +20,7 @@ object Journal {
   trait Output
   object Output {
     final case object Ready
-    final case class Stored(snapshots: Seq[Stamped[AnyKeyedEvent]]) extends Output
+    final case class Stored(stamped: Seq[Stamped[AnyKeyedEvent]]) extends Output
     final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken

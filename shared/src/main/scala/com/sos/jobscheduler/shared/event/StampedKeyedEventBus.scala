@@ -24,8 +24,8 @@ final class StampedKeyedEventBus extends EventBus with SubchannelClassification 
       y isAssignableFrom x
   }
 
-  protected def classify(snapshot: Stamped[AnyKeyedEvent]) =
-    snapshot.value.event.getClass
+  protected def classify(stamped: Stamped[AnyKeyedEvent]) =
+    stamped.value.event.getClass
 
   protected def publish(eventStamped: Stamped[AnyKeyedEvent], subscriber: ActorRef) =
     subscriber ! eventStamped

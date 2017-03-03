@@ -11,14 +11,14 @@ trait ForeignEventIdAdapting {
 
   protected val eventIdGenerator: EventIdGenerator
 
-  final def putForeignEventStamped(snapshot: Stamped[AnyKeyedEvent]): Unit = {
-    addStamped(adapt(snapshot))
+  final def putForeignEventStamped(stamped: Stamped[AnyKeyedEvent]): Unit = {
+    addStamped(adapt(stamped))
   }
 
-  private def adapt(snapshot: Stamped[AnyKeyedEvent]): Stamped[AnyKeyedEvent] = {
-    if (lastEventId < snapshot.eventId)
-      snapshot
+  private def adapt(stamped: Stamped[AnyKeyedEvent]): Stamped[AnyKeyedEvent] = {
+    if (lastEventId < stamped.eventId)
+      stamped
     else
-      Stamped(lastEventId + 1, snapshot.value)
+      Stamped(lastEventId + 1, stamped.value)
   }
 }

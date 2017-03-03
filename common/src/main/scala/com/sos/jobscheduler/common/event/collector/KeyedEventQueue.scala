@@ -15,16 +15,16 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
   @volatile
   private var lastRemovedFirstId: EventId = initialOldestEventId
 
-  def add(snapshot: Stamped[AnyKeyedEvent]): Unit =
+  def add(stamped: Stamped[AnyKeyedEvent]): Unit =
     synchronized {
-      require(lastEventId < snapshot.eventId,
-        s"EventId '${EventId.toString(snapshot.eventId)}' is not greater than last Eventid ${EventId.toString(lastEventId)}")
+      require(lastEventId < stamped.eventId,
+        s"EventId '${EventId.toString(stamped.eventId)}' is not greater than last Eventid ${EventId.toString(lastEventId)}")
       if (queueSize >= sizeLimit) {
         lastRemovedFirstId = queue.firstKey
         queue.remove(lastRemovedFirstId)
         queueSize -= 1
       }
-      queue.put(snapshot.eventId, snapshot)
+      queue.put(stamped.eventId, stamped)
       queueSize += 1
     }
 
@@ -61,17 +61,17 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
   def size: Int =
     queueSize
 
-  private class EventIterator(firstEventId: EventId, snapshots: Iterator[Stamped[AnyKeyedEvent]])
+  private class EventIterator(firstEventId: EventId, stampedIterator: Iterator[Stamped[AnyKeyedEvent]])
   extends GuavaIterator[Stamped[AnyKeyedEvent]] {
     private var lastReturnedEventId = firstEventId
 
     def computeNext() =
       try
-        if (snapshots.hasNext) {
-          val snapshot = snapshots.next()  // May throw NoSuchElementException in case of race condition ?
-          if (lastReturnedEventId >= oldestEventId && snapshot != null) {
-            lastReturnedEventId = snapshot.eventId
-            snapshot
+        if (stampedIterator.hasNext) {
+          val stamped = stampedIterator.next()  // May throw NoSuchElementException in case of race condition ?
+          if (lastReturnedEventId >= oldestEventId && stamped != null) {
+            lastReturnedEventId = stamped.eventId
+            stamped
           } else
             endOfData
         } else

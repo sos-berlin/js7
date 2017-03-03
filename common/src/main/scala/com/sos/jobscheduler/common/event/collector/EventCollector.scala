@@ -34,10 +34,10 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
       case request: EventRequest[E] ⇒
         when[E](request, predicate)
       case request: ReverseEventRequest[E] ⇒
-        val snapshots = reverse[E](request, predicate)
+        val stampeds = reverse[E](request, predicate)
         Future.successful(
-          if (snapshots.nonEmpty)
-            EventSeq.NonEmpty(snapshots)
+          if (stampeds.nonEmpty)
+            EventSeq.NonEmpty(stampeds)
           else
             EventSeq.Empty(keyedEventQueue.lastEventId))  // eventReverse is only for testing purposes
   }
@@ -109,8 +109,8 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
           stampeds
             .map { o ⇒ lastEventId = o.eventId; o }
             .collect {
-              case snapshot if collect.isDefinedAt(snapshot.value) ⇒
-                Stamped(snapshot.eventId, collect(snapshot.value))
+              case stamped if collect.isDefinedAt(stamped.value) ⇒
+                Stamped(stamped.eventId, collect(stamped.value))
             }
             .take(limit)
         if (eventIterator.nonEmpty)
@@ -129,10 +129,10 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
   =
     keyedEventQueue.reverseEvents(after = request.after)
       .collect {
-        case snapshot if request matchesClass snapshot.value.event.getClass ⇒
-          snapshot.asInstanceOf[Stamped[KeyedEvent[E]]]
+        case stamped if request matchesClass stamped.value.event.getClass ⇒
+          stamped.asInstanceOf[Stamped[KeyedEvent[E]]]
       }
-      .filter(snapshot ⇒ predicate(snapshot.value))
+      .filter(stamped ⇒ predicate(stamped.value))
       .take(request.limit)
 
   final def reverseForKey[E <: Event](
@@ -143,8 +143,8 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
   =
     keyedEventQueue.reverseEvents(after = request.after)
       .collect {
-        case snapshot if request matchesClass snapshot.value.event.getClass ⇒
-          snapshot.asInstanceOf[Stamped[KeyedEvent[E]]]
+        case stamped if request matchesClass stamped.value.event.getClass ⇒
+          stamped.asInstanceOf[Stamped[KeyedEvent[E]]]
       }
       .collect {
         case Stamped(eventId, KeyedEvent(`key`, event)) if predicate(event) ⇒
