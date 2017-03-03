@@ -1,15 +1,16 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.OrderHandler
+import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonFormat
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
 import com.sos.jobscheduler.data.engine2.order.OrderEvent
-import com.sos.jobscheduler.data.event.EventRequest
+import com.sos.jobscheduler.data.event.{EventRequest, ReverseEventRequest}
 import scala.concurrent.ExecutionContext
+import spray.http.StatusCodes.BadRequest
 import spray.routing.Directives._
 
 /**
@@ -31,6 +32,8 @@ trait MastersEventWebService extends AgentWebService {
                 for (events ← orderHandler.events(user.id, request)) yield
                   events
               }
+            case _: ReverseEventRequest[OrderEvent] ⇒
+              complete(BadRequest, "ReverseEventRequest is not supported here")
           }
         }
       }

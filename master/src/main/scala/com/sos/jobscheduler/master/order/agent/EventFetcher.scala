@@ -45,8 +45,6 @@ extends AutoCloseable {
                 fetch(stampeds.last.eventId)
               case EventSeq.Empty(lastEventId) ⇒
                 fetch(lastEventId)
-              case EventSeq.Torn ⇒  // Agent's event stream never tears (maybe we should replace EventSeq something simpler)
-                Future.failed(new RuntimeException(s"EventSeq is torn (after=${EventId.toString(after)}, $count events)"))
             })
         yield completed
 

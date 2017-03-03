@@ -47,7 +47,7 @@ trait OrderWebService extends AgentWebService {
   //  pathEnd {
   //    eventRequest[Event](defaultReturnType = Some("Event")).apply { request ⇒
   //      complete {
-  //        eventIdGenerator.stampEventSeq {
+  //        eventIdGenerator.stampTearableEventSeq {
   //          eventCollector.byPredicate(request, (e: AnyKeyedEvent) ⇒
   //            implicitly[KeyedTypedEventJsonFormat[E]].canSerialize(e.event))
   //        }

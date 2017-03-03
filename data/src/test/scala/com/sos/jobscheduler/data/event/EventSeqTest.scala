@@ -19,7 +19,7 @@ final class EventSeqTest extends FreeSpec {
   }
 
   "JSON EventSeq.NonEmpty" in {
-    check(
+    checkTearableEventSeq(
       EventSeq.NonEmpty(List(
         Stamped(1, KeyedEvent(TestEvent)("KEY")))),
       """{
@@ -35,7 +35,7 @@ final class EventSeqTest extends FreeSpec {
   }
 
   "JSON EventSeq.Empty" in {
-    check[TestEvent.type](
+    checkTearableEventSeq[TestEvent.type](
       EventSeq.Empty(EventId(123)),
       """{
         "TYPE": "Empty",
@@ -44,13 +44,22 @@ final class EventSeqTest extends FreeSpec {
   }
 
   "JSON EventSeq.Torn" in {
-    check[TestEvent.type](EventSeq.Torn,
+    checkTearableEventSeq[TestEvent.type](EventSeq.Torn,
       """{
         "TYPE": "Torn"
       }""")
   }
 
-  private def check[E: RootJsonFormat](eventSeq: EventSeq[Seq, E], json: String) = {
+  private def checkTearableEventSeq[E: RootJsonFormat](eventSeq: TearableEventSeq[Seq, E], json: String) = {
+    assert(eventSeq.toJson == json.parseJson)
+    assert(json.parseJson.convertTo[TearableEventSeq[Seq, E]] == eventSeq)
+    eventSeq match {
+      case eventSeq: EventSeq[Seq, E] ⇒ checkEventSeq(eventSeq, json)
+      case _ ⇒
+    }
+  }
+
+  private def checkEventSeq[E: RootJsonFormat](eventSeq: EventSeq[Seq, E], json: String) = {
     assert(eventSeq.toJson == json.parseJson)
     assert(json.parseJson.convertTo[EventSeq[Seq, E]] == eventSeq)
   }

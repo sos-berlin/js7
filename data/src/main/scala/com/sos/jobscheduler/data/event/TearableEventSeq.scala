@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.data.event.EventSeq._
 import scala.collection.immutable.Seq
 import scala.language.higherKinds
 import spray.json.DefaultJsonProtocol._
@@ -9,10 +10,11 @@ import spray.json._
 /**
   * @author Joacim Zschimmer
   */
-trait EventSeq[+M[_], +E]
+sealed trait TearableEventSeq[+M[_], +E]
+
+sealed trait EventSeq[+M[_], +E] extends TearableEventSeq[M, E]
 
 object EventSeq {
-
   final case class NonEmpty[M[_] <: TraversableOnce[_], E](stampeds: M[Stamped[E]])
   extends EventSeq[M, E] {
     assert(stampeds.nonEmpty)
@@ -29,12 +31,19 @@ object EventSeq {
   extends EventSeq[Nothing, Nothing]
 
   case object Torn
-  extends EventSeq[Nothing, Nothing]
+  extends TearableEventSeq[Nothing, Nothing]
 
   // TODO May be slow if instantiated often
-  implicit def jsonFormat[E: RootJsonFormat]: TypedJsonFormat[EventSeq[Seq, E]] =
+  implicit def eventSeqJsonFormat[E: RootJsonFormat]: TypedJsonFormat[EventSeq[Seq, E]] =
     TypedJsonFormat[EventSeq[Seq, E]](
       Subtype[NonEmpty[Seq, E]],
-      Subtype(jsonFormat1(Empty.apply)),
+      Subtype(jsonFormat1(Empty.apply)))
+}
+
+object TearableEventSeq {
+  // TODO May be slow if instantiated often
+  implicit def tearableEventSeqJsonFormat[E: RootJsonFormat]: TypedJsonFormat[TearableEventSeq[Seq, E]] =
+    TypedJsonFormat[TearableEventSeq[Seq, E]](
+      Subtype[EventSeq[Seq, E]],
       Subtype(jsonFormat0(() ⇒ Torn)))
 }

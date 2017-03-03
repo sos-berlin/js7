@@ -18,7 +18,7 @@ import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.engine2.order.{JobChainPath, NodeId, NodeKey, Order, OrderEvent}
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.RecoveryIT._
 import com.sos.jobscheduler.master.command.MasterCommand
@@ -180,8 +180,8 @@ private object RecoveryIT {
     }
   }
 
-  private def lastEventIdOf[E <: Event](eventSeq: EventSeq[Iterator, KeyedEvent[E]]): EventId =
-    eventSeq match {
+  private def lastEventIdOf[E <: Event](eventSeq: TearableEventSeq[Iterator, KeyedEvent[E]]): EventId =
+    (eventSeq: @unchecked) match {
       case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[E]] ⇒
         eventSeq.stampeds.toVector.last.eventId
     }
