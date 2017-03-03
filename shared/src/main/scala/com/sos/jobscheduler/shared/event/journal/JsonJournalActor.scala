@@ -55,8 +55,11 @@ extends Actor with Stash {
   }
 
   override def postStop() = {
-    if (jsonWriter != null) jsonWriter.close()
-    val msg = if (Files.exists(file)) s" ${toMB(Files.size(file))} written. $statistics" else ""
+    val msg = if (jsonWriter != null) {
+      jsonWriter.close()
+      val s = try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }
+      s" $s written. $statistics"
+    } else ""
     logger.info(s"Stopped.$msg")
     super.postStop()
   }
@@ -65,7 +68,7 @@ extends Actor with Stash {
     case Input.Start(RecoveredJournalingActors(keyToActor)) ⇒
       keyToJournalingActor ++= keyToActor
       val sender = this.sender()
-      becomeTakingSnapshot {
+      becomeTakingSnapshotThen {
         context.become(ready)
         //for (a ← keyToJournalingActor.values) a ! KeyedJournalingActor.Input.FinishRecovery
         sender ! Output.Ready
@@ -112,7 +115,7 @@ extends Actor with Stash {
             throw tt;
         }
         statistics.flushes += 1
-        logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.stampedEvents.size }).sum} events")
+        logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.eventSnapshots.size }).sum} events")
         for (Written(stampeds, replyTo, sender) ← writtenBuffer) {
           replyTo.tell(Output.Stored(stampeds), sender)
           for (stamped ← stampeds) {
@@ -129,7 +132,7 @@ extends Actor with Stash {
     case Input.TakeSnapshot ⇒
       jsonWriter.close()
       val sender = this.sender()
-      becomeTakingSnapshot {
+      becomeTakingSnapshotThen {
         sender ! Output.SnapshotTaken
         context.become(ready)
       }
@@ -141,7 +144,7 @@ extends Actor with Stash {
       keylessJournalingActors -= a
   }
 
-  private def becomeTakingSnapshot(andThen: ⇒ Unit) = {
+  private def becomeTakingSnapshotThen(andThen: ⇒ Unit) = {
     logger.info(s"Taking snapshot")
     if (jsonWriter != null) {
       jsonWriter.close()
@@ -158,7 +161,7 @@ extends Actor with Stash {
       myJsonWriter.close()
       val snapshotCount = done.get  // Crash !!!
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "objects"))
-      logger.debug(s"Snapshot contains $snapshotCount objects")
+      logger.info(s"Snapshot contains $snapshotCount objects")
 
       if (jsonWriter != null) {
         jsonWriter.close()
@@ -202,5 +205,5 @@ object JsonJournalActor {
     final case class Commit(writtenLevel: Int)
   }
 
-  private case class Written(stampedEvents: Seq[Stamped[AnyKeyedEvent]], replyTo: ActorRef, sender: ActorRef)
+  private case class Written(eventSnapshots: Seq[Stamped[AnyKeyedEvent]], replyTo: ActorRef, sender: ActorRef)
 }

@@ -142,7 +142,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
         val header = iterator.next()
         assert(header == JsObject(
           "TYPE" → JsString("JobScheduler.Journal"),
-          "version" → JsString("1"),
+          "version" → JsString("0.0"),
           "softwareVersion" → JsString(BuildInfo.version)))
       }
       Vector.build[JsValue] { builder ⇒

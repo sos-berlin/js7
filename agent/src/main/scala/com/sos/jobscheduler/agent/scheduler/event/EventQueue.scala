@@ -108,7 +108,7 @@ object EventQueue {
     final case object GetSnapshot
   }
 
-  final case class CompleteSnapshot(lastKnownEventId: EventId, stampedEvents: Seq[StampedEvent])
+  final case class CompleteSnapshot(lastKnownEventId: EventId, events: Seq[StampedEvent])
 
   object CompleteSnapshot {
     implicit val jsonFormat = jsonFormat2(apply) withTypeName "EventQueue.Snapshot"

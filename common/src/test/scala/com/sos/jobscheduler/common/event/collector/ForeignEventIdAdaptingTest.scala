@@ -27,13 +27,13 @@ final class ForeignEventIdAdaptingTest extends FreeSpec {
     eventCollector.putForeignEventStamped(Stamped(EventId(1), KeyedEvent(AEvent)))
     eventCollector.putForeignEventStamped(Stamped(EventId.MaxValue - 100, KeyedEvent(AEvent)))
 
-    val snapshots: Vector[Stamped[KeyedEvent[AEvent.type]]] =
+    val stampeds: Vector[Stamped[KeyedEvent[AEvent.type]]] =
       (for (eventSeq ← eventCollector.when(EventRequest.singleClass[AEvent.type](EventId.BeforeFirst, timeout = 0.s))) yield
         eventSeq match {
           case EventSeq.NonEmpty(iterator) ⇒ iterator.toVector
         }
       ) await  10.s
-    assert((snapshots map { _.value }) == Vector(KeyedEvent(AEvent), KeyedEvent(AEvent)))
+    assert((stampeds map { _.value }) == Vector(KeyedEvent(AEvent), KeyedEvent(AEvent)))
   }
 }
 

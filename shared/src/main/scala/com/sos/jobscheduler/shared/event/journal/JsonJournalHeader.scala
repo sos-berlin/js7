@@ -15,5 +15,4 @@ object JsonJournalHeader {
   private val headerJsonFormat = jsonFormat2(apply)
   implicit val jsonFormat = TypedJsonFormat[JsonJournalHeader](
     Subtype(headerJsonFormat, "JobScheduler.Journal"))
-
 }
