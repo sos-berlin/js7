@@ -13,5 +13,5 @@ final case class AgentPath(string: String) extends TypedPath {
 
 object AgentPath extends TypedPath.Companion[AgentPath] {
 
-  override lazy val filenameExtension = ".agent.xml"
+  override lazy val xmlFilenameExtension = ".agent.xml"
 }

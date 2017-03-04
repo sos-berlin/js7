@@ -2,7 +2,7 @@ package com.sos.jobscheduler.shared.filebased
 
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.data.filebased.TypedPath
-import com.sos.jobscheduler.shared.filebased.TypedPaths.fileToTypedPath
+import com.sos.jobscheduler.shared.filebased.TypedPaths.xmlFileToTypedPath
 import java.nio.file
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
@@ -28,13 +28,13 @@ object TypedPathDirectoryWalker {
     deepForEachPathAndAttributes(directory, nestingLimit = NestingLimit) { (path, attr) ⇒
       if (!attr.isDirectory) {
         for (t ← types find { t ⇒ matchesFile(t, path) }) {
-          callback(path, fileToTypedPath(path, stripDirectory = directory)(t))
+          callback(path, xmlFileToTypedPath(path, stripDirectory = directory)(t))
         }
       }
     }
 
   private[filebased] def matchesFile[P <: TypedPath](companion: TypedPath.Companion[P], path: file.Path): Boolean =
-    path.toString endsWith companion.filenameExtension
+    path.toString endsWith companion.xmlFilenameExtension
 
   //def typedFileIterator(directory: Path, types: Set[TypedPath.AnyCompanion]): AutoCloseable with Iterator[(Path, TypedPath)] =
   //  new AbstractIterator[(Path, TypedPath)] with AutoCloseable {

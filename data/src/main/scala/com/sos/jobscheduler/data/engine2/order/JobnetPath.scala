@@ -13,5 +13,5 @@ extends TypedPath {
 
 object JobnetPath extends TypedPath.Companion[JobnetPath] {
 
-  override lazy val filenameExtension = s".job_chain.xml"
+  override lazy val xmlFilenameExtension = s".job_chain.xml"
 }

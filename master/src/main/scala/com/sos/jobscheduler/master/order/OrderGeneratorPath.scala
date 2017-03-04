@@ -13,5 +13,5 @@ final case class OrderGeneratorPath(string: String) extends TypedPath {
 
 object OrderGeneratorPath extends TypedPath.Companion[OrderGeneratorPath] {
 
-  override lazy val filenameExtension = ".order.xml"
+  override lazy val xmlFilenameExtension = ".order.xml"
 }

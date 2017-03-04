@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.filebased
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.filebased.TypedPath._
-import java.io.File
+import java.nio.file.{Path, Paths}
 import scala.reflect.ClassTag
 
 trait TypedPath
@@ -10,12 +10,8 @@ extends AbsolutePath {
 
   def companion: Companion[_ <: TypedPath]
 
-  def file(baseDirectory: File): File =
-    new File(baseDirectory, relativeFilePath)
-
-  /** @return Relativer Pfad mit Schrägstrich beginnend. Großschreibung kann bei manchen Typen abweichen. */
-  final def relativeFilePath: String =
-    string + companion.filenameExtension
+  def xmlFile: Path =
+    Paths.get(withoutStartingSlash + companion.xmlFilenameExtension)
 
   def asTyped[A <: TypedPath: TypedPath.Companion]: A = {
     val c = implicitly[TypedPath.Companion[A]]
@@ -46,7 +42,7 @@ object TypedPath {
     val camelName: String = name stripSuffix "Path"
     final lazy val lowerCaseCamelName = camelName.substring(0, 1).toLowerCase + camelName.substring(1)
     final lazy val cppName: String = lowerCaseCamelName map { c ⇒ if (c.isUpper) "_" + c.toLower else c } mkString ""
-    lazy val filenameExtension: String = s".$cppName.xml"
+    lazy val xmlFilenameExtension: String = s".$cppName.xml"
 
     /**
      * Interprets a path as absolute.

@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.folder
 
 import com.sos.jobscheduler.data.filebased.{AbsolutePath, TypedPath}
+import java.nio.file.Paths
 
 final case class FolderPath(string: String) extends TypedPath {
   import FolderPath._
@@ -31,12 +32,15 @@ final case class FolderPath(string: String) extends TypedPath {
       PartialFunction.cond(path) {
         case path: FolderPath ⇒ this == path
       }
+
+  override def xmlFile = EmptyPath
 }
 
 object FolderPath extends TypedPath.Companion[FolderPath] {
 
+  private val EmptyPath = Paths.get("")
   val Root = FolderPath("/")
-  override lazy val filenameExtension = "/"
+  override lazy val xmlFilenameExtension = "/"
 
   override def isSingleSlashAllowed = true
   override def isCommaAllowed = false
