@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.data.commands
 
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.data.engine2.order.{JobNet, Order}
+import com.sos.jobscheduler.data.engine2.order.{Jobnet, Order}
 import com.sos.jobscheduler.data.order.OrderId
 import scala.collection.immutable.Seq
 import spray.json.DefaultJsonProtocol._
@@ -12,12 +12,12 @@ import spray.json.DefaultJsonProtocol._
 sealed trait OrderCommand extends Command
 
 
-final case class AddJobNet(jobNet: JobNet) extends OrderCommand {
+final case class AddJobnet(jobnet: Jobnet) extends OrderCommand {
   type Response = EmptyResponse.type
 }
 
-object AddJobNet {
-  val SerialTypeName = "AddJobNet"
+object AddJobnet {
+  val SerialTypeName = "AddJobnet"
   implicit val jsonFormat = jsonFormat1(apply)
 }
 

@@ -23,8 +23,8 @@ final case class Order[+S <: Order.State](
   outcome: Outcome = InitialOutcome,
   agentPathOption: Option[AgentPath] = None)
 {
-  def jobChainPath: JobChainPath =
-    nodeKey.jobChainPath
+  def jobnetPath: JobnetPath =
+    nodeKey.jobnetPath
 
   def nodeId: NodeId =
     nodeKey.nodeId

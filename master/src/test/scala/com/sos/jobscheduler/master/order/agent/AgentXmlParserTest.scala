@@ -7,11 +7,11 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class AgentParserTest extends FreeSpec {
+final class AgentXmlParserTest extends FreeSpec {
 
-  "AgentParser" in {
+  "AgentXmlParser" in {
     val xml = <agent uri="http://localhost"/>
     val path = AgentPath("/FOLDER/AGENT")
-    assert(AgentParser.parseXml(path, xml) == Agent(path, uri = "http://localhost"))
+    assert(AgentXmlParser.parseXml(path, xml) == Agent(path, uri = "http://localhost"))
   }
 }

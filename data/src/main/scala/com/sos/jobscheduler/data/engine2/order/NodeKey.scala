@@ -5,8 +5,8 @@ import spray.json.DefaultJsonProtocol._
 /**
  * @author Joacim Zschimmer
  */
-final case class NodeKey(jobChainPath: JobChainPath, nodeId: NodeId) {
-  override def toString = s"${jobChainPath.string}:${nodeId.string}"
+final case class NodeKey(jobnetPath: JobnetPath, nodeId: NodeId) {
+  override def toString = s"${jobnetPath.string}:${nodeId.string}"
 }
 
 object NodeKey {

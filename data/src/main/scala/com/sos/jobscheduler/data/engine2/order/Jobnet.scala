@@ -2,13 +2,13 @@ package com.sos.jobscheduler.data.engine2.order
 
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.JobNet._
+import com.sos.jobscheduler.data.engine2.order.Jobnet._
 import spray.json.DefaultJsonProtocol._
 
 /**
   * @author Joacim Zschimmer
   */
-final case class JobNet(path: JobChainPath, inputNodeId: NodeId, idToNode: Map[NodeId, Node]) {
+final case class Jobnet(path: JobnetPath, inputNodeId: NodeId, idToNode: Map[NodeId, Node]) {
   require(idToNode forall { case (k, v) ⇒ k == v.id })
 
   def requireCompleteness: this.type = {
@@ -20,7 +20,7 @@ final case class JobNet(path: JobChainPath, inputNodeId: NodeId, idToNode: Map[N
     this
   }
 
-  def reduceForAgent(agentPath: AgentPath): JobNet =
+  def reduceForAgent(agentPath: AgentPath): Jobnet =
     copy(idToNode = idToNode filter {
       case (_, JobNode(_, `agentPath`, _, _, _))  ⇒ true
       case _ ⇒ false
@@ -31,16 +31,16 @@ final case class JobNet(path: JobChainPath, inputNodeId: NodeId, idToNode: Map[N
   def isDefinedAt(nodeId: NodeId) = idToNode isDefinedAt nodeId
 }
 
-object JobNet {
+object Jobnet {
 
-  def apply(path: JobChainPath, inputNodeId: NodeId, nodes: Iterable[Node]): JobNet = {
+  def apply(path: JobnetPath, inputNodeId: NodeId, nodes: Iterable[Node]): Jobnet = {
     val map = (for (n ← nodes) yield n.id → n).toMap
     require(map.size == nodes.size, "Some nodes does not have unique NodeIds")
-    JobNet(path, inputNodeId, map)
+    Jobnet(path, inputNodeId, map)
   }
 
-  def fromJobnetAttached(path: JobChainPath, event: JobnetEvent.JobnetAttached): JobNet =
-    JobNet(path, event.inputNodeId, event.idToNode)
+  def fromJobnetAttached(path: JobnetPath, event: JobnetEvent.JobnetAttached): Jobnet =
+    Jobnet(path, event.inputNodeId, event.idToNode)
 
   sealed trait Node {
     def id: NodeId
@@ -56,5 +56,5 @@ object JobNet {
 
   final case class JobNode(id: NodeId, agentPath: AgentPath, jobPath: JobPath, onSuccess: NodeId, onFailure: NodeId) extends Node
 
-  implicit val jsonFormat = jsonFormat3 { (path: JobChainPath, input: NodeId, o: Map[NodeId, Node]) ⇒ JobNet(path, input, o) }
+  implicit val jsonFormat = jsonFormat3 { (path: JobnetPath, input: NodeId, o: Map[NodeId, Node]) ⇒ Jobnet(path, input, o) }
 }

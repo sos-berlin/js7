@@ -14,9 +14,9 @@ import com.sos.jobscheduler.common.scalautil.xmls.FileSource
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.JobNet.{EndNode, JobNode}
+import com.sos.jobscheduler.data.engine2.order.Jobnet.{EndNode, JobNode}
 import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderAdded
-import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobNet, Order, OrderEvent}
+import com.sos.jobscheduler.data.engine2.order.{Jobnet, JobnetPath, Order, OrderEvent}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
@@ -24,7 +24,7 @@ import com.sos.jobscheduler.master.KeyedEventJsonFormats.MasterKeyedEventJsonFor
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.order.MasterOrderKeeper._
-import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentParser}
+import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentXmlParser}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
@@ -57,7 +57,7 @@ with Stash {
 
   private val journalFile = masterConfiguration.stateDirectoryOption.get/*optional ???*/ / "journal"
   private val agentRegister = new ActorRegister[AgentPath, AgentEntry](_.actor)
-  private val pathToJobnet = mutable.Map[JobChainPath, JobNet]()
+  private val pathToJobnet = mutable.Map[JobnetPath, Jobnet]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private val lastRecoveredOrderEvents = mutable.Map[OrderId, OrderEvent]()
   private var detachingSuspended = false
@@ -72,18 +72,18 @@ with Stash {
   )
 
   for (dir ← masterConfiguration.liveDirectoryOption) {
-    forEachTypedFile(dir, Set(JobChainPath, AgentPath)) {
-      case (file, jobChainPath: JobChainPath) ⇒
-        logger.info(s"Adding $jobChainPath")
-        val jobNet = autoClosing(new FileSource(file)) { src ⇒
-          JobNetParser.parseXml(jobChainPath, src)
+    forEachTypedFile(dir, Set(JobnetPath, AgentPath)) {
+      case (file, jobnetPath: JobnetPath) ⇒
+        logger.info(s"Adding $jobnetPath")
+        val jobnet = autoClosing(new FileSource(file)) { src ⇒
+          JobnetXmlParser.parseXml(jobnetPath, src)
         }
-        pathToJobnet += jobChainPath → jobNet
+        pathToJobnet += jobnetPath → jobnet
 
       case (file, agentPath: AgentPath) ⇒
         logger.info(s"Adding $agentPath")
         val agent = autoClosing(new FileSource(file)) { src ⇒
-          AgentParser.parseXml(agentPath, src)
+          AgentXmlParser.parseXml(agentPath, src)
         }
         val actor = context.actorOf(
           Props { new AgentDriver(agent.path, agent.uri) },
@@ -187,9 +187,9 @@ with Stash {
           case Order.Detached ⇒
             //val detachedOrder = order.asInstanceOf[Order[Order.Detached.type]]
             //// TODO Duplicate code
-            //for (jobNet ← pathToJobnet.get(detachedOrder.nodeKey.jobChainPath);
-            //     jobNode ← jobNet.idToNode.get(detachedOrder.nodeKey.nodeId) collect { case o: JobNode ⇒ o }) {
-            //  tryAttachOrderToAgent(detachedOrder, jobNet, jobNode.agentPath)
+            //for (jobnet ← pathToJobnet.get(detachedOrder.nodeKey.jobnetPath);
+            //     jobNode ← jobnet.idToNode.get(detachedOrder.nodeKey.nodeId) collect { case o: JobNode ⇒ o }) {
+            //  tryAttachOrderToAgent(detachedOrder, jobnet, jobNode.agentPath)
             //}
           case Order.Finished ⇒
         }
@@ -218,8 +218,8 @@ with Stash {
           case Some(_) ⇒
             logger.info(s"$logMsg is duplicate and discarded")
           case None ⇒
-            if (!pathToJobnet.isDefinedAt(order.nodeKey.jobChainPath)) {
-              logger.error(s"$logMsg: Unknown '${order.nodeKey.jobChainPath}'")
+            if (!pathToJobnet.isDefinedAt(order.nodeKey.jobnetPath)) {
+              logger.error(s"$logMsg: Unknown '${order.nodeKey.jobnetPath}'")
             } else {
               persist(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
                 logger.info(logMsg)
@@ -313,12 +313,12 @@ with Stash {
 
     case MasterCommand.AddOrderIfNew(order) ⇒
       orderRegister.get(order.id) match {
-        case None if pathToJobnet.isDefinedAt(order.nodeKey.jobChainPath) ⇒
+        case None if pathToJobnet.isDefinedAt(order.nodeKey.jobnetPath) ⇒
           persist(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
             sender() ! MasterCommand.Response.Accepted
           }
-        case None if !pathToJobnet.isDefinedAt(order.nodeKey.jobChainPath) ⇒
-          sender() ! Status.Failure(new NoSuchElementException(s"Unknown JobNet '${order.nodeKey.jobChainPath.string}'"))
+        case None if !pathToJobnet.isDefinedAt(order.nodeKey.jobnetPath) ⇒
+          sender() ! Status.Failure(new NoSuchElementException(s"Unknown Jobnet '${order.nodeKey.jobnetPath.string}'"))
         case Some(_) ⇒
           logger.debug(s"Discarding duplicate AddOrderIfNew: ${order.id}")
           sender() ! MasterCommand.Response.Accepted //Status.Failure(new IllegalStateException(s"Duplicate OrderId '${order.id}'"))
@@ -329,10 +329,10 @@ with Stash {
     event match {
       case event: OrderAdded ⇒
         onOrderAdded(orderId, event)
-        for (jobNet ← pathToJobnet.get(event.nodeKey.jobChainPath);
-             jobNode ← jobNet.idToNode.get(event.nodeKey.nodeId) collect { case o: JobNode ⇒ o }) {
+        for (jobnet ← pathToJobnet.get(event.nodeKey.jobnetPath);
+             jobNode ← jobnet.idToNode.get(event.nodeKey.nodeId) collect { case o: JobNode ⇒ o }) {
           val order = Order[Order.Idle](orderId, event.nodeKey, event.state, event.variables, event.outcome)
-          tryAttachOrderToAgent(order, jobNet, jobNode.agentPath)
+          tryAttachOrderToAgent(order, jobnet, jobNode.agentPath)
         }
 
       case event: OrderEvent ⇒
@@ -362,12 +362,12 @@ with Stash {
 
   private def moveAhead(orderId: OrderId): Unit = {
     val orderEntry = orderRegister(orderId)
-    for (jobNet ← pathToJobnet.get(orderEntry.order.jobChainPath);
-         node ← jobNet.idToNode.get(orderEntry.order.nodeId)) {
+    for (jobnet ← pathToJobnet.get(orderEntry.order.jobnetPath);
+         node ← jobnet.idToNode.get(orderEntry.order.nodeId)) {
       node match {
         case node: JobNode ⇒
           val idleOrder = orderEntry.order.castState[Order.Idle]  // ???
-          tryAttachOrderToAgent(idleOrder, jobNet, node.agentPath)
+          tryAttachOrderToAgent(idleOrder, jobnet, node.agentPath)
         case _: EndNode ⇒
           persist(KeyedEvent(OrderEvent.OrderFinished)(orderId)) { stamped ⇒
             logger.info(stamped.toString)
@@ -376,9 +376,9 @@ with Stash {
     }
   }
 
-  private def tryAttachOrderToAgent(order: Order[Order.Idle], jobNet: JobNet, agentPath: AgentPath): Unit = {
+  private def tryAttachOrderToAgent(order: Order[Order.Idle], jobnet: Jobnet, agentPath: AgentPath): Unit = {
     for (agentEntry ← agentRegister.get(agentPath)) {
-      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, jobNet.reduceForAgent(agentPath))
+      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, jobnet.reduceForAgent(agentPath))
     }
   }
 }
@@ -388,7 +388,7 @@ object MasterOrderKeeper {
     Subtype[OrderScheduleEndedAt],
     Subtype[Order[Order.State]],
     Subtype[AgentEventId])
-  //Subtype[JobNet])
+  //Subtype[Jobnet])
 
   private val MyJournalMeta = new JsonJournalMeta(
       SnapshotJsonFormat,

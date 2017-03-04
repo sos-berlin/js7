@@ -17,7 +17,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.engine2.order.{JobChainPath, NodeId, NodeKey, Order, OrderEvent}
+import com.sos.jobscheduler.data.engine2.order.{JobnetPath, NodeId, NodeKey, Order, OrderEvent}
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.RecoveryIT._
@@ -64,12 +64,12 @@ final class RecoveryIT extends FreeSpec {
           runAgents(agentConfs) { _ ⇒
             master.executeCommand(MasterCommand.AddOrderIfNew(FastOrder)) await 99.s
             lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = lastEventId, 99.s), _.key == FastOrderId) await 99.s)
-            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobChainPath.string) await 99.s)
-            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobChainPath.string) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
           }
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(agentConfs) { _ ⇒
-            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobChainPath.string) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
           }
         }
 
@@ -79,14 +79,14 @@ final class RecoveryIT extends FreeSpec {
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
           runAgents(agentConfs) { _ ⇒
             runMaster(dataDir) { master ⇒
-              val eventSeq = eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = myLastEventId, 99.s), _.key.string startsWith TestJobChainPath.string) await 99.s
+              val eventSeq = eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = myLastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s
               val orderId = (eventSeq: @unchecked) match {
                 case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderEvent.OrderFinished.type]] ⇒ eventSeq.stampeds.toVector.last.value.key
               }
               master.getOrder(orderId) await 99.s shouldEqual
                 Some(Order(
                   orderId,
-                  NodeKey(TestJobChainPath, NodeId("END")),
+                  NodeKey(TestJobnetPath, NodeId("END")),
                   Order.Finished,
                   Map("result" → "TEST-RESULT-VALUE-agent-222"),
                   Order.Good(true)))
@@ -122,11 +122,11 @@ final class RecoveryIT extends FreeSpec {
 
 private object RecoveryIT {
   private val AgentNames = List("agent-111", "agent-222")
-  private val TestJobChainPath = JobChainPath("/test")
-  private val FastJobChainPath = JobChainPath("/fast")
+  private val TestJobnetPath = JobnetPath("/test")
+  private val FastJobnetPath = JobnetPath("/fast")
 
   private val FastOrderId = OrderId("FAST-ORDER")
-  private val FastOrder = Order(FastOrderId, NodeKey(FastJobChainPath, NodeId("100")), Order.Waiting)
+  private val FastOrder = Order(FastOrderId, NodeKey(FastJobnetPath, NodeId("100")), Order.Waiting)
 
   private val TestJobChainElem =
     <job_chain>
@@ -139,7 +139,7 @@ private object RecoveryIT {
     </job_chain>
 
   private val TestOrderGeneratorElem =
-    <order job_chain={TestJobChainPath.string} state="100">
+    <order job_chain={TestJobnetPath.string} state="100">
       <run_time><period absolute_repeat="3"/></run_time>
     </order>
 

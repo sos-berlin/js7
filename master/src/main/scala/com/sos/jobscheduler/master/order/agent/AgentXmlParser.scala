@@ -7,7 +7,7 @@ import javax.xml.transform.Source
 /**
   * @author Joacim Zschimmer
   */
-object AgentParser {
+object AgentXmlParser {
 
   def parseXml(agentPath: AgentPath, source: Source): Agent =
     ScalaXMLEventReader.parseDocument(source) { eventReader ⇒

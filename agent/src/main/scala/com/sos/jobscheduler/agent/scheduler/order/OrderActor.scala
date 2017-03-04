@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.JobNet.JobNode
+import com.sos.jobscheduler.data.engine2.order.Jobnet.JobNode
 import com.sos.jobscheduler.data.engine2.order.OrderEvent._
 import com.sos.jobscheduler.data.engine2.order.{Order, OrderEvent}
 import com.sos.jobscheduler.data.order.OrderId

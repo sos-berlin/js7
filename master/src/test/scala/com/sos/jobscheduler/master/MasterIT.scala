@@ -20,7 +20,7 @@ import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.data.engine2.order.{JobChainPath, NodeId, NodeKey, Order, OrderEvent}
+import com.sos.jobscheduler.data.engine2.order.{JobnetPath, NodeId, NodeKey, Order, OrderEvent}
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.MasterIT._
@@ -87,7 +87,7 @@ final class MasterIT extends FreeSpec {
         master.start() await 99.s
         val adHocOrder = Order(
           TestOrderId,
-          NodeKey(TestJobChainPath, NodeId("100")),
+          NodeKey(TestJobnetPath, NodeId("100")),
           Order.Waiting)
 
         sleep(3.s)
@@ -103,7 +103,7 @@ final class MasterIT extends FreeSpec {
         master.getOrder(TestOrderId) await 10.s shouldEqual
           Some(Order(
             TestOrderId,
-            NodeKey(TestJobChainPath, NodeId("END")),
+            NodeKey(TestJobnetPath, NodeId("END")),
             Order.Finished,
             Map("result" → "TEST-RESULT-VALUE-agent-222"),
             Order.Good(true)))
@@ -127,7 +127,7 @@ final class MasterIT extends FreeSpec {
 
 private object MasterIT {
   private val TestDuration = 10.s
-  private val TestJobChainPath = JobChainPath("/test")
+  private val TestJobnetPath = JobnetPath("/test")
   private val TestOrderId = OrderId("ORDER-ID")
   private val AgentNames = List("agent-111", "agent-222")
   private val logger = Logger(getClass)

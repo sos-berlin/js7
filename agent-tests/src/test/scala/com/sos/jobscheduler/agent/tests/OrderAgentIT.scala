@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.{AddJobnet, AddOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.tests.OrderAgentIT._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -18,9 +18,9 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.JobNet.{EndNode, JobNode}
+import com.sos.jobscheduler.data.engine2.order.Jobnet.{EndNode, JobNode}
 import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderReady
-import com.sos.jobscheduler.data.engine2.order.{JobChainPath, JobNet, JobPath, NodeId, NodeKey, Order, OrderEvent}
+import com.sos.jobscheduler.data.engine2.order.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey, Order, OrderEvent}
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderId
 import java.nio.file.Files.{createDirectories, createTempDirectory}
@@ -60,11 +60,11 @@ final class OrderAgentIT extends FreeSpec {
           val agentClient = AgentClient(agent.localUri.toString)
 
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual EmptyResponse  // Without Login, this registers all anonymous clients
-          agentClient.executeCommand(AddJobNet(TestJobNet)) await 99.s shouldEqual EmptyResponse
+          agentClient.executeCommand(AddJobnet(TestJobnet)) await 99.s shouldEqual EmptyResponse
 
           val order = Order(
             OrderId("TEST-ORDER"),
-            NodeKey(TestJobNet.path, ANodeId),
+            NodeKey(TestJobnet.path, ANodeId),
             Order.Waiting,
             Map("x" → "X"))
           agentClient.executeCommand(AddOrder(order)) await 99.s shouldEqual EmptyResponse
@@ -127,8 +127,8 @@ private object OrderAgentIT {
   private val BNodeId = NodeId("BBB")
   private val EndNodeId = NodeId("END")
   private val FailedNodeId = NodeId("FAILED")
-  private val TestJobNet = JobNet(
-    JobChainPath("/TEST"),
+  private val TestJobnet = Jobnet(
+    JobnetPath("/TEST"),
     ANodeId,
     List(
       JobNode(ANodeId, TestAgentId, AJobPath, onSuccess = BNodeId, onFailure = FailedNodeId),

@@ -4,14 +4,14 @@ import akka.Done
 import akka.actor.{Actor, DeadLetterSuppression, Stash}
 import akka.pattern.pipe
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.data.commands.{AddJobNet, AddOrder, DetachOrder, Login, Logout, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.{AddJobnet, AddOrder, DetachOrder, Login, Logout, RegisterAsMaster}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.{JobNet, Order, OrderEvent}
+import com.sos.jobscheduler.data.engine2.order.{Jobnet, Order, OrderEvent}
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.order.agent.AgentDriver._
@@ -218,7 +218,7 @@ with Stash {
   private def processQueuedCommands(): Unit = {
     for (cmd ← commandQueue.find(o ⇒ !executingCommands(o))) {
       executingCommands += cmd
-      (for (_ ← client.executeCommand(AddJobNet(cmd.jobNet));
+      (for (_ ← client.executeCommand(AddJobnet(cmd.jobnet));
             _ ← client.executeCommand(AddOrder(cmd.order)))
         yield Done)
         .onComplete {
@@ -248,7 +248,7 @@ private[master] object AgentDriver {
   object Input {
     case object Start
     final case class Recover(lastAgentEventId: EventId, orderIds: Iterable[OrderId])
-    final case class AttachOrder(order: Order[Order.Idle], jobNet: JobNet) extends Input
+    final case class AttachOrder(order: Order[Order.Idle], jobnet: Jobnet) extends Input
     final case class DetachOrder(orderId: OrderId) extends Input
   }
 

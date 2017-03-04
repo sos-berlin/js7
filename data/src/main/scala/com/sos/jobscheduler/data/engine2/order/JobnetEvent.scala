@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.engine2.order
 
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.jobscheduler.data.engine2.order.JobNet.Node
+import com.sos.jobscheduler.data.engine2.order.Jobnet.Node
 import com.sos.jobscheduler.data.event.Event
 import spray.json.DefaultJsonProtocol._
 
@@ -9,7 +9,7 @@ import spray.json.DefaultJsonProtocol._
   * @author Joacim Zschimmer
   */
 sealed trait JobnetEvent extends Event {
-  type Key = JobChainPath
+  type Key = JobnetPath
 }
 
 object JobnetEvent {
