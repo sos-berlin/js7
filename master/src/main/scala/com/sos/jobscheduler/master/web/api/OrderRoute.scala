@@ -18,15 +18,22 @@ trait OrderRoute {
   protected implicit def executionContext: ExecutionContext
 
   def orderRoute: Route =
+    //pathSingleSlash {
+    //  complete {
+    //    ...
+    //  }
+    //} ~
     path(Segment) { orderIdString ⇒
-      val orderId = OrderId(orderIdString)
+      singleOrder(OrderId(orderIdString))
+    }
+
+  private def singleOrder(orderId: OrderId): Route =
       complete {
-        master.getOrder(orderId) map {
+        master.order(orderId) map {
           case Some(o) ⇒
             o: ToResponseMarshallable
           case None ⇒
-            BadRequest → s"No such $orderId": ToResponseMarshallable
+            BadRequest → s"Does not exist: $orderId": ToResponseMarshallable
         }
       }
-    }
 }

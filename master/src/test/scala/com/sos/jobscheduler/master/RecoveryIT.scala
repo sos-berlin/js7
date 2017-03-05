@@ -83,7 +83,7 @@ final class RecoveryIT extends FreeSpec {
               val orderId = (eventSeq: @unchecked) match {
                 case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderEvent.OrderFinished.type]] ⇒ eventSeq.stampeds.toVector.last.value.key
               }
-              master.getOrder(orderId) await 99.s shouldEqual
+              master.order(orderId) await 99.s shouldEqual
                 Some(Order(
                   orderId,
                   NodeKey(TestJobnetPath, NodeId("END")),

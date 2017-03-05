@@ -100,7 +100,7 @@ final class MasterIT extends FreeSpec {
         master.orderKeeper ! MasterOrderKeeper.Input.ContinueDetaching
 
         master.eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
-        master.getOrder(TestOrderId) await 10.s shouldEqual
+        master.order(TestOrderId) await 10.s shouldEqual
           Some(Order(
             TestOrderId,
             NodeKey(TestJobnetPath, NodeId("END")),
@@ -114,7 +114,7 @@ final class MasterIT extends FreeSpec {
         waitForCondition(TestDuration + 10.s, 100.ms) { eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].size == expectedOrderCount }
         logger.info("Events:\n" + ((eventGatherer.events map { _.toString }) mkString "\n"))
         val orderIds = eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].toVector
-        for (line ← (for (orderId ← orderIds.sorted) yield for (o ← master.getOrder(orderId)) yield s"$orderId -> $o") await 99.s)
+        for (line ← (for (orderId ← orderIds.sorted) yield for (o ← master.order(orderId)) yield s"$orderId -> $o") await 99.s)
           logger.info(line)
         assert(orderIds.size >= expectedOrderCount)
         val addedOrderIds = eventGatherer.orderIdsOf[OrderEvent.OrderAdded] filter orderIds.toSet
