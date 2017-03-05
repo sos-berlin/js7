@@ -3,9 +3,8 @@ package com.sos.jobscheduler.agent.data.web
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.web.AgentUris._
 import com.sos.jobscheduler.data.agent.AgentAddress
-import com.sos.jobscheduler.data.engine2.order.OrderEvent
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import com.sos.jobscheduler.tunnel.data.TunnelId
 import spray.http.Uri
 import spray.http.Uri.Path

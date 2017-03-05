@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.data.engine2.order
+package com.sos.jobscheduler.data.jobnet
 
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.Jobnet._
+import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.jobnet.Jobnet._
 import spray.json.DefaultJsonProtocol._
 
 /**

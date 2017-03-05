@@ -6,7 +6,7 @@ import com.sos.jobscheduler.agent.command.{AgentCommandHandler, CommandExecutor,
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.Command
 import com.sos.jobscheduler.agent.data.views.TaskHandlerView
-import com.sos.jobscheduler.agent.scheduler.OrderHandler
+import com.sos.jobscheduler.agent.scheduler.order.OrderHandler
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.agent.web.WebServiceActor._
 import com.sos.jobscheduler.agent.web.common.{ExternalWebService, LoginSession}

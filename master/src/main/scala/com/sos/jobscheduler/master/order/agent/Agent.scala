@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.order.agent
 
-import com.sos.jobscheduler.data.engine2.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentPath
 
 /**
   * @author Joacim Zschimmer

@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.master
 
-import com.sos.jobscheduler.data.engine2.order.{JobnetEvent, OrderEvent}
 import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat}
+import com.sos.jobscheduler.data.jobnet.JobnetEvent
+import com.sos.jobscheduler.data.order.OrderEvent
 import com.sos.jobscheduler.master.order.OrderScheduleEvent
 
 /**

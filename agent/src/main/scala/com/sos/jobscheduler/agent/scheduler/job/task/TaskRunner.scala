@@ -10,9 +10,9 @@ import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.data.engine2.order.Order
-import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderStepSucceeded
 import com.sos.jobscheduler.data.job.TaskId
+import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.order.OrderEvent.OrderStepSucceeded
 import com.sos.jobscheduler.minicom.remoting.ClientRemoting
 import com.sos.jobscheduler.minicom.remoting.dialog.ClientDialogConnection
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatch

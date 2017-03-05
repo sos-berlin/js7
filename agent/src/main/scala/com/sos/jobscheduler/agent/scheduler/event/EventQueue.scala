@@ -6,10 +6,9 @@ import com.sos.jobscheduler.base.sprayjson.typed.NamedJsonFormat.ToTypeJsonForma
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
-import com.sos.jobscheduler.data.engine2.order.OrderEvent
-import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
+import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import java.time.Duration
 import scala.collection.JavaConversions._
 import scala.collection.immutable.Seq

@@ -14,9 +14,9 @@ import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.xmlElemToSource
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
-import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderStepSucceeded
-import com.sos.jobscheduler.data.engine2.order.{JobPath, JobnetPath, NodeId, NodeKey, Order}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath, NodeId, NodeKey}
+import com.sos.jobscheduler.data.order.OrderEvent.OrderStepSucceeded
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 

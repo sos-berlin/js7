@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.engine2.agent
+package com.sos.jobscheduler.data.agent
 
 import com.sos.jobscheduler.data.filebased.TypedPath
 

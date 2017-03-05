@@ -1,12 +1,12 @@
-package com.sos.jobscheduler.data.engine2.order
+package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.Order._
-import com.sos.jobscheduler.data.engine2.order.OrderEvent._
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
+import com.sos.jobscheduler.data.order.Order._
+import com.sos.jobscheduler.data.order.OrderEvent._
 import java.time.Instant
 import scala.reflect.ClassTag
 import spray.json.DefaultJsonProtocol._

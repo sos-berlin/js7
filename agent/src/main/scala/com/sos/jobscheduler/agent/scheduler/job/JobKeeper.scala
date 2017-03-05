@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, Props, Terminated}
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeper._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.engine2.order.JobPath
+import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.nio.file.Path
 import scala.collection.{immutable, mutable}

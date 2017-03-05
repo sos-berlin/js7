@@ -18,9 +18,8 @@ import com.sos.jobscheduler.common.sprayutils.SimpleTypeSprayJsonSupport._
 import com.sos.jobscheduler.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
-import com.sos.jobscheduler.data.engine2.order.{Order, OrderEvent}
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference

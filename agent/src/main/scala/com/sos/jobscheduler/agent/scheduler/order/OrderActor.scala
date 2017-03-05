@@ -1,16 +1,15 @@
-package com.sos.jobscheduler.agent.scheduler
+package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, Status, Terminated}
-import com.sos.jobscheduler.agent.scheduler.OrderActor._
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner
+import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.Jobnet.JobNode
-import com.sos.jobscheduler.data.engine2.order.OrderEvent._
-import com.sos.jobscheduler.data.engine2.order.{Order, OrderEvent}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.jobnet.Jobnet
+import com.sos.jobscheduler.data.order.OrderEvent._
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 
 /**
@@ -101,7 +100,7 @@ extends KeyedJournalingActor[OrderEvent] {
       persist(OrderReady)(update)
   }
 
-  private def processing(node: JobNode, jobActor: ActorRef): Receive = {
+  private def processing(node: Jobnet.JobNode, jobActor: ActorRef): Receive = {
     case JobRunner.Response.OrderProcessed(`orderId`, event: OrderStepEnded) if node != null ⇒
       endOrderStep(event, node)
 
@@ -112,7 +111,7 @@ extends KeyedJournalingActor[OrderEvent] {
       executeOtherCommand(command)
   }
 
-  private def endOrderStep(event: OrderStepEnded, node: JobNode): Unit = {
+  private def endOrderStep(event: OrderStepEnded, node: Jobnet.JobNode): Unit = {
     context.become(waiting)
     persist(event)(update)
     val nextNodeId = event match {
@@ -170,7 +169,7 @@ object OrderActor {
   object Input {
     final case object FinishRecovery
     final case object SetReady extends Input
-    final case class  StartStep(node: JobNode, jobActor: ActorRef) extends Input
+    final case class  StartStep(node: Jobnet.JobNode, jobActor: ActorRef) extends Input
   }
 
   object Output {

@@ -2,8 +2,8 @@ package com.sos.jobscheduler.shared.filebased
 
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
-import com.sos.jobscheduler.data.engine2.order.JobPath
-import com.sos.jobscheduler.shared.filebased.TypedPaths.{xmlFileToTypedPath, relativeXmlFilePathToTypedPath}
+import com.sos.jobscheduler.data.jobnet.JobPath
+import com.sos.jobscheduler.shared.filebased.TypedPaths.{relativeXmlFilePathToTypedPath, xmlFileToTypedPath}
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.command
 
-import com.sos.jobscheduler.data.engine2.order.Order
+import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.master.command.MasterCommand._
 import java.time.Duration
 

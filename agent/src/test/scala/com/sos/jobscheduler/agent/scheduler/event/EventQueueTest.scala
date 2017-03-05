@@ -5,10 +5,9 @@ import com.sos.jobscheduler.agent.scheduler.event.EventQueueTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.engine2.order.OrderEvent
-import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderReady
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.OrderEvent.OrderReady
+import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import java.time.Duration
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.engine2.order
+package com.sos.jobscheduler.data.jobnet
 
 import com.sos.jobscheduler.base.generic.IsString
 

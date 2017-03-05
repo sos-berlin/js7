@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.agent.scheduler
+package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.{AddJobnet, AddOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand}
-import com.sos.jobscheduler.agent.scheduler.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner
+import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
@@ -17,12 +17,11 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
-import com.sos.jobscheduler.data.engine2.order.Jobnet.{JobNode, Node}
-import com.sos.jobscheduler.data.engine2.order.JobnetEvent.JobnetAttached
-import com.sos.jobscheduler.data.engine2.order.OrderEvent.{OrderAttached, OrderNodeChanged, OrderStepEnded}
-import com.sos.jobscheduler.data.engine2.order.{JobPath, Jobnet, JobnetEvent, JobnetPath, NodeId, NodeKey, Order, OrderEvent}
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.jobnet.JobnetEvent.JobnetAttached
+import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetEvent, JobnetPath, NodeId, NodeKey}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderNodeChanged, OrderStepEnded}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{RecoveringChanged, RecoveringDeleted, RecoveringForUnknownKey, RecoveringSnapshot}
@@ -290,7 +289,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
   private def onOrderAvailable(orderEntry: OrderEntry): Unit =
     nodeKeyToNodeOption(orderEntry.nodeKey) match {
-      case Some(node: JobNode) ⇒
+      case Some(node: Jobnet.JobNode) ⇒
         jobRegister.get(node.jobPath) match {
           case Some(jobEntry) ⇒
             logger.trace(s"${orderEntry.orderId} is queuing for ${jobEntry.jobPath}")
@@ -313,7 +312,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       case Some(orderId) ⇒
         val orderEntry = orderRegister(orderId)
         nodeKeyToNodeOption(orderEntry.nodeKey) match {
-          case Some(jobNode: JobNode) ⇒
+          case Some(jobNode: Jobnet.JobNode) ⇒
             logger.trace(s"${orderEntry.orderId} is going to be processed by ${jobEntry.jobPath}")
             assert(jobNode.jobPath == jobEntry.jobPath)
             jobEntry.requestedOrderIds += orderId
@@ -345,10 +344,10 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
         super.unhandled(message)
     }
 
-  private def nodeKeyToJobNodeOption(nodeKey: NodeKey): Option[JobNode] =
-    nodeKeyToNodeOption(nodeKey) collect { case o: JobNode ⇒ o }
+  private def nodeKeyToJobNodeOption(nodeKey: NodeKey): Option[Jobnet.JobNode] =
+    nodeKeyToNodeOption(nodeKey) collect { case o: Jobnet.JobNode ⇒ o }
 
-  private def nodeKeyToNodeOption(nodeKey: NodeKey): Option[Node] =
+  private def nodeKeyToNodeOption(nodeKey: NodeKey): Option[Jobnet.Node] =
     pathToJobnet(nodeKey.jobnetPath).idToNode.get(nodeKey.nodeId)
 }
 

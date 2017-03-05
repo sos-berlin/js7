@@ -5,9 +5,9 @@ import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
-import com.sos.jobscheduler.data.engine2.order.Order
-import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderStepSucceeded
 import com.sos.jobscheduler.data.job.{ReturnCode, TaskId}
+import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.order.OrderEvent.OrderStepSucceeded
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatch
 import com.sos.jobscheduler.taskserver.task.TaskArguments
 import scala.concurrent.{ExecutionContext, Future}

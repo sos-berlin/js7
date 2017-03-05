@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.xmls.{FileSource, ScalaXMLEventReader}
-import com.sos.jobscheduler.data.engine2.order.JobPath
+import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.shared.common.VariablesXmlParser
 import java.nio.file.Path
 import javax.xml.transform.Source

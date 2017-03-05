@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.agent.data.commands
 
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.data.engine2.order.{Jobnet, Order}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.jobnet.Jobnet
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import scala.collection.immutable.Seq
 import spray.json.DefaultJsonProtocol._
 

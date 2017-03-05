@@ -17,12 +17,11 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.Jobnet.{EndNode, JobNode}
-import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderReady
-import com.sos.jobscheduler.data.engine2.order.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey, Order, OrderEvent}
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
+import com.sos.jobscheduler.data.order.OrderEvent.OrderReady
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -131,8 +130,8 @@ private object OrderAgentIT {
     JobnetPath("/TEST"),
     ANodeId,
     List(
-      JobNode(ANodeId, TestAgentId, AJobPath, onSuccess = BNodeId, onFailure = FailedNodeId),
-      JobNode(BNodeId, TestAgentId, BJobPath, onSuccess = EndNodeId, onFailure = FailedNodeId),
-      EndNode(EndNodeId),
-      EndNode(FailedNodeId)))
+      Jobnet.JobNode(ANodeId, TestAgentId, AJobPath, onSuccess = BNodeId, onFailure = FailedNodeId),
+      Jobnet.JobNode(BNodeId, TestAgentId, BJobPath, onSuccess = EndNodeId, onFailure = FailedNodeId),
+      Jobnet.EndNode(EndNodeId),
+      Jobnet.EndNode(FailedNodeId)))
 }

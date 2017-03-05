@@ -1,11 +1,10 @@
-package com.sos.jobscheduler.data.engine2.order
+package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.Order.{Idle, Outcome, State}
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.jobnet.{NodeId, NodeKey}
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -18,16 +17,16 @@ sealed trait OrderEvent extends Event {
 object OrderEvent {
   final case class OrderAdded(
     nodeKey: NodeKey,
-    state: Idle,
+    state: Order.Idle,
     variables: Map[String, String],
-    outcome: Outcome)
+    outcome: Order.Outcome)
   extends OrderEvent
 
   final case class OrderAttached(
     nodeKey: NodeKey,
-    state: Idle,
+    state: Order.Idle,
     variables: Map[String, String],
-    outcome: Outcome)
+    outcome: Order.Outcome)
   extends OrderEvent
 
   final case class OrderMovedToAgent(agentPath: AgentPath)

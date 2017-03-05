@@ -26,11 +26,10 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.Jobnet.{EndNode, JobNode}
-import com.sos.jobscheduler.data.engine2.order.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey, Order, OrderEvent}
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.{ActorEventCollector, StampedKeyedEventBus}
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
 import java.nio.file.Path
@@ -108,9 +107,9 @@ object AgentActorIT {
     JobnetPath("/TEST"),
     NodeId("100"),
     List(
-      JobNode(NodeId("100"), TestAgentId, AJobPath, onSuccess = NodeId("END"), onFailure = NodeId("FAILED")),
-      EndNode(NodeId("FAILED")),
-      EndNode(NodeId("END"))))
+      Jobnet.JobNode(NodeId("100"), TestAgentId, AJobPath, onSuccess = NodeId("END"), onFailure = NodeId("FAILED")),
+      Jobnet.EndNode(NodeId("FAILED")),
+      Jobnet.EndNode(NodeId("END"))))
 
   private val AScript =
     if (isWindows) """

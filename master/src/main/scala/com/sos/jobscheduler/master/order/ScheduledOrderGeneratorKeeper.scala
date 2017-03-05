@@ -3,8 +3,7 @@ package com.sos.jobscheduler.master.order
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Collections._
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
-import com.sos.jobscheduler.data.engine2.order.Order
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorKeeper._

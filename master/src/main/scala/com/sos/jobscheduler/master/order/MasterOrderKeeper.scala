@@ -13,13 +13,12 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
-import com.sos.jobscheduler.data.engine2.agent.AgentPath
-import com.sos.jobscheduler.data.engine2.order.Jobnet.{EndNode, JobNode}
-import com.sos.jobscheduler.data.engine2.order.OrderEvent.OrderAdded
-import com.sos.jobscheduler.data.engine2.order.{Jobnet, JobnetPath, Order, OrderEvent}
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.jobnet.{Jobnet, JobnetPath}
+import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.KeyedEventJsonFormats.MasterKeyedEventJsonFormat
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -330,7 +329,7 @@ with Stash {
       case event: OrderAdded ⇒
         onOrderAdded(orderId, event)
         for (jobnet ← pathToJobnet.get(event.nodeKey.jobnetPath);
-             jobNode ← jobnet.idToNode.get(event.nodeKey.nodeId) collect { case o: JobNode ⇒ o }) {
+             jobNode ← jobnet.idToNode.get(event.nodeKey.nodeId) collect { case o: Jobnet.JobNode ⇒ o }) {
           val order = Order[Order.Idle](orderId, event.nodeKey, event.state, event.variables, event.outcome)
           tryAttachOrderToAgent(order, jobnet, jobNode.agentPath)
         }
@@ -365,10 +364,10 @@ with Stash {
     for (jobnet ← pathToJobnet.get(orderEntry.order.jobnetPath);
          node ← jobnet.idToNode.get(orderEntry.order.nodeId)) {
       node match {
-        case node: JobNode ⇒
+        case node: Jobnet.JobNode ⇒
           val idleOrder = orderEntry.order.castState[Order.Idle]  // ???
           tryAttachOrderToAgent(idleOrder, jobnet, node.agentPath)
-        case _: EndNode ⇒
+        case _: Jobnet.EndNode ⇒
           persist(KeyedEvent(OrderEvent.OrderFinished)(orderId)) { stamped ⇒
             logger.info(stamped.toString)
           }

@@ -3,8 +3,8 @@ package com.sos.jobscheduler.shared.filebased
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.data.engine2.order.{JobPath, JobnetPath}
 import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.{forEachTypedFile, matchesFile}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalkerTest._
 import java.nio.file.Files.{createDirectories, createTempDirectory}
