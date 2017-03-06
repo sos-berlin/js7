@@ -11,6 +11,7 @@ import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import java.time.Duration
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
+import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -21,6 +22,7 @@ final class EventQueueTest extends FreeSpec with BeforeAndAfterAll {
   private val actorSystem = ActorSystem("EventQueueTest")
   private val timerService = new TimerService(idleTimeout = Some(1.s))
   private val eventQueue = actorSystem actorOf Props { new EventQueue(timerService) }
+  private var lastEventId = EventId.BeforeFirst
 
   override def afterAll() = {
     actorSystem.terminate()
@@ -51,6 +53,27 @@ final class EventQueueTest extends FreeSpec with BeforeAndAfterAll {
 
     val dEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s, limit = 1) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
     assert((dEventSeq.stampeds map { _.value }) == List(aKeyedEvent))
+
+    val eEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
+    assert((eEventSeq.stampeds map { _.value }) == List(aKeyedEvent, bKeyedEvent))
+    lastEventId = eEventSeq.stampeds.last.eventId
+  }
+
+  "Many events" in {
+    for (_ ← 1 to 100) {
+      val whenAEventSeq = requestEvents(after = lastEventId, timeout = 99.s)
+      val keyedEvent = KeyedEvent(OrderReady)(OrderId("2"))
+      val sent = for (i ← 1 to 1000) yield Stamped(lastEventId + i, keyedEvent)
+      sent foreach eventQueue.!
+      val received = mutable.Buffer[Stamped[KeyedEvent[OrderEvent]]]()
+      received ++= (whenAEventSeq await 99.s).asInstanceOf[MyNonEmptyEventSeq].stampeds
+      lastEventId = received.last.eventId
+      while (lastEventId < sent.last.eventId) {
+        received ++= (requestEvents(after = lastEventId, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq].stampeds
+        lastEventId = received.last.eventId
+      }
+      assert(received.toVector == sent)
+    }
   }
 
   private def requestEvents(after: EventId, timeout: Duration, limit: Int = Int.MaxValue): Future[EventSeq[Seq, KeyedEvent[OrderEvent]]] = {

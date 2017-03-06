@@ -24,7 +24,8 @@ final class EventQueue(timerService: TimerService) extends Actor {
   private implicit val executionContext = context.dispatcher
   private val eventQueue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, StampedEvent]
   private val requestors = mutable.Map[Promise[MyEventSeq], Timer[Unit]]()
-  private var lastKnownEventId = EventId.BeforeFirst
+  private var oldestKnownEventId = EventId.BeforeFirst
+  private var firstResponse = NoFirstResponse
 
   def receive = {
     case msg @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
@@ -34,12 +35,18 @@ final class EventQueue(timerService: TimerService) extends Actor {
           // Master posts its own OrderDetached
           removeEventsFor(orderId)
         case _ ⇒
-          add(stamped)
+          eventQueue.put(stamped.eventId, stamped)
+          if (requestors.nonEmpty) {
+            if (firstResponse == NoFirstResponse) {
+              firstResponse = stamped.eventId
+            }
+            self ! Internal.OnAdded(stamped.eventId)
+          }
       }
 
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
-      if (after != lastKnownEventId && !eventQueue.containsKey(after)) {
-        val error = s"RequestEvents: unknown EventId after=${EventId.toString(after)} (lastKnownEventId=$lastKnownEventId)"
+      if (after != oldestKnownEventId && !eventQueue.containsKey(after)) {
+        val error = s"RequestEvents: unknown EventId after=${EventId.toString(after)} (oldestKnownEventId=$oldestKnownEventId)"
         logger.debug(error)
         sender() ! Status.Failure(new IllegalArgumentException(error))  // TODO Does requester handle Status.Failure ?
       } else {
@@ -58,27 +65,28 @@ final class EventQueue(timerService: TimerService) extends Actor {
         }
       }
 
+    case Internal.OnAdded(eventId) ⇒
+      if (eventId == eventQueue.lastKey/*may return null*/ && firstResponse != NoFirstResponse/*to be sure*/) {
+        for ((promise, timer) ← requestors) {
+          timerService.cancel(timer)
+          promise.success(EventSeq.NonEmpty((eventQueue.navigableKeySet.tailSet(firstResponse, true).iterator map eventQueue.get).toVector))
+        }
+        firstResponse = NoFirstResponse
+        requestors.clear()
+      }
+
     case Internal.RequestTimedOut(promise, emptyEventSeq) ⇒
       requestors -= promise
       promise.success(emptyEventSeq)
 
     case Input.GetSnapshot ⇒
-      sender() ! CompleteSnapshot(lastKnownEventId, eventQueue.values.toVector)
+      sender() ! CompleteSnapshot(oldestKnownEventId, eventQueue.values.toVector)
 
     case CompleteSnapshot(eventId, stampedEvents) ⇒
       assert(eventQueue.isEmpty)
-      lastKnownEventId = eventId
+      oldestKnownEventId = eventId
       eventQueue ++= stampedEvents map { o ⇒ java.lang.Long.valueOf(o.eventId) → o }
-      logger.debug(s"${stampedEvents.size} events recovered, lastKnownEventId=${EventId.toString(lastKnownEventId)}")
-  }
-
-  private def add(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit = {
-    eventQueue.put(stamped.eventId, stamped)
-    for ((promise, timer) ← requestors) {
-      timerService.cancel(timer)
-      promise.success(EventSeq.NonEmpty(List(stamped)))
-    }
-    requestors.clear()
+      logger.debug(s"${stampedEvents.size} events recovered, oldestKnownEventId=${EventId.toString(oldestKnownEventId)}")
   }
 
   private def removeEventsFor(orderId: OrderId): Unit = {
@@ -87,8 +95,8 @@ final class EventQueue(timerService: TimerService) extends Actor {
       val e = i.next()
       if (e.value.key == orderId) {
         i.remove()
-        if (lastKnownEventId < e.eventId) {
-          lastKnownEventId = e.eventId
+        if (oldestKnownEventId < e.eventId) {
+          oldestKnownEventId = e.eventId
         }
       }
     }
@@ -97,6 +105,7 @@ final class EventQueue(timerService: TimerService) extends Actor {
 
 object EventQueue {
   private val logger = Logger(getClass)
+  private val NoFirstResponse = EventId.BeforeFirst
 
   private type StampedEvent = Stamped[KeyedEvent[OrderEvent]]
   type MyEventSeq = EventSeq[Seq, KeyedEvent[OrderEvent]]
@@ -107,7 +116,7 @@ object EventQueue {
     final case object GetSnapshot
   }
 
-  final case class CompleteSnapshot(lastKnownEventId: EventId, events: Seq[StampedEvent])
+  final case class CompleteSnapshot(oldestKnownEventId: EventId, events: Seq[StampedEvent])
 
   object CompleteSnapshot {
     implicit val jsonFormat = jsonFormat2(apply) withTypeName "EventQueue.Snapshot"
@@ -115,5 +124,6 @@ object EventQueue {
 
   private object Internal {
     case class RequestTimedOut(promise: Promise[MyEventSeq], eventSeq: EventSeq.Empty)
+    case class OnAdded(eventId: EventId)
   }
 }
