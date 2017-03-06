@@ -14,6 +14,6 @@ trait GzipCompression extends StreamConversion {
   override def convertInputStream(in: InputStream) =
     new GZIPInputStream(in)
 
-  override def isCorruptException(exception: Exception): Boolean =
-    exception.isInstanceOf[java.util.zip.ZipException] || super.isCorruptException(exception)
+  //override def isCorruptException(exception: Exception): Boolean =
+  //  exception.isInstanceOf[java.util.zip.ZipException] || super.isCorruptException(exception)
 }
