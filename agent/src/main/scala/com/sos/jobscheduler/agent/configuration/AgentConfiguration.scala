@@ -49,7 +49,6 @@ final case class AgentConfiguration(
   dotnet: DotnetConfiguration,
   rpcKeepaliveDuration: Option[Duration],
   killScript: Option[ProcessKillScript],
-  experimentalOrdersEnabled: Boolean,
   startupTimeout: Duration,
   commandTimeout: Duration,
   implicit val akkaAskTimeout: Timeout,
@@ -178,7 +177,6 @@ object AgentConfiguration {
       rpcKeepaliveDuration = c.durationOption("task.rpc.keepalive.duration"),
       jobJavaOptions = c.stringSeq("task.java.options"),
       killScript = Some(ProcessKillScript(DelayUntilFinishFile)),  // Changed below
-      experimentalOrdersEnabled = c.getBoolean("experimental-orders"),
       startupTimeout = c.getDuration("startup-timeout"),
       commandTimeout = c.getDuration("command-timeout"),
       akkaAskTimeout = c.getDuration("akka-ask-timeout").toFiniteDuration,

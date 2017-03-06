@@ -9,6 +9,7 @@ import com.sos.jobscheduler.agent.scheduler.AgentActor
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
@@ -18,6 +19,7 @@ import java.nio.file.{Files, Path}
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import OrderHandler._
 
 /**
   * @author Joacim Zschimmer
@@ -39,7 +41,8 @@ final class OrderHandler @Inject private(
   // This is a Future to allow parallel startup.
   // Commands are accepted but execution is delayed until the Future has been completed.
   private val agentActorFutureOption: Option[Future[ActorRef]] =
-    for (liveDirectory ← conf.liveDirectoryOption if conf.experimentalOrdersEnabled) yield {
+    for (liveDirectory ← conf.liveDirectoryOption if Files.exists(liveDirectory)) yield {
+      logger.info("Directory 'config/live' is present: starting with experimental order processing")
       require(Files.isDirectory(liveDirectory), s"Missing live directory '$liveDirectory'")
       val actorRef = newActor(liveDirectory)
       val askTimeout = Timeout(conf.startupTimeout.toFiniteDuration)
@@ -85,4 +88,8 @@ final class OrderHandler @Inject private(
             promise.future
          })
       yield response
+}
+
+object OrderHandler {
+  private val logger = Logger(getClass)
 }

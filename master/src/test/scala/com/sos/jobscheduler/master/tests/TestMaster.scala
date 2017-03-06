@@ -50,9 +50,8 @@ object TestMaster {
               <script language="shell">{TestScript}</script>
             </job>
           val agent = new Agent(AgentConfiguration.forTest().copy(
-            dataDirectory = Some(env.agentDir(agentPath)),
-            experimentalOrdersEnabled = true))
-          .closeWithCloser
+            dataDirectory = Some(env.agentDir(agentPath))))
+            .closeWithCloser
           agent.start()
           agent
         }

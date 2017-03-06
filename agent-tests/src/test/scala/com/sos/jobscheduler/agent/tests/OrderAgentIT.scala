@@ -50,8 +50,7 @@ final class OrderAgentIT extends FreeSpec {
             //"akka.persistence.snapshot-store.plugin" → "akka.persistence.snapshot-store.local",
             //"akka.persistence.snapshot-store.local.dir" → s"$persistenceDir/snapshots")))
           .copy(
-            dataDirectory = Some(dataDir),
-            experimentalOrdersEnabled = true)
+            dataDirectory = Some(dataDir))
       autoClosing(new Agent(agentConf)) { agent ⇒
         agent.start() await 5.s
         withCloser { implicit closer ⇒

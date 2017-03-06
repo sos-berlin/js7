@@ -39,7 +39,6 @@ final class AgentConfigurationTest extends FreeSpec {
       dotnet = DotnetConfiguration(),
       rpcKeepaliveDuration = None,
       killScript = Some(ProcessKillScript(temporaryDirectory / s"kill_task.$shellExt")),
-      experimentalOrdersEnabled = false,
       startupTimeout = 900.s,
       commandTimeout = 60.s,
       akkaAskTimeout = 60.seconds,

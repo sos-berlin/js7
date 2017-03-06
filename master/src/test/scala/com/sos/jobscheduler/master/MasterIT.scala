@@ -56,8 +56,7 @@ final class MasterIT extends FreeSpec {
               <script language="shell">{TestScript}</script>
             </job>
           new Agent(AgentConfiguration.forTest().copy(
-            dataDirectory = Some(env.agentDir(agentPath)),
-            experimentalOrdersEnabled = true))
+            dataDirectory = Some(env.agentDir(agentPath))))
           .closeWithCloser
         }
 

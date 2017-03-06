@@ -49,8 +49,7 @@ final class RecoveryIT extends FreeSpec {
 
         val agentConfs = for (name ← AgentNames) yield AgentConfiguration.forTest().copy(
           name = name,
-          dataDirectory = Some(dataDir / name),
-          experimentalOrdersEnabled = true)
+          dataDirectory = Some(dataDir / name))
 
         (dataDir / "master/config/live/fast.job_chain.xml").xml = QuickJobChainElem
         (dataDir / "master/config/live/test.job_chain.xml").xml = TestJobChainElem
