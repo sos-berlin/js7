@@ -38,7 +38,7 @@ final class Master @Inject private
   keyedEventBus: StampedKeyedEventBus,
   timerService: TimerService,
   actorSystem: ActorSystem,
-  executionContext: ExecutionContext,
+  protected val executionContext: ExecutionContext,
   closer: Closer)
 extends OrderClient {
 

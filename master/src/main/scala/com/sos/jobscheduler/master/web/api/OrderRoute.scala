@@ -30,6 +30,8 @@ trait OrderRoute {
   def orderRoute: Route =
     pathSingleSlash {
       parameter("return".?) {
+        case Some("OrderOverview") | None ⇒
+          complete(orderClient.orderOverviews)
         case Some("Order") | None ⇒
           complete(orderClient.orders)
         case Some("OrderEvent") ⇒

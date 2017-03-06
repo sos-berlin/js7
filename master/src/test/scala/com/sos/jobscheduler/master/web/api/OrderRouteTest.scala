@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, OrderOverview}
 import com.sos.jobscheduler.master.OrderClient
 import com.sos.jobscheduler.master.web.api.OrderRouteTest._
 import org.scalatest.FreeSpec
@@ -32,6 +32,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
   protected val eventCollector = new EventCollector.ForTest
   protected val eventIdGenerator = new EventIdGenerator
   protected val orderClient = new OrderClient {
+    def executionContext = OrderRouteTest.this.executionContext
     def order(orderId: OrderId) = Future.successful(TestOrders.get(orderId))
     def orders = Future.successful(TestOrders.values.toVector)
   }
@@ -46,6 +47,16 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
   OrderUri in {
     Get(OrderUri) ~> Accept(`application/json`) ~> route ~> check {
       assert(!handled)
+    }
+  }
+
+  for (uri ← List(
+      s"$OrderUri/")) {
+    s"$uri" in {
+      Get(uri) ~> Accept(`application/json`) ~> route ~> check {
+        val orders = responseAs[Seq[OrderOverview]]
+        assert(orders == (TestOrders.values.toList map OrderOverview.fromOrder))
+      }
     }
   }
 
