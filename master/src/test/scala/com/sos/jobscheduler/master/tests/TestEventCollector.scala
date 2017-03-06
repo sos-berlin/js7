@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master
+package com.sos.jobscheduler.master.tests
 
 import akka.actor.{Actor, ActorRefFactory, Props}
 import com.sos.jobscheduler.common.event.collector.EventCollector
@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, Stamped}
-import com.sos.jobscheduler.master.TestEventCollector._
+import com.sos.jobscheduler.master.tests.TestEventCollector._
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import scala.concurrent.ExecutionContext
 

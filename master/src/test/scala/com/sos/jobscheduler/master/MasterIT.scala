@@ -9,27 +9,27 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError}
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
+import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.MasterIT._
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
-import com.sos.jobscheduler.master.order.MasterOrderKeeper
+import com.sos.jobscheduler.master.order.{MasterOrderKeeper, OrderGeneratorPath}
+import com.sos.jobscheduler.master.tests.TestEnvironment
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -45,25 +45,30 @@ import scala.reflect.ClassTag
 final class MasterIT extends FreeSpec {
 
   "test" in {
-    autoClosing(new DataDirectoryProvider) { dataDirectoryProvider ⇒
+    autoClosing(new TestEnvironment(AgentPaths)) { env ⇒
       withCloser { implicit closer ⇒
-        import dataDirectoryProvider.dataDir
-
-        val agents = AgentNames map { agentName ⇒
-          val agentConf = AgentConfiguration.forTest().copy(
-            dataDirectory = Some(dataDir / agentName),
-            experimentalOrdersEnabled = true)
-          new Agent(agentConf).closeWithCloser
+        val agents = AgentPaths map { agentPath ⇒
+          env.agentXmlFile(agentPath, JobPath("/test")).xml =
+            <job>
+              <params>
+                <param name="var1" value={s"VALUE-${agentPath.withoutStartingSlash}"}/>
+              </params>
+              <script language="shell">{TestScript}</script>
+            </job>
+          new Agent(AgentConfiguration.forTest().copy(
+            dataDirectory = Some(env.agentDir(agentPath)),
+            experimentalOrdersEnabled = true))
+          .closeWithCloser
         }
 
         agents(0).start() await 10.s
-        (dataDir / "master/config/live/test.job_chain.xml").xml =
+        env.xmlFile(JobnetPath("/test")).xml =
           <job_chain>
             <job_chain_node state="100" agent="test-agent-111" job="/test"/>
             <job_chain_node state="200" agent="test-agent-222" job="/test"/>
             <job_chain_node.end state="END"/>
           </job_chain>
-        (dataDir / "master/config/live/test.order.xml").xml =
+        env.xmlFile(OrderGeneratorPath("/test")).xml =
           <order job_chain="test" state="100">
             <params>
               <param name="x" value="XXX"/>
@@ -72,12 +77,12 @@ final class MasterIT extends FreeSpec {
               <period absolute_repeat="1"/>
             </run_time>
           </order>
-        (dataDir / "master/config/live/test-agent-111.agent.xml").xml =
+        env.xmlFile(AgentPath("/test-agent-111")).xml =
           <agent uri={agents(0).localUri.string}/>
-        (dataDir / "master/config/live/test-agent-222.agent.xml").xml =
+        env.xmlFile(AgentPath("/test-agent-222")).xml =
           <agent uri={agents(1).localUri.string}/>
 
-        val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(data = Some(dataDir / "master"))))
+        val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(data = Some(env.masterDir))))
         injector.instance[Closer].closeWithCloser
         val lastEventId = injector.instance[EventCollector].lastEventId
         val actorSystem = injector.instance[ActorSystem]
@@ -110,7 +115,6 @@ final class MasterIT extends FreeSpec {
 
         master.executeCommand(MasterCommand.ScheduleOrdersEvery(TestDuration / 2)) await 99.s  // Needing 2 consecutive order generations
         val expectedOrderCount = 1 + TestDuration.getSeconds.toInt  // Expecting one finished order per second
-        //sleep(TestDuration)  // Time to show DeadLetter ?
         waitForCondition(TestDuration + 10.s, 100.ms) { eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].size == expectedOrderCount }
         logger.info("Events:\n" + ((eventGatherer.events map { _.toString }) mkString "\n"))
         val orderIds = eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].toVector
@@ -129,35 +133,17 @@ private object MasterIT {
   private val TestDuration = 10.s
   private val TestJobnetPath = JobnetPath("/test")
   private val TestOrderId = OrderId("ORDER-ID")
-  private val AgentNames = List("agent-111", "agent-222")
+  private val AgentPaths = List(AgentPath("/agent-111"), AgentPath("/agent-222"))
   private val logger = Logger(getClass)
 
-  private class DataDirectoryProvider extends HasCloser {
-    val dataDir = createTempDirectory("test-") withCloser deleteDirectoryRecursively
-    closeOnError(closer) {
-      createDirectories(dataDir / "master/config/live")
-      for (agentName ← AgentNames) createDirectories(dataDir / s"$agentName/config/live")
-    }
-
-    private val testScript =
-      if (isWindows) """
-        |@echo off
-        |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
-        |""".stripMargin
-      else """
-        |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
-        |""".stripMargin
-
-    for (agentName ← AgentNames) {
-      (dataDir / s"$agentName/config/live/test.job.xml").xml =
-        <job>
-          <params>
-            <param name="var1" value={s"VALUE-$agentName"}/>
-          </params>
-          <script language="shell">{testScript}</script>
-        </job>
-    }
-  }
+  private val TestScript =
+    if (isWindows) """
+      |@echo off
+      |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
+      |""".stripMargin
+    else """
+      |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
+      |""".stripMargin
 
   private class TestEventGatherer(injector: Injector) {
     import TestEventGatherer._

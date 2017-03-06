@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master
+package com.sos.jobscheduler.master.tests
 
 import akka.actor.ActorSystem
 import com.google.common.io.Closer
@@ -20,10 +20,11 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.master.RecoveryIT._
+import com.sos.jobscheduler.master.Master
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
+import com.sos.jobscheduler.master.tests.RecoveryIT._
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path

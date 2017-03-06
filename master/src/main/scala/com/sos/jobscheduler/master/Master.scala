@@ -63,7 +63,10 @@ final class Master @Inject private
     eventIdGenerator.stampTearableEventSeq(eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true))
 
   def order(orderId: OrderId): Future[Option[Order[Order.State]]] =
-    (orderKeeper ? MasterOrderKeeper.Command.Get(orderId)).mapTo[Option[Order[Order.State]]]
+    (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]]
+
+  def orders: Future[Seq[Order[Order.State]]] =
+    (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Seq[Order[Order.State]]]
 
   def localUri: Uri =
     webServer.localUri
