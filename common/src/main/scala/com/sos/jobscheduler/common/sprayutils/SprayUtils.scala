@@ -137,7 +137,7 @@ object SprayUtils {
     }
 
   implicit def asFromStringOptionDeserializer[A](implicit stringAsA: As[String, A]) =
-    simpleFromStringOptionDeserializer(stringAsA)
+    simpleFromStringOptionDeserializer(stringAsA.apply)
 
 //  implicit def isStringFromStringOptionDeserializer[A <: IsString: IsString.Companion]: FromStringOptionDeserializer[A] =
 //    simpleFromStringOptionDeserializer(implicitly[IsString.Companion[A]].apply)

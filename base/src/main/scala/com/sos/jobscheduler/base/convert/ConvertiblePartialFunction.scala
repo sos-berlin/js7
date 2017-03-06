@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.wrappedConv
 trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V] {
 
   def as[W](key: K)(implicit convert: As[V, W]): W =
-    wrappedConvert(convert, renderKey(key))(apply(key))
+    wrappedConvert(convert.apply, renderKey(key))(apply(key))
 
   def as[W](key: K, default: ⇒ W)(implicit convert: As[V, W]): W =
     optionAs[W](key) getOrElse default
@@ -19,7 +19,7 @@ trait ConvertiblePartialFunction[K, V] extends PartialFunction[K, V] {
     optionAs(key)(convert) orElse default
 
   def optionAs[W](key: K)(implicit convert: As[V, W]): Option[W] =
-    lift(key) map wrappedConvert(convert, renderKey(key))
+    lift(key) map wrappedConvert(convert.apply, renderKey(key))
 
   protected def renderKey(key: K) = s"key '$key'"
 }

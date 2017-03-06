@@ -47,7 +47,7 @@ object Configs {
       if (delegate.hasPath(path)) seqAs(path)(convert) else default.toVector
 
     def seqAs[W](path: String)(implicit convert: As[String, W]): immutable.Seq[W] =
-      stringSeq(path) map wrappedConvert(convert, path)
+      stringSeq(path) map wrappedConvert(convert.apply, path)
 
     def stringSeq(path: String, default: ⇒ Iterable[String]): immutable.IndexedSeq[String] =
       if (delegate.hasPath(path)) stringSeq(path) else default.toVector

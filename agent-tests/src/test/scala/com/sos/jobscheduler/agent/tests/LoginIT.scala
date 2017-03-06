@@ -9,6 +9,7 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.agent.AgentAddress
 import com.sos.jobscheduler.data.session.SessionToken
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -99,5 +100,5 @@ final class LoginIT extends FreeSpec with BeforeAndAfterAll {
   }
 
   private def withClient(body: AgentClient ⇒ Unit): Unit =
-    autoClosing(SimpleAgentClient(agent.localUri.toString))(body)
+    autoClosing(SimpleAgentClient(AgentAddress(agent.localUri.toString)))(body)
 }

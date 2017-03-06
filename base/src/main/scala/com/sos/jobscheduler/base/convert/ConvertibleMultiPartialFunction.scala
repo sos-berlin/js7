@@ -17,7 +17,7 @@ trait ConvertibleMultiPartialFunction[K, V] {
   def as[W](key: K)(implicit convert: As[V, W]): W =
     apply(key) match {
       case Seq() ⇒ throw new NoSuchElementException(s"Missing ${renderKey(key)}")
-      case Seq(value) ⇒ wrappedConvert(convert, renderKey(key))(value)
+      case Seq(value) ⇒ wrappedConvert(convert.apply, renderKey(key))(value)
       case _ ⇒ throwNotUnique(key)
     }
 
@@ -37,7 +37,7 @@ trait ConvertibleMultiPartialFunction[K, V] {
     lift(key) match {
       case None ⇒ Nil  // Missing is equivalent to empty
       case Some(seq) ⇒
-        val c = wrappedConvert(convert, renderKey(key))
+        val c = wrappedConvert(convert.apply, renderKey(key))
         seq.map(c)(breakOut): Vector[W]
     }
 
