@@ -4,7 +4,7 @@ services:
     build: .
     image: jobscheduler
     container_name: jobscheduler-master
-    command: ["master"]
+    command: ["master", "-java-option=-Xmx200m"]
     networks:
     - default
     ports:
@@ -16,10 +16,8 @@ services:
     build: .
     image: jobscheduler
     container_name: jobscheduler-agent-1
-    command: ["agent"]
+    command: ["agent", "-java-option=-Xmx100m"]
     hostname: agent-1
-    ports:
-    - "5001:4444"
     volumes:
       - agent-1:/var/lib/jobscheduler/agent
     working_dir: /var/lib/jobscheduler/agent
@@ -27,10 +25,8 @@ services:
     build: .
     image: jobscheduler
     container_name: jobscheduler-agent-2
-    command: ["agent"]
+    command: ["agent", "-java-option=-Xmx100m"]
     hostname: agent-2
-    ports:
-    - "5002:4444"
     volumes:
       - agent-2:/var/lib/jobscheduler/agent
     working_dir: /var/lib/jobscheduler/agent

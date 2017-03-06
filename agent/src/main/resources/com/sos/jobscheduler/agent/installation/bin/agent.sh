@@ -4,8 +4,8 @@ set -e
 . "$(cd "$(dirname -- "$0")" && pwd || kill $$)/set-context.sh"
 declare jobschedulerHome classpath pathSeparator JAVA_HOME java
 
-declare -a javaOptions=()
-declare -a agentOptions=()
+javaOptions=()
+agentOptions=()
 data=/var/lib/jobscheduler/agent
 
 #if [ -z "$data" ]; then :
@@ -17,7 +17,7 @@ for arg in "$@"; do
   case $arg in
     -rmx-port=*)
       a="${arg#*=}"
-      javaOptions=(
+      javaOptions+=(
         "-Dcom.sun.management.jmxremote"
         "-Dcom.sun.management.jmxremote.ssl=false"
         "-Dcom.sun.management.jmxremote.authenticate=false"
@@ -26,7 +26,12 @@ for arg in "$@"; do
       ;;
     -debug-port=*)
       a="${arg#*=}"
-      javaOptions=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
+      javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
+      shift
+      ;;
+    -java-option=*)
+      a="${arg#*=}"
+      javaOptions+=("$a")
       shift
       ;;
     -data-directory=*)

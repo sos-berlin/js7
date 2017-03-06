@@ -15,10 +15,16 @@ declare jobschedulerHome classpath pathSeparator JAVA_HOME java
 
 data=/var/lib/jobscheduler/master
 httpPort=4444
-declare -a masterOptions=()
+masterOptions=()
+javaOptions=()
 
 for arg in "$@"; do :
   case $arg in
+    -java-option=*)
+      a="${arg#*=}"
+      javaOptions+=("$a")
+      shift
+      ;;
     -data-directory=*)
       data="${arg#*=}"
       shift
@@ -58,7 +64,7 @@ else
 fi
 
 logbackArg="-Dlogback.configurationFile=$logbackConfig"
-javaOptions=("$logbackArg" "${javaOptions[@]}")
+javaOptions+=("$logbackArg" "${javaOptions[@]}")
 
 execute=(
   "$java"
