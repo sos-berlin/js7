@@ -14,7 +14,7 @@ final class YamlJsonConversionTest extends FreeSpec {
     "number" → JsNumber(1.23),
     "string" → JsString("STRING"),
     "array" → JsArray(
-      JsNumber(1),
+      JsNumber(-1112223334445556667L),
       JsBoolean(true),
       JsObject("x" → JsString("X")),
       JsArray(JsNumber(2), JsNull)),
@@ -23,7 +23,7 @@ final class YamlJsonConversionTest extends FreeSpec {
   private val yaml = """number: 1.23
                        |string: STRING
                        |array:
-                       |- 1
+                       |- -1112223334445556667
                        |- true
                        |- x: X
                        |- - 2
