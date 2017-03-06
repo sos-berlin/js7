@@ -150,7 +150,7 @@ final class HeartbeatIT extends FreeSpec with BeforeAndAfterAll {
 
   private def requireTimerServiceIsEmpty(): Unit = {
     waitForCondition(2.s, 10.ms) { timerService.overview.count == 0 }  // Heartbeat timeout is asynchronously cancelled
-    assert(timerService.overview.count == 0, s"${timerService.overview.toFlowYaml}")
+    assert(timerService.overview.count == 0, s"${timerService.overview.toFlowYamlString}")
   }
 }
 

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.sprayutils
 
-import com.sos.jobscheduler.common.sprayutils.YamlJsonConversion.toYaml
+import com.sos.jobscheduler.common.sprayutils.YamlJsonConversion.toYamlString
 import java.lang.StringBuilder
 import spray.json._
 
@@ -9,5 +9,5 @@ import spray.json._
  */
 object YamlPrinter extends JsonPrinter {
 
-  def print(v: JsValue, sb: StringBuilder) = sb.append(toYaml(v))
+  def print(v: JsValue, sb: StringBuilder) = sb.append(toYamlString(v))
 }

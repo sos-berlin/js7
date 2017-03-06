@@ -204,7 +204,7 @@ final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) e
     removed
   }
 
-  override def toString = overview.toFlowYaml
+  override def toString = overview.toFlowYamlString
 
   def isEmpty: Boolean = !nonEmpty
 

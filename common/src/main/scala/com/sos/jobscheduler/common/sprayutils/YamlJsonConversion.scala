@@ -17,29 +17,29 @@ object YamlJsonConversion {
     /**
       * Converts this with spray-json to YAML.
       */
-    def toYaml(implicit writer: JsonWriter[A]): String = YamlJsonConversion.toYaml(delegate.toJson)
+    def toYamlString(implicit writer: JsonWriter[A]): String = YamlJsonConversion.toYamlString(delegate.toJson)
 
     /**
       * Converts this with spray-json to YAML using flow styles.
       * This should return a one-line string.
       */
-    def toFlowYaml(implicit writer: JsonWriter[A]): String = YamlJsonConversion.toYaml(delegate.toJson, FlowStyle.FLOW).trim
+    def toFlowYamlString(implicit writer: JsonWriter[A]): String = YamlJsonConversion.toYamlString(delegate.toJson, FlowStyle.FLOW).trim
   }
 
-  def toYaml(v: JsValue): String =
+  def toYamlString(v: JsValue): String =
     yaml.dump(jsValueToYaml(v))
 
-  def toYaml(v: JsValue, flowStyle: FlowStyle): String =
+  def toYamlString(v: JsValue, flowStyle: FlowStyle): String =
     yaml.dumpAs(yaml.load(v.compactPrint), Tag.MAP, flowStyle)
 
-  private def jsValueToYaml(v: JsValue): Any =
+  def jsValueToYaml(v: JsValue): Any =
     jsValueToJava(v)
     //Safe, but slow: yaml.load(v.compactPrint)
 
   def yamlToJsValue(yamlString: String): JsValue =
     valueToJsValue(yaml.load(yamlString))
 
-  private def yaml: Yaml = {
+  def yaml: Yaml = {
     val options = new DumperOptions sideEffect { o ⇒
       o.setDefaultFlowStyle(FlowStyle.BLOCK)
       o.setWidth(100)

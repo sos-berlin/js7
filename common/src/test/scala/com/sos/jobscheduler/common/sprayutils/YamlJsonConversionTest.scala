@@ -32,25 +32,25 @@ final class YamlJsonConversionTest extends FreeSpec {
                        |  a: true
                        |""".stripMargin
 
-  "toYaml" in {
-    assert(toYaml(jsObject) == yaml)
+  "toYamlString" in {
+    assert(toYamlString(jsObject) == yaml)
   }
 
-  ".toYaml" in {
+  ".toYamlString" in {
     case class A(x: Int, y: String)
     implicit val jsonFormat = jsonFormat2(A.apply)
-    assert(A(123, "ABC").toYaml == "x: 123\n" + "y: ABC\n")
+    assert(A(123, "ABC").toYamlString == "x: 123\n" + "y: ABC\n")
   }
 
   ".toJson" in {
     assert(yamlToJsValue(yaml) == jsObject)
   }
 
-  ".toFlowYaml" in {
+  ".toFlowYamlString" in {
     case class A(string: String, number: Int, `"quoted`: Boolean)
     implicit val jsonFormat = jsonFormat3(A.apply)
     val a = A("test", 1, true)
 
-    assert(a.toFlowYaml == """{string: test, number: 1, '"quoted': true}""")
+    assert(a.toFlowYamlString == """{string: test, number: 1, '"quoted': true}""")
   }
 }

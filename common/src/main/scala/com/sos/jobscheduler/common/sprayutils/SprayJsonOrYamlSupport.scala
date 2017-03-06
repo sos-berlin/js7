@@ -32,10 +32,14 @@ object SprayJsonOrYamlSupport {
 
   private[sprayutils] def jsonOrYamlToString[A: RootJsonWriter](value: A, contentType: ContentType): String = {
     try {
-      val jsValue = implicitly[RootJsonWriter[A]].write(value)
+      def jsValue = implicitly[RootJsonWriter[A]].write(value)
       contentType match {
-        case `text/plain` | `text/plain(UTF-8)` ⇒ YamlPrinter(jsValue)
-        case `application/json` ⇒ CompactPrinter(jsValue)
+        case `text/plain` | `text/plain(UTF-8)` ⇒
+          // Try to reduce to hold two big objects in memory
+          val y = YamlJsonConversion.jsValueToYaml(jsValue)
+          YamlJsonConversion.yaml.dump(y)
+        case `application/json` ⇒
+          CompactPrinter(jsValue)
       }
     } catch {
       case e: OutOfMemoryError ⇒
