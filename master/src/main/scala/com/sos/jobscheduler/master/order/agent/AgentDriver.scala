@@ -158,8 +158,8 @@ with Stash {
     assert(eventFetcher == null)
     logger.info(s"Fetching events after ${EventId.toString(lastEventId)}")
     eventFetcher = new EventFetcher[OrderEvent](lastEventId) {
-      def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request)
-      def onEvent(stamped: Stamped[KeyedEvent[OrderEvent]]) = self ! Internal.AgentEvent(stamped)
+      protected def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request)
+      protected def onEvent(stamped: Stamped[KeyedEvent[OrderEvent]]) = self ! Internal.AgentEvent(stamped)
     }
     eventFetcher.start().onComplete {
       o ⇒ self ! Internal.EventFetcherTerminated(o)
