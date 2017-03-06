@@ -230,8 +230,11 @@ with Stash {
         sender() ! Done
       }
 
-    case Command.Get(orderId) ⇒
+    case Command.GetOrder(orderId) ⇒
       sender() ! (orderRegister.get(orderId) map { _.order })
+
+    case Command.GetOrders ⇒
+      sender() ! ((orderRegister.values map { _.order }).toVector: Vector[Order[Order.State]])
 
     case Command.Remove(orderId) ⇒
       orderRegister.get(orderId) match {
@@ -410,7 +413,8 @@ object MasterOrderKeeper {
   sealed trait Command
   object Command {
     final case class AddOrderSchedule(orders: Seq[Order[Order.Scheduled]]) extends Command
-    final case class Get(orderId: OrderId) extends Command
+    final case class GetOrder(orderId: OrderId) extends Command
+    final case object GetOrders extends Command
     final case class Remove(orderId: OrderId) extends Command
   }
 

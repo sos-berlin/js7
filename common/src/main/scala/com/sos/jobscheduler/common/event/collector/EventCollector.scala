@@ -178,4 +178,12 @@ object EventCollector {
       timeoutLimit = config.getDuration("timeout-limit")
     )
   }
+
+  final class ForTest(
+    initialOldestEventId: EventId = EventId.BeforeFirst,
+    configuration: Configuration = Configuration.ForTest)
+    (implicit
+      timerService: TimerService,
+      executionContext: ExecutionContext)
+    extends EventCollector(initialOldestEventId, configuration)
 }

@@ -140,9 +140,12 @@ lazy val common = project.dependsOn(base, data)
 lazy val master = project.dependsOn(shared, common, `agent-client`)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
-  .settings(
-    libraryDependencies +=
-      Dependencies.scalaTest % "test")
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      scalaTest % "test" ++
+      sprayTestkit % "test"
+  }
 
 lazy val shared = project.dependsOn(common)
   .configs(ForkedTest).settings(forkedSettings)

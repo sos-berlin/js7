@@ -2,6 +2,8 @@ package com.sos.jobscheduler.master.web
 
 import akka.actor.Props
 import com.google.inject.Injector
+import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.sprayutils.WebLogDirectives.handleErrorAndLog
@@ -22,7 +24,9 @@ extends HttpServiceActor with AllRoute {
 
   protected val masterConfiguration       = injector.instance[MasterConfiguration]
   private val config                      = injector.instance[Config]
-  protected val master                    = injector.instance[Master]
+  protected val orderClient               = injector.instance[Master]
+  protected def eventCollector            = injector.instance[EventCollector]
+  protected def eventIdGenerator          = injector.instance[EventIdGenerator]
   implicit protected val executionContext = injector.instance[ExecutionContext]
 
   override def postStop() = {

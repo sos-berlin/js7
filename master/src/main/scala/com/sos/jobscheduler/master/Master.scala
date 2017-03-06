@@ -39,7 +39,8 @@ final class Master @Inject private
   timerService: TimerService,
   actorSystem: ActorSystem,
   executionContext: ExecutionContext,
-  closer: Closer) {
+  closer: Closer)
+extends OrderClient {
 
   import configuration.akkaAskTimeout
 

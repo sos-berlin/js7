@@ -114,6 +114,7 @@ object Order {
 
   implicit val IdleJsonFormat: TypedJsonFormat[Idle] = TypedJsonFormat(
     Subtype(jsonFormat1(Scheduled)),
+    Subtype(jsonFormat0(() ⇒ StartNow)),
     Subtype(jsonFormat0(() ⇒ Detached)),
     Subtype(jsonFormat0(() ⇒ Waiting)))
 
