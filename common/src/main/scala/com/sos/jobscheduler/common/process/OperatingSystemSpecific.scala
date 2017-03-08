@@ -1,12 +1,14 @@
 package com.sos.jobscheduler.common.process
 
 import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import java.nio.file.Files._
-import java.nio.file.Path
+import java.nio.file.{FileAlreadyExistsException, Path}
 import java.nio.file.attribute.PosixFilePermissions._
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import scala.collection.immutable
+import OperatingSystemSpecific._
 
 /**
   * @author Joacim Zschimmer
@@ -25,8 +27,9 @@ private[process] sealed trait OperatingSystemSpecific {
 
   def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = {
     val file = directory resolve s"$name-$outerr.log"
-    if (!exists(file)) {
-      createFile(file, outputFileAttributes: _*)
+    try createFile(file, outputFileAttributes: _*)
+    catch { case t: FileAlreadyExistsException ⇒
+      logger.debug(t.toString)  // Should rarely happen
     }
     file
   }
@@ -39,6 +42,7 @@ private[process] sealed trait OperatingSystemSpecific {
 }
 
 private object OperatingSystemSpecific {
+  private val logger = Logger(getClass)
 
   private[process] val OS: OperatingSystemSpecific = if (isWindows) OperatingSystemSpecific.Windows else OperatingSystemSpecific.Unix
 
