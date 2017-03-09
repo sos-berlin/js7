@@ -3,9 +3,9 @@
 package sos.spooler;
 
 /*+ Ein Subprozess ist irgendein Prozess, der mit {@link Task#create_subprocess()} gestartet werden kann.
- * 
+ *
  */
-/** 
+/**
  * @author Joacim Zschimmer
  * @version $Revision: 4558 $
  */
@@ -24,8 +24,8 @@ public class Subprocess extends Idispatch implements HasBean<SubprocessBean>
 
     public void             start               ( String command_line )             {                com_call( "start", command_line ); }
 
-    
-    public void             start               ( String filename_and_arguments[] ) {                com_call( "start", (Object[])filename_and_arguments ); }
+
+    public void             start               ( String filename_and_arguments[] ) {                com_call( "start", (Object)filename_and_arguments); }
 
 
     @SchedulerGetter
@@ -53,12 +53,12 @@ public class Subprocess extends Idispatch implements HasBean<SubprocessBean>
 
     /*+ Verhindert, dass der Job stoppt, wenn der Subprozess bei Task-Ende mit exit_code <> 0 geendet hat.
       * <p/>
-      *  Wenn das Ende des Subprocesses nicht mit {@link #wait_for_termination()} oder {@link #wait_for_termination(double)} 
+      *  Wenn das Ende des Subprocesses nicht mit {@link #wait_for_termination()} oder {@link #wait_for_termination(double)}
       * abgewartet worden ist, tut das der Scheduler bei Task-Ende.
       * Wenn dann der Subprocess mit {@link #exit_code()} != 0 endet, stoppt der Job mit Fehler.
       * <p/>
       * Mit set_ignore_error( true ) kann das verhindert werden.
-      * {@link #wait_for_termination()} 
+      * {@link #wait_for_termination()}
       */
     public void         set_ignore_error        ( boolean b )                       {                com_call( ">ignore_error", b ); }
 
@@ -72,12 +72,12 @@ public class Subprocess extends Idispatch implements HasBean<SubprocessBean>
 
     /*+ Verhindert, dass der Job stoppt, wenn der Subprozess bei Task-Ende mit Signal (nur Unix) geendet hat.
       * <p/>
-      * Wenn das Ende des Subprocesses nicht mit {@link #wait_for_termination()} oder {@link #wait_for_termination(double)} 
+      * Wenn das Ende des Subprocesses nicht mit {@link #wait_for_termination()} oder {@link #wait_for_termination(double)}
       * abgewartet worden ist, tut das der Scheduler bei Task-Ende.
       * Wenn dann der Subprocess mit Signal endet, stoppt der Job mit Fehler.
       * <p/>
       * Mit set_ignore_signal(true) kann das verhindert werden.
-      * {@link #wait_for_termination()} 
+      * {@link #wait_for_termination()}
       */
     public void         set_ignore_signal       ( boolean b )                       {                com_call( ">ignore_signal", b ); }
 
@@ -96,32 +96,32 @@ public class Subprocess extends Idispatch implements HasBean<SubprocessBean>
     /*+ Setzt eine Umgebungsvariable für den Prozess.
       * Vor start() aufzurufen. */
     public void         set_environment         ( String entry_name, String value ) {                com_call( ">environment", entry_name, value ); }
-    
 
-    /*+ Wartet aufs Ende des Subprocesses. 
+
+    /*+ Wartet aufs Ende des Subprocesses.
       * Anschließend kann {@link #exit_code()} und {@link #termination_signal} gerufen werden.
-      * @return true, wenn der Subprozess geendet hat 
+      * @return true, wenn der Subprozess geendet hat
       * @see #wait_for_termination()
       */
     public boolean          wait_for_termination( double seconds )                  { return boolean_com_call( "wait_for_termination", new Double( seconds ) ); }
 
 
-    /*+ Wartet aufs Ende des Subprocesses. 
+    /*+ Wartet aufs Ende des Subprocesses.
       * Anschließend kann {@link #exit_code()} und {@link #termination_signal} gerufen werden.
       * @see #wait_for_termination(double)
       */
     public void             wait_for_termination()                                  {                com_call( "wait_for_termination" ); }
 
 
-    /*+ Bricht den Subprocess ab. 
-      * @param signal Nur unter Unix: Das Signal für kill(), 0 wird als 9 (SIGKILL, sofortiges Ende) interpretiert. 
+    /*+ Bricht den Subprocess ab.
+      * @param signal Nur unter Unix: Das Signal für kill(), 0 wird als 9 (SIGKILL, sofortiges Ende) interpretiert.
       */
     public void             kill                ( int signal )                      {                com_call( "kill", signal ); }
 
 
     /*+ Bricht den Subprocess ab. */
     public void             kill                ()                                  {                com_call( "kill" ); }
-    
+
     public void         set_priority            ( int priority )                    {                com_call( ">priority", priority ); }
     @SchedulerGetter
     public int              priority            ()                                  { return     int_com_call( "<priority" ); }
@@ -129,7 +129,7 @@ public class Subprocess extends Idispatch implements HasBean<SubprocessBean>
     public void         set_priority_class      ( String priority_class )           {                com_call( ">priority_class", priority_class ); }
     @SchedulerGetter
     public String           priority_class      ()                                  { return (String)com_call( "<priority_class" ); }
-    
+
     public void         set_own_process_group   ( boolean b)                        {                com_call( ">own_process_group", b ); }
     @SchedulerGetter
     public boolean          own_process_group   ()                                  { return boolean_com_call( "<own_process_group" ); }
