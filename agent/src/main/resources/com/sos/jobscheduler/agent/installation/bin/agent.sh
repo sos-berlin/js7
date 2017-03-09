@@ -14,7 +14,7 @@ data=/var/lib/jobscheduler/agent
 
 httpPort=
 for arg in "$@"; do
-  case $arg in
+  case "$arg" in
     -rmx-port=*)
       a="${arg#*=}"
       javaOptions+=(
@@ -56,27 +56,30 @@ logs="$data/logs"
 crashKillScript=$([ -n "$data" ] && echo "$data/kill_tasks_after_crash.sh")
 echo "crashKillScript=$crashKillScript"
 
-export SCHEDULER_LOGS="$logs"  # Used in logback.xml
-logbackConfig=$(
-  if [ -f "$data/config/logback.xml" ]; then :
-    echo "file:$data/config/logback.xml"
-  else
-    echo "com/sos/jobscheduler/agent/main/logback.xml"
-  fi)
-logbackArg="-Dlogback.configurationFile=$logbackConfig"
-agentOptions=("-job-java-options=$logbackArg" "${agentOptions[@]}")
-executeAgent=(
+config="$data/config"
+#if [ ! -d "$config" ]; then :
+#  echo "Missing directory $config"
+#  exit 1
+#fi
+
+[ -d "$logs" ] || mkdir "$logs"
+export SCHEDULER_LOGS="$logs"  # Used in log4j2.xml
+if [ -f "$config/log4j2.xml" ]; then :
+  javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
+fi
+
+execute=(
   "$java" \
   "${javaOptions[@]}" \
   -classpath "$(export IFS="$pathSeparator"; echo "${classpath[*]}")" \
-  "$logbackArg" com.sos.jobscheduler.agent.main.AgentMain "${agentOptions[@]}"
+  com.sos.jobscheduler.agent.main.AgentMain "${agentOptions[@]}"
 )
-echo "${executeAgent[@]}"
+echo "${execute[@]}"
 
 if [ -n "$crashKillScript" ]; then :
   rm -f "$crashKillScript"
 
-  "${executeAgent[@]}" &
+  "${execute[@]}" &
   trap "kill -SIGTERM $! && wait $!" SIGTERM
   wait $!
   trap - SIGTERM
@@ -91,5 +94,5 @@ if [ -n "$crashKillScript" ]; then :
   fi
   exit $returnCode
 else
-  exec "${executeAgent[@]}"
+  exec "${execute[@]}"
 fi

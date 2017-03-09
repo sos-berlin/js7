@@ -13,7 +13,7 @@ storePassword="jobscheduler"
 publicCertFile="public-https.pem"
 
 for arg in "$@"; do
-    case $arg in
+    case "$arg" in
         -alias=*)
             alias="${arg#*=}"
             shift

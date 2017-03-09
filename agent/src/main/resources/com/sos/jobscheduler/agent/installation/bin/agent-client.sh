@@ -2,9 +2,10 @@
 set -e
 
 . "$(cd "$(dirname -- "$0")" && pwd || kill $$)/set-context.sh"
+declare java lib
 
 "$java"\
   -classpath "$lib/*"\
-  -Dlogback.configurationFile="com/sos/jobscheduler/agent/client/main/logback.xml"\
+  -Dlog4j.configurationFile="com/sos/jobscheduler/agent/client/main/log4j2.xml"\
   com.sos.jobscheduler.agent.client.main.AgentClientMain\
   "$@"
