@@ -3,4 +3,4 @@ if [ -f /etc/bashrc ]; then
 fi
 
 cd
-export PATH="$HOME/bin:$PATH"
+export PATH="$HOME/bin:$JAVA_HOME/bin:$PATH:"

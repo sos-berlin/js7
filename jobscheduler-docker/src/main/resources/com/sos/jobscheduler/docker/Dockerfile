@@ -1,4 +1,5 @@
-FROM openjdk:8-jre-alpine
+FROM openjdk:8-jdk-alpine
+# For production: FROM openjdk:8-jre-alpine
 
 EXPOSE 4444
 CMD "/bin/bash"

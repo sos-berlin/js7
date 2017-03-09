@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -e
+
+jobschedulerHome=/opt/jobscheduler
+. "$jobschedulerHome/bin/set-context.sh"
+declare classpath pathSeparator JAVA_HOME java
+
+log4jXml="/var/lib/jobscheduler/master/config/log4j2.xml"
+export SCHEDULER_LOGS="/tmp"  # Used in log4j2.xml
+javaOptions=()
+args=()
+
+for arg in "$@"; do :
+  case "$arg" in
+    -rmx-port=*)
+      a="${arg#*=}"
+      javaOptions+=(
+        "-Dcom.sun.management.jmxremote"
+        "-Dcom.sun.management.jmxremote.ssl=false"
+        "-Dcom.sun.management.jmxremote.authenticate=false"
+        "-Dcom.sun.management.jmxremote.port=$a")
+      shift
+      ;;
+    -debug-port=*)
+      a="${arg#*=}"
+      javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
+      shift
+      ;;
+    -java-option=*)
+      a="${arg#*=}"
+      javaOptions+=("$a")
+      shift
+      ;;
+    *)
+      args+=("$arg")
+      ;;
+  esac
+done
+
+javaOptions+=("-Dlog4j.configurationFile=$log4jXml")
+
+execute=(
+  "$java"
+  "${javaOptions[@]}"
+  -classpath "$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
+  'com.sos.jobscheduler.master.tests.TestMasterAgent'
+  "${args[@]}"
+)
+echo "${execute[@]}"
+# Not "exec", for Java tools (and signal handling) don't like pid 0.
+"${execute[@]}"
