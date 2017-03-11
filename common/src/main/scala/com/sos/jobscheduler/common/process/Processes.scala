@@ -58,7 +58,7 @@ object Processes {
       try delegate.start()
       catch {
         case TextFileBusyIOException(e) if durations.hasNext ⇒
-          logger.warn(s"Retrying process start after error: $e")
+          logger.info(s"Retrying process start after error: $e")
           sleep(durations.next())
           startRobustly(durations)
       }
