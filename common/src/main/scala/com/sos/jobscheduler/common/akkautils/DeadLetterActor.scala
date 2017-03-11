@@ -25,7 +25,7 @@ object DeadLetterActor {
     actorSystem.eventStream.subscribe(actor, classOf[UnhandledMessage])
   }
 
-  private def logDeadLetter(message: ⇒ String): Unit = logger.debug(message)
+  private def logDeadLetter(message: ⇒ String): Unit = logger.warn(message)
 
   private def props(output: (⇒ String) ⇒ Unit) = Props { new DeadLetterActor(output) }
 }
