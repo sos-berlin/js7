@@ -148,7 +148,7 @@ with Stash {
     super.postStop()
   }
 
-  def receive: Receive = {
+  def receive = journaling orElse {
     case Journal.Output.Ready ⇒
       //for (o ← orderRegister.values) logger.info(s"Recovered: ${o.order}")
       for (agentEntry ← agentRegister.values) {
@@ -162,19 +162,19 @@ with Stash {
       }
       becomeWaitingForAgentDriverRecovery(agentRegister.size)
 
-    case msg ⇒
-      journalStash(msg)
+    case _ ⇒
+      stash()
   }
 
   private def becomeWaitingForAgentDriverRecovery(remaining: Int): Unit = {
     if (remaining > 0) {
-      context.become {
+      become(journaling orElse {
         case AgentDriver.Output.Recovered ⇒
           becomeWaitingForAgentDriverRecovery(remaining - 1)
 
-        case msg ⇒
-          journalStash(msg)
-      }
+        case _ ⇒
+          stash()
+      })
     } else {
       for (order ← orderRegister.valuesIterator map { _.order }) {
         order.state match {
@@ -206,27 +206,45 @@ with Stash {
     }
   }
 
-  private def ready: Receive = {
+  private def ready: Receive = journaling orElse {
     case command: MasterCommand ⇒
       executeMasterCommand(command)
 
     case Command.AddOrderSchedule(orders) ⇒
-      for (order ← orders) {
-        val logMsg = s"Order scheduled for ${order.state.at}: '${order.id}'"
+      def logMsg(order: Order[Order.Scheduled]) = s"Order scheduled for ${order.state.at}: '${order.id}'"
+      val goodOrders = orders flatMap { order ⇒
         orderRegister.get(order.id) match {
           case Some(_) ⇒
-            logger.info(s"$logMsg is duplicate and discarded")
-          case None ⇒
-            if (!pathToJobnet.isDefinedAt(order.nodeKey.jobnetPath)) {
-              logger.error(s"$logMsg: Unknown '${order.nodeKey.jobnetPath}'")
-            } else {
-              persist(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
-                logger.info(logMsg)
-              }
-            }
+            logger.info(s"${logMsg(order)} is duplicate and discarded")
+            None
+          case None if !pathToJobnet.isDefinedAt(order.nodeKey.jobnetPath) ⇒
+            logger.error(s"${logMsg(order)}: Unknown '${order.nodeKey.jobnetPath}'")
+            None
+          case _ ⇒
+            Some(order)
         }
       }
-      afterLastPersist {
+      //val iterator = goodOrders.iterator
+      //if (iterator.hasNext) {
+      //  while (iterator.hasNext) {
+      //    val order = iterator.next()
+      //    val isLast = !iterator.hasNext
+      //    persistAsync(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
+      //      logger.info(logMsg(order))
+      //      if (isLast) {
+      //        sender() ! Done
+      //      }
+      //    }
+      //  }
+      //} else {
+      //  sender() ! Done
+      //}
+      for (order ← goodOrders) {
+        persistAsync(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
+          logger.info(logMsg(order))
+        }
+      }
+      deferAsync {
         sender() ! Done
       }
 
@@ -265,8 +283,8 @@ with Stash {
           case OrderEvent.OrderDetached ⇒ OrderEvent.OrderMovedToMaster
           case _ ⇒ event
         }
-        persist(KeyedEvent(ownEvent)(orderId)) { _ ⇒ }
-        persist(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)) { e ⇒
+        persistAsync(KeyedEvent(ownEvent)(orderId)) { _ ⇒ }
+        persistAsync(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)) { e ⇒
           agentEntry.lastAgentEventId = e.eventId
         }
       } else {
@@ -276,7 +294,7 @@ with Stash {
     case msg @ AgentDriver.Output.OrderDetached(orderId) ⇒
       val agentPath = agentRegister.actorToKey(sender())
       if (orderRegister contains orderId) {
-        persist(KeyedEvent(OrderEvent.OrderMovedToMaster)(orderId)) { _ ⇒ }
+        persistAsync(KeyedEvent(OrderEvent.OrderMovedToMaster)(orderId)) { _ ⇒ }
       } else {
         logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
       }
@@ -316,7 +334,7 @@ with Stash {
     case MasterCommand.AddOrderIfNew(order) ⇒
       orderRegister.get(order.id) match {
         case None if pathToJobnet.isDefinedAt(order.nodeKey.jobnetPath) ⇒
-          persist(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
+          persistAsync(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
             sender() ! MasterCommand.Response.Accepted
           }
         case None if !pathToJobnet.isDefinedAt(order.nodeKey.jobnetPath) ⇒
@@ -342,8 +360,8 @@ with Stash {
         orderEntry.update(event)  // May crash !!!
         for (orderEntry ← orderRegister.get(orderId)) {
           event match {
-            case msg: OrderEvent.OrderReady.type if detachingSuspended ⇒
-              journalStash(msg)
+            case _: OrderEvent.OrderReady.type if detachingSuspended ⇒
+              stash()
 
             case OrderEvent.OrderReady ⇒
               for (path ← orderEntry.order.agentPathOption)
@@ -371,7 +389,7 @@ with Stash {
           val idleOrder = orderEntry.order.castState[Order.Idle]  // ???
           tryAttachOrderToAgent(idleOrder, jobnet, node.agentPath)
         case _: Jobnet.EndNode ⇒
-          persist(KeyedEvent(OrderEvent.OrderFinished)(orderId)) { stamped ⇒
+          persistAsync(KeyedEvent(OrderEvent.OrderFinished)(orderId)) { stamped ⇒
             logger.info(stamped.toString)
           }
       }

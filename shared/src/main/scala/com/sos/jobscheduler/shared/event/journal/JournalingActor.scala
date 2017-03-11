@@ -1,10 +1,9 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Stash}
+import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.JournalingActor._
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
@@ -16,79 +15,60 @@ import scala.util.{Failure, Success}
   */
 trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
 
-  private case class Elem(keyedEvent: KeyedEvent[E], callback: Stamped[KeyedEvent[E]] ⇒ Unit)
-
   protected def journalActor: ActorRef
   protected def snapshots: Future[Iterable[Any]]
 
   import context.dispatcher
 
-  private var buffer: mutable.Buffer[Elem] = null
-  private var afterCallbacks: mutable.Buffer[() ⇒ Unit] = null
-  private var timeoutSchedule: Cancellable = null
-  private var isPersisting = false
+  private val callbacks = mutable.ListBuffer[Callback]()
+  private var isStashing = false
 
-  @Deprecated
-  override final def stash(): Nothing =
-    throw new UnsupportedOperationException("Don't use stash(). Use journalStash()")
+  private[event] final def persistAsyncKeyedEvent[EE <: E](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ Unit): Unit =
+    persistKeyedEvent(keyedEvent, async = true)(callback)
 
-  def journalStash(message: Any): Unit =
-    receiveJournalMessage.applyOrElse(message, (_: Any) ⇒ super.stash())
-
-  private[event] final def persistKeyedEvent[EE <: E](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ Unit): Unit = {
-    startBuffering()
-    buffer += Elem(keyedEvent, callback.asInstanceOf[Stamped[KeyedEvent[E]] ⇒ Unit])
-  }
-
-  protected final def afterLastPersist(callback: ⇒ Unit): Unit = {
-    startBuffering()
-    if (afterCallbacks == null) {
-      afterCallbacks = mutable.Buffer[() ⇒ Unit]()
+  private[event] final def persistKeyedEvent[EE <: E](keyedEvent: KeyedEvent[EE], async: Boolean = false)(callback: Stamped[KeyedEvent[EE]] ⇒ Unit): Unit = {
+    if (!isStashing && !async) {
+      isStashing = true
+      context.become(journaling, discardOld = false)
     }
-    afterCallbacks += { () ⇒ callback }
+    logger.trace(s"($toString) Store ${keyedEvent.key} ${keyedEvent.event.getClass.getSimpleName stripSuffix "$"}")
+    journalActor.forward(Journal.Input.Store(Some(keyedEvent) :: Nil, self))
+    callbacks += EventCallback(callback.asInstanceOf[Stamped[KeyedEvent[E]] ⇒ Unit])
   }
 
-  private def startBuffering(): Unit = {
-    require(!isPersisting)  // Nested calls to persist are not supported
-    if (buffer == null) {
-      context.become(persisting, discardOld = false)
-      self.tell(Internal.Persist, sender())
-      buffer = mutable.Buffer[Elem]()
-    }
+  protected final def deferAsync(callback: ⇒ Unit): Unit = {
+    journalActor.forward(Journal.Input.Store(None :: Nil, self))
+    callbacks += Deferred(() ⇒ callback)
   }
 
-  private val persisting: Receive = {
-    case Internal.Persist ⇒
-      isPersisting = true
-      if (buffer.isEmpty) {
+  final def journaling: Receive = {
+    case Journal.Output.Stored(snapshotOptions) ⇒
+      // sender() is from persistKeyedEvent or deferAsync
+      for (snapshotOption ← snapshotOptions) {
+        (snapshotOption, callbacks.remove(0)) match {
+          case (Some(snapshot), EventCallback(callback)) ⇒
+            logger.trace(s"($toString) Stored ${EventId.toString(snapshot.eventId)} ${snapshot.value.key} -> $callback")
+            callback(snapshot.asInstanceOf[Stamped[KeyedEvent[E]]])
+          case (None, Deferred(callback)) ⇒
+            callback()
+          case x ⇒
+            sys.error(s"Bad actor state: $x")
+        }
+      }
+      logger.trace(s"($toString) *** callbacks=${callbacks.size}")
+      //if (callbacks.isEmpty/*everything is stored*/ && timeoutSchedule != null) {
+      //  timeoutSchedule.cancel()
+      //  timeoutSchedule = null
+      //}
+      if (isStashing) {
+        isStashing = false
         context.unbecome()
-        finishPersisting()
-      } else {
-        val keyedEvents = (buffer map { _.keyedEvent }).toVector
-        journalActor.forward(Journal.Input.Store(keyedEvents, self))
-        timeoutSchedule = context.system.scheduler.scheduleOnce(StoreWarnTimeout.toFiniteDuration, self, Internal.TimedOut)
+        unstashAll()
       }
 
-    case Journal.Output.Stored(snapshots) ⇒
-      if (timeoutSchedule != null) {
-        timeoutSchedule.cancel()
-        timeoutSchedule = null
-      }
-      context.unbecome()
-      for ((elem, snapshot) ← buffer zip snapshots) {
-        elem.callback(snapshot.asInstanceOf[Stamped[KeyedEvent[E]]])
-      }
-      buffer = null
-      finishPersisting()
+    //case Internal.TimedOut ⇒
+    //  logger.warn(s"Writing to journal takes longer than ${StoreWarnTimeout.pretty}: $toString")
 
-    case Internal.TimedOut ⇒
-      logger.warn(s"Writing to journal takes longer than ${StoreWarnTimeout.pretty}")
-
-    case _ ⇒
-      super.stash()
-  }
-
-  final val receiveJournalMessage: Receive = {
     case Input.GetSnapshot ⇒
       val sender = this.sender()
       snapshots onComplete {
@@ -96,46 +76,27 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
           sender ! Output.GotSnapshot(o)
         case Failure(t) ⇒
           val tt = t.appendCurrentStackTrace
-          logger.error(t.toString, tt)
+          logger.error(s"($toString) $t", tt)
           throw tt  // ???
       }
 
-    case msg: Internal ⇒
-      crash(msg, s"Unhandled important $msg. context.become/unbecome called in or after persist? Dying.")
+    case _ if isStashing ⇒
+      super.stash()
   }
 
-  private def finishPersisting(): Unit = {
-    buffer = null
-    if (afterCallbacks != null) {
-      for (o ← afterCallbacks) o()
-      afterCallbacks = null
-    }
-    unstashAll()
-    isPersisting = false
-  }
-
-  private def crash(message: Any, error: String): Unit = {
-    logger.error(error + (buffer map { _.keyedEvent }).mkString("\n", "\n", ""))
-    super.unhandled(message)
-    throw new IllegalStateException(error)
-  }
-
-  /**
-    * Overriding method must forward to here, or receiveJournalMessage must be called.
-    */
-  override def unhandled(message: Any): Unit =
-    receiveJournalMessage.applyOrElse(message, super.unhandled)
+  private sealed trait Callback
+  private case class EventCallback(callback: Stamped[KeyedEvent[E]] ⇒ Unit) extends Callback
+  private case class Deferred(callback: () ⇒ Unit) extends Callback
 }
 
 object JournalingActor {
-  private val StoreWarnTimeout = 30.s   // TODO JournalMeta, Configuration
+  //private val StoreWarnTimeout = 30.s
   private val logger = Logger(getClass)
 
-  private sealed trait Internal
-  private object Internal {
-    case object Persist extends Internal
-    case object TimedOut extends Internal
-  }
+  //private sealed trait Internal
+  //private object Internal {
+    //case object TimedOut extends Internal
+  //}
 
   object Input {
     final case object GetSnapshot

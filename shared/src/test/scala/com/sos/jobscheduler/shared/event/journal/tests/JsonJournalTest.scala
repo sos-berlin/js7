@@ -19,11 +19,12 @@ import com.sos.jobscheduler.shared.event.journal.Journal
 import com.sos.jobscheduler.shared.event.journal.tests.JsonJournalTest._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
 import java.io.{EOFException, FileInputStream}
-import java.nio.file.Files.{createTempDirectory, deleteIfExists}
+import java.nio.file.Files.{createTempDirectory, delete, deleteIfExists}
 import java.util.zip.GZIPInputStream
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import spray.json.{JsObject, JsString, JsValue}
 
@@ -43,21 +44,12 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
 
   "First run" in {
     withTestActor { actor ⇒
-      execute(actor, "A", TestAggregateActor.Command.Add("AAA"))
-      execute(actor, "B", TestAggregateActor.Command.Add("BBB"))
-      execute(actor, "C", TestAggregateActor.Command.Add("CCC"))
-      execute(actor, "A", TestAggregateActor.Command.Append("aaa"))
-      execute(actor, "B", TestAggregateActor.Command.Remove)
+      for ((key, cmd) ← testCommands("TEST")) execute(actor, key, cmd)
       assert(journalAggregates.isEmpty)
-      assert(journalKeyedEvents == Vector(
-        KeyedEvent(TestEvent.Added("AAA"))("A"),
-        KeyedEvent(TestEvent.Added("BBB"))("B"),
-        KeyedEvent(TestEvent.Added("CCC"))("C"),
-        KeyedEvent(TestEvent.Appended("aaa"))("A"),
-        KeyedEvent(TestEvent.Removed)("B")))
+      assert(journalKeyedEvents == testEvents("TEST"))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
-        TestAggregate("A", "AAAaaa"),
-        TestAggregate("C", "CCC"))
+        TestAggregate("TEST-A", "AAAabcdefghijkl"),
+        TestAggregate("TEST-C", "CCC"))
     }
   }
 
@@ -65,27 +57,53 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
     withTestActor { actor ⇒
       assert(journalAggregates.isEmpty)
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
-        TestAggregate("A", "AAAaaa"),
-        TestAggregate("C", "CCC"))
+        TestAggregate("TEST-A", "AAAabcdefghijkl"),
+        TestAggregate("TEST-C", "CCC"))
 
-      execute(actor, "D", TestAggregateActor.Command.Add("DDD"))
+      execute(actor, "TEST-D", TestAggregateActor.Command.Add("DDD"))
 
       (actor ? TestActor.Input.TakeSnapshot).mapTo[Journal.Output.SnapshotTaken.type] await 99.s
       assert(journalAggregates == Set(
-        TestAggregate("A", "AAAaaa"),
-        TestAggregate("C", "CCC"),
-        TestAggregate("D", "DDD")))
+        TestAggregate("TEST-A", "AAAabcdefghijkl"),
+        TestAggregate("TEST-C", "CCC"),
+        TestAggregate("TEST-D", "DDD")))
       assert(journalKeyedEvents.isEmpty)
 
-      execute(actor, "A", TestAggregateActor.Command.Remove)
+      execute(actor, "TEST-A", TestAggregateActor.Command.Remove)
     }
   }
 
   "Third run, recovering from snapshot and journal" in {
     withTestActor { actor ⇒
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
-        TestAggregate("C", "CCC"),
-        TestAggregate("D", "DDD"))
+        TestAggregate("TEST-C", "CCC"),
+        TestAggregate("TEST-D", "DDD"))
+    }
+  }
+
+  "Massive parallel" in {
+    for (_ ← 1 to 10) {
+      delete(journalFile)
+      withTestActor { actor ⇒
+        val prefixes = for (i ← 1 to 1000) yield i.toString
+        // Add "$p-A"
+        (for (p ← prefixes) yield Future { val (key, cmd) = testCommands(p).head; execute(actor, key, cmd) }) await 99.s
+        // Start executing remaining commands ...
+        val executed = for (p ← prefixes) yield Future { for ((key, cmd) ← testCommands(p).tail) execute(actor, key, cmd) }
+        // ... while disturbing form a different Actor to test persistAsync()
+        // Disturb responds with String, not Done. See TestActor
+        val disturbed = for (p ← prefixes) yield Future { execute(actor, s"$p-A", TestAggregateActor.Command.Disturb) }
+        (executed ++ disturbed) await 99.s
+        assert(journalAggregates.isEmpty)
+        val prefixToKeyedEvents = journalKeyedEvents groupBy { _.key.split("-").head }
+        assert(prefixToKeyedEvents.keySet == prefixes.toSet)
+        for (p ← prefixes) assert(prefixToKeyedEvents(p) == testEvents(p))
+        ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual
+          (prefixes flatMap { p ⇒ Set(
+            TestAggregate(s"$p-A", "AAAabcdefghijkl"),
+            TestAggregate(s"$p-C", "CCC")) }
+          ).toSet
+      }
     }
   }
 
@@ -126,7 +144,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
   private def journalKeyedEvents =
     journalJsValues collect {
       case o: JsObject if TestKeyedEventJsonFormat canDeserialize o ⇒
-        o.convertTo[Stamped[AnyKeyedEvent]].value
+        o.convertTo[Stamped[AnyKeyedEvent]].asInstanceOf[Stamped[KeyedEvent[TestEvent]]].value
     }
 
   private def journalAggregates =
@@ -157,4 +175,32 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
 
 object JsonJournalTest {
   private val logger = Logger(getClass)
+
+  private def testCommands(prefix: String) = Vector(
+    s"$prefix-A" → TestAggregateActor.Command.Add("AAA"),
+    s"$prefix-B" → TestAggregateActor.Command.Add("BBB"),
+    s"$prefix-C" → TestAggregateActor.Command.Add("CCC"),
+    s"$prefix-A" → TestAggregateActor.Command.Append("abc"),
+    s"$prefix-A" → TestAggregateActor.Command.Append(""),
+    s"$prefix-A" → TestAggregateActor.Command.AppendAsync("def"),
+    s"$prefix-A" → TestAggregateActor.Command.AppendNested("ghi"),
+    s"$prefix-A" → TestAggregateActor.Command.AppendNestedAsync("jkl"),
+    s"$prefix-B" → TestAggregateActor.Command.Remove)
+  private def testEvents(prefix: String) = Vector(
+    KeyedEvent(TestEvent.Added("AAA"))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Added("BBB"))(s"$prefix-B"),
+    KeyedEvent(TestEvent.Added("CCC"))(s"$prefix-C"),
+    KeyedEvent(TestEvent.Appended('a'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('b'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('c'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('d'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('e'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('f'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('g'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('h'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('i'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('j'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('k'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Appended('l'))(s"$prefix-A"),
+    KeyedEvent(TestEvent.Removed)(s"$prefix-B"))
 }

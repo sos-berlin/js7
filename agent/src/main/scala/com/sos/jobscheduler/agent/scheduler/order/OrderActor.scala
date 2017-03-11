@@ -31,7 +31,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
   protected def recoverFromEvent(event: OrderEvent) = updateOnly(event)
 
-  def receive = {
+  def receive = journaling orElse {
     case command: Command ⇒ command match {
       case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, variables, outcome, _: Option[AgentPath])) ⇒
         context.become(waiting)
@@ -63,7 +63,7 @@ extends KeyedJournalingActor[OrderEvent] {
       }
   }
 
-  private val waiting: Receive = {
+  private val waiting: Receive = journaling orElse {
     case Command.Detach ⇒
       persist(OrderDetached) { event ⇒
         update(event)
@@ -100,7 +100,7 @@ extends KeyedJournalingActor[OrderEvent] {
       persist(OrderReady)(update)
   }
 
-  private def processing(node: Jobnet.JobNode, jobActor: ActorRef): Receive = {
+  private def processing(node: Jobnet.JobNode, jobActor: ActorRef): Receive = journaling orElse {
     case JobRunner.Response.OrderProcessed(`orderId`, event: OrderStepEnded) if node != null ⇒
       endOrderStep(event, node)
 

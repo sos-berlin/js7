@@ -34,12 +34,15 @@ private[tests] object TestEvent {
     r: String = "X")
   extends TestEvent
 
-  final case class Appended(string: String) extends TestEvent
+  final case class Appended(char: Char) extends TestEvent
+
+  final case object Reversed extends TestEvent
 
   final case object Removed extends TestEvent
 
   implicit val OrderEventJsonFormat = TypedJsonFormat[TestEvent](
     Subtype(jsonFormat19(Added)),
     Subtype(jsonFormat1(Appended)),
+    Subtype(jsonFormat0(() ⇒ Reversed)),
     Subtype(jsonFormat0(() ⇒ Removed)))
 }

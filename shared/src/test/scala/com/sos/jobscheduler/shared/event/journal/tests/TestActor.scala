@@ -81,6 +81,9 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
       keyToAggregate += key → actor
       (actor ? command).mapTo[Done] pipeTo sender()
 
+    case Input.Forward(key: String, command: TestAggregateActor.Command.Disturb.type) ⇒
+      (keyToAggregate(key) ? command).mapTo[String] pipeTo sender()
+
     case Input.Forward(key: String, command: TestAggregateActor.Command) ⇒
       (keyToAggregate(key) ? command).mapTo[Done] pipeTo sender()
 

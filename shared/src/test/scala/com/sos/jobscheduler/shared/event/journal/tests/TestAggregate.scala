@@ -27,7 +27,7 @@ private[tests] case class TestAggregate(key: String, string: String,
   r: String = "X") {
 
   def update(event: TestEvent) = event match {
-    case Appended(o) ⇒ copy(string = string + o)
+    case Appended(char) ⇒ copy(string = string + char)
     case _ ⇒ sys.error(s"Not applicable: $event")
   }
 }

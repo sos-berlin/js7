@@ -87,13 +87,13 @@ extends Actor with Stash {
       handleRegisterMe(msg)
 
     case Input.Store(keyedEvents, replyTo) ⇒
-      val stampeds = keyedEvents map eventIdGenerator.stamp
+      val stampedOptions = keyedEvents map { _ map eventIdGenerator.stamp }
       Try {
-        stampeds map { _.toJson }
+        stampedOptions.flatten map { _.toJson }
       } match {
-        case Success(jsValues) ⇒
-          writeToDisk(jsValues, replyTo)
-          writtenBuffer += Written(stampeds, replyTo, sender())
+        case Success(jsValueOptions) ⇒
+          writeToDisk(jsValueOptions, replyTo)
+          writtenBuffer += Written(stampedOptions, replyTo, sender())
           self.forward(Internal.Commit(writtenBuffer.length))  // Commit after possibly outstanding Input.Store messages
           statistics.commits += 1
 
@@ -111,14 +111,14 @@ extends Actor with Stash {
         catch {
           case NonFatal(t) ⇒
             val tt = t.appendCurrentStackTrace
-            for (w ← writtenBuffer) w.replyTo.tell(Output.StoreFailure(tt), sender)
+            for (w ← writtenBuffer) w.replyTo.!(Output.StoreFailure(tt))(sender)
             throw tt;
         }
         statistics.flushes += 1
         logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.eventSnapshots.size }).sum} events")
-        for (Written(stampeds, replyTo, sender) ← writtenBuffer) {
-          replyTo.tell(Output.Stored(stampeds), sender)
-          for (stamped ← stampeds) {
+        for (Written(stampedOptions, replyTo, sender) ← writtenBuffer) {
+          replyTo.!(Output.Stored(stampedOptions))(sender)
+          for (stampedOption ← stampedOptions; stamped ← stampedOption) {
             logger.trace(s"STORED $stamped")
             keyedEventBus.publish(stamped)
           }
@@ -205,5 +205,7 @@ object JsonJournalActor {
     final case class Commit(writtenLevel: Int)
   }
 
-  private case class Written(eventSnapshots: Seq[Stamped[AnyKeyedEvent]], replyTo: ActorRef, sender: ActorRef)
+  private case class Written(
+    eventSnapshots: Seq[Option[Stamped[AnyKeyedEvent]]],  // None means no-operation (for deferAsync)
+    replyTo: ActorRef, sender: ActorRef)
 }

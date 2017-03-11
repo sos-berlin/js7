@@ -23,34 +23,76 @@ extends KeyedJournalingActor[TestEvent] {
   protected def recoverFromEvent(event: TestEvent) =
     update(event)
 
-  def receive = {
+  def receive = journaling orElse {
     case command: Command ⇒
-      commandToEvent(command) match {
-        case event: TestEvent.Removed.type ⇒
-          persist(event) { event ⇒  // Test without afterLastPersist because the event stops the actor immediately
-            update(event)
+      command match {
+        case Command.Disturb ⇒
+          deferAsync {
+            sender() ! "OK"
+          }
+
+        case Command.Add(string) ⇒
+          persist(TestEvent.Added(string)) { e ⇒
+            update(e)
             sender() ! Done
           }
-        case event ⇒
-          persist(event)(update)
-          afterLastPersist {   // Different to Removed case, simply to test afterLastPersist. Removed stops the actor.
+
+        case Command.Remove ⇒
+          persist(TestEvent.Removed) { e ⇒
+            update(e)
             sender() ! Done
           }
-      }
+
+        case Command.Append(string) ⇒
+          for (c ← string) {
+            persist(TestEvent.Appended(c)) { e ⇒
+              update(e)
+            }
+          }
+          deferAsync {
+            sender() ! Done
+          }
+
+        case Command.AppendAsync(string) ⇒
+          for (c ← string) {
+            persistAsync(TestEvent.Appended(c))(update)
+          }
+          deferAsync {
+            sender() ! Done
+          }
+
+        case Command.AppendNested(string) ⇒
+          def append(string: List[Char]): Unit = string match {
+            case char :: tail ⇒
+              persist(TestEvent.Appended(char)) { e ⇒
+                update(e)
+                append(tail)
+              }
+            case Nil ⇒
+              sender() ! Done
+          }
+          append(string.toList)
+
+        case Command.AppendNestedAsync(string) ⇒
+          def append(string: List[Char]): Unit = string match {
+            case char :: tail ⇒
+              persistAsync(TestEvent.Appended(char)) { e ⇒
+                update(e)
+                append(tail)
+              }
+            case Nil ⇒
+              sender() ! Done
+          }
+          append(string.toList)
+    }
 
     case Input.Get ⇒
       assert(aggregate != null)
-      afterLastPersist {  // For testing
+      deferAsync {  // For testing
         sender() ! aggregate
       }
   }
 
-  private def commandToEvent(command: Command): TestEvent =
-    command match {
-      case Command.Add(string) ⇒ TestEvent.Added(string)
-      case Command.Remove ⇒ TestEvent.Removed
-      case Command.Append(string) ⇒ TestEvent.Appended(string)
-    }
 
   private def update(event: TestEvent): Unit = {
     event match {
@@ -81,8 +123,12 @@ private[tests] object TestAggregateActor {
 
   sealed trait Command
   final object Command {
+    final case object Disturb extends Command
     final case class Add(string: String) extends Command
     final case class Append(string: String) extends Command
+    final case class AppendAsync(string: String) extends Command
+    final case class AppendNested(string: String) extends Command
+    final case class AppendNestedAsync(string: String) extends Command
     final case object Remove extends Command
   }
 }

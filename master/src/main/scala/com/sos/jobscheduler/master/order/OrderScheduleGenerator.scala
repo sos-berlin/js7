@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.order
 import akka.Done
 import akka.actor.{ActorRef, Stash, Status}
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
@@ -10,8 +11,6 @@ import com.sos.jobscheduler.master.order.OrderScheduleGenerator._
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 import java.time.Instant.now
 import java.time.{Duration, Instant}
-import com.sos.jobscheduler.common.time.ScalaTime._
-import scala.math.max
 
 /**
   * @author Joacim Zschimmer
@@ -50,7 +49,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
       recovered = true
   }
 
-  def receive: Receive = {
+  def receive = journaling orElse {
     case Input.ScheduleEvery(every) ⇒
       val nw = Instant.ofEpochSecond(now.getEpochSecond)  // Last full second
       if (generatedUntil == null) {
@@ -76,14 +75,14 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
       context.become(addingOrderSchedule(interval.until, every))
   }
 
-  private def addingOrderSchedule(until: Instant, every: Duration): Receive = {
+  private def addingOrderSchedule(until: Instant, every: Duration): Receive = journaling orElse {
     case Done if sender() == masterOrderKeeper ⇒
       onOrdersAdded(until, every)
     case Status.Failure(t) if sender() == masterOrderKeeper ⇒
       logger.error(t.toString, t)
       onOrdersAdded(until, every)
-    case msg ⇒
-      journalStash(msg)
+    case _ ⇒
+      stash()
   }
 
   private def onOrdersAdded(until: Instant, every: Duration): Unit = {

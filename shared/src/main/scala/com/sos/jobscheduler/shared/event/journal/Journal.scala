@@ -13,14 +13,14 @@ object Journal {
   object Input {
     final case class Start(recoveredJournalingActors: RecoveredJournalingActors)
     final case class RegisterMe(key: Option[Any])
-    final case class Store(eventStampeds: Seq[AnyKeyedEvent], journalingActor: ActorRef)
+    final case class Store(eventStampeds: Seq[Option[AnyKeyedEvent]], journalingActor: ActorRef)
     final case object TakeSnapshot
   }
 
   trait Output
   object Output {
     final case object Ready
-    final case class Stored(stamped: Seq[Stamped[AnyKeyedEvent]]) extends Output
+    final case class Stored(stamped: Seq[Option[Stamped[AnyKeyedEvent]]]) extends Output
     final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken
