@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.oldruntime
 
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.master.oldruntime.OldSchedule.EveryDay
-import java.time.{DayOfWeek, Instant, LocalTime, ZoneId, ZonedDateTime}
+import java.time.{DayOfWeek, LocalTime, ZoneId, ZonedDateTime}
 import org.scalatest.FreeSpec
 
 /**
@@ -12,6 +12,15 @@ final class OldScheduleTest extends FreeSpec {
 
   private val timeZone = ZoneId.of("Europe/Helsinki")
 
+  "Every hour" in {
+    val instants = OldSchedule.daily(timeZone, RepeatPeriod.wholeDay(1.h)).instants(
+      instant("2017-03-10T12:00:00+02:00") → instant("2017-03-10T15:00:00+02:00")).toList
+    assert(instants == List(
+      instant("2017-03-10T12:00:00+02:00"),
+      instant("2017-03-10T13:00:00+02:00"),
+      instant("2017-03-10T14:00:00+02:00")))
+  }
+
   "Daily, firstInstant" - {
     val dailySchedule = OldSchedule.daily(timeZone, PeriodSeq(List(
       RepeatPeriod(LocalTime.of(9, 0), ExtendedLocalTime.of(10, 0), 20*60.s),
@@ -19,7 +28,7 @@ final class OldScheduleTest extends FreeSpec {
       RepeatPeriod(LocalTime.of(12, 0), ExtendedLocalTime.of(12, 31), 30*60.s)))/*, startOnce = false*/)
     for ((from, next) ← Array(
       "2017-01-06T06:00:00+02:00" → "2017-01-06T09:00:00+02:00",
-      "2017-01-06T09:00:00+02:00" → "2017-01-06T09:20:00+02:00",
+      "2017-01-06T09:00:00+02:00" → "2017-01-06T09:00:00+02:00",
       "2017-01-06T10:00:00+02:00" → "2017-01-06T10:37:00+02:00",
       "2017-01-06T11:00:00+02:00" → "2017-01-06T12:00:00+02:00",
       "2017-01-06T20:00:00+02:00" → "2017-01-07T09:00:00+02:00"

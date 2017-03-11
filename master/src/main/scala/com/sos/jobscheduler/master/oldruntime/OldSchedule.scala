@@ -24,7 +24,7 @@ extends Schedule {
     asScalaIterator(
       new GuavaIterator[Instant] {
         private var remaining = limit
-        private var from = instantInterval.from
+        private var from = instantInterval.from minusNanos 1
 
         def computeNext() = {
           @tailrec def find(): Instant = {
