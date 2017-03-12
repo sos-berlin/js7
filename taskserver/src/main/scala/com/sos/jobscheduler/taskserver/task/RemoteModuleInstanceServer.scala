@@ -82,7 +82,7 @@ extends HasCloser with AnnotatedInvocable with InvocableIDispatch {
     }
     closer.registerAutoCloseable(task)
     taskOnce := task
-    task.start() await 1.h   // Asynchronous @invocable would be nice ...
+    task.start()
   }
 
   @invocable

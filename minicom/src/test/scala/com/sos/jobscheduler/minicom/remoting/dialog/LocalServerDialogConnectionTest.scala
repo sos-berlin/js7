@@ -6,6 +6,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
+import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
 /**
@@ -16,10 +17,10 @@ final class LocalServerDialogConnectionTest extends FreeSpec {
   "LocalServerDialogConnection" in {
     val n = 50
     val latch = new CountDownLatch(2)
-    val con = new LocalServerDialogConnection
+    val con = new LocalServerDialogConnection()(ExecutionContext.global)
     val mainThread = new Thread {
       override def run() = {
-        var msg = con.blockingReceiveFirstMessage()
+        var msg = con.receiveFirstMessage() await 99.s
         latch.countDown()
         latch.await()
         while (msg.isDefined) {
@@ -65,10 +66,10 @@ final class LocalServerDialogConnectionTest extends FreeSpec {
   if (sys.props contains "test.speed") "Speed test" in {
     val n = 10000
     val stopwatch = new Stopwatch
-    val con = new LocalServerDialogConnection
+    val con = new LocalServerDialogConnection()(ExecutionContext.global)
     val thread = new Thread {
       override def run() = {
-        var msg = con.blockingReceiveFirstMessage()
+        var msg = con.receiveFirstMessage()  await 99.s
         while (msg.isDefined) {
           msg = con.sendAndReceive(ByteString(msg.get.utf8String + "***")) await 99.s
         }

@@ -65,7 +65,7 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
   private def runTask(id: String, setting: Setting, expectedStartResult: Boolean = true, expectedSpoolerProcessResult: Option[Boolean] = None): Unit = {
     val spoolerLog = new TestSpoolerLog
     val (stepResultOption, files) = autoClosing(newShellProcessTask(id, spoolerLog, setting)) { task ⇒
-      val taskResult = task.start() await 60.s
+      val taskResult = task.start()
       assert(taskResult == expectedStartResult)
       val r = taskResult.option(task.step())
       // Is not called by C++ Scheduler: task.end()

@@ -2,13 +2,13 @@ package com.sos.jobscheduler.minicom.remoting.dialog
 
 import akka.util.ByteString
 import org.scalactic.Requirements._
-import scala.concurrent.duration.Duration.Inf
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 
 /**
   * @author Joacim Zschimmer
   */
-final class LocalServerDialogConnection extends ServerDialogConnection with ExclusiveLock {
+final class LocalServerDialogConnection(implicit protected val executionContext: ExecutionContext)
+extends ServerDialogConnection with ClientDialogConnection.ImplementBlocking with ExclusiveLock {
 
   private var firstMessageReceived = false
   private var lastMessageSent = false
@@ -25,19 +25,23 @@ final class LocalServerDialogConnection extends ServerDialogConnection with Excl
     rightPromise.trySuccess(None)
   }
 
-  def blockingReceiveFirstMessage(): Option[ByteString] = {
+  def receiveFirstMessage(): Future[Option[ByteString]] = {
     requireState(!firstMessageReceived)
-    val r = Await.result(rightPromise.future, Inf)
-    firstMessageReceived = true
-    r
+    rightPromise.future andThen { case o ⇒
+      firstMessageReceived = true
+      o
+    }
   }
 
   def sendAndReceive(data: ByteString): Future[Option[ByteString]] = {
-    requireState(firstMessageReceived && !lastMessageSent)
-    exclusive {  // Queue up parallel calls and process each after the other
-      rightPromise = Promise[Option[ByteString]]()
-      leftPromise.success(data)
-      Future.fromTry(Await.ready(rightPromise.future, Inf).value.get)
+    blocking {
+      enterExclusively()
+    }
+    rightPromise = Promise[Option[ByteString]]()
+    leftPromise.success(data)
+    rightPromise.future andThen { case o ⇒
+      leaveExclusively()
+      o
     }
   }
 

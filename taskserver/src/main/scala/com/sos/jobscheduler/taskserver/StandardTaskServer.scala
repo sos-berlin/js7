@@ -2,11 +2,8 @@ package com.sos.jobscheduler.taskserver
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.tcp.BlockingTcpConnection
-import com.sos.jobscheduler.common.time.ScalaTime.MaxDuration
 import com.sos.jobscheduler.minicom.remoting.dialog.{ServerDialogConnection, StandardServerDialogConnection}
 import com.sos.jobscheduler.minicom.remoting.{Remoting, ServerRemoting}
 import com.sos.jobscheduler.taskserver.TaskServer.Terminated
@@ -57,12 +54,10 @@ extends TaskServer with HasCloser {
 
   final def terminated = terminatedPromise.future
 
-  final def start(): Unit =
-    namedThreadFuture("Job " + arguments.startMeta.job) {
-      beforeStart()
-      remoting.run() await MaxDuration
-      afterStop()
-    } onComplete { tried ⇒
+  final def start(): Unit = {
+    (for (_ ← { blocking { beforeStart() }; remoting.run() };
+          _ ← Future { blocking { afterStop() }}) yield ()
+    ) onComplete { tried ⇒
       val (correctedTried, msg) = tried match {
         case Failure(t: AsynchronousCloseException)         ⇒ (Success(Terminated), s"Terminated after close(): $t")
         case Failure(t: Remoting.ConnectionClosedException) ⇒ (Success(Terminated), s"Terminated, $t")
@@ -74,6 +69,7 @@ extends TaskServer with HasCloser {
       }
       terminatedPromise.complete(correctedTried)
     }
+  }
 
   final def sendProcessSignal(signal: ProcessSignal) = {
     val signalables = remoteModuleInstanceServers

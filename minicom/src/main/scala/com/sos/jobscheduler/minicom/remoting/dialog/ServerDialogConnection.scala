@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.minicom.remoting.dialog
 
 import akka.util.ByteString
+import scala.concurrent.Future
 
 /**
   * A ByteString message connection for a server
@@ -10,7 +11,7 @@ import akka.util.ByteString
   */
 trait ServerDialogConnection extends ClientDialogConnection {
 
-  def blockingReceiveFirstMessage(): Option[ByteString]
+  def receiveFirstMessage(): Future[Option[ByteString]]
 
   def blockingSendLastMessage(data: ByteString): Unit
 }

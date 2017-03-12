@@ -2,23 +2,34 @@ package com.sos.jobscheduler.minicom.remoting.dialog
 
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.minicom.remoting.dialog.ExclusiveLock._
-import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.Semaphore
 
 /**
   * @author Joacim Zschimmer
   */
 private[dialog] trait ExclusiveLock {
-  private val lock = new ReentrantLock
+  private val semaphore = new Semaphore(1)
 
   protected def exclusive[A](body: ⇒ A): A = {
-    if (lock.isLocked) logger.trace(s"Waiting for completion of a concurrent connection dialog")
-    if (lock.getHoldCount != 0) throw new IllegalStateException("Recursive call")
-    lock.lock()
+    enterExclusively()
     try body
-    finally lock.unlock()
+    finally leaveExclusively()
+  }
+
+  protected def enterExclusively(): Unit = {
+    if (semaphore.availablePermits == 0) logger.trace(s"Waiting for completion of a concurrent connection dialog")
+    if (!semaphore.tryAcquire()) {
+      semaphore.acquire()
+    }
+  }
+
+  protected def leaveExclusively(): Unit = {
+    semaphore.release()
   }
 }
 
 object ExclusiveLock {
   private val logger = Logger(getClass)
+  sealed trait Got
+  case object Got extends Got
 }

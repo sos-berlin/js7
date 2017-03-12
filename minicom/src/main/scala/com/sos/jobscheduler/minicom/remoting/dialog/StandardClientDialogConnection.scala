@@ -16,10 +16,13 @@ extends ClientDialogConnection with ExclusiveLock {
   def sendAndReceive(data: ByteString): Future[Option[ByteString]] =
     Future {
       blocking {
-        exclusive {
-          connection.sendMessage(data)
-          connection.receiveMessage()
-        }
+        blockingSendAndReceive(data)
       }
+    }
+
+  override def blockingSendAndReceive(data: ByteString): Option[ByteString] =
+    exclusive {
+      connection.sendMessage(data)
+      connection.receiveMessage()
     }
 }

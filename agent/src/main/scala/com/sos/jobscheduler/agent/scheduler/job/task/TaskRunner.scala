@@ -10,7 +10,6 @@ import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.data.job.TaskId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.OrderStepSucceeded
 import com.sos.jobscheduler.minicom.remoting.ClientRemoting
@@ -24,7 +23,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * @author Joacim Zschimmer
   */
 final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFactory)
-  (implicit ec: ExecutionContext) {
+  (implicit executionContext: ExecutionContext) {
 
   private val taskOnce = new SetOnce[AgentTask]
   private val moduleInstanceRunnerOnce = new SetOnce[ModuleInstanceRunner]
@@ -73,8 +72,9 @@ final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFac
   }
 
   private def newRemoting(tunnel: TunnelHandle, name: String): ClientRemoting =
-    new ClientRemoting(
-      new ClientDialogConnection {
+    new ClientRemoting (
+      new ClientDialogConnection with ClientDialogConnection.ImplementBlocking {
+        protected implicit def executionContext = TaskRunner.this.executionContext
         def sendAndReceive(data: ByteString) =
           tunnel.request(data, timeout = None) map Some.apply
       },

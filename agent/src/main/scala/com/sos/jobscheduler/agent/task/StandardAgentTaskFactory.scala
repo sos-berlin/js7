@@ -106,9 +106,9 @@ extends AgentTaskFactory {
   private def newNoTcpLocalTaskServer(taskServerArguments: TaskServerArguments) = {
     new StandardTaskServer with LocalConnection {
       def arguments = taskServerArguments
-      protected val serverDialogConnection = new LocalServerDialogConnection
+      protected def executionContext = StandardAgentTaskFactory.this.executionContext
+      protected val serverDialogConnection = new LocalServerDialogConnection()(executionContext)
       protected val newRemoteModuleInstanceServer = StandardAgentTaskFactory.this.newRemoteModuleInstanceServer
-      protected val executionContext = StandardAgentTaskFactory.this.executionContext
       def request = serverDialogConnection.leftSendAndReceive
       override def close() = {
         try serverDialogConnection.leftClose()

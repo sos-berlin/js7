@@ -6,11 +6,14 @@ import com.sos.jobscheduler.base.process.ProcessSignal._
 import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
+import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.common.xml.VariableSets
-import com.sos.jobscheduler.taskserver.common.ConcurrentStdoutAndStderrWell
+import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.taskserver.common.StdoutStderrWell
 import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration._
 import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
 import com.sos.jobscheduler.taskserver.modules.common.{CommonArguments, Task}
@@ -22,8 +25,8 @@ import java.nio.file.Files._
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 import org.scalactic.Requirements._
-import scala.concurrent.duration.Duration.Inf
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.annotation.tailrec
+import scala.concurrent.{ExecutionContext, Future}
 import scala.io
 
 /**
@@ -49,8 +52,6 @@ extends HasCloser with Task {
   private val monitorProcessor = MonitorProcessor.create(monitors, namedIDispatches).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
   private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, id = logFilenamePart) else Map[StdoutStderrType, Path]()
-  private lazy val concurrentStdoutStderrWell = new ConcurrentStdoutAndStderrWell(s"Job $jobName",
-    stdFiles.copy(stdFileMap = processStdFileMap ++ stdFiles.stdFileMap)).closeWithCloser
   private var startCalled = false
   private val richProcessOnce = new SetOnce[RichProcess]
   private val logger = Logger.withPrefix[ShellProcessTask](toString)
@@ -65,17 +66,15 @@ extends HasCloser with Task {
       }
       monitorProcessor.preStep()
     }
-    if (precondition)
+    precondition &&
       startProcess()
-    else
-      Future.successful(false)
   }
 
   private def startProcess() = {
     sigtermForwarder = for (terminated ← taskServerMainTerminatedOption) yield
       JavaShutdownHook.add(ShellProcessTask.getClass.getName) {
         sendProcessSignal(SIGTERM)
-        Await.ready(terminated, Inf)  // Delay until TaskServer has been terminated
+        terminated.awaitInfinite  // Delay until TaskServer has been terminated
       }
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
@@ -90,14 +89,11 @@ extends HasCloser with Task {
       additionalEnvironment = env,
       agentTaskIdOption = agentTaskIdOption,
       killScriptOption = killScriptFileOption)
-    synchronizedStartProcess {
+    richProcessOnce := synchronizedStartProcess {
       startShellScript(processConfiguration, name = jobName, scriptString = module.script.string.trim).closeWithCloser
-    } map { richProcess ⇒
-      richProcessOnce := richProcess
-      deleteFilesWhenProcessClosed(List(orderParamsFile))
-      concurrentStdoutStderrWell.start()
-      true
-    }
+    } .awaitInfinite
+    deleteFilesWhenProcessClosed(List(orderParamsFile))
+    true
   }
 
   def end() = {}  // Not called
@@ -109,12 +105,24 @@ extends HasCloser with Task {
         logger.warn("step, but no process has been started")
         <process.result spooler_process_result="false" exit_code="999888999"/>.toString()
       case Some(richProcess) ⇒
-        val rc = richProcess.waitForTermination()
-        for (o ← sigtermForwarder) o.close()
-        concurrentStdoutStderrWell.finish()
-        transferReturnValuesToMaster()
-        val success = monitorProcessor.postStep(rc.isSuccess)
-        <process.result spooler_process_result={success.toString} exit_code={rc.number.toString} state_text={concurrentStdoutStderrWell.firstStdoutLine}/>.toString()
+        val (returnCode, firstStdoutLine) =
+          withCloser { implicit closer ⇒
+            val well = new StdoutStderrWell(processStdFileMap ++ stdFiles.stdFileMap, stdFiles.encoding, batchThreshold = Task.LogBatchThreshold, stdFiles.output)
+              .closeWithCloser
+            @tailrec def loop(): ReturnCode = {
+              richProcess.waitForTermination(Task.LogPollPeriod) match {
+                case None ⇒ well.apply(); loop()
+                case Some(o) ⇒ o
+              }
+            }
+            val returnCode = loop()
+            for (o ← sigtermForwarder) o.close()
+            transferReturnValuesToMaster()
+            well.apply()
+            (returnCode, well.firstStdoutLine)
+          }
+        val success = monitorProcessor.postStep(returnCode.isSuccess)
+        <process.result spooler_process_result={success.toString} exit_code={returnCode.number.toString} state_text={firstStdoutLine}/>.toString()
     }
   }
 
@@ -150,8 +158,7 @@ extends HasCloser with Task {
   private def deleteFilesWhenProcessClosed(files: Iterable[Path]): Unit = {
     if (files.nonEmpty) {
       for (richProcess ← richProcessOnce;
-           _ ← richProcess.closed;
-           _ ← concurrentStdoutStderrWell.closed)
+           _ ← richProcess.closed)
       {
         RichProcess.tryDeleteFiles(files)
       }

@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.taskserver.common
 
 import com.sos.jobscheduler.common.process.StdoutStderr.{Stdout, StdoutStderrType}
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import com.sos.jobscheduler.taskserver.task.filecollector.MultipleFilesLineCollector
 import java.nio.charset.Charset
@@ -19,11 +17,13 @@ final class StdoutStderrWell(
   fileEncoding: Charset,
   batchThreshold: Int,
   output: (StdoutStderrType, immutable.Seq[String]) ⇒ Unit)
-extends HasCloser {
+extends AutoCloseable {
 
-  private val lineCollector = new MultipleFilesLineCollector(Nil ++ stdFiles, fileEncoding, batchThreshold = batchThreshold).closeWithCloser
+  private val lineCollector = new MultipleFilesLineCollector(Nil ++ stdFiles, fileEncoding, batchThreshold = batchThreshold)
   private val firstLineCollector = new FirstStdoutLineCollector
   def firstStdoutLine = firstLineCollector.firstStdoutLine
+
+  def close() = lineCollector.close()
 
   def apply() = synchronized {
     lineCollector.nextBatchIterator foreach { case ((typ, file), batch) ⇒

@@ -28,14 +28,14 @@ extends Task with HasCloser {
   private val monitorProcessor = MonitorProcessor.create(monitors, namedIDispatches).closeWithCloser
   private val instance: sos.spooler.IJob_impl = module.newJobInstance(namedIDispatches)
   private val methodIsCalled = mutable.Set[String]()
-  private val concurrentStdoutStderrWell = stdFiles.nonEmpty option new ConcurrentStdoutAndStderrWell(s"Job $jobName", stdFiles).closeWithCloser
+  private val concurrentStdoutStderrWell = stdFiles.nonEmpty option
+    new ConcurrentStdoutAndStderrWell(s"Job $jobName", stdFiles, Task.LogPollPeriod, Task.LogBatchThreshold).closeWithCloser
   private var closeCalled = false
   private val logger = Logger.withPrefix[ApiProcessTask](toString)
 
   def start() = {
     concurrentStdoutStderrWell foreach { _.start() }
-    val result = monitorProcessor.preTask() && instance.spooler_init()
-    Future.successful(result)
+    monitorProcessor.preTask() && instance.spooler_init()
   }
 
   /**

@@ -1,14 +1,14 @@
 package com.sos.jobscheduler.taskserver.modules.common
 
 import com.sos.jobscheduler.common.process.Processes.Pid
-import scala.concurrent.Future
+import com.sos.jobscheduler.common.time.ScalaTime._
 
 /**
  * @author Joacim Zschimmer
  */
 private[taskserver] trait Task extends AutoCloseable {
 
-  def start(): Future[Boolean]
+  def start(): Boolean
 
   def end(): Unit
 
@@ -24,4 +24,9 @@ private[taskserver] trait Task extends AutoCloseable {
   }
 
   def pidOption: Option[Pid]
+}
+
+object Task {
+  private[taskserver] val LogPollPeriod = 5.s
+  private[taskserver] val LogBatchThreshold = 1000*1000  // Cut-off count of characters to log (and transfer) at once
 }

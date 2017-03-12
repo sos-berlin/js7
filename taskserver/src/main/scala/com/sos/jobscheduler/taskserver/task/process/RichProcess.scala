@@ -2,11 +2,13 @@ package com.sos.jobscheduler.taskserver.task.process
 
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
-import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger}
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger, SetOnce}
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
@@ -16,6 +18,8 @@ import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
+import java.time.Duration
+import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConversions._
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
@@ -34,15 +38,19 @@ extends HasCloser with ClosedFuture {
    * UTF-8 encoded stdin.
    */
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
-  private val terminatedPromise = Promise[Unit]()
+  private val terminatedPromiseOnce = new SetOnce[Promise[Unit]]
 
   logger.info(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
-  terminatedPromise completeWith namedThreadFuture("Process watch") {
-    val rc = waitForTermination()
-    logger.debug(s"Process ended with $rc")
-  }
 
-  final def terminated: Future[Unit] = terminatedPromise.future
+  final def terminated: Future[Unit] =
+    (terminatedPromiseOnce getOrUpdate {
+      Promise[Unit]() sideEffect {
+        _ completeWith namedThreadFuture("Process watch") {
+          val rc = waitForProcessTermination(process)
+          logger.debug(s"Process ended with $rc")
+        }
+      }})
+    .future
 
   final def sendProcessSignal(signal: ProcessSignal): Unit =
     if (process.isAlive) {
@@ -89,8 +97,17 @@ extends HasCloser with ClosedFuture {
   private[task] final def isAlive = process.isAlive
 
   final def waitForTermination(): ReturnCode = {
+    val isMyPromise = terminatedPromiseOnce trySet Promise[Unit]()
     waitForProcessTermination(process)
+    if (isMyPromise) terminatedPromiseOnce().success(())
     ReturnCode(process.exitValue)
+  }
+
+  final def waitForTermination(duration: Duration): Option[ReturnCode] = {
+    val exited = blocking {
+      process.waitFor(duration.toMillis, MILLISECONDS)
+    }
+    exited option ReturnCode(process.exitValue)
   }
 
   final def stdin: OutputStream = process.getOutputStream
