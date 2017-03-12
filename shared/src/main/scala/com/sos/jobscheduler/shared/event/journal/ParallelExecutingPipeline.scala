@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.shared.event.journal
 
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import java.util.concurrent.ArrayBlockingQueue
-import scala.concurrent.duration.Duration.Inf
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
@@ -25,6 +25,6 @@ final class ParallelExecutingPipeline[A](output: A ⇒ Unit)(implicit executionC
   }
 
   private def writeNext(): Unit = {
-    output(Await.result(writeQueue.poll, Inf))
+    output(writeQueue.poll.awaitInfinite)
   }
 }

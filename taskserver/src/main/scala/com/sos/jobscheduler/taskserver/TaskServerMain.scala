@@ -1,15 +1,13 @@
 package com.sos.jobscheduler.taskserver
 
-import akka.actor.ActorSystem
 import com.google.common.io.{ByteStreams, Closer}
 import com.google.inject.Guice
 import com.google.inject.Stage._
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing._
-import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.taskserver.StandardTaskServer.TcpConnected
 import com.sos.jobscheduler.taskserver.configuration.inject.{TaskServerMainModule, TaskServerModule}
 import com.sos.jobscheduler.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
@@ -55,7 +53,7 @@ object TaskServerMain {
       autoClosing(taskServer) { _ ⇒
         taskServer.terminated map { _: TaskServer.Terminated.type ⇒ TaskServerMainTerminated } onComplete terminated.complete
         taskServer.start()
-        awaitResult(taskServer.terminated, MaxDuration)
+        taskServer.terminated.awaitInfinite
       }
     }
   }

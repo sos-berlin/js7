@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.minicom.remoting.proxy
 
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.time.ScalaTime.MaxDuration
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.minicom.idispatch.{DISPID, DispatchType, IDispatch}
 import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
 import scala.concurrent.Future
@@ -19,18 +18,16 @@ trait ProxyIDispatch extends IDispatch {
     remoting.release(id)
 
   override def call(methodName: String, arguments: Seq[Any]): Any =
-    asyncCall(methodName, arguments) await MaxDuration
+    asyncCall(methodName, arguments).awaitInfinite
 
   def asyncCall(methodName: String, arguments: Seq[Any]): Future[Any] =
     remoting.call(id, methodName, arguments)
 
   def getIdOfName(name: String): DISPID =
-    remoting.getIdOfName(id, name)
-      .await(MaxDuration)
+    remoting.getIdOfName(id, name).awaitInfinite
 
   def invoke(dispId: DISPID, dispatchTypes: Set[DispatchType], arguments: Seq[Any] = Nil, namedArguments: Seq[(DISPID, Any)] = Nil): Any =
-    remoting.invoke(id, dispId, dispatchTypes, arguments, namedArguments)
-      .await(MaxDuration)
+    remoting.invoke(id, dispId, dispatchTypes, arguments, namedArguments).awaitInfinite
 
   override def toString = s"ProxyIDispatch($name)"
 }

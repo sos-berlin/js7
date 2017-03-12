@@ -6,6 +6,7 @@ import java.time.Duration
 import java.util.concurrent.TimeoutException
 import scala.collection.generic.CanBuildFrom
 import scala.concurrent._
+import scala.concurrent.duration.Duration.Inf
 import scala.language.higherKinds
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -77,6 +78,8 @@ object Futures {
       }
 
       def await(duration: Duration) = Await.ready(delegate, duration.toFiniteDuration).successValue
+
+      def awaitInfinite = Await.ready(delegate, Inf).successValue
     }
 
     implicit class RichFutures[A, M[X] <: TraversableOnce[X]](val delegate: M[Future[A]]) extends AnyVal {

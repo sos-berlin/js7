@@ -14,7 +14,6 @@ import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -53,7 +52,7 @@ final class Agent(module: Module) extends AutoCloseable {
 
   def run(): Unit = {
     start() await 30.s
-    awaitResult(terminated, MaxDuration)
+    terminated.awaitInfinite
   }
 
   def executeCommand(command: Command): Future[Response] = commandExecutor.executeCommand(command)
