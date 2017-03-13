@@ -5,7 +5,7 @@ jobschedulerHome=/opt/jobscheduler
 . "$jobschedulerHome/bin/set-context.sh"
 declare classpath pathSeparator JAVA_HOME java
 
-log4jXml="/var/lib/jobscheduler/master/config/log4j2.xml"
+log4jXml="com/sos/jobscheduler/master/tests/log4j2.xml"
 export SCHEDULER_LOGS="/tmp"  # Used in log4j2.xml
 javaOptions=()
 args=()
@@ -38,6 +38,7 @@ for arg in "$@"; do :
 done
 
 javaOptions+=("-Dlog4j.configurationFile=$log4jXml")
+javaOptions+=("-DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
 
 execute=(
   "$java"

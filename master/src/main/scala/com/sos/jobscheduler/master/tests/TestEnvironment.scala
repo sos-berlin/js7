@@ -1,14 +1,13 @@
 package com.sos.jobscheduler.master.tests
 
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import java.nio.file.Files.{createDirectories, createTempDirectory}
+import java.nio.file.Files.createDirectories
 import java.nio.file.Path
 import scala.collection.immutable._
 
@@ -17,7 +16,8 @@ import scala.collection.immutable._
   */
 final class TestEnvironment(agentPaths: Seq[AgentPath]) extends HasCloser {
 
-  private val dir = createTempDirectory("test-") withCloser deleteDirectoryRecursively
+  //private val dir = createTempDirectory("test-") withCloser deleteDirectoryRecursively
+  private val dir = temporaryDirectory / "TestMasterAgent"
 
   closeOnError(closer) {
     createDirectories(masterDir / "config/live")
