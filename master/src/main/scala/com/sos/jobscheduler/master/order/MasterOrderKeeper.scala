@@ -211,37 +211,17 @@ with Stash {
       executeMasterCommand(command)
 
     case Command.AddOrderSchedule(orders) ⇒
-      def logMsg(order: Order[Order.Scheduled]) = s"Order scheduled for ${order.state.at}: '${order.id}'"
-      val goodOrders = orders flatMap { order ⇒
+      for (order ← orders) {
+        val logMsg = s"Order scheduled for ${order.state.at}: '${order.id}'"
         orderRegister.get(order.id) match {
           case Some(_) ⇒
-            logger.info(s"${logMsg(order)} is duplicate and discarded")
-            None
+            logger.info(s"$logMsg is duplicate and discarded")
           case None if !pathToJobnet.isDefinedAt(order.nodeKey.jobnetPath) ⇒
-            logger.error(s"${logMsg(order)}: Unknown '${order.nodeKey.jobnetPath}'")
-            None
+            logger.error(s"$logMsg: Unknown '${order.nodeKey.jobnetPath}'")
           case _ ⇒
-            Some(order)
-        }
-      }
-      //val iterator = goodOrders.iterator
-      //if (iterator.hasNext) {
-      //  while (iterator.hasNext) {
-      //    val order = iterator.next()
-      //    val isLast = !iterator.hasNext
-      //    persistAsync(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
-      //      logger.info(logMsg(order))
-      //      if (isLast) {
-      //        sender() ! Done
-      //      }
-      //    }
-      //  }
-      //} else {
-      //  sender() ! Done
-      //}
-      for (order ← goodOrders) {
-        persistAsync(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
-          logger.info(logMsg(order))
+            persistAsync(KeyedEvent(OrderEvent.OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
+              logger.info(logMsg)
+            }
         }
       }
       deferAsync {
@@ -415,7 +395,7 @@ object MasterOrderKeeper {
       MasterKeyedEventJsonFormat,
       snapshotToKey = {
         case o: Order[_] ⇒ o.id
-        case o: OrderScheduleEndedAt ⇒ classOf[OrderScheduleEndedAt]
+        case _: OrderScheduleEndedAt ⇒ classOf[OrderScheduleEndedAt]
       },
       isDeletedEvent = Set(/*OrderEvent.OrderRemoved fehlt*/))
     with GzipCompression
