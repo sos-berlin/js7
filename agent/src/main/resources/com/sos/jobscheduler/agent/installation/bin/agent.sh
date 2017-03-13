@@ -66,6 +66,7 @@ config="$data/config"
 export SCHEDULER_LOGS="$logs"  # Used in log4j2.xml
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
+  javaOptions+=("-DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
 fi
 
 execute=(

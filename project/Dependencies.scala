@@ -9,11 +9,18 @@ object Dependencies {
   val akkaVersion = "2.4.16"
   val sprayVersion = "1.3.4"
   val slf4jVersion = "1.7.21"
+  val log4jVersion = "2.8.1"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
 //val julToSlf4J          = "org.slf4j" % "jul-to-slf4j" % slf4jVersion
   val logbackClassic      = "ch.qos.logback" % "logback-classic" % "1.1.3"
+  val log4jApi            = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
+  val log4jCore           = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
+  val log4jSlf4j          = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion
+  val jansi               = "org.fusesource.jansi" % "jansi" % "1.14"
+  val lmaxDisruptor       = "com.lmax" % "disruptor" % "3.3.6"
+  val log4j               = log4jSlf4j :: log4jApi :: log4jCore :: lmaxDisruptor /*:: jansi*/ :: Nil
 
   val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
   val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
@@ -47,5 +54,9 @@ object Dependencies {
   val reflections         = "org.reflections" % "reflections" % "0.9.9"
   val groovy              = "org.codehaus.groovy" % "groovy" % "1.8.6"
 
-  implicit def singleModuleIDToSeq(o: sbt.ModuleID): Seq[ModuleID] = Seq(o)
+  implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
+
+  implicit class PercentModuleIDSeq(val delegate: Seq[sbt.ModuleID]) extends AnyVal {
+    def %(configurations: String) = delegate map { _ % configurations }
+  }
 }

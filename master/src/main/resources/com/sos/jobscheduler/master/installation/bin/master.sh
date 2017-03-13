@@ -63,8 +63,10 @@ else
   logbackConfig="com/sos/jobscheduler/master/logback.xml"
 fi
 
-logbackArg="-Dlogback.configurationFile=$logbackConfig"
-javaOptions+=("$logbackArg" "${javaOptions[@]}")
+export SCHEDULER_LOGS="$logs"  # Used in log4j2.xml
+if [ -f "$configDirectory/log4j2.xml" ]; then :
+  javaOptions+=("-Dlog4j.configurationFile=$configDirectory/log4j2.xml")
+fi
 
 execute=(
   "$java"

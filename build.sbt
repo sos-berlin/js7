@@ -76,6 +76,11 @@ lazy val jobscheduler = (project in file("."))
 lazy val `jobscheduler-docker` = project
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      log4j
+  }
   .settings(
     universalPluginSettings,
     (topLevelDirectory in Universal) := None,
@@ -122,7 +127,7 @@ lazy val common = project.dependsOn(base, data)
       scalaTest % "test" ++
       sprayTestkit % "test" ++
       mockito % "test" ++
-      logbackClassic % "test" ++
+      log4j % "test" ++
       Nil
     }
   .enablePlugins(GitVersioning)
@@ -144,7 +149,8 @@ lazy val master = project.dependsOn(shared, common, `agent-client`)
     import Dependencies._
     libraryDependencies ++=
       scalaTest % "test" ++
-      sprayTestkit % "test"
+      sprayTestkit % "test" ++
+      log4j % "test"
   }
 
 lazy val shared = project.dependsOn(common)
@@ -154,7 +160,7 @@ lazy val shared = project.dependsOn(common)
     import Dependencies._
     libraryDependencies ++=
       scalaTest % "test" ++
-      logbackClassic
+      log4j % "test"
   }
 
 lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserver, tunnel)
@@ -181,7 +187,7 @@ lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserve
       guice ++
       mockito % "test" ++
       scalaTest % "test" ++
-      logbackClassic //FIXME % "test"
+      log4j % "test"
   }
   //.settings(
   //mainClass in assembly := Some("com.sos.jobscheduler.agent.main.AgentMain"),
@@ -202,7 +208,7 @@ lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-
       sprayClient ++
       sprayJson ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
@@ -218,7 +224,7 @@ lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
       javaxAnnotations % "compile" ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val `agent-test` = project.dependsOn(agent, common)
@@ -228,7 +234,7 @@ lazy val `agent-test` = project.dependsOn(agent, common)
     import Dependencies._
     libraryDependencies ++=
       scalaTest ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test")
@@ -241,7 +247,7 @@ lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client
     libraryDependencies ++=
       scalaTest % "test" ++
       mockito % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val `http-client` = project.dependsOn(common, data)
@@ -259,7 +265,7 @@ lazy val `http-client` = project.dependsOn(common, data)
       intelliJAnnotations % "compile" ++
       sprayTestkit % "test" ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val `http-server` = project.dependsOn(`http-client`, common, data)
@@ -276,7 +282,7 @@ lazy val `http-server` = project.dependsOn(`http-client`, common, data)
       akkaSlf4j ++
       scalactic ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val `engine-job-api` = project.dependsOn(common)
@@ -294,7 +300,7 @@ lazy val `engine-job-api` = project.dependsOn(common)
       apacheCommonsBeanutils % "test" ++
       reflections % "test" ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val minicom = project.dependsOn(common, `engine-job-api`)
@@ -309,7 +315,7 @@ lazy val minicom = project.dependsOn(common, `engine-job-api`)
       intelliJAnnotations % "compile" ++
       mockito % "test" ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data)
@@ -329,7 +335,7 @@ lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data)
       scalactic ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val `tunnel-data` = project.dependsOn(common, data, `http-server`/*HeartbeatView is here*/)
@@ -340,7 +346,7 @@ lazy val `tunnel-data` = project.dependsOn(common, data, `http-server`/*Heartbea
     import Dependencies._
     libraryDependencies ++=
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val taskserver = project
@@ -364,7 +370,7 @@ lazy val taskserver = project
       guava ++
       mockito % "test" ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common)
@@ -374,7 +380,7 @@ lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common)
     import Dependencies._
     libraryDependencies ++=
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
 
 lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common)
@@ -389,7 +395,7 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
       "com.sos-berlin" % "jni4net.n-sos" % "0.8.8.0" % "compile" ++
       mockito % "test" ++
       scalaTest % "test" ++
-      logbackClassic % "test"
+      log4j % "test"
   }
   .settings(
     sourceGenerators in Compile += Def.task {
