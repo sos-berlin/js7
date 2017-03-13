@@ -40,7 +40,7 @@ extends TaskServer {
     process.stdinWriter.close()
   }
 
-  override def close(): Unit = {
+  def close(): Unit = {
     for (p ← processOnce) {
       // Wait for process _after_ Tunnel, registered with registerCloseable, has been closed
       try p.waitForTermination()

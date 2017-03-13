@@ -42,7 +42,7 @@ final class TcpHttpTcpTunnelIT extends FreeSpec {
   "Normal application" in {
     val (clientSide, serverSide) = startTunneledSystem()
     val n = 3
-    for (i ← 1 to n) clientSide.checkSendReceive()
+    for (_ ← 1 to n) clientSide.checkSendReceive()
     clientSide.tcp.sendMessage(TerminateMessage)
     clientSide.requireEOF()
     serverSide.awaitTermination()
@@ -142,7 +142,7 @@ object TcpHttpTcpTunnelIT {
 
   private class TunnelledTcpServer(implicit timerService: TimerService) extends AutoCloseable {
     val handler = new ServerSideTunnelHandler
-    private val tunnel = handler.newTunnel(TunnelId("TEST-TUNNEL"))
+    private val tunnel = handler.newTunnel(TunnelToken.generate(TunnelId("TEST-TUNNEL")))
     private val tcpServer = new TcpServer(tunnel.tunnelToken, handler.tcpAddress)
     def listener = handler.listener
 
@@ -162,7 +162,7 @@ object TcpHttpTcpTunnelIT {
     val uri = startWebServer()
     val listener = Agent(new TestTunnelListener)
 
-    def newTunnel(id: TunnelId) = tunnelServer.newTunnel(id, listener)
+    def newTunnel(tunnelToken: TunnelToken) = tunnelServer.newTunnel(tunnelToken, listener)
     def tcpAddress = tunnelServer.proxyAddress
 
     def close() = actorSystem.shutdown()

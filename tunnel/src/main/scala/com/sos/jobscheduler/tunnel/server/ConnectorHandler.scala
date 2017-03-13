@@ -61,18 +61,17 @@ private[tunnel] final class ConnectorHandler private(implicit timerService: Time
       val connector = actorOf(Connector.props(connectorHandler = self, tcp = sender(), connected, timerService), name = name)
       watch(connector)
 
-    case m @ NewTunnel(id, listener, startedByIpOption) ⇒
+    case m @ NewTunnel(tunnelToken, listener, startedByIpOption) ⇒
       logger.trace(s"$m")
       sender() ! Try[TunnelHandle] {
-        val secret = TunnelToken.newSecret()
         val connectedPromise = Promise[InetSocketAddress]()
         val handle = new Handle(
           self,
-          TunnelToken(id, secret),
+          tunnelToken,
           startedByHttpIpOption = startedByIpOption,
           connectedPromise,
           listener)
-        register.insert(id → handle)
+        register.insert(tunnelToken.id → handle)
         handle
       }
 
@@ -199,7 +198,7 @@ private[tunnel] object ConnectorHandler {
   private[tunnel] case object Start extends Command
 
   private[tunnel] case class NewTunnel[A <: TunnelListener](
-    tunnelId: TunnelId,
+    tunnelToken: TunnelToken,
     listener: Agent[A],
     startedByIpOption: Option[InetAddress])
   extends Command

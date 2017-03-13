@@ -10,10 +10,11 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing._
 import com.sos.jobscheduler.common.scalautil.Futures._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.taskserver.StandardTaskServer.TcpConnected
 import com.sos.jobscheduler.taskserver.configuration.inject.{TaskServerMainModule, TaskServerModule}
 import com.sos.jobscheduler.taskserver.data.{TaskServerArguments, TaskServerMainTerminated}
 import com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer
-import scala.concurrent.Promise
+import scala.concurrent.{ExecutionContext, Promise}
 import spray.json._
 
 /**
@@ -43,10 +44,15 @@ object TaskServerMain {
       new TaskServerMainModule(startArguments.dotnet),
       new TaskServerModule(startArguments, Some(terminated.future))
     )
-    autoClosing(injector.instance[Closer]) { _ ⇒
-      implicit val executionContext = injector.instance[ActorSystem].dispatcher
-      val newRemoteModuleInstanceServer = injector.instance[RemoteModuleInstanceServer.Factory]
-      autoClosing(new StandardTaskServer(newRemoteModuleInstanceServer, startArguments, isMain = true)) { taskServer ⇒
+    autoClosing(injector.instance[Closer]) { implicit closer ⇒
+      implicit val ec = injector.instance[ExecutionContext]
+      val taskServer = new TcpConnected {
+        def arguments = startArguments
+        protected def newRemoteModuleInstanceServer = injector.instance[RemoteModuleInstanceServer.Factory]
+        protected def executionContext = ec
+        override def isMain = true
+      }
+      autoClosing(taskServer) { _ ⇒
         taskServer.terminated map { _: TaskServer.Terminated.type ⇒ TaskServerMainTerminated } onComplete terminated.complete
         taskServer.start()
         awaitResult(taskServer.terminated, MaxDuration)

@@ -23,5 +23,6 @@ object StartTask {
     /** For compatibility with a master before v1.10.4 **/
     val Default = Meta(job = "/(OLD-MASTER)", TaskId(-1))
     implicit val MyJsonFormat = jsonFormat2(apply)
+    val NoCppJobSchedulerTaskId = TaskId(0)   // Not the old C++ JobScheduler
   }
 }

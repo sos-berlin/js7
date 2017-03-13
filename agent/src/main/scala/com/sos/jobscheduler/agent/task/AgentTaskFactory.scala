@@ -8,7 +8,7 @@ import java.net.InetAddress
  * @author Joacim Zschimmer
  */
 @ImplementedBy(classOf[StandardAgentTaskFactory])
-trait AgentTaskFactory extends ((StartTask, Option[InetAddress]) ⇒ AgentTask) {
+trait AgentTaskFactory {
 
   def apply(command: StartTask, clientIpOption: Option[InetAddress]): AgentTask
 }

@@ -18,7 +18,10 @@ object TunnelToken {
     jsonFormat2(apply)
   }
 
-  private[tunnel] def newSecret() = SecretStringGenerator.newSecretString()
+  def generate(id: TunnelId) = TunnelToken(id, newSecret())
+
+  private[tunnel] def newSecret(): SecretString =
+    SecretStringGenerator.newSecretString()
 
   final case class Secret(string: String) extends IsString {
     override def toString = "Secret(...)"

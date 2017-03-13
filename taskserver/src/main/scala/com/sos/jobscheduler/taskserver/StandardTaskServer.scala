@@ -2,13 +2,12 @@ package com.sos.jobscheduler.taskserver
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.tcp.BlockingTcpConnection
 import com.sos.jobscheduler.common.time.ScalaTime.MaxDuration
-import com.sos.jobscheduler.minicom.remoting.dialog.StandardServerDialogConnection
+import com.sos.jobscheduler.minicom.remoting.dialog.{ServerDialogConnection, StandardServerDialogConnection}
 import com.sos.jobscheduler.minicom.remoting.{Remoting, ServerRemoting}
 import com.sos.jobscheduler.taskserver.TaskServer.Terminated
 import com.sos.jobscheduler.taskserver.data.TaskServerArguments
@@ -25,19 +24,21 @@ import spray.json._
  *
  * @author Joacim Zschimmer
  */
-final class StandardTaskServer(
-  newRemoteModuleInstanceServer: TaskServerArguments ⇒ RemoteModuleInstanceServer,
-  val arguments: TaskServerArguments,
-  isMain: Boolean = false)
-  (implicit ec: ExecutionContext)
+trait StandardTaskServer
 extends TaskServer with HasCloser {
+
+  protected def serverDialogConnection: ServerDialogConnection
+  protected def newRemoteModuleInstanceServer: TaskServerArguments ⇒ RemoteModuleInstanceServer
+  protected def isMain: Boolean = false
+  protected implicit def executionContext: ExecutionContext
+  protected def beforeStart() = {}
+  protected def afterStop() = {}
 
   private val logger = Logger.withPrefix[StandardTaskServer](arguments.agentTaskId.toString)
   private val terminatedPromise = Promise[Terminated.type]()
-  private val master = BlockingTcpConnection.connect(arguments.masterInetSocketAddress).closeWithCloser
 
-  private val remoting = new ServerRemoting(
-    new StandardServerDialogConnection(master),
+  private lazy val remoting = new ServerRemoting(
+    serverDialogConnection,
     name = arguments.agentTaskId.toString,
     iUnknownFactories = List(
       new RemoteModuleInstanceServer.MyIUnknownFactory {
@@ -54,35 +55,56 @@ extends TaskServer with HasCloser {
     returnAfterReleaseOf = _.isInstanceOf[RemoteModuleInstanceServer],
     keepaliveDurationOption = arguments.rpcKeepaliveDurationOption)
 
-  def terminated = terminatedPromise.future
+  final def terminated = terminatedPromise.future
 
-  def start(): Unit =
+  final def start(): Unit =
     namedThreadFuture("Job " + arguments.startMeta.job) {
-      val connectionMessage = TunnelConnectionMessage(arguments.tunnelToken)
-      master.sendMessage(ByteString(connectionMessage.toJson.compactPrint))
+      beforeStart()
       remoting.run() await MaxDuration
-      master.close()
+      afterStop()
     } onComplete { tried ⇒
       val (correctedTried, msg) = tried match {
-        case Failure(t: AsynchronousCloseException) ⇒ (Success(Terminated), s"Terminated after close(): $t")
+        case Failure(t: AsynchronousCloseException)         ⇒ (Success(Terminated), s"Terminated after close(): $t")
         case Failure(t: Remoting.ConnectionClosedException) ⇒ (Success(Terminated), s"Terminated, $t")
         case _ ⇒ (tried map { _ ⇒ Terminated }, Some("Terminated") ++ tried.failed.toOption mkString ", ")
       }
-      logger.info(msg)
+      correctedTried match {
+        case Failure(t) ⇒ logger.error(s"Task terminated with error: $t", t)
+        case Success(Terminated) ⇒ logger.info(msg)
+      }
       terminatedPromise.complete(correctedTried)
     }
 
-  def sendProcessSignal(signal: ProcessSignal) = {
+  final def sendProcessSignal(signal: ProcessSignal) = {
     val signalables = remoteModuleInstanceServers
     logger.debug(s"sendProcessSignal $signal to $signalables")
     signalables foreach { _.sendProcessSignal(signal) }
   }
 
-  def deleteLogFiles() = {}  // Files are closed when master via COM RPC releases RemoteModuleInstanceServer
+  final def deleteLogFiles() = {}  // Files are closed when master via COM RPC releases RemoteModuleInstanceServer
 
   override def toString = s"StandardTaskServer(master=${arguments.masterAddress})"
 
-  def pidOption = (remoteModuleInstanceServers flatMap { _.pidOption }).headOption
+  final def pidOption = (remoteModuleInstanceServers flatMap { _.pidOption }).headOption
 
   private def remoteModuleInstanceServers = remoting.iUnknowns[RemoteModuleInstanceServer]  // Should return one
+}
+
+object StandardTaskServer {
+  trait TcpConnected extends StandardTaskServer {
+    this: StandardTaskServer ⇒
+
+    private val connection = BlockingTcpConnection.connect(arguments.masterInetSocketAddress)
+    protected final lazy val serverDialogConnection = new StandardServerDialogConnection(connection)(executionContext)
+
+    override protected def beforeStart(): Unit = {
+      super.beforeStart()
+      connection.sendMessage(ByteString(TunnelConnectionMessage(arguments.tunnelToken).toJson.compactPrint))
+    }
+
+    override protected def afterStop(): Unit = {
+      connection.close()
+      super.afterStop()
+    }
+  }
 }

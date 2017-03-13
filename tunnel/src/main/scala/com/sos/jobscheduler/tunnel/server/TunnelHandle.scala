@@ -17,6 +17,8 @@ trait TunnelHandle extends AutoCloseable {
 
   final def id: TunnelId = tunnelToken.id
 
+  protected val startedAt = Instant.now
+
   def heartbeatService: HeartbeatService
 
   def request(request: ByteString, timeout: Option[Duration]): Future[ByteString]

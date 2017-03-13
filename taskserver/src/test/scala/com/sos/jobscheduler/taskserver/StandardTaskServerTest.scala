@@ -14,6 +14,7 @@ import com.sos.jobscheduler.taskserver.data.{DotnetConfiguration, TaskServerArgu
 import com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer
 import java.net.{InetAddress, ServerSocket}
 import org.scalatest.FreeSpec
+import scala.concurrent.ExecutionContext
 
 /**
  * @author Joacim Zschimmer
@@ -28,16 +29,20 @@ final class StandardTaskServerTest extends FreeSpec {
       val injector = Guice.createInjector(PRODUCTION,
         new TaskServerMainModule(DotnetConfiguration()),
         new TaskServerModule(taskServerArguments, taskServerMainTerminated = None))
-      autoClosing(injector.instance[Closer]) { _ ⇒
+      autoClosing(injector.instance[Closer]) { implicit closer ⇒
         implicit val executionContext = injector.instance[ActorSystem].dispatcher
-        val newRemoteModuleInstanceServer = injector.instance[RemoteModuleInstanceServer.Factory]
-        autoClosing(new StandardTaskServer(newRemoteModuleInstanceServer, taskServerArguments)) { server ⇒
-          server.start()
+        val taskServer = new StandardTaskServer.TcpConnected {
+          def arguments = taskServerArguments
+          protected def newRemoteModuleInstanceServer = injector.instance[RemoteModuleInstanceServer.Factory]
+          protected def executionContext = ExecutionContext.global
+        }
+        autoClosing(taskServer) { _ ⇒
+          taskServer.start()
           listener.setSoTimeout(10*1000)
           sleep(100.ms)  // Otherwise, if it starts to fast, read() may throw an IOException "connection lost" instead of returning EOF
-          assert(!server.terminated.isCompleted)
+          assert(!taskServer.terminated.isCompleted)
           listener.accept().shutdownOutput()   // EOF
-          awaitResult(server.terminated, 1.s)
+          awaitResult(taskServer.terminated, 1.s)
         }
       }
     }

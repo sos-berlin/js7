@@ -8,7 +8,7 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-private[server] case class Statistics(  // We don't care about synchronization ???
+private[server] final class Statistics(  // We don't care about synchronization ???
   var requestCount: Int = 0,
   var messageByteCount: Long = 0,
   var currentRequestIssuedAt: Option[Instant] = None,

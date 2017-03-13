@@ -23,12 +23,13 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-final class TaskRunner(jobConfiguration: JobConfiguration, taskId: TaskId, newTask: AgentTaskFactory)
+final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFactory)
   (implicit ec: ExecutionContext) {
 
   private val taskOnce = new SetOnce[AgentTask]
   private val moduleInstanceRunnerOnce = new SetOnce[ModuleInstanceRunner]
   private var _killed = false
+  private val taskId = StartTask.Meta.NoCppJobSchedulerTaskId
 
   def processOrder(order: Order[Order.InProcess.type]): Future[OrderStepSucceeded] = {
     if (killed)
@@ -107,7 +108,7 @@ object TaskRunner {
   def stepOne(jobConfiguration: JobConfiguration, order: Order[Order.InProcess.type])(implicit newTask: AgentTaskFactory, ec: ExecutionContext)
   : Future[OrderStepSucceeded]
   = {
-    val taskRunner = new TaskRunner(jobConfiguration, TaskId(0), newTask)
+    val taskRunner = new TaskRunner(jobConfiguration, newTask)
     taskRunner.processOrder(order) andThen { case _ ⇒ taskRunner.terminate() }
   }
 }

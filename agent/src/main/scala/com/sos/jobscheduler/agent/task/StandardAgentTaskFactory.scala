@@ -11,7 +11,9 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
 import com.sos.jobscheduler.common.scalautil.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.minicom.remoting.calls.{CallCall, ReleaseCall}
+import com.sos.jobscheduler.minicom.remoting.dialog.LocalServerDialogConnection
 import com.sos.jobscheduler.minicom.remoting.serial.CallDeserializer
 import com.sos.jobscheduler.minicom.remoting.serial.CallDeserializer.deserializeCall
 import com.sos.jobscheduler.minicom.types.VariantArray
@@ -19,11 +21,11 @@ import com.sos.jobscheduler.taskserver.data.TaskServerArguments
 import com.sos.jobscheduler.taskserver.task.{RemoteModuleInstanceServer, TaskArguments}
 import com.sos.jobscheduler.taskserver.{OwnProcessTaskServer, StandardTaskServer}
 import com.sos.jobscheduler.tunnel.data.{TunnelId, TunnelToken}
-import com.sos.jobscheduler.tunnel.server.{TunnelListener, TunnelServer}
+import com.sos.jobscheduler.tunnel.server.{LocalTunnelHandle, TunnelListener, TunnelServer}
 import java.net.InetAddress
 import java.util.regex.Pattern
-import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Promise}
+import javax.inject.{Inject, Provider, Singleton}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
  * @author Joacim Zschimmer
@@ -31,38 +33,48 @@ import scala.concurrent.{ExecutionContext, Promise}
 @Singleton
 final class StandardAgentTaskFactory @Inject private(
   agentConfiguration: AgentConfiguration,
-  tunnelServer: TunnelServer,
+  tunnelServerProvider: Provider[TunnelServer],
   newRemoteModuleInstanceServer: RemoteModuleInstanceServer.Factory)
-  (implicit executionContext: ExecutionContext)
+  (implicit
+    timerService: TimerService,
+    private val executionContext: ExecutionContext)
 extends AgentTaskFactory {
 
   private val agentTaskIdGenerator = AgentTaskId.newGenerator()
+  private lazy val tunnelServer = tunnelServerProvider.get   // Initialize (and open TCP port) only when needed
 
   def apply(command: StartTask, clientIpOption: Option[InetAddress]): AgentTask = {
     val taskArgumentsPromise = Promise[TaskArguments]()
     val taskReleasePromise = Promise[Unit]()
-    new AgentTask {
-      val id = agentTaskIdGenerator.next()
-      val startMeta = command.meta getOrElse StartTask.Meta.Default
-      val taskArgumentsFuture = taskArgumentsPromise.future
-      val taskReleaseFuture = taskReleasePromise.future
-      val tunnel = {
-        val listener = AkkaAgent(new MyTunnelListener(taskArgumentsPromise, taskReleasePromise))
-        tunnelServer.newTunnel(TunnelId(id.index.toString), listener, clientIpOption)
+    val agentTaskId = agentTaskIdGenerator.next()
+    val aTunnelToken = TunnelToken.generate(TunnelId(agentTaskId.index.toString))
+    val aTaskServer = newTaskServer(agentTaskId, command, aTunnelToken)
+    closeOnError(aTaskServer) {
+      new AgentTask {
+        val id = agentTaskId
+        val startMeta = command.meta getOrElse StartTask.Meta.Default
+        val taskArgumentsFuture = taskArgumentsPromise.future
+        val taskReleaseFuture = taskReleasePromise.future
+        val taskServer = aTaskServer
+        val tunnel = taskServer match {
+          case taskServer: LocalConnection ⇒  // Only for the new non-C++ JobScheduler
+            new LocalTunnelHandle(aTunnelToken, taskServer.request, clientIpOption)
+          case _ ⇒
+            tunnelServer.newTunnel(
+              aTunnelToken,
+              tunnelListener = AkkaAgent(new MyTunnelListener(taskArgumentsPromise, taskReleasePromise)),
+              clientIpOption)
+        }
+        def close() = closeTunnelAndTaskServer()
       }
-      val taskServer = closeOnError(tunnel) {
-        newTaskServer(id, command, masterAddress = tunnelServer.proxyAddressString, tunnel.tunnelToken)
-      }
-
-      def close() = closeTunnelAndTaskServer()
     }
   }
 
-  private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, masterAddress: String, tunnelToken: TunnelToken) = {
+  private def newTaskServer(agentTaskId: AgentTaskId, command: StartTask, tunnelToken: TunnelToken) = {
     val arguments = TaskServerArguments(
       agentTaskId,
       startMeta = command.meta getOrElse StartTask.Meta.Default,
-      masterAddress = masterAddress,
+      masterAddress = "",
       tunnelToken = tunnelToken,
       workingDirectory = agentConfiguration.workingDirectory,
       logDirectory = agentConfiguration.logDirectory,
@@ -73,19 +85,44 @@ extends AgentTaskFactory {
     if (runInProcess) {
       // For debugging
       logger.warn(s"Due to system property $InProcessName, task runs in Agent process")
-      newStandardTaskServer(arguments)
+      newLocalTaskServer(arguments)
     } else
       command match {
-        case _: StartNonApiTask ⇒ newStandardTaskServer(arguments)
+        case _: StartNonApiTask ⇒ newLocalTaskServer(arguments)
         case o: StartApiTask ⇒ new OwnProcessTaskServer(
-          arguments,
+          arguments.copy(masterAddress = tunnelServer.proxyAddressString),
           javaOptions = agentConfiguration.jobJavaOptions ++ splitJavaOptions(o.javaOptions),
           javaClasspath = o.javaClasspath)
       }
   }
 
-  private def newStandardTaskServer(arguments: TaskServerArguments) =
-    new StandardTaskServer(newRemoteModuleInstanceServer, arguments)
+  private def newLocalTaskServer(arguments: TaskServerArguments) =
+    if (arguments.startMeta.taskId == StartTask.Meta.NoCppJobSchedulerTaskId)
+      newNoTcpLocalTaskServer(arguments)
+    else
+      newTcpConnectedStandardTaskServer(arguments)
+
+  // For non-C++ JobScheduler only.
+  private def newNoTcpLocalTaskServer(taskServerArguments: TaskServerArguments) = {
+    new StandardTaskServer with LocalConnection {
+      def arguments = taskServerArguments
+      protected val serverDialogConnection = new LocalServerDialogConnection
+      protected val newRemoteModuleInstanceServer = StandardAgentTaskFactory.this.newRemoteModuleInstanceServer
+      protected val executionContext = StandardAgentTaskFactory.this.executionContext
+      def request = serverDialogConnection.leftSendAndReceive
+      override def close() = {
+        try serverDialogConnection.leftClose()
+        finally super.close()
+      }
+    }
+  }
+
+  private def newTcpConnectedStandardTaskServer(taskServerArguments: TaskServerArguments) =
+    new StandardTaskServer with StandardTaskServer.TcpConnected {
+      def arguments = taskServerArguments.copy(masterAddress = tunnelServer.proxyAddressString)
+      protected val newRemoteModuleInstanceServer = StandardAgentTaskFactory.this.newRemoteModuleInstanceServer
+      protected val executionContext = StandardAgentTaskFactory.this.executionContext
+    }
 
   private def splitJavaOptions(options: String) =
     Splitter.on(Pattern.compile("\\s+")).trimResults.omitEmptyStrings.split(options).toImmutableSeq
@@ -96,6 +133,10 @@ object StandardAgentTaskFactory {
   private val InProcessName = "jobscheduler.agent.inProcess"
 
   def runInProcess: Boolean = sys.props contains InProcessName
+
+  private trait LocalConnection {
+    private[StandardAgentTaskFactory] def request: ByteString ⇒ Future[ByteString]
+  }
 
   /**
     * Resembles the behaviour of [[com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer]].

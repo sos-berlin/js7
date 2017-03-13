@@ -22,13 +22,12 @@ private[server] class Handle(
   val tunnelToken: TunnelToken,
   val startedByHttpIpOption: Option[InetAddress],
   val connectedPromise: Promise[InetSocketAddress],
-  val listener: Agent[TunnelListener],
-  var state: Handle.State = Handle.Uninitialized,
-  val statistics: Statistics = Statistics())
+  val listener: Agent[TunnelListener])
   (implicit timerService: TimerService)
 extends TunnelHandle {
 
-  private val startedAt = Instant.now
+  var state: Handle.State = Handle.Uninitialized  // For ConnectionHandler only
+  private val statistics = new Statistics
   val heartbeatService = new HeartbeatService
   private val onInactivityCallback = new SetOnce[Instant ⇒ Unit]
 

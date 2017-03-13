@@ -37,7 +37,8 @@ final class TunnelIT extends FreeSpec with BeforeAndAfterAll {
   }
 
   "Simple" in {
-    val tunnel = tunnelServer.newTunnel(TunnelId("TEST-TUNNEL"), Agent(TunnelListener.StopListening))
+    val tunnelToken = TunnelToken.generate(TunnelId("TEST-TUNNEL"))
+    val tunnel = tunnelServer.newTunnel(tunnelToken, Agent(TunnelListener.StopListening))
     val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelServer.proxyAddress)
     tcpServer.start()
     for (i ← 1 to 3) {
@@ -55,8 +56,8 @@ final class TunnelIT extends FreeSpec with BeforeAndAfterAll {
   s"$TunnelCount tunnels with random sizes" in {
     val messageSizes = /*Iterator(MessageSizeMaximum, 0, 1) ++*/ Iterator.continually { nextRandomSize(1000*1000) }
     val tunnelsAndServers = for (i ← 1 to TunnelCount) yield {
-      val id = TunnelId(i.toString)
-      val tunnel = tunnelServer.newTunnel(id, Agent(TunnelListener.StopListening))
+      val tunnelToken = TunnelToken.generate(TunnelId(i.toString))
+      val tunnel = tunnelServer.newTunnel(tunnelToken, Agent(TunnelListener.StopListening))
       val tcpServer = new TcpServer(tunnel.tunnelToken, tunnelServer.proxyAddress)
       tcpServer.start()
       for (peerAddress: InetSocketAddress ← tunnel.connected) logger.info(s"$tunnel $peerAddress")
