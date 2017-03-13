@@ -43,7 +43,6 @@ final class OrderHandler @Inject private(
   private val agentActorFutureOption: Option[Future[ActorRef]] =
     for (liveDirectory ← conf.liveDirectoryOption if Files.exists(liveDirectory)) yield {
       logger.info("Directory 'config/live' is present: starting with experimental order processing")
-      require(Files.isDirectory(liveDirectory), s"Missing live directory '$liveDirectory'")
       val actorRef = newActor(liveDirectory)
       val askTimeout = Timeout(conf.startupTimeout.toFiniteDuration)
       for (_ ← actorRef.ask(AgentActor.Input.Start)(askTimeout).mapTo[AgentActor.Output.Started.type])
@@ -66,7 +65,7 @@ final class OrderHandler @Inject private(
   }
 
   private def agentActorFuture = agentActorFutureOption getOrElse {
-    throw new IllegalStateException("Experimental order processing is not enabled")
+    throw new IllegalStateException("Order processing is not enabled (no directory 'config/live')")
   }
 
   def execute(userId: UserId, command: Command): Future[command.Response] =

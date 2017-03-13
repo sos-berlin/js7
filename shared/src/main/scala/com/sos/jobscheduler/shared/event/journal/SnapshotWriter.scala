@@ -43,7 +43,7 @@ extends Actor {
       abortOnError {
         for (snapshot ← snapshots) {
           pipeline.add { snapshot → ByteString(CompactPrinter(jsonFormat.write(snapshot))) }
-          logger.debug(s"Stored $snapshot")  // Without sync
+          logger.trace(s"Stored $snapshot")  // Without sync
           snapshotCount += 1
         }
         countDown()
