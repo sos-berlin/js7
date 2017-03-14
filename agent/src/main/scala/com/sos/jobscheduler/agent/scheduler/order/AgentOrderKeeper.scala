@@ -69,6 +69,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     keyedEventBus.subscribe(self, classOf[OrderEvent])
     recover()
   }
+
   private def recover(): Unit = {
     val recovered =
       autoClosing(new JsonJournalRecoverer(MyJournalMeta, journalFile)) { journal ⇒

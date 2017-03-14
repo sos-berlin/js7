@@ -16,6 +16,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
@@ -45,7 +46,7 @@ import scala.reflect.ClassTag
 final class MasterIT extends FreeSpec {
 
   "test" in {
-    autoClosing(new TestEnvironment(AgentPaths)) { env ⇒
+    autoClosing(new TestEnvironment(AgentPaths, temporaryDirectory / "MasterIT")) { env ⇒
       withCloser { implicit closer ⇒
         val agents = AgentPaths map { agentPath ⇒
           env.agentXmlFile(agentPath, JobPath("/test")).xml =

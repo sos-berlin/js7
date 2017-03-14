@@ -6,7 +6,7 @@ declare jobschedulerHome classpath pathSeparator JAVA_HOME java
 
 javaOptions=()
 agentOptions=()
-data=/var/lib/jobscheduler/agent
+data=/var/opt/jobscheduler/agent
 
 #if [ -z "$data" ]; then :
 #    data="$agentHome"

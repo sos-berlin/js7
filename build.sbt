@@ -63,7 +63,7 @@ lazy val jobscheduler = (project in file("."))
   .settings(
     commonSettings)
     //publishM2 := {})  // This project is only a build wrapper
-  .dependsOn(master,agent)
+  .dependsOn(master, agent)
   .enablePlugins(JavaAppPackaging)
   .settings(
     universalPluginSettings,

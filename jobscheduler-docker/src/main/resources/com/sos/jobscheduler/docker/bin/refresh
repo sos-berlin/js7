@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -e
+bin="$(dirname -- "$0")"
+
+[ -f build/docker-compose.yml ] || {
+  echo "Call this script in directory containing subdirectory 'build'"
+  exit 1
+}
+
+for f in docker-compose.yml clean-volumes testMasterAgent; do :
+  [ -f "$f" ] || ln -sf "$bin/$f" .
+done
+
+mkdir --parents volumes/{master,agent-1,agent-2}/data/config/live
+mkdir --parents volumes/{master,agent-1,agent-2}/data/{state,logs,tmp}
+
+for f in $(cd build/volumes && find .); do
+  if [ -d "build/volumes/$f" ]; then
+    [ -e "volumes/$f" ] || mkdir "volumes/$f"
+  elif [ -f "build/volumes/$f" ]; then
+    [ -e "volumes/$f" ] || cp -v "build/volumes/$f" "volumes/$f"
+  fi
+done

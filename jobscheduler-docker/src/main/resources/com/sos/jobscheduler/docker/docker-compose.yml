@@ -1,36 +1,32 @@
 version: '2'
 services:
   master:
-    build: .
+    build: build
     image: jobscheduler
     container_name: jobscheduler-master
-    command: ["master", "-java-option=-Xmx200m"]
+    command: ["master"]
     networks:
     - default
     ports:
-    - "4444:4444"
+    - "127.0.0.1:4444:4444"
+    working_dir: /var/opt/jobscheduler/master
     volumes:
-      - master:/var/lib/jobscheduler/master
-    working_dir: /var/lib/jobscheduler/master
+      - ./volumes/master/data:/var/opt/jobscheduler/master
   agent-1:
-    build: .
+    build: build
     image: jobscheduler
     container_name: jobscheduler-agent-1
     command: ["agent", "-java-option=-Xmx100m"]
     hostname: agent-1
+    working_dir: /var/opt/jobscheduler/agent
     volumes:
-      - agent-1:/var/lib/jobscheduler/agent
-    working_dir: /var/lib/jobscheduler/agent
+      - ./volumes/agent-1/data:/var/opt/jobscheduler/agent
   agent-2:
-    build: .
+    build: build
     image: jobscheduler
     container_name: jobscheduler-agent-2
     command: ["agent", "-java-option=-Xmx100m"]
     hostname: agent-2
+    working_dir: /var/opt/jobscheduler/agent
     volumes:
-      - agent-2:/var/lib/jobscheduler/agent
-    working_dir: /var/lib/jobscheduler/agent
-volumes:
-  master:
-  agent-1:
-  agent-2:
+      - ./volumes/agent-2/data:/var/opt/jobscheduler/agent

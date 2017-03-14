@@ -1,8 +1,0 @@
-<job>
-  <params>
-    <param name="var1" value="JOB-VALUE"/>
-  </params>
-  <script language="shell">
-    echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
-  </script>
-</job>

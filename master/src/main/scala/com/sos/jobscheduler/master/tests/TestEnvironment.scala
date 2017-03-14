@@ -1,9 +1,7 @@
 package com.sos.jobscheduler.master.tests
 
-import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.HasCloser
-import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.folder.FolderPath
@@ -14,29 +12,29 @@ import scala.collection.immutable._
 /**
   * @author Joacim Zschimmer
   */
-final class TestEnvironment(agentPaths: Seq[AgentPath]) extends HasCloser {
+final class TestEnvironment(agentPaths: Seq[AgentPath], temporaryDirectory: Path)
+extends AutoCloseable {
 
-  //private val dir = createTempDirectory("test-") withCloser deleteDirectoryRecursively
-  private val dir = temporaryDirectory / "TestMasterAgent"
+  createDirectories(masterDir / "config/live")
+  for (agentPath ← agentPaths) {
+    createDirectories(agentDir(agentPath) / "config/live")
+  }
 
-  closeOnError(closer) {
-    createDirectories(masterDir / "config/live")
-    for (agentPath ← agentPaths) {
-      createDirectories(agentDir(agentPath) / "config/live")
-    }
+  def close(): Unit = {
+    deleteDirectoryRecursively(temporaryDirectory)
   }
 
   def xmlFile(path: TypedPath): Path =
     masterDir / "config/live" resolve path.xmlFile
 
   def masterDir: Path =
-    dir / "master"
+    temporaryDirectory / "master"
 
   def agentXmlFile(agentPath: AgentPath, path: TypedPath): Path =
     agentDir(agentPath) / "config/live" resolve path.xmlFile
 
   def agentDir(agentPath: AgentPath): Path = {
     require(FolderPath.parentOf(agentPath) == FolderPath.Root, "Directory layout is not suitable for nested Agent paths")
-    dir / s"agents/${agentPath.withoutStartingSlash}"
+    temporaryDirectory / s"agents/${agentPath.withoutStartingSlash}"
   }
 }
