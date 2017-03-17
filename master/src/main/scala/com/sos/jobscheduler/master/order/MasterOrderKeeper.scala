@@ -109,10 +109,10 @@ with Stash {
         import JsonJournalRecoverer._
         for (recovered ← journal) (recovered: @unchecked) match {
           case RecoveringSnapshot(o: OrderScheduleEndedAt) ⇒
-            journal.addActorForSnapshot(o, orderScheduleGenerator)
+            journal.recoverActorForSnapshot(o, orderScheduleGenerator)
 
           case RecoveringForUnknownKey(stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
-            journal.addActorForFirstEvent(stamped, orderScheduleGenerator)
+            journal.recoverActorForFirstEvent(stamped, orderScheduleGenerator)
 
           case RecoveringChanged(Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
 
@@ -121,7 +121,7 @@ with Stash {
 
           case RecoveringSnapshot(AgentEventId(agentPath, eventId)) ⇒
           agentRegister(agentPath).lastAgentEventId = eventId
-          //journal.addActorForSnapshot(snapshot, agentRegister(agentPath).actor)
+          //journal.recoverActorForSnapshot(snapshot, agentRegister(agentPath).actor)
 
           case RecoveringForUnknownKey(Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
             event match {

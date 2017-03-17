@@ -104,14 +104,14 @@ extends AutoCloseable with Iterator[Recovering]
         None
     }
 
-  def addActorForSnapshot(snapshot: Any, actorRef: ActorRef): Unit = {
+  def recoverActorForSnapshot(snapshot: Any, actorRef: ActorRef): Unit = {
     val key = snapshotToKey(snapshot)
     if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate snapshot in journal file: '$key'")
     keyToActor += key → actorRef
     actorRef ! KeyedJournalingActor.Input.RecoverFromSnapshot(snapshot)
   }
 
-  def addActorForFirstEvent(stampedEvent: Stamped[AnyKeyedEvent], actorRef: ActorRef): Unit = {
+  def recoverActorForFirstEvent(stampedEvent: Stamped[AnyKeyedEvent], actorRef: ActorRef): Unit = {
     val keyedEvent = stampedEvent.value
     import keyedEvent.key
     if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate key: '$key'")
@@ -153,9 +153,9 @@ object JsonJournalRecoverer {
   //    for (recovered ← journal) {
   //      recover(recovered) match {
   //        case AddActorForSnapshot(stamped, actorRef) ⇒
-  //          journal.addActorForSnapshot(stamped, actorRef)
+  //          journal.recoverActorForSnapshot(stamped, actorRef)
   //        case AddActorForFirstEvent(stampedEvent, actorRef) ⇒
-  //          journal.addActorForFirstEvent(stampedEvent, actorRef)
+  //          journal.recoverActorForFirstEvent(stampedEvent, actorRef)
   //        case Ignore ⇒
   //      }
   //    }

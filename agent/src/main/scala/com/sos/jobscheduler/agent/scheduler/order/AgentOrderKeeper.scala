@@ -80,7 +80,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           case RecoveringSnapshot(order: Order[Order.State]) ⇒
             val actor = addOrderActor(order.id)
             orderRegister += order.id → OrderEntry(order.id, actor, order.jobnetPath, order.nodeId)
-            journal.addActorForSnapshot(order, actor)
+            journal.recoverActorForSnapshot(order, actor)
 
           case RecoveringSnapshot(snapshot: EventQueue.CompleteSnapshot) ⇒
             eventsForMaster ! snapshot  // TODO FinishRecovery for synchronization ?
@@ -91,7 +91,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           case RecoveringForUnknownKey(stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent.OrderAttached))) ⇒
             val actor = addOrderActor(orderId)
             orderRegister += orderId → OrderEntry(orderId, actor, event.nodeKey.jobnetPath, event.nodeKey.nodeId)
-            journal.addActorForFirstEvent(stamped, actor)
+            journal.recoverActorForFirstEvent(stamped, actor)
             eventsForMaster ! stamped
 
           case RecoveringDeleted(stamped @ Stamped(_, KeyedEvent(orderId: OrderId, OrderEvent.OrderDetached))) ⇒

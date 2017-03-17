@@ -47,10 +47,10 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
         import JsonJournalRecoverer._
         for (recovered ← journal) (recovered: @unchecked) match {
           case RecoveringSnapshot(snapshot: TestAggregate) ⇒
-            journal.addActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
+            journal.recoverActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
 
           case RecoveringForUnknownKey(stamped @ Stamped(_, KeyedEvent(key: String, _: TestEvent.Added))) ⇒
-            journal.addActorForFirstEvent(stamped, newAggregateActor(key))
+            journal.recoverActorForFirstEvent(stamped, newAggregateActor(key))
 
           case _: RecoveringForKnownKey ⇒
         }
