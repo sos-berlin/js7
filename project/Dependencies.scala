@@ -44,6 +44,8 @@ object Dependencies {
   val sprayTestkit        = "io.spray" %% "spray-testkit" % sprayVersion
   val sprayJson           = "io.spray" %% "spray-json" % "1.3.3" :: scalaReflect :: Nil
 
+  val scalaTags           = "com.lihaoyi" %% "scalatags" % "0.6.3"
+
   val mockito             = "org.mockito" % "mockito-core" % "1.10.19"
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
   val snakeYaml           = "org.yaml" % "snakeyaml" % "1.15"
@@ -53,6 +55,11 @@ object Dependencies {
   val apacheCommonsBeanutils = "commons-beanutils" % "commons-beanutils" % "1.9.2"
   val reflections         = "org.reflections" % "reflections" % "0.9.9"
   val groovy              = "org.codehaus.groovy" % "groovy" % "1.8.6"
+
+  object webjars {
+    val bootstrap = "org.webjars" % "bootstrap" % "3.3.6"
+    val jQuery    = "org.webjars" % "jquery" % "2.2.4"
+  }
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
 

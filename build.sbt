@@ -117,6 +117,7 @@ lazy val common = project.dependsOn(base, data)
       guice ++
       typesafeConfig ++
       akkaActor ++
+      scalaTags ++
       sprayCan ++
       sprayHttpx ++
       sprayRouting ++
