@@ -29,7 +29,7 @@ final class ForeignEventIdAdaptingTest extends FreeSpec {
 
     val stampeds: Vector[Stamped[KeyedEvent[AEvent.type]]] =
       (for (eventSeq ← eventCollector.when(EventRequest.singleClass[AEvent.type](EventId.BeforeFirst, timeout = 0.s))) yield
-        eventSeq match {
+        (eventSeq: @unchecked) match {
           case EventSeq.NonEmpty(iterator) ⇒ iterator.toVector
         }
       ) await  10.s
