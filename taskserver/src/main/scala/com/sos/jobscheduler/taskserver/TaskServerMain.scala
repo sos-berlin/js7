@@ -5,6 +5,7 @@ import com.google.inject.Guice
 import com.google.inject.Stage._
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -34,6 +35,8 @@ object TaskServerMain {
         System.err.println(t.toString)
         System.exit(1)
     }
+    finally
+      Log4j.shutdown()
   }
 
   private def run(startArguments: TaskServerArguments): Unit = {

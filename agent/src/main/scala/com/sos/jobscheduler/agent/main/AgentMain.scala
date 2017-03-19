@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.main
 import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.Terminate
+import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closers.{EmptyAutoCloseable, withCloser}
@@ -51,6 +52,8 @@ object AgentMain {
       JavaShutdownHook.add("AgentMain") {
         agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(OnJavaShutdownSigkillProcessesAfter)))
         awaitResult(agent.terminated, ShutdownTimeout)
+        closer.close()
+        Log4j.shutdown()
       }.closeWithCloser
       agent.run()
     }

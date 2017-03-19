@@ -8,6 +8,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.Terminate
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -87,10 +88,12 @@ object TestMasterAgent {
         print('\n')
         (for (agent ← agents) yield {
           agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.s)))
-          agent.terminated
+          val r = agent.terminated
+          agent.close()
+          r
         }) await 30.s
         injector.instance[Closer].close()
-        org.apache.logging.log4j.LogManager.shutdown()  // Disable automatic shutdown in log4j2.xml: <configuration shutdownHook="disable">
+        Log4j.shutdown()
       } .closeWithCloser
 
       env.xmlFile(TestJobnetPath).xml =

@@ -4,6 +4,7 @@ import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAutoCloseable, RichClosersCloser}
 import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichArray
@@ -35,6 +36,7 @@ final class MasterMain(conf: MasterConfiguration) extends HasCloser {
   JavaShutdownHook.add("MasterMain") {
     logger.info("Terminate")
     close()
+    Log4j.shutdown()
   }.closeWithCloser
 
   def run(): Nothing = {

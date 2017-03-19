@@ -3,6 +3,7 @@ package com.sos.jobscheduler.taskserver.modules.shell
 import com.sos.jobscheduler.agent.data.ProcessKillScript
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal._
+import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
@@ -75,6 +76,7 @@ extends HasCloser with Task {
       JavaShutdownHook.add(ShellProcessTask.getClass.getName) {
         sendProcessSignal(SIGTERM)
         terminated.awaitInfinite  // Delay until TaskServer has been terminated
+        Log4j.shutdown()
       }
     val env = {
       val params = spoolerTask.parameterMap ++ spoolerTask.orderParameterMap
