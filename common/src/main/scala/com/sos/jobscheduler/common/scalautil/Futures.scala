@@ -71,7 +71,7 @@ object Futures {
        * Returns a new Future with the current stack trace added in case of failure of the original Future.
        */
       def appendCurrentStackTrace: Future[A] = {
-        val callersStackTrace = newStackTrace()
+        val callersStackTrace = new Exception().getStackTrace
         delegate.recoverWith {
           case t ⇒ Future.failed[A](t.appendStackTrace(callersStackTrace))
         } (SynchronousExecutionContext)

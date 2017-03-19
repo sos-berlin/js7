@@ -12,9 +12,9 @@ object StackTraces {
     * Modifies the original `Try` if it is a `Failure`.
     */
   implicit class StackTraceTry[A](val delegate: Try[A]) extends AnyVal {
-    def appendCurrentStackTrace = {
+    def appendCurrentStackTrace: delegate.type = {
       delegate match {
-        case Failure(t) ⇒ t.appendStackTrace(newStackTrace())
+        case Failure(t) ⇒ t.appendStackTrace(new Exception().getStackTrace)
         case o ⇒ o
       }
       delegate
@@ -27,7 +27,7 @@ object StackTraces {
       * Modifies the original `Throwable`.
       */
     def appendCurrentStackTrace: delegate.type =
-      appendStackTrace(newStackTrace())
+      appendStackTrace(new Exception().getStackTrace)
 
     /**
       * Applicable for Throwables of another context, like from a `Future`.
@@ -38,6 +38,4 @@ object StackTraces {
       delegate
     }
   }
-
-  def newStackTrace() = new Exception().getStackTrace
 }
