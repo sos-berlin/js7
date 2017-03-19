@@ -11,7 +11,7 @@ services:
     - "127.0.0.1:4444:4444"
     working_dir: /var/opt/jobscheduler/master
     volumes:
-      - ./volumes/master/data:/var/opt/jobscheduler/master
+      - ./volumes/master:/var/opt/jobscheduler/master
   agent-1:
     build: build
     image: jobscheduler
@@ -20,7 +20,7 @@ services:
     hostname: agent-1
     working_dir: /var/opt/jobscheduler/agent
     volumes:
-      - ./volumes/agent-1/data:/var/opt/jobscheduler/agent
+      - ./volumes/agent-1:/var/opt/jobscheduler/agent
   agent-2:
     build: build
     image: jobscheduler
@@ -29,4 +29,4 @@ services:
     hostname: agent-2
     working_dir: /var/opt/jobscheduler/agent
     volumes:
-      - ./volumes/agent-2/data:/var/opt/jobscheduler/agent
+      - ./volumes/agent-2:/var/opt/jobscheduler/agent
