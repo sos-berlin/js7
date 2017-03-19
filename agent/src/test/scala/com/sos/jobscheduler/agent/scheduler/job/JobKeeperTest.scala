@@ -34,7 +34,7 @@ final class JobKeeperTest extends FreeSpec {
         implicit val actorSystem = newActorSystem(getClass.getSimpleName) withCloser { _.shutdown() }
         import actorSystem.dispatcher
 
-        val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest().copy(dataDirectory = Some(dataDir))))
+        val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(Some(dataDir))))
         implicit val newTask = injector.instance[AgentTaskFactory]
 
         for (_ ← 1 to 5) {

@@ -13,7 +13,8 @@ set -e
 . "$(cd "$(dirname -- "$0")" && pwd || kill $$)/set-context.sh"
 declare jobschedulerHome classpath pathSeparator JAVA_HOME java
 
-data=/var/opt/jobscheduler/master
+data=/var/opt/jobscheduler/master/data
+config=""
 httpPort=4444
 masterOptions=()
 javaOptions=()
@@ -43,6 +44,11 @@ for arg in "$@"; do :
       data="${arg#*=}"
       shift
       ;;
+    -config-directory=*)
+      config="${arg#*=}"
+      masterOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
+      shift
+      ;;
     -http-port=*)
       httpPort="${arg#*=}"
       shift
@@ -58,13 +64,13 @@ done
 [ -z "$httpPort" ] || masterOptions+=("-http-port=$httpPort")
 logs="$data/logs"
 
-config="$data/config"
+[ -n "$config" ] || config="$data/config"
 if [ ! -d "$config" ]; then :
   echo "Missing directory $config"
   exit 1
 fi
 
-live="$data"/config/live
+live="$config/live"
 if [ ! -d "$live" ]; then :
   echo "Missing directory $live"
   exit 1

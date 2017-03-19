@@ -14,6 +14,7 @@ final class MasterConfigurationTest extends FreeSpec {
     val c = MasterConfiguration.fromCommandLine(Nil)
     assert(c.copy(config = ConfigFactory.empty) == MasterConfiguration(
       dataDirectoryOption = None,
+      configDirectoryOption = None,
       webServerBindings = Vector(),
       ZoneId.systemDefault,
       akkaAskTimeout = 60.seconds,

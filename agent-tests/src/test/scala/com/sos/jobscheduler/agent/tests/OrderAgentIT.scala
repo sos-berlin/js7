@@ -40,7 +40,7 @@ final class OrderAgentIT extends FreeSpec {
     val persistenceDir = dataDir / "persistence"
     createDirectories(persistenceDir)
     try {
-      val agentConf = AgentConfiguration.forTest()
+      val agentConf = AgentConfiguration.forTest(Some(dataDir))
         //config = ConfigFactory.parseMap(Map(
             //"akka.persistence.journal.plugin" → "dummy-journal",
             //"dummy-journal.class" → classOf[org.dmonix.akka.persistence.JournalPlugin].getName,
@@ -49,8 +49,6 @@ final class OrderAgentIT extends FreeSpec {
             //"akka.persistence.journal.leveldb.dir" → s"$persistenceDir/persistence",
             //"akka.persistence.snapshot-store.plugin" → "akka.persistence.snapshot-store.local",
             //"akka.persistence.snapshot-store.local.dir" → s"$persistenceDir/snapshots")))
-          .copy(
-            dataDirectory = Some(dataDir))
       autoClosing(new Agent(agentConf)) { agent ⇒
         agent.start() await 5.s
         withCloser { implicit closer ⇒

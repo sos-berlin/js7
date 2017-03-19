@@ -6,7 +6,8 @@ declare jobschedulerHome classpath pathSeparator JAVA_HOME java
 
 javaOptions=()
 agentOptions=()
-data=/var/opt/jobscheduler/agent
+data=/var/opt/jobscheduler/agent/data
+config=""
 
 #if [ -z "$data" ]; then :
 #    data="$agentHome"
@@ -38,6 +39,11 @@ for arg in "$@"; do
       data="${arg#*=}"
       shift
       ;;
+    -config-directory=*)
+      config="${arg#*=}"
+      agentOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
+      shift
+      ;;
     -http-port=*)
       httpPort="${arg#*=}"
       shift
@@ -56,7 +62,7 @@ logs="$data/logs"
 crashKillScript=$([ -n "$data" ] && echo "$data/kill_tasks_after_crash.sh")
 echo "crashKillScript=$crashKillScript"
 
-config="$data/config"
+[ -n "$config" ] || config="$data/config"
 #if [ ! -d "$config" ]; then :
 #  echo "Missing directory $config"
 #  exit 1

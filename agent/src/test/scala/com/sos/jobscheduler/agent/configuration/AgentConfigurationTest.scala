@@ -28,6 +28,7 @@ final class AgentConfigurationTest extends FreeSpec {
     val c = AgentConfiguration(Nil).finishAndProvideFiles
     assert(c.copy(config = ConfigFactory.empty) == AgentConfiguration(
       dataDirectory = None,
+      configDirectory = None,
       http = None,
       https = None,
       uriPathPrefix = "",

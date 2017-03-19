@@ -38,6 +38,7 @@ import spray.http.Uri
  */
 final case class AgentConfiguration(
   dataDirectory: Option[Path],
+  configDirectory: Option[Path],
   http: Option[WebServerBinding.Http],
   https: Option[WebServerBinding.Https],
   uriPathPrefix: String,
@@ -107,8 +108,6 @@ final case class AgentConfiguration(
 
   def stateDirectoryOption: Option[Path] = dataDirectory map { _ / "state" }
 
-  private def configDirectory = dataDirectory map { _ / "config" }
-
   private[configuration] def finishAndProvideFiles: AgentConfiguration =
     provideDataSubdirectories()
       .provideKillScript()
@@ -158,20 +157,25 @@ object AgentConfiguration {
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
   def apply(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
-    fromDataDirectory(a.optionAs[Path]("-data-directory=")) withCommandLineArguments a
+    fromDataDirectory(
+      dataDirectory = a.optionAs[Path]("-data-directory="),
+      configDirectory = a.optionAs[Path]("-config-directory=")
+    ) withCommandLineArguments a
   }
 
-  def fromDataDirectory(dataDirectory: Option[Path], extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
-    val data = dataDirectory map { _.toAbsolutePath }
-    val config = resolvedConfig(data, extraDefaultConfig)
+  def fromDataDirectory(dataDirectory: Option[Path], configDirectory: Option[Path], extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
+    val dataDir = dataDirectory map { _.toAbsolutePath }
+    val configDir = configDirectory orElse (dataDir map { _ / "config" })
+    val config = resolvedConfig(configDir, extraDefaultConfig)
     val c = config.getConfig("jobscheduler.agent")
     var v = new AgentConfiguration(
-      dataDirectory = data,
+      dataDirectory = dataDir,
+      configDirectory = configDir,
       http = c.optionAs("webserver.http.port")(StringToServerInetSocketAddress) map WebServerBinding.Http,
       https = None,  // Changed below
       externalWebServiceClasses = Nil,
       uriPathPrefix = c.as[String]("webserver.uri-prefix") stripPrefix "/" stripSuffix "/",
-      logDirectory = c.optionAs("log.directory")(asAbsolutePath) orElse (data map defaultLogDirectory) getOrElse temporaryDirectory,
+      logDirectory = c.optionAs("log.directory")(asAbsolutePath) orElse (dataDir map defaultLogDirectory) getOrElse temporaryDirectory,
       environment = Map(),
       dotnet = DotnetConfiguration(classDllDirectory = c.optionAs("task.dotnet.class-directory")(asAbsolutePath)),
       rpcKeepaliveDuration = c.durationOption("task.rpc.keepalive.duration"),
@@ -190,16 +194,16 @@ object AgentConfiguration {
     v
   }
 
-  private def resolvedConfig(dataDirectory: Option[Path], extraDefaultConfig: Config): Config = {
-    val dataConfig = dataDirectory map dataDirectoryConfig getOrElse ConfigFactory.empty
-    (dataConfig withFallback extraDefaultConfig withFallback DefaultsConfig).resolve
+  private def resolvedConfig(configDirectory: Option[Path], extraDefaultConfig: Config): Config = {
+    val config = configDirectory map configDirectoryConfig getOrElse ConfigFactory.empty
+    (config withFallback extraDefaultConfig withFallback DefaultsConfig).resolve
   }
 
-  private def dataDirectoryConfig(dataDirectory: Path): Config =
+  private def configDirectoryConfig(configDirectory: Path): Config =
     ConfigFactory
-      .parseMap(Map("jobscheduler.agent.data.directory" → dataDirectory.toString))  // For substitution of ${jobscheduler.agent.data.directory}
-      .withFallback(parseConfigIfExists(dataDirectory / "config/private/private.conf"))
-      .withFallback(parseConfigIfExists(dataDirectory / "config/agent.conf"))
+      .empty  //.parseMap(Map("jobscheduler.agent.data.directory" → dataDirectory.toString))  // For substitution of ${jobscheduler.agent.data.directory}
+      .withFallback(parseConfigIfExists(configDirectory / "private/private.conf"))
+      .withFallback(parseConfigIfExists(configDirectory / "agent.conf"))
 
   private def defaultLogDirectory(data: Path) = data / "logs"
 
@@ -207,7 +211,7 @@ object AgentConfiguration {
     private val TaskServerLogbackResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/logback.xml")
 
     def apply(data: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
-      fromDataDirectory(data, config).copy(
+      fromDataDirectory(data, None, config).copy(
         http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))),
         jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
   }
