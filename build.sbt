@@ -58,6 +58,7 @@ lazy val jobscheduler = (project in file("."))
     taskserver,
     `taskserver-dotnet`,
     `taskserver-moduleapi`,
+    tests,
     tunnel,
     `tunnel-data`)
   .settings(
@@ -451,6 +452,19 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
         listFiles(target.value / "jni4net-build/jvm/sos/spooler")  // Generated Java source files
       }
     }.taskValue)
+
+lazy val tests = project.dependsOn(master % "test->test", agent % "test->test", `agent-client` % "test->test")
+  .configs(ForkedTest).settings(forkedSettings)
+  .settings(
+    commonSettings,
+    description := "JobScheduler Tests")
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      scalaTest % "test" ++
+      mockito % "test" ++
+      log4j % "test"
+  }
 
 lazy val ForkedTest = config("ForkedTest") extend Test
 lazy val forkedSettings = inConfig(ForkedTest)(Defaults.testTasks) ++ List(

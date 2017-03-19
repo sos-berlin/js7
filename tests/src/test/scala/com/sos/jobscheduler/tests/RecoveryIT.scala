@@ -1,11 +1,14 @@
-package com.sos.jobscheduler.master.tests
+package com.sos.jobscheduler.tests
 
+import RecoveryIT._
 import akka.actor.ActorSystem
 import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.Terminate
+import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentEvent}
+import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
@@ -17,17 +20,19 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.Master
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
-import com.sos.jobscheduler.master.tests.RecoveryIT._
+import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
+import com.sos.jobscheduler.shared.event.journal.{JsonFileIterator, JsonJournalMeta}
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
+import java.util.zip.GZIPInputStream
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
@@ -47,9 +52,7 @@ final class RecoveryIT extends FreeSpec {
       withCloser { implicit closer ⇒
         import dataDirectoryProvider.dataDir
 
-        val agentConfs = for (name ← AgentNames) yield AgentConfiguration.forTest().copy(
-          name = name,
-          dataDirectory = Some(dataDir / name))
+        val agentConfs = for (name ← AgentNames) yield AgentConfiguration.forTest(Some(dataDir / name)).copy(name = name)
 
         (dataDir / "master/config/live/fast.job_chain.xml").xml = QuickJobChainElem
         (dataDir / "master/config/live/test.job_chain.xml").xml = TestJobChainElem
@@ -67,6 +70,8 @@ final class RecoveryIT extends FreeSpec {
             lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
             lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
           }
+          assert((journalEntries(dataDir / "agent-111/state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
+            Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId.Anonymous)))
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(agentConfs) { _ ⇒
             lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
@@ -118,6 +123,11 @@ final class RecoveryIT extends FreeSpec {
       (for (a ← agents) yield a.terminated) await 10.s
     }
   }
+
+  private def journalEntries(journalFile: Path): Vector[Any] =
+    autoClosing(new JsonFileIterator(JsonJournalMeta.Header, in ⇒ new GZIPInputStream(in), journalFile)) {
+      _.toVector map AgentActor.MyJournalMeta.deserialize
+    }
 }
 
 private object RecoveryIT {

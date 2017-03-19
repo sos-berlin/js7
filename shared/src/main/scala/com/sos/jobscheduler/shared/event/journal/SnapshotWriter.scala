@@ -14,7 +14,7 @@ import spray.json._
 /**
   * @author Joacim Zschimmer
   */
-final class SnapshotWriter(write: ByteString ⇒ Unit, journalingActors: immutable.Iterable[ActorRef], jsonFormat: JsonFormat[Any])
+private[journal] final class SnapshotWriter(write: ByteString ⇒ Unit, journalingActors: immutable.Iterable[ActorRef], jsonFormat: JsonFormat[Any])
 extends Actor {
 
   private var remaining = journalingActors.size
@@ -74,7 +74,7 @@ extends Actor {
   }
 }
 
-object SnapshotWriter {
+private[journal] object SnapshotWriter {
   private val logger = Logger(getClass)
 
   object Output {

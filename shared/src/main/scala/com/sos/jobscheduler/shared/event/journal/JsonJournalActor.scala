@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.Journal.{Input, Output}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalActor._
@@ -25,8 +25,8 @@ import spray.json._
 /**
   * @author Joacim Zschimmer
   */
-final class JsonJournalActor(
-  meta: JsonJournalMeta,
+final class JsonJournalActor[E <: Event](
+  meta: JsonJournalMeta[E],
   file: Path,
   syncOnCommit: Boolean,
   eventIdGenerator: EventIdGenerator,
@@ -53,6 +53,8 @@ extends Actor with Stash {
         f"$commits commits ($flushes $ops)" //, coalescence factor ${commits.toDouble / flushes}%1.1f)"
       }
   }
+
+  private val logger = Logger.withPrefix[JsonJournalActor[_]](file.getFileName.toString)
 
   override def postStop() = {
     val msg = if (jsonWriter != null) {
@@ -87,7 +89,7 @@ extends Actor with Stash {
       handleRegisterMe(msg)
 
     case Input.Store(keyedEvents, replyTo) ⇒
-      val stampedOptions = keyedEvents map { _ map eventIdGenerator.stamp }
+      val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]]) }}
       Try {
         stampedOptions.flatten map { _.toJson }
       } match {
@@ -150,8 +152,9 @@ extends Actor with Stash {
       jsonWriter.close()
     }
     val myJsonWriter = newJsonWriter(Paths.get(s"$file.tmp"), append = false)
+    val journalingActors = keyToJournalingActor.values.toSet ++ keylessJournalingActors
     context.actorOf(
-      Props { new SnapshotWriter(myJsonWriter.writeJson, keyToJournalingActor.values.toSet ++ keylessJournalingActors, snapshotJsonFormat) },
+      Props { new SnapshotWriter(myJsonWriter.writeJson, journalingActors, snapshotJsonFormat) },
       "SnapshotWriter")
     context.become(takingSnapshot(myJsonWriter, commander = sender(), () ⇒ andThen, new Stopwatch))
   }
@@ -199,7 +202,6 @@ extends Actor with Stash {
 }
 
 object JsonJournalActor {
-  private val logger = Logger(getClass)
 
   private object Internal {
     final case class Commit(writtenLevel: Int)

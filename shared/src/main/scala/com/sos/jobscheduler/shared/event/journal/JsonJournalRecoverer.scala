@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.{DuplicateKeyException, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer._
 import java.nio.file.{Files, Path}
@@ -14,7 +14,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class JsonJournalRecoverer(meta: JsonJournalMeta, file: Path)
+final class JsonJournalRecoverer[E <: Event](meta: JsonJournalMeta[E], file: Path)
 extends AutoCloseable with Iterator[Recovering]
 {
   import meta.{convertInputStream, eventJsonFormat, isDeletedEvent, snapshotJsonFormat, snapshotToKey}
@@ -74,21 +74,21 @@ extends AutoCloseable with Iterator[Recovering]
         val jsValue = jsonIterator.next()
         if (eventJsonFormat canDeserialize jsValue.asJsObject) {
           eventCount += 1
-          val eventStamped = jsValue.convertTo[Stamped[AnyKeyedEvent]]
-          if (eventStamped.eventId <= lastEventId)
-            sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(lastEventId)} >= ${EventId.toString(eventStamped.eventId)}")
-          lastEventId = eventStamped.eventId
-          val KeyedEvent(key, event) = eventStamped.value
+          val stamped = jsValue.convertTo[Stamped[KeyedEvent[E]]]
+          if (stamped.eventId <= lastEventId)
+            sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(lastEventId)} >= ${EventId.toString(stamped.eventId)}")
+          lastEventId = stamped.eventId
+          val KeyedEvent(key, event) = stamped.value
           keyToActor.get(key) match {
             case None ⇒
-              Some(RecoveringForUnknownKey(eventStamped))
+              Some(RecoveringForUnknownKey(stamped))
             case Some(a) ⇒
-              a ! KeyedJournalingActor.Input.RecoverFromEvent(eventStamped)
+              a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)
               if (isDeletedEvent(event)) {
                 keyToActor -= key
-                Some(RecoveringDeleted(eventStamped))
+                Some(RecoveringDeleted(stamped))
               } else
-                Some(RecoveringChanged(eventStamped))
+                Some(RecoveringChanged(stamped))
           }
         } else {
           snapshotCount += 1
@@ -97,12 +97,15 @@ extends AutoCloseable with Iterator[Recovering]
       }
     catch {
       case t: Exception if meta.isIncompleteException(t) ⇒
-        logger.info(s"Journal has not been completed. Assuming sudden termination, using the events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}")
+        logger.info(s"Journal has not been completed. " + errorClause(t))
         None
       case t: Exception if meta.isCorruptException(t) ⇒
-        logger.warn(s"Journal is corrupt or has not been completed. Assuming sudden termination, using the events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}")
+        logger.warn(s"Journal is corrupt or has not been completed. " + errorClause(t))
         None
     }
+
+  private def errorClause(t: Throwable) =
+    s"Assuming sudden termination, using $snapshotCount snapshots and $eventCount events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}"
 
   def recoverActorForSnapshot(snapshot: Any, actorRef: ActorRef): Unit = {
     val key = snapshotToKey(snapshot)

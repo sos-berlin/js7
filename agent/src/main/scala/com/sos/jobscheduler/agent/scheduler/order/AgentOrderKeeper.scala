@@ -17,7 +17,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
-import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.JobnetEvent.JobnetAttached
 import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetEvent, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderNodeChanged, OrderStepEnded}
@@ -360,7 +360,7 @@ object AgentOrderKeeper {
     Subtype[Order[Order.State]],
     Subtype[EventQueue.CompleteSnapshot])
 
-  private val MyJournalMeta = new JsonJournalMeta(
+  private val MyJournalMeta = new JsonJournalMeta[Event](
       SnapshotJsonFormat,
       AgentKeyedEventJsonFormat,
       snapshotToKey = {

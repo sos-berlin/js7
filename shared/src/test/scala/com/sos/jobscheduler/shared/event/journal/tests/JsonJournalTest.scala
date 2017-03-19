@@ -144,7 +144,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
   private def journalKeyedEvents =
     journalJsValues collect {
       case o: JsObject if TestKeyedEventJsonFormat canDeserialize o ⇒
-        o.convertTo[Stamped[AnyKeyedEvent]].asInstanceOf[Stamped[KeyedEvent[TestEvent]]].value
+        o.convertTo[Stamped[KeyedEvent[TestEvent]]].value
     }
 
   private def journalAggregates =

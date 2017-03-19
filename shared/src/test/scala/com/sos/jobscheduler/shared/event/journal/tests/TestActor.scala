@@ -108,7 +108,7 @@ private[tests] object TestActor {
 
   val SnapshotJsonFormat = TypedJsonFormat[Any](
     Subtype[TestAggregate])
-  private val TestJsonJournalMeta = new JsonJournalMeta(
+  private val TestJsonJournalMeta = new JsonJournalMeta[TestEvent](
       snapshotJsonFormat = SnapshotJsonFormat,
       eventJsonFormat = TestKeyedEventJsonFormat,
       snapshotToKey = {

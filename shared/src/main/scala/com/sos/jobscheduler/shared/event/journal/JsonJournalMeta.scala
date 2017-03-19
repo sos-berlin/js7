@@ -2,17 +2,26 @@ package com.sos.jobscheduler.shared.event.journal
 
 import com.sos.jobscheduler.base.sprayjson.typed.TypedJsonFormat
 import com.sos.jobscheduler.common.BuildInfo
-import com.sos.jobscheduler.data.event.{Event, KeyedTypedEventJsonFormat}
+import com.sos.jobscheduler.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat, Stamped}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.RecoveringSnapshot
+import spray.json.JsValue
 
 /**
   * @author Joacim Zschimmer
   */
-class JsonJournalMeta(
+class JsonJournalMeta[E <: Event](
   val snapshotJsonFormat: TypedJsonFormat[Any],
-  implicit val eventJsonFormat: KeyedTypedEventJsonFormat[Event],
+  implicit val eventJsonFormat: KeyedTypedEventJsonFormat[E],
   val snapshotToKey: Any ⇒ Any,
-  val isDeletedEvent: Event ⇒ Boolean)
-extends StreamConversion
+  val isDeletedEvent: E ⇒ Boolean)
+extends StreamConversion {
+
+  def deserialize(journalEntry: JsValue): Any =
+    if (eventJsonFormat canDeserialize journalEntry.asJsObject)
+      journalEntry.convertTo[Stamped[KeyedEvent[E]]]
+    else
+      RecoveringSnapshot(snapshotJsonFormat.read(journalEntry))
+}
 
 object JsonJournalMeta {
   val Header = JsonJournalHeader(
