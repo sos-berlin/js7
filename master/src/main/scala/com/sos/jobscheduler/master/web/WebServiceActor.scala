@@ -11,6 +11,7 @@ import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeper
 import com.sos.jobscheduler.master.Master
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.web.WebServiceActor._
+import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
 import com.typesafe.config.Config
 import javax.inject.Inject
 import scala.concurrent.ExecutionContext
@@ -28,6 +29,7 @@ extends HttpServiceActor with AllRoute {
   protected def eventCollector            = injector.instance[EventCollector]
   protected def eventIdGenerator          = injector.instance[EventIdGenerator]
   implicit protected val executionContext = injector.instance[ExecutionContext]
+  protected val webServiceContext = new MasterWebServiceContext(htmlEnabled = true)
 
   override def postStop() = {
     logger.debug("Stopped")

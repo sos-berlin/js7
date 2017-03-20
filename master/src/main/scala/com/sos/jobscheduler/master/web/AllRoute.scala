@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.master.web
 
 import akka.actor.ActorRefFactory
-import com.sos.jobscheduler.master.web.api.ApiRoute
 import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.master.web.api.ApiRoute
 import spray.http.StatusCodes.TemporaryRedirect
 import spray.routing.Directives._
 import spray.routing.Route

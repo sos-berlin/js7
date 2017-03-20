@@ -12,6 +12,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, OrderOverview}
 import com.sos.jobscheduler.master.OrderClient
 import com.sos.jobscheduler.master.web.api.OrderRouteTest._
+import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
@@ -34,8 +35,9 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
   protected val orderClient = new OrderClient {
     def executionContext = OrderRouteTest.this.executionContext
     def order(orderId: OrderId) = Future.successful(TestOrders.get(orderId))
-    def orders = Future.successful(TestOrders.values.toVector)
+    def orders = Future.successful(eventIdGenerator.stamp(TestOrders.values.toVector))
   }
+  protected val webServiceContext = new MasterWebServiceContext
 
   TestEvents foreach eventCollector.addStamped
 
@@ -54,7 +56,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
       s"$OrderUri/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        val orders = responseAs[Seq[OrderOverview]]
+        val Stamped(_, orders) = responseAs[Stamped[Seq[OrderOverview]]]
         assert(orders == (TestOrders.values.toList map OrderOverview.fromOrder))
       }
     }
@@ -64,7 +66,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
       s"$OrderUri/?return=Order")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        val orders = responseAs[Seq[Order[Order.State]]]
+        val Stamped(_, orders) = responseAs[Stamped[Seq[Order[Order.State]]]]
         assert(orders == TestOrders.values.toList)
       }
     }

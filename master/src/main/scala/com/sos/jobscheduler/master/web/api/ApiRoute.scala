@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.web.api
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
 import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.master.web.simplegui.FrontEndRoute
 import spray.json.DefaultJsonProtocol._
 import spray.routing.Directives._
 import spray.routing.Route
@@ -10,7 +11,7 @@ import spray.routing.Route
 /**
   * @author Joacim Zschimmer
   */
-trait ApiRoute extends OrderRoute {
+trait ApiRoute extends OrderRoute with FrontEndRoute {
 
   private case class MasterConfiguration(hello: String, version: String)
   private object MasterConfiguration {
@@ -25,5 +26,8 @@ trait ApiRoute extends OrderRoute {
     } ~
     pathSegments("order") {
       orderRoute
+    } ~
+    pathSegments("frontend") {
+      frontEndRoute
     }
 }

@@ -232,7 +232,7 @@ with Stash {
       sender() ! (orderRegister.get(orderId) map { _.order })
 
     case Command.GetOrders ⇒
-      sender() ! ((orderRegister.values map { _.order }).toVector: Vector[Order[Order.State]])
+      sender() ! eventIdGenerator.stamp((orderRegister.values map { _.order }).toVector: Vector[Order[Order.State]])
 
     case Command.Remove(orderId) ⇒
       orderRegister.get(orderId) match {

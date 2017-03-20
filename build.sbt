@@ -150,6 +150,8 @@ lazy val master = project.dependsOn(shared, common, `agent-client`)
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      webjars.bootstrap ++
+      webjars.jQuery ++
       scalaTest % "test" ++
       sprayTestkit % "test" ++
       log4j % "test"

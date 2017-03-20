@@ -66,8 +66,8 @@ extends OrderClient {
   def order(orderId: OrderId): Future[Option[Order[Order.State]]] =
     (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]]
 
-  def orders: Future[Seq[Order[Order.State]]] =
-    (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Seq[Order[Order.State]]]
+  def orders: Future[Stamped[Seq[Order[Order.State]]]] =
+    (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]]
 
   def localUri: Uri =
     webServer.localUri
