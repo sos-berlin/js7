@@ -28,7 +28,6 @@ import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
-import scala.collection.JavaConversions._
 import scala.collection.immutable
 import scala.reflect.ClassTag
 import spray.http.Uri
@@ -163,7 +162,7 @@ object AgentConfiguration {
     ) withCommandLineArguments a
   }
 
-  def fromDataDirectory(dataDirectory: Option[Path], configDirectory: Option[Path], extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
+  def fromDataDirectory(dataDirectory: Option[Path], configDirectory: Option[Path] = None, extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
     val dataDir = dataDirectory map { _.toAbsolutePath }
     val configDir = configDirectory orElse (dataDir map { _ / "config" })
     val config = resolvedConfig(configDir, extraDefaultConfig)
