@@ -11,7 +11,7 @@ import org.scalatest.FreeSpec
 final class OperatingSystemTest extends FreeSpec {
 
   "makeModuleFilename" in {
-    assert(makeModuleFilename("xx") == (if (isWindows) "xx.dll" else "libxx.so"))
+    assert(makeModuleFilename("xx") == (if (isWindows) "xx.dll" else if (isMac) "libxx.dylib" else "libxx.so"))
   }
 
   "makeExecutableFilename" in {

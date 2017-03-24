@@ -3,10 +3,11 @@ package com.sos.jobscheduler.agent.fileordersource
 import com.sos.jobscheduler.agent.fileordersource.BlockingDirectoryWatcher._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
+import com.sos.jobscheduler.common.system.OperatingSystem.isMac
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{FileSystems, Path, WatchEvent}
-import java.time.Instant
+import java.time.{Duration, Instant}
 import java.time.Instant.now
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import scala.collection.JavaConversions._
@@ -53,5 +54,6 @@ private[fileordersource] final class BlockingDirectoryWatcher(directory: Path, p
 }
 
 object BlockingDirectoryWatcher {
+  val PossibleDelay: Duration = if (isMac) 30.s else 5.s  // Slow for macOS. See https://bugs.openjdk.java.net/browse/JDK-7133447
   private val logger = Logger(getClass)
 }

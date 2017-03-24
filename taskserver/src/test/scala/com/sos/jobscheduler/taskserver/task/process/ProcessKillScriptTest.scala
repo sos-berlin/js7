@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.FileUtils._
-import com.sos.jobscheduler.common.system.OperatingSystem.{isSolaris, isUnix, isWindows}
+import com.sos.jobscheduler.common.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptTest._
@@ -48,10 +48,10 @@ final class ProcessKillScriptTest extends FreeSpec {
       assert(beforeKill contains "TEST-3=")
     }
     sleep(2.s)
-    logger.info("All processes should been killed now")
+    logger.info("All processes should be killed now")
     logProcessTree()
     val grown = out.contentString stripPrefix beforeKill
-    assert(grown == "", "Stdout file must not grow after kill script")
+    assert(grown == "", "Stdout file must not grow after kill script execution")
     delete(scriptFile)
     delete(out)
   }
@@ -87,7 +87,7 @@ private object ProcessKillScriptTest {
   private val SIGKILLexitValue = if (isWindows) 1 else if (isSolaris) SIGKILL.value else 128 + SIGKILL.value
 
   private def logProcessTree(): Unit = {
-    if (isUnix) {
+    if (isUnix && !isMac) {
       val ps = new ProcessBuilder(List("ps", "fux")).start()
       startLogStreams(ps, "ps (for information only, please ignore errors)") await 15.s
       ps.waitFor()

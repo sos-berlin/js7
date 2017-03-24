@@ -7,6 +7,7 @@
 
 import BuildUtils._
 
+javaOptions += BuildUtils.JavaOptions
 val fastSbt = sys.env contains "FAST_SBT"
 
 addCommandAlias("compile-all", "; project engine-job-api; compile; project /; compile")
@@ -29,9 +30,9 @@ val commonSettings = List(
 
 val universalPluginSettings = List(
   universalArchiveOptions in (Universal, packageZipTarball) :=
-    "--force-local" +: (universalArchiveOptions in (Universal, packageZipTarball)).value,  // Under cygwin, tar shall not interpret C:
+    (List("--force-local") filter { _ ⇒ !isMac }) ++ (universalArchiveOptions in (Universal, packageZipTarball)).value,  // Under cygwin, tar shall not interpret C:
   universalArchiveOptions in (Universal, packageXzTarball) :=
-    "--force-local" +: (universalArchiveOptions in (Universal, packageXzTarball)).value)  // Under cygwin, tar shall not interpret C:
+    (List("--force-local") filter { _ ⇒ !isMac }) ++  (universalArchiveOptions in (Universal, packageXzTarball)).value)  // Under cygwin, tar shall not interpret C:
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
   max = if (fastSbt) math.max(1, sys.runtime.availableProcessors * 3/8) else 1)

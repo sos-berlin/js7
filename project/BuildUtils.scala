@@ -5,8 +5,10 @@ import scala.collection.immutable.Seq
 
 object BuildUtils {
   lazy val isWindows = sys.props("os.name") startsWith "Windows"
+  lazy val isMac = sys.props("os.name") startsWith "Mac OS"
 
   sys.props += "-Dlog4j.configurationFile" → "project/log4j2.xml"
+  val JavaOptions = "-Dlog4j.configurationFile=project/log4j2.xml"
 
   def recursiveFileMapping(directory: File, to: String = ""): Seq[(File, String)] = {
     val to_ = (to stripSuffix "/") + "/"

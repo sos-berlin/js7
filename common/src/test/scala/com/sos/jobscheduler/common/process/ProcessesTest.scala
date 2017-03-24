@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.process.StdoutStderr.Stdout
 import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.system.FileUtils._
-import com.sos.jobscheduler.common.system.OperatingSystem.{isSolaris, isWindows}
+import com.sos.jobscheduler.common.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
@@ -87,7 +87,7 @@ private object ProcessesTest {
       List("1 one",
         "2 'two",
         "3 \"three",
-        if (isSolaris)  // TestFailedException: "4[<FF>]our" did not equal "4[\f]our" - Solaris call to /bin/sh seems to interprete "\\f" as '\x0c' (FF)
+        if (isSolaris || isMac)  // TestFailedException: "4[<FF>]our" did not equal "4[\f]our" - Solaris and macOS call to /bin/sh seems to interprete "\\f" as '\x0c' (FF)
           "4 four"  // Backslash is not useable as shell script argument !!!
         else "4\\four",
         "5 *",

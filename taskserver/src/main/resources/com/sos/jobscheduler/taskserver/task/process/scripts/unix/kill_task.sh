@@ -50,6 +50,8 @@ descendants=
 
 if [ "`uname`" = "SunOS" ]; then
     psTree="ps -ef -o pid,ppid"
+elif [ "`uname`" = "Darwin" ]; then
+    psTree="ps -e -o pid,ppid"
 else
     psTree="ps ax -o pid,ppid"
 fi

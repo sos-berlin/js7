@@ -30,6 +30,7 @@ object OperatingSystem {
   val name: String = sys.props("os.name")
   val cpuArchitecture = CpuArchitecture.cpuArchitecture
   val isWindows = name startsWith "Windows"
+  val isMac = name startsWith "Mac OS"
   val isUnix = !isWindows
   val isSolaris = name startsWith "SunOS"
   lazy val unix = new Unix
