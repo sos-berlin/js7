@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator
 import com.sos.jobscheduler.shared.event.journal.Journal
 import com.sos.jobscheduler.shared.event.journal.tests.JsonJournalTest._
@@ -44,7 +44,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
 
   "First run" in {
     withTestActor { actor ⇒
-      for ((key, cmd) ← testCommands("TEST")) execute(actor, key, cmd)
+      for ((key, cmd) ← testCommands("TEST")) execute(actor, key, cmd) await 99.s
       assert(journalAggregates.isEmpty)
       assert(journalKeyedEvents == testEvents("TEST"))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
@@ -60,7 +60,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
         TestAggregate("TEST-A", "AAAabcdefghijkl"),
         TestAggregate("TEST-C", "CCC"))
 
-      execute(actor, "TEST-D", TestAggregateActor.Command.Add("DDD"))
+      execute(actor, "TEST-D", TestAggregateActor.Command.Add("DDD")) await 99.s
 
       (actor ? TestActor.Input.TakeSnapshot).mapTo[Journal.Output.SnapshotTaken.type] await 99.s
       assert(journalAggregates == Set(
@@ -69,7 +69,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
         TestAggregate("TEST-D", "DDD")))
       assert(journalKeyedEvents.isEmpty)
 
-      execute(actor, "TEST-A", TestAggregateActor.Command.Remove)
+      execute(actor, "TEST-A", TestAggregateActor.Command.Remove) await 99.s
     }
   }
 
@@ -87,12 +87,15 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
       withTestActor { actor ⇒
         val prefixes = for (i ← 1 to 1000) yield i.toString
         // Add "$p-A"
-        (for (p ← prefixes) yield Future { val (key, cmd) = testCommands(p).head; execute(actor, key, cmd) }) await 99.s
+        (for (p ← prefixes) yield {
+          val (key, cmd) = testCommands(p).head
+          execute(actor, key, cmd)
+        }) await 99.s
         // Start executing remaining commands ...
-        val executed = for (p ← prefixes) yield Future { for ((key, cmd) ← testCommands(p).tail) execute(actor, key, cmd) }
+        val executed = for (p ← prefixes) yield Future { for ((key, cmd) ← testCommands(p).tail) execute(actor, key, cmd) await 99.s }
         // ... while disturbing form a different Actor to test persistAsync()
         // Disturb responds with String, not Done. See TestActor
-        val disturbed = for (p ← prefixes) yield Future { execute(actor, s"$p-A", TestAggregateActor.Command.Disturb) }
+        val disturbed = for (p ← prefixes) yield execute(actor, s"$p-A", TestAggregateActor.Command.Disturb)
         (executed ++ disturbed) await 99.s
         assert(journalAggregates.isEmpty)
         val prefixToKeyedEvents = journalKeyedEvents groupBy { _.key.split("-").head }
@@ -137,9 +140,8 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
     finally actorSystem.terminate() await 99.s
   }
 
-  private def execute(actor: ActorRef, key: String, command: TestAggregateActor.Command): Unit = {
-    (actor ? TestActor.Input.Forward(key, command)) await 99.s
-  }
+  private def execute(actor: ActorRef, key: String, command: TestAggregateActor.Command) =
+    actor ? TestActor.Input.Forward(key, command)
 
   private def journalKeyedEvents =
     journalJsValues collect {
