@@ -11,8 +11,8 @@ for f in docker-compose.yml clean-volumes testMasterAgent; do :
   [ -f "$f" ] || ln -sf "$bin/$f" .
 done
 
-mkdir --parents volumes/{master,agent-1,agent-2}/config/live
-mkdir --parents volumes/{master,agent-1,agent-2}/data/{state,logs,tmp}
+mkdir -p volumes/{master,agent-1,agent-2}/config/live
+mkdir -p volumes/{master,agent-1,agent-2}/data/{state,logs,tmp}
 
 for o in $(cd build/config && ls); do
   for f in $(cd build/config/$o && find .); do
