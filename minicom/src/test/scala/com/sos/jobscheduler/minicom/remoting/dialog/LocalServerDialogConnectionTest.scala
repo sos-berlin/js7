@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext
+import scala.util.Random
 import scala.util.control.NonFatal
 
 /**
@@ -24,11 +25,12 @@ final class LocalServerDialogConnectionTest extends FreeSpec {
         latch.countDown()
         latch.await()
         while (msg.isDefined) {
+          if (Random.nextInt(5) == 0) Thread.sleep(1)
           msg = con.sendAndReceive(ByteString(msg.get.utf8String + "***")) await 99.s
         }
       }
     }
-    val nestedThread = new Thread {
+    val callingThread = new Thread {
       var count = 0
       var throwable: Option[Throwable] = None
       override def run(): Unit =
@@ -38,6 +40,7 @@ final class LocalServerDialogConnectionTest extends FreeSpec {
           for (i ← 1 to n) {
             val msg = (con.sendAndReceive(ByteString(s"+$i")) await 99.s).get
             assert(msg == ByteString(s"-+$i"))
+            if (Random.nextInt(5) == 0) Thread.sleep(1)
             count += 1
           }
         } catch {
@@ -46,20 +49,22 @@ final class LocalServerDialogConnectionTest extends FreeSpec {
         }
     }
     mainThread.start()
-    nestedThread.start()
+    callingThread.start()
     for (i ← 1 to n) {
       var response = (con.leftSendAndReceive(ByteString(s"$i")) await 99.s).utf8String
       Thread.sleep(20)
       while (response startsWith "+") {
+        if (Random.nextInt(5) == 0) Thread.sleep(1)
         response = (con.leftSendAndReceive(ByteString(s"-$response")) await 99.s).utf8String
       }
       assert(response == s"$i***")
     }
-    assert(nestedThread.count >= 2)  // For some reason, the nested thread may starve to death before reaching the number.
-    for (t ← nestedThread.throwable) fail(t)
+    info(s"count=${callingThread.count}")
+    assert(callingThread.count >= 2)  // For some reason, the nested thread may starve to death before reaching the number.
+    for (t ← callingThread.throwable) fail(t)
     con.leftClose()
     mainThread.join(10*1000)
-    nestedThread.join(10*1000)
+    callingThread.join(10*1000)
     assert(!mainThread.isAlive)
   }
 
