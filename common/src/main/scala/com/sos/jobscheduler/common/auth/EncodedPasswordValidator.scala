@@ -41,7 +41,7 @@ extends (UserAndPassword ⇒ Boolean) {
   private[auth] def validatePassword(userAndPassword: UserAndPassword)(hashedPassword: SecretString): Boolean = {
     import userAndPassword.{password, userId}
     hashedPassword.string match {
-      case EntryRegex("plain", pw) ⇒ pw == password.string
+      case EntryRegex("plain", pw) ⇒ SecretString.equals(pw, password.string)
       case EntryRegex("sha512", pw) ⇒ sha512.hashString(password.string, UTF_8) == HashCode.fromString(pw)
       case EntryRegex(_, _) ⇒
         logger.error(s"Unknown password encoding scheme for user '$userId'")

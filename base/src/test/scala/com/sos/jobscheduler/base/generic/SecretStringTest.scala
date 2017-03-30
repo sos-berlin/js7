@@ -7,6 +7,16 @@ import org.scalatest.FreeSpec
   */
 final class SecretStringTest extends FreeSpec {
 
+  "equals" in {
+    assert(SecretString("") == SecretString(""))
+    assert(SecretString("abc") != SecretString(""))
+    assert(SecretString("") != SecretString("abc"))
+    assert(SecretString("abc") == SecretString("abc"))
+    assert(SecretString("abc.") != SecretString("abc"))
+    assert(SecretString("abc") != SecretString("abc."))
+    assert(SecretString("abc") != SecretString("ab."))
+  }
+
   "toString does not disclose the secret" in {
     val secret = SecretString("TEST-SECRET")
     assert(secret.toString == "SecretString")
