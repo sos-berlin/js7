@@ -4,12 +4,12 @@ import scala.language.implicitConversions
 
 //noinspection TypeAnnotation
 object Dependencies {
-  val scalaVersion = "2.11.8"
+  val scalaVersion = "2.11.11"
 
-  val akkaVersion = "2.4.16"
+  val akkaVersion = "2.4.18"
   val sprayVersion = "1.3.4"
-  val slf4jVersion = "1.7.21"
-  val log4jVersion = "2.8.1"
+  val slf4jVersion = "1.7.25"
+  val log4jVersion = "2.8.2"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
