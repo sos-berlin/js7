@@ -2,4 +2,5 @@
 set -e
 
 cd "$(dirname "$0")"
+export SBT_OPTS="-Dlog4j.configurationFile=project/log4j2.xml $SBT_OPTS"
 sbt -batch "; clean; build"
