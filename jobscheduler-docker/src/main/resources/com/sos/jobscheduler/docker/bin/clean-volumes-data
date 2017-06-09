@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+
+rm -rf volumes/{master,agent-1,agent-2}/data/*
+mkdir -p volumes/{master,agent-1,agent-2}/data/{logs,state,tmp}
