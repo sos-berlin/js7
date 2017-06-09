@@ -12,8 +12,8 @@ val fastSbt = sys.env contains "FAST_SBT"
 
 addCommandAlias("compile-all", "; project engine-job-api; compile; project /; compile")
 addCommandAlias("test-all", "; test:compile; test; ForkedTest:test")
-addCommandAlias("build", "; compile-all; test-all; universal:packageZipTarball; publish-m2")
-addCommandAlias("build-quickly", "; compile-all; universal:packageZipTarball")
+addCommandAlias("build", "; compile-all; test-all; pack; publish-m2")
+addCommandAlias("build-quickly", "; compile-all; pack")
 addCommandAlias("pack", "universal:packageZipTarball")
 
 val commonSettings = List(
