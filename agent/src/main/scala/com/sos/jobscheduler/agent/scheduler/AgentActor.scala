@@ -64,12 +64,14 @@ extends KeyedEventJournalingActor[AgentEvent] {
   private def recover(): Unit = {
     val recovered =
       autoClosing(new JsonJournalRecoverer(MyJournalMeta, journalFile)) { journal ⇒
-        for (recovered ← journal) (recovered: @unchecked) match {
-          case RecoveringSnapshot(AgentSnapshot.Master(userId)) ⇒
-            addOrderKeeper(userId)
+        for (recovered ← journal) {
+          (recovered: @unchecked) match {
+            case RecoveringSnapshot(AgentSnapshot.Master(userId)) ⇒
+              addOrderKeeper(userId)
 
-          case RecoveringForUnknownKey(Stamped(_, KeyedEvent(userId: UserId, AgentEvent.MasterAdded))) ⇒
-            addOrderKeeper(userId)
+            case RecoveringForUnknownKey(Stamped(_, KeyedEvent(userId: UserId, AgentEvent.MasterAdded))) ⇒
+              addOrderKeeper(userId)
+          }
         }
         journal.recoveredJournalingActors
       }

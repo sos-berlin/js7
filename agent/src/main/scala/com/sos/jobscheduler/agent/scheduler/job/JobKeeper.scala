@@ -16,47 +16,57 @@ import scala.concurrent.ExecutionContext
 final class JobKeeper private(jobConfigurationDirectory: Path)(implicit newTask: AgentTaskFactory, ec: ExecutionContext)
 extends Actor {
 
-  private val pathToActor = mutable.Map[JobPath, ActorRef]()
-
   def receive = {
-    case Start ⇒
-      forEachTypedFile(jobConfigurationDirectory, Set(JobPath)) {
-        case (file, jobPath: JobPath) ⇒
-          logger.info(s"Adding $jobPath")
-          val a = JobRunner.actorOf(jobPath)
-          pathToActor += jobPath → a
-          context.watch(a)
-          a ! JobRunner.Command.ReadConfigurationFile(file)  // For many files, may this congest the Akka threads ???
-      }
-      context.become(starting(new Starting(pathToActor.values.toSet, sender())))
+    case message ⇒
+      message match {
+        case Start ⇒
+          val pathToActor = mutable.Map[JobPath, ActorRef]()
+          forEachTypedFile(jobConfigurationDirectory, Set(JobPath)) {
+            case (file, jobPath: JobPath) ⇒
+              logger.info(s"Adding $jobPath")
+              val a = JobRunner.actorOf(jobPath)
+              pathToActor += jobPath → a
+              context.watch(a)
+              a ! JobRunner.Command.ReadConfigurationFile(file)  // For many files, may this congest the Akka threads ???
+          }
+          starting(pathToActor.toMap, sender())
 
-    case msg: JobRunner.Output.ReadyForOrder.type ⇒
-      context.parent.forward(msg)
+        case msg: JobRunner.Output.ReadyForOrder.type ⇒
+          context.parent.forward(msg)
+      }
   }
 
-  private class Starting(expectedActors: Set[ActorRef], commander: ActorRef) {
-    private val startedActors = mutable.Set[ActorRef]()
+  private def starting(pathToActor: Map[JobPath, ActorRef], commander: ActorRef): Unit = {
+    val expectedActors = pathToActor.values.toSet
+    val startedActors = mutable.Set[ActorRef]()
     startedActors.sizeHint(expectedActors.size)
 
     def onJobRunnerStarted(a: ActorRef): Unit = {
       startedActors += a
-      if (startedActors == expectedActors) {
+      ifAllJobsStartedBecomeStarted()
+    }
+
+    def ifAllJobsStartedBecomeStarted(): Boolean =
+      startedActors == expectedActors && {
         context.become(started)
         commander ! Started(pathToActor.toVector)
+        true
+      }
+
+    if (!ifAllJobsStartedBecomeStarted()) {
+      context.become {
+        case JobRunner.Response.Started ⇒
+          context.unwatch(sender())
+          onJobRunnerStarted(sender())
+
+        case Terminated(a) ⇒
+          logger.error(s"$a died")  // Maybe XML parsing error, ignored
+          onJobRunnerStarted(a)
+
+        case msg: JobRunner.Output.ReadyForOrder.type ⇒
+          context.parent.forward(msg)
       }
     }
-  }
-
-  private def starting(s: Starting): Receive = {
-    case JobRunner.Response.Started ⇒
-      context.unwatch(sender())
-      s.onJobRunnerStarted(sender())
-    case Terminated(a) ⇒
-      logger.error(s"$a died")  // Maybe XML parsing error, ignored
-      s.onJobRunnerStarted(a)
-
-    case msg: JobRunner.Output.ReadyForOrder.type ⇒
-      context.parent.forward(msg)
   }
 
   private def started: Receive = {//Actor.emptyBehavior  // Nothing to do
