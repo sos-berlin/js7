@@ -2,3 +2,5 @@
 set -e
 
 rm -rf volumes/{master,agent-1,agent-2}/data/*
+rm -rf volumes/testMasterAgent/master/data/*
+rm -rf volumes/testMasterAgent/AGENT-*/data/*

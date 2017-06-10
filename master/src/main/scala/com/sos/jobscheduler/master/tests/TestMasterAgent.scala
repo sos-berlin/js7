@@ -11,8 +11,10 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -31,7 +33,8 @@ import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.order.OrderGeneratorPath
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
-import java.nio.file.Path
+import java.nio.file.Files.createDirectory
+import java.nio.file.{Files, Path}
 import java.time.Instant.now
 import java.time.{Duration, Instant}
 import scala.collection.immutable.Seq
@@ -45,8 +48,21 @@ object TestMasterAgent {
   private val TestJobnetPath = JobnetPath("/test")
   private val TestJobPath = JobPath("/test")
 
-  def main(args: Array[String]): Unit =
-    run(Conf.parse(args))
+  def main(args: Array[String]): Unit = {
+    lazy val directory =
+      temporaryDirectory / "TestMasterAgent" sideEffect { directory ⇒
+        println(s"Using -directory=$directory")
+        if (!Files.exists(directory))
+          createDirectory(directory)
+        else {
+          println(s"Deleting $directory")
+          deleteDirectoryRecursively(directory)
+        }
+      }
+    val conf = Conf.parse(args, () ⇒ directory)
+    println(s"${conf.agentCount * conf.jobnetLength} nodes, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
+    run(conf)
+  }
 
   private def run(conf: Conf): Unit = {
     val env = new TestEnvironment(conf.agentPaths, conf.directory)
@@ -63,21 +79,19 @@ object TestMasterAgent {
               <param name="JOB-VARIABLE" value={s"VALUE-${ agentPath.withoutStartingSlash }"}/>
             </params>
             <script language="shell">{
-              if (isWindows)
-                s"""
-                   |@echo off
-                   |${ if (conf.jobDuration.getSeconds > 0) s"ping -n ${ conf.jobDuration.getSeconds + 1 } 127.0.0.1 >nul" else "" }
-                   |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
-                   |""".stripMargin
-              else
-                s"""
-                   |sleep ${ BigDecimal(conf.jobDuration.toMillis, scale = 3).toString }
-                   |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
-                   |""".stripMargin
+              if (isWindows) s"""
+                 |@echo off
+                 |${ if (conf.jobDuration.getSeconds > 0) s"ping -n ${ conf.jobDuration.getSeconds + 1 } 127.0.0.1 >nul" else "" }
+                 |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
+                 |""".stripMargin
+              else s"""
+                 |sleep ${ BigDecimal(conf.jobDuration.toMillis, scale = 3).toString }
+                 |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
+                 |""".stripMargin
             }</script>
           </job>
         val agent = new Agent(AgentConfiguration.forTest(
-          data = Some(env.agentDir(agentPath))).copy(
+          configAndData = Some(env.agentDir(agentPath))).copy(
           journalSyncOnCommit = conf.syncAgent))
           .closeWithCloser
         env.xmlFile(agentPath).xml = <agent uri={agent.localUri.string}/>
@@ -91,7 +105,7 @@ object TestMasterAgent {
           val r = agent.terminated
           agent.close()
           r
-        }) await 30.s
+        }) await 10.s
         injector.instance[Closer].close()
         Log4j.shutdown()
       } .closeWithCloser
@@ -120,7 +134,6 @@ object TestMasterAgent {
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(60.s))
       injector.instance[ActorSystem].actorOf(Props {
         new Actor {
-
           injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
           injector.instance[StampedKeyedEventBus].subscribe(self, OrderEvent.OrderFinished.getClass)
           context.system.scheduler.schedule(0.seconds, 1.second, self, "PRINT")
@@ -170,7 +183,8 @@ object TestMasterAgent {
     period: Duration,
     orderGeneratorCount: Int,
     syncMaster: Boolean,
-    syncAgent: Boolean) {
+    syncAgent: Boolean)
+  {
     require(agentCount >= 1)
     require(jobnetLength >= 1)
     require(tasksPerJob >= 1)
@@ -181,12 +195,12 @@ object TestMasterAgent {
   }
 
   private object Conf {
-    def parse(args: collection.Seq[String]): Conf =
+    def parse(args: collection.Seq[String], directory: () ⇒ Path): Conf =
       CommandLineArguments.parse(args) { a: CommandLineArguments ⇒
         val agentCount = a.as[Int]("-agents=", 1)
         require(agentCount > 0)
         val conf = Conf(
-          directory = a.as[Path]("-directory=", temporaryDirectory / "TestMasterAgent"),
+          directory = a.as[Path]("-directory=", directory()),
           agentCount = agentCount,
           jobnetLength = a.as[Int]("-nodes-per-agent=", 1),
           tasksPerJob = a.as[Int]("-tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
