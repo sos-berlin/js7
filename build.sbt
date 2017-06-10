@@ -26,6 +26,15 @@ val commonSettings = List(
   logBuffered in Test := false,
   testForkedParallel in Test := fastSbt,  // Experimental in sbt 0.13.13
   sources in (Compile, doc) := Nil, // No ScalaDoc
+  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials_snapshot"),
+  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials_release"),
+  publishTo := {                                                                                                    
+      val archiva = "http://archiva.sos:8080/archiva/"                                                          
+      if (isSnapshot.value)                                                                                           
+        Some("Repository Archiva Managed snapshots Repository" at archiva + "repository/snapshots")                                                 
+      else                                                                                                            
+        Some("Repository Archiva Managed sos-release Repository"  at archiva + "repository/sos-release")                                                  
+    },
   test in publishM2 := {})
 
 val universalPluginSettings = List(
