@@ -3,7 +3,7 @@ set -e
 
 home="$(cd "$(dirname -- "$0")"/../bin/.. && pwd || kill $$)"
 mkdir -p volumes/{master,agent-1,agent-2}/config/live
-mkdir -p volumes/{master,agent-1,agent-2}/data/{state,logs,tmp}
+mkdir -p volumes/{master,agent-1,agent-2}/data
 
 cp -Rn "$home"/volumes . || true
 #??? chcon -Rt svirt_sandbox_file_t "$home"/volumes

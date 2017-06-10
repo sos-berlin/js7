@@ -46,7 +46,6 @@ if [ -z "$jobschedulerDockerTgz" ]; then
    fi
 fi
 
-cd "$(dirname -- "$0")"
 if [ -d build ] && [ ! -f build/docker-compose.yml ]; then :
   echo Subdirectory build seems not to be created by jobscheduler-docker. Missing build/docker-compose.yml. Exiting
   exit 1
