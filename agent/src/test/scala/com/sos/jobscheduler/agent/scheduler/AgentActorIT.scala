@@ -12,13 +12,13 @@ import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.{AddJobnet, AddOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.AgentActorIT._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
+import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.auth.User.Anonymous
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
@@ -31,7 +31,7 @@ import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.{ActorEventCollector, StampedKeyedEventBus}
-import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
+import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -46,7 +46,7 @@ final class AgentActorIT extends FreeSpec {
 
   for (n ← List(10) ++ (sys.props contains "test.speed" option 1000))
   s"AgentActorIT, $n orders" in {
-    provideAgentDataDirectory { dir ⇒
+    provideAgentDirectory { dir ⇒
       withCloser { implicit closer ⇒
         val (eventCollector, main) = start(dir)
         val lastEventId = eventCollector.lastEventId
@@ -74,8 +74,8 @@ final class AgentActorIT extends FreeSpec {
     }
   }
 
-  private def start(data: Path)(implicit closer: Closer): (EventCollector, ActorRef) = {
-    val agentConfiguration = AgentConfiguration.forTest(data = Some(data))
+  private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef) = {
+    val agentConfiguration = AgentConfiguration.forTest(configAndData = Some(configAndData))
     val actorSystem = newActorSystem(getClass.getSimpleName)
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
     implicit val agentTaskFactory = injector.instance[AgentTaskFactory]
@@ -89,8 +89,8 @@ final class AgentActorIT extends FreeSpec {
     }).instance[ActorEventCollector]
     val main = actorSystem.actorOf(
       Props { new AgentActor(
-        stateDirectory = createDirectory(data / "state"),
-        jobConfigurationDirectory = data / "config" / "live",
+        stateDirectory = configAndData / "data",
+        jobConfigurationDirectory = configAndData / "config" / "live",
         askTimeout = Timeout(30.seconds),
         syncOnCommit = false) },
       "AgentActor")
@@ -124,20 +124,18 @@ object AgentActorIT {
         |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
         |""".stripMargin
 
-  def provideAgentDataDirectory[A](body: Path ⇒ A): A = {
-    val dir = createTempDirectory("test-")
-    val jobdir = dir / "config" / "live"
-    val subdir = jobdir / "folder"
-    createDirectories(subdir)
-    (jobdir / "test.job.xml").xml =
-      <job tasks="100">
-        <params>
-          <param name="var1" value="VALUE1"/>
-        </params>
-        <script language="shell">{AScript}</script>
-      </job>
-    (subdir / "test.job.xml").xml = <job><script language="shell">FOLDER/TEST</script></job>
-    try body(dir)
-    finally deleteDirectoryRecursively(dir)
+  def provideAgentDirectory[A](body: Path ⇒ A): A =
+    AgentDirectoryProvider.provideAgent2Directory { directory ⇒
+      val subdir =  directory / "config" / "live" / "folder"
+      createDirectory(subdir)
+      (directory / "config" / "live" / "test.job.xml").xml =
+        <job tasks="100">
+          <params>
+            <param name="var1" value="VALUE1"/>
+          </params>
+          <script language="shell">{AScript}</script>
+        </job>
+      (subdir / "test.job.xml").xml = <job><script language="shell">FOLDER/TEST</script></job>
+      body(directory)
   }
 }

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.views.TaskHandlerOverview
-import com.sos.jobscheduler.agent.test.AgentConfigDirectoryProvider
+import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.agent.web.AgentWebServerIT._
 import com.sos.jobscheduler.base.generic.SecretString
@@ -46,11 +46,11 @@ import spray.httpx.unmarshalling.{FromResponseUnmarshaller, PimpedHttpResponse}
 /**
  * @author Joacim Zschimmer
  */
-final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfterAll with AgentConfigDirectoryProvider {
+final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfterAll with AgentDirectoryProvider {
 
   private lazy val List(httpPort, httpsPort) = findRandomFreeTcpPorts(2)
   private lazy val agentConfiguration = AgentConfiguration
-    .forTest(Some(dataDirectory))
+    .forTest(Some(agentDirectory))
     .copy(
       http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
     .withHttpsInetSocketAddress(new InetSocketAddress("127.0.0.1", httpsPort))
@@ -177,7 +177,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 private object AgentWebServerIT {
   private val Api = "jobscheduler/agent/api"
   private val ClientKeystoreRef = KeystoreReference(
-    AgentConfigDirectoryProvider.PublicHttpJksResource.url,
+    AgentDirectoryProvider.PublicHttpJksResource.url,
     Some(SecretString("jobscheduler")))
   private val logger = Logger(getClass)
 }

@@ -25,7 +25,7 @@ import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectory, exists}
-import java.nio.file.{Path, Paths}
+import java.nio.file.{Files, Path, Paths}
 import java.time.Duration
 import org.scalactic.Requirements._
 import scala.collection.immutable
@@ -93,7 +93,7 @@ final case class AgentConfiguration(
     KeystoreReference.fromSubConfig(
       config.getConfig("jobscheduler.agent.webserver.https.keystore"),
       configDirectory = configDirectory getOrElse {
-        throw new IllegalArgumentException("For HTTPS, dataDirectory is required")
+        throw new IllegalArgumentException("For HTTPS, agentDirectory is required")
       })
 
   def withWebService[A <: ExternalWebService : ClassTag] = withWebServices(List(implicitClass[A]))
@@ -209,8 +209,12 @@ object AgentConfiguration {
   object forTest {
     private val TaskServerLogbackResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/logback.xml")
 
-    def apply(data: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
-      fromDataDirectory(data, None, config).copy(
+    def apply(configAndData: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
+      fromDataDirectory(
+        dataDirectory = configAndData map { _ / "data" } filter { o ⇒ Files.exists(o) },
+        configDirectory = configAndData map { _ / "config" },
+        config)
+      .copy(
         http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))),
         jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
   }

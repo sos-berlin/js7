@@ -6,7 +6,7 @@ import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.{Command, Terminate}
-import com.sos.jobscheduler.agent.test.{AgentConfigDirectoryProvider, AgentTest}
+import com.sos.jobscheduler.agent.test.{AgentDirectoryProvider, AgentTest}
 import com.sos.jobscheduler.agent.tests.TextAgentClientIT._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.auth.{User, UserAndPassword, UserId}
@@ -29,9 +29,9 @@ import spray.routing.authentication._
 /**
  * @author Joacim Zschimmer
  */
-final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCloser with AgentTest with AgentConfigDirectoryProvider {
+final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCloser with AgentTest with AgentDirectoryProvider {
 
-  override protected def agentConfiguration = AgentConfiguration.forTest(Some(dataDirectory)).copy(
+  override protected def agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory)).copy(
     http = None)
     .withHttpsInetSocketAddress(super.agentConfiguration.http.get.address)
 

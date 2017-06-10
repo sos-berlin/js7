@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import java.nio.file.Files.createDirectories
+import java.nio.file.Files.{createDirectories, createDirectory}
 import java.nio.file.Path
 import scala.collection.immutable._
 
@@ -18,6 +18,7 @@ extends AutoCloseable {
   createDirectories(masterDir / "config/live")
   for (agentPath ← agentPaths) {
     createDirectories(agentDir(agentPath) / "config/live")
+    createDirectory(agentDir(agentPath) / "data")
   }
 
   def close(): Unit = {

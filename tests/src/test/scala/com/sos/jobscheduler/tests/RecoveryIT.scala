@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.tests
 
-import RecoveryIT._
 import akka.actor.ActorSystem
 import com.google.common.io.Closer
 import com.google.inject.Guice
@@ -30,7 +29,8 @@ import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JsonFileIterator, JsonJournalMeta}
-import java.nio.file.Files.{createDirectories, createTempDirectory}
+import com.sos.jobscheduler.tests.RecoveryIT._
+import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
 import java.nio.file.Path
 import java.util.zip.GZIPInputStream
 import org.scalatest.FreeSpec
@@ -48,19 +48,19 @@ final class RecoveryIT extends FreeSpec {
   "test" in {
     //while (true)
     var lastEventId = EventId.BeforeFirst
-    autoClosing(new DataDirectoryProvider) { dataDirectoryProvider ⇒
+    autoClosing(new DirectoryProvider) { dataDirectoryProvider ⇒
       withCloser { implicit closer ⇒
-        import dataDirectoryProvider.dataDir
+        import dataDirectoryProvider.directory
 
-        val agentConfs = for (name ← AgentNames) yield AgentConfiguration.forTest(Some(dataDir / name)).copy(name = name)
+        val agentConfs = for (name ← AgentNames) yield AgentConfiguration.forTest(Some(directory / name)).copy(name = name)
 
-        (dataDir / "master/config/live/fast.job_chain.xml").xml = QuickJobChainElem
-        (dataDir / "master/config/live/test.job_chain.xml").xml = TestJobChainElem
-        (dataDir / "master/config/live/test.order.xml").xml = TestOrderGeneratorElem
-        (dataDir / "master/config/live/test-agent-111.agent.xml").xml = <agent uri={agentConfs(0).localUri.toString}/>
-        (dataDir / "master/config/live/test-agent-222.agent.xml").xml = <agent uri={agentConfs(1).localUri.toString}/>
+        (directory / "master/config/live/fast.job_chain.xml").xml = QuickJobChainElem
+        (directory / "master/config/live/test.job_chain.xml").xml = TestJobChainElem
+        (directory / "master/config/live/test.order.xml").xml = TestOrderGeneratorElem
+        (directory / "master/config/live/test-agent-111.agent.xml").xml = <agent uri={agentConfs(0).localUri.toString}/>
+        (directory / "master/config/live/test-agent-222.agent.xml").xml = <agent uri={agentConfs(1).localUri.toString}/>
 
-        runMaster(dataDir) { master ⇒
+        runMaster(directory) { master ⇒
           if (lastEventId == EventId.BeforeFirst) {
             lastEventId = eventCollector.oldestEventId
           }
@@ -70,7 +70,7 @@ final class RecoveryIT extends FreeSpec {
             lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
             lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
           }
-          assert((journalEntries(dataDir / "agent-111/state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
+          assert((journalEntries(directory / "agent-111/data/state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
             Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId.Anonymous)))
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(agentConfs) { _ ⇒
@@ -83,7 +83,7 @@ final class RecoveryIT extends FreeSpec {
           sys.runtime.gc()  // For a clean memory view
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
           runAgents(agentConfs) { _ ⇒
-            runMaster(dataDir) { master ⇒
+            runMaster(directory) { master ⇒
               val eventSeq = eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = myLastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s
               val orderId = (eventSeq: @unchecked) match {
                 case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderEvent.OrderFinished.type]] ⇒ eventSeq.stampeds.toVector.last.value.key
@@ -102,9 +102,9 @@ final class RecoveryIT extends FreeSpec {
     }
   }
 
-  private def runMaster(dataDir: Path)(body: Master ⇒ Unit): Unit = {
+  private def runMaster(directory: Path)(body: Master ⇒ Unit): Unit = {
     withCloser { implicit closer ⇒
-      val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(data = Some(dataDir / "master"))))
+      val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(data = Some(directory / "master"))))
       eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
       logger.debug("Close")
       injector.instance[Closer].closeWithCloser
@@ -161,11 +161,15 @@ private object RecoveryIT {
 
   private val logger = Logger(getClass)
 
-  private class DataDirectoryProvider extends HasCloser {
-    val dataDir = createTempDirectory("test-") withCloser deleteDirectoryRecursively
+  private class DirectoryProvider extends HasCloser {
+    val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
     closeOnError(closer) {
-      createDirectories(dataDir / "master/config/live")
-      for (agentName ← AgentNames) createDirectories(dataDir / s"$agentName/config/live")
+      createDirectories(directory / "master/config/live")
+      createDirectory(directory / "master/data")
+      for (agentName ← AgentNames) {
+        createDirectories(directory / s"$agentName/config/live")
+        createDirectory(directory / s"$agentName/data")
+      }
     }
 
     private val testScript =
@@ -180,7 +184,7 @@ private object RecoveryIT {
         |""".stripMargin
 
     for (agentName ← AgentNames) {
-      (dataDir / s"$agentName/config/live/test.job.xml").xml =
+      (directory / s"$agentName/config/live/test.job.xml").xml =
         <job tasks="3">
           <params>
             <param name="var1" value={s"VALUE-$agentName"}/>
