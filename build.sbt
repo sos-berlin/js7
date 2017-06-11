@@ -28,12 +28,12 @@ val commonSettings = List(
   sources in (Compile, doc) := Nil, // No ScalaDoc
   credentials += Credentials(Path.userHome / ".ivy2" / ".credentials_snapshot"),
   credentials += Credentials(Path.userHome / ".ivy2" / ".credentials_release"),
-  publishTo := {                                                                                                    
-      val archiva = "http://archiva.sos:8080/archiva/"                                                          
-      if (isSnapshot.value)                                                                                           
-        Some("Repository Archiva Managed snapshots Repository" at archiva + "repository/snapshots")                                                 
-      else                                                                                                            
-        Some("Repository Archiva Managed sos-release Repository"  at archiva + "repository/sos-release")                                                  
+  publishTo := {
+      val archiva = "http://archiva.sos:8080/archiva/"
+      if (isSnapshot.value)
+        Some("Repository Archiva Managed snapshots Repository" at archiva + "repository/snapshots")
+      else
+        Some("Repository Archiva Managed sos-release Repository"  at archiva + "repository/sos-release")
     },
   test in publishM2 := {})
 
@@ -96,7 +96,7 @@ lazy val `jobscheduler-docker` = project
     universalPluginSettings,
     (topLevelDirectory in Universal) := None,
     (mappings in Universal) :=
-      recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/docker"))
+      recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/docker", to = "build/"))
 
 lazy val base = project
   .settings(commonSettings)

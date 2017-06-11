@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
-. "$(cd "$(dirname -- "$0")" && pwd || kill $$)/set-context.sh"
-declare jobschedulerHome classpath pathSeparator JAVA_HOME java
+export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
+. "$JOBSCHEDULER_HOME/bin/set-context.sh"
+declare classpath pathSeparator JAVA_HOME java
 
 javaOptions=()
 agentOptions=()
@@ -35,13 +36,17 @@ for arg in "$@"; do
       javaOptions+=("$a")
       shift
       ;;
-    -data-directory=*)
-      data="${arg#*=}"
+    -directory=*)
+      config="${arg#*=}"/config
+      data="${arg#*=}"/data
       shift
       ;;
     -config-directory=*)
       config="${arg#*=}"
-      agentOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
+      shift
+      ;;
+    -data-directory=*)
+      data="${arg#*=}"
       shift
       ;;
     -http-port=*)
@@ -55,6 +60,7 @@ for arg in "$@"; do
   esac
 done
 
+[ -z "$config" ] || agentOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
 [ -z "$data" ] || agentOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
 [ -z "$httpPort" ] || agentOptions+=("-http-port=$httpPort")
 logs="$data/logs"

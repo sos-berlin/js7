@@ -52,9 +52,7 @@ if [ -d build ] && [ ! -f build/docker-compose.yml ]; then :
 fi
 
 rm -rf build
-mkdir build
-tar xzf "$jobschedulerDockerTgz" -C build
-#chmod +x build/bin/{prepare-volumes,clean-volumes-data,testMasterAgent}
+tar xzf "$jobschedulerDockerTgz"
 ln -nf "$jobschedulerTgz" build/ >/dev/null || cp "$jobschedulerTgz" build/
 
 build/bin/prepare-volumes

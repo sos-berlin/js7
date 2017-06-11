@@ -1,6 +1,8 @@
 # Set variables
+# - JOBSCHEDULER_HOME
 # - JAVA_HOME
 # - java
+# - pathSeparator
 
 isWindows() {
   [ "$(uname -o)" = "Cygwin" ]
@@ -22,21 +24,21 @@ toSystemPath() {
   fi
 }
 
-if [ -z "$jobschedulerHome" ]; then :
-  jobschedulerHome=$(cd "$(dirname -- "$0")/.." && pwd || kill $$)
+if [ -z "$JOBSCHEDULER_HOME" ]; then :
+  export JOBSCHEDULER_HOME=$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)
 fi
 
 declare JAVA_HOME
 declare -a classpath=()
 if isWindows; then
   pathSeparator=";"
-  classpath+=("$(cygpath -w "$jobschedulerHome/lib/*" || kill $$)")
+  classpath+=("$(cygpath -w "$JOBSCHEDULER_HOME/lib" || kill $$)/*")
   javaHome=""
   [ -n "$JAVA_HOME" ] && javaHome=$(cygpath "$JAVA_HOME" || kill $$)
   #unused javaHome=$(dirname $(dirname $(readlink --canonicalize $(which java || kill $$))))
 else
   pathSeparator=":"
-  classpath+=("$jobschedulerHome/lib/*")
+  classpath+=("$JOBSCHEDULER_HOME/lib/*")
   javaHome="$JAVA_HOME"
 fi
 

@@ -10,8 +10,9 @@ set -e
 #   export SCHEDULER_DATA=data (containing config/, config/live/ and log/)
 #   master-x.y.z/bin/master.sh
 
-. "$(cd "$(dirname -- "$0")" && pwd || kill $$)/set-context.sh"
-declare jobschedulerHome classpath pathSeparator JAVA_HOME java
+export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
+. "$JOBSCHEDULER_HOME/bin/set-context.sh"
+declare classpath pathSeparator JAVA_HOME java
 
 data=/var/opt/jobscheduler/master/data
 config=""
@@ -40,13 +41,17 @@ for arg in "$@"; do :
       javaOptions+=("$a")
       shift
       ;;
-    -data-directory=*)
-      data="${arg#*=}"
+    -directory=*)
+      config="${arg#*=}"/config
+      data="${arg#*=}"/data
       shift
       ;;
     -config-directory=*)
       config="${arg#*=}"
-      masterOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
+      shift
+      ;;
+    -data-directory=*)
+      data="${arg#*=}"
       shift
       ;;
     -http-port=*)
@@ -60,6 +65,7 @@ for arg in "$@"; do :
   esac
 done
 
+[ -z "$config" ] || masterOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
 [ -z "$data" ] || masterOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
 [ -z "$httpPort" ] || masterOptions+=("-http-port=$httpPort")
 logs="$data/logs"
