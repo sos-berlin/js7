@@ -15,7 +15,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator
-import com.sos.jobscheduler.shared.event.journal.Journal
+import com.sos.jobscheduler.shared.event.journal.JsonJournalActor
 import com.sos.jobscheduler.shared.event.journal.tests.JsonJournalTest._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
 import java.io.{EOFException, FileInputStream}
@@ -62,7 +62,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
 
       execute(actor, "TEST-D", TestAggregateActor.Command.Add("DDD")) await 99.s
 
-      (actor ? TestActor.Input.TakeSnapshot).mapTo[Journal.Output.SnapshotTaken.type] await 99.s
+      (actor ? TestActor.Input.TakeSnapshot).mapTo[JsonJournalActor.Output.SnapshotTaken.type] await 99.s
       assert(journalAggregates == Set(
         TestAggregate("TEST-A", "AAAabcdefghijkl"),
         TestAggregate("TEST-C", "CCC"),

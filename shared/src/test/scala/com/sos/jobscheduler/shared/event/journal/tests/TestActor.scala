@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.tests.TestActor._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer}
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.duration.DurationInt
@@ -57,11 +57,11 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
         journal.recoveredJournalingActors
       }
     keyToAggregate ++= recovered.keyToJournalingActor map { case (k: String, a) ⇒ k → a }
-    journalActor ! Journal.Input.Start(recovered)
+    journalActor ! JsonJournalActor.Input.Start(recovered)
   }
 
   def receive = {
-    case Journal.Output.Ready ⇒
+    case JsonJournalActor.Output.Ready ⇒
       context.become(ready)
       unstashAll()
       logger.info("Ready")
@@ -91,7 +91,7 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
       sender() ! (keyToAggregate.values map { a ⇒ (a ? TestAggregateActor.Input.Get).mapTo[TestAggregate] await 99.s }).toVector
 
     case Input.TakeSnapshot ⇒
-      (journalActor ? Journal.Input.TakeSnapshot).mapTo[Journal.Output.SnapshotTaken.type] pipeTo sender()
+      (journalActor ? JsonJournalActor.Input.TakeSnapshot).mapTo[JsonJournalActor.Output.SnapshotTaken.type] pipeTo sender()
 
     case Terminated(actorRef) ⇒  // ???
       keyToAggregate --= keyToAggregate collectFirst { case (key, `actorRef`) ⇒ key }

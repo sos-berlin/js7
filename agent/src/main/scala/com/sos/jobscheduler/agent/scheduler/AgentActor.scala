@@ -19,7 +19,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{RecoveringForUnknownKey, RecoveringSnapshot}
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -75,11 +75,11 @@ extends KeyedEventJournalingActor[AgentEvent] {
         }
         journal.recoveredJournalingActors
       }
-    journalActor ! Journal.Input.Start(recovered)
+    journalActor ! JsonJournalActor.Input.Start(recovered)
   }
 
   def receive = journaling orElse {
-    case Journal.Output.Ready ⇒
+    case JsonJournalActor.Output.Ready ⇒
       context.become(startable)
       logger.info(s"${masterToOrderKeeper.size} recovered master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
       unstashAll()

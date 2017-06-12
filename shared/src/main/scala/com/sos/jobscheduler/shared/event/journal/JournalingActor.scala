@@ -32,17 +32,17 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
       context.become(journaling, discardOld = false)
     }
     logger.trace(s"($toString) Store ${keyedEvent.key} ${keyedEvent.event.getClass.getSimpleName stripSuffix "$"}")
-    journalActor.forward(Journal.Input.Store(Some(keyedEvent) :: Nil, self))
+    journalActor.forward(JsonJournalActor.Input.Store(Some(keyedEvent) :: Nil, self))
     callbacks += EventCallback(callback.asInstanceOf[Stamped[KeyedEvent[E]] ⇒ Unit])
   }
 
   protected final def deferAsync(callback: ⇒ Unit): Unit = {
-    journalActor.forward(Journal.Input.Store(None :: Nil, self))
+    journalActor.forward(JsonJournalActor.Input.Store(None :: Nil, self))
     callbacks += Deferred(() ⇒ callback)
   }
 
   final def journaling: Receive = {
-    case Journal.Output.Stored(snapshotOptions) ⇒
+    case JsonJournalActor.Output.Stored(snapshotOptions) ⇒
       // sender() is from persistKeyedEvent or deferAsync
       for (snapshotOption ← snapshotOptions) {
         (snapshotOption, callbacks.remove(0)) match {

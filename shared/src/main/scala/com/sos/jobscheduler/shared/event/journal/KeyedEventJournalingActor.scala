@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 trait KeyedEventJournalingActor[E <: Event] extends JournalingActor[E] {
 
   override def preStart() = {
-    journalActor ! Journal.Input.RegisterMe(None)
+    journalActor ! JsonJournalActor.Input.RegisterMe(None)
     super.preStart()
   }
 

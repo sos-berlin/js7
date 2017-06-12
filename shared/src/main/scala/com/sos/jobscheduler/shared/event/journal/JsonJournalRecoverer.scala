@@ -170,10 +170,10 @@ object JsonJournalRecoverer {
   //  parent.context.actorOf(
   //    Props {
   //      new Actor {
-  //        journalActor ! Journal.Input.Start(recoveredActors)
+  //        journalActor ! JsonJournalActor.Input.Start(recoveredActors)
   //
   //        def receive = {
-  //          case Journal.Output.Ready ⇒
+  //          case JsonJournalActor.Output.Ready ⇒
   //            for (a ← actors) {
   //              a ! JournalingActor.Input.FinishRecovery
   //            }

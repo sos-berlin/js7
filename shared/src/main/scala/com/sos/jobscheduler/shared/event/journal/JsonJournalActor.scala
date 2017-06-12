@@ -9,7 +9,6 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.Journal.{Input, Output}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalActor._
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{RecoveredJournalingActors, toMB}
@@ -202,6 +201,22 @@ extends Actor with Stash {
 }
 
 object JsonJournalActor {
+
+  object Input {
+    final case class Start(recoveredJournalingActors: RecoveredJournalingActors)
+    final case class RegisterMe(key: Option[Any])
+    final case class Store(eventStampeds: Seq[Option[AnyKeyedEvent]], journalingActor: ActorRef)
+    final case object TakeSnapshot
+  }
+
+  sealed trait Output
+  object Output {
+    final case object Ready
+    final case class Stored(stamped: Seq[Option[Stamped[AnyKeyedEvent]]]) extends Output
+    final case class SerializationFailure(throwable: Throwable) extends Output
+    final case class StoreFailure(throwable: Throwable) extends Output
+    final case object SnapshotTaken
+  }
 
   private object Internal {
     final case class Commit(writtenLevel: Int)

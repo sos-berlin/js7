@@ -27,7 +27,7 @@ import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentXmlParser}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.time.Duration
 import scala.collection.mutable
@@ -138,8 +138,8 @@ with Stash {
         journal.recoveredJournalingActors
       }
 
-    journalActor ! Journal.Input.Start(recovered)
-    //journalActor ! Journal.Input.Start(RecoveredJournalingActors(
+    journalActor ! JsonJournalActor.Input.Start(recovered)
+    //journalActor ! JsonJournalActor.Input.Start(RecoveredJournalingActors(
     //  recovered.keyToJournalingActor ++ ((pathToJobnet.keys ++ orders.keys ++ agentRegister.keys) map { _ → self })))   // Separate message ???
   }
 
@@ -149,7 +149,7 @@ with Stash {
   }
 
   def receive = journaling orElse {
-    case Journal.Output.Ready ⇒
+    case JsonJournalActor.Output.Ready ⇒
       //for (o ← orderRegister.values) logger.info(s"Recovered: ${o.order}")
       for (agentEntry ← agentRegister.values) {
         val orderIds = orderRegister.values collect {
@@ -279,7 +279,7 @@ with Stash {
         logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
       }
 
-    case msg @ Journal.Output.SerializationFailure(throwable) ⇒
+    case msg @ JsonJournalActor.Output.SerializationFailure(throwable) ⇒
       logger.error(msg.toString, throwable) // Ignore this ???
 
     case Stamped(_, keyedEvent: AnyKeyedEvent) ⇒

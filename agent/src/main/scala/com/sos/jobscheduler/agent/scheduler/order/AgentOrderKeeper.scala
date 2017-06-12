@@ -25,7 +25,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{RecoveringChanged, RecoveringDeleted, RecoveringForUnknownKey, RecoveringSnapshot}
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, Journal, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant.now
@@ -105,7 +105,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
         }
         journal.recoveredJournalingActors
       }
-    journalActor ! Journal.Input.Start(recovered)
+    journalActor ! JsonJournalActor.Input.Start(recovered)
   }
 
   override def postStop() = {
@@ -114,7 +114,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   def receive = journaling orElse {
-    case Journal.Output.Ready ⇒
+    case JsonJournalActor.Output.Ready ⇒
       for (o ← orderRegister.values) o.actor ! OrderActor.Input.FinishRecovery  // Responds with OrderActor.Output.RecoveryFinished
       context.become(startable)
       logger.info(s"${pathToJobnet.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
