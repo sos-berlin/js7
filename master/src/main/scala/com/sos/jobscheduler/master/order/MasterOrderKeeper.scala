@@ -54,7 +54,7 @@ with Stash {
   import context.{become, dispatcher}
   intelliJuseImports(dispatcher)
 
-  private val journalFile = masterConfiguration.stateDirectoryOption.get/*optional ???*/ / "journal"
+  private val journalFile = masterConfiguration.stateDirectory / "journal"
   private val agentRegister = new ActorRegister[AgentPath, AgentEntry](_.actor)
   private val pathToJobnet = mutable.Map[JobnetPath, Jobnet]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()

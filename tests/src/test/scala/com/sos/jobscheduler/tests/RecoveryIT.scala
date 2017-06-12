@@ -48,9 +48,9 @@ final class RecoveryIT extends FreeSpec {
   "test" in {
     //while (true)
     var lastEventId = EventId.BeforeFirst
-    autoClosing(new DirectoryProvider) { dataDirectoryProvider ⇒
+    autoClosing(new DirectoryProvider) { directoryProvider ⇒
       withCloser { implicit closer ⇒
-        import dataDirectoryProvider.directory
+        import directoryProvider.directory
 
         val agentConfs = for (name ← AgentNames) yield AgentConfiguration.forTest(Some(directory / name)).copy(name = name)
 
@@ -104,7 +104,7 @@ final class RecoveryIT extends FreeSpec {
 
   private def runMaster(directory: Path)(body: Master ⇒ Unit): Unit = {
     withCloser { implicit closer ⇒
-      val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(data = Some(directory / "master"))))
+      val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
       eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
       logger.debug("Close")
       injector.instance[Closer].closeWithCloser

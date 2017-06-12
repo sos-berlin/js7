@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.configuration
 
 import com.typesafe.config.ConfigFactory
+import java.nio.file.Paths
 import java.time.ZoneId
 import org.scalatest.FreeSpec
 import scala.concurrent.duration.DurationInt
@@ -11,9 +12,9 @@ import scala.concurrent.duration.DurationInt
 final class MasterConfigurationTest extends FreeSpec {
 
   "Empty argument list" in {
-    val c = MasterConfiguration.fromCommandLine(Nil)
+    val c = MasterConfiguration.fromCommandLine(Vector("-data-directory=DATA"))
     assert(c.copy(config = ConfigFactory.empty) == MasterConfiguration(
-      dataDirectoryOption = None,
+      dataDirectory = Paths.get("DATA").toAbsolutePath,
       configDirectoryOption = None,
       webServerBindings = Vector(),
       ZoneId.systemDefault,

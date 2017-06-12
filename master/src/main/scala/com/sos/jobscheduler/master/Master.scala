@@ -18,7 +18,7 @@ import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.order.{MasterOrderKeeper, ScheduledOrderGeneratorKeeper}
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import java.nio.file.Files
+import java.nio.file.Files.{createDirectory, exists}
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
@@ -44,8 +44,9 @@ extends OrderClient {
 
   import configuration.akkaAskTimeout
 
-  for (o ← configuration.stateDirectoryOption if !Files.exists(o)) {
-    Files.createDirectory(o)
+  configuration.stateDirectory match {
+    case o if !exists(o) ⇒ createDirectory(o)
+    case _ ⇒
   }
 
   private[master] val orderKeeper = actorSystem.actorOf(

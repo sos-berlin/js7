@@ -22,7 +22,7 @@ import scala.collection.immutable.Seq
   * @author Joacim Zschimmer
   */
 final case class MasterConfiguration(
-  dataDirectoryOption: Option[Path],
+  dataDirectory: Path,
   configDirectoryOption: Option[Path],
   webServerBindings: Vector[WebServerBinding],
   timeZone: ZoneId,
@@ -37,13 +37,13 @@ final case class MasterConfiguration(
 
   def liveDirectoryOption: Option[Path] = configDirectoryOption map { _ / "live" }
 
-  def stateDirectoryOption: Option[Path] = dataDirectoryOption map { _ / "state" }
+  def stateDirectory: Path = dataDirectory / "state"
 }
 
 object MasterConfiguration {
 
-  def forTest(data: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
-    fromDataDirectory(data, None, config).copy(
+  def forTest(configAndData: Path, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
+    fromDataDirectory(dataDirectory = configAndData / "config", configDirectory = Some(configAndData / "config"), config).copy(
       webServerBindings = Vector(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
 
   private[configuration] lazy val DefaultConfig = Configs.loadResource(
@@ -51,18 +51,18 @@ object MasterConfiguration {
 
   def fromCommandLine(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
     fromDataDirectory(
-      dataDirectory = a.optionAs[Path]("-data-directory="),
+      dataDirectory = a.as[Path]("-data-directory="),
       configDirectory = a.optionAs[Path]("-config-directory=")
     ) withCommandLineArguments a
   }
 
-  def fromDataDirectory(dataDirectory: Option[Path], configDirectory: Option[Path], extraDefaultConfig: Config = ConfigFactory.empty): MasterConfiguration = {
-    val dataDir = dataDirectory map { _.toAbsolutePath }
-    val configDir = configDirectory orElse (dataDirectory map { _ / "config" })
+  def fromDataDirectory(dataDirectory: Path, configDirectory: Option[Path], extraDefaultConfig: Config = ConfigFactory.empty): MasterConfiguration = {
+    val dataDir = dataDirectory.toAbsolutePath
+    val configDir = configDirectory map { _.toAbsolutePath }
     val config = resolvedConfig(configDir, extraDefaultConfig)
     val masterConfig = config.getConfig("jobscheduler.master")
     new MasterConfiguration(
-      dataDirectoryOption = dataDir,
+      dataDirectory = dataDir,
       configDirectoryOption = configDir,
       webServerBindings = Vector[WebServerBinding]() ++
         (masterConfig.optionAs("webserver.http.port")(StringToServerInetSocketAddress) map WebServerBinding.Http),

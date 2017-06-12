@@ -50,7 +50,7 @@ final class OrderHandler @Inject private(
     }
 
   private def newActor(jobConfigurationDirectory: Path) = {
-    val stateDirectory = conf.stateDirectoryOption getOrElse sys.error("Missing data directory")
+    val stateDirectory = conf.stateDirectoryOption getOrElse sys.error("Restart Agent with -data-directory=...")
     if (!Files.exists(stateDirectory)) {
       Files.createDirectory(stateDirectory)
     }

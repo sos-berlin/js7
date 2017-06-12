@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-exec /opt/jobscheduler/bin/master.sh \
+exec /opt/jobscheduler/bin/master \
   -config-directory=/var/opt/jobscheduler/master/config \
   "$@"

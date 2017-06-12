@@ -81,7 +81,7 @@ final class MasterIT extends FreeSpec {
         env.xmlFile(AgentPath("/test-agent-222")).xml =
           <agent uri={agents(1).localUri.string}/>
 
-        val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(data = Some(env.masterDir))))
+        val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = env.masterDir)))
         injector.instance[Closer].closeWithCloser
         val lastEventId = injector.instance[EventCollector].lastEventId
         val actorSystem = injector.instance[ActorSystem]

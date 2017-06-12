@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-exec /opt/jobscheduler/bin/agent.sh \
+exec /opt/jobscheduler/bin/agent \
   -config-directory=/var/opt/jobscheduler/agent/config \
   -http-port=4444 \
   "$@"

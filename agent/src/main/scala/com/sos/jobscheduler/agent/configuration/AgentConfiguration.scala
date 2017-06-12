@@ -156,13 +156,13 @@ object AgentConfiguration {
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
   def apply(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒
-    fromDataDirectory(
+    fromDirectories(
       dataDirectory = a.optionAs[Path]("-data-directory="),
       configDirectory = a.optionAs[Path]("-config-directory=")
     ) withCommandLineArguments a
   }
 
-  def fromDataDirectory(dataDirectory: Option[Path], configDirectory: Option[Path] = None, extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
+  def fromDirectories(dataDirectory: Option[Path], configDirectory: Option[Path] = None, extraDefaultConfig: Config = ConfigFactory.empty): AgentConfiguration = {
     val dataDir = dataDirectory map { _.toAbsolutePath }
     val configDir = configDirectory orElse (dataDir map { _ / "config" })
     val config = resolvedConfig(configDir, extraDefaultConfig)
@@ -210,7 +210,7 @@ object AgentConfiguration {
     private val TaskServerLogbackResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/logback.xml")
 
     def apply(configAndData: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
-      fromDataDirectory(
+      fromDirectories(
         dataDirectory = configAndData map { _ / "data" } filter { o ⇒ Files.exists(o) },
         configDirectory = configAndData map { _ / "config" },
         config)
