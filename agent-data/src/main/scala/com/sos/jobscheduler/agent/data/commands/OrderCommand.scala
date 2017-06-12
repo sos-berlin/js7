@@ -12,22 +12,22 @@ import spray.json.DefaultJsonProtocol._
 sealed trait OrderCommand extends Command
 
 
-final case class AddJobnet(jobnet: Jobnet) extends OrderCommand {
+final case class AttachJobnet(jobnet: Jobnet) extends OrderCommand {
   type Response = EmptyResponse.type
 }
 
-object AddJobnet {
-  val SerialTypeName = "AddJobnet"
+object AttachJobnet {
+  val SerialTypeName = "AttachJobnet"
   implicit val jsonFormat = jsonFormat1(apply)
 }
 
-final case class AddOrder(order: Order[Order.Idle])
+final case class AttachOrder(order: Order[Order.Idle])
 extends OrderCommand {
   type Response = EmptyResponse.type
 }
 
-object AddOrder {
-  val SerialTypeName = "AddOrder"
+object AttachOrder {
+  val SerialTypeName = "AttachOrder"
   implicit val jsonFormat = jsonFormat1(apply)
 }
 

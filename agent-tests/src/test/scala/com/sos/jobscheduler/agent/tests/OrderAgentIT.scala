@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.agent.data.commands.{AddJobnet, AddOrder, DetachOrder, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider.provideAgent2Directory
 import com.sos.jobscheduler.agent.tests.OrderAgentIT._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -30,7 +30,7 @@ import org.scalatest.Matchers._
   */
 final class OrderAgentIT extends FreeSpec {
 
-  "Command AddOrder" in {
+  "Command AttachOrder" in {
     provideAgent2Directory { directory ⇒
       val jobDir = directory / "config" / "live"
       (jobDir / "a.job.xml").xml = AJobXml
@@ -51,14 +51,14 @@ final class OrderAgentIT extends FreeSpec {
           val agentClient = AgentClient(agent.localUri.toString)
 
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual EmptyResponse  // Without Login, this registers all anonymous clients
-          agentClient.executeCommand(AddJobnet(TestJobnet)) await 99.s shouldEqual EmptyResponse
+          agentClient.executeCommand(AttachJobnet(TestJobnet)) await 99.s shouldEqual EmptyResponse
 
           val order = Order(
             OrderId("TEST-ORDER"),
             NodeKey(TestJobnet.path, ANodeId),
             Order.Waiting,
             Map("x" → "X"))
-          agentClient.executeCommand(AddOrder(order)) await 99.s shouldEqual EmptyResponse
+          agentClient.executeCommand(AttachOrder(order)) await 99.s shouldEqual EmptyResponse
 
           waitForCondition(10.s, 100.ms) {
             agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.s)) await 99.s match {

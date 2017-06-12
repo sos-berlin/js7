@@ -4,7 +4,7 @@ import akka.Done
 import akka.actor.{Actor, DeadLetterSuppression, Stash}
 import akka.pattern.pipe
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.data.commands.{AddJobnet, AddOrder, DetachOrder, Login, Logout, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, Login, Logout, RegisterAsMaster}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -218,8 +218,8 @@ with Stash {
   private def processQueuedCommands(): Unit = {
     for (cmd ← commandQueue.find(o ⇒ !executingCommands(o))) {
       executingCommands += cmd
-      (for (_ ← client.executeCommand(AddJobnet(cmd.jobnet));
-            _ ← client.executeCommand(AddOrder(cmd.order)))
+      (for (_ ← client.executeCommand(AttachJobnet(cmd.jobnet));
+            _ ← client.executeCommand(AttachOrder(cmd.order)))
         yield Done)
         .onComplete {
           tried ⇒ self ! Internal.OrderAttachedToAgent(cmd, tried)

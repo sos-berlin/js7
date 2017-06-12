@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.agent.data.commands.{AddJobnet, AddOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand}
+import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner
@@ -61,7 +61,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   def snapshots = {
     val jobnetSnapshots = pathToJobnet.values.toVector
     for (eventQueueSnapshot ← (eventsForMaster ? EventQueue.Input.GetSnapshot).mapTo[EventQueue.CompleteSnapshot])
-      yield jobnetSnapshots :+ eventQueueSnapshot  // Future: don't use `this`
+      yield jobnetSnapshots :+ eventQueueSnapshot  // Future: don't use mutable `this`
   }
 
   override def preStart(): Unit = {
@@ -165,7 +165,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   private def processOrderCommand(cmd: OrderCommand) = cmd match {
-    case AddJobnet(jobnet) ⇒
+    case AttachJobnet(jobnet) ⇒
       pathToJobnet.get(jobnet.path) match {
         case None ⇒
           persist(KeyedEvent(JobnetAttached(jobnet.inputNodeId, jobnet.idToNode))(jobnet.path)) { _ ⇒
@@ -178,11 +178,11 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           sender() ! Status.Failure(new IllegalStateException(s"Changed ${jobnet.path}"))
       }
 
-    case AddOrder(order) ⇒
+    case AttachOrder(order) ⇒
       import order.nodeKey
       pathToJobnet.get(nodeKey.jobnetPath) match {
         case Some(jobnet) if jobnet isDefinedAt nodeKey.nodeId ⇒
-          addOrder(order) map { case Completed ⇒ EmptyResponse } pipeTo sender()
+          attachOrder(order) map { case Completed ⇒ EmptyResponse } pipeTo sender()
         case Some(_) ⇒
           sender() ! Status.Failure(new IllegalArgumentException(s"Unknown NodeId ${nodeKey.nodeId} in ${nodeKey.jobnetPath}"))
         case None ⇒
@@ -227,7 +227,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
         sender() ! Status.Failure(new IllegalArgumentException(s"Unknown $orderId"))
     }
 
-  private def addOrder(order: Order[Order.Idle]): Future[Completed] = {
+  private def attachOrder(order: Order[Order.Idle]): Future[Completed] = {
     val orderEntry = orderRegister.getOrElseUpdate(order.id, {
       val actor = addOrderActor(order.id)
       OrderEntry(order.id, actor, order.jobnetPath, order.nodeId)

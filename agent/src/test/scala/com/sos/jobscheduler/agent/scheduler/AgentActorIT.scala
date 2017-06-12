@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.agent.data.commands.{AddJobnet, AddOrder, DetachOrder, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.AgentActorIT._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
@@ -52,12 +52,12 @@ final class AgentActorIT extends FreeSpec {
         val lastEventId = eventCollector.lastEventId
         (main ? AgentActor.Input.Start).mapTo[AgentActor.Output.Started.type] await 99.s
         (main ? AgentActor.Input.CommandFromMaster(MasterUserId, RegisterAsMaster)).mapTo[EmptyResponse.type] await 99.s
-        (main ? AgentActor.Input.CommandFromMaster(MasterUserId, AddJobnet(TestJobnet))).mapTo[EmptyResponse.type] await 99.s
+        (main ? AgentActor.Input.CommandFromMaster(MasterUserId, AttachJobnet(TestJobnet))).mapTo[EmptyResponse.type] await 99.s
         val stopwatch = new Stopwatch
         val orderIdGenerator = for (i ← Iterator from 1) yield OrderId(s"TEST-ORDER-$i")
         val orderIds = Vector.fill(n) { orderIdGenerator.next() }
         (for (orderId ← orderIds) yield {
-          val addOrder = AddOrder(Order(
+          val addOrder = AttachOrder(Order(
             orderId,
             NodeKey(TestJobnet.path, NodeId("100")),
             Order.Waiting,

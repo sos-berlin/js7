@@ -34,6 +34,6 @@ object Command {
     Subtype[StartNonApiTask](StartNonApiTask.SerialTypeName),
     Subtype[Terminate](Terminate.SerialTypeName),
     Subtype[AbortImmediately.type](AbortImmediately.SerialTypeName),
-    Subtype[AddJobnet](AddJobnet.SerialTypeName),
-    Subtype[AddOrder](AddOrder.SerialTypeName))
+    Subtype[AttachJobnet](AttachJobnet.SerialTypeName),
+    Subtype[AttachOrder](AttachOrder.SerialTypeName))
 }

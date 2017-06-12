@@ -32,7 +32,7 @@
 //  }
 //
 //  when(AwaitingOrder) {
-//    case Event(AddOrder(order), NoData) ⇒
+//    case Event(AttachOrder(order), NoData) ⇒
 //      val taskRunner = taskRunnerOnce getOrUpdate {
 //        new TaskRunner(jobConfiguration, taskId, newTask)
 //      }
@@ -83,7 +83,7 @@
 //
 //private object TaskActor {
 //  sealed trait Command
-//  final case class AddOrder(order: Order) extends Command
+//  final case class AttachOrder(order: Order) extends Command
 //  final case class Kill(signal: ProcessSignal) extends Command
 //
 //  sealed trait Response
