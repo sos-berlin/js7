@@ -18,7 +18,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{RecoveringForUnknownKey, RecoveringSnapshot}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{NewKeyRecovered, SnapshotRecovered}
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
 import scala.collection.immutable.Seq
@@ -66,10 +66,10 @@ extends KeyedEventJournalingActor[AgentEvent] {
       autoClosing(new JsonJournalRecoverer(MyJournalMeta, journalFile)) { journal ⇒
         for (recovered ← journal) {
           (recovered: @unchecked) match {
-            case RecoveringSnapshot(AgentSnapshot.Master(userId)) ⇒
+            case SnapshotRecovered(AgentSnapshot.Master(userId)) ⇒
               addOrderKeeper(userId)
 
-            case RecoveringForUnknownKey(Stamped(_, KeyedEvent(userId: UserId, AgentEvent.MasterAdded))) ⇒
+            case NewKeyRecovered(Stamped(_, KeyedEvent(userId: UserId, AgentEvent.MasterAdded))) ⇒
               addOrderKeeper(userId)
           }
         }

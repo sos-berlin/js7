@@ -108,22 +108,22 @@ with Stash {
       autoClosing(new JsonJournalRecoverer(MyJournalMeta, journalFile)) { journal ⇒
         import JsonJournalRecoverer._
         for (recovered ← journal) (recovered: @unchecked) match {
-          case RecoveringSnapshot(o: OrderScheduleEndedAt) ⇒
+          case SnapshotRecovered(o: OrderScheduleEndedAt) ⇒
             journal.recoverActorForSnapshot(o, orderScheduleGenerator)
 
-          case RecoveringForUnknownKey(stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
+          case NewKeyRecovered(stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
             journal.recoverActorForFirstEvent(stamped, orderScheduleGenerator)
 
-          case RecoveringChanged(Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
+          case ChangedRecovered(Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
 
-          case RecoveringSnapshot(order: Order[Order.State]) ⇒
+          case SnapshotRecovered(order: Order[Order.State]) ⇒
           orderRegister += order.id → OrderEntry(order)
 
-          case RecoveringSnapshot(AgentEventId(agentPath, eventId)) ⇒
+          case SnapshotRecovered(AgentEventId(agentPath, eventId)) ⇒
           agentRegister(agentPath).lastAgentEventId = eventId
           //journal.recoverActorForSnapshot(snapshot, agentRegister(agentPath).actor)
 
-          case RecoveringForUnknownKey(Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
+          case NewKeyRecovered(Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
             event match {
               case event: OrderEvent.OrderAdded ⇒
                 onOrderAdded(orderId, event)
@@ -132,7 +132,7 @@ with Stash {
             }
             lastRecoveredOrderEvents += orderId → event
 
-          case RecoveringForUnknownKey(Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId)))) ⇒
+          case NewKeyRecovered(Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId)))) ⇒
             agentRegister(agentPath).lastAgentEventId = agentEventId
         }
         journal.recoveredJournalingActors

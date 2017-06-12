@@ -24,7 +24,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderNodeChang
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{RecoveringChanged, RecoveringDeleted, RecoveringForUnknownKey, RecoveringSnapshot}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{ChangedRecovered, DeletedRecovered, NewKeyRecovered, SnapshotRecovered}
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
 import java.time.Duration
@@ -64,7 +64,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       yield jobnetSnapshots :+ eventQueueSnapshot  // Future: don't use mutable `this`
   }
 
-  override def preStart(): Unit = {
+  override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
     keyedEventBus.subscribe(self, classOf[OrderEvent])
     recover()
@@ -74,33 +74,33 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     val recovered =
       autoClosing(new JsonJournalRecoverer(MyJournalMeta, journalFile)) { journal ⇒
         for (recovered ← journal) (recovered: @unchecked) match {
-          case RecoveringSnapshot(jobnet: Jobnet) ⇒
+          case SnapshotRecovered(jobnet: Jobnet) ⇒
             pathToJobnet += jobnet.path → jobnet
 
-          case RecoveringSnapshot(order: Order[Order.State]) ⇒
+          case SnapshotRecovered(order: Order[Order.State]) ⇒
             val actor = addOrderActor(order.id)
             orderRegister += order.id → OrderEntry(order.id, actor, order.jobnetPath, order.nodeId)
             journal.recoverActorForSnapshot(order, actor)
 
-          case RecoveringSnapshot(snapshot: EventQueue.CompleteSnapshot) ⇒
+          case SnapshotRecovered(snapshot: EventQueue.CompleteSnapshot) ⇒
             eventsForMaster ! snapshot  // TODO FinishRecovery for synchronization ?
 
-          case RecoveringForUnknownKey(Stamped(_, KeyedEvent(path: JobnetPath, event: JobnetEvent.JobnetAttached))) ⇒
+          case NewKeyRecovered(Stamped(_, KeyedEvent(path: JobnetPath, event: JobnetEvent.JobnetAttached))) ⇒
             pathToJobnet += path → Jobnet.fromJobnetAttached(path, event)
 
-          case RecoveringForUnknownKey(stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent.OrderAttached))) ⇒
+          case NewKeyRecovered(stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent.OrderAttached))) ⇒
             val actor = addOrderActor(orderId)
             orderRegister += orderId → OrderEntry(orderId, actor, event.nodeKey.jobnetPath, event.nodeKey.nodeId)
             journal.recoverActorForFirstEvent(stamped, actor)
             eventsForMaster ! stamped
 
-          case RecoveringDeleted(stamped @ Stamped(_, KeyedEvent(orderId: OrderId, OrderEvent.OrderDetached))) ⇒
+          case DeletedRecovered(stamped @ Stamped(_, KeyedEvent(orderId: OrderId, OrderEvent.OrderDetached))) ⇒
             // OrderActor stops itself
             context.unwatch(orderRegister(orderId).actor)
             orderRegister -= orderId
             eventsForMaster ! stamped
 
-          case RecoveringChanged(stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent))) ⇒
+          case ChangedRecovered(stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent))) ⇒
             eventsForMaster ! stamped
         }
         journal.recoveredJournalingActors

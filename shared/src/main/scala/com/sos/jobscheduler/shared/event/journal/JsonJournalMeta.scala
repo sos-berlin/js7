@@ -3,7 +3,7 @@ package com.sos.jobscheduler.shared.event.journal
 import com.sos.jobscheduler.base.sprayjson.typed.TypedJsonFormat
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat, Stamped}
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.RecoveringSnapshot
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.SnapshotRecovered
 import spray.json.JsValue
 
 /**
@@ -20,7 +20,7 @@ extends StreamConversion {
     if (eventJsonFormat canDeserialize journalEntry.asJsObject)
       journalEntry.convertTo[Stamped[KeyedEvent[E]]]
     else
-      RecoveringSnapshot(snapshotJsonFormat.read(journalEntry))
+      SnapshotRecovered(snapshotJsonFormat.read(journalEntry))
 }
 
 object JsonJournalMeta {

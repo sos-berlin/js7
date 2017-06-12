@@ -15,7 +15,7 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 final class JsonJournalRecoverer[E <: Event](meta: JsonJournalMeta[E], file: Path)
-extends AutoCloseable with Iterator[Recovering]
+extends AutoCloseable with Iterator[Recovered]
 {
   import meta.{convertInputStream, eventJsonFormat, isDeletedEvent, snapshotJsonFormat, snapshotToKey}
 
@@ -66,7 +66,7 @@ extends AutoCloseable with Iterator[Recovering]
     o
   }
 
-  private def readNext(): Option[Recovering] =
+  private def readNext(): Option[Recovered] =
     try
       if (!jsonIterator.hasNext)
         None
@@ -81,18 +81,18 @@ extends AutoCloseable with Iterator[Recovering]
           val KeyedEvent(key, event) = stamped.value
           keyToActor.get(key) match {
             case None ⇒
-              Some(RecoveringForUnknownKey(stamped))
+              Some(NewKeyRecovered(stamped))
             case Some(a) ⇒
-              a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)
+              a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)   // TODO Possible Actor mailbox overflow
               if (isDeletedEvent(event)) {
                 keyToActor -= key
-                Some(RecoveringDeleted(stamped))
+                Some(DeletedRecovered(stamped))
               } else
-                Some(RecoveringChanged(stamped))
+                Some(ChangedRecovered(stamped))
           }
         } else {
           snapshotCount += 1
-          Some(RecoveringSnapshot(snapshotJsonFormat.read(jsValue)))
+          Some(SnapshotRecovered(snapshotJsonFormat.read(jsValue)))
         }
       }
     catch {
@@ -134,17 +134,17 @@ extends AutoCloseable with Iterator[Recovering]
 object JsonJournalRecoverer {
   private val logger = Logger(getClass)
 
-  sealed trait Recovering
-  final case class RecoveringSnapshot(snapshot: Any) extends Recovering
-  sealed trait RecoveringEvent extends Recovering {
+  sealed trait Recovered
+  final case class SnapshotRecovered(snapshot: Any) extends Recovered
+  sealed trait EventRecovered extends Recovered {
     def eventStamped: Stamped[AnyKeyedEvent]
   }
-  final case class RecoveringForUnknownKey(stampedEvent: Stamped[AnyKeyedEvent]) extends Recovering
-  sealed trait RecoveringForKnownKey extends Recovering {
+  final case class NewKeyRecovered(stampedEvent: Stamped[AnyKeyedEvent]) extends Recovered
+  sealed trait KnownKeyRecovered extends Recovered {
     def stampedEvent: Stamped[AnyKeyedEvent]
   }
-  final case class RecoveringChanged(stampedEvent: Stamped[AnyKeyedEvent]) extends RecoveringForKnownKey
-  final case class RecoveringDeleted(stampedEvent: Stamped[AnyKeyedEvent]) extends RecoveringForKnownKey
+  final case class ChangedRecovered(stampedEvent: Stamped[AnyKeyedEvent]) extends KnownKeyRecovered
+  final case class DeletedRecovered(stampedEvent: Stamped[AnyKeyedEvent]) extends KnownKeyRecovered
 
   //sealed trait RecoverResult
   //final case class AddActorForSnapshot(snapshot: Any, actorRef: ActorRef) extends RecoverResult

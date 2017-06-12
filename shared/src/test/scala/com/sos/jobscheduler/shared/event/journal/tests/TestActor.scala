@@ -46,13 +46,13 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
       autoClosing(new JsonJournalRecoverer(TestJsonJournalMeta, journalFile)) { journal ⇒
         import JsonJournalRecoverer._
         for (recovered ← journal) (recovered: @unchecked) match {
-          case RecoveringSnapshot(snapshot: TestAggregate) ⇒
+          case SnapshotRecovered(snapshot: TestAggregate) ⇒
             journal.recoverActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
 
-          case RecoveringForUnknownKey(stamped @ Stamped(_, KeyedEvent(key: String, _: TestEvent.Added))) ⇒
+          case NewKeyRecovered(stamped @ Stamped(_, KeyedEvent(key: String, _: TestEvent.Added))) ⇒
             journal.recoverActorForFirstEvent(stamped, newAggregateActor(key))
 
-          case _: RecoveringForKnownKey ⇒
+          case _: KnownKeyRecovered ⇒
         }
         journal.recoveredJournalingActors
       }
