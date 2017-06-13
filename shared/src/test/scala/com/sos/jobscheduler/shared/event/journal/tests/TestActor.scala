@@ -6,7 +6,6 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -42,22 +41,21 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
   }
 
   private def recover(): Unit = {
-    val recovered =
-      autoClosing(new JsonJournalRecoverer(TestJsonJournalMeta, journalFile)) { journal ⇒
-        import JsonJournalRecoverer._
-        for (recovered ← journal) (recovered: @unchecked) match {
-          case SnapshotRecovered(snapshot: TestAggregate) ⇒
-            journal.recoverActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
-
-          case NewKeyRecovered(stamped @ Stamped(_, KeyedEvent(key: String, _: TestEvent.Added))) ⇒
-            journal.recoverActorForFirstEvent(stamped, newAggregateActor(key))
-
-          case _: KnownKeyRecovered ⇒
-        }
-        journal.recoveredJournalingActors
+    val recoverer = new JsonJournalRecoverer(TestJsonJournalMeta, journalFile) {
+      def recoverSnapshot = {
+        case snapshot: TestAggregate ⇒
+          recoverActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
       }
-    keyToAggregate ++= recovered.keyToJournalingActor map { case (k: String, a) ⇒ k → a }
-    journalActor ! JsonJournalActor.Input.Start(recovered)
+
+      def recoverNewKey = {
+        case stamped @ Stamped(_, KeyedEvent(key: String, _: TestEvent.Added)) ⇒
+          recoverActorForNewKey(stamped, newAggregateActor(key))
+
+        case _ ⇒
+      }
+    }
+    recoverer.recoverAllAndSendTo(journalActor = journalActor)
+    keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map { case (k: String, a) ⇒ k → a }
   }
 
   def receive = {

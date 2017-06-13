@@ -11,14 +11,12 @@ import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.akkautils.Akkas
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{NewKeyRecovered, SnapshotRecovered}
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
 import scala.collection.immutable.Seq
@@ -62,20 +60,17 @@ extends KeyedEventJournalingActor[AgentEvent] {
   }
 
   private def recover(): Unit = {
-    val recovered =
-      autoClosing(new JsonJournalRecoverer(MyJournalMeta, journalFile)) { journal ⇒
-        for (recovered ← journal) {
-          (recovered: @unchecked) match {
-            case SnapshotRecovered(AgentSnapshot.Master(userId)) ⇒
-              addOrderKeeper(userId)
-
-            case NewKeyRecovered(Stamped(_, KeyedEvent(userId: UserId, AgentEvent.MasterAdded))) ⇒
-              addOrderKeeper(userId)
-          }
-        }
-        journal.recoveredJournalingActors
+    val recoverer = new JsonJournalRecoverer(MyJournalMeta, journalFile) {
+      def recoverSnapshot = {
+        case AgentSnapshot.Master(userId) ⇒
+          addOrderKeeper(userId)
       }
-    journalActor ! JsonJournalActor.Input.Start(recovered)
+      def recoverNewKey = {
+        case Stamped(_, KeyedEvent(userId: UserId, AgentEvent.MasterAdded)) ⇒
+          addOrderKeeper(userId)
+      }
+    }
+    recoverer.recoverAllAndSendTo(journalActor = journalActor)
   }
 
   def receive = journaling orElse {

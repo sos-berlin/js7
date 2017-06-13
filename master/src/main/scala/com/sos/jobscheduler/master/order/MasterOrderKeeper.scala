@@ -91,11 +91,10 @@ with Stash {
     }
   }
 
-  protected def snapshots = Future.successful((
-      (for (entry ← agentRegister.values) yield AgentEventId(entry.agentPath, entry.lastAgentEventId)) ++
+  protected def snapshots = Future.successful(
+    (for (entry ← agentRegister.values) yield AgentEventId(entry.agentPath, entry.lastAgentEventId)) ++
       //pathToJobnet.values ++
-      (for (entry ← orderRegister.values) yield entry.order)
-    ).toVector)
+      (orderRegister.values map { _ .order }))
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
@@ -104,43 +103,36 @@ with Stash {
   }
 
   private def recover() = {
-    val recovered =
-      autoClosing(new JsonJournalRecoverer(MyJournalMeta, journalFile)) { journal ⇒
-        import JsonJournalRecoverer._
-        for (recovered ← journal) (recovered: @unchecked) match {
-          case SnapshotRecovered(o: OrderScheduleEndedAt) ⇒
-            journal.recoverActorForSnapshot(o, orderScheduleGenerator)
+    val recoverer = new JsonJournalRecoverer(MyJournalMeta, journalFile) {
+      def recoverSnapshot = {
+        case o: OrderScheduleEndedAt ⇒
+          recoverActorForSnapshot(o, orderScheduleGenerator)
 
-          case NewKeyRecovered(stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
-            journal.recoverActorForFirstEvent(stamped, orderScheduleGenerator)
-
-          case ChangedRecovered(Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent))) ⇒
-
-          case SnapshotRecovered(order: Order[Order.State]) ⇒
+        case order: Order[Order.State] ⇒
           orderRegister += order.id → OrderEntry(order)
 
-          case SnapshotRecovered(AgentEventId(agentPath, eventId)) ⇒
+        case AgentEventId(agentPath, eventId) ⇒
           agentRegister(agentPath).lastAgentEventId = eventId
-          //journal.recoverActorForSnapshot(snapshot, agentRegister(agentPath).actor)
-
-          case NewKeyRecovered(Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
-            event match {
-              case event: OrderEvent.OrderAdded ⇒
-                onOrderAdded(orderId, event)
-              case _ ⇒
-                orderRegister(orderId).update(event)
-            }
-            lastRecoveredOrderEvents += orderId → event
-
-          case NewKeyRecovered(Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId)))) ⇒
-            agentRegister(agentPath).lastAgentEventId = agentEventId
-        }
-        journal.recoveredJournalingActors
       }
 
-    journalActor ! JsonJournalActor.Input.Start(recovered)
-    //journalActor ! JsonJournalActor.Input.Start(RecoveredJournalingActors(
-    //  recovered.keyToJournalingActor ++ ((pathToJobnet.keys ++ orders.keys ++ agentRegister.keys) map { _ → self })))   // Separate message ???
+      def recoverNewKey = {
+        case stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent)) ⇒
+          recoverActorForNewKey(stamped, orderScheduleGenerator)
+
+        case Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
+          event match {
+            case event: OrderEvent.OrderAdded ⇒
+              onOrderAdded(orderId, event)
+            case _ ⇒
+              orderRegister(orderId).update(event)
+          }
+          lastRecoveredOrderEvents += orderId → event
+
+        case Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId))) ⇒
+          agentRegister(agentPath).lastAgentEventId = agentEventId
+      }
+    }
+    recoverer.recoverAllAndSendTo(journalActor = journalActor)
   }
 
   override def postStop(): Unit = {

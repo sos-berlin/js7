@@ -70,7 +70,7 @@ final class RecoveryIT extends FreeSpec {
             lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
             lastEventId = lastEventIdOf(eventCollector.when[OrderEvent.OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
           }
-          assert((journalEntries(directory / "agent-111/data/state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
+          assert((readEvents(directory / "agent-111/data/state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
             Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId.Anonymous)))
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(agentConfs) { _ ⇒
@@ -124,10 +124,15 @@ final class RecoveryIT extends FreeSpec {
     }
   }
 
-  private def journalEntries(journalFile: Path): Vector[Any] =
+  private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
+    import AgentActor.MyJournalMeta.eventJsonFormat
     autoClosing(new JsonFileIterator(JsonJournalMeta.Header, in ⇒ new GZIPInputStream(in), journalFile)) {
-      _.toVector map AgentActor.MyJournalMeta.deserialize
+      _.toVector collect {
+        case o if eventJsonFormat.canDeserialize(o.asJsObject) ⇒
+          o.convertTo[Stamped[KeyedEvent[AgentEvent]]]
+      }
     }
+  }
 }
 
 private object RecoveryIT {
