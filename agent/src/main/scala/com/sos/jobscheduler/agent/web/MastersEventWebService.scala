@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.util.Timeout
+import com.sos.jobscheduler.agent.scheduler.OrderHandler
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonFormat
-import com.sos.jobscheduler.agent.scheduler.order.OrderHandler
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._

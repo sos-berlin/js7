@@ -1,11 +1,12 @@
-package com.sos.jobscheduler.agent.scheduler.order
+package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.Command
-import com.sos.jobscheduler.agent.scheduler.AgentActor
+import com.sos.jobscheduler.agent.scheduler.OrderHandler._
+import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -19,7 +20,6 @@ import java.nio.file.{Files, Path}
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import OrderHandler._
 
 /**
   * @author Joacim Zschimmer

@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-final class AgentActor(
+private[scheduler] final class AgentActor(
   jobConfigurationDirectory: Path,
   stateDirectory: Path,
   implicit private val askTimeout: Timeout,
