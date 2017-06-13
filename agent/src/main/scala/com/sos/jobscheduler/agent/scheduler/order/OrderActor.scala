@@ -105,7 +105,7 @@ extends KeyedJournalingActor[OrderEvent] {
       endOrderStep(event, node)
 
     case Terminated(`jobActor`) ⇒
-      endOrderStep(OrderStepFailed(s"JobActor ${node.jobPath.string} terminated unexpectedly"), node)
+      endOrderStep(OrderStepFailed(s"Job Actor '${node.jobPath.string}' terminated unexpectedly"), node)
 
     case command: Command ⇒
       executeOtherCommand(command)
