@@ -52,12 +52,12 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
   private val jobRegister = new ActorRegister[JobPath, JobEntry](_.actor)
-  private val pathToJobnet = mutable.Map[JobnetPath, Jobnet]()
+  private val jobnetRegister = new JobnetRegister
   private val orderRegister = new ActorRegister[OrderId, OrderEntry](_.actor)
   private val eventsForMaster = context.actorOf(Props { new EventQueue(timerService) }, "eventsForMaster")
 
   def snapshots = {
-    val jobnetSnapshots = pathToJobnet.values.toVector
+    val jobnetSnapshots = jobnetRegister.jobnets
     for (eventQueueSnapshot ← (eventsForMaster ? EventQueue.Input.GetSnapshot).mapTo[EventQueue.CompleteSnapshot])
       yield jobnetSnapshots :+ eventQueueSnapshot  // Future: don't use mutable `this`
   }
@@ -72,7 +72,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     val recoverer = new JsonJournalRecoverer(MyJournalMeta, journalFile) {
       def recoverSnapshot = {
         case jobnet: Jobnet ⇒
-          pathToJobnet += jobnet.path → jobnet
+          jobnetRegister.recover(jobnet)
 
         case order: Order[Order.State] ⇒
           val actor = addOrderActor(order.id)
@@ -85,7 +85,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
       def recoverNewKey = {
         case Stamped(_, KeyedEvent(path: JobnetPath, event: JobnetEvent.JobnetAttached)) ⇒
-          pathToJobnet += path → Jobnet.fromJobnetAttached(path, event)
+          jobnetRegister.handleEvent(KeyedEvent(event)(path))
 
         case stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent.OrderAttached)) ⇒
           val actor = addOrderActor(orderId)
@@ -119,7 +119,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     case JsonJournalActor.Output.Ready ⇒
       for (o ← orderRegister.values) o.actor ! OrderActor.Input.FinishRecovery  // Responds with OrderActor.Output.RecoveryFinished
       context.become(startable)
-      logger.info(s"${pathToJobnet.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
+      logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
       unstashAll()
 
     case _ ⇒
@@ -168,10 +168,10 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
   private def processOrderCommand(cmd: OrderCommand) = cmd match {
     case AttachJobnet(jobnet) ⇒
-      pathToJobnet.get(jobnet.path) match {
+      jobnetRegister.get(jobnet.path) match {
         case None ⇒
-          persist(KeyedEvent(JobnetAttached(jobnet.inputNodeId, jobnet.idToNode))(jobnet.path)) { _ ⇒
-            pathToJobnet += jobnet.path → jobnet
+          persist(KeyedEvent(JobnetAttached(jobnet.inputNodeId, jobnet.idToNode))(jobnet.path)) { stampedEvent ⇒
+            jobnetRegister.handleEvent(stampedEvent.value)
             sender() ! EmptyResponse
           }
         case Some(`jobnet`) ⇒
@@ -182,7 +182,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
     case AttachOrder(order) ⇒
       import order.nodeKey
-      pathToJobnet.get(nodeKey.jobnetPath) match {
+      jobnetRegister.get(nodeKey.jobnetPath) match {
         case Some(jobnet) if jobnet isDefinedAt nodeKey.nodeId ⇒
           attachOrder(order) map { case Completed ⇒ EmptyResponse } pipeTo sender()
         case Some(_) ⇒
@@ -254,7 +254,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
         handleChangedOrderState(order)
 
       case _: OrderStepEnded ⇒
-        for (jobNode ← nodeKeyToJobNodeOption(orderEntry.nodeKey);
+        for (jobNode ← jobnetRegister.nodeKeyToJobNodeOption(orderEntry.nodeKey);
              jobEntry ← jobRegister.get(jobNode.jobPath)) {
           jobEntry.queue -= orderId
         }
@@ -291,7 +291,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   private def onOrderAvailable(orderEntry: OrderEntry): Unit =
-    nodeKeyToNodeOption(orderEntry.nodeKey) match {
+    jobnetRegister.nodeKeyToNodeOption(orderEntry.nodeKey) match {
       case Some(node: Jobnet.JobNode) ⇒
         jobRegister.get(node.jobPath) match {
           case Some(jobEntry) ⇒
@@ -314,7 +314,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     jobEntry.queue.dequeue() match {
       case Some(orderId) ⇒
         val orderEntry = orderRegister(orderId)
-        nodeKeyToNodeOption(orderEntry.nodeKey) match {
+        jobnetRegister.nodeKeyToNodeOption(orderEntry.nodeKey) match {
           case Some(jobNode: Jobnet.JobNode) ⇒
             logger.trace(s"${orderEntry.orderId} is going to be processed by ${jobEntry.jobPath}")
             assert(jobNode.jobPath == jobEntry.jobPath)
@@ -346,12 +346,6 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       case _ ⇒
         super.unhandled(message)
     }
-
-  private def nodeKeyToJobNodeOption(nodeKey: NodeKey): Option[Jobnet.JobNode] =
-    nodeKeyToNodeOption(nodeKey) collect { case o: Jobnet.JobNode ⇒ o }
-
-  private def nodeKeyToNodeOption(nodeKey: NodeKey): Option[Jobnet.Node] =
-    pathToJobnet(nodeKey.jobnetPath).idToNode.get(nodeKey.nodeId)
 }
 
 object AgentOrderKeeper {

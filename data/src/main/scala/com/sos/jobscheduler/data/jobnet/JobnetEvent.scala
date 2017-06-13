@@ -15,6 +15,8 @@ object JobnetEvent {
   final case class JobnetAttached(inputNodeId: NodeId, idToNode: Map[NodeId, Jobnet.Node])
   extends JobnetEvent
 
+  //TODO case object JobnetDeleted   Wann wird ein Jobnetz vom AgentOrderKeeper gelöscht?
+
   implicit val jsonType = TypedJsonFormat[JobnetEvent](
     Subtype(jsonFormat2(JobnetAttached))
   )
