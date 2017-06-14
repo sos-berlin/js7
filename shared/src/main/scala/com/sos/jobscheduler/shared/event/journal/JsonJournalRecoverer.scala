@@ -131,7 +131,8 @@ object JsonJournalRecoverer {
   private val logger = Logger(getClass)
 
   def startJournalAndFinishRecovery(parentContext: ActorContext, journalActor: ActorRef, recoveredActors: RecoveredJournalingActors): Unit = {
-    val actors = recoveredActors.keyToJournalingActor.values.toSet
+    val actors = recoveredActors.keyToJournalingActor.values
+    val actorToKey = (recoveredActors.keyToJournalingActor map { case (k, a) ⇒ a → k })
     parentContext.actorOf(
       Props {
         new Actor {
@@ -142,6 +143,7 @@ object JsonJournalRecoverer {
               for (a ← actors) {
                 a ! KeyedJournalingActor.Input.FinishRecovery
               }
+              logger.debug(s"Awaiting RecoveryFinish of ${actors.size} actors")
               becomeWaitingForChildren(actors.size)
           }
 
@@ -152,10 +154,11 @@ object JsonJournalRecoverer {
             } else {
               context.become {
                 case KeyedJournalingActor.Output.RecoveryFinished ⇒
+                  logger.debug(s"${n - 1} actors left: Actor has RecoveryFinished: '${actorToKey(sender())}'")
                   becomeWaitingForChildren(n - 1)
 
-                case msg if actors contains sender() ⇒
-                  context.sender().forward(msg)  // For example OrderActor.Output.RecoveryFinished
+                case msg if actorToKey contains sender() ⇒
+                  context.parent.forward(msg)  // For example OrderActor.Output.RecoveryFinished
               }
             }
           }

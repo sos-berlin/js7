@@ -118,24 +118,25 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   def receive = journaling orElse {
-    case OrderActor.Output.RecoveryFinished(order) ⇒
-      handleAddedOrder(order)
-
-    case JsonJournalRecoverer.Output.JournalIsReady ⇒
-      context.become(startable)
-      logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
-      unstashAll()
-
-    case _ ⇒
-      stash()
-  }
-
-  private def startable: Receive = journaling orElse {
     case Input.Start(jobPathsAndActors) ⇒
       for ((jobPath, actorRef) ← jobPathsAndActors) {
         jobRegister.insert(jobPath, actorRef)
         context.watch(actorRef)
       }
+      context.become(awaitJournalIsReady)
+      unstashAll()
+      logger.info(s"${jobRegister.size} Jobs")
+
+    case _ ⇒
+      stash()  // We stash all early OrderActor.Output.RecoveryFinished until the jobs are defined (Input.Start)
+  }
+
+  private def awaitJournalIsReady: Receive = journaling orElse {
+    case OrderActor.Output.RecoveryFinished(order) ⇒
+      handleAddedOrder(order)
+
+    case JsonJournalRecoverer.Output.JournalIsReady ⇒
+      logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
       context.become(ready)
       unstashAll()
       logger.info("Ready")
@@ -298,7 +299,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
               jobEntry.actor ! JobRunner.Input.OrderAvailable
             }
           case None ⇒
-            logger.warn(s"Missing ${node.jobPath} for ${orderEntry.orderId}")
+            logger.error(s"Missing '${node.jobPath}' for '${orderEntry.orderId}' at '${orderEntry.nodeKey}'")
         }
       case _ ⇒
         logger.trace(s"${orderEntry.orderId} is ready to be retrieved by the Master")
@@ -316,7 +317,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
             jobEntry.waitingForOrder = false
             orderEntry.actor ! OrderActor.Input.StartStep(jobNode, jobEntry.actor)
           case _ ⇒
-            logger.warn(s"${orderEntry.orderId}: ${orderEntry.nodeKey} does not denote a JobNode")
+            logger.error(s"${orderEntry.orderId}: ${orderEntry.nodeKey} does not denote a JobNode")
         }
       case None ⇒
         jobEntry.waitingForOrder = true
@@ -328,7 +329,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       case Terminated(actorRef) if jobRegister contains actorRef ⇒
         val jobPath = jobRegister.actorToKey(actorRef)
         val msg = s"Job Actor '${jobPath.string}' terminated unexpectedly"
-        logger.warn(msg)
+        logger.error(msg)
         jobRegister.onActorTerminated(actorRef)
 
       case Terminated(actorRef) if orderRegister contains actorRef ⇒
