@@ -16,9 +16,12 @@ import spray.json.JsValue
 /**
   * @author Joacim Zschimmer
   */
-abstract class JsonJournalRecoverer[E <: Event](meta: JsonJournalMeta[E], file: Path) {
+trait JsonJournalRecoverer[E <: Event] {
 
-  import meta.{convertInputStream, eventJsonFormat, isDeletedEvent, snapshotJsonFormat, snapshotToKey}
+  protected val jsonJournalMeta: JsonJournalMeta[E]
+  protected def journalFile: Path
+
+  import jsonJournalMeta.{convertInputStream, eventJsonFormat, isDeletedEvent, snapshotJsonFormat, snapshotToKey}
 
   def recoverSnapshot: PartialFunction[Any, Unit]
   def recoverNewKey: PartialFunction[Stamped[AnyKeyedEvent], Unit]
@@ -39,9 +42,9 @@ abstract class JsonJournalRecoverer[E <: Event](meta: JsonJournalMeta[E], file: 
         }
       }
     catch {
-      case t: Exception if meta.isIncompleteException(t) ⇒
+      case t: Exception if jsonJournalMeta.isIncompleteException(t) ⇒
         logger.info(s"Journal has not been completed. " + errorClause(t))
-      case t: Exception if meta.isCorruptException(t) ⇒
+      case t: Exception if jsonJournalMeta.isCorruptException(t) ⇒
         logger.warn(s"Journal is corrupt or has not been completed. " + errorClause(t))
     }
     logSomething()
@@ -49,41 +52,49 @@ abstract class JsonJournalRecoverer[E <: Event](meta: JsonJournalMeta[E], file: 
   }
 
   private def newJsonIterator(): AutoCloseable with Iterator[JsValue] =
-    if (Files.exists(file)) {
-      logger.info(s"Recovering from journal file '$file' (${toMB(Files.size(file))})")
-      new JsonFileIterator(Header, convertInputStream, file)
+    if (Files.exists(journalFile)) {
+      logger.info(s"Recovering from journal journalFile '$journalFile' (${toMB(Files.size(journalFile))})")
+      new JsonFileIterator(Header, convertInputStream, journalFile)
     } else {
-      logger.info(s"No journal file '$file' left")
+      logger.info(s"No journal journalFile '$journalFile' left")
       JsonFileIterator.Empty
     }
 
   private def recoverJsValue(jsValue: JsValue): Unit = {
     if (eventJsonFormat canDeserialize jsValue.asJsObject) {
-      eventCount += 1
-      val stamped = jsValue.convertTo[Stamped[KeyedEvent[E]]]
-      if (stamped.eventId <= lastEventId)
-        sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(lastEventId)} >= ${EventId.toString(stamped.eventId)}")
-      lastEventId = stamped.eventId
-      val KeyedEvent(key, event) = stamped.value
-      keyToActor.get(key) match {
-        case None ⇒
-          recoverNewKey.getOrElse(stamped,
-            sys.error(s"Uncoverable event for a new key in journal file '$file': $stamped"))
-        case Some(a) ⇒
-          a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)   // TODO Possible Actor mailbox overflow
-          if (isDeletedEvent(event)) {
-            keyToActor -= key
-            onDeletedRecovered.callIfDefined(stamped)
-          } else
-            onChangedRecovered.callIfDefined(stamped)
-        }
-      } else {
-        snapshotCount += 1
-        val snapshot = snapshotJsonFormat.read(jsValue)
-        recoverSnapshot.getOrElse(snapshot,
-          sys.error(s"Uncoverable snapshot in journal file '$file': $snapshot"))
-      }
+      recoverEventJsValue(jsValue)
+    } else {
+      recoverSnapshotJsValue(jsValue)
     }
+  }
+
+  private def recoverSnapshotJsValue(jsValue: JsValue): Unit = {
+    snapshotCount += 1
+    val snapshot = snapshotJsonFormat.read(jsValue)
+    recoverSnapshot.getOrElse(snapshot,
+      sys.error(s"Uncoverable snapshot in journal journalFile '$journalFile': $snapshot"))
+  }
+
+  private def recoverEventJsValue(jsValue: JsValue): Unit = {
+    eventCount += 1
+    val stamped = jsValue.convertTo[Stamped[KeyedEvent[E]]]
+    if (stamped.eventId <= lastEventId)
+      sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stamped.eventId)} follows ${EventId.toString(lastEventId)}")
+    lastEventId = stamped.eventId
+    val KeyedEvent(key, event) = stamped.value
+    keyToActor.get(key) match {
+      case None ⇒
+        recoverNewKey.getOrElse(stamped,
+          sys.error(s"Uncoverable event for a new key in journal journalFile '$journalFile': $stamped"))
+      case Some(a) ⇒
+        a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)   // TODO Possible Actor mailbox overflow
+        if (isDeletedEvent(event)) {
+          keyToActor -= key
+          onDeletedRecovered.callIfDefined(stamped)
+        } else
+          onChangedRecovered.callIfDefined(stamped)
+      }
+  }
 
   private def errorClause(t: Throwable) =
     s"Assuming sudden termination, using $snapshotCount snapshots and $eventCount events until ${EventId.toString(lastEventId)}. ${t.toStringWithCauses}"
@@ -99,7 +110,7 @@ abstract class JsonJournalRecoverer[E <: Event](meta: JsonJournalMeta[E], file: 
 
   protected def recoverActorForSnapshot(snapshot: Any, actorRef: ActorRef): Unit = {
     val key = snapshotToKey(snapshot)
-    if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate snapshot in journal file: '$key'")
+    if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate snapshot in journal journalFile: '$key'")
     keyToActor += key → actorRef
     actorRef ! KeyedJournalingActor.Input.RecoverFromSnapshot(snapshot)
   }
@@ -124,11 +135,6 @@ abstract class JsonJournalRecoverer[E <: Event](meta: JsonJournalMeta[E], file: 
 object JsonJournalRecoverer {
   private val logger = Logger(getClass)
 
-  //sealed trait RecoverResult
-  //final case class AddActorForSnapshot(snapshot: Any, actorRef: ActorRef) extends RecoverResult
-  //final case class AddActorForFirstEvent(stampedEvent: Stamped[AnyKeyedEvent], actorRef: ActorRef) extends RecoverResult
-  //final case object Ignore extends RecoverResult
-  //
   //def recover(meta: JsonJournalMeta, file: Path)(recover: PartialFunction[Recovered, RecoverResult]): RecoveredJournalingActors =
   //  autoClosing(new JsonJournalRecoverer(meta, file)) { journal ⇒
   //    for (recovered ← journal) {

@@ -56,21 +56,22 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override def preStart(): Unit = {
     super.preStart()
-    recover()
+    new MyJournalRecoverer().recoverAllAndSendTo(journalActor = journalActor)
   }
 
-  private def recover(): Unit = {
-    val recoverer = new JsonJournalRecoverer(MyJournalMeta, journalFile) {
-      def recoverSnapshot = {
-        case AgentSnapshot.Master(userId) ⇒
-          addOrderKeeper(userId)
-      }
-      def recoverNewKey = {
-        case Stamped(_, KeyedEvent(userId: UserId, AgentEvent.MasterAdded)) ⇒
-          addOrderKeeper(userId)
-      }
+  private class MyJournalRecoverer extends JsonJournalRecoverer[AgentEvent] {
+    val jsonJournalMeta = MyJournalMeta
+    val journalFile = AgentActor.this.journalFile
+
+    def recoverSnapshot = {
+      case AgentSnapshot.Master(userId) ⇒
+        addOrderKeeper(userId)
     }
-    recoverer.recoverAllAndSendTo(journalActor = journalActor)
+
+    def recoverNewKey = {
+      case Stamped(_, KeyedEvent(userId: UserId, AgentEvent.MasterAdded)) ⇒
+        addOrderKeeper(userId)
+    }
   }
 
   def receive = journaling orElse {

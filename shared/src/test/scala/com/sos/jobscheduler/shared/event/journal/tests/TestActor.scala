@@ -37,25 +37,26 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
 
   override def preStart() = {
     super.preStart()
-    recover()
-  }
-
-  private def recover(): Unit = {
-    val recoverer = new JsonJournalRecoverer(TestJsonJournalMeta, journalFile) {
-      def recoverSnapshot = {
-        case snapshot: TestAggregate ⇒
-          recoverActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
-      }
-
-      def recoverNewKey = {
-        case stamped @ Stamped(_, KeyedEvent(key: String, _: TestEvent.Added)) ⇒
-          recoverActorForNewKey(stamped, newAggregateActor(key))
-
-        case _ ⇒
-      }
-    }
+    val recoverer = new MyJournalRecoverer()
     recoverer.recoverAllAndSendTo(journalActor = journalActor)
     keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map { case (k: String, a) ⇒ k → a }
+  }
+
+  private class MyJournalRecoverer extends JsonJournalRecoverer[TestEvent] {
+    val jsonJournalMeta = TestJsonJournalMeta
+    val journalFile = TestActor.this.journalFile
+
+    def recoverSnapshot = {
+      case snapshot: TestAggregate ⇒
+        recoverActorForSnapshot(snapshot, newAggregateActor(snapshot.key))
+    }
+
+    def recoverNewKey = {
+      case stamped @ Stamped(_, KeyedEvent(key: String, _: TestEvent.Added)) ⇒
+        recoverActorForNewKey(stamped, newAggregateActor(key))
+
+      case _ ⇒
+    }
   }
 
   def receive = {

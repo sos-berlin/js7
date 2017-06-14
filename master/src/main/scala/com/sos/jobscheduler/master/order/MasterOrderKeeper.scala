@@ -55,7 +55,9 @@ with Stash {
   intelliJuseImports(dispatcher)
 
   private val journalFile = masterConfiguration.stateDirectory / "journal"
-  private val agentRegister = new ActorRegister[AgentPath, AgentEntry](_.actor)
+  private val agentRegister = new ActorRegister[AgentPath, AgentEntry](_.actor) {
+    def insert2(kv: (AgentPath, AgentEntry)) = super.insert(kv)
+  }
   private val pathToJobnet = mutable.Map[JobnetPath, Jobnet]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private val lastRecoveredOrderEvents = mutable.Map[OrderId, OrderEvent]()
@@ -87,7 +89,7 @@ with Stash {
         val actor = context.actorOf(
           Props { new AgentDriver(agent.path, agent.uri) },
           name = encodeAsActorName("Agent-" + agentPath.withoutStartingSlash))
-        agentRegister += agentPath → AgentEntry(agentPath, actor)
+        agentRegister.insert2(agentPath → AgentEntry(agentPath, actor))
     }
   }
 
@@ -99,40 +101,40 @@ with Stash {
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
     keyedEventBus.subscribe(self, classOf[OrderEvent])
-    recover()
+    new MyJournalRecoverer().recoverAllAndSendTo(journalActor = journalActor)
   }
 
-  private def recover() = {
-    val recoverer = new JsonJournalRecoverer(MyJournalMeta, journalFile) {
-      def recoverSnapshot = {
-        case o: OrderScheduleEndedAt ⇒
-          recoverActorForSnapshot(o, orderScheduleGenerator)
+  private class MyJournalRecoverer extends JsonJournalRecoverer[Event] {
+    val jsonJournalMeta = MyJournalMeta
+    val journalFile = MasterOrderKeeper.this.journalFile
 
-        case order: Order[Order.State] ⇒
-          orderRegister += order.id → OrderEntry(order)
+    def recoverSnapshot = {
+      case o: OrderScheduleEndedAt ⇒
+        recoverActorForSnapshot(o, orderScheduleGenerator)
 
-        case AgentEventId(agentPath, eventId) ⇒
-          agentRegister(agentPath).lastAgentEventId = eventId
-      }
+      case order: Order[Order.State] ⇒
+        orderRegister += order.id → OrderEntry(order)
 
-      def recoverNewKey = {
-        case stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent)) ⇒
-          recoverActorForNewKey(stamped, orderScheduleGenerator)
-
-        case Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
-          event match {
-            case event: OrderEvent.OrderAdded ⇒
-              onOrderAdded(orderId, event)
-            case _ ⇒
-              orderRegister(orderId).update(event)
-          }
-          lastRecoveredOrderEvents += orderId → event
-
-        case Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId))) ⇒
-          agentRegister(agentPath).lastAgentEventId = agentEventId
-      }
+      case AgentEventId(agentPath, eventId) ⇒
+        agentRegister(agentPath).lastAgentEventId = eventId
     }
-    recoverer.recoverAllAndSendTo(journalActor = journalActor)
+
+    def recoverNewKey = {
+      case stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent)) ⇒
+        recoverActorForNewKey(stamped, orderScheduleGenerator)
+
+      case Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
+        event match {
+          case event: OrderEvent.OrderAdded ⇒
+            onOrderAdded(orderId, event)
+          case _ ⇒
+            orderRegister(orderId).update(event)
+        }
+        lastRecoveredOrderEvents += orderId → event
+
+      case Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId))) ⇒
+        agentRegister(agentPath).lastAgentEventId = agentEventId
+    }
   }
 
   override def postStop(): Unit = {
