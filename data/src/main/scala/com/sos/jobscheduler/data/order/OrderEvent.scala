@@ -37,17 +37,18 @@ object OrderEvent {
 
   case object OrderStepStarted extends OrderEvent
 
-  sealed trait OrderStepEnded extends OrderEvent
+  sealed trait OrderStepEnded extends OrderEvent {
+    def nextNodeId: NodeId
+  }
 
   final case class OrderStepSucceeded(
     variablesDiff: MapDiff[String, String],
-    returnValue: Boolean)
+    returnValue: Boolean,
+    nextNodeId: NodeId)
   extends OrderStepEnded
 
-  final case class OrderStepFailed(error: String)
+  final case class OrderStepFailed(error: String, nextNodeId: NodeId)
   extends OrderStepEnded
-
-  final case class OrderNodeChanged(nodeId: NodeId) extends OrderEvent
 
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
@@ -75,8 +76,7 @@ object OrderEvent {
     Subtype(jsonFormat0(() ⇒ OrderDetached)),
     Subtype(jsonFormat0(() ⇒ OrderReady)),
     Subtype(jsonFormat0(() ⇒ OrderStepStarted)),
-    Subtype(jsonFormat2(OrderStepSucceeded)),
-    Subtype(jsonFormat1(OrderStepFailed)),
-    Subtype(jsonFormat1(OrderNodeChanged)),
+    Subtype(jsonFormat3(OrderStepSucceeded)),
+    Subtype(jsonFormat2(OrderStepFailed)),
     Subtype(jsonFormat0(() ⇒ OrderFinished)))
 }

@@ -21,7 +21,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.JobnetEvent.JobnetAttached
 import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetEvent, JobnetPath}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderNodeChanged, OrderStepEnded}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderStepEnded}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
@@ -252,14 +252,12 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       case _: OrderAttached ⇒
         handleAddedOrder(order)
 
-      case _: OrderStepEnded ⇒
+      case e: OrderStepEnded ⇒
         for (jobNode ← jobnetRegister.nodeKeyToJobNodeOption(orderEntry.nodeKey);
              jobEntry ← jobRegister.get(jobNode.jobPath)) {
           jobEntry.queue -= orderId
         }
-
-      case e: OrderNodeChanged ⇒
-        orderEntry.nodeId = e.nodeId
+        orderEntry.nodeId = e.nextNodeId
         onOrderAvailable(orderEntry)
 
       case _ ⇒

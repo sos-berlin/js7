@@ -2,16 +2,17 @@ package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, Props}
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner._
+import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.{ModuleStepEnded, ModuleStepFailed}
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.akkautils.Akkas.{decodeActorName, encodeAsActorName}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.jobnet.JobPath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderStepEnded, OrderStepFailed, OrderStepSucceeded}
+import com.sos.jobscheduler.data.order.Order.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import java.nio.file.Path
 import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -47,12 +48,8 @@ extends Actor {
       }
       val sender = this.sender()
       TaskRunner.stepOne(jobConfiguration, order)
-        .onComplete { tried ⇒
-          val event = tried match {
-            case Success(o: OrderStepSucceeded) ⇒ o
-            case Failure(t) ⇒ OrderStepFailed(t.toString)  // We are exposing the exception message !!!
-          }
-          sender ! Response.OrderProcessed(order.id, event)
+        .onComplete { triedStepEnded ⇒
+          sender ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
           self ! Internal.TaskFinished
         }
 
@@ -63,6 +60,14 @@ extends Actor {
         waitingForNextOrder = true
       }
   }
+
+  private def recoverFromFailure(tried: Try[ModuleStepEnded]): ModuleStepEnded =
+    tried match {
+      case Success(o) ⇒ o
+      case Failure(t) ⇒
+        logger.error(s"TaskRunner.stepOne failed: $t", t)
+        ModuleStepFailed(Bad("TaskRunner.stepOne failed"))
+    }
 
   override def toString = s"JobRunner(${jobPath.string})"
 }
@@ -88,7 +93,7 @@ object JobRunner {
 
   object Response {
     case object Started
-    final case class OrderProcessed(orderId: OrderId, event: OrderStepEnded)
+    final case class OrderProcessed(orderId: OrderId, moduleStepEnded: ModuleStepEnded)
   }
 
   object Input {

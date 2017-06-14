@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.job.task
 import akka.util.ByteString
 import com.sos.jobscheduler.agent.data.commands.{StartNonApiTask, StartTask}
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
+import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.ModuleStepEnded
 import com.sos.jobscheduler.agent.task.{AgentTask, AgentTaskFactory}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
@@ -11,7 +12,6 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.order.OrderEvent.OrderStepSucceeded
 import com.sos.jobscheduler.minicom.remoting.ClientRemoting
 import com.sos.jobscheduler.minicom.remoting.dialog.ClientDialogConnection
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatch
@@ -30,16 +30,16 @@ final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFac
   private var _killed = false
   private val taskId = StartTask.Meta.NoCppJobSchedulerTaskId
 
-  def processOrder(order: Order[Order.InProcess.type]): Future[OrderStepSucceeded] = {
+  def processOrder(order: Order[Order.InProcess.type]): Future[ModuleStepEnded] = {
     if (killed)
       Future.failed(newKilledException())
     else
       for ((moduleInstanceRunner, startOk) ← startedModuleInstanceRunner();
-           orderStepSucceeded ←
+           moduleStepEnded ←
              if (!startOk) throw new IllegalStateException("Task has refused to start (in spooler_init or spooler_open)")
              else if (killed) throw newKilledException()
              else moduleInstanceRunner.processOrder(order))
-        yield orderStepSucceeded
+        yield moduleStepEnded
   }
 
   private def startedModuleInstanceRunner(): Future[(ModuleInstanceRunner, Boolean)] =
@@ -106,7 +106,7 @@ final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFac
 
 object TaskRunner {
   def stepOne(jobConfiguration: JobConfiguration, order: Order[Order.InProcess.type])(implicit newTask: AgentTaskFactory, ec: ExecutionContext)
-  : Future[OrderStepSucceeded]
+  : Future[ModuleStepEnded]
   = {
     val taskRunner = new TaskRunner(jobConfiguration, newTask)
     taskRunner.processOrder(order) andThen { case _ ⇒ taskRunner.terminate() }

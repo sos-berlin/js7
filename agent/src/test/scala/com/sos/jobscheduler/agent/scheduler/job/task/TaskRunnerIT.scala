@@ -5,6 +5,7 @@ import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
+import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.ModuleStepSucceeded
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerIT._
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
 import com.sos.jobscheduler.base.utils.MapDiff
@@ -15,7 +16,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath, NodeId, NodeKey}
-import com.sos.jobscheduler.data.order.OrderEvent.OrderStepSucceeded
+import com.sos.jobscheduler.data.order.Order.Good
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -50,9 +51,10 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
         Map("a" → "A"))
       implicit val x = injector.instance[StandardAgentTaskFactory]
       val ended = TaskRunner.stepOne(jobConfiguration, order) await 30.s
-      assert(ended == OrderStepSucceeded(
+      assert(ended == ModuleStepSucceeded(
         variablesDiff = MapDiff.addedOrUpdated(Map("result" → "TEST-RESULT-VALUE1")),
-        returnValue = true))
+        Good(returnValue = true))
+      )
     }
   }
 }

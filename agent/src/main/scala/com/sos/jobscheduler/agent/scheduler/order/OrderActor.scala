@@ -2,12 +2,14 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, Status, Terminated}
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner
+import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.{ModuleStepFailed, ModuleStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.jobnet.Jobnet
+import com.sos.jobscheduler.data.jobnet.Jobnet.JobNode
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
@@ -39,8 +41,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case Order.InProcess ⇒
         context.become(waiting)
-        persist(OrderStepFailed(s"Agent aborted while order was InProcess"))(update)
-        persist(OrderNodeChanged(order.nodeId))(update)  // Nothing changes, but triggers AgentOrderKeeper. Vielleicht OrderNodeChange mit OrderStepEnded verschmelzen ???
+        persist(OrderStepFailed(s"Agent aborted while order was InProcess", nextNodeId = order.nodeId))(update)
 
       case Order.StartNow | _: Order.Scheduled | Order.Ready | Order.Detached | Order.Finished ⇒
         context.become(waiting)
@@ -104,11 +105,18 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   private def processing(node: Jobnet.JobNode, jobActor: ActorRef): Receive = journaling orElse {
-    case JobRunner.Response.OrderProcessed(`orderId`, event: OrderStepEnded) if node != null ⇒
+    case JobRunner.Response.OrderProcessed(`orderId`, moduleStepEnded) if node != null ⇒
+      val event = moduleStepEnded match {
+        case ModuleStepSucceeded(variablesDiff, good) ⇒
+          OrderStepSucceeded(variablesDiff, good.returnValue, nextNodeId(node, good))
+        case ModuleStepFailed(bad) ⇒
+          OrderStepFailed(bad.error, nextNodeId(node, bad))
+      }
       endOrderStep(event, node)
 
     case Terminated(`jobActor`) ⇒
-      endOrderStep(OrderStepFailed(s"Job Actor '${node.jobPath.string}' terminated unexpectedly"), node)
+      val bad = Order.Bad(s"Job Actor '${node.jobPath.string}' terminated unexpectedly")
+      endOrderStep(OrderStepFailed(bad.error, nextNodeId = nextNodeId(node, bad)), node)
 
     case command: Command ⇒
       executeOtherCommand(command)
@@ -117,11 +125,6 @@ extends KeyedJournalingActor[OrderEvent] {
   private def endOrderStep(event: OrderStepEnded, node: Jobnet.JobNode): Unit = {
     context.become(waiting)
     persist(event)(update)
-    val nextNodeId = event match {
-      case event: OrderStepSucceeded ⇒ if (event.returnValue) node.onSuccess else node.onFailure
-      case _: OrderStepFailed ⇒ node.onFailure
-    }
-    persist(OrderNodeChanged(nextNodeId))(update)
   }
 
   private def update(event: OrderEvent) = {
@@ -179,4 +182,10 @@ object OrderActor {
     final case class RecoveryFinished(order: Order[Order.State])
     final case class OrderChanged(order: Order[Order.State], event: OrderEvent)
   }
+
+  private def nextNodeId(node: JobNode, outcome: Order.Outcome) =
+    outcome match {
+      case Order.Good(returnValue) ⇒ if (returnValue) node.onSuccess else node.onFailure
+      case Order.Bad(_) ⇒ node.onFailure
+    }
 }

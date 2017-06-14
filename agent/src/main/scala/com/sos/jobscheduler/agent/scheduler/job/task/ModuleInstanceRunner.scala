@@ -7,7 +7,6 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.data.job.{ReturnCode, TaskId}
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.order.OrderEvent.OrderStepSucceeded
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatch
 import com.sos.jobscheduler.taskserver.task.TaskArguments
 import scala.concurrent.{ExecutionContext, Future}
@@ -43,13 +42,18 @@ final class ModuleInstanceRunner(jobConfiguration: JobConfiguration, taskId: Tas
        Vector("spooler_log", "spooler_task")))
      .mapTo[Boolean]
 
-  def processOrder(order: Order[Order.InProcess.type]): Future[OrderStepSucceeded] = {
+  def processOrder(order: Order[Order.InProcess.type]): Future[ModuleStepEnded] = {
     val orderIDispatch = new OrderIDispatch(order.variables)
     spoolerTask.order = orderIDispatch
-    for (stepResult ← moduleInstance.asyncCall("step", Nil)) yield
-      OrderStepSucceeded(
-        MapDiff.diff(order.variables, orderIDispatch.variables),
-        StepResult.fromXml(stepResult.asInstanceOf[String]).result)
+    moduleInstance.asyncCall("step", Nil)
+      .map { stepResult ⇒
+        ModuleStepSucceeded(
+          MapDiff.diff(order.variables, orderIDispatch.variables),
+          Order.Good(StepResult.fromXml(stepResult.asInstanceOf[String]).result))
+      }
+      .recover {
+        case t: Throwable ⇒ ModuleStepFailed(Order.Bad(t.toString))  // We are exposing the exception message !!!
+      }
   }
 
   def terminate(): Future[Completed] = {
@@ -74,4 +78,16 @@ object ModuleInstanceRunner {
         }
       }
   }
+
+  sealed trait ModuleStepEnded {
+    val outcome: Order.Outcome
+  }
+
+  final case class ModuleStepSucceeded(
+    variablesDiff: MapDiff[String, String],
+    outcome: Order.Good)
+  extends ModuleStepEnded
+
+  final case class ModuleStepFailed(outcome: Order.Bad)
+  extends ModuleStepEnded
 }

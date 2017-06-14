@@ -47,18 +47,16 @@ final case class Order[+S <: Order.State](
       case OrderStepStarted ⇒ copy(
         state = InProcess)
 
-      case OrderStepSucceeded(diff, returnValue) ⇒ copy(
+      case OrderStepSucceeded(diff, returnValue, nextNodeId) ⇒ copy(
         state = Waiting,
         variables = diff.applyTo(variables),
-        outcome = Good(returnValue))
+        outcome = Good(returnValue),
+        nodeKey = NodeKey(jobnetPath,  nextNodeId))
 
-      case OrderStepFailed(error) ⇒ copy(
+      case OrderStepFailed(error, nextNodeId) ⇒ copy(
         state = Waiting,
-        outcome = Bad(error))
-
-      case OrderNodeChanged(nodeId) ⇒ copy(
-        state = Waiting,
-        nodeKey = nodeKey.copy(nodeId = nodeId))
+        outcome = Bad(error),
+        nodeKey = NodeKey(jobnetPath,  nextNodeId))
 
       case OrderReady ⇒ copy(
         state = Ready)

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderNodeChanged}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import java.time.Instant
@@ -25,10 +25,6 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
 
   def handleOrderDetached(keyedEvent: KeyedEvent[OrderDetached.type]): Unit = {
     this -= keyedEvent.key
-  }
-
-  def handleOrderNodeChanged(keyedEvent: KeyedEvent[OrderNodeChanged]): Unit = {
-    apply(keyedEvent.key).nodeId = keyedEvent.event.nodeId
   }
 
   def insert(order: Order[Order.State], actor: ActorRef): Unit = {
