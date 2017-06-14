@@ -93,16 +93,21 @@ with Stash {
     }
   }
 
-  protected def snapshots = Future.successful(
-    (for (entry ← agentRegister.values) yield AgentEventId(entry.agentPath, entry.lastAgentEventId)) ++
-      //pathToJobnet.values ++
-      (orderRegister.values map { _ .order }))
-
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
     keyedEventBus.subscribe(self, classOf[OrderEvent])
     new MyJournalRecoverer().recoverAllAndSendTo(journalActor = journalActor)
   }
+
+  override def postStop() = {
+    keyedEventBus.unsubscribe(self)
+    super.postStop()
+  }
+
+  protected def snapshots = Future.successful(
+    (for (entry ← agentRegister.values) yield AgentEventId(entry.agentPath, entry.lastAgentEventId)) ++
+      //pathToJobnet.values ++
+      (orderRegister.values map { _ .order }))
 
   private class MyJournalRecoverer extends JsonJournalRecoverer[Event] {
     val jsonJournalMeta = MyJournalMeta
@@ -137,14 +142,8 @@ with Stash {
     }
   }
 
-  override def postStop(): Unit = {
-    keyedEventBus.unsubscribe(self)
-    super.postStop()
-  }
-
   def receive = journaling orElse {
-    case JsonJournalActor.Output.Ready ⇒
-      //for (o ← orderRegister.values) logger.info(s"Recovered: ${o.order}")
+    case JsonJournalRecoverer.Output.JournalIsReady ⇒
       for (agentEntry ← agentRegister.values) {
         val orderIds = orderRegister.values collect {
           case orderEntry if orderEntry.order.agentPathOption contains agentEntry.agentPath ⇒

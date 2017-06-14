@@ -104,6 +104,5 @@ object JournalingActor {
 
   object Output {
     final case class GotSnapshot(snapshots: Iterable[Any])
-    //private[journal] final case object RecoveryFinished
   }
 }

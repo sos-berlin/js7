@@ -31,6 +31,25 @@ extends KeyedJournalingActor[OrderEvent] {
 
   protected def recoverFromEvent(event: OrderEvent) = updateOnly(event)
 
+  override protected def finishRecovery() = {
+    assert(order != null, "No Order")
+    order.state match {
+      case Order.Waiting ⇒
+        context.become(waiting)
+
+      case Order.InProcess ⇒
+        context.become(waiting)
+        persist(OrderStepFailed(s"Agent aborted while order was InProcess"))(update)
+        persist(OrderNodeChanged(order.nodeId))(update)  // Nothing changes, but triggers AgentOrderKeeper. Vielleicht OrderNodeChange mit OrderStepEnded verschmelzen ???
+
+      case Order.StartNow | _: Order.Scheduled | Order.Ready | Order.Detached | Order.Finished ⇒
+        context.become(waiting)
+
+      case _ ⇒
+    }
+    sender() ! Output.RecoveryFinished(order)
+  }
+
   def receive = journaling orElse {
     case command: Command ⇒ command match {
       case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, variables, outcome, _: Option[AgentPath])) ⇒
@@ -45,22 +64,6 @@ extends KeyedJournalingActor[OrderEvent] {
     }
 
     case Input.FinishRecovery ⇒
-      assert(order != null, "No Order")
-      context.parent ! Output.RecoveryFinished(order)
-      order.state match {
-        case Order.Waiting ⇒
-          context.become(waiting)
-
-        case Order.InProcess ⇒
-          context.become(waiting)
-          persist(OrderStepFailed(s"Agent aborted while order was InProcess"))(update)
-          persist(OrderNodeChanged(order.nodeId))(update)  // Nothing changes, but triggers AgentOrderKeeper. Vielleicht OrderNodeChange mit OrderStepEnded verschmelzen ???
-
-        case Order.StartNow | _: Order.Scheduled | Order.Ready | Order.Detached | Order.Finished ⇒
-          context.become(waiting)
-
-        case _ ⇒
-      }
   }
 
   private val waiting: Receive = journaling orElse {

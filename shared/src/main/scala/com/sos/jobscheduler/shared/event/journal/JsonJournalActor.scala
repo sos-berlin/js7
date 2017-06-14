@@ -71,7 +71,6 @@ extends Actor with Stash {
       val sender = this.sender()
       becomeTakingSnapshotThen {
         context.become(ready)
-        //for (a ← keyToJournalingActor.values) a ! KeyedJournalingActor.Input.FinishRecovery
         sender ! Output.Ready
         logger.info(s"Ready, writing ${if (jsonWriter.syncOnFlush) "(with sync)" else "(without sync)"} journal file '${jsonWriter.file}'")
       }
@@ -203,7 +202,7 @@ extends Actor with Stash {
 object JsonJournalActor {
 
   object Input {
-    final case class Start(recoveredJournalingActors: RecoveredJournalingActors)
+    private[journal] final case class Start(recoveredJournalingActors: RecoveredJournalingActors)
     final case class RegisterMe(key: Option[Any])
     final case class Store(eventStampeds: Seq[Option[AnyKeyedEvent]], journalingActor: ActorRef)
     final case object TakeSnapshot
@@ -211,7 +210,7 @@ object JsonJournalActor {
 
   sealed trait Output
   object Output {
-    final case object Ready
+    private[journal] case object Ready
     final case class Stored(stamped: Seq[Option[Stamped[AnyKeyedEvent]]]) extends Output
     final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output

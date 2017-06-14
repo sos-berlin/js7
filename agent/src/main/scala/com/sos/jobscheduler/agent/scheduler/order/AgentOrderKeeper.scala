@@ -118,8 +118,10 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   def receive = journaling orElse {
-    case JsonJournalActor.Output.Ready ⇒
-      for (o ← orderRegister.values) o.actor ! OrderActor.Input.FinishRecovery  // Responds with OrderActor.Output.RecoveryFinished
+    case OrderActor.Output.RecoveryFinished(order) ⇒
+      handleAddedOrder(order)
+
+    case JsonJournalRecoverer.Output.JournalIsReady ⇒
       context.become(startable)
       logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
       unstashAll()
@@ -143,10 +145,6 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   private def ready: Receive = journaling orElse {
-    case OrderActor.Output.RecoveryFinished(order) ⇒  // TODO Ist es gut, schon bereit zu sein, während noch die Aufträge ihre Wiederherstellung bestätigen? Was wenn währenddessen ein Kommando kommt?
-      //logger.info(s"Recovered: $order")
-      handleAddedOrder(order)
-
     case cmd: OrderCommand ⇒
       processOrderCommand(cmd)
 

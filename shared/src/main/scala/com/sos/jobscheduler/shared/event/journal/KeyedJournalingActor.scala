@@ -15,7 +15,7 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
   protected def snapshot: Option[Any]
   protected def recoverFromSnapshot(snapshot: Any): Unit
   protected def recoverFromEvent(event: E): Unit
-  protected def finishRecovery() = ()
+  protected def finishRecovery() = {}
 
   protected final def snapshots = Future.successful(snapshot.toList)
 
@@ -42,9 +42,11 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
       registered = true
       recoverFromEvent(event.asInstanceOf[E])
 
-  //case Input.FinishRecovery ⇒
-  //  finishRecovery()
-  //  sender() ! JournalingActor.Output.RecoveryFinished
+    case Input.FinishRecovery ⇒
+      finishRecovery()
+      val snapshot = this.snapshot
+      if (snapshot == null) sys.error(s"Actor (${getClass.getSimpleName}) for '$key': snapshot is null")
+      sender() ! KeyedJournalingActor.Output.RecoveryFinished
 
     case _ ⇒ super.unhandled(msg)
   }
@@ -54,6 +56,10 @@ object KeyedJournalingActor {
   private[journal] object Input {
     final case class RecoverFromSnapshot(snapshot: Any)
     final case class RecoverFromEvent(eventStamped: Stamped[AnyKeyedEvent])
-    //final case object FinishRecovery
+    final case object FinishRecovery
+  }
+
+  object Output {
+    case object RecoveryFinished
   }
 }

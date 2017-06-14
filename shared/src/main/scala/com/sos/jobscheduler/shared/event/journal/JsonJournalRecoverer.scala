@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import akka.actor.ActorRef
+import akka.actor.{Actor, ActorContext, ActorRef, Props}
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable, RichUnitPartialFunction}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.{DuplicateKeyException, Logger}
@@ -34,7 +34,7 @@ trait JsonJournalRecoverer[E <: Event] {
   private var snapshotCount = 0
   private var eventCount = 0
 
-  final def recoverAllAndSendTo(journalActor: ActorRef)(implicit sender: ActorRef): Unit = {
+  final def recoverAllAndSendTo(journalActor: ActorRef)(implicit context: ActorContext, sender: ActorRef): Unit = {
     try
       autoClosing(newJsonIterator()) { jsonIterator ⇒
         while (jsonIterator.hasNext) {
@@ -48,7 +48,7 @@ trait JsonJournalRecoverer[E <: Event] {
         logger.warn(s"Journal is corrupt or has not been completed. " + errorClause(t))
     }
     logSomething()
-    journalActor ! JsonJournalActor.Input.Start(recoveredJournalingActors)
+    JsonJournalRecoverer.startJournalAndFinishRecovery(context, journalActor = journalActor, recoveredJournalingActors)
   }
 
   private def newJsonIterator(): AutoCloseable with Iterator[JsValue] =
@@ -123,11 +123,6 @@ trait JsonJournalRecoverer[E <: Event] {
     actorRef ! KeyedJournalingActor.Input.RecoverFromEvent(stampedEvent)
   }
 
-  //def startJournalAndFinishRecovery(parent: Actor, journalActor: ActorRef): Unit = {
-  //  close()
-  //  JsonJournalRecoverer.startJournalAndFinishRecovery(parent = parent, journalActor = journalActor, recoveredJournalingActors)
-  //}
-
   final def recoveredJournalingActors: RecoveredJournalingActors =
     RecoveredJournalingActors(keyToActor.toMap)
 }
@@ -135,50 +130,39 @@ trait JsonJournalRecoverer[E <: Event] {
 object JsonJournalRecoverer {
   private val logger = Logger(getClass)
 
-  //def recover(meta: JsonJournalMeta, file: Path)(recover: PartialFunction[Recovered, RecoverResult]): RecoveredJournalingActors =
-  //  autoClosing(new JsonJournalRecoverer(meta, file)) { journal ⇒
-  //    for (recovered ← journal) {
-  //      recover(recovered) match {
-  //        case AddActorForSnapshot(stamped, actorRef) ⇒
-  //          journal.recoverActorForSnapshot(stamped, actorRef)
-  //        case AddActorForFirstEvent(stampedEvent, actorRef) ⇒
-  //          journal.recoverActorForNewKey(stampedEvent, actorRef)
-  //        case Ignore ⇒
-  //      }
-  //    }
-  //    journal.recoveredJournalingActors
-  //  }
+  def startJournalAndFinishRecovery(parentContext: ActorContext, journalActor: ActorRef, recoveredActors: RecoveredJournalingActors): Unit = {
+    val actors = recoveredActors.keyToJournalingActor.values.toSet
+    parentContext.actorOf(
+      Props {
+        new Actor {
+          journalActor ! JsonJournalActor.Input.Start(recoveredActors)
 
-  //def startJournalAndFinishRecovery(parent: Actor, journalActor: ActorRef, recoveredActors: RecoveredJournalingActors): Unit = {
-  //  val actors = recoveredActors.keyToJournalingActor.values
-  //  parent.context.actorOf(
-  //    Props {
-  //      new Actor {
-  //        journalActor ! JsonJournalActor.Input.Start(recoveredActors)
-  //
-  //        def receive = {
-  //          case JsonJournalActor.Output.Ready ⇒
-  //            for (a ← actors) {
-  //              a ! JournalingActor.Input.FinishRecovery
-  //            }
-  //            becomeWaitingForChildren(actors.size)
-  //        }
-  //
-  //        private def becomeWaitingForChildren(n: Int): Unit = {
-  //          if (n == 0) {
-  //            context.parent ! Output.JournalIsReady(recoveredActors)
-  //            context.stop(self)
-  //          } else {
-  //            context.become {
-  //              case JournalingActor.Output.RecoveryFinished ⇒
-  //                becomeWaitingForChildren(n - 1)
-  //            }
-  //          }
-  //        }
-  //      }
-  //    },
-  //    name = "JsonJournalRecoverer")
-  //}
+          def receive = {
+            case JsonJournalActor.Output.Ready ⇒
+              for (a ← actors) {
+                a ! KeyedJournalingActor.Input.FinishRecovery
+              }
+              becomeWaitingForChildren(actors.size)
+          }
+
+          private def becomeWaitingForChildren(n: Int): Unit = {
+            if (n == 0) {
+              context.parent ! Output.JournalIsReady
+              context.stop(self)
+            } else {
+              context.become {
+                case KeyedJournalingActor.Output.RecoveryFinished ⇒
+                  becomeWaitingForChildren(n - 1)
+
+                case msg if actors contains sender() ⇒
+                  context.sender().forward(msg)  // For example OrderActor.Output.RecoveryFinished
+              }
+            }
+          }
+        }
+      },
+      name = "JsonJournalRecoverer")
+  }
 
   private[journal] def toMB(size: Long): String = size match {
     case _ if size < 1000 * 1000 ⇒ "<1MB"
@@ -187,7 +171,7 @@ object JsonJournalRecoverer {
 
   final case class RecoveredJournalingActors(keyToJournalingActor: Map[Any, ActorRef])
 
-  //object Output {
-  //  final case class JournalIsReady(recoveredJournalingActors: RecoveredJournalingActors)
-  //}
+  object Output {
+    case object JournalIsReady
+  }
 }

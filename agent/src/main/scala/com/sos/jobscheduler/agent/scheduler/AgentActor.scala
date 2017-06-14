@@ -75,7 +75,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
   }
 
   def receive = journaling orElse {
-    case JsonJournalActor.Output.Ready ⇒
+    case JsonJournalRecoverer.Output.JournalIsReady ⇒
       context.become(startable)
       logger.info(s"${masterToOrderKeeper.size} recovered master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
       unstashAll()

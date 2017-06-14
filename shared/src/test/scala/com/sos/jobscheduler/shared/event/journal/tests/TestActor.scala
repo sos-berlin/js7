@@ -60,7 +60,7 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
   }
 
   def receive = {
-    case JsonJournalActor.Output.Ready ⇒
+    case JsonJournalRecoverer.Output.JournalIsReady ⇒
       context.become(ready)
       unstashAll()
       logger.info("Ready")
