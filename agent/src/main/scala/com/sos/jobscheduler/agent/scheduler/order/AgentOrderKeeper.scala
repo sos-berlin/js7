@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
-import akka.pattern.{ask, pipe}
+import akka.actor.{ActorRef, Props, Stash, Terminated}
+import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand}
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, Response}
+import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, Command, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner
@@ -15,6 +15,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -146,8 +147,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   private def ready: Receive = journaling orElse {
-    case cmd: OrderCommand ⇒
-      processOrderCommand(cmd)
+    case Input.ExternalCommand(cmd: OrderCommand, response) ⇒
+      response.completeWith(processOrderCommand(cmd))
 
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
       handleOrderEvent(order, event)
@@ -166,68 +167,68 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       tryStartStep(jobRegister(sender()))
   }
 
-  private def processOrderCommand(cmd: OrderCommand) = cmd match {
+  private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
     case AttachJobnet(jobnet) ⇒
       jobnetRegister.get(jobnet.path) match {
         case None ⇒
-          persist(KeyedEvent(JobnetAttached(jobnet.inputNodeId, jobnet.idToNode))(jobnet.path)) { stampedEvent ⇒
-            jobnetRegister.handleEvent(stampedEvent.value)
-            sender() ! EmptyResponse
+          promiseFuture[Response] { promise ⇒
+            persist(KeyedEvent(JobnetAttached(jobnet.inputNodeId, jobnet.idToNode))(jobnet.path)) { stampedEvent ⇒
+              jobnetRegister.handleEvent(stampedEvent.value)
+              promise.success(EmptyResponse)
+            }
           }
         case Some(`jobnet`) ⇒
-          sender() ! EmptyResponse
+          Future.successful(EmptyResponse)
         case Some(_) ⇒
-          sender() ! Status.Failure(new IllegalStateException(s"Changed ${jobnet.path}"))
+          Future.failed(new IllegalStateException(s"Changed ${jobnet.path}"))
       }
 
     case AttachOrder(order) ⇒
       import order.nodeKey
       jobnetRegister.get(nodeKey.jobnetPath) match {
         case Some(jobnet) if jobnet isDefinedAt nodeKey.nodeId ⇒
-          attachOrder(order) map { case Completed ⇒ EmptyResponse } pipeTo sender()
+          attachOrder(order) map { case Completed ⇒ EmptyResponse }
         case Some(_) ⇒
-          sender() ! Status.Failure(new IllegalArgumentException(s"Unknown NodeId ${nodeKey.nodeId} in ${nodeKey.jobnetPath}"))
+          Future.failed(new IllegalArgumentException(s"Unknown NodeId ${nodeKey.nodeId} in ${nodeKey.jobnetPath}"))
         case None ⇒
-          sender() ! Status.Failure(new IllegalArgumentException(s"Unknown ${nodeKey.jobnetPath}"))
+          Future.failed(new IllegalArgumentException(s"Unknown ${nodeKey.jobnetPath}"))
       }
 
     case DetachOrder(orderId) ⇒
       executeCommandForOrderId(orderId) { orderEntry ⇒
         context.unwatch(orderEntry.actor)
-        (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ EmptyResponse } pipeTo sender()
+        (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ EmptyResponse }
       }
 
     case GetOrder(orderId) ⇒
       executeCommandForOrderId(orderId) { orderEntry ⇒
         (orderEntry.actor ? OrderActor.Command.GetSnapshot) map {
           case order: Order[Order.State] ⇒ GetOrder.Response(order)
-        } pipeTo sender()
+        }
       }
 
     case GetOrderIds ⇒
-      sender() ! GetOrderIds.Response(orderRegister.keys)
+      Future.successful(GetOrderIds.Response(orderRegister.keys))
 
     case GetOrders ⇒
       // The order snapshots are fetched asynchronously.
       // Under a running Agent, the result may be an inconsistent snapshot (dirty read).
-      val whenResponded: Future[GetOrders.Response] =
-        Future.sequence(
-          for (orderEntry ← orderRegister.values) yield
-            (orderEntry.actor ? OrderActor.Command.GetSnapshot).mapTo[Order[Order.State]] map Some.apply recover {
-              case NonFatal(t) ⇒  // Should we ignore an inconsistent snapshot with some died actors ???
-                logger.warn(s"GetSnapshot ${orderEntry.orderId} throwed $t")
-                None
-            }
-        ) map { _.flatten } map GetOrders.Response
-      whenResponded pipeTo sender()
+      Future.sequence(
+        for (orderEntry ← orderRegister.values) yield
+          (orderEntry.actor ? OrderActor.Command.GetSnapshot).mapTo[Order[Order.State]] map Some.apply recover {
+            case NonFatal(t) ⇒  // Should we ignore an inconsistent snapshot with some died actors ???
+              logger.warn(s"GetSnapshot ${orderEntry.orderId} throwed $t")
+              None
+          }
+      ) map { _.flatten } map GetOrders.Response
   }
 
-  private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry ⇒ Unit) =
+  private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry ⇒ Future[Response]): Future[Response] =
     orderRegister.get(orderId) match {
       case Some(orderEntry) ⇒
         body(orderEntry)
       case None ⇒
-        sender() ! Status.Failure(new IllegalArgumentException(s"Unknown $orderId"))
+        Future.failed(new IllegalArgumentException(s"Unknown $orderId"))
     }
 
   private def attachOrder(order: Order[Order.Idle]): Future[Completed] = {
@@ -336,6 +337,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       case _ ⇒
         super.unhandled(message)
     }
+
+  override def toString = "AgentOrderKeeper"
 }
 
 object AgentOrderKeeper {
@@ -360,6 +363,7 @@ object AgentOrderKeeper {
   object Input {
     final case class Start(jobs: Seq[(JobPath, ActorRef)]) extends Input
     final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[EventQueue.MyEventSeq]) extends Input
+    final case class ExternalCommand(command: Command, response: Promise[Response])
   }
 
   private object Internal {

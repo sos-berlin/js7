@@ -98,6 +98,8 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
     case OrderScheduleEvent.GeneratedUntil(until) ⇒
       generatedUntil = until
   }
+
+  override def toString = "OrderScheduleGenerator"
 }
 
 object OrderScheduleGenerator {

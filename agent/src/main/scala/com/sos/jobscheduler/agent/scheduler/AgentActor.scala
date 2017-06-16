@@ -2,8 +2,9 @@ package com.sos.jobscheduler.agent.scheduler
 
 import akka.actor.{ActorRef, OneForOneStrategy, Props, Status, SupervisorStrategy}
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, Response}
 import com.sos.jobscheduler.agent.data.commands.{Command, OrderCommand, RegisterAsMaster}
+import com.sos.jobscheduler.agent.scheduler.AgentActor.Input.ExternalCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobRunner}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
@@ -21,7 +22,7 @@ import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalAc
 import java.nio.file.Path
 import scala.collection.immutable.Seq
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
   * @author Joacim Zschimmer
@@ -69,8 +70,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
     }
 
     def recoverNewKey = {
-      case Stamped(_, KeyedEvent(userId: UserId, AgentEvent.MasterAdded)) ⇒
-        addOrderKeeper(userId)
+      case Stamped(_, e @ KeyedEvent(_: UserId, AgentEvent.MasterAdded)) ⇒
+        val keyedEvent = e.asInstanceOf[KeyedEvent[AgentEvent.MasterAdded.type]]
+        update(keyedEvent)
     }
   }
 
@@ -87,19 +89,19 @@ extends KeyedEventJournalingActor[AgentEvent] {
   private def startable: Receive = journaling orElse {
     case Input.Start ⇒
       context.become(startingJobKeeper(sender()))
-      jobKeeper ! JobKeeper.Start
+      jobKeeper ! JobKeeper.Input.Start
   }
 
   private def startingJobKeeper(commander: ActorRef): Receive = journaling orElse {
-    case JobKeeper.Started(jobs) ⇒
+    case JobKeeper.Output.Ready(jobs) ⇒
       for (a ← masterToOrderKeeper.values) a ! AgentOrderKeeper.Input.Start(jobs)  // Start recovered actors
       context.become(started(jobs))
       commander ! Output.Started
   }
 
   private def started(jobs: Seq[(JobPath, ActorRef)]): Receive = journaling orElse {
-    case Input.CommandFromMaster(userId: UserId, command: Command) ⇒
-      executeCommand(command, userId, jobs)
+    case externalCommand: Input.ExternalCommand ⇒
+      executeCommand(externalCommand, jobs)
 
     case Input.RequestEvents(userId, input) ⇒
       masterToOrderKeeper.get(userId) match {
@@ -108,30 +110,34 @@ extends KeyedEventJournalingActor[AgentEvent] {
       }
 
     case msg: JobRunner.Output.ReadyForOrder.type ⇒
-      for (actor ← masterToOrderKeeper.values) actor.forward(msg)   // Every MasterJunction ???
+      for (actor ← masterToOrderKeeper.values) {
+        actor.forward(msg)
+      }
   }
 
-  private def executeCommand(command: Command, userId: UserId, jobs: Seq[(JobPath, ActorRef)]): Unit =
+  private def executeCommand(externalCommand: ExternalCommand, jobs: Seq[(JobPath, ActorRef)]): Unit = {
+    import externalCommand.{command, response, userId}
     command match {
       case RegisterAsMaster ⇒
         //??? require(sessionToken.isDefined)
         if (masterToOrderKeeper contains userId) {
-          sender() ! EmptyResponse
+          response.success(EmptyResponse)
         } else {
           persist(KeyedEvent(AgentEvent.MasterAdded)(userId)) { case Stamped(_, keyedEvent) ⇒
             update(keyedEvent)
             masterToOrderKeeper(userId) ! AgentOrderKeeper.Input.Start(jobs)
-            sender() ! EmptyResponse
+            response.success(EmptyResponse)
           }
         }
 
-      case cmd: OrderCommand ⇒
+      case command: OrderCommand ⇒
         masterToOrderKeeper.get(userId) match {
           case Some(actor) ⇒
-            actor.forward(cmd)
+            actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
           case None ⇒
-            sender() ! Status.Failure(new NoSuchElementException(s"Unknown Master for User '$userId'"))
+            response.failure(new NoSuchElementException(s"Unknown Master for User '$userId'"))
         }
+    }
   }
 
   private def update(keyedEvent: KeyedEvent[AgentEvent]): Unit = {
@@ -156,6 +162,8 @@ extends KeyedEventJournalingActor[AgentEvent] {
     masterToOrderKeeper += userId → actor
     actor
   }
+
+  override def toString = "AgentActor"
 }
 
 object AgentActor {
@@ -164,7 +172,7 @@ object AgentActor {
   sealed trait Input
   object Input {
     final case object Start extends Output
-    final case class CommandFromMaster(usedId: UserId, command: Command)
+    final case class ExternalCommand(userId: UserId, command: Command, response: Promise[Response])
     final case class RequestEvents(usedId: UserId, input: AgentOrderKeeper.Input.RequestEvents)
   }
 

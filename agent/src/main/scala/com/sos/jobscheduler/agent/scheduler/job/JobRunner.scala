@@ -12,6 +12,7 @@ import com.sos.jobscheduler.data.order.Order.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import java.nio.file.Path
 import scala.concurrent.ExecutionContext
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -20,18 +21,24 @@ import scala.util.{Failure, Success, Try}
 final class JobRunner private(jobPath: JobPath)(implicit newTask: AgentTaskFactory, ec: ExecutionContext)
 extends Actor {
 
-  private val logger = Logger.withPrefix[JobRunner](jobPath.string)
+  private val logger = Logger.withPrefix[JobRunner](jobPath.toString)
   private var taskCount = 0
   private var waitingForNextOrder = false
 
   def receive = {
     case Command.ReadConfigurationFile(path: Path) ⇒
-      val conf = JobConfiguration.parseXml(jobPath, path)  // TODO May crash
-      context.become(started(conf))
-      sender() ! Response.Started
+      val conf =
+        try JobConfiguration.parseXml(jobPath, path)
+        catch { case NonFatal(t) ⇒
+          logger.error(t.toString, t)
+          throw t
+        }
+      logger.info("Job is ready")
+      context.become(ready(conf))
+      sender() ! Response.Ready
   }
 
-  private def started(jobConfiguration: JobConfiguration): Receive = {
+  private def ready(jobConfiguration: JobConfiguration): Receive = {
     case Input.OrderAvailable ⇒
       if (taskCount < jobConfiguration.taskLimit && !waitingForNextOrder) {
         context.parent ! Output.ReadyForOrder
@@ -49,11 +56,11 @@ extends Actor {
       val sender = this.sender()
       TaskRunner.stepOne(jobConfiguration, order)
         .onComplete { triedStepEnded ⇒
-          sender ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
-          self ! Internal.TaskFinished
+          self ! Internal.TaskFinished(sender, order, triedStepEnded)
         }
 
-    case Internal.TaskFinished ⇒
+    case Internal.TaskFinished(commander, order, triedStepEnded) ⇒
+      commander ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
       taskCount -= 1
       if (taskCount < jobConfiguration.taskLimit && !waitingForNextOrder) {
         context.parent ! Output.ReadyForOrder
@@ -92,7 +99,7 @@ object JobRunner {
   }
 
   object Response {
-    case object Started
+    case object Ready
     final case class OrderProcessed(orderId: OrderId, moduleStepEnded: ModuleStepEnded)
   }
 
@@ -105,6 +112,7 @@ object JobRunner {
   }
 
   private object Internal {
-    final case object TaskFinished
+    final case class TaskFinished(commander: ActorRef, order: Order[Order.State], triedStepEnded: Try[ModuleStepEnded])
+    final case object KillAll
   }
 }

@@ -8,8 +8,8 @@ import com.google.inject.{AbstractModule, Guice}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commandresponses.Response
+import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, Command, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.AgentActorIT._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
@@ -36,6 +36,7 @@ import java.nio.file.Path
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.{Future, Promise}
 
 /**
   * @author Joacim Zschimmer
@@ -44,32 +45,37 @@ final class AgentActorIT extends FreeSpec {
 
   private implicit val askTimeout = Timeout(60.seconds)
 
-  for (n ← List(10) ++ (sys.props contains "test.speed" option 1000))
-  s"AgentActorIT, $n orders" in {
-    provideAgentDirectory { dir ⇒
-      withCloser { implicit closer ⇒
-        val (eventCollector, main) = start(dir)
-        val lastEventId = eventCollector.lastEventId
-        (main ? AgentActor.Input.Start).mapTo[AgentActor.Output.Started.type] await 99.s
-        (main ? AgentActor.Input.CommandFromMaster(MasterUserId, RegisterAsMaster)).mapTo[EmptyResponse.type] await 99.s
-        (main ? AgentActor.Input.CommandFromMaster(MasterUserId, AttachJobnet(TestJobnet))).mapTo[EmptyResponse.type] await 99.s
-        val stopwatch = new Stopwatch
-        val orderIdGenerator = for (i ← Iterator from 1) yield OrderId(s"TEST-ORDER-$i")
-        val orderIds = Vector.fill(n) { orderIdGenerator.next() }
-        (for (orderId ← orderIds) yield {
-          val addOrder = AttachOrder(Order(
-            orderId,
-            NodeKey(TestJobnet.path, NodeId("100")),
-            Order.Waiting,
-            Map("a" → "A")))
-          (main ? AgentActor.Input.CommandFromMaster(MasterUserId, addOrder)).mapTo[EmptyResponse.type]
-        }) await 99.s
+  for (n ← List(10) ++ (sys.props contains "test.speed" option 1000)) {
+    s"AgentActorIT, $n orders" in {
+      provideAgentDirectory { dir ⇒
+        withCloser { implicit closer ⇒
+          val (eventCollector, main) = start(dir)
+          val lastEventId = eventCollector.lastEventId
+          def execute(command: Command): Future[Response] = {
+            val response = Promise[Response]()
+            main ! AgentActor.Input.ExternalCommand(MasterUserId, command, response)
+            response.future
+          }
+          (main ? AgentActor.Input.Start).mapTo[AgentActor.Output.Started.type] await 99.s
+          execute(RegisterAsMaster) await 99.s
+          execute(AttachJobnet(TestJobnet)) await 99.s
+          val stopwatch = new Stopwatch
+          val orderIdGenerator = for (i ← Iterator from 1) yield OrderId(s"TEST-ORDER-$i")
+          val orderIds = Vector.fill(n) { orderIdGenerator.next() }
+          (for (orderId ← orderIds) yield {
+            val addOrder = AttachOrder(Order(
+              orderId,
+              NodeKey(TestJobnet.path, NodeId("100")),
+              Order.Waiting,
+              Map("a" → "A")))
+            execute(addOrder)
+          }) await 99.s
 
-        (for (orderId ← orderIds) yield
-          eventCollector.whenForKey[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 1.h), orderId)) await 99.s
-        info(stopwatch.itemsPerSecondString(n, "Orders"))
-        (for (orderId ← orderIds) yield
-          (main ? AgentActor.Input.CommandFromMaster(MasterUserId, DetachOrder(orderId))).mapTo[EmptyResponse.type]) await 99.s
+          (for (orderId ← orderIds) yield
+            eventCollector.whenForKey[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 1.h), orderId)) await 99.s
+          info(stopwatch.itemsPerSecondString(n, "Orders"))
+          (for (orderId ← orderIds) yield execute(DetachOrder(orderId))) await 99.s
+        }
       }
     }
   }

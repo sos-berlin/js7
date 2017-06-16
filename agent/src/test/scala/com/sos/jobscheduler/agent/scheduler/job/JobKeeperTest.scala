@@ -40,7 +40,7 @@ final class JobKeeperTest extends FreeSpec {
         for (_ ← 1 to 5) {
           val stopwatch = new Stopwatch
           val jobKeeper = actorSystem.actorOf(JobKeeper(jobDir))
-          val JobKeeper.Started(jobs) = jobKeeper.ask(JobKeeper.Start)(600.seconds).mapTo[JobKeeper.Started] await 600.s
+          val JobKeeper.Output.Ready(jobs) = jobKeeper.ask(JobKeeper.Input.Start)(600.seconds).mapTo[JobKeeper.Output.Ready] await 600.s
           logger.info(stopwatch.itemsPerSecondString(N, "jobs"))
           assert(jobs.size == N)
         }

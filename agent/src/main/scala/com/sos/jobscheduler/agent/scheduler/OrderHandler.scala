@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.commandresponses.Response
 import com.sos.jobscheduler.agent.data.commands.Command
 import com.sos.jobscheduler.agent.scheduler.OrderHandler._
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
@@ -36,8 +37,6 @@ final class OrderHandler @Inject private(
     actorRefFactory: ActorRefFactory,
     executionContext: ExecutionContext)
 {
-  private val commandAskTimeout = Timeout(conf.startupTimeout.toFiniteDuration)
-
   // This is a Future to allow parallel startup.
   // Commands are accepted but execution is delayed until the Future has been completed.
   private val agentActorFutureOption: Option[Future[ActorRef]] =
@@ -69,9 +68,14 @@ final class OrderHandler @Inject private(
   }
 
   def execute(userId: UserId, command: Command): Future[command.Response] =
-    for (agentActor ← agentActorFuture;
-         response ← agentActor.ask(AgentActor.Input.CommandFromMaster(userId, command))(commandAskTimeout) map { _.asInstanceOf[command.Response] })
-      yield response
+    for {
+      agentActor ← agentActorFuture
+      response ← {
+        val promise = Promise[Response]()
+        agentActor ! AgentActor.Input.ExternalCommand(userId, command, promise)
+        promise.future map { _.asInstanceOf[command.Response] }
+      }
+    } yield response
 
   def events(userId: UserId, request: EventRequest[OrderEvent]): Future[EventSeq[Seq, KeyedEvent[OrderEvent]]] =
     for (agentActor ← agentActorFuture;
