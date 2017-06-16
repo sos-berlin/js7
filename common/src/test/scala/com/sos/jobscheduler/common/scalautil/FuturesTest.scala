@@ -1,10 +1,8 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.{FutureNotSucceededException, NoFuture, catchInFuture}
-import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
+import com.sos.jobscheduler.common.scalautil.Futures.{FutureNotSucceededException, NoFuture, catchInFuture, namedThreadFuture, promiseFuture}
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import java.util.concurrent.TimeoutException
 import org.scalatest.FreeSpec
@@ -64,6 +62,13 @@ final class FuturesTest extends FreeSpec {
     }
     val future = namedThreadFuture("FuturesTest") { sys.error("TEST-ERROR") }
     assert(Await.ready(future, 2.seconds).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
+  }
+
+  "promiseFuture" in {
+    val a: Future[Int] = promiseFuture[Int] { _ ⇒ }
+    assert(!a.isCompleted)
+    val b: Future[Int] = promiseFuture[Int] { _.success(7) }
+    assert(b.value.get.get == 7)
   }
 
   "future.await" in {

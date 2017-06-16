@@ -44,6 +44,12 @@ object Futures {
     promise.future
   }
 
+  def promiseFuture[A](body: Promise[A] ⇒ Unit): Future[A] = {
+    val promise = Promise[A]()
+    body(promise)
+    promise.future
+  }
+
   /**
    * A Future that will never happen.
    */
