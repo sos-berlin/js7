@@ -20,7 +20,7 @@ import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 private final class OrderActor(orderId: OrderId, protected val journalActor: ActorRef)
 extends KeyedJournalingActor[OrderEvent] {
 
-  private val logger = Logger.withPrefix[OrderActor](orderId.string)
+  private val logger = Logger.withPrefix[OrderActor](orderId.toString)
   private var order: Order[Order.State] = null
 
   protected def key = orderId

@@ -116,7 +116,7 @@ object EventQueue {
     final case object GetSnapshot
   }
 
-  final case class CompleteSnapshot(oldestKnownEventId: EventId, events: Seq[StampedEvent])
+  final case class CompleteSnapshot(oldestKnownEventId: EventId, events: Seq[StampedEvent])   // TODO May become big when serialized to journal
 
   object CompleteSnapshot {
     implicit val jsonFormat = jsonFormat2(apply) withTypeName "EventQueue.Snapshot"

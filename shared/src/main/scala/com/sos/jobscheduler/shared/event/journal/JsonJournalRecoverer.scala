@@ -149,6 +149,7 @@ object JsonJournalRecoverer {
 
           private def becomeWaitingForChildren(n: Int): Unit = {
             if (n == 0) {
+              logger.debug(s"JournalIsReady")
               context.parent ! Output.JournalIsReady
               context.stop(self)
             } else {
