@@ -5,8 +5,8 @@ import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.scheduler.AgentActorIT.provideAgentDirectory
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeperTest._
+import com.sos.jobscheduler.agent.scheduler.order.TestAgentEnvironment
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
@@ -24,14 +24,15 @@ import scala.concurrent.duration.DurationInt
   */
 final class JobKeeperTest extends FreeSpec {
 
-  if (sys.props contains "test.speed") "Speed" in {
+  "JobKeeper reads some job definitions" in {
     logger.info("START")
-    provideAgentDirectory { directory ⇒
+    TestAgentEnvironment.provide { env ⇒
+      import env.directory
       val jobDir = directory / "config" / "live"
-      for (i ← (1 to N - 2).par) (jobDir / s"test-$i.job.xml").contentString = TestJobXmlString
+      for (i ← (1 to N).par) (jobDir / s"test-$i.job.xml").contentString = TestJobXmlString
       logger.info(s"$N files created, ${TestJobXmlString.length} bytes each")
       withCloser { implicit closer ⇒
-        implicit val actorSystem = newActorSystem(getClass.getSimpleName) withCloser { _.shutdown() }
+        implicit val actorSystem = newActorSystem(getClass.getSimpleName) withCloser { _.terminate() }
         import actorSystem.dispatcher
 
         val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(Some(directory))))
@@ -41,10 +42,11 @@ final class JobKeeperTest extends FreeSpec {
           val stopwatch = new Stopwatch
           val jobKeeper = actorSystem.actorOf(JobKeeper(jobDir))
           val JobKeeper.Output.Ready(jobs) = jobKeeper.ask(JobKeeper.Input.Start)(600.seconds).mapTo[JobKeeper.Output.Ready] await 600.s
-          logger.info(stopwatch.itemsPerSecondString(N, "jobs"))
+          info(stopwatch.itemsPerSecondString(N, "jobs"))
           assert(jobs.size == N)
+          actorSystem.stop(jobKeeper)
         }
-        actorSystem.shutdown()
+        actorSystem.terminate() await 99.s
       }
     }
   }
@@ -52,7 +54,7 @@ final class JobKeeperTest extends FreeSpec {
 
 object JobKeeperTest {
   private val logger = Logger(getClass)
-  private val N = 10000
+  private val N = if (sys.props contains "test.speed") 100000 else 100
   private val TestJobXmlString =
     <job>
       <params>{
