@@ -44,6 +44,7 @@ extends Actor {
 
     def ifAllJobsStartedThenBecomeStarted(): Boolean =
       startedActors == expectedActors && {
+        logger.info(s"Ready, ${pathToActor.size} jobs")
         context.become(ready)
         commander ! Output.Ready(pathToActor.toVector)
         true

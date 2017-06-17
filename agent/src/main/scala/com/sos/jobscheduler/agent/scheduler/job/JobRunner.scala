@@ -33,7 +33,7 @@ extends Actor {
           logger.error(t.toString, t)
           throw t
         }
-      logger.info("Job is ready")
+      logger.debug("Job is ready")
       context.become(ready(conf))
       sender() ! Response.Ready
   }
