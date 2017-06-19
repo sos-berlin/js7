@@ -64,7 +64,7 @@ with CommandHandlerDetailed {
       case Logout ⇒ logout(meta.sessionTokenOption)
       case NoOperation ⇒ Future.successful(EmptyResponse)
       case command: TaskCommand ⇒ taskHandler.execute(command, meta)
-      case command: TerminateOrAbort ⇒ taskHandler.execute(command, meta)
+      case command: TerminateOrAbort ⇒ terminateOrAbort(command, meta)
       case command: RequestFileOrderSourceContent ⇒ executeRequestFileOrderSourceContent(command)
       case command @ (_: OrderCommand | _: RegisterAsMaster.type) ⇒ orderHandler.execute(meta.user.id, command)
     }) map { response ⇒
@@ -86,6 +86,13 @@ with CommandHandlerDetailed {
       sessionRegister.remove(sessionToken)
       EmptyResponse
     }
+
+  private def terminateOrAbort(command: TerminateOrAbort, meta: CommandMeta): Future[command.Response] = {
+    val taskHandlerTerminated = taskHandler.execute(command, meta)
+    val orderHandlerTerminated = orderHandler.execute(meta.user.id, command)
+    Future.sequence(List(taskHandlerTerminated, orderHandlerTerminated))
+      .map { _ ⇒ EmptyResponse.asInstanceOf[command.Response] }
+  }
 }
 
 object AgentCommandHandler {

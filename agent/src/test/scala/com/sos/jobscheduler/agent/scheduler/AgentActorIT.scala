@@ -4,7 +4,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.AgentActorIT._
-import com.sos.jobscheduler.agent.scheduler.order.TestAgentEnvironment
+import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -30,9 +30,9 @@ final class AgentActorIT extends FreeSpec {
 
   for (n ← List(10) ++ (sys.props contains "test.speed" option 1000)) {
     s"AgentActorIT, $n orders" in {
-      TestAgentEnvironment.provide { env ⇒
-        import env.{directory, eventCollector, executeCommand}
-        (directory / "config" / "live" / "test.job.xml").xml =
+      TestAgentActorProvider.provide { env ⇒
+        import env.{agentDirectory, eventCollector, executeCommand}
+        (agentDirectory / "config" / "live" / "test.job.xml").xml =
           <job tasks="100">
             <params>
               <param name="var1" value="VALUE1"/>
@@ -53,9 +53,8 @@ final class AgentActorIT extends FreeSpec {
               Order.Waiting,
               Map("a" → "A"))))
           ) await 99.s
-
-          (for (orderId ← orderIds) yield
-            eventCollector.whenForKey[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 1.h), orderId)) await 99.s
+          for (orderId ← orderIds)
+            eventCollector.whenKeyedEvent[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
           info(stopwatch.itemsPerSecondString(n, "Orders"))
           (for (orderId ← orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
         }

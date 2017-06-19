@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
+import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
@@ -20,6 +21,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.jobnet.Jobnet.EndNode
 import com.sos.jobscheduler.data.jobnet.JobnetEvent.JobnetAttached
 import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetEvent, JobnetPath}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderStepEnded}
@@ -58,6 +60,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   private val jobRegister = new JobRegister
   private val jobnetRegister = new JobnetRegister
   private val orderRegister = new OrderRegister(timerService)
+  private var terminating = false
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
@@ -126,7 +129,6 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       }
       context.become(awaitJournalIsReady)
       unstashAll()
-      logger.info(s"${jobRegister.size} Jobs")
 
     case _ ⇒
       stash()  // We stash all early OrderActor.Output.RecoveryFinished until the jobs are defined (Input.Start)
@@ -137,7 +139,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       handleAddedOrder(order)
 
     case JsonJournalRecoverer.Output.JournalIsReady ⇒
-      logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
+     logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
       context.become(ready)
       unstashAll()
       logger.info("Ready")
@@ -163,12 +165,16 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
       eventsForMaster.forward(EventQueue.Input.RequestEvents(after, timeout, limit, promise))
 
-    case JobRunner.Output.ReadyForOrder if jobRegister contains sender() ⇒
+    case JobRunner.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
       tryStartStep(jobRegister(sender()))
+
+    case Input.Terminate ⇒
+      terminating = true
+      sender() ! Done
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
-    case AttachJobnet(jobnet) ⇒
+    case AttachJobnet(jobnet) if !terminating ⇒
       jobnetRegister.get(jobnet.path) match {
         case None ⇒
           promiseFuture[Response] { promise ⇒
@@ -183,7 +189,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           Future.failed(new IllegalStateException(s"Changed ${jobnet.path}"))
       }
 
-    case AttachOrder(order) ⇒
+    case AttachOrder(order) if !terminating ⇒
       import order.nodeKey
       jobnetRegister.get(nodeKey.jobnetPath) match {
         case Some(jobnet) if jobnet isDefinedAt nodeKey.nodeId ⇒
@@ -221,6 +227,9 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
               None
           }
       ) map { _.flatten } map GetOrders.Response
+
+    case _ if terminating ⇒
+      Future.failed(new IllegalStateException(s"Agent is terminating"))
   }
 
   private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry ⇒ Future[Response]): Future[Response] =
@@ -287,40 +296,52 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
   private def onOrderAvailable(orderEntry: OrderEntry): Unit =
     jobnetRegister.nodeKeyToNodeOption(orderEntry.nodeKey) match {
-      case Some(node: Jobnet.JobNode) ⇒
+      case Some(node: Jobnet.JobNode) if !terminating ⇒
         jobRegister.get(node.jobPath) match {
           case Some(jobEntry) ⇒
-            logger.trace(s"${orderEntry.orderId} is queuing for ${jobEntry.jobPath}")
-            jobEntry.queue += orderEntry.orderId
-            if (jobEntry.waitingForOrder) {
-              tryStartStep(jobEntry)
-            } else {
-              jobEntry.actor ! JobRunner.Input.OrderAvailable
-            }
+            onOrderAvailableForJob(orderEntry.orderId, jobEntry)
           case None ⇒
             logger.error(s"Missing '${node.jobPath}' for '${orderEntry.orderId}' at '${orderEntry.nodeKey}'")
         }
-      case _ ⇒
+
+      case Some(node: Jobnet.JobNode) if terminating ⇒
+        logger.info(s"Due to termination, processing of ${orderEntry.orderId} stops at ${node.id}")
+
+      case Some(_: EndNode) | None ⇒
         logger.trace(s"${orderEntry.orderId} is ready to be retrieved by the Master")
         orderRegister(orderEntry.orderId).actor ! OrderActor.Input.SetReady
     }
+
+  private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit = {
+    logger.trace(s"$orderId is queuing for ${jobEntry.jobPath}")
+    jobEntry.queue += orderId
+    if (jobEntry.waitingForOrder) {
+      tryStartStep(jobEntry)
+    } else {
+      jobEntry.actor ! JobRunner.Input.OrderAvailable
+    }
+  }
 
   private def tryStartStep(jobEntry: JobEntry): Unit = {
     jobEntry.queue.dequeue() match {
       case Some(orderId) ⇒
         val orderEntry = orderRegister(orderId)
         jobnetRegister.nodeKeyToNodeOption(orderEntry.nodeKey) match {
-          case Some(jobNode: Jobnet.JobNode) ⇒
-            logger.trace(s"${orderEntry.orderId} is going to be processed by ${jobEntry.jobPath}")
-            assert(jobNode.jobPath == jobEntry.jobPath)
-            jobEntry.waitingForOrder = false
-            orderEntry.actor ! OrderActor.Input.StartStep(jobNode, jobEntry.actor)
+          case Some(node: Jobnet.JobNode) ⇒
+            startStep(orderEntry, node, jobEntry)
           case _ ⇒
             logger.error(s"${orderEntry.orderId}: ${orderEntry.nodeKey} does not denote a JobNode")
         }
       case None ⇒
         jobEntry.waitingForOrder = true
     }
+  }
+
+  private def startStep(orderEntry: OrderEntry, node: Jobnet.JobNode, jobEntry: JobEntry): Unit = {
+    logger.trace(s"${orderEntry.orderId} is going to be processed by ${jobEntry.jobPath}")
+    assert(node.jobPath == jobEntry.jobPath)
+    jobEntry.waitingForOrder = false
+    orderEntry.actor ! OrderActor.Input.StartStep(node, jobEntry.actor)
   }
 
   override def unhandled(message: Any) =
@@ -364,6 +385,7 @@ object AgentOrderKeeper {
     final case class Start(jobs: Seq[(JobPath, ActorRef)]) extends Input
     final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[EventQueue.MyEventSeq]) extends Input
     final case class ExternalCommand(command: Command, response: Promise[Response])
+    final case object Terminate
   }
 
   private object Internal {

@@ -1,12 +1,13 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
+import akka.actor.Props
 import akka.pattern.ask
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeperTest._
-import com.sos.jobscheduler.agent.scheduler.order.TestAgentEnvironment
+import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
@@ -16,6 +17,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.time.timer.TimerService
 import org.scalatest.FreeSpec
 import scala.concurrent.duration.DurationInt
 
@@ -26,21 +28,22 @@ final class JobKeeperTest extends FreeSpec {
 
   "JobKeeper reads some job definitions" in {
     logger.info("START")
-    TestAgentEnvironment.provide { env ⇒
-      import env.directory
-      val jobDir = directory / "config" / "live"
+    TestAgentActorProvider.provide { env ⇒
+      import env.agentDirectory
+      val jobDir = agentDirectory / "config" / "live"
       for (i ← (1 to N).par) (jobDir / s"test-$i.job.xml").contentString = TestJobXmlString
       logger.info(s"$N files created, ${TestJobXmlString.length} bytes each")
       withCloser { implicit closer ⇒
         implicit val actorSystem = newActorSystem(getClass.getSimpleName) withCloser { _.terminate() }
         import actorSystem.dispatcher
 
-        val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(Some(directory))))
+        val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(Some(agentDirectory))))
         implicit val newTask = injector.instance[AgentTaskFactory]
+        implicit val timerService = injector.instance[TimerService]
 
         for (_ ← 1 to 5) {
           val stopwatch = new Stopwatch
-          val jobKeeper = actorSystem.actorOf(JobKeeper(jobDir))
+          val jobKeeper = actorSystem.actorOf(Props { new JobKeeper(jobDir) })
           val JobKeeper.Output.Ready(jobs) = jobKeeper.ask(JobKeeper.Input.Start)(600.seconds).mapTo[JobKeeper.Output.Ready] await 600.s
           info(stopwatch.itemsPerSecondString(N, "jobs"))
           assert(jobs.size == N)

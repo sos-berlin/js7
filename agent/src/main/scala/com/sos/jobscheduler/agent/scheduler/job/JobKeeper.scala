@@ -1,9 +1,12 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
-import akka.actor.{Actor, ActorRef, Props, Terminated}
+import akka.Done
+import akka.actor.{Actor, ActorRef, Stash, Terminated}
+import com.sos.jobscheduler.agent.data.commands.TerminateOrAbort
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeper._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.nio.file.Path
@@ -13,8 +16,8 @@ import scala.concurrent.ExecutionContext
 /**
   * @author Joacim Zschimmer
   */
-final class JobKeeper private(jobConfigurationDirectory: Path)(implicit newTask: AgentTaskFactory, ec: ExecutionContext)
-extends Actor {
+final class JobKeeper(jobConfigurationDirectory: Path)(implicit newTask: AgentTaskFactory, ts: TimerService, ec: ExecutionContext)
+extends Actor with Stash {
 
   def receive = handleReadyForOrder orElse {
     case message ⇒
@@ -28,7 +31,11 @@ extends Actor {
               context.watch(a)
               a ! JobRunner.Command.ReadConfigurationFile(file)
           }
+          unstashAll()
           starting(pathToActor.toMap, sender())
+
+        case _: TerminateOrAbort ⇒
+          stash()
       }
     }
 
@@ -45,7 +52,7 @@ extends Actor {
     def ifAllJobsStartedThenBecomeStarted(): Boolean =
       startedActors == expectedActors && {
         logger.info(s"Ready, ${pathToActor.size} jobs")
-        context.become(ready)
+        context.become(ready(pathToActor.values.toVector))
         commander ! Output.Ready(pathToActor.toVector)
         true
       }
@@ -63,20 +70,23 @@ extends Actor {
     }
   }
 
-  private def ready: Receive =
-    handleReadyForOrder
+  private def ready(jobActors: Vector[ActorRef]): Receive =
+    handleReadyForOrder orElse handleTerminateOrAbort(jobActors)
 
   private def handleReadyForOrder: Receive = {
     case msg: JobRunner.Output.ReadyForOrder.type ⇒
       context.parent.forward(msg)
   }
+
+  private def handleTerminateOrAbort(jobActors: Vector[ActorRef]): Receive = {
+    case cmd: TerminateOrAbort ⇒
+      for (a ← jobActors) a ! cmd
+      sender() ! Done
+  }
 }
 
 object JobKeeper {
   private val logger = Logger(getClass)
-
-  def apply(jobConfigurationDirectory: Path)(implicit newTask: AgentTaskFactory, ec: ExecutionContext) =
-    Props { new JobKeeper(jobConfigurationDirectory) }
 
   object Input {
     case object Start

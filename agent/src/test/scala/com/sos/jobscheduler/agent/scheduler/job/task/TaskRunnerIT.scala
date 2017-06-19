@@ -50,7 +50,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
         Order.InProcess,
         Map("a" → "A"))
       implicit val x = injector.instance[StandardAgentTaskFactory]
-      val ended = TaskRunner.stepOne(jobConfiguration, order) await 30.s
+      val ended = new TaskRunner(jobConfiguration, injector.instance[StandardAgentTaskFactory]).processOrderAndTerminate(order) await 30.s
       assert(ended == ModuleStepSucceeded(
         variablesDiff = MapDiff.addedOrUpdated(Map("result" → "TEST-RESULT-VALUE1")),
         Good(returnValue = true))
@@ -62,14 +62,14 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
 object TaskRunnerIT {
   private val TestScript =
     if (isWindows) """
-        |@echo off
-        |echo Hej!
-        |echo var1=%SCHEDULER_PARAM_VAR1%
-        |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
-        |""".stripMargin
+      |@echo off
+      |echo Hej!
+      |echo var1=%SCHEDULER_PARAM_VAR1%
+      |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
+      |""".stripMargin
     else """
-        |echo "Hej!"
-        |echo "var1=$SCHEDULER_PARAM_VAR1"
-        |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
-        |""".stripMargin
+      |echo "Hej!"
+      |echo "var1=$SCHEDULER_PARAM_VAR1"
+      |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
+      |""".stripMargin
 }

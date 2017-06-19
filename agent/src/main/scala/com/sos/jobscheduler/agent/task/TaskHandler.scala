@@ -177,7 +177,7 @@ private object TaskHandler {
   private class TaskRegister extends ConcurrentRegister[AgentTask] {
     override def onAdded(task: AgentTask) = logger.info(s"$task registered")
     override def onRemoved(task: AgentTask) = logger.info(s"$task unregistered")
-    override protected def throwNoSuchKey(id: AgentTask#Key) = throw new UnknownTaskException(id)
+    override protected def throwNoSuchKey(id: AgentTaskId) = throw new UnknownTaskException(id)
   }
 
   final class UnknownTaskException(agentTaskId: AgentTaskId) extends NoSuchElementException {

@@ -10,7 +10,7 @@ import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.commandresponses.Response
 import com.sos.jobscheduler.agent.data.commands.Command
 import com.sos.jobscheduler.agent.scheduler.AgentActor
-import com.sos.jobscheduler.agent.scheduler.order.TestAgentEnvironment._
+import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
 import com.sos.jobscheduler.common.auth.User.Anonymous
@@ -24,7 +24,6 @@ import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.shared.event.{ActorEventCollector, StampedKeyedEventBus}
-import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -33,16 +32,11 @@ import scala.concurrent.{Future, Promise}
 /**
   * @author Joacim Zschimmer
   */
-private class TestAgentEnvironment extends HasCloser {
-  private val directoryProvider = new AgentDirectoryProvider {} .closeWithCloser
-  val directory = directoryProvider.agentDirectory
+private class TestAgentActorProvider extends HasCloser {
+  private val directoryProvider = new AgentDirectoryProvider {} .provideAgent2Directories().closeWithCloser
+  lazy val agentDirectory = directoryProvider.agentDirectory
 
-  createDirectory(directory / "config" / "live")
-  createDirectory(directory / "data")
-  val subdir =  directory / "config" / "live" / "folder"
-  createDirectory(subdir)
-
-  lazy val (eventCollector, agentActor) = start(directory)
+  lazy val (eventCollector, agentActor) = start(agentDirectory)
   lazy val lastEventId = eventCollector.lastEventId
 
   def startAgent() = agentActor
@@ -54,15 +48,15 @@ private class TestAgentEnvironment extends HasCloser {
   }
 }
 
-object TestAgentEnvironment {
+object TestAgentActorProvider {
   private val MasterUserId = Anonymous.id
 
-  def provide[A](body: TestAgentEnvironment ⇒ A): A =
-    autoClosing(new TestAgentEnvironment)(body)
+  def provide[A](body: TestAgentActorProvider ⇒ A): A =
+    autoClosing(new TestAgentActorProvider)(body)
 
   private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef) = {
     val agentConfiguration = AgentConfiguration.forTest(configAndData = Some(configAndData))
-    val actorSystem = newActorSystem("TestAgentEnvironment")
+    val actorSystem = newActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
     implicit val agentTaskFactory = injector.instance[AgentTaskFactory]
     implicit val timerService = TimerService(idleTimeout = Some(1.s))

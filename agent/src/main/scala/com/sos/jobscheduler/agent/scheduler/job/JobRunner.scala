@@ -1,16 +1,22 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
-import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, Props}
+import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, Props, Stash}
+import com.sos.jobscheduler.agent.data.commands.{AbortImmediately, Terminate, TerminateOrAbort}
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner._
 import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.{ModuleStepEnded, ModuleStepFailed}
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
+import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.common.akkautils.Akkas.{decodeActorName, encodeAsActorName}
+import com.sos.jobscheduler.common.scalautil.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.data.order.Order.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import java.nio.file.Path
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -18,12 +24,13 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JobRunner private(jobPath: JobPath)(implicit newTask: AgentTaskFactory, ec: ExecutionContext)
-extends Actor {
+final class JobRunner private(jobPath: JobPath)(implicit newTask: AgentTaskFactory, timerService: TimerService, ec: ExecutionContext)
+extends Actor with Stash {
 
   private val logger = Logger.withPrefix[JobRunner](jobPath.toString)
-  private var taskCount = 0
+  private val orderToTask = mutable.Map[OrderId, TaskRunner]()
   private var waitingForNextOrder = false
+  private var terminating = false
 
   def receive = {
     case Command.ReadConfigurationFile(path: Path) ⇒
@@ -36,36 +43,59 @@ extends Actor {
       logger.debug("Job is ready")
       context.become(ready(conf))
       sender() ! Response.Ready
+
+    case _: TerminateOrAbort ⇒
+      stash()
   }
 
   private def ready(jobConfiguration: JobConfiguration): Receive = {
-    case Input.OrderAvailable ⇒
-      if (taskCount < jobConfiguration.taskLimit && !waitingForNextOrder) {
+    def handleIfReadyForOrder() = {
+      if (!waitingForNextOrder && !terminating && taskCount < jobConfiguration.taskLimit) {
         context.parent ! Output.ReadyForOrder
         waitingForNextOrder = true
       }
+    }
+    /*Receive*/ {
+      case Input.OrderAvailable ⇒
+        handleIfReadyForOrder()
 
-    case Command.ProcessOrder(order) if waitingForNextOrder ⇒
-      logger.trace(s"ProcessOrder(${order.id})")
-      waitingForNextOrder = false
-      taskCount += 1
-      if (taskCount < jobConfiguration.taskLimit) {
-        context.parent ! Output.ReadyForOrder
-        waitingForNextOrder = true
-      }
-      val sender = this.sender()
-      TaskRunner.stepOne(jobConfiguration, order)
-        .onComplete { triedStepEnded ⇒
-          self ! Internal.TaskFinished(sender, order, triedStepEnded)
+      case Input.Terminate ⇒
+        terminating = true
+        waitingForNextOrder = false
+
+      case Command.ProcessOrder(order) if waitingForNextOrder ⇒
+        logger.trace(s"ProcessOrder(${order.id})")
+        val taskRunner = new TaskRunner(jobConfiguration, newTask)
+        orderToTask.insert(order.id → taskRunner)
+        waitingForNextOrder = false
+        handleIfReadyForOrder()
+        val sender = this.sender()
+        taskRunner.processOrderAndTerminate(order)
+          .onComplete { triedStepEnded ⇒
+            self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
+          }
+
+      case Internal.TaskFinished(order, triedStepEnded) ⇒
+        orderToTask -= order.id
+        sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
+        handleIfReadyForOrder()
+
+      case Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
+        terminating = true
+        if (sigtermProcesses) {
+          killAll(SIGTERM)
+        }
+        sigkillProcessesAfter match {
+          case Some(duration) ⇒
+            timerService.delayedFuture(duration) {
+              self.forward(Internal.KillAll)
+            }
+          case None ⇒
         }
 
-    case Internal.TaskFinished(commander, order, triedStepEnded) ⇒
-      commander ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
-      taskCount -= 1
-      if (taskCount < jobConfiguration.taskLimit && !waitingForNextOrder) {
-        context.parent ! Output.ReadyForOrder
-        waitingForNextOrder = true
-      }
+      case AbortImmediately | Internal.KillAll ⇒
+        killAll(SIGKILL)
+    }
   }
 
   private def recoverFromFailure(tried: Try[ModuleStepEnded]): ModuleStepEnded =
@@ -76,11 +106,22 @@ extends Actor {
         ModuleStepFailed(Bad("TaskRunner.stepOne failed"))
     }
 
+  private def killAll(signal: ProcessSignal): Unit = {
+    if (orderToTask.nonEmpty) {
+      logger.warn(s"Killing $taskCount tasks")
+      for (task ← orderToTask.values) {
+        task.kill(signal)
+      }
+    }
+  }
+
   override def toString = s"JobRunner(${jobPath.string})"
+
+  private def taskCount = orderToTask.size
 }
 
 object JobRunner {
-  def actorOf(jobPath: JobPath)(implicit actorRefFactory: ActorRefFactory, newTask: AgentTaskFactory, ec: ExecutionContext): ActorRef =
+  def actorOf(jobPath: JobPath)(implicit actorRefFactory: ActorRefFactory, newTask: AgentTaskFactory, ts: TimerService, ec: ExecutionContext): ActorRef =
     actorRefFactory.actorOf(
       Props { new JobRunner(jobPath) },
       name = toActorName(jobPath))
@@ -105,6 +146,7 @@ object JobRunner {
 
   object Input {
     case object OrderAvailable extends Command
+    case object Terminate
   }
 
   object Output {
@@ -112,7 +154,7 @@ object JobRunner {
   }
 
   private object Internal {
-    final case class TaskFinished(commander: ActorRef, order: Order[Order.State], triedStepEnded: Try[ModuleStepEnded])
+    final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[ModuleStepEnded])
     final case object KillAll
   }
 }

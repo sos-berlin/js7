@@ -4,13 +4,14 @@ import akka.util.ByteString
 import com.sos.jobscheduler.agent.data.commands.{StartNonApiTask, StartTask}
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.ModuleStepEnded
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner._
 import com.sos.jobscheduler.agent.task.{AgentTask, AgentTaskFactory}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
-import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.minicom.remoting.ClientRemoting
 import com.sos.jobscheduler.minicom.remoting.dialog.ClientDialogConnection
@@ -29,6 +30,10 @@ final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFac
   private val moduleInstanceRunnerOnce = new SetOnce[ModuleInstanceRunner]
   private var _killed = false
   private val taskId = StartTask.Meta.NoCppJobSchedulerTaskId
+
+  def processOrderAndTerminate(order: Order[Order.InProcess.type]): Future[ModuleStepEnded] = {
+    processOrder(order) andThen { case _ ⇒ terminate() }
+  }
 
   def processOrder(order: Order[Order.InProcess.type]): Future[ModuleStepEnded] = {
     if (killed)
@@ -67,6 +72,7 @@ final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFac
   }
 
   def kill(signal: ProcessSignal): Unit = {
+    logger.debug(s"Kill $toString")
     for (task ← taskOnce) task.sendProcessSignal(signal)
     _killed |= signal == SIGKILL
   }
@@ -102,13 +108,13 @@ final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFac
     _killed
 
   private def newKilledException() = new IllegalStateException("Task killed")
+
+  override def toString =
+    s"TaskRunner(${jobConfiguration.path}" +
+      (taskOnce.toOption map { _.toString } getOrElse "") +
+      ")"
 }
 
 object TaskRunner {
-  def stepOne(jobConfiguration: JobConfiguration, order: Order[Order.InProcess.type])(implicit newTask: AgentTaskFactory, ec: ExecutionContext)
-  : Future[ModuleStepEnded]
-  = {
-    val taskRunner = new TaskRunner(jobConfiguration, newTask)
-    taskRunner.processOrder(order) andThen { case _ ⇒ taskRunner.terminate() }
-  }
+  private val logger = Logger(getClass)
 }

@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.agent.scheduler
 
+import akka.Done
 import akka.actor.{ActorRef, OneForOneStrategy, Props, Status, SupervisorStrategy}
+import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, Response}
-import com.sos.jobscheduler.agent.data.commands.{Command, OrderCommand, RegisterAsMaster}
-import com.sos.jobscheduler.agent.scheduler.AgentActor.Input.ExternalCommand
+import com.sos.jobscheduler.agent.data.commands.{Command, OrderCommand, RegisterAsMaster, TerminateOrAbort}
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobRunner}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
@@ -48,10 +49,11 @@ extends KeyedEventJournalingActor[AgentEvent] {
   protected val journalActor = context.actorOf(
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
-  private val jobKeeper = context.actorOf(JobKeeper(jobConfigurationDirectory), "JobKeeper")
+  private val jobKeeper = context.actorOf(Props { new JobKeeper(jobConfigurationDirectory) }, "JobKeeper")
   private val masterToOrderKeeper = mutable.Map[UserId, ActorRef]() withDefault { userId ⇒
     throw new NoSuchElementException(s"No master registered for user '$userId'")
   }
+  private var terminating = false
 
   def snapshots = Future.successful(masterToOrderKeeper.keys.toVector map AgentSnapshot.Master.apply)
 
@@ -78,8 +80,10 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   def receive = journaling orElse {
     case JsonJournalRecoverer.Output.JournalIsReady ⇒
+      if (masterToOrderKeeper.nonEmpty) {
+        logger.info(s"${masterToOrderKeeper.size} recovered master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
+      }
       context.become(startable)
-      logger.info(s"${masterToOrderKeeper.size} recovered master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
       unstashAll()
 
     case _ ⇒
@@ -100,8 +104,8 @@ extends KeyedEventJournalingActor[AgentEvent] {
   }
 
   private def started(jobs: Seq[(JobPath, ActorRef)]): Receive = journaling orElse {
-    case externalCommand: Input.ExternalCommand ⇒
-      executeCommand(externalCommand, jobs)
+    case cmd: Input.ExternalCommand ⇒
+      executeCommand(cmd, jobs)
 
     case Input.RequestEvents(userId, input) ⇒
       masterToOrderKeeper.get(userId) match {
@@ -115,10 +119,18 @@ extends KeyedEventJournalingActor[AgentEvent] {
       }
   }
 
-  private def executeCommand(externalCommand: ExternalCommand, jobs: Seq[(JobPath, ActorRef)]): Unit = {
+  private def executeCommand(externalCommand: Input.ExternalCommand, jobs: Seq[(JobPath, ActorRef)]): Unit = {
     import externalCommand.{command, response, userId}
     command match {
-      case RegisterAsMaster ⇒
+      case command: TerminateOrAbort ⇒
+        terminating = true
+        terminateOrderKeepers() onComplete { o ⇒
+          terminateJobKeeper(command) onComplete { j ⇒
+            response.complete(o flatMap { _ ⇒ j })
+          }
+        }
+
+      case RegisterAsMaster if !terminating ⇒
         //??? require(sessionToken.isDefined)
         if (masterToOrderKeeper contains userId) {
           response.success(EmptyResponse)
@@ -137,8 +149,20 @@ extends KeyedEventJournalingActor[AgentEvent] {
           case None ⇒
             response.failure(new NoSuchElementException(s"Unknown Master for User '$userId'"))
         }
+
+      case _ if terminating ⇒
+        response.failure(new IllegalStateException(s"Agent is terminating"))
     }
   }
+
+  private def terminateOrderKeepers(): Future[EmptyResponse.type] =
+    Future.sequence(
+      (for (a ← masterToOrderKeeper.values) yield
+        (a ? AgentOrderKeeper.Input.Terminate).mapTo[Done]))
+    .map { _ ⇒ EmptyResponse }
+
+  private def terminateJobKeeper(command: TerminateOrAbort): Future[EmptyResponse.type] =
+    (jobKeeper ? command).mapTo[Done] map { _ ⇒ EmptyResponse }
 
   private def update(keyedEvent: KeyedEvent[AgentEvent]): Unit = {
     keyedEvent match {
