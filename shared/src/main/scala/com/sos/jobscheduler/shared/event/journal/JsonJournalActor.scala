@@ -145,7 +145,7 @@ extends Actor with Stash {
   }
 
   private def becomeTakingSnapshotThen(andThen: ⇒ Unit) = {
-    logger.info(s"Taking snapshot")
+    logger.debug(s"Taking snapshot")
     if (jsonWriter != null) {
       jsonWriter.close()
     }
@@ -162,7 +162,9 @@ extends Actor with Stash {
       myJsonWriter.close()
       val snapshotCount = done.get  // Crash !!!
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "objects"))
-      logger.info(s"Snapshot contains $snapshotCount objects")
+      if (snapshotCount > 0) {
+        logger.info(s"$snapshotCount snapshot written to journal")
+      }
 
       if (jsonWriter != null) {
         jsonWriter.close()
