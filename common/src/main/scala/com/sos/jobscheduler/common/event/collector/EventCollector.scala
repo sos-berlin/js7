@@ -70,6 +70,18 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
         Future.successful(EventSeq.NonEmpty(reverseForKey(request, key)))
     }
 
+  final def whenKeyedEvent[E <: Event](
+    request: EventRequest[E],
+    key: E#Key,
+    predicate: E ⇒ Boolean = (_: E) ⇒ true)
+  : Future[E]
+  =
+    whenForKey[E](request.copy[E](limit = 1), key, predicate) map {
+      case eventSeq: EventSeq.NonEmpty[Iterator, E] ⇒ eventSeq.stampeds.next().value
+      case _: EventSeq.Empty ⇒ throw new AssertionError("whenForKey returned EventSeq.Empty")
+      case EventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")
+    }
+
   final def whenForKey[E <: Event](
     request: EventRequest[E],
     key: E#Key,

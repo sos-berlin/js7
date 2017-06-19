@@ -60,13 +60,14 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
     assert((eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 1.s)) await 100.ms) == EventSeq.Torn)
   }
 
-  "eventCollector.whenForKey" in {
+  "eventCollector.whenForKey, whenKeyedEvent" in {
     val eventCollector = new MyEventCollector
     eventCollector.putEvent_(KeyedEvent(A1)("1"))
     eventCollector.putEvent_(KeyedEvent(B1)("1"))
     eventCollector.putEvent_(KeyedEvent(A2)("1"))
     eventCollector.putEvent_(KeyedEvent(A2)("2"))
     eventCollector.putEvent_(KeyedEvent(B2)("1"))
+
     def eventsForKey[E <: Event: ClassTag](key: E#Key) = {
       val EventSeq.NonEmpty(eventIterator) = eventCollector.whenForKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 20.s), key) await 10.s
       eventIterator.toVector map { _.value }
@@ -74,6 +75,12 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
     assert(eventsForKey[AEvent]("1") == Vector(A1, A2))
     assert(eventsForKey[AEvent]("2") == Vector(A2))
     assert(eventsForKey[BEvent]("1") == Vector(B1, B2))
+
+    def keyedEvent[E <: Event: ClassTag](key: E#Key) =
+      eventCollector.whenKeyedEvent[E](EventRequest.singleClass(after = EventId.BeforeFirst, 20.s), key) await 10.s
+    assert(keyedEvent[AEvent]("1") == A1)
+    assert(keyedEvent[AEvent]("2") == A2)
+    assert(keyedEvent[BEvent]("1") == B1)
   }
 }
 
