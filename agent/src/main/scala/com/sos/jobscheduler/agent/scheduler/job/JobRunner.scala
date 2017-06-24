@@ -28,73 +28,69 @@ final class JobRunner private(jobPath: JobPath)(implicit newTask: AgentTaskFacto
 extends Actor with Stash {
 
   private val logger = Logger.withPrefix[JobRunner](jobPath.toString)
+  private var jobConfiguration: JobConfiguration = null
   private val orderToTask = mutable.Map[OrderId, TaskRunner]()
   private var waitingForNextOrder = false
   private var terminating = false
 
   def receive = {
     case Command.ReadConfigurationFile(path: Path) ⇒
-      val conf =
+      jobConfiguration =
         try JobConfiguration.parseXml(jobPath, path)
         catch { case NonFatal(t) ⇒
           logger.error(t.toString, t)
           throw t
         }
       logger.debug("Job is ready")
-      context.become(ready(conf))
+      context.become(ready)
       sender() ! Response.Ready
 
     case _: TerminateOrAbort ⇒
       stash()
   }
 
-  private def ready(jobConfiguration: JobConfiguration): Receive = {
-    def handleIfReadyForOrder() = {
-      if (!waitingForNextOrder && !terminating && taskCount < jobConfiguration.taskLimit) {
-        context.parent ! Output.ReadyForOrder
-        waitingForNextOrder = true
+  private def ready: Receive = {
+    case Input.OrderAvailable ⇒
+      handleIfReadyForOrder()
+
+    case Command.ProcessOrder(order) if waitingForNextOrder ⇒
+      logger.trace(s"ProcessOrder(${order.id})")
+      val taskRunner = new TaskRunner(jobConfiguration, newTask)
+      orderToTask.insert(order.id → taskRunner)
+      waitingForNextOrder = false
+      handleIfReadyForOrder()
+      val sender = this.sender()
+      taskRunner.processOrderAndTerminate(order)
+        .onComplete { triedStepEnded ⇒
+          self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
+        }
+
+    case Internal.TaskFinished(order, triedStepEnded) ⇒
+      orderToTask -= order.id
+      sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
+      handleIfReadyForOrder()
+
+    case Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
+      terminating = true
+      if (sigtermProcesses) {
+        killAll(SIGTERM)
       }
-    }
-    /*Receive*/ {
-      case Input.OrderAvailable ⇒
-        handleIfReadyForOrder()
-
-      case Input.Terminate ⇒
-        terminating = true
-        waitingForNextOrder = false
-
-      case Command.ProcessOrder(order) if waitingForNextOrder ⇒
-        logger.trace(s"ProcessOrder(${order.id})")
-        val taskRunner = new TaskRunner(jobConfiguration, newTask)
-        orderToTask.insert(order.id → taskRunner)
-        waitingForNextOrder = false
-        handleIfReadyForOrder()
-        val sender = this.sender()
-        taskRunner.processOrderAndTerminate(order)
-          .onComplete { triedStepEnded ⇒
-            self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
+      sigkillProcessesAfter match {
+        case Some(duration) ⇒
+          timerService.delayedFuture(duration) {
+            self.forward(Internal.KillAll)
           }
+        case None ⇒
+      }
 
-      case Internal.TaskFinished(order, triedStepEnded) ⇒
-        orderToTask -= order.id
-        sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
-        handleIfReadyForOrder()
+    case AbortImmediately | Internal.KillAll ⇒
+      killAll(SIGKILL)
+  }
 
-      case Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
-        terminating = true
-        if (sigtermProcesses) {
-          killAll(SIGTERM)
-        }
-        sigkillProcessesAfter match {
-          case Some(duration) ⇒
-            timerService.delayedFuture(duration) {
-              self.forward(Internal.KillAll)
-            }
-          case None ⇒
-        }
-
-      case AbortImmediately | Internal.KillAll ⇒
-        killAll(SIGKILL)
+  private def handleIfReadyForOrder() = {
+    if (!waitingForNextOrder && !terminating && taskCount < jobConfiguration.taskLimit) {
+      context.parent ! Output.ReadyForOrder
+      waitingForNextOrder = true
     }
   }
 

@@ -58,7 +58,6 @@ final class ModuleInstanceRunner(jobConfiguration: JobConfiguration, taskId: Tas
 
   def terminate(): Future[Completed] = {
     // Not for shell: moduleInstance.call("end", Nil)
-    //? remoting.releaseAll()
     moduleInstance.release()
   }
 }
