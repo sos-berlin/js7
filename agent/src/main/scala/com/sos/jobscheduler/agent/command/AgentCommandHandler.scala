@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.command
 import com.sos.jobscheduler.agent.command.AgentCommandHandler._
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.commands._
 import com.sos.jobscheduler.agent.fileordersource.{FileCommandExecutor, RequestFileOrderSourceContentExecutor}
 import com.sos.jobscheduler.agent.scheduler.OrderHandler
@@ -46,7 +47,7 @@ with CommandHandlerDetailed {
   def currentCommandCount = idToCommand.size
   def commandRuns = (idToCommand.values map { _.overview }).toVector
 
-  def executeCommand(command: Command, meta: CommandMeta): Future[command.Response] = {
+  def executeCommand(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
     totalCounter.incrementAndGet()
     val id = InternalCommandId(nextId.incrementAndGet())
     logger.info(s"$id ${command.toShortString}")
@@ -57,7 +58,7 @@ with CommandHandlerDetailed {
     future
   }
 
-  private def executeCommand2(id: InternalCommandId, command: Command, meta: CommandMeta) =
+  private def executeCommand2(id: InternalCommandId, command: AgentCommand, meta: CommandMeta) =
     (command match {
       case command: FileCommand ⇒ Future.successful(FileCommandExecutor.executeCommand(command))
       case Login ⇒ login(meta.sessionTokenOption, meta.user)
@@ -98,7 +99,7 @@ with CommandHandlerDetailed {
 object AgentCommandHandler {
   private val logger = Logger(getClass)
 
-  final case class CommandRun(internalId: InternalCommandId, startedAt: Instant, command: Command) {
+  final case class CommandRun(internalId: InternalCommandId, startedAt: Instant, command: AgentCommand) {
     def overview = new CommandRunOverview(internalId, startedAt, command)
   }
 

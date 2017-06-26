@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.Done
 import akka.actor.{Actor, ActorRef, Stash, Terminated}
-import com.sos.jobscheduler.agent.data.commands.TerminateOrAbort
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeper._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -34,7 +34,7 @@ extends Actor with Stash {
           unstashAll()
           starting(pathToActor.toMap, sender())
 
-        case _: TerminateOrAbort ⇒
+        case _: AgentCommand.TerminateOrAbort ⇒
           stash()
       }
     }
@@ -79,7 +79,7 @@ extends Actor with Stash {
   }
 
   private def handleTerminateOrAbort(jobActors: Vector[ActorRef]): Receive = {
-    case cmd: TerminateOrAbort ⇒
+    case cmd: AgentCommand.TerminateOrAbort ⇒
       for (a ← jobActors) a ! cmd
       sender() ! Done
   }

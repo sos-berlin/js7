@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.web
 
-import com.sos.jobscheduler.agent.data.commands.{GetOrder, GetOrderIds, GetOrders}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.OrderHandler
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -25,18 +25,18 @@ trait OrderWebService extends AgentWebService {
       path(Segment) { orderIdString ⇒
         val orderId = OrderId(orderIdString)
         complete {
-          orderHandler.execute(user.id, GetOrder(orderId)) map { _.order }
+          orderHandler.execute(user.id, AgentCommand.GetOrder(orderId)) map { _.order }
         }
       } ~
       pathSingleSlash {
         parameter("return" ? "Order") {
           case "OrderId" ⇒
             complete {
-              orderHandler.execute(user.id, GetOrderIds) map { _.orders }
+              orderHandler.execute(user.id, AgentCommand.GetOrderIds) map { _.orders }
             }
           case "Order" ⇒
             complete {
-              orderHandler.execute(user.id, GetOrders) map { _.order }
+              orderHandler.execute(user.id, AgentCommand.GetOrders) map { _.order }
             }
         }
       }

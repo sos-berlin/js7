@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.agent.fileordersource
 
 import com.sos.jobscheduler.agent.data.commandresponses.FileOrderSourceContent
-import com.sos.jobscheduler.agent.data.commands.RequestFileOrderSourceContent
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.RequestFileOrderSourceContent
 import com.sos.jobscheduler.agent.fileordersource.RequestFileOrderSourceContentExecutor._
-import com.sos.jobscheduler.common.scalautil.AutoClosing._
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}

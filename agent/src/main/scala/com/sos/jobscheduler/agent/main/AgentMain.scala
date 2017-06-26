@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.main
 
 import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.Terminate
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable

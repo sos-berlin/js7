@@ -7,8 +7,7 @@ import com.google.inject.{AbstractModule, Guice}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.data.commandresponses.Response
-import com.sos.jobscheduler.agent.data.commands.Command
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
@@ -41,8 +40,8 @@ private class TestAgentActorProvider extends HasCloser {
 
   def startAgent() = agentActor
 
-  def executeCommand(command: Command): Future[Response] = {
-    val response = Promise[Response]()
+  def executeCommand(command: AgentCommand): Future[AgentCommand.Response] = {
+    val response = Promise[AgentCommand.Response]()
     agentActor ! AgentActor.Input.ExternalCommand(MasterUserId, command, response)
     response.future
   }

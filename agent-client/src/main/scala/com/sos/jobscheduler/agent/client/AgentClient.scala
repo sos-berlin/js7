@@ -5,7 +5,8 @@ import akka.util.Timeout
 import com.sos.jobscheduler.agent.client.AgentClient._
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent, LoginResponse, StartTaskResponse}
-import com.sos.jobscheduler.agent.data.commands._
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonFormat
@@ -68,26 +69,26 @@ trait AgentClient {
   }
   private val sessionTokenRef = new AtomicReference[Option[SessionToken]](None)
 
-  final def executeCommand(command: Command): Future[command.Response] = {
+  final def executeCommand(command: AgentCommand): Future[command.Response] = {
     logger.debug(s"Execute $command")
     val response = command match {
       case command: RequestFileOrderSourceContent ⇒ executeRequestFileOrderSourceContent(command)
-      case command: StartTask ⇒ unmarshallingPipeline[StartTaskResponse](RequestTimeout).apply(Post(agentUris.command, command: Command))
+      case command: StartTask ⇒ unmarshallingPipeline[StartTaskResponse](RequestTimeout).apply(Post(agentUris.command, command: AgentCommand))
       case Login ⇒
-        for (response ← unmarshallingPipeline[LoginResponse](RequestTimeout, SessionAction.Login).apply(Post(agentUris.command, command: Command))) yield {
+        for (response ← unmarshallingPipeline[LoginResponse](RequestTimeout, SessionAction.Login).apply(Post(agentUris.command, command: AgentCommand))) yield {
           setSessionToken(response.sessionToken)
           response
         }
       case Logout ⇒
         val tokenOption = sessionTokenRef.get
         val whenResponded = unmarshallingPipeline[EmptyResponse.type](RequestTimeout, SessionAction.Logout(tokenOption))
-          .apply(Post(agentUris.command, command: Command))
+          .apply(Post(agentUris.command, command: AgentCommand))
         for (response ← whenResponded) yield {
           sessionTokenRef.compareAndSet(tokenOption, None)  // Changes nothing in case of a concurrent successful Login
           response
         }
       case (_: DeleteFile | Logout | _: MoveFile | NoOperation | _: OrderCommand | RegisterAsMaster | _: SendProcessSignal | _: CloseTask | _: Terminate | AbortImmediately) ⇒
-        unmarshallingPipeline[EmptyResponse.type](RequestTimeout).apply(Post(agentUris.command, command: Command))
+        unmarshallingPipeline[EmptyResponse.type](RequestTimeout).apply(Post(agentUris.command, command: AgentCommand))
     }
     response map { _.asInstanceOf[command.Response] } recover {
       case e: UnsuccessfulResponseException if e.response.status == InternalServerError ⇒
@@ -103,7 +104,7 @@ trait AgentClient {
       addHeader(Accept(`application/json`)) ~>
         agentSendReceive(timeout) ~>
         unmarshal[FileOrderSourceContent]
-    pipeline(Post(agentUris.command, command: Command))
+    pipeline(Post(agentUris.command, command: AgentCommand))
   }
 
   final def fileExists(filePath: String): Future[Boolean] =

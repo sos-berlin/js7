@@ -3,7 +3,8 @@ package com.sos.jobscheduler.agent.tests
 import com.sos.jobscheduler.agent.client.main.AgentClientMain
 import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.agent.data.commands.{Command, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.agent.tests.AgentClientMainIT._
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule
@@ -25,9 +26,10 @@ final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCl
   override protected def extraAgentModule = new ScalaAbstractModule {
     def configure() = {
       bindInstance[CommandExecutor](new CommandExecutor {
-        def executeCommand(command: Command, meta: CommandMeta): Future[command.Response] = {
+        def executeCommand(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
           val response = command match {
             case ExpectedTerminate ⇒ EmptyResponse
+            case _ ⇒ fail()
           }
           Future.successful(response.asInstanceOf[command.Response])
         }

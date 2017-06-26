@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.web.views
 
 import com.sos.jobscheduler.agent.command.{CommandHandlerOverview, CommandRunOverview, InternalCommandId}
-import com.sos.jobscheduler.agent.data.commands.{Command, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import java.time.Instant
 import org.scalatest.FreeSpec
@@ -23,7 +23,7 @@ final class CommandViewServiceTest extends FreeSpec with WebServiceTest with Com
     def currentCommandCount = 2222
   }
 
-  private val testCommand = Terminate(sigtermProcesses = false)
+  private val testCommand = AgentCommand.Terminate(sigtermProcesses = false)
 
   protected def commandRunOverviews = List(CommandRunOverview(InternalCommandId(3333), Instant.parse("2015-06-22T12:00:00Z"), testCommand))
 
@@ -41,7 +41,7 @@ final class CommandViewServiceTest extends FreeSpec with WebServiceTest with Com
         JsObject(
           "internalId" → JsString("3333"),
           "startedAt" → JsString("2015-06-22T12:00:00Z"),
-          "command" → (testCommand: Command).toJson)))
+          "command" → (testCommand: AgentCommand).toJson)))
     }
   }
 }

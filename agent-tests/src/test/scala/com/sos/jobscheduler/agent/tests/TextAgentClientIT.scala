@@ -5,7 +5,8 @@ import com.sos.jobscheduler.agent.client.TextAgentClient
 import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.agent.data.commands.{Command, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.test.{AgentDirectoryProvider, AgentTest}
 import com.sos.jobscheduler.agent.tests.TextAgentClientIT._
 import com.sos.jobscheduler.base.generic.SecretString
@@ -45,9 +46,10 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
 
     @Provides @Singleton
     def commandExecutor(): CommandExecutor = new CommandExecutor {
-      def executeCommand(command: Command, meta: CommandMeta): Future[command.Response] = {
+      def executeCommand(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
         val response = command match {
           case ExpectedTerminate ⇒ EmptyResponse
+          case _ ⇒ fail()
         }
         Future.successful(response.asInstanceOf[command.Response])
       }
@@ -71,7 +73,7 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
     }
   }
 
-  "Command" in {
+  "AgentCommand" in {
     val output = mutable.Buffer[String]()
     autoClosing(newTextAgentClient(output += _, Some(TestUserId → Password))) { client ⇒
       client.executeCommand("""{ $TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")

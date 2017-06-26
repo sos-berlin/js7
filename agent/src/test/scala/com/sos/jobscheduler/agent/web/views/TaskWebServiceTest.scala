@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.web.views
 
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commands.StartTask
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.StartTask
 import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.data.job.TaskId

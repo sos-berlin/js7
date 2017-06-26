@@ -4,8 +4,9 @@ import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, Response}
-import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, Command, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand}
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner
@@ -384,7 +385,7 @@ object AgentOrderKeeper {
   object Input {
     final case class Start(jobs: Seq[(JobPath, ActorRef)]) extends Input
     final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[EventQueue.MyEventSeq]) extends Input
-    final case class ExternalCommand(command: Command, response: Promise[Response])
+    final case class ExternalCommand(command: AgentCommand, response: Promise[Response])
     final case object Terminate
   }
 

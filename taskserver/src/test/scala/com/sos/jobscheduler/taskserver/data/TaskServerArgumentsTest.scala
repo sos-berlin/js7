@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.data
 
-import com.sos.jobscheduler.agent.data.commands.StartTask
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.data.job.TaskId
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
@@ -13,7 +13,7 @@ final class TaskServerArgumentsTest extends FreeSpec {
 
   "logFilenamePart" in {
     assertResult("task-1-1-test-123") {
-      TaskServerArguments.forTest().copy(startMeta = StartTask.Meta(job = "/folder/test", TaskId(123))).logFilenamePart
+      TaskServerArguments.forTest().copy(startMeta = AgentCommand.StartTask.Meta(job = "/folder/test", TaskId(123))).logFilenamePart
     }
   }
 

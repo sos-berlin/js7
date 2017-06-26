@@ -4,7 +4,7 @@ import akka.Done
 import akka.actor.{Actor, DeadLetterSuppression, Stash}
 import akka.pattern.pipe
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, Login, Logout, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -48,7 +48,7 @@ with Stash {
       eventFetcher.close()
     }
     if (client.hasSession) {
-      client.executeCommand(Logout)  // Ignoring response
+      client.executeCommand(AgentCommand.Logout)  // Ignoring response
     }
     super.postStop()
   }
@@ -59,8 +59,8 @@ with Stash {
     case Internal.Connect ⇒
       logger.info(s"Trying to connect $uri")
       reconnectPause.onConnect()
-      (for (_ ← client.executeCommand(Login);
-            _ ← client.executeCommand(RegisterAsMaster))
+      (for (_ ← client.executeCommand(AgentCommand.Login);
+            _ ← client.executeCommand(AgentCommand.RegisterAsMaster))
         yield Internal.Connected
       ) recover {
         case t ⇒ Internal.ConnectFailed(t)
@@ -174,7 +174,7 @@ with Stash {
     }
     become(disconnecting)
     if (client.hasSession) {
-      client.executeCommand(Logout) onComplete { _ ⇒
+      client.executeCommand(AgentCommand.Logout) onComplete { _ ⇒
         self ! Internal.LoggedOut  // We ignore an error due to unknown SessionToken (because Agent has been restarted) or Agent shutdown
       }
     } else {
@@ -202,7 +202,7 @@ with Stash {
       }
 
     case Input.DetachOrder(orderId) ⇒
-      val cmd = DetachOrder(orderId)
+      val cmd = AgentCommand.DetachOrder(orderId)
       val sender = this.sender()
       client.executeCommand(cmd) onComplete {
         case Success(_) ⇒
@@ -218,8 +218,8 @@ with Stash {
   private def processQueuedCommands(): Unit = {
     for (cmd ← commandQueue.find(o ⇒ !executingCommands(o))) {
       executingCommands += cmd
-      (for (_ ← client.executeCommand(AttachJobnet(cmd.jobnet));
-            _ ← client.executeCommand(AttachOrder(cmd.order)))
+      (for (_ ← client.executeCommand(AgentCommand.AttachJobnet(cmd.jobnet));
+            _ ← client.executeCommand(AgentCommand.AttachOrder(cmd.order)))
         yield Done)
         .onComplete {
           tried ⇒ self ! Internal.OrderAttachedToAgent(cmd, tried)

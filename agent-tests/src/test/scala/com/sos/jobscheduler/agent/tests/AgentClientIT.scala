@@ -10,7 +10,7 @@ import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDur
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
-import com.sos.jobscheduler.agent.data.commands.{DeleteFile, MoveFile, RequestFileOrderSourceContent}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{DeleteFile, MoveFile, RequestFileOrderSourceContent}
 import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskOverview}
 import com.sos.jobscheduler.agent.tests.AgentClientIT._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._

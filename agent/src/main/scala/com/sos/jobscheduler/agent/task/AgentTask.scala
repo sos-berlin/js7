@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.task
 
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commands.StartTask
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.views.TaskOverview
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.utils.HasKey
@@ -27,7 +27,7 @@ with HasKey {
 
   def id: AgentTaskId
 
-  def startMeta: StartTask.Meta
+  def startMeta: AgentCommand.StartTask.Meta
 
   protected def taskArgumentsFuture: Future[TaskArguments]
 

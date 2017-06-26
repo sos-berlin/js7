@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.agent.web
 
 import com.sos.jobscheduler.agent.command.CommandMeta
-import com.sos.jobscheduler.agent.data.commandresponses.Response
-import com.sos.jobscheduler.agent.data.commands.Command
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.web.AgentUris.LicenseKeyHeaderName
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.base.generic.SecretString
@@ -18,7 +17,7 @@ import spray.routing.Directives._
  */
 trait CommandWebService extends AgentWebService {
 
-  protected def executeCommand(command: Command, meta: CommandMeta): Future[Response]
+  protected def executeCommand(command: AgentCommand, meta: CommandMeta): Future[AgentCommand.Response]
   protected implicit def executionContext: ExecutionContext
 
   routeBuilder.addApiRoute { user ⇒
@@ -26,8 +25,8 @@ trait CommandWebService extends AgentWebService {
       optionalHeaderValueByName(SessionToken.HeaderName) { sessionTokenOption ⇒
         optionalHeaderValueByName(LicenseKeyHeaderName) { licenseKeys ⇒
           (clientIP | provide[RemoteAddress](RemoteAddress.Unknown)) { clientIp ⇒  // Requires Spray configuration spray.can.remote-address-header = on
-            entity(as[Command]) { command ⇒
-              val response: Future[Response] = executeCommand(command, CommandMeta(
+            entity(as[AgentCommand]) { command ⇒
+              val response: Future[AgentCommand.Response] = executeCommand(command, CommandMeta(
                 user,
                 clientIp.toOption,
                 sessionTokenOption map { o ⇒ SessionToken(SecretString(o)) },

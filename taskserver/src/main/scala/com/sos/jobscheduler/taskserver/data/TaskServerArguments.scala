@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.data
 
-import com.sos.jobscheduler.agent.data.commands.StartTask
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
@@ -22,7 +22,7 @@ import spray.json.RootJsonFormat
  */
 final case class TaskServerArguments(
   agentTaskId: AgentTaskId,
-  startMeta: StartTask.Meta,
+  startMeta: AgentCommand.StartTask.Meta,
   masterAddress: String,
   tunnelToken: TunnelToken,
   environment: Map[String, String] = Map(),
@@ -53,7 +53,7 @@ object TaskServerArguments {
     stdFileMap: Map[StdoutStderrType, Path] = Map())
   = new TaskServerArguments(
       masterAddress = s"127.0.0.1:$tcpPort",
-      startMeta = StartTask.Meta.Default,
+      startMeta = AgentCommand.StartTask.Meta.Default,
       tunnelToken = TunnelToken(TunnelId("TEST-TUNNEL"), SecretString("TUNNEL-SECRET")),
       workingDirectory = directory,
       logDirectory = temporaryDirectory,

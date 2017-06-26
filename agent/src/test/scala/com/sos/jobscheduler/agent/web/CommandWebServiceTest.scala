@@ -2,7 +2,8 @@ package com.sos.jobscheduler.agent.web
 
 import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
-import com.sos.jobscheduler.agent.data.commands._
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.exceptions.StandardPublicException
@@ -25,13 +26,14 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   protected implicit def executionContext = system.dispatcher
   override protected val uriPathPrefix = "test"
 
-  protected def executeCommand(command: Command, meta: CommandMeta) =
+  protected def executeCommand(command: AgentCommand, meta: CommandMeta) =
     Future.successful {
       val expectedTerminate = Terminate(sigkillProcessesAfter = Some(999.s))
       command match {
         case TestRequestFileOrderSourceContent ⇒ TestFileOrderSourceContent
         case FailingRequestFileOrderSourceContent ⇒ throw new StandardPublicException(s"TEST EXCEPTION: $command")
         case `expectedTerminate` ⇒ EmptyResponse
+        case _ ⇒ fail()
       }
     }
 

@@ -56,7 +56,7 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       touchAndDeleteWithCloser(knownFile)
       touchAndDeleteWithCloser(dir / "ignored-file")
 
-      val future = exec(RequestFileOrderSourceContent(
+      val future = exec(AgentCommand.RequestFileOrderSourceContent(
         directory = dir.toString,
         regex = Regex.quote(MatchingString),
         duration = Duration.ofMillis(Long.MaxValue),
@@ -72,7 +72,7 @@ final class RequestFileOrderSourceContentExecutorTest extends FreeSpec with Futu
       val file = dir / s"$MatchingString-TEST"
       val knownFile = dir / s"$MatchingString-known"
       val expectedResponse = FileOrderSourceContent(List(FileOrderSourceContent.Entry(file.toString, Timestamp.toEpochMilli)))
-      val future = exec(RequestFileOrderSourceContent(
+      val future = exec(AgentCommand.RequestFileOrderSourceContent(
         directory = dir.toString,
         regex = Regex.quote(MatchingString),
         duration = Duration.ofMillis(Long.MaxValue),

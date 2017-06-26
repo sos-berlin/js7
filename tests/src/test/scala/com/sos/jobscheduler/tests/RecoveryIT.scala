@@ -5,7 +5,7 @@ import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.Terminate
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentEvent}
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector

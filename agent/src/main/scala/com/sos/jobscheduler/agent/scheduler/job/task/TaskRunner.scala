@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.agent.scheduler.job.task
 
 import akka.util.ByteString
-import com.sos.jobscheduler.agent.data.commands.{StartNonApiTask, StartTask}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{StartNonApiTask, StartTask}
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.ModuleStepEnded
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner._
@@ -29,7 +30,7 @@ final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFac
   private val taskOnce = new SetOnce[AgentTask]
   private val moduleInstanceRunnerOnce = new SetOnce[ModuleInstanceRunner]
   private var _killed = false
-  private val taskId = StartTask.Meta.NoCppJobSchedulerTaskId
+  private val taskId = AgentCommand.StartTask.Meta.NoCppJobSchedulerTaskId
 
   def processOrderAndTerminate(order: Order[Order.InProcess.type]): Future[ModuleStepEnded] = {
     processOrder(order) andThen { case _ ⇒ terminate() }

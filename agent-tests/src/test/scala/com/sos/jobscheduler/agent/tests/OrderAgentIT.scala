@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
-import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider.provideAgent2Directory
 import com.sos.jobscheduler.agent.tests.OrderAgentIT._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -30,7 +30,7 @@ import org.scalatest.Matchers._
   */
 final class OrderAgentIT extends FreeSpec {
 
-  "Command AttachOrder" in {
+  "AgentCommand AttachOrder" in {
     provideAgent2Directory { directory ⇒
       val jobDir = directory / "config" / "live"
       (jobDir / "a.job.xml").xml = AJobXml

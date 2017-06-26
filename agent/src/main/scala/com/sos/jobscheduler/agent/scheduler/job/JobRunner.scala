@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, Props, Stash}
-import com.sos.jobscheduler.agent.data.commands.{AbortImmediately, Terminate, TerminateOrAbort}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner._
 import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.{ModuleStepEnded, ModuleStepFailed}
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
@@ -45,7 +45,7 @@ extends Actor with Stash {
       context.become(ready)
       sender() ! Response.Ready
 
-    case _: TerminateOrAbort ⇒
+    case _: AgentCommand.TerminateOrAbort ⇒
       stash()
   }
 
@@ -70,7 +70,7 @@ extends Actor with Stash {
       sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
       handleIfReadyForOrder()
 
-    case Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
+    case AgentCommand.Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
       terminating = true
       if (sigtermProcesses) {
         killAll(SIGTERM)
@@ -83,7 +83,7 @@ extends Actor with Stash {
         case None ⇒
       }
 
-    case AbortImmediately | Internal.KillAll ⇒
+    case AgentCommand.AbortImmediately | Internal.KillAll ⇒
       killAll(SIGKILL)
   }
 

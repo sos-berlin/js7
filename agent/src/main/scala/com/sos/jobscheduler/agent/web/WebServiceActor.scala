@@ -4,7 +4,7 @@ import akka.actor.{ActorSystem, Props}
 import com.google.inject.Injector
 import com.sos.jobscheduler.agent.command.{AgentCommandHandler, CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.Command
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.views.TaskHandlerView
 import com.sos.jobscheduler.agent.scheduler.OrderHandler
 import com.sos.jobscheduler.agent.views.AgentOverview
@@ -65,7 +65,7 @@ with NoJobSchedulerEngineWebService
 
   protected def commandHandlerOverview = commandHandler
   protected def commandRunOverviews = commandHandler.commandRuns
-  protected def executeCommand(command: Command, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
+  protected def executeCommand(command: AgentCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
   protected def agentOverview = agentOverviewProvider.get()
   protected def tunnelAccess(tunnelToken: TunnelToken) = tunnelServer.tunnelAccess(tunnelToken)
   protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration) = tunnelServer.onHeartbeat(tunnelToken, timeout)

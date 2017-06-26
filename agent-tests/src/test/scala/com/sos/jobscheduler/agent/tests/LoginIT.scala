@@ -4,7 +4,7 @@ import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.client.{AgentClient, SimpleAgentClient}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
-import com.sos.jobscheduler.agent.data.commands.{Login, Logout, NoOperation}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Login, Logout, NoOperation}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._

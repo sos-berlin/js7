@@ -3,8 +3,9 @@ package com.sos.jobscheduler.agent.task
 import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, Response, StartTaskResponse}
-import com.sos.jobscheduler.agent.data.commands._
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskHandlerView, TaskOverview}
 import com.sos.jobscheduler.agent.task.TaskHandler._
 import com.sos.jobscheduler.base.exceptions.StandardPublicException
@@ -46,7 +47,7 @@ extends TaskHandlerView {
   def isTerminating = terminating.get
   def terminated = terminatedPromise.future
 
-  def execute(command: Command, meta: CommandMeta = CommandMeta()): Future[Response] =
+  def execute(command: AgentCommand, meta: CommandMeta = CommandMeta()): Future[AgentCommand.Response] =
     command match {
       case o: StartTask ⇒ executeStartTask(o, meta)
       case CloseTask(id, kill) ⇒ executeCloseTask(id, kill)

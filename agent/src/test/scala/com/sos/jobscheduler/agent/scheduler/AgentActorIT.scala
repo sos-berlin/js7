@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.scheduler
 
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.AgentActorIT._
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean

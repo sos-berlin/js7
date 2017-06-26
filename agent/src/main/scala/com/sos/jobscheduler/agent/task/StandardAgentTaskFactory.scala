@@ -5,7 +5,7 @@ import akka.util.ByteString
 import com.google.common.base.Splitter
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commands.{StartApiTask, StartNonApiTask, StartTask}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{StartApiTask, StartNonApiTask, StartTask}
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory._
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError

@@ -5,8 +5,9 @@ import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
 import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
 import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent, Response}
-import com.sos.jobscheduler.agent.data.commands.{AbortImmediately, Command, RequestFileOrderSourceContent, Terminate}
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AbortImmediately, RequestFileOrderSourceContent, Terminate}
 import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -34,7 +35,7 @@ final class AgentClientCommandMarshallingTest extends FreeSpec with BeforeAndAft
 
     @Provides @Singleton
     def commandExecutor(): CommandExecutor = new CommandExecutor {
-      def executeCommand(command: Command, meta: CommandMeta): Future[command.Response] =
+      def executeCommand(command: AgentCommand, meta: CommandMeta): Future[command.Response] =
         Future {
           (command match {
             case ExpectedTerminate ⇒ EmptyResponse
@@ -55,7 +56,7 @@ final class AgentClientCommandMarshallingTest extends FreeSpec with BeforeAndAft
     }
   }
 
-  List[(Command, Response)](
+  List[(AgentCommand, AgentCommand.Response)](
     ExpectedRequestFileOrderSourceContent → ExpectedFileOrderSourceContent,
     ExpectedTerminate → EmptyResponse,
     AbortImmediately → EmptyResponse)

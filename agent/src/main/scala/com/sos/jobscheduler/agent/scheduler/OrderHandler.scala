@@ -4,8 +4,7 @@ import akka.actor.{ActorRef, ActorRefFactory, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commandresponses.Response
-import com.sos.jobscheduler.agent.data.commands.Command
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.OrderHandler._
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
@@ -67,11 +66,11 @@ final class OrderHandler @Inject private(
     throw new IllegalStateException("Order processing is not enabled (no directory 'config/live')")
   }
 
-  def execute(userId: UserId, command: Command): Future[command.Response] =
+  def execute(userId: UserId, command: AgentCommand): Future[command.Response] =
     for {
       agentActor ← agentActorFuture
       response ← {
-        val promise = Promise[Response]()
+        val promise = Promise[AgentCommand.Response]()
         agentActor ! AgentActor.Input.ExternalCommand(userId, command, promise)
         promise.future map { _.asInstanceOf[command.Response] }
       }

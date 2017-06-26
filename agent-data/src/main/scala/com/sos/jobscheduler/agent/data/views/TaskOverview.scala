@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.data.views
 
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commands.StartTask
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.base.sprayjson.InetAddressJsonSupport._
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits.InstantJsonFormat
 import com.sos.jobscheduler.tunnel.data.TunnelId
@@ -18,7 +18,7 @@ final case class TaskOverview(
   tunnelId: TunnelId,
   startedAt: Instant,
   startedByHttpIp: Option[InetAddress],
-  startMeta: StartTask.Meta,
+  startMeta: AgentCommand.StartTask.Meta,
   arguments: Option[TaskOverview.Arguments])
 
 object TaskOverview {

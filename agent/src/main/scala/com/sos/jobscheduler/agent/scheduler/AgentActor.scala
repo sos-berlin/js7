@@ -4,8 +4,9 @@ import akka.Done
 import akka.actor.{ActorRef, OneForOneStrategy, Props, Status, SupervisorStrategy}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, Response}
-import com.sos.jobscheduler.agent.data.commands.{Command, OrderCommand, RegisterAsMaster, TerminateOrAbort}
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{OrderCommand, RegisterAsMaster, TerminateOrAbort}
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobRunner}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
@@ -196,7 +197,7 @@ object AgentActor {
   sealed trait Input
   object Input {
     final case object Start extends Output
-    final case class ExternalCommand(userId: UserId, command: Command, response: Promise[Response])
+    final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[AgentCommand.Response])
     final case class RequestEvents(usedId: UserId, input: AgentOrderKeeper.Input.RequestEvents)
   }
 

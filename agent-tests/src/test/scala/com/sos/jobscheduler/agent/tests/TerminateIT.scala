@@ -6,7 +6,7 @@ import com.google.inject.AbstractModule
 import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
-import com.sos.jobscheduler.agent.data.commands.{AttachJobnet, AttachOrder, Login, RegisterAsMaster, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, Login, RegisterAsMaster, Terminate}
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
 import com.sos.jobscheduler.agent.tests.TerminateIT._
 import com.sos.jobscheduler.common.event.collector.EventCollector

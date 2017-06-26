@@ -7,8 +7,8 @@ import com.sos.jobscheduler.agent.Agent._
 import com.sos.jobscheduler.agent.command.CommandExecutor
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.data.commandresponses.Response
-import com.sos.jobscheduler.agent.data.commands.Command
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.Response
 import com.sos.jobscheduler.agent.task.TaskHandler
 import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.agent.web.AgentWebServer
@@ -55,7 +55,7 @@ final class Agent(module: Module) extends AutoCloseable {
     terminated.awaitInfinite
   }
 
-  def executeCommand(command: Command): Future[Response] = commandExecutor.executeCommand(command)
+  def executeCommand(command: AgentCommand): Future[Response] = commandExecutor.executeCommand(command)
 
   def terminated: Future[Unit] = taskHandler.terminated
 }

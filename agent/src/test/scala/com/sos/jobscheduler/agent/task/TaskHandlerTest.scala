@@ -7,7 +7,7 @@ import com.sos.jobscheduler.agent.command.CommandMeta
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, StartTaskResponse}
-import com.sos.jobscheduler.agent.data.commands._
+import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.views.TaskHandlerOverview
 import com.sos.jobscheduler.agent.task.TaskHandlerTest._
 import com.sos.jobscheduler.base.exceptions.PublicException
