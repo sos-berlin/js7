@@ -4,7 +4,6 @@ import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, Props, Stash}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskRunner, TaskStepEnded, TaskStepFailed}
-import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.common.akkautils.Akkas.{decodeActorName, encodeAsActorName}
@@ -23,7 +22,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JobRunner private(jobPath: JobPath)(implicit newTask: AgentTaskFactory, timerService: TimerService, ec: ExecutionContext)
+final class JobRunner private(jobPath: JobPath)(implicit newTaskRunner: TaskRunner.Factory, timerService: TimerService, ec: ExecutionContext)
 extends Actor with Stash {
 
   private val logger = Logger.withPrefix[JobRunner](jobPath.toString)
@@ -54,12 +53,13 @@ extends Actor with Stash {
 
     case Command.ProcessOrder(order) if waitingForNextOrder ⇒
       logger.trace(s"ProcessOrder(${order.id})")
-      val taskRunner = new TaskRunner(jobConfiguration, newTask)
+      val taskRunner = newTaskRunner(jobConfiguration)
       orderToTask.insert(order.id → taskRunner)
       waitingForNextOrder = false
       handleIfReadyForOrder()
       val sender = this.sender()
-      taskRunner.processOrderAndTerminate(order)
+      taskRunner.processOrder(order)
+        .andThen { case _ ⇒ taskRunner.terminate() }
         .onComplete { triedStepEnded ⇒
           self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
         }
@@ -116,7 +116,7 @@ extends Actor with Stash {
 }
 
 object JobRunner {
-  def actorOf(jobPath: JobPath)(implicit actorRefFactory: ActorRefFactory, newTask: AgentTaskFactory, ts: TimerService, ec: ExecutionContext): ActorRef =
+  def actorOf(jobPath: JobPath)(implicit actorRefFactory: ActorRefFactory, newTaskRunner: TaskRunner.Factory, ts: TimerService, ec: ExecutionContext): ActorRef =
     actorRefFactory.actorOf(
       Props { new JobRunner(jobPath) },
       name = toActorName(jobPath))

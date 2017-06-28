@@ -32,28 +32,34 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
     super.afterAll()
   }
 
-  "test" in {
-    val jobConfiguration = JobConfiguration.parseXml(
-      JobPath("/TEST"),
-      xmlElemToSource(
-        <job>
-          <params>
-            <param name="var1" value="VALUE1"/>
-          </params>
-          <script language="shell">{TestScript}</script>
-        </job>))
-    measureTime(10, "TaskRunner") {
-      val order = Order(
-        OrderId("TEST"),
-        NodeKey(JobnetPath("/JOBCHAIN"), NodeId("NODE")),
-        Order.InProcess,
-        Map("a" → "A"))
-      implicit val x = injector.instance[StandardAgentTaskFactory]
-      val ended = new TaskRunner(jobConfiguration, injector.instance[StandardAgentTaskFactory]).processOrderAndTerminate(order) await 30.s
-      assert(ended == TaskStepSucceeded(
-        variablesDiff = MapDiff.addedOrUpdated(Map("result" → "TEST-RESULT-VALUE1")),
-        Good(returnValue = true))
-      )
+  for ((newTaskRunner, name) ← Array(
+      injector.instance[SimpleShellTaskRunner.Factory] → "SimpleShellTaskRunner",
+      injector.instance[LegacyApiTaskRunner.Factory] → "LegacyApiTaskRunner"))
+  {
+    name in {
+      val jobConfiguration = JobConfiguration.parseXml(
+        JobPath("/TEST"),
+        xmlElemToSource(
+          <job>
+            <params>
+              <param name="var1" value="VALUE1"/>
+            </params>
+            <script language="shell">{TestScript}</script>
+          </job>))
+      measureTime(10, "TaskRunner") {
+        val order = Order(
+          OrderId("TEST"),
+          NodeKey(JobnetPath("/JOBCHAIN"), NodeId("NODE")),
+          Order.InProcess,
+          Map("a" → "A"))
+        implicit val x = injector.instance[StandardAgentTaskFactory]
+        val taskRunner = newTaskRunner(jobConfiguration)
+        val ended = taskRunner.processOrder(order) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
+        assert(ended == TaskStepSucceeded(
+          variablesDiff = MapDiff.addedOrUpdated(Map("result" → "TEST-RESULT-VALUE1")),
+          Good(returnValue = true))
+        )
+      }
     }
   }
 }
