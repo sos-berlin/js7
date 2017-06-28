@@ -5,7 +5,6 @@ import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
-import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.ModuleStepSucceeded
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerIT._
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
 import com.sos.jobscheduler.base.utils.MapDiff
@@ -51,7 +50,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
         Map("a" → "A"))
       implicit val x = injector.instance[StandardAgentTaskFactory]
       val ended = new TaskRunner(jobConfiguration, injector.instance[StandardAgentTaskFactory]).processOrderAndTerminate(order) await 30.s
-      assert(ended == ModuleStepSucceeded(
+      assert(ended == TaskStepSucceeded(
         variablesDiff = MapDiff.addedOrUpdated(Map("result" → "TEST-RESULT-VALUE1")),
         Good(returnValue = true))
       )

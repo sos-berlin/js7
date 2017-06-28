@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, Status, Terminated}
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner
-import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.{ModuleStepFailed, ModuleStepSucceeded}
+import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
@@ -107,9 +107,9 @@ extends KeyedJournalingActor[OrderEvent] {
   private def processing(node: Jobnet.JobNode, jobActor: ActorRef): Receive = journaling orElse {
     case JobRunner.Response.OrderProcessed(`orderId`, moduleStepEnded) if node != null ⇒
       val event = moduleStepEnded match {
-        case ModuleStepSucceeded(variablesDiff, good) ⇒
+        case TaskStepSucceeded(variablesDiff, good) ⇒
           OrderStepSucceeded(variablesDiff, good.returnValue, nextNodeId(node, good))
-        case ModuleStepFailed(bad) ⇒
+        case TaskStepFailed(bad) ⇒
           OrderStepFailed(bad.error, nextNodeId(node, bad))
       }
       endOrderStep(event, node)

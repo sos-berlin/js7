@@ -3,8 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, Props, Stash}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner._
-import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.{ModuleStepEnded, ModuleStepFailed}
-import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
+import com.sos.jobscheduler.agent.scheduler.job.task.{TaskRunner, TaskStepEnded, TaskStepFailed}
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
@@ -94,12 +93,12 @@ extends Actor with Stash {
     }
   }
 
-  private def recoverFromFailure(tried: Try[ModuleStepEnded]): ModuleStepEnded =
+  private def recoverFromFailure(tried: Try[TaskStepEnded]): TaskStepEnded =
     tried match {
       case Success(o) ⇒ o
       case Failure(t) ⇒
         logger.error(s"TaskRunner.stepOne failed: $t", t)
-        ModuleStepFailed(Bad("TaskRunner.stepOne failed"))
+        TaskStepFailed(Bad("TaskRunner.stepOne failed"))
     }
 
   private def killAll(signal: ProcessSignal): Unit = {
@@ -137,7 +136,7 @@ object JobRunner {
 
   object Response {
     case object Ready
-    final case class OrderProcessed(orderId: OrderId, moduleStepEnded: ModuleStepEnded)
+    final case class OrderProcessed(orderId: OrderId, moduleStepEnded: TaskStepEnded)
   }
 
   object Input {
@@ -150,7 +149,7 @@ object JobRunner {
   }
 
   private object Internal {
-    final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[ModuleStepEnded])
+    final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[TaskStepEnded])
     final case object KillAll
   }
 }
