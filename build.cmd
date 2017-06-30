@@ -8,5 +8,6 @@ if "%WINDOWS_NET_SDK_HOME%" == "" (
   rem echo Using WINDOWS_NET_SDK_HOME=%WINDOWS_NET_SDK_HOME%
 )
 
+set JAVA_OPTS=-XX:+CMSClassUnloadingEnabled -XX:MaxMetaspaceSize=512M -XX:MetaspaceSize=256M -Xms2G -Xmx2G
 sbt "; clean; build"
 endlocal
