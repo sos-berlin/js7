@@ -11,8 +11,10 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.minicom.remoting.ClientRemoting
 import com.sos.jobscheduler.minicom.remoting.dialog.ClientDialogConnection
@@ -73,8 +75,12 @@ final class TaskRunner(jobConfiguration: JobConfiguration, newTask: AgentTaskFac
   }
 
   def kill(signal: ProcessSignal): Unit = {
-    logger.debug(s"Kill $toString")
-    for (task ← taskOnce) task.sendProcessSignal(signal)
+    logger.debug(s"Kill $signal $toString")
+    for (task ← taskOnce) {
+      ignoreException(logger.asLazy.warn) {
+        task.sendProcessSignal(signal)
+      }
+    }
     _killed |= signal == SIGKILL
   }
 
