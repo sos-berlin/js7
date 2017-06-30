@@ -31,7 +31,7 @@ final class MasterMain(conf: MasterConfiguration) extends HasCloser {
   lazy val injector = Guice.createInjector(new MasterModule(conf)) sideEffect { o ⇒
     closer.registerAutoCloseable(o.instance[Closer])
   }
-  private lazy val master = injector.instance[Master]
+  lazy val master = injector.instance[Master]
 
   JavaShutdownHook.add("MasterMain") {
     logger.info("Terminate")

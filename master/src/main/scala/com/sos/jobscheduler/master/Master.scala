@@ -21,7 +21,7 @@ import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.Files.{createDirectory, exists}
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import spray.http.Uri
 
 /**
@@ -49,8 +49,9 @@ extends OrderClient {
     case _ ⇒
   }
 
+  private val actorStoppedPromise = Promise[Completed]()
   private[master] val orderKeeper = actorSystem.actorOf(
-    Props { new MasterOrderKeeper(configuration, scheduledOrderGeneratorKeeper)(timerService, eventIdGenerator, eventCollector, keyedEventBus) },
+    Props { new MasterOrderKeeper(configuration, scheduledOrderGeneratorKeeper, actorStoppedPromise)(timerService, eventIdGenerator, eventCollector, keyedEventBus) },
     "MasterOrderKeeper")
 
   def start(): Future[Completed] = {
@@ -72,6 +73,9 @@ extends OrderClient {
 
   def localUri: Uri =
     webServer.localUri
+
+  def terminated: Future[Completed] =
+    actorStoppedPromise.future
 }
 
 object Master {

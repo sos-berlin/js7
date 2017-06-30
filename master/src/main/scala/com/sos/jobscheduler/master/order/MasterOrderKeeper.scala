@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.master.order
 
 import akka.Done
-import akka.actor.{ActorRef, OneForOneStrategy, Props, Stash, Status, SupervisorStrategy}
+import akka.actor.{ActorRef, OneForOneStrategy, Props, Stash, Status, SupervisorStrategy, Terminated}
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -31,14 +32,15 @@ import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalAc
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.time.Duration
 import scala.collection.mutable
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
 
 /**
   * @author Joacim Zschimmer
   */
 final class MasterOrderKeeper(
   masterConfiguration: MasterConfiguration,
-  scheduledOrderGeneratorKeeper: ScheduledOrderGeneratorKeeper)
+  scheduledOrderGeneratorKeeper: ScheduledOrderGeneratorKeeper,
+  stoppedPromise: Promise[Completed])
   (implicit
     timerService: TimerService,
     eventIdGenerator: EventIdGenerator,
@@ -71,6 +73,9 @@ with Stash {
     Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, scheduledOrderGeneratorKeeper)},
     "OrderScheduleGenerator"
   )
+  private var terminating = false
+
+  context.watch(journalActor)
 
   for (dir ← masterConfiguration.liveDirectoryOption) {
     forEachTypedFile(dir, Set(JobnetPath, AgentPath)) {
@@ -102,6 +107,7 @@ with Stash {
   override def postStop() = {
     keyedEventBus.unsubscribe(self)
     super.postStop()
+    stoppedPromise.success(Completed)
   }
 
   protected def snapshots = Future.successful(
@@ -297,6 +303,10 @@ with Stash {
 
     case Internal.Execute(callback) ⇒
       callback()
+
+    case Terminated(`journalActor`) if terminating ⇒
+      logger.info("Stop")
+      context.stop(self)
   }
 
   def executeMasterCommand(command: MasterCommand): Unit = command match {
@@ -316,6 +326,11 @@ with Stash {
           logger.debug(s"Discarding duplicate AddOrderIfNew: ${order.id}")
           sender() ! MasterCommand.Response.Accepted //Status.Failure(new IllegalStateException(s"Duplicate OrderId '${order.id}'"))
       }
+
+    case MasterCommand.Terminate ⇒
+      terminating = true
+      journalActor ! JsonJournalActor.Input.Terminate
+      sender() ! MasterCommand.Response.Accepted
   }
 
   private def handleOrderEvent(orderId: OrderId, event: OrderEvent): Unit = {

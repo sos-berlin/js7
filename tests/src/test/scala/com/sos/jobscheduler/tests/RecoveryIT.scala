@@ -112,6 +112,8 @@ final class RecoveryIT extends FreeSpec {
       master.start() await 99.s
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s))  // Will block on recovery until Agents are started: await 99.s
       body(master)
+      master.executeCommand(MasterCommand.Terminate) await 99.s
+      master.terminated await 99.s
     }
   }
 

@@ -137,6 +137,9 @@ extends Actor with Stash {
         context.become(ready)
       }
 
+    case Input.Terminate ⇒
+      context.stop(self)
+
     case Terminated(a) ⇒
       val keys = keyToJournalingActor collect { case (k, `a`) ⇒ k }
       logger.trace(s"Unregistering $keys -> ${a.path}")
@@ -208,6 +211,7 @@ object JsonJournalActor {
     final case class RegisterMe(key: Option[Any])
     final case class Store(eventStampeds: Seq[Option[AnyKeyedEvent]], journalingActor: ActorRef)
     final case object TakeSnapshot
+    final case object Terminate
   }
 
   sealed trait Output

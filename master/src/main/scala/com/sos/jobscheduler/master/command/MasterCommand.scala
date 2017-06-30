@@ -18,6 +18,10 @@ object MasterCommand {
 
   final case class ScheduleOrdersEvery(every: Duration) extends MasterCommand
 
+  case object Terminate extends MasterCommand {
+    type MyResponse = Response.Accepted.type
+  }
+
   sealed trait Response
 
   object Response {
