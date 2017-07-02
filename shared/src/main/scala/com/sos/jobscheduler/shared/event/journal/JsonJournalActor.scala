@@ -39,6 +39,7 @@ extends Actor with Stash {
   }
 
   private var jsonWriter: FileJsonWriter = null
+  private var temporaryJsonWriter: FileJsonWriter = null
   private val keyToJournalingActor = mutable.Map[Any, ActorRef]()
   private val keylessJournalingActors = mutable.Set[ActorRef]()
   private val writtenBuffer = mutable.ArrayBuffer[Written]()
@@ -56,6 +57,11 @@ extends Actor with Stash {
   private val logger = Logger.withPrefix[JsonJournalActor[_]](file.getFileName.toString)
 
   override def postStop() = {
+    if (temporaryJsonWriter != null) {
+      logger.debug(s"Deleting temporary journal file due to termination: ${temporaryJsonWriter.file}")
+      temporaryJsonWriter.close()
+      Files.delete(temporaryJsonWriter.file)
+    }
     val msg = if (jsonWriter != null) {
       jsonWriter.close()
       val s = try toMB(Files.size(file)) catch { case NonFatal(t) ⇒ t.toString }
@@ -152,17 +158,17 @@ extends Actor with Stash {
     if (jsonWriter != null) {
       jsonWriter.close()
     }
-    val myJsonWriter = newJsonWriter(Paths.get(s"$file.tmp"), append = false)
+    temporaryJsonWriter = newJsonWriter(Paths.get(s"$file.tmp"), append = false)
     val journalingActors = keyToJournalingActor.values.toSet ++ keylessJournalingActors
     context.actorOf(
-      Props { new SnapshotWriter(myJsonWriter.writeJson, journalingActors, snapshotJsonFormat) },
+      Props { new SnapshotWriter(temporaryJsonWriter.writeJson, journalingActors, snapshotJsonFormat) },
       "SnapshotWriter")
-    context.become(takingSnapshot(myJsonWriter, commander = sender(), () ⇒ andThen, new Stopwatch))
+    context.become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
   }
 
-  private def takingSnapshot(myJsonWriter: FileJsonWriter, commander: ActorRef, andThen: () ⇒ Unit, stopwatch: Stopwatch): Receive = {
+  private def takingSnapshot(commander: ActorRef, andThen: () ⇒ Unit, stopwatch: Stopwatch): Receive = {
     case SnapshotWriter.Output.Finished(done) ⇒
-      myJsonWriter.close()
+      temporaryJsonWriter.close()
       val snapshotCount = done.get  // Crash !!!
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "objects"))
       if (snapshotCount > 0) {
@@ -172,7 +178,8 @@ extends Actor with Stash {
       if (jsonWriter != null) {
         jsonWriter.close()
       }
-      move(myJsonWriter.file, file, REPLACE_EXISTING, ATOMIC_MOVE)   // TODO Gibt es für kurze Zeit nur das journal.tmp ?
+      move(temporaryJsonWriter.file, file, REPLACE_EXISTING, ATOMIC_MOVE)   // TODO Gibt es für kurze Zeit nur das journal.tmp ?
+      temporaryJsonWriter = null
 
       jsonWriter = newJsonWriter(file, append = true)
       unstashAll()
