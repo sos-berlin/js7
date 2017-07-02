@@ -64,18 +64,16 @@ with Stash {
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private val lastRecoveredOrderEvents = mutable.Map[OrderId, OrderEvent]()
   private var detachingSuspended = false
-  protected val journalActor = context.actorOf(
+  protected val journalActor = context.watch(context.actorOf(
     Props {
       new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = masterConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus)
     },
-    "Journal")
+    "Journal"))
   private val orderScheduleGenerator = context.actorOf(
     Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, scheduledOrderGeneratorKeeper)},
     "OrderScheduleGenerator"
   )
   private var terminating = false
-
-  context.watch(journalActor)
 
   for (dir ← masterConfiguration.liveDirectoryOption) {
     forEachTypedFile(dir, Set(JobnetPath, AgentPath)) {

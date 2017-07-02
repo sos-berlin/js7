@@ -12,6 +12,7 @@ import com.sos.jobscheduler.agent.scheduler.AgentActor
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.auth.User.Anonymous
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
@@ -35,7 +36,7 @@ private class TestAgentActorProvider extends HasCloser {
   private val directoryProvider = new AgentDirectoryProvider {} .provideAgent2Directories().closeWithCloser
   lazy val agentDirectory = directoryProvider.agentDirectory
 
-  lazy val (eventCollector, agentActor) = start(agentDirectory)
+  lazy val (eventCollector, agentActor, terminated) = start(agentDirectory)
   lazy val lastEventId = eventCollector.lastEventId
 
   def startAgent() = agentActor
@@ -53,7 +54,7 @@ object TestAgentActorProvider {
   def provide[A](body: TestAgentActorProvider ⇒ A): A =
     autoClosing(new TestAgentActorProvider)(body)
 
-  private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef) = {
+  private def start(configAndData: Path)(implicit closer: Closer): (ActorEventCollector, ActorRef, Future[Completed]) = {
     val agentConfiguration = AgentConfiguration.forTest(configAndData = Some(configAndData))
     val actorSystem = newActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
@@ -67,14 +68,16 @@ object TestAgentActorProvider {
         new EventCollector.Configuration(queueSize = 100000, timeoutLimit = 99.s)
     }).instance[ActorEventCollector]
 
+    val stopped = Promise[Completed]()
     val agentActor = actorSystem.actorOf(
       Props { new AgentActor(
         stateDirectory = configAndData / "data",
         jobConfigurationDirectory = configAndData / "config" / "live",
         askTimeout = Timeout(30.seconds),
-        syncOnCommit = false) },
+        syncOnCommit = false,
+        stoppedPromise = stopped) },
       "AgentActor")
 
-    (eventCollector, agentActor)
+    (eventCollector, agentActor, stopped.future)
   }
 }

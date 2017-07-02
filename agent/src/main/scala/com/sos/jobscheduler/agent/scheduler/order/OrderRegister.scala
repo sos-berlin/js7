@@ -5,7 +5,6 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderRegister._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.shared.common.ActorRegister
@@ -20,7 +19,8 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
   def handleOrderAttached(keyedEvent: KeyedEvent[OrderAttached], actor: ActorRef): Unit = {
     val orderId = keyedEvent.key
     val event = keyedEvent.event
-    insert(orderId → new OrderEntry(orderId, actor, event.nodeKey.jobnetPath, event.nodeKey.nodeId))
+
+    insert(orderId → new OrderEntry(Order.fromOrderAttached(orderId, event), actor))
   }
 
   def handleOrderDetached(keyedEvent: KeyedEvent[OrderDetached.type]): Unit = {
@@ -28,12 +28,12 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
   }
 
   def insert(order: Order[Order.State], actor: ActorRef): Unit = {
-    insert(order.id → new OrderEntry(order.id, actor, order.jobnetPath, order.nodeId))
+    insert(order.id → new OrderEntry(order, actor))
   }
 
   def onActorTerminated(actor: ActorRef)(implicit timerService: TimerService): Unit = {
     for (orderEntry ← remove(actorToKey(actor))) {
-      logger.debug(s"Removing ${orderEntry.orderId} after Actor death")
+      logger.debug(s"Removing ${orderEntry.order.id} after Actor death")
       orderEntry.timer foreach timerService.cancel
     }
   }
@@ -43,17 +43,17 @@ private[order] object OrderRegister {
   private def logger = Logger(getClass)
 
   final class OrderEntry(
-    val orderId: OrderId,
-    val actor: ActorRef,
-    val jobnetPath: JobnetPath,
-    var nodeId: NodeId)
+    private var _order: Order[Order.State],
+    val actor: ActorRef)
   {
+    var detaching: Boolean = false
     private[OrderRegister] var timer: Option[Timer[Unit]] = None
 
-    def nodeKey = NodeKey(jobnetPath, nodeId)
+    def order = _order
+    def order_=(o: Order[Order.State]) = _order = o
 
     def at(instant: Instant)(body: ⇒ Unit)(implicit timerService: TimerService, ec: ExecutionContext): Unit = {
-      val t = timerService.at(instant, name = orderId.string)
+      val t = timerService.at(instant, name = order.id.string)
       t onElapsed {
         timer = None
         body

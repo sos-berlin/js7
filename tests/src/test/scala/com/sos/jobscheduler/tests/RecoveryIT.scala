@@ -121,8 +121,6 @@ final class RecoveryIT extends FreeSpec {
     multipleAutoClosing(for (o ← confs) yield new Agent(o)) { agents ⇒
       (for (a ← agents) yield a.start()) await 10.s
       body(agents)
-      (for (a ← agents) yield a.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(1.s)))) await 10.s
-      (for (a ← agents) yield a.terminated) await 10.s
     }
   }
 

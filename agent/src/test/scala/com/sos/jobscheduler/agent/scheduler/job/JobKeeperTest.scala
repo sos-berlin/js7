@@ -28,8 +28,8 @@ final class JobKeeperTest extends FreeSpec {
 
   "JobKeeper reads some job definitions" in {
     logger.info("START")
-    TestAgentActorProvider.provide { env ⇒
-      import env.agentDirectory
+    TestAgentActorProvider.provide { provider ⇒
+      import provider.agentDirectory
       val jobDir = agentDirectory / "config" / "live"
       for (i ← (1 to N).par) (jobDir / s"test-$i.job.xml").contentString = TestJobXmlString
       logger.info(s"$N files created, ${TestJobXmlString.length} bytes each")

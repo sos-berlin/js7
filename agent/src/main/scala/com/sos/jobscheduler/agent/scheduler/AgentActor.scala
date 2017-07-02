@@ -1,17 +1,18 @@
 package com.sos.jobscheduler.agent.scheduler
 
 import akka.Done
-import akka.actor.{ActorRef, OneForOneStrategy, Props, Status, SupervisorStrategy}
+import akka.actor.{ActorRef, Props, Status, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{OrderCommand, RegisterAsMaster, TerminateOrAbort}
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobRunner}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.akkautils.Akkas
+import com.sos.jobscheduler.common.akkautils.Akkas.StoppingStrategies
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -19,11 +20,11 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.JobPath
+import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
 import scala.collection.immutable.Seq
-import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
@@ -33,7 +34,8 @@ private[scheduler] final class AgentActor(
   jobConfigurationDirectory: Path,
   stateDirectory: Path,
   implicit private val askTimeout: Timeout,
-  syncOnCommit: Boolean)
+  syncOnCommit: Boolean,
+  stoppedPromise: Promise[Completed])
   (implicit
     timerService: TimerService,
     keyedEventBus: StampedKeyedEventBus,
@@ -42,25 +44,26 @@ private[scheduler] final class AgentActor(
     executionContext: ExecutionContext)
 extends KeyedEventJournalingActor[AgentEvent] {
 
-  override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 0) {
-    case _ ⇒ SupervisorStrategy.Stop
-  }
-
+  override val supervisorStrategy = StoppingStrategies.stopping(logger)
   private val journalFile = stateDirectory / "journal"
   protected val journalActor = context.actorOf(
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
   private val jobKeeper = context.actorOf(Props { new JobKeeper(jobConfigurationDirectory) }, "JobKeeper")
-  private val masterToOrderKeeper = mutable.Map[UserId, ActorRef]() withDefault { userId ⇒
-    throw new NoSuchElementException(s"No master registered for user '$userId'")
-  }
+  private val masterToOrderKeeper = new MasterRegister
   private var terminating = false
 
-  def snapshots = Future.successful(masterToOrderKeeper.keys.toVector map AgentSnapshot.Master.apply)
+  def snapshots = Future.successful(masterToOrderKeeper.keys map AgentSnapshot.Master.apply)
 
-  override def preStart(): Unit = {
+  override def preStart() = {
     super.preStart()
     new MyJournalRecoverer().recoverAllAndSendTo(journalActor = journalActor)
+  }
+
+  override def postStop() = {
+    logger.info("Agent is terminating now")
+    super.postStop()
+    stoppedPromise.success(Completed)
   }
 
   private class MyJournalRecoverer extends JsonJournalRecoverer[AgentEvent] {
@@ -100,11 +103,11 @@ extends KeyedEventJournalingActor[AgentEvent] {
   private def startingJobKeeper(commander: ActorRef): Receive = journaling orElse {
     case JobKeeper.Output.Ready(jobs) ⇒
       for (a ← masterToOrderKeeper.values) a ! AgentOrderKeeper.Input.Start(jobs)  // Start recovered actors
-      context.become(started(jobs))
+      context.become(ready(jobs))
       commander ! Output.Started
   }
 
-  private def started(jobs: Seq[(JobPath, ActorRef)]): Receive = journaling orElse {
+  private def ready(jobs: Seq[(JobPath, ActorRef)]): Receive = journaling orElse {
     case cmd: Input.ExternalCommand ⇒
       executeCommand(cmd, jobs)
 
@@ -118,20 +121,25 @@ extends KeyedEventJournalingActor[AgentEvent] {
       for (actor ← masterToOrderKeeper.values) {
         actor.forward(msg)
       }
+
+    case Terminated(a) if masterToOrderKeeper.contains(a) && terminating ⇒
+      masterToOrderKeeper -= a
+      handleActorTermination()
   }
 
   private def executeCommand(externalCommand: Input.ExternalCommand, jobs: Seq[(JobPath, ActorRef)]): Unit = {
     import externalCommand.{command, response, userId}
     command match {
-      case command: TerminateOrAbort ⇒
+      case command: AgentCommand.Terminate ⇒
         terminating = true
-        terminateOrderKeepers() onComplete { o ⇒
-          terminateJobKeeper(command) onComplete { j ⇒
-            response.complete(o flatMap { _ ⇒ j })
+        terminateOrderKeepers() onComplete { orderTried ⇒
+          (jobKeeper ? command).mapTo[EmptyResponse.type] onComplete { j ⇒
+            response.complete(orderTried flatMap { _ ⇒ j })
           }
         }
+        handleActorTermination()
 
-      case RegisterAsMaster if !terminating ⇒
+      case AgentCommand.RegisterAsMaster if !terminating ⇒
         //??? require(sessionToken.isDefined)
         if (masterToOrderKeeper contains userId) {
           response.success(EmptyResponse)
@@ -143,7 +151,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
           }
         }
 
-      case command: OrderCommand ⇒
+      case command: AgentCommand.OrderCommand ⇒
         masterToOrderKeeper.get(userId) match {
           case Some(actor) ⇒
             actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
@@ -161,9 +169,6 @@ extends KeyedEventJournalingActor[AgentEvent] {
       (for (a ← masterToOrderKeeper.values) yield
         (a ? AgentOrderKeeper.Input.Terminate).mapTo[Done]))
     .map { _ ⇒ EmptyResponse }
-
-  private def terminateJobKeeper(command: TerminateOrAbort): Future[EmptyResponse.type] =
-    (jobKeeper ? command).mapTo[Done] map { _ ⇒ EmptyResponse }
 
   private def update(keyedEvent: KeyedEvent[AgentEvent]): Unit = {
     keyedEvent match {
@@ -184,8 +189,14 @@ extends KeyedEventJournalingActor[AgentEvent] {
           timerService)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$userId"))
-    masterToOrderKeeper += userId → actor
-    actor
+    masterToOrderKeeper.insert(userId → actor)
+    context.watch(actor)
+  }
+
+  private def handleActorTermination(): Unit = {
+    if (masterToOrderKeeper.isEmpty) {
+      context.stop(self)
+    }
   }
 
   override def toString = "AgentActor"
@@ -214,4 +225,13 @@ object AgentActor {
       },
       isDeletedEvent = Set())
     with GzipCompression
+
+  private final class MasterRegister extends ActorRegister[UserId, ActorRef](identity) {
+    override def onUnknownKey(userId: UserId) =
+      throw new NoSuchElementException(s"No master registered for user '$userId'")
+
+    override def insert(kv: (UserId, ActorRef)) = super.insert(kv)
+
+    override def -=(a: ActorRef) = super.-=(a)
+  }
 }

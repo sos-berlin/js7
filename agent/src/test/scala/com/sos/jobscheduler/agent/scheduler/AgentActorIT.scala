@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler
 
 import akka.pattern.ask
 import akka.util.Timeout
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.AgentActorIT._
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
@@ -30,8 +31,8 @@ final class AgentActorIT extends FreeSpec {
 
   for (n ← List(10) ++ (sys.props contains "test.speed" option 1000)) {
     s"AgentActorIT, $n orders" in {
-      TestAgentActorProvider.provide { env ⇒
-        import env.{agentDirectory, eventCollector, executeCommand}
+      TestAgentActorProvider.provide { provider ⇒
+        import provider.{agentDirectory, eventCollector, executeCommand}
         (agentDirectory / "config" / "live" / "test.job.xml").xml =
           <job tasks="100">
             <params>
@@ -41,7 +42,7 @@ final class AgentActorIT extends FreeSpec {
           </job>
         withCloser { implicit closer ⇒
           val lastEventId = eventCollector.lastEventId
-          (env.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Started.type] await 99.s
+          (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Started.type] await 99.s
           executeCommand(RegisterAsMaster) await 99.s
           executeCommand(AttachJobnet(AJobnet)) await 99.s
           val stopwatch = new Stopwatch
@@ -58,6 +59,8 @@ final class AgentActorIT extends FreeSpec {
           info(stopwatch.itemsPerSecondString(n, "Orders"))
           (for (orderId ← orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
         }
+        executeCommand(AgentCommand.Terminate()) await 99.s
+        provider.terminated await 99.s
       }
     }
   }

@@ -9,6 +9,7 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequ
 import com.typesafe.config.Config
 import java.time.Instant.now
 import java.time.{Duration, Instant}
+import java.util.concurrent.TimeoutException
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -78,7 +79,7 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
   =
     whenForKey[E](request.copy[E](limit = 1), key, predicate) map {
       case eventSeq: EventSeq.NonEmpty[Iterator, E] ⇒ eventSeq.stampeds.next().value
-      case _: EventSeq.Empty ⇒ throw new AssertionError("whenForKey returned EventSeq.Empty")
+      case _: EventSeq.Empty ⇒ throw new TimeoutException(s"Timed out: $request")
       case EventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")
     }
 

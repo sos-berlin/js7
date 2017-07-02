@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
-import akka.Done
 import akka.actor.{Actor, ActorRef, Stash, Terminated}
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeper._
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
+import com.sos.jobscheduler.common.akkautils.Akkas.StoppingStrategies
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
@@ -19,6 +20,10 @@ import scala.concurrent.ExecutionContext
 final class JobKeeper(jobConfigurationDirectory: Path)(implicit newTask: AgentTaskFactory, ts: TimerService, ec: ExecutionContext)
 extends Actor with Stash {
 
+  override val supervisorStrategy = StoppingStrategies.stopping(logger)
+  private val startedJobActors = mutable.Set[ActorRef]()
+  private var terminating = false
+
   def receive = handleReadyForOrder orElse {
     case message ⇒
       message match {
@@ -26,9 +31,8 @@ extends Actor with Stash {
           val pathToActor = mutable.Map[JobPath, ActorRef]()
           forEachTypedFile(jobConfigurationDirectory, Set(JobPath)) {
             case (file, jobPath: JobPath) ⇒
-              val a = JobRunner.actorOf(jobPath)
+              val a = context.watch(JobRunner.actorOf(jobPath))
               pathToActor += jobPath → a
-              context.watch(a)
               a ! JobRunner.Command.ReadConfigurationFile(file)
           }
           unstashAll()
@@ -40,19 +44,13 @@ extends Actor with Stash {
     }
 
   private def starting(pathToActor: Map[JobPath, ActorRef], commander: ActorRef): Unit = {
-    val expectedActors = pathToActor.values.toSet
-    val startedActors = mutable.Set[ActorRef]()
-    startedActors.sizeHint(expectedActors.size)
-
-    def onJobRunnerStarted(a: ActorRef): Unit = {
-      startedActors += a
-      ifAllJobsStartedThenBecomeStarted()
-    }
+    val expectedActors = mutable.Set[ActorRef]() ++ pathToActor.values
+    startedJobActors.sizeHint(expectedActors.size)
 
     def ifAllJobsStartedThenBecomeStarted(): Boolean =
-      startedActors == expectedActors && {
+      startedJobActors == expectedActors && {
         logger.info(s"Ready, ${pathToActor.size} jobs")
-        context.become(ready(pathToActor.values.toVector))
+        context.become(ready)
         commander ! Output.Ready(pathToActor.toVector)
         true
       }
@@ -61,27 +59,35 @@ extends Actor with Stash {
       context.become(handleReadyForOrder orElse {
         case JobRunner.Response.Ready ⇒
           context.unwatch(sender())
-          onJobRunnerStarted(sender())
+          startedJobActors += sender()
+          ifAllJobsStartedThenBecomeStarted()
 
         case Terminated(a) ⇒
-          logger.error(s"$a died")  // Maybe XML parsing error, ignored
-          onJobRunnerStarted(a)
+          logger.error(s"$a stopped")  // Maybe XML parsing error, ignored ???
+          expectedActors -= a
+          startedJobActors -= a
+          ifAllJobsStartedThenBecomeStarted()
       })
     }
   }
 
-  private def ready(jobActors: Vector[ActorRef]): Receive =
-    handleReadyForOrder orElse handleTerminateOrAbort(jobActors)
+  private def ready: Receive =
+    handleReadyForOrder orElse {
+      case cmd: AgentCommand.Terminate ⇒
+        terminating = true
+        for (a ← startedJobActors) a ! cmd
+        sender() ! EmptyResponse
+
+      case Terminated(a) if startedJobActors contains a ⇒
+        startedJobActors -= a
+        if (terminating && startedJobActors.isEmpty) {
+          context.stop(self)
+        }
+    }
 
   private def handleReadyForOrder: Receive = {
     case msg: JobRunner.Output.ReadyForOrder.type ⇒
       context.parent.forward(msg)
-  }
-
-  private def handleTerminateOrAbort(jobActors: Vector[ActorRef]): Receive = {
-    case cmd: AgentCommand.TerminateOrAbort ⇒
-      for (a ← jobActors) a ! cmd
-      sender() ! Done
   }
 }
 

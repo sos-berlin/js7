@@ -1,8 +1,10 @@
 package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.ActorSystem.Settings
-import akka.actor.Cancellable
+import akka.actor.SupervisorStrategy.Stop
+import akka.actor.{Cancellable, OneForOneStrategy, SupervisorStrategy}
 import akka.util.{ByteString, Timeout}
+import com.typesafe.scalalogging.Logger
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import spray.http.Uri
@@ -84,4 +86,14 @@ object Akkas {
 
   def decodeActorName(o: String): String =
     Uri.Path(o).head.toString
+
+
+  object StoppingStrategies {
+    def stopping(logger: Logger): SupervisorStrategy =
+      OneForOneStrategy() {
+        case e: Exception ⇒
+          logger.error(s"Child actor has stopped: $e", e)
+          Stop
+      }
+  }
 }

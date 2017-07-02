@@ -68,6 +68,7 @@ extends Actor with Stash {
     case Internal.TaskFinished(order, triedStepEnded) ⇒
       orderToTask -= order.id
       sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
+      handleActorStop()
       handleIfReadyForOrder()
 
     case AgentCommand.Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
@@ -82,8 +83,9 @@ extends Actor with Stash {
           }
         case None ⇒
       }
+      handleActorStop()
 
-    case AgentCommand.AbortImmediately | Internal.KillAll ⇒
+    case Internal.KillAll ⇒
       killAll(SIGKILL)
   }
 
@@ -104,10 +106,16 @@ extends Actor with Stash {
 
   private def killAll(signal: ProcessSignal): Unit = {
     if (orderToTask.nonEmpty) {
-      logger.warn(s"Killing $taskCount tasks")
+      logger.warn(s"Terminating, sending $signal to all $taskCount tasks")
       for (task ← orderToTask.values) {
         task.kill(signal)
       }
+    }
+  }
+
+  private def handleActorStop(): Unit = {
+    if (terminating && orderToTask.isEmpty) {
+      context.stop(self)
     }
   }
 

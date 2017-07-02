@@ -57,11 +57,12 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)
 
-        client.executeCommand(Terminate(sigtermProcesses = true)) await 99.s
+        client.executeCommand(Terminate(sigkillProcessesAfter = Some(0.s))) await 99.s
         val stepEnded = whenStepEnded await 99.s
         assert((stepEnded forall { e ⇒ !e.asInstanceOf[OrderEvent.OrderStepSucceeded].returnValue }))
-        for (orderId ← orderIds)
-          eventCollector.whenKeyedEvent[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
+        //for (orderId ← orderIds)
+        //  eventCollector.whenKeyedEvent[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
+        agent.terminated await 99.s
       }
     }
   }
@@ -79,10 +80,10 @@ object TerminateIT {
   private val AScript =
     if (isWindows) """
       |@echo off
-      |ping -c 4 127.0.0.1 >nul
+      |ping -n 11 127.0.0.1 >nul
       |""".stripMargin
     else """
-      |sleep 3
+      |sleep 10
       |""".stripMargin
 
   private def provideAgent(body: (AgentClient, Agent) ⇒ Unit)(implicit closer: Closer): Unit = {

@@ -84,6 +84,9 @@ object Order {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Idle] =
     Order(id, event.nodeKey, event.state, event.variables, event.outcome)
 
+  def fromOrderAttached(id: OrderId, event: OrderAttached): Order[Idle] =
+    Order(id, event.nodeKey, event.state, event.variables, event.outcome)
+
   sealed trait Outcome
 
   object Outcome {

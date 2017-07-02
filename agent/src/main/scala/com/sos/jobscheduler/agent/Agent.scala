@@ -9,6 +9,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Response
+import com.sos.jobscheduler.agent.scheduler.OrderHandler
 import com.sos.jobscheduler.agent.task.TaskHandler
 import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.agent.web.AgentWebServer
@@ -19,7 +20,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder._
 import com.sos.jobscheduler.data.agent.AgentAddress
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * JobScheduler Agent.
@@ -39,6 +40,8 @@ final class Agent(module: Module) extends AutoCloseable {
   val localUri = AgentAddress(webServer.localUri.toString)
   private val taskHandler = injector.instance[TaskHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
+  private val orderHandler = injector.instance[OrderHandler]
+  private implicit val executionContext = injector.instance[ExecutionContext]
 
   AgentStartInformation.initialize()
 
@@ -55,9 +58,11 @@ final class Agent(module: Module) extends AutoCloseable {
     terminated.awaitInfinite
   }
 
-  def executeCommand(command: AgentCommand): Future[Response] = commandExecutor.executeCommand(command)
+  def executeCommand(command: AgentCommand): Future[Response] =
+    commandExecutor.executeCommand(command)
 
-  def terminated: Future[Unit] = taskHandler.terminated
+  def terminated: Future[Unit] =
+    Future.sequence(List(taskHandler.terminated, orderHandler.terminated)) map { _ ⇒ () }
 }
 
 object Agent {

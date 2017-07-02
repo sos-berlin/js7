@@ -22,6 +22,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
   private var order: Order[Order.State] = null
+  private var terminating = false
 
   protected def key = orderId
   protected def snapshot = Option(order)
@@ -82,9 +83,6 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   private def executeOtherCommand(command: Command): Unit = command match {
-    case Command.GetSnapshot ⇒
-      sender() ! order
-
     case _ ⇒
       val msg = s"Improper command $command while in state ${order.state}"
       logger.error(msg)
@@ -102,6 +100,9 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case Input.SetReady ⇒
       persist(OrderReady)(update)
+
+    case Input.Terminate ⇒
+      context.stop(self)
   }
 
   private def processing(node: Jobnet.JobNode, jobActor: ActorRef): Receive = journaling orElse {
@@ -113,6 +114,7 @@ extends KeyedJournalingActor[OrderEvent] {
           OrderStepFailed(bad.error, nextNodeId(node, bad))
       }
       endOrderStep(event, node)
+      context.unwatch(jobActor)
 
     case Terminated(`jobActor`) ⇒
       val bad = Order.Bad(s"Job Actor '${node.jobPath.string}' terminated unexpectedly")
@@ -120,11 +122,19 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case command: Command ⇒
       executeOtherCommand(command)
+
+    case Input.Terminate ⇒
+      terminating = true
   }
 
   private def endOrderStep(event: OrderStepEnded, node: Jobnet.JobNode): Unit = {
     context.become(waiting)
-    persist(event)(update)
+    persist(event) { event ⇒
+      update(event)
+      if (terminating) {
+        context.stop(self)
+      }
+    }
   }
 
   private def update(event: OrderEvent) = {
@@ -168,7 +178,6 @@ object OrderActor {
   object Command {
     final case class  Attach(order: Order[Order.Idle]) extends Command
     final case object Detach extends Command
-    final case object GetSnapshot extends Command
   }
 
   sealed trait Input
@@ -176,6 +185,7 @@ object OrderActor {
     final case object FinishRecovery
     final case object SetReady extends Input
     final case class  StartStep(node: Jobnet.JobNode, jobActor: ActorRef) extends Input
+    final case object Terminate extends Input
   }
 
   object Output {

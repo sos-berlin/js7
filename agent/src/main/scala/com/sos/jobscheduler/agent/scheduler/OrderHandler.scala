@@ -8,6 +8,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.OrderHandler._
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
 import com.sos.jobscheduler.agent.task.AgentTaskFactory
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -36,9 +37,26 @@ final class OrderHandler @Inject private(
     actorRefFactory: ActorRefFactory,
     executionContext: ExecutionContext)
 {
+  private val actorStoppedPromise = Promise[Completed]()
   // This is a Future to allow parallel startup.
   // Commands are accepted but execution is delayed until the Future has been completed.
-  private val agentActorFutureOption: Option[Future[ActorRef]] =
+  private val agentActorFutureOption: Option[Future[ActorRef]] = {
+    def newActor(jobConfigurationDirectory: Path) = {
+      val stateDirectory = conf.stateDirectoryOption getOrElse sys.error("Restart Agent with -data-directory=...")
+      if (!Files.exists(stateDirectory)) {
+        Files.createDirectory(stateDirectory)
+      }
+      actorSystem.actorOf(
+        Props { new AgentActor(
+          stateDirectory = stateDirectory,
+          jobConfigurationDirectory = jobConfigurationDirectory,
+          askTimeout = conf.akkaAskTimeout,
+          syncOnCommit = conf.journalSyncOnCommit,
+          stoppedPromise = actorStoppedPromise)
+        },
+        "JobScheduler-Agent")
+    }
+
     for (liveDirectory ← conf.liveDirectoryOption if Files.exists(liveDirectory)) yield {
       logger.info("Directory 'config/live' is present: starting with experimental order processing")
       val actorRef = newActor(liveDirectory)
@@ -46,21 +64,14 @@ final class OrderHandler @Inject private(
       for (_ ← actorRef.ask(AgentActor.Input.Start)(askTimeout).mapTo[AgentActor.Output.Started.type])
         yield actorRef
     }
-
-  private def newActor(jobConfigurationDirectory: Path) = {
-    val stateDirectory = conf.stateDirectoryOption getOrElse sys.error("Restart Agent with -data-directory=...")
-    if (!Files.exists(stateDirectory)) {
-      Files.createDirectory(stateDirectory)
-    }
-    actorSystem.actorOf(
-      Props { new AgentActor(
-        stateDirectory = stateDirectory,
-        jobConfigurationDirectory = jobConfigurationDirectory,
-        askTimeout = conf.akkaAskTimeout,
-        syncOnCommit = conf.journalSyncOnCommit)
-      },
-      "JobScheduler-Agent")
   }
+
+  if (agentActorFutureOption.isEmpty) {
+    actorStoppedPromise.success(Completed)
+  }
+
+  def terminated: Future[Completed] =
+    actorStoppedPromise.future
 
   private def agentActorFuture = agentActorFutureOption getOrElse {
     throw new IllegalStateException("Order processing is not enabled (no directory 'config/live')")

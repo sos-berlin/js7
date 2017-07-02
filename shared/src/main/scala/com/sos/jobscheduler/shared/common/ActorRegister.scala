@@ -2,14 +2,18 @@ package com.sos.jobscheduler.shared.common
 
 import akka.actor.ActorRef
 import com.sos.jobscheduler.common.scalautil.DuplicateKeyException
+import java.util.NoSuchElementException
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
 class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
-  private val keyToValue = mutable.Map[K, V]()
+  private val keyToValue = mutable.Map[K, V]() withDefault onUnknownKey
   private val _actorToKey = mutable.Map[ActorRef, K]()
+
+  def onUnknownKey(k: K): Nothing =
+    throw new NoSuchElementException(s"No such element '$k'")
 
   protected def insert(kv: (K, V)): Unit = {
     if (keyToValue contains kv._1) throw new DuplicateKeyException(s"Duplicate ${kv._1}")
