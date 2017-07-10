@@ -29,7 +29,7 @@ extends Actor with Stash {
               val a = JobRunner.actorOf(jobPath)
               pathToActor += jobPath → a
               context.watch(a)
-              a ! JobRunner.Command.ReadConfigurationFile(file)
+              a ! JobRunner.Command.StartWithConfigurationFile(file)
           }
           unstashAll()
           starting(pathToActor.toMap, sender())

@@ -13,6 +13,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.data.order.Order.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.taskserver.task.process.StdoutStderrWriter
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -32,13 +33,16 @@ extends Actor with Stash {
   private var terminating = false
 
   def receive = {
-    case Command.ReadConfigurationFile(path: Path) ⇒
-      jobConfiguration =
-        try JobConfiguration.parseXml(jobPath, path)
+    case Command.StartWithConfigurationFile(path: Path) ⇒
+      val conf = try JobConfiguration.parseXml(jobPath, path)
         catch { case NonFatal(t) ⇒
           logger.error(t.toString, t)
           throw t
         }
+      context.self.forward(Command.StartWithConfiguration(conf))
+
+    case Command.StartWithConfiguration(conf) ⇒
+      jobConfiguration = conf
       logger.debug("Job is ready")
       context.become(ready)
       sender() ! Response.Ready
@@ -51,14 +55,14 @@ extends Actor with Stash {
     case Input.OrderAvailable ⇒
       handleIfReadyForOrder()
 
-    case Command.ProcessOrder(order) if waitingForNextOrder ⇒
+    case Command.ProcessOrder(order, stdoutStderrWriter) if waitingForNextOrder ⇒
       logger.trace(s"ProcessOrder(${order.id})")
       val taskRunner = newTaskRunner(jobConfiguration)
       orderToTask.insert(order.id → taskRunner)
       waitingForNextOrder = false
       handleIfReadyForOrder()
       val sender = this.sender()
-      taskRunner.processOrder(order)
+      taskRunner.processOrder(order, stdoutStderrWriter)
         .andThen { case _ ⇒ taskRunner.terminate() }
         .onComplete { triedStepEnded ⇒
           self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
@@ -130,8 +134,10 @@ object JobRunner {
 
   sealed trait Command
   object Command {
+    final case class StartWithConfigurationFile(path: Path)
+    final case class StartWithConfiguration(conf: JobConfiguration)
     final case class ReadConfigurationFile(path: Path)
-    final case class ProcessOrder(order: Order[Order.InProcess.type]) extends Command
+    final case class ProcessOrder(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter) extends Command
   }
 
   object Response {
