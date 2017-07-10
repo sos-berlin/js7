@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.jobscheduler.common.process.StdoutStderr._
+import com.sos.jobscheduler.data.system.StdoutStderr._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser

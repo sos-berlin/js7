@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.jobscheduler.common.process.StdoutStderr.{Stderr, Stdout}
+import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.HasCloser

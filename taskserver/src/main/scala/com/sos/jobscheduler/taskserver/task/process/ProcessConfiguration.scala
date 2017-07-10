@@ -2,7 +2,7 @@ package com.sos.jobscheduler.taskserver.task.process
 
 import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
 import java.nio.file.Path
 import scala.collection.immutable
 

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.common
 
-import com.sos.jobscheduler.common.process.StdoutStderr.{Stderr, Stdout}
+import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._

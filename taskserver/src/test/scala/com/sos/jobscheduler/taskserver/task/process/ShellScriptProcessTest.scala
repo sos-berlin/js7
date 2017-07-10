@@ -3,7 +3,7 @@ package com.sos.jobscheduler.taskserver.task.process
 import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
-import com.sos.jobscheduler.common.process.StdoutStderr.Stdout
+import com.sos.jobscheduler.data.system.StdoutStderr.Stdout
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting

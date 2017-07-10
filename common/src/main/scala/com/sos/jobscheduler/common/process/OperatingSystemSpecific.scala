@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.process
 
-import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import java.nio.file.Files._

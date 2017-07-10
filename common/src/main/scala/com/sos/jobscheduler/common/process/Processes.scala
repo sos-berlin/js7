@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.process
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.process.OperatingSystemSpecific.OS
 import com.sos.jobscheduler.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
-import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.io.IOException
