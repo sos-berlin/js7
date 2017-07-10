@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.jobnet.{NodeId, NodeKey}
+import com.sos.jobscheduler.data.system.StdoutStderr._
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -36,6 +37,33 @@ object OrderEvent {
   extends OrderEvent
 
   case object OrderStepStarted extends OrderEvent
+
+
+  sealed trait OrderStdWritten extends OrderEvent {
+    def stdoutStderrType: StdoutStderrType
+  }
+
+  object OrderStdWritten {
+    def apply(t: StdoutStderrType): String ⇒ OrderStdWritten =
+      t match {
+        case Stdout ⇒ OrderStdoutWritten
+        case Stderr ⇒ OrderStderrWritten
+      }
+
+    def unapply(o: OrderStdWritten) = o match {
+      case OrderStdoutWritten(chunk) ⇒ Some((Stdout, chunk))
+      case OrderStderrWritten(chunk) ⇒ Some((Stderr, chunk))
+    }
+  }
+
+  final case class OrderStdoutWritten(chunk: String) extends OrderStdWritten {
+    def stdoutStderrType = Stdout
+  }
+
+  final case class OrderStderrWritten(chunk: String) extends OrderStdWritten {
+    def stdoutStderrType = Stderr
+  }
+
 
   sealed trait OrderStepEnded extends OrderEvent {
     def nextNodeId: NodeId
@@ -73,6 +101,8 @@ object OrderEvent {
     Subtype(jsonFormat4(OrderAttached)),
     Subtype(jsonFormat1(OrderMovedToAgent)),
     Subtype(jsonFormat0(() ⇒ OrderMovedToMaster)),
+    Subtype(jsonFormat1(OrderStdoutWritten)),
+    Subtype(jsonFormat1(OrderStderrWritten)),
     Subtype(jsonFormat0(() ⇒ OrderDetached)),
     Subtype(jsonFormat0(() ⇒ OrderReady)),
     Subtype(jsonFormat0(() ⇒ OrderStepStarted)),

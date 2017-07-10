@@ -16,6 +16,7 @@ import com.sos.jobscheduler.minicom.remoting.ClientRemoting
 import com.sos.jobscheduler.minicom.remoting.dialog.ClientDialogConnection
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatch
 import com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer
+import com.sos.jobscheduler.taskserver.task.process.StdoutStderrWriter
 import com.sos.jobscheduler.tunnel.server.TunnelHandle
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,7 +34,8 @@ extends TaskRunner {
   private var _killed = false
   private val taskId = AgentCommand.StartTask.Meta.NoCppJobSchedulerTaskId
 
-  def processOrder(order: Order[Order.InProcess.type]): Future[TaskStepEnded] = {
+  def processOrder(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter) = {
+    // TODO stdoutStderrHandle is not used. No OrderStdWritten events are produced. Maybe LegacyApiTaskRunner will not be used anyway (requirement?).
     if (killed)
       Future.failed(newKilledException())
     else

@@ -17,6 +17,8 @@ import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.Order.Good
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.system.StdoutStderr._
+import com.sos.jobscheduler.taskserver.task.process.StdoutStderrWriter
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -54,11 +56,19 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
           Map("a" → "A"))
         implicit val x = injector.instance[StandardAgentTaskFactory]
         val taskRunner = newTaskRunner(jobConfiguration)
-        val ended = taskRunner.processOrder(order) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
+        val stdoutStderrWriter = new TestStdoutStderrWriter
+        val ended = taskRunner.processOrder(order, stdoutStderrWriter) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
         assert(ended == TaskStepSucceeded(
           variablesDiff = MapDiff.addedOrUpdated(Map("result" → "TEST-RESULT-VALUE1")),
           Good(returnValue = true))
         )
+        if (newTaskRunner.isInstanceOf[LegacyApiTaskRunner.Factory]) {  // TODO LegacyApiTaskRunner does not use StdoutStderrWriter
+          assert(stdoutStderrWriter.string(Stdout).isEmpty)
+          assert(stdoutStderrWriter.string(Stderr).isEmpty)
+        } else {
+          assert(stdoutStderrWriter.string(Stdout) == "Hej!\nvar1=VALUE1\n")
+          assert(stdoutStderrWriter.string(Stderr) == "THIS IS STDERR\n")
+        }
       }
     }
   }
@@ -69,12 +79,25 @@ object TaskRunnerIT {
     if (isWindows) """
       |@echo off
       |echo Hej!
+      |echo THIS IS STDERR >&2
       |echo var1=%SCHEDULER_PARAM_VAR1%
       |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
       |""".stripMargin
     else """
       |echo "Hej!"
+      |echo THIS IS STDERR >&2
       |echo "var1=$SCHEDULER_PARAM_VAR1"
       |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
       |""".stripMargin
+
+  private final class TestStdoutStderrWriter extends StdoutStderrWriter {
+    private val builders = (for (t ← StdoutStderrType.values) yield t → new StringBuilder).toMap
+
+    def chunkSize = 10
+
+    def writeChunk(t: StdoutStderrType, chunk: String) =
+      builders(t) ++= chunk
+
+    def string(t: StdoutStderrType) = builders(t).toString
+  }
 }

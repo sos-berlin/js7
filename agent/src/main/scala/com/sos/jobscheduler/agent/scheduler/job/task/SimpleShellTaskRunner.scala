@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.job.task
 
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
+import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.task.SimpleShellTaskRunner._
 import com.sos.jobscheduler.base.generic.Completed
@@ -13,11 +13,10 @@ import com.sos.jobscheduler.common.utils.Exceptions.logException
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.taskserver.modules.shell.RichProcessStartSynchronizer
 import com.sos.jobscheduler.taskserver.task.TaskArguments
-import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
-import com.sos.jobscheduler.taskserver.task.process.{ProcessConfiguration, RichProcess}
+import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startPipedShellScript
+import com.sos.jobscheduler.taskserver.task.process.{ProcessConfiguration, RichProcess, StdoutStderrWriter}
 import java.nio.file.Files.delete
-import javax.inject.Inject
-import javax.inject.Singleton
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
 
@@ -32,7 +31,6 @@ final class SimpleShellTaskRunner(jobConfiguration: JobConfiguration,
 extends TaskRunner {
 
   private val variablePrefix = TaskArguments.DefaultShellVariablePrefix
-  private val stdFileMap = RichProcess.createStdFiles(agentConfiguration.logDirectory, id = agentTaskId.toString)
   private lazy val returnValuesProvider = new ShellReturnValuesProvider
   private val richProcessOnce = new SetOnce[RichProcess]
 
@@ -44,38 +42,38 @@ extends TaskRunner {
         Future.successful(Completed)
     }
 
-  def processOrder(order: Order[Order.InProcess.type]): Future[TaskStepEnded] =
+  def processOrder(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter): Future[TaskStepEnded] =
     for {
-      richProcess ← startProcess(order)
+      richProcess ← startProcess(order, stdoutStderrWriter)
       returnCode ← richProcess.terminated
     } yield {
       richProcess.close()
       val newVariables = order.variables ++ returnValuesProvider.variables
       logException(logger.asLazy.error) {
         delete(returnValuesProvider.file)
-        RichProcess.tryDeleteFiles(stdFileMap.values)
       }
       TaskStepSucceeded(
         MapDiff.diff(order.variables, newVariables),
         Order.Good(returnCode.isSuccess))
     }
 
-  private def startProcess(order: Order[Order.InProcess.type]): Future[RichProcess] = {
+  private def startProcess(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter): Future[RichProcess] = {
     val env = {
       val params = jobConfiguration.variables ++ order.variables
       val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
       /*environment +*/ paramEnv + returnValuesProvider.env
     }
     val processConfiguration = ProcessConfiguration(
-      stdFileMap,
+      stdFileMap = Map(),
       additionalEnvironment = env,
       agentTaskIdOption = Some(agentTaskId),
       killScriptOption = agentConfiguration.killScript)
     synchronizedStartProcess {
-      startShellScript(
+      startPipedShellScript(
         processConfiguration,
         name = jobConfiguration.path.name,
-        scriptString = jobConfiguration.script.string.trim)
+        script = jobConfiguration.script.string.trim,
+        stdoutStderrWriter)
     } andThen { case Success(richProcess) ⇒
       richProcessOnce := richProcess
     }
@@ -91,7 +89,7 @@ object SimpleShellTaskRunner {
   private val logger = Logger(getClass)
 
   @Singleton
-  final case class Factory @Inject private(
+  final class Factory @Inject()(
     agentTaskIdGenerator: AgentTaskId.Generator,
     synchronizedStartProcess: RichProcessStartSynchronizer,
     agentConfiguration: AgentConfiguration)

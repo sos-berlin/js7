@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.process.Processes._
-import com.sos.jobscheduler.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
+import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
@@ -42,7 +42,7 @@ extends HasCloser with ClosedFuture {
 
   logger.info(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
 
-  final def terminated: Future[ReturnCode] =
+  def terminated: Future[ReturnCode] =
     (terminatedPromiseOnce getOrUpdate {
       Promise[ReturnCode]() sideEffect {
         _ completeWith namedThreadFuture("Process watch") {
@@ -139,7 +139,8 @@ object RichProcess {
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
 
-  def createStdFiles(directory: Path, id: String): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, id, o) }).toMap
+  def createStdFiles(directory: Path, id: String): Map[StdoutStderrType, Path] =
+    (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, id, o) }).toMap
 
   private def waitForProcessTermination(process: Process): ReturnCode = {
     logger.debug(s"waitFor ${processToString(process)} ...")
