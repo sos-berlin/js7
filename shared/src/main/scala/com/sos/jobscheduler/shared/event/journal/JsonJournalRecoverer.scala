@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import akka.actor.{Actor, ActorContext, ActorRef, Props}
+import akka.actor.{Actor, ActorContext, ActorRef, ActorRefFactory, Props}
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable, RichUnitPartialFunction}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.{DuplicateKeyException, Logger}
@@ -130,10 +130,10 @@ trait JsonJournalRecoverer[E <: Event] {
 object JsonJournalRecoverer {
   private val logger = Logger(getClass)
 
-  def startJournalAndFinishRecovery(parentContext: ActorContext, journalActor: ActorRef, recoveredActors: RecoveredJournalingActors): Unit = {
+  def startJournalAndFinishRecovery(actorRefFactory: ActorRefFactory, journalActor: ActorRef, recoveredActors: RecoveredJournalingActors): Unit = {
     val actors = recoveredActors.keyToJournalingActor.values
     val actorToKey = (recoveredActors.keyToJournalingActor map { case (k, a) ⇒ a → k })
-    parentContext.actorOf(
+    actorRefFactory.actorOf(
       Props {
         new Actor {
           journalActor ! JsonJournalActor.Input.Start(recoveredActors)

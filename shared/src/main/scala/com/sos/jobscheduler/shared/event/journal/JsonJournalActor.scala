@@ -70,16 +70,26 @@ extends Actor with Stash {
       keyToJournalingActor ++= keyToActor
       val sender = this.sender()
       becomeTakingSnapshotThen {
-        context.become(ready)
-        sender ! Output.Ready
-        logger.info(s"Ready, writing ${if (jsonWriter.syncOnFlush) "(with sync)" else "(without sync)"} journal file '${jsonWriter.file}'")
+        unstashAll()
+        becomeReady(sender)
       }
+
+    case Input.StartWithoutRecovery ⇒
+      jsonWriter = newJsonWriter(file, append = false)
+      unstashAll()
+      becomeReady(sender())
 
     case msg: Input.RegisterMe ⇒
       handleRegisterMe(msg)
 
     case _ ⇒
       stash()
+  }
+
+  private def becomeReady(sender: ActorRef): Unit = {
+    context.become(ready)
+    logger.info(s"Ready, writing ${if (jsonWriter.syncOnFlush) "(with sync)" else "(without sync)"} journal file '${jsonWriter.file}'")
+    sender ! Output.Ready
   }
 
   private def ready: Receive = {
@@ -205,6 +215,7 @@ object JsonJournalActor {
 
   object Input {
     private[journal] final case class Start(recoveredJournalingActors: RecoveredJournalingActors)
+    final case object StartWithoutRecovery
     final case class RegisterMe(key: Option[Any])
     final case class Store(eventStampeds: Seq[Option[AnyKeyedEvent]], journalingActor: ActorRef)
     final case object TakeSnapshot
@@ -212,7 +223,7 @@ object JsonJournalActor {
 
   sealed trait Output
   object Output {
-    private[journal] case object Ready
+    final case object Ready
     final case class Stored(stamped: Seq[Option[Stamped[AnyKeyedEvent]]]) extends Output
     final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
