@@ -10,7 +10,7 @@ import spray.json._
 final class MapDiffTest extends FreeSpec {
 
   "applyTo" in {
-    assert(MapDiff(Map(), Set()).applyTo(Map()) == Map())
+    assert(MapDiff().applyTo(Map()) == Map())
     val variables = MapDiff(Map("a" → "A", "b" → "B", "c" → "C"), Set("d")).applyTo(Map())
     assert(variables == Map("a" → "A", "b" → "B", "c" → "C"))
     assert(MapDiff(Map("b" → "BB"), Set("c")).applyTo(variables) ==
@@ -18,13 +18,13 @@ final class MapDiffTest extends FreeSpec {
   }
 
   "diff" in {
-    assert(MapDiff.diff(Map(), Map()) == MapDiff(Map(), Set()))
+    assert(MapDiff.diff(Map(), Map()) == MapDiff())
     assert(MapDiff.diff(Map("a" → "A", "b" → "B", "x" → "X"), Map("a" → "A", "b" → "BBB", "c" → "C")) ==
       MapDiff(Map("b" → "BBB", "c" → "C"), Set("x")))
   }
 
   "JSON" in {
-    check(MapDiff[String, String](Map(), Set()),
+    check(MapDiff[String, String](),
       """{
         "addedOrUpdated": {},
         "removed": []
