@@ -13,8 +13,8 @@ import javax.xml.transform.Source
   */
 final case class JobConfiguration(
   path: JobPath,
-  variables: Map[String, String] = Map(),
   script: JobScript,
+  variables: Map[String, String] = Map(),
   taskLimit: Int = DefaultTaskLimit)
 {
   def language = "shell"
