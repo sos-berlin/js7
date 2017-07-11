@@ -37,6 +37,14 @@ final class SprayJsonTest extends FreeSpec {
     assert(json.convertTo[A] == obj)
   }
 
+  "apply" in {
+    assert((JsObject(Map("a" → JsNumber(7)))[Int]("a"): Int) == 7)
+  }
+
+  "get" in {
+    assert((JsObject(Map("a" → JsNumber(7))).get[Int]("a"): Option[Int]) == Some(7))
+  }
+
   "map" in {
     assert((JsArray(JsNumber(1), JsNumber(2)) map { o ⇒ JsNumber(o.asJsNumber.value * 11) }) ==
             JsArray(JsNumber(11), JsNumber(22)))

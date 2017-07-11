@@ -63,7 +63,9 @@ object SprayJson {
 
   object implicits {
     implicit class RichJsObject(val delegate: JsObject) extends AnyVal {
-      def apply(key: String): JsValue = delegate.fields(key)
+      def apply[A: JsonReader](key: String): A = delegate.fields(key).convertTo[A]
+
+      def get[A: JsonReader](key: String): Option[A] = delegate.fields.get(key) map { _.convertTo[A] }
 
       def mapValues(transform: JsValue ⇒ JsValue) = JsObject(delegate.fields mapValues transform)
     }
