@@ -7,9 +7,9 @@ import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobRunner}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
-import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.akkautils.Akkas
 import com.sos.jobscheduler.common.akkautils.Akkas.StoppingStrategies
@@ -40,7 +40,7 @@ private[scheduler] final class AgentActor(
     timerService: TimerService,
     keyedEventBus: StampedKeyedEventBus,
     eventIdGenerator: EventIdGenerator,
-    newTask: AgentTaskFactory,
+    newTaskRunner: TaskRunner.Factory,
     executionContext: ExecutionContext)
 extends KeyedEventJournalingActor[AgentEvent] {
 

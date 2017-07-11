@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.process
+package com.sos.jobscheduler.data.system
 
 import com.sos.jobscheduler.base.generic.IsString
 
@@ -10,9 +10,11 @@ object StdoutStderr {
   val Stderr = new StdoutStderrType("stderr")
   val StdoutStderrTypes = List(Stdout, Stderr)
 
-  final case class StdoutStderrType private[process](string: String) extends IsString {
+  final case class StdoutStderrType private[system](string: String) extends IsString {
     override def toString = string
   }
 
-  object StdoutStderrType extends IsString.HasJsonFormat[StdoutStderrType]
+  object StdoutStderrType extends IsString.HasJsonFormat[StdoutStderrType] {
+    val values = Vector(Stdout, Stderr)
+  }
 }

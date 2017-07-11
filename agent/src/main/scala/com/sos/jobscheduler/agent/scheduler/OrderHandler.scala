@@ -6,8 +6,8 @@ import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.OrderHandler._
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
-import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -32,7 +32,7 @@ final class OrderHandler @Inject private(
   (implicit
     timerService: TimerService,
     eventBus: StampedKeyedEventBus,
-    newTask: AgentTaskFactory,
+    newTaskRunner: TaskRunner.Factory,
     eventIdGenerator: EventIdGenerator,
     actorRefFactory: ActorRefFactory,
     executionContext: ExecutionContext)

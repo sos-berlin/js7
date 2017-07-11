@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.common
 
-import com.sos.jobscheduler.common.process.StdoutStderr.Stdout
+import com.sos.jobscheduler.data.system.StdoutStderr.Stdout
 import com.sos.jobscheduler.taskserver.common.StdFiles.prefixLinesWithStdoutOrStderr
 import org.scalatest.FreeSpec
 

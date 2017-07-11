@@ -10,6 +10,7 @@ import com.sos.jobscheduler.taskserver.spoolerapi.ProxySpoolerLog
 /**
   * @author Joacim Zschimmer
   */
+@Deprecated
 final class SpoolerLogIDispatch extends InvocableIDispatch with HasProxyMeta with AnnotatedInvocable {
 
   def proxyMeta = ProxyMeta(

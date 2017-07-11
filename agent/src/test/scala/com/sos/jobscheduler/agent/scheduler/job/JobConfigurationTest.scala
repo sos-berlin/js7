@@ -22,8 +22,8 @@ final class JobConfigurationTest extends FreeSpec {
     assert(JobConfiguration.parseXml(JobPath("/TEST-JOB"), jobXml) ==
       JobConfiguration(
         JobPath("/TEST-JOB"),
-        Map("NAME" → "VALUE", "a" → "aa"),
         JobScript("exit 0"),
+        Map("NAME" → "VALUE", "a" → "aa"),
         taskLimit = 20))
   }
 

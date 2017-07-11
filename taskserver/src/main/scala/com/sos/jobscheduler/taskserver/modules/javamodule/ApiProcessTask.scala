@@ -10,7 +10,6 @@ import com.sos.jobscheduler.taskserver.modules.common.{CommonArguments, Task}
 import com.sos.jobscheduler.taskserver.modules.javamodule.ApiProcessTask._
 import com.sos.jobscheduler.taskserver.modules.monitor.MonitorProcessor
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 /**

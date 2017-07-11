@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.process.Processes._
-import com.sos.jobscheduler.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
+import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
@@ -38,18 +38,20 @@ extends HasCloser with ClosedFuture {
    * UTF-8 encoded stdin.
    */
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
-  private val terminatedPromiseOnce = new SetOnce[Promise[Unit]]
+  private val terminatedPromiseOnce = new SetOnce[Promise[ReturnCode]]
 
   logger.info(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
 
-  final def terminated: Future[Unit] =
+  def terminated: Future[ReturnCode] =
     (terminatedPromiseOnce getOrUpdate {
-      Promise[Unit]() sideEffect {
+      Promise[ReturnCode]() sideEffect {
         _ completeWith namedThreadFuture("Process watch") {
-          val rc = waitForProcessTermination(process)
-          logger.debug(s"Process ended with $rc")
+          val returnCode = waitForProcessTermination(process)
+          logger.debug(s"Process ended with $returnCode")
+          returnCode
         }
-      }})
+      }
+    })
     .future
 
   final def sendProcessSignal(signal: ProcessSignal): Unit =
@@ -97,9 +99,9 @@ extends HasCloser with ClosedFuture {
   private[task] final def isAlive = process.isAlive
 
   final def waitForTermination(): ReturnCode = {
-    val isMyPromise = terminatedPromiseOnce trySet Promise[Unit]()
-    waitForProcessTermination(process)
-    if (isMyPromise) terminatedPromiseOnce().success(())
+    val isMyPromise = terminatedPromiseOnce trySet Promise[ReturnCode]()
+    val returnCode = waitForProcessTermination(process)
+    if (isMyPromise) terminatedPromiseOnce().success(returnCode)
     ReturnCode(process.exitValue)
   }
 
@@ -137,14 +139,16 @@ object RichProcess {
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
 
-  def createStdFiles(directory: Path, id: String): Map[StdoutStderrType, Path] = (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, id, o) }).toMap
+  def createStdFiles(directory: Path, id: String): Map[StdoutStderrType, Path] =
+    (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, id, o) }).toMap
 
-  private def waitForProcessTermination(process: Process): Unit = {
+  private def waitForProcessTermination(process: Process): ReturnCode = {
     logger.debug(s"waitFor ${processToString(process)} ...")
-    blocking {
+    val returnCode = blocking {
       process.waitFor()
     }
     logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
+    ReturnCode(returnCode)
   }
 
   def tryDeleteFiles(files: Iterable[Path]): Boolean = {

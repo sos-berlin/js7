@@ -7,8 +7,8 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeperTest._
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
-import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
@@ -38,7 +38,7 @@ final class JobKeeperTest extends FreeSpec {
         import actorSystem.dispatcher
 
         val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(Some(agentDirectory))))
-        implicit val newTask = injector.instance[AgentTaskFactory]
+        implicit val newTaskRunner = injector.instance[TaskRunner.Factory]
         implicit val timerService = injector.instance[TimerService]
 
         for (_ ← 1 to 5) {

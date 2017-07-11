@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.jobscheduler.common.process.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
+import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.message.MessageCode

@@ -9,8 +9,8 @@ import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
-import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.auth.User.Anonymous
@@ -58,7 +58,7 @@ object TestAgentActorProvider {
     val agentConfiguration = AgentConfiguration.forTest(configAndData = Some(configAndData))
     val actorSystem = newActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
-    implicit val agentTaskFactory = injector.instance[AgentTaskFactory]
+    implicit val newTaskRunner = injector.instance[TaskRunner.Factory]
     implicit val timerService = TimerService(idleTimeout = Some(1.s))
     implicit val keyedEventBus = injector.instance[StampedKeyedEventBus]
     implicit val eventIdGenerator = injector.instance[EventIdGenerator]

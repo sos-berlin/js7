@@ -36,6 +36,7 @@ trait AgentDirectoryProvider extends HasCloser {
   def provideAgent2Directories(): this.type = {
     createDirectory(agentDirectory / "config" / "live")
     createDirectory(agentDirectory / "data")
+    createDirectory(agentDirectory / "data" / "state")
     this
   }
 }

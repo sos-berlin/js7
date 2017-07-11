@@ -2,17 +2,23 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, Status, Terminated}
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner
-import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.{ModuleStepFailed, ModuleStepSucceeded}
+import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.jobnet.Jobnet
 import com.sos.jobscheduler.data.jobnet.Jobnet.JobNode
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.system.StdoutStderr
+import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
+import com.sos.jobscheduler.taskserver.task.process.StdoutStderrWriter
+import scala.concurrent.duration.Duration.Inf
+import scala.concurrent.{Await, Promise}
 
 /**
   * @author Joacim Zschimmer
@@ -64,8 +70,6 @@ extends KeyedJournalingActor[OrderEvent] {
       case _ ⇒
         executeOtherCommand(command)
     }
-
-    case Input.FinishRecovery ⇒
   }
 
   private val waiting: Receive = journaling orElse {
@@ -95,7 +99,7 @@ extends KeyedJournalingActor[OrderEvent] {
       context.watch(jobActor)
       persist(OrderStepStarted) { event ⇒
         update(event)
-        jobActor ! JobRunner.Command.ProcessOrder(order.castAfterEvent(event))
+        jobActor ! JobRunner.Command.ProcessOrder(order.castAfterEvent(event), new MyStdoutStderrWriter)
       }
 
     case Input.SetReady ⇒
@@ -105,12 +109,28 @@ extends KeyedJournalingActor[OrderEvent] {
       context.stop(self)
   }
 
+  private class MyStdoutStderrWriter extends StdoutStderrWriter {
+    def chunkSize = StdoutStderrChunkSize
+
+    def writeChunk(t: StdoutStderr.StdoutStderrType, chunk: String) = {
+      val p = Promise[Completed]()
+      self ! Internal.StdoutStderrWritten(t, chunk, p)
+      Await.ready(p.future, Inf).successValue  // Blocks in stdout/stderr reader thread to avoid congestion
+    }
+  }
+
   private def processing(node: Jobnet.JobNode, jobActor: ActorRef): Receive = journaling orElse {
+    case Internal.StdoutStderrWritten(t, chunk, promise) ⇒
+      persistAsync(OrderStdWritten(t)(chunk)) { _ ⇒
+        // TODO Sync oder flush ist hier nicht nötig und wird große Ausgaben verlangsamen. persisAsync(commit=false) ?
+        promise.success(Completed)
+      }
+
     case JobRunner.Response.OrderProcessed(`orderId`, moduleStepEnded) if node != null ⇒
       val event = moduleStepEnded match {
-        case ModuleStepSucceeded(variablesDiff, good) ⇒
+        case TaskStepSucceeded(variablesDiff, good) ⇒
           OrderStepSucceeded(variablesDiff, good.returnValue, nextNodeId(node, good))
-        case ModuleStepFailed(bad) ⇒
+        case TaskStepFailed(bad) ⇒
           OrderStepFailed(bad.error, nextNodeId(node, bad))
       }
       endOrderStep(event, node)
@@ -173,6 +193,7 @@ extends KeyedJournalingActor[OrderEvent] {
 }
 
 object OrderActor {
+  private val StdoutStderrChunkSize = 10000  // Characters
 
   sealed trait Command
   object Command {
@@ -182,7 +203,6 @@ object OrderActor {
 
   sealed trait Input
   object Input {
-    final case object FinishRecovery
     final case object SetReady extends Input
     final case class  StartStep(node: Jobnet.JobNode, jobActor: ActorRef) extends Input
     final case object Terminate extends Input
@@ -191,6 +211,10 @@ object OrderActor {
   object Output {
     final case class RecoveryFinished(order: Order[Order.State])
     final case class OrderChanged(order: Order[Order.State], event: OrderEvent)
+  }
+
+  private object Internal {
+    final case class StdoutStderrWritten(typ: StdoutStderrType, chunk: String, completed: Promise[Completed])
   }
 
   private def nextNodeId(node: JobNode, outcome: Order.Outcome) =

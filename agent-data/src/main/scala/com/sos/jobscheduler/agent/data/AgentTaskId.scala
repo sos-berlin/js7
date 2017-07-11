@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.data
 
 import com.sos.jobscheduler.agent.data
 import com.sos.jobscheduler.base.generic.IsString
+import javax.inject.Singleton
 import scala.math.abs
 import scala.util.Random
 
@@ -34,4 +35,11 @@ object AgentTaskId extends IsString.HasJsonFormat[AgentTaskId] {
    */
   def newGenerator(start: Int = 1): Iterator[AgentTaskId] =
     new IncreasingPositiveLongs(start = start, maximum = Int.MaxValue) map { n ⇒ AgentTaskId(index = n, salt = abs(Random.nextLong())) }
+
+  @Singleton
+  final class Generator extends Iterator[AgentTaskId] {
+    private val generator = newGenerator()
+    def hasNext = generator.hasNext
+    def next() = generator.next()
+  }
 }

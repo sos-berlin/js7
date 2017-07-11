@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.jobscheduler.base.sprayjson.SprayJson.JsonFormats._
-import com.sos.jobscheduler.common.process.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
 import com.sos.jobscheduler.common.scalautil.FileUtils.EmptyPath
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.tcp.TcpUtils.parseTcpPort

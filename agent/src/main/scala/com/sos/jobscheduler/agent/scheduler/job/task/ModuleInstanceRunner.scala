@@ -5,6 +5,7 @@ import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
 import com.sos.jobscheduler.data.job.{ReturnCode, TaskId}
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatch
@@ -42,17 +43,17 @@ final class ModuleInstanceRunner(jobConfiguration: JobConfiguration, taskId: Tas
        Vector("spooler_log", "spooler_task")))
      .mapTo[Boolean]
 
-  def processOrder(order: Order[Order.InProcess.type]): Future[ModuleStepEnded] = {
+  def processOrder(order: Order[Order.InProcess.type]): Future[TaskStepEnded] = {
     val orderIDispatch = new OrderIDispatch(order.variables)
     spoolerTask.order = orderIDispatch
     moduleInstance.asyncCall("step", Nil)
       .map { stepResult ⇒
-        ModuleStepSucceeded(
+        TaskStepSucceeded(
           MapDiff.diff(order.variables, orderIDispatch.variables),
           Order.Good(StepResult.fromXml(stepResult.asInstanceOf[String]).result))
       }
       .recover {
-        case t: Throwable ⇒ ModuleStepFailed(Order.Bad(t.toString))  // We are exposing the exception message !!!
+        case t: Throwable ⇒ TaskStepFailed(Order.Bad(t.toString))  // We are exposing the exception message !!!
       }
   }
 
@@ -67,7 +68,7 @@ object ModuleInstanceRunner {
 
   private object StepResult {
     def fromXml(xmlString: String): StepResult =
-      ScalaXMLEventReader.parseString(xmlString, config = ScalaXMLEventReader.Config(ignoreUnknown = true)) { eventReader ⇒
+      ScalaXMLEventReader.parseDocument(stringToSource(xmlString), config = ScalaXMLEventReader.Config(ignoreUnknown = true)) { eventReader ⇒
         import eventReader._
         parseElement("process.result") {
           StepResult(
@@ -77,16 +78,4 @@ object ModuleInstanceRunner {
         }
       }
   }
-
-  sealed trait ModuleStepEnded {
-    val outcome: Order.Outcome
-  }
-
-  final case class ModuleStepSucceeded(
-    variablesDiff: MapDiff[String, String],
-    outcome: Order.Good)
-  extends ModuleStepEnded
-
-  final case class ModuleStepFailed(outcome: Order.Bad)
-  extends ModuleStepEnded
 }

@@ -3,9 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, Props, Stash}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner._
-import com.sos.jobscheduler.agent.scheduler.job.task.ModuleInstanceRunner.{ModuleStepEnded, ModuleStepFailed}
-import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
-import com.sos.jobscheduler.agent.task.AgentTaskFactory
+import com.sos.jobscheduler.agent.scheduler.job.task.{TaskRunner, TaskStepEnded, TaskStepFailed}
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.common.akkautils.Akkas.{decodeActorName, encodeAsActorName}
@@ -15,6 +13,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.data.order.Order.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.taskserver.task.process.StdoutStderrWriter
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -24,7 +23,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JobRunner private(jobPath: JobPath)(implicit newTask: AgentTaskFactory, timerService: TimerService, ec: ExecutionContext)
+final class JobRunner private(jobPath: JobPath)(implicit newTaskRunner: TaskRunner.Factory, timerService: TimerService, ec: ExecutionContext)
 extends Actor with Stash {
 
   private val logger = Logger.withPrefix[JobRunner](jobPath.toString)
@@ -34,13 +33,16 @@ extends Actor with Stash {
   private var terminating = false
 
   def receive = {
-    case Command.ReadConfigurationFile(path: Path) ⇒
-      jobConfiguration =
-        try JobConfiguration.parseXml(jobPath, path)
+    case Command.StartWithConfigurationFile(path: Path) ⇒
+      val conf = try JobConfiguration.parseXml(jobPath, path)
         catch { case NonFatal(t) ⇒
           logger.error(t.toString, t)
           throw t
         }
+      context.self.forward(Command.StartWithConfiguration(conf))
+
+    case Command.StartWithConfiguration(conf) ⇒
+      jobConfiguration = conf
       logger.debug("Job is ready")
       context.become(ready)
       sender() ! Response.Ready
@@ -53,14 +55,15 @@ extends Actor with Stash {
     case Input.OrderAvailable ⇒
       handleIfReadyForOrder()
 
-    case Command.ProcessOrder(order) if waitingForNextOrder ⇒
+    case Command.ProcessOrder(order, stdoutStderrWriter) if waitingForNextOrder ⇒
       logger.trace(s"ProcessOrder(${order.id})")
-      val taskRunner = new TaskRunner(jobConfiguration, newTask)
+      val taskRunner = newTaskRunner(jobConfiguration)
       orderToTask.insert(order.id → taskRunner)
       waitingForNextOrder = false
       handleIfReadyForOrder()
       val sender = this.sender()
-      taskRunner.processOrderAndTerminate(order)
+      taskRunner.processOrder(order, stdoutStderrWriter)
+        .andThen { case _ ⇒ taskRunner.terminate() }
         .onComplete { triedStepEnded ⇒
           self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
         }
@@ -96,12 +99,12 @@ extends Actor with Stash {
     }
   }
 
-  private def recoverFromFailure(tried: Try[ModuleStepEnded]): ModuleStepEnded =
+  private def recoverFromFailure(tried: Try[TaskStepEnded]): TaskStepEnded =
     tried match {
       case Success(o) ⇒ o
       case Failure(t) ⇒
         logger.error(s"TaskRunner.stepOne failed: $t", t)
-        ModuleStepFailed(Bad("TaskRunner.stepOne failed"))
+        TaskStepFailed(Bad("TaskRunner.stepOne failed"))
     }
 
   private def killAll(signal: ProcessSignal): Unit = {
@@ -125,7 +128,7 @@ extends Actor with Stash {
 }
 
 object JobRunner {
-  def actorOf(jobPath: JobPath)(implicit actorRefFactory: ActorRefFactory, newTask: AgentTaskFactory, ts: TimerService, ec: ExecutionContext): ActorRef =
+  def actorOf(jobPath: JobPath)(implicit actorRefFactory: ActorRefFactory, newTaskRunner: TaskRunner.Factory, ts: TimerService, ec: ExecutionContext): ActorRef =
     actorRefFactory.actorOf(
       Props { new JobRunner(jobPath) },
       name = toActorName(jobPath))
@@ -139,13 +142,15 @@ object JobRunner {
 
   sealed trait Command
   object Command {
+    final case class StartWithConfigurationFile(path: Path)
+    final case class StartWithConfiguration(conf: JobConfiguration)
     final case class ReadConfigurationFile(path: Path)
-    final case class ProcessOrder(order: Order[Order.InProcess.type]) extends Command
+    final case class ProcessOrder(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter) extends Command
   }
 
   object Response {
     case object Ready
-    final case class OrderProcessed(orderId: OrderId, moduleStepEnded: ModuleStepEnded)
+    final case class OrderProcessed(orderId: OrderId, moduleStepEnded: TaskStepEnded)
   }
 
   object Input {
@@ -158,7 +163,7 @@ object JobRunner {
   }
 
   private object Internal {
-    final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[ModuleStepEnded])
+    final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[TaskStepEnded])
     final case object KillAll
   }
 }

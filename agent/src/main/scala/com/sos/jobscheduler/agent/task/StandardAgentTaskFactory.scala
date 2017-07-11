@@ -34,13 +34,13 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 final class StandardAgentTaskFactory @Inject private(
   agentConfiguration: AgentConfiguration,
   tunnelServerProvider: Provider[TunnelServer],
-  newRemoteModuleInstanceServer: RemoteModuleInstanceServer.Factory)
+  newRemoteModuleInstanceServer: RemoteModuleInstanceServer.Factory,
+  agentTaskIdGenerator: AgentTaskId.Generator)
   (implicit
     timerService: TimerService,
     private val executionContext: ExecutionContext)
 extends AgentTaskFactory {
 
-  private val agentTaskIdGenerator = AgentTaskId.newGenerator()
   private lazy val tunnelServer = tunnelServerProvider.get   // Initialize (and open TCP port) only when needed
 
   def apply(command: StartTask, clientIpOption: Option[InetAddress]): AgentTask = {

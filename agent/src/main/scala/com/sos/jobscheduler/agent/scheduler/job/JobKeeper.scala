@@ -4,8 +4,8 @@ import akka.actor.{Actor, ActorRef, Stash, Terminated}
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeper._
-import com.sos.jobscheduler.agent.task.AgentTaskFactory
 import com.sos.jobscheduler.common.akkautils.Akkas.StoppingStrategies
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
@@ -17,7 +17,7 @@ import scala.concurrent.ExecutionContext
 /**
   * @author Joacim Zschimmer
   */
-final class JobKeeper(jobConfigurationDirectory: Path)(implicit newTask: AgentTaskFactory, ts: TimerService, ec: ExecutionContext)
+final class JobKeeper(jobConfigurationDirectory: Path)(implicit newTaskRunner: TaskRunner.Factory, ts: TimerService, ec: ExecutionContext)
 extends Actor with Stash {
 
   override val supervisorStrategy = StoppingStrategies.stopping(logger)
@@ -33,7 +33,7 @@ extends Actor with Stash {
             case (file, jobPath: JobPath) ⇒
               val a = context.watch(JobRunner.actorOf(jobPath))
               pathToActor += jobPath → a
-              a ! JobRunner.Command.ReadConfigurationFile(file)
+              a ! JobRunner.Command.StartWithConfigurationFile(file)
           }
           unstashAll()
           starting(pathToActor.toMap, sender())
