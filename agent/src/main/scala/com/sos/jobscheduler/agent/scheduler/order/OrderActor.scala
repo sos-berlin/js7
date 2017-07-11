@@ -173,7 +173,7 @@ extends KeyedJournalingActor[OrderEvent] {
         context.stop(self)
         order
 
-      case _ if order != null ⇒
+      case event: OrderCoreEvent if order != null ⇒
         order.update(event)
 
       case _ ⇒

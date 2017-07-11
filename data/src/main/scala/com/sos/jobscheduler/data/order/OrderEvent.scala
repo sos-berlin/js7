@@ -16,27 +16,29 @@ sealed trait OrderEvent extends Event {
 }
 
 object OrderEvent {
+  sealed trait OrderCoreEvent extends OrderEvent
+
   final case class OrderAdded(
     nodeKey: NodeKey,
     state: Order.Idle,
     variables: Map[String, String],
     outcome: Order.Outcome)
-  extends OrderEvent
+  extends OrderCoreEvent
 
   final case class OrderAttached(
     nodeKey: NodeKey,
     state: Order.Idle,
     variables: Map[String, String],
     outcome: Order.Outcome)
-  extends OrderEvent
+  extends OrderCoreEvent
 
   final case class OrderMovedToAgent(agentPath: AgentPath)
-  extends OrderEvent
+  extends OrderCoreEvent
 
   final case object OrderMovedToMaster
-  extends OrderEvent
+  extends OrderCoreEvent
 
-  case object OrderStepStarted extends OrderEvent
+  case object OrderStepStarted extends OrderCoreEvent
 
 
   sealed trait OrderStdWritten extends OrderEvent {
@@ -65,7 +67,7 @@ object OrderEvent {
   }
 
 
-  sealed trait OrderStepEnded extends OrderEvent {
+  sealed trait OrderStepEnded extends OrderCoreEvent {
     def nextNodeId: NodeId
   }
 
@@ -81,12 +83,12 @@ object OrderEvent {
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
-  case object OrderReady extends OrderEvent
+  case object OrderReady extends OrderCoreEvent
 
   /**
     * Order has been removed from the Agent and is held by the Master.
     */
-  case object OrderDetached extends OrderEvent
+  case object OrderDetached extends OrderCoreEvent
 
   case object OrderFinished extends OrderEvent
 

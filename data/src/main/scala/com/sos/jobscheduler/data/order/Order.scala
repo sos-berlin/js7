@@ -34,7 +34,7 @@ final case class Order[+S <: Order.State](
       case OrderAdded(nodeKey_, state_, variables_, outcome_) ⇒
         copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
 
-      case OrderAttached(nodeKey_, state_, variables_, outcome_) ⇒  // Doppelt mit OrderAdded ???
+      case OrderAttached(nodeKey_, state_, variables_, outcome_) ⇒
         copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
 
       case OrderMovedToAgent(agentPath) ⇒ copy(
@@ -46,6 +46,9 @@ final case class Order[+S <: Order.State](
 
       case OrderStepStarted ⇒ copy(
         state = InProcess)
+
+      case _: OrderStdWritten ⇒
+        throw new NotImplementedError("Order does not handle stdout or stderr event")
 
       case OrderStepSucceeded(diff, returnValue, nextNodeId) ⇒ copy(
         state = Waiting,

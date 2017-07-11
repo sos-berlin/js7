@@ -344,20 +344,18 @@ with Stash {
       case event: OrderEvent ⇒
         val orderEntry = orderRegister(orderId)
         orderEntry.update(event)  // May crash !!!
-        for (orderEntry ← orderRegister.get(orderId)) {
-          event match {
-            case _: OrderEvent.OrderReady.type if detachingSuspended ⇒
-              stash()
+        event match {
+          case _: OrderEvent.OrderReady.type if detachingSuspended ⇒
+            stash()
 
-            case OrderEvent.OrderReady ⇒
-              for (path ← orderEntry.order.agentPathOption)
-                agentRegister(path).actor ! AgentDriver.Input.DetachOrder(orderId)
+          case OrderEvent.OrderReady ⇒
+            for (path ← orderEntry.order.agentPathOption)
+              agentRegister(path).actor ! AgentDriver.Input.DetachOrder(orderId)
 
-            case OrderEvent.OrderMovedToMaster/*was OrderDetached*/ ⇒
-              moveAhead(orderId)
+          case OrderEvent.OrderMovedToMaster ⇒
+            moveAhead(orderId)
 
-            case _ ⇒
-          }
+          case _ ⇒
         }
     }
   }
