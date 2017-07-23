@@ -179,10 +179,12 @@ private object RecoveryIT {
     private val testScript =
       if (isWindows) """
         |@echo off
+        |echo TEST
         |ping -n 2 127.0.0.1 >nul
         |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
         |""".stripMargin
       else """
+        |echo TEST
         |sleep 1
         |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
         |""".stripMargin

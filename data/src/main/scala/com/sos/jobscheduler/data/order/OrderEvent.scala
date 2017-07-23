@@ -90,7 +90,7 @@ object OrderEvent {
     */
   case object OrderDetached extends OrderCoreEvent
 
-  case object OrderFinished extends OrderEvent
+  case object OrderFinished extends OrderCoreEvent
 
   //final case class Scheduled(at: Option[Instant]) extends Event
   //case object Started extends Event

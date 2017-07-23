@@ -29,7 +29,7 @@ final case class Order[+S <: Order.State](
   def nodeId: NodeId =
     nodeKey.nodeId
 
-  def update(event: OrderEvent): Order[State] =
+  def update(event: OrderEvent.OrderCoreEvent): Order[State] =
     event match {
       case OrderAdded(nodeKey_, state_, variables_, outcome_) ⇒
         copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
@@ -46,9 +46,6 @@ final case class Order[+S <: Order.State](
 
       case OrderStepStarted ⇒ copy(
         state = InProcess)
-
-      case _: OrderStdWritten ⇒
-        throw new NotImplementedError("Order does not handle stdout and stderr events")
 
       case OrderStepSucceeded(diff, returnValue, nextNodeId) ⇒ copy(
         state = Waiting,

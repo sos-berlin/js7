@@ -164,11 +164,15 @@ extends KeyedJournalingActor[OrderEvent] {
         context.stop(self)
         order
 
+      case _: OrderStdWritten ⇒
+        // Not collected
+        order
+
       case event: OrderCoreEvent if order != null ⇒
         order.update(event)
 
       case _ ⇒
-        sys.error(s"Not an initial OrderEvent for '$orderId': $event")
+        sys.error(s"Unexpected event for '$orderId': $event")
     }
   }
 

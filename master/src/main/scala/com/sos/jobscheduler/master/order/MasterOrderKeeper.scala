@@ -432,8 +432,12 @@ object MasterOrderKeeper {
   {
     def orderId = order.id
 
-    def update(event: OrderEvent): Unit = {
-      order = order.update(event)
-    }
+    def update(event: OrderEvent): Unit =
+      event match {
+        case event: OrderEvent.OrderStdWritten ⇒
+          logger.info(s"Ignored: $event")  // TODO
+        case event: OrderEvent.OrderCoreEvent ⇒
+          order = order.update(event)
+      }
   }
 }
