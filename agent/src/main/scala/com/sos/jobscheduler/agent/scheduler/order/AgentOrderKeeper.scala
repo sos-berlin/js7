@@ -138,7 +138,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
   private def awaitJournalIsReady: Receive = journaling orElse {
     case OrderActor.Output.RecoveryFinished(order) ⇒
-      handleAddedOrder(order)
+      orderRegister(order.id).order = order
+      handleAddedOrder(order.id)
 
     case JsonJournalRecoverer.Output.JournalIsReady ⇒
      logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
@@ -252,15 +253,20 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       Props { new OrderActor(orderId, journalActor = journalActor) },
       name = encodeAsActorName(s"Order-${orderId.string}")))
 
-  private def handleOrderEvent(order: Order[Order.State], event: OrderEvent) = {
-    val orderEntry = orderRegister(order.id)
-    orderEntry.order = order
+  private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
+    orderRegister(order.id).order = order
+    handleOrderEvent(order.id, event)
+  }
+
+  private def handleOrderEvent(orderId: OrderId, event: OrderEvent): Unit = {
+    val orderEntry = orderRegister(orderId)
+    import orderEntry.order
     event match {
       case _: OrderAttached ⇒
-        handleAddedOrder(order)
+        handleAddedOrder(order.id)
 
       case e: OrderStepEnded ⇒
-        for (jobNode ← jobnetRegister.nodeKeyToJobNodeOption(orderEntry.order.nodeKey);
+        for (jobNode ← jobnetRegister.nodeKeyToJobNodeOption(order.nodeKey);
              jobEntry ← jobRegister.get(jobNode.jobPath)) {
           jobEntry.queue -= order.id
         }
@@ -272,12 +278,12 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     }
   }
 
-  private def handleAddedOrder(order: Order[Order.State]): Unit = {
-    val orderEntry = orderRegister(order.id)
-    order.state match {
+  private def handleAddedOrder(orderId: OrderId): Unit = {
+    val orderEntry = orderRegister(orderId)
+    orderEntry.order.state match {
       case Order.Scheduled(instant) if now < instant ⇒
         orderEntry.at(instant) {
-          self ! Internal.Due(order.id)
+          self ! Internal.Due(orderId)
         }
 
       case Order.Scheduled(_) | Order.StartNow | Order.Waiting | Order.Detached/*???*/ ⇒
