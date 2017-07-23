@@ -39,7 +39,7 @@ extends Actor with Stash {
           logger.error(t.toString, t)
           throw t
         }
-      context.self.forward(Command.StartWithConfiguration(conf))
+      self.forward(Command.StartWithConfiguration(conf))
 
     case Command.StartWithConfiguration(conf) ⇒
       jobConfiguration = conf

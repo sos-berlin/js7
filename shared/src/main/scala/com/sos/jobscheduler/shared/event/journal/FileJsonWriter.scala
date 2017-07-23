@@ -2,9 +2,7 @@ package com.sos.jobscheduler.shared.event.journal
 
 import akka.util.ByteString
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.shared.common.jsonseq.OutputStreamJsonSeqWriter
-import com.sos.jobscheduler.shared.event.journal.FileJsonWriter._
 import java.io.{BufferedOutputStream, FileOutputStream, OutputStream}
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
@@ -44,7 +42,6 @@ extends AutoCloseable {
       writer.close()
       convertingOut.close()
       out.close()
-      logger.debug("Closed")
     }
   }
 
@@ -65,8 +62,4 @@ extends AutoCloseable {
       true
     }
   }
-}
-
-object FileJsonWriter {
-  private val logger = Logger(getClass)
 }

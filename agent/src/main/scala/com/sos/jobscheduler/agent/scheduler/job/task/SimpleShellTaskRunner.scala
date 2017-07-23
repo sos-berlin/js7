@@ -10,6 +10,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.Exceptions.logException
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.taskserver.modules.shell.RichProcessStartSynchronizer
 import com.sos.jobscheduler.taskserver.task.TaskArguments
@@ -43,19 +44,31 @@ extends TaskRunner {
     }
 
   def processOrder(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter): Future[TaskStepEnded] =
+    for (returnCode ← runProcess(order, stdoutStderrWriter)) yield
+      TaskStepSucceeded(
+        MapDiff.diff(order.variables, order.variables ++ fetchReturnValuesThenDeleteFile()),
+        Order.Good(returnCode.isSuccess))
+
+  private def runProcess(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter): Future[ReturnCode] =
     for {
-      richProcess ← startProcess(order, stdoutStderrWriter)
-      returnCode ← richProcess.terminated
+      richProcess ← startProcess(order, stdoutStderrWriter) andThen {
+        case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${jobConfiguration.path}")
+      }
+      returnCode ← richProcess.terminated andThen { case tried ⇒
+        logger.info(s"Process '$richProcess' terminated with $tried")
+      }
     } yield {
       richProcess.close()
-      val newVariables = order.variables ++ returnValuesProvider.variables
-      logException(logger.asLazy.error) {
-        delete(returnValuesProvider.file)
-      }
-      TaskStepSucceeded(
-        MapDiff.diff(order.variables, newVariables),
-        Order.Good(returnCode.isSuccess))
+      returnCode
     }
+
+  private def fetchReturnValuesThenDeleteFile(): Map[String, String] = {
+    val result = returnValuesProvider.variables
+    logException(logger.asLazy.error) {    // TODO When Windows locks the file, try delete it later, asynchronously
+      delete(returnValuesProvider.file)
+    }
+    result
+  }
 
   private def startProcess(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter): Future[RichProcess] = {
     val env = {

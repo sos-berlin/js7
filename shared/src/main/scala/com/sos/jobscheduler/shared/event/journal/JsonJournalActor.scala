@@ -131,11 +131,11 @@ extends Actor with Stash {
             throw tt;
         }
         statistics.flushes += 1
-        logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.eventSnapshots.size }).sum} events")
+        //logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.eventSnapshots.size }).sum} events:")
         for (Written(stampedOptions, replyTo, sender) ← writtenBuffer) {
           replyTo.!(Output.Stored(stampedOptions))(sender)
           for (stampedOption ← stampedOptions; stamped ← stampedOption) {
-            logger.trace(s"STORED $stamped")
+            logger.trace(s"STORED #${statistics.flushes} $stamped")
             keyedEventBus.publish(stamped)
           }
         }

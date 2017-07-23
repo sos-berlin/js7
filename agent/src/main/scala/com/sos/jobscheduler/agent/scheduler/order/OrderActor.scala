@@ -55,6 +55,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case _ ⇒
     }
+    logger.debug(s"Recovered $order")
     sender() ! Output.RecoveryFinished(order)
   }
 
@@ -99,7 +100,7 @@ extends KeyedJournalingActor[OrderEvent] {
       context.watch(jobActor)
       persist(OrderStepStarted) { event ⇒
         update(event)
-        jobActor ! JobRunner.Command.ProcessOrder(order.castAfterEvent(event), new MyStdoutStderrWriter)
+        jobActor ! JobRunner.Command.ProcessOrder(order.castAfterEvent(event), new MyStdoutStderrWriter(to = self))
       }
 
     case Input.SetReady ⇒
@@ -107,16 +108,6 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case Input.Terminate ⇒
       context.stop(self)
-  }
-
-  private class MyStdoutStderrWriter extends StdoutStderrWriter {
-    def chunkSize = StdoutStderrChunkSize
-
-    def writeChunk(t: StdoutStderr.StdoutStderrType, chunk: String) = {
-      val p = Promise[Completed]()
-      self ! Internal.StdoutStderrWritten(t, chunk, p)
-      Await.ready(p.future, Inf).successValue  // Blocks in stdout/stderr reader thread to avoid congestion
-    }
   }
 
   private def processing(node: Jobnet.JobNode, jobActor: ActorRef): Receive = journaling orElse {
@@ -222,4 +213,14 @@ object OrderActor {
       case Order.Good(returnValue) ⇒ if (returnValue) node.onSuccess else node.onFailure
       case Order.Bad(_) ⇒ node.onFailure
     }
+
+  private class MyStdoutStderrWriter(to: ActorRef) extends StdoutStderrWriter {
+    def chunkSize = StdoutStderrChunkSize
+
+    def writeChunk(t: StdoutStderr.StdoutStderrType, chunk: String) = {
+      val p = Promise[Completed]()
+      to ! Internal.StdoutStderrWritten(t, chunk, p)
+      Await.ready(p.future, Inf).successValue  // Blocks in stdout/stderr reader thread to avoid congestion
+    }
+  }
 }

@@ -110,7 +110,7 @@ private object OrderActorTest {
     private val events = mutable.Buffer[OrderEvent]()
     private val stdoutStderr = (for (t ← StdoutStderrType.values) yield t → new StringBuilder).toMap
 
-    keyedEventBus.subscribe(context.self, classOf[OrderEvent])
+    keyedEventBus.subscribe(self, classOf[OrderEvent])
     (journalActor ? JsonJournalActor.Input.StartWithoutRecovery).mapTo[JsonJournalActor.Output.Ready.type] await 99.s
     (jobActor ? JobRunner.Command.StartWithConfiguration(TestJobConfiguration)).mapTo[JobRunner.Response.Ready.type] await 99.s
     jobActor ! JobRunner.Input.OrderAvailable

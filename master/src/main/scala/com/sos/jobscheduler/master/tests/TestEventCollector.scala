@@ -27,18 +27,18 @@ extends EventCollector(
           override def preStart() = {
             super.preStart()
             keyedEventBus.subscribe(self, classOf[Event])
-            logger.debug("Ready")
+            logger.trace("Ready")
           }
 
           override def postStop() = {
             keyedEventBus.unsubscribe(self)
-            logger.debug("Stopped")
+            logger.trace("Stopped")
             super.postStop()
           }
 
           def receive = {
             case event: Stamped[AnyKeyedEvent] ⇒
-              logger.debug(event.toString)
+              logger.trace(event.toString)
               addStamped(event)
           }
         }

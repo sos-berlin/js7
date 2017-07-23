@@ -23,6 +23,8 @@ import scala.util.{Failure, Success, Try}
 import spray.http.Uri
 
 /**
+  * Keeps connection to an Agent, sends orders, and fetches events (using `EventFetcher`).
+  *
   * @author Joacim Zschimmer
   */
 final class AgentDriver(agentPath: AgentPath, uri: Uri)
@@ -59,13 +61,13 @@ with Stash {
     case Internal.Connect ⇒
       logger.info(s"Trying to connect $uri")
       reconnectPause.onConnect()
-      (for (_ ← client.executeCommand(AgentCommand.Login);
-            _ ← client.executeCommand(AgentCommand.RegisterAsMaster))
-        yield Internal.Connected
-      ) recover {
+      (for {
+        _ ← client.executeCommand(AgentCommand.Login)
+        _ ← client.executeCommand(AgentCommand.RegisterAsMaster)
+      } yield Internal.Connected)
+      .recover {
         case t ⇒ Internal.ConnectFailed(t)
-      } pipeTo
-        self
+      } pipeTo self
       unstashAll()
       become(connecting)
 
@@ -75,10 +77,10 @@ with Stash {
 
   private def connecting: Receive = {
     case Internal.Connected ⇒
+      logger.info("Connected")
       reconnectPause.onConnectSucceeded()
       unstashAll()
       become(waitingForStart)
-      logger.info("Connected")
       if (startCommandReceived) {
         self ! Input.Start
       }
@@ -95,13 +97,15 @@ with Stash {
     case Input.Recover(eventId, recoveredOrderIds) ⇒
       lastEventId = eventId
       orderIds ++= recoveredOrderIds
+      // TODO Wozu brauchen wir orderIds?
+      // TODO Kein Output.Recovered. Stattdessen Events vom Agenten lesen. Falls kein neues Event da ist, schickt der Agent ein Dummy-Event. MasterOrderKeeper ... ?
       sender() ! Output.Recovered
 
     case Input.Start ⇒
       startCommandReceived = true
       startEventFetcher()
-      unstashAll()
       processQueuedCommands()
+      unstashAll()
       become(ready)
       logger.info("Ready")
 
@@ -150,7 +154,7 @@ with Stash {
     case Internal.CommandReady ⇒
 
     case Internal.AgentEvent(stamped) ⇒
-      context.parent ! Output.EventFromAgent(stamped)  // TODO Possible Akka Mailbox overflow. Use reactive stream ?
+      context.parent ! Output.EventFromAgent(stamped)  // TODO Possible OutOfMemoryError. Use reactive stream ?
       lastEventId = stamped.eventId
   }
 
@@ -158,10 +162,10 @@ with Stash {
     assert(eventFetcher == null)
     logger.info(s"Fetching events after ${EventId.toString(lastEventId)}")
     eventFetcher = new EventFetcher[OrderEvent](lastEventId) {
-      protected def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request)
-      protected def onEvent(stamped: Stamped[KeyedEvent[OrderEvent]]) = self ! Internal.AgentEvent(stamped)
+      def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request)
+      def onEvent(stamped: Stamped[KeyedEvent[OrderEvent]]) = self ! Internal.AgentEvent(stamped)  // TODO Possible OutOfMemoryError
     }
-    eventFetcher.start().onComplete {
+    eventFetcher.start() onComplete {
       o ⇒ self ! Internal.EventFetcherTerminated(o)
     }
   }
@@ -205,8 +209,8 @@ with Stash {
       val cmd = AgentCommand.DetachOrder(orderId)
       val sender = this.sender()
       client.executeCommand(cmd) onComplete {
+        // Closure
         case Success(_) ⇒
-          // FIXME Closure
           logger.info(s"$orderId detached from Agent")
           self ! Internal.OrderDetached(orderId)
           sender ! Output.OrderDetached(orderId)
@@ -218,12 +222,13 @@ with Stash {
   private def processQueuedCommands(): Unit = {
     for (cmd ← commandQueue.find(o ⇒ !executingCommands(o))) {
       executingCommands += cmd
-      (for (_ ← client.executeCommand(AgentCommand.AttachJobnet(cmd.jobnet));
-            _ ← client.executeCommand(AgentCommand.AttachOrder(cmd.order)))
-        yield Done)
-        .onComplete {
-          tried ⇒ self ! Internal.OrderAttachedToAgent(cmd, tried)
-        }
+      (for {
+        _ ← client.executeCommand(AgentCommand.AttachJobnet(cmd.jobnet))
+        _ ← client.executeCommand(AgentCommand.AttachOrder(cmd.order))
+      } yield Done)
+      .onComplete {
+        tried ⇒ self ! Internal.OrderAttachedToAgent(cmd, tried)
+      }
     }
   }
 

@@ -5,7 +5,6 @@ import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentEvent}
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -147,7 +146,7 @@ private object RecoveryIT {
     <job_chain>
       <job_chain_node state="100" agent="test-agent-111" job="/test"/>
       <job_chain_node state="110" agent="test-agent-111" job="/test"/>
-      <job_chain_node state="130" agent="test-agent-111" job="/test"/>
+      <job_chain_node state="120" agent="test-agent-111" job="/test"/>
       <job_chain_node state="200" agent="test-agent-222" job="/test"/>
       <job_chain_node state="210" agent="test-agent-222" job="/test"/>
       <job_chain_node.end state="END"/>

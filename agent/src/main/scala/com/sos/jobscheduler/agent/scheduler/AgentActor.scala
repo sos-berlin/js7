@@ -61,8 +61,8 @@ extends KeyedEventJournalingActor[AgentEvent] {
   }
 
   override def postStop() = {
-    logger.info("Agent is terminating now")
     super.postStop()
+    logger.info("Terminated")
     stoppedPromise.success(Completed)
   }
 

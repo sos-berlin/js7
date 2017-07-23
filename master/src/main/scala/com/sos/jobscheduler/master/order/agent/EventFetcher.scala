@@ -44,7 +44,7 @@ extends AutoCloseable {
           case Success(EventSeq.NonEmpty(stampeds)) ⇒
             for (stamped ← stampeds if !closed) {
               count += 1
-              logger.trace(s"#$count $stampeds")
+              logger.trace(s"#$count $stamped")
               onEvent(stamped)
             }
             loop(stampeds.last.eventId)
