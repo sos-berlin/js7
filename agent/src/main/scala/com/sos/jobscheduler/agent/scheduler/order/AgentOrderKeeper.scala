@@ -202,7 +202,13 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       import order.nodeKey
       jobnetRegister.get(nodeKey.jobnetPath) match {
         case Some(jobnet) if jobnet isDefinedAt nodeKey.nodeId ⇒
-          attachOrder(order) map { case Completed ⇒ EmptyResponse }
+          if (orderRegister contains order.id) {
+            // May occur after Master restart, if Master is not sure about order has been attached previously.
+            logger.debug(s"Ignoring duplicate $cmd")
+            Future.successful(EmptyResponse)
+          } else {
+            attachOrder(order) map { case Completed ⇒ EmptyResponse }
+          }
         case Some(_) ⇒
           Future.failed(new IllegalArgumentException(s"Unknown NodeId ${nodeKey.nodeId} in ${nodeKey.jobnetPath}"))
         case None ⇒
@@ -210,9 +216,14 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       }
 
     case DetachOrder(orderId) ⇒
-      executeCommandForOrderId(orderId) { orderEntry ⇒
-        orderEntry.detaching = true  // OrderActor is terminating
-        (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ EmptyResponse }
+      orderRegister.get(orderId) match {
+        case Some(orderEntry) ⇒
+          orderEntry.detaching = true  // OrderActor is terminating
+          (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ EmptyResponse }
+        case None ⇒
+          // May occur after Master restart, if Master is not sure about order has been detached previously.
+          logger.debug(s"Ignoring duplicate $cmd")
+          Future.successful(EmptyResponse)
       }
 
     case GetOrder(orderId) ⇒

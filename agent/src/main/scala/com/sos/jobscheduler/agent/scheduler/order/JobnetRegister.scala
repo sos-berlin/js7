@@ -21,7 +21,7 @@ private[order] final class JobnetRegister {
     val path = keyedEvent.key
     keyedEvent.event match {
       case event: JobnetEvent.JobnetAttached ⇒
-        pathToJobnet += path → Jobnet.fromJobnetAttached(path, event)   // Multiple orders with same Jobnet may occur. TODO Every Order becomes its own copy of its Jobnet ?
+        pathToJobnet += path → Jobnet.fromJobnetAttached(path, event)   // Multiple orders with same Jobnet may occur. TODO Every Order becomes its own copy of its Jobnet? Jobnet will never be removed.
     }
   }
 

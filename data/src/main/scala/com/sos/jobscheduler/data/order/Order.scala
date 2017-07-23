@@ -48,7 +48,7 @@ final case class Order[+S <: Order.State](
         state = InProcess)
 
       case _: OrderStdWritten ⇒
-        throw new NotImplementedError("Order does not handle stdout or stderr event")
+        throw new NotImplementedError("Order does not handle stdout and stderr events")
 
       case OrderStepSucceeded(diff, returnValue, nextNodeId) ⇒ copy(
         state = Waiting,
@@ -143,13 +143,11 @@ object Order {
   sealed trait Started extends State
   final case class Scheduled(at: Instant) extends NotStarted
   final case object StartNow extends NotStarted  // == Scheduled(None) ???
-  //final case class Postponed(until: Instant) extends Started with Idle
+  //final case class Postponed(until: Option[Instant]) extends Started with Idle
   //case object Suspended extends Started with Idle
   case object Waiting extends Started with Idle
   case object Ready extends Started  // Retrievable ???
   case object InProcess extends Started
-  //case object AfterStep extends Started
-  //case object Done extends State
   case object Detached extends Started with Idle
   case object Finished extends State
 }

@@ -29,6 +29,9 @@ final case class Jobnet(path: JobnetPath, inputNodeId: NodeId, idToNode: Map[Nod
   def apply(nodeId: NodeId) = idToNode(nodeId)
 
   def isDefinedAt(nodeId: NodeId) = idToNode isDefinedAt nodeId
+
+  def agentPathOption(nodeId: NodeId): Option[AgentPath] =
+    idToNode.get(nodeId) collect { case o: Jobnet.JobNode ⇒ o.agentPath }
 }
 
 object Jobnet {

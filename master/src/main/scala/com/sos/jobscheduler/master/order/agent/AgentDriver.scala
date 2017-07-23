@@ -197,8 +197,7 @@ with Stash {
     case cmd: Input.AttachOrder ⇒
       val orderId = cmd.order.id
       if (orderIds contains orderId) {
-        val msg = s"Duplicate $orderId"  // Error handling ???
-        logger.warn(msg)
+        logger.warn(s"Duplicate $orderId")
       } else {
         orderIds += orderId
         commandQueue += cmd

@@ -33,6 +33,7 @@ import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTyp
 import java.time.Duration
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -57,12 +58,9 @@ with Stash {
   intelliJuseImports(dispatcher)
 
   private val journalFile = masterConfiguration.stateDirectory / "journal"
-  private val agentRegister = new ActorRegister[AgentPath, AgentEntry](_.actor) {
-    def insert2(kv: (AgentPath, AgentEntry)) = super.insert(kv)
-  }
+  private val agentRegister = new AgentRegister
   private val pathToJobnet = mutable.Map[JobnetPath, Jobnet]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
-  private val lastRecoveredOrderEvents = mutable.Map[OrderId, OrderEvent]()
   private var detachingSuspended = false
   protected val journalActor = context.watch(context.actorOf(
     Props {
@@ -92,7 +90,7 @@ with Stash {
         val actor = context.actorOf(
           Props { new AgentDriver(agent.path, agent.uri) },
           name = encodeAsActorName("Agent-" + agentPath.withoutStartingSlash))
-        agentRegister.insert2(agentPath → AgentEntry(agentPath, actor))
+        agentRegister.insert(agentPath → AgentEntry(agentPath, actor))
     }
   }
 
@@ -110,12 +108,12 @@ with Stash {
 
   protected def snapshots = Future.successful(
     (for (entry ← agentRegister.values) yield AgentEventId(entry.agentPath, entry.lastAgentEventId)) ++
-      //pathToJobnet.values ++
+      //??? pathToJobnet.values ++
       (orderRegister.values map { _ .order }))
 
   private class MyJournalRecoverer extends JsonJournalRecoverer[Event] {
-    val jsonJournalMeta = MyJournalMeta
-    val journalFile = MasterOrderKeeper.this.journalFile
+    protected val jsonJournalMeta = MyJournalMeta
+    protected val journalFile = MasterOrderKeeper.this.journalFile
 
     def recoverSnapshot = {
       case o: OrderScheduleEndedAt ⇒
@@ -135,11 +133,10 @@ with Stash {
       case Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
         event match {
           case event: OrderEvent.OrderAdded ⇒
-            onOrderAdded(orderId, event)
+            registerOrder(Order.fromOrderAdded(orderId, event))
           case _ ⇒
             orderRegister(orderId).update(event)
         }
-        lastRecoveredOrderEvents += orderId → event
 
       case Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId))) ⇒
         agentRegister(agentPath).lastAgentEventId = agentEventId
@@ -149,13 +146,13 @@ with Stash {
   def receive = journaling orElse {
     case JsonJournalRecoverer.Output.JournalIsReady ⇒
       for (agentEntry ← agentRegister.values) {
-        val orderIds = orderRegister.values collect {
+        val orderIds = orderRegister.values.toImmutableSeq collect {
           case orderEntry if orderEntry.order.agentPathOption contains agentEntry.agentPath ⇒
             orderEntry.orderId
         }
         agentEntry.actor ! AgentDriver.Input.Recover(
           lastAgentEventId = agentEntry.lastAgentEventId,
-          orderIds = orderIds.toImmutableSeq)
+          orderIds = orderIds)
       }
       becomeWaitingForAgentDriverRecovery(agentRegister.size)
 
@@ -163,7 +160,7 @@ with Stash {
       stash()
   }
 
-  private def becomeWaitingForAgentDriverRecovery(remaining: Int): Unit = {
+  private def becomeWaitingForAgentDriverRecovery(remaining: Int): Unit =
     if (remaining > 0) {
       become(journaling orElse {
         case AgentDriver.Output.Recovered ⇒
@@ -173,33 +170,24 @@ with Stash {
           stash()
       })
     } else {
-      for (order ← orderRegister.valuesIterator map { _.order }) {
-        order.state match {
-          case Order.Scheduled(at) ⇒
-          case Order.StartNow ⇒
-          case Order.Waiting ⇒
-          case Order.Ready ⇒
-          case Order.InProcess ⇒
-          case Order.Detached ⇒
-            //val detachedOrder = order.asInstanceOf[Order[Order.Detached.type]]
-            //// TODO Duplicate code
-            //for (jobnet ← pathToJobnet.get(detachedOrder.nodeKey.jobnetPath);
-            //     jobNode ← jobnet.idToNode.get(detachedOrder.nodeKey.nodeId) collect { case o: JobNode ⇒ o }) {
-            //  tryAttachOrderToAgent(detachedOrder, jobnet, jobNode.agentPath)
-            //}
-          case Order.Finished ⇒
-        }
-      }
-      for ((orderId, event) ← lastRecoveredOrderEvents) {
-        handleOrderEvent(orderId, event)  // Repeat last event induced action. Besser den Zustand als das letzte Ereignis prüfen ??? Vielleicht muss auch die Aktion ein länger zurückliegenden Ereignisses wiederholt werden.
-      }
-      lastRecoveredOrderEvents.clear()
+      orderRegister.valuesIterator map { _.order } foreach handleRecoveredOrder
+      logger.info(s"${orderRegister.size} Orders recovered, ready")
       become(ready)
-      logger.info(s"Ready, ${orderRegister.size} Orders recovered")
       for (o ← agentRegister.values) {
         o.actor ! AgentDriver.Input.Start
       }
       unstashAll()
+    }
+
+  private def handleRecoveredOrder(order: Order[Order.State]): Unit = {
+    order.state match {
+      case _: Order.NotStarted ⇒
+        // Order may already be attached. Then Agent ignores this command.
+        tryAttachOrderToAgent(order.castState[Order.NotStarted])
+      case Order.Ready ⇒
+        // Order may already be detached. Then Agent ignores this command.
+        detachOrderFromAgent(order.id)
+      case _ ⇒
     }
   }
 
@@ -245,7 +233,7 @@ with Stash {
                 //(agents(agentPath) ? AgentDriver.Input.DetachOrder(orderId)).mapTo[EmptyResponse.type]
                 //  .pipeTo(sender())
               case None ⇒
-                //orderEntry.order = orderEntry.order.update(OrderRemoved)  // TOOD Persist
+                //orderEntry.order = orderEntry.order.update(OrderRemoved)  // TODO Persist
                 sender() ! Done
             }
           }
@@ -277,12 +265,17 @@ with Stash {
       }
 
     case msg @ JsonJournalActor.Output.SerializationFailure(throwable) ⇒
-      logger.error(msg.toString, throwable) // Ignore this ???
+      logger.error(msg.toString, throwable)
+      // Ignore this ???
 
     case Stamped(_, keyedEvent: AnyKeyedEvent) ⇒
       keyedEvent match {
         case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
-          handleOrderEvent(orderId, event)
+          try handleOrderEvent(orderId, event)
+          catch { case NonFatal(t) ⇒
+            logger.error(s"$keyedEvent: $t", t)
+            for (o ← orderRegister.get(orderId)) logger.error(o.order.toString)
+          }
         case _ ⇒
       }
 
@@ -331,26 +324,22 @@ with Stash {
       sender() ! MasterCommand.Response.Accepted
   }
 
-  private def handleOrderEvent(orderId: OrderId, event: OrderEvent): Unit = {
+  private def handleOrderEvent(orderId: OrderId, event: OrderEvent): Unit =
     event match {
       case event: OrderAdded ⇒
-        onOrderAdded(orderId, event)
-        for (jobnet ← pathToJobnet.get(event.nodeKey.jobnetPath);
-             jobNode ← jobnet.idToNode.get(event.nodeKey.nodeId) collect { case o: Jobnet.JobNode ⇒ o }) {
-          val order = Order[Order.Idle](orderId, event.nodeKey, event.state, event.variables, event.outcome)
-          tryAttachOrderToAgent(order, jobnet, jobNode.agentPath)
-        }
+        val order = Order.fromOrderAdded(orderId, event)
+        registerOrder(order)
+        tryAttachOrderToAgent(order)
 
       case event: OrderEvent ⇒
         val orderEntry = orderRegister(orderId)
-        orderEntry.update(event)  // May crash !!!
+        orderEntry.update(event)
         event match {
           case _: OrderEvent.OrderReady.type if detachingSuspended ⇒
             stash()
 
           case OrderEvent.OrderReady ⇒
-            for (path ← orderEntry.order.agentPathOption)
-              agentRegister(path).actor ! AgentDriver.Input.DetachOrder(orderId)
+            detachOrderFromAgent(orderId)
 
           case OrderEvent.OrderMovedToMaster ⇒
             moveAhead(orderId)
@@ -358,20 +347,17 @@ with Stash {
           case _ ⇒
         }
     }
-  }
 
-  private def onOrderAdded(orderId: OrderId, event: OrderEvent.OrderAdded): Unit = {
-    orderRegister += orderId → OrderEntry(Order.fromOrderAdded(orderId, event))
-  }
+  private def registerOrder(order: Order[Order.State]): Unit =
+    orderRegister += order.id → OrderEntry(order)
 
   private def moveAhead(orderId: OrderId): Unit = {
     val orderEntry = orderRegister(orderId)
     for (jobnet ← pathToJobnet.get(orderEntry.order.jobnetPath);
          node ← jobnet.idToNode.get(orderEntry.order.nodeId)) {
       node match {
-        case node: Jobnet.JobNode ⇒
-          val idleOrder = orderEntry.order.castState[Order.Idle]  // ???
-          tryAttachOrderToAgent(idleOrder, jobnet, node.agentPath)
+        case _: Jobnet.JobNode ⇒
+          tryAttachOrderToAgent(orderEntry.order.castState[Order.Idle])
         case _: Jobnet.EndNode ⇒
           persistAsync(KeyedEvent(OrderEvent.OrderFinished)(orderId)) { stamped ⇒
             logger.info(stamped.toString)
@@ -380,11 +366,17 @@ with Stash {
     }
   }
 
-  private def tryAttachOrderToAgent(order: Order[Order.Idle], jobnet: Jobnet, agentPath: AgentPath): Unit = {
-    for (agentEntry ← agentRegister.get(agentPath)) {
-      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, jobnet.reduceForAgent(agentPath))
+  private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit =
+    for (jobnet ← pathToJobnet.get(order.nodeKey.jobnetPath);
+         agentPath ← jobnet.agentPathOption(order.nodeKey.nodeId);
+         agentEntry ← agentRegister.get(agentPath))
+    {
+        agentEntry.actor ! AgentDriver.Input.AttachOrder(order, jobnet.reduceForAgent(agentPath))
     }
-  }
+
+  private def detachOrderFromAgent(orderId: OrderId): Unit =
+    for (agentPath ← orderRegister(orderId).order.agentPathOption)
+      agentRegister(agentPath).actor ! AgentDriver.Input.DetachOrder(orderId)
 }
 
 object MasterOrderKeeper {
@@ -425,6 +417,9 @@ object MasterOrderKeeper {
     final case class GenerateNextOrders(every: Duration)
   }
 
+  private class AgentRegister extends ActorRegister[AgentPath, AgentEntry](_.actor) {
+    override def insert(kv: (AgentPath, AgentEntry)) = super.insert(kv)
+  }
 
   private case class AgentEntry(
     agentPath: AgentPath,
