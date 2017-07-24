@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.tests.TestActor._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalActorRecoverer, JsonJournalMeta, JsonJournalRecoverer}
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.duration.DurationInt
@@ -38,13 +38,20 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
   override def preStart() = {
     super.preStart()
     val recoverer = new MyJournalRecoverer()
-    recoverer.recoverAllAndSendTo(journalActor = journalActor)
+    recoverer.recoverAllAndTransferTo(journalActor = journalActor)
     keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map { case (k: String, a) ⇒ k → a }
   }
 
-  private class MyJournalRecoverer extends JsonJournalRecoverer[TestEvent] {
-    val jsonJournalMeta = TestJsonJournalMeta
-    val journalFile = TestActor.this.journalFile
+  private class MyJournalRecoverer extends JsonJournalActorRecoverer[TestEvent] {
+    protected val sender = TestActor.this.sender()
+    protected val jsonJournalMeta = TestJsonJournalMeta
+    protected val journalFile = TestActor.this.journalFile
+
+    protected def snapshotToKey = {
+      case a: TestAggregate ⇒ a.key
+    }
+
+    protected def isDeletedEvent = Set(TestEvent.Removed)
 
     def recoverSnapshot = {
       case snapshot: TestAggregate ⇒
@@ -107,14 +114,7 @@ private[tests] object TestActor {
 
   val SnapshotJsonFormat = TypedJsonFormat[Any](
     Subtype[TestAggregate])
-  private val TestJsonJournalMeta = new JsonJournalMeta[TestEvent](
-      snapshotJsonFormat = SnapshotJsonFormat,
-      eventJsonFormat = TestKeyedEventJsonFormat,
-      snapshotToKey = {
-        case a: TestAggregate ⇒ a.key
-      },
-      isDeletedEvent = Set(TestEvent.Removed))
-    with GzipCompression
+  private val TestJsonJournalMeta = new JsonJournalMeta[TestEvent](SnapshotJsonFormat, TestKeyedEventJsonFormat) with GzipCompression
   private val logger = Logger(getClass)
 
   object Input {

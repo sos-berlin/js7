@@ -16,11 +16,8 @@ import scala.concurrent.ExecutionContext
   */
 private[order] final class OrderRegister(timerService: TimerService) extends ActorRegister[OrderId, OrderEntry](_.actor) {
 
-  def handleOrderAttached(keyedEvent: KeyedEvent[OrderAttached], actor: ActorRef): Unit = {
-    val orderId = keyedEvent.key
-    val event = keyedEvent.event
-
-    insert(orderId → new OrderEntry(Order.fromOrderAttached(orderId, event), actor))
+  def recover(order: Order[Order.State], actor: ActorRef): Unit = {
+    insert(order.id → new OrderEntry(order, actor))
   }
 
   def handleOrderDetached(keyedEvent: KeyedEvent[OrderDetached.type]): Unit = {

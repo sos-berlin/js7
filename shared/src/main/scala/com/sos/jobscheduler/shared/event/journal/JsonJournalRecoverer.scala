@@ -1,16 +1,17 @@
 package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{Actor, ActorContext, ActorRef, ActorRefFactory, Props}
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable, RichUnitPartialFunction}
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.{DuplicateKeyException, Logger}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer._
+import com.sos.jobscheduler.shared.event.journal.Utils.toMB
 import java.nio.file.{Files, Path}
-import scala.collection.mutable
+import scala.util.control.NonFatal
 import spray.json.JsValue
 
 /**
@@ -20,21 +21,23 @@ trait JsonJournalRecoverer[E <: Event] {
 
   protected val jsonJournalMeta: JsonJournalMeta[E]
   protected def journalFile: Path
+  protected def recoverSnapshot: PartialFunction[Any, Unit]
+  protected def recoverEvent: PartialFunction[Stamped[AnyKeyedEvent], Unit]
+  protected def recoveredJournalingActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty
 
-  import jsonJournalMeta.{convertInputStream, eventJsonFormat, isDeletedEvent, snapshotJsonFormat, snapshotToKey}
-
-  def recoverSnapshot: PartialFunction[Any, Unit]
-  def recoverNewKey: PartialFunction[Stamped[AnyKeyedEvent], Unit]
-  def onChangedRecovered: PartialFunction[Stamped[AnyKeyedEvent], Unit] = PartialFunction.empty
-  def onDeletedRecovered: PartialFunction[Stamped[AnyKeyedEvent], Unit] = PartialFunction.empty
+  import jsonJournalMeta.{convertInputStream, eventJsonFormat, snapshotJsonFormat}
 
   private val stopwatch = new Stopwatch
-  private val keyToActor = mutable.Map[Any, ActorRef]()
   private var lastEventId: EventId = EventId.BeforeFirst
   private var snapshotCount = 0
   private var eventCount = 0
 
-  final def recoverAllAndSendTo(journalActor: ActorRef)(implicit context: ActorContext, sender: ActorRef): Unit = {
+  final def recoverAllAndTransferTo(journalActor: ActorRef)(implicit context: ActorContext): Unit = {
+    recoverAll()
+    startJournalAndFinishRecovery(context, journalActor = journalActor, recoveredJournalingActors)
+  }
+
+  final def recoverAll(): Unit = {
     try
       autoClosing(newJsonIterator()) { jsonIterator ⇒
         while (jsonIterator.hasNext) {
@@ -48,7 +51,6 @@ trait JsonJournalRecoverer[E <: Event] {
         logger.warn(s"Journal is corrupt or has not been completed. " + errorClause(t))
     }
     logSomething()
-    JsonJournalRecoverer.startJournalAndFinishRecovery(context, journalActor = journalActor, recoveredJournalingActors)
   }
 
   private def newJsonIterator(): AutoCloseable with Iterator[JsValue] =
@@ -72,7 +74,7 @@ trait JsonJournalRecoverer[E <: Event] {
     snapshotCount += 1
     val snapshot = snapshotJsonFormat.read(jsValue)
     recoverSnapshot.getOrElse(snapshot,
-      sys.error(s"Uncoverable snapshot in journal journalFile '$journalFile': $snapshot"))
+      sys.error(s"Unrecoverable snapshot in journal journalFile '$journalFile': $snapshot"))
   }
 
   private def recoverEventJsValue(jsValue: JsValue): Unit = {
@@ -81,19 +83,10 @@ trait JsonJournalRecoverer[E <: Event] {
     if (stamped.eventId <= lastEventId)
       sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stamped.eventId)} follows ${EventId.toString(lastEventId)}")
     lastEventId = stamped.eventId
-    val KeyedEvent(key, event) = stamped.value
-    keyToActor.get(key) match {
-      case None ⇒
-        recoverNewKey.getOrElse(stamped,
-          sys.error(s"Uncoverable event for a new key in journal journalFile '$journalFile': $stamped"))
-      case Some(a) ⇒
-        a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)   // TODO Possible Actor mailbox overflow
-        if (isDeletedEvent(event)) {
-          keyToActor -= key
-          onDeletedRecovered.callIfDefined(stamped)
-        } else
-          onChangedRecovered.callIfDefined(stamped)
-      }
+    try recoverEvent.getOrElse(stamped, sys.error("Not handled"))
+    catch { case NonFatal(t) ⇒
+      throw new RuntimeException(s"Unrecoverable event in journal '$journalFile': $stamped: $t", t)
+    }
   }
 
   private def errorClause(t: Throwable) =
@@ -107,24 +100,6 @@ trait JsonJournalRecoverer[E <: Event] {
       logger.info(s"Recovered last EventId is ${EventId.toString(lastEventId)} ($snapshotCount snapshots and $eventCount events read)")
     }
   }
-
-  protected def recoverActorForSnapshot(snapshot: Any, actorRef: ActorRef): Unit = {
-    val key = snapshotToKey(snapshot)
-    if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate snapshot in journal journalFile: '$key'")
-    keyToActor += key → actorRef
-    actorRef ! KeyedJournalingActor.Input.RecoverFromSnapshot(snapshot)
-  }
-
-  protected def recoverActorForNewKey(stampedEvent: Stamped[AnyKeyedEvent], actorRef: ActorRef): Unit = {
-    val keyedEvent = stampedEvent.value
-    import keyedEvent.key
-    if (keyToActor isDefinedAt key) throw new DuplicateKeyException(s"Duplicate key: '$key'")
-    keyToActor += key → actorRef
-    actorRef ! KeyedJournalingActor.Input.RecoverFromEvent(stampedEvent)
-  }
-
-  final def recoveredJournalingActors: RecoveredJournalingActors =
-    RecoveredJournalingActors(keyToActor.toMap)
 }
 
 object JsonJournalRecoverer {
@@ -143,7 +118,7 @@ object JsonJournalRecoverer {
               for (a ← actors) {
                 a ! KeyedJournalingActor.Input.FinishRecovery
               }
-              logger.debug(s"Awaiting RecoveryFinish of ${actors.size} actors")
+              logger.debug(s"Awaiting RecoveryFinished of ${actors.size} actors")
               becomeWaitingForChildren(actors.size)
           }
 
@@ -165,15 +140,8 @@ object JsonJournalRecoverer {
           }
         }
       },
-      name = "JsonJournalRecoverer")
+      name = "JsonJournalActorRecoverer")
   }
-
-  private[journal] def toMB(size: Long): String = size match {
-    case _ if size < 1000 * 1000 ⇒ "<1MB"
-    case _ ⇒ (size + 999999) / (1000 * 1000) + "MB"
-  }
-
-  final case class RecoveredJournalingActors(keyToJournalingActor: Map[Any, ActorRef])
 
   object Output {
     case object JournalIsReady

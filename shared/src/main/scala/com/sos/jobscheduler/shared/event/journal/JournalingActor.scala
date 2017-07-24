@@ -99,10 +99,10 @@ object JournalingActor {
   //}
 
   object Input {
-    final case object GetSnapshot
+    private[journal] final case object GetSnapshot
   }
 
   object Output {
-    final case class GotSnapshot(snapshots: Iterable[Any])
+    private[journal] final case class GotSnapshot(snapshots: Iterable[Any])
   }
 }

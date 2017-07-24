@@ -22,7 +22,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalActorRecoverer, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -57,7 +57,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override def preStart() = {
     super.preStart()
-    new MyJournalRecoverer().recoverAllAndSendTo(journalActor = journalActor)
+    new MyJournalRecoverer().recoverAllAndTransferTo(journalActor = journalActor)
   }
 
   override def postStop() = {
@@ -66,9 +66,16 @@ extends KeyedEventJournalingActor[AgentEvent] {
     stoppedPromise.success(Completed)
   }
 
-  private class MyJournalRecoverer extends JsonJournalRecoverer[AgentEvent] {
+  private class MyJournalRecoverer extends JsonJournalActorRecoverer[AgentEvent] {
+    val sender = AgentActor.this.sender()
     val jsonJournalMeta = MyJournalMeta
     val journalFile = AgentActor.this.journalFile
+
+    protected def snapshotToKey = {
+      case master: AgentSnapshot.Master ⇒ master.userId
+    }
+
+    protected def isDeletedEvent = Set()
 
     def recoverSnapshot = {
       case AgentSnapshot.Master(userId) ⇒
@@ -217,14 +224,7 @@ object AgentActor {
     case object Started extends Output
   }
 
-  val MyJournalMeta = new JsonJournalMeta(
-      AgentSnapshot.jsonFormat,
-      AgentEvent.KeyedEventJsonFormat,
-      snapshotToKey = {
-        case master: AgentSnapshot.Master ⇒ master.userId
-      },
-      isDeletedEvent = Set())
-    with GzipCompression
+  val MyJournalMeta = new JsonJournalMeta(AgentSnapshot.jsonFormat, AgentEvent.KeyedEventJsonFormat) with GzipCompression
 
   private final class MasterRegister extends ActorRegister[UserId, ActorRef](identity) {
     override def onUnknownKey(userId: UserId) =

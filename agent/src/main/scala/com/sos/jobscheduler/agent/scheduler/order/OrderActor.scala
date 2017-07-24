@@ -129,7 +129,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case Terminated(`jobActor`) ⇒
       val bad = Order.Bad(s"Job Actor '${node.jobPath.string}' terminated unexpectedly")
-      endOrderStep(OrderStepFailed(bad.error, nextNodeId = nextNodeId(node, bad)), node)
+      endOrderStep(OrderStepFailed(bad.error, nextNodeId = node.id/*nextNodeId(node, bad)*/), node)
 
     case command: Command ⇒
       executeOtherCommand(command)
@@ -155,8 +155,8 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private def updateOnly(event: OrderEvent) = {
     order = event match {
-      case OrderAttached(nodeKey_, state_, variables_, outcome_) ⇒
-        Order(orderId, nodeKey = nodeKey_, state = state_, outcome = outcome_, variables = variables_)
+      case event: OrderAttached ⇒
+        Order.fromOrderAttached(orderId, event)
         // Order.state = Attached / MovedToAgent ???
 
       case OrderDetached ⇒

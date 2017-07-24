@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stampe
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalActor._
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.{RecoveredJournalingActors, toMB}
+import com.sos.jobscheduler.shared.event.journal.Utils.toMB
 import java.nio.file.Files.move
 import java.nio.file.StandardCopyOption.{ATOMIC_MOVE, REPLACE_EXISTING}
 import java.nio.file.{Files, Path, Paths}

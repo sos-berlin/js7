@@ -23,16 +23,17 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
     persist(event, async = true)(callback)
 
   protected final def persist[EE <: E](event: EE, async: Boolean = false)(callback: EE ⇒ Unit): Unit = {
-    if (!registered) {
-      journalActor ! JsonJournalActor.Input.RegisterMe(Some(key))
-      registered = true
-    }
+    registerMe()
     super.persistKeyedEvent(KeyedEvent(key, event), async = async) { snapshotEvent ⇒
       callback(snapshotEvent.value.event.asInstanceOf[EE])
     }
   }
 
   override def unhandled(msg: Any) = msg match {
+    case Input.Recover(snapshot) ⇒
+      recoverFromSnapshot(snapshot)
+      callFinishRecovery()
+
     case Input.RecoverFromSnapshot(o) ⇒
       registered = true
       recoverFromSnapshot(o)
@@ -43,23 +44,35 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
       recoverFromEvent(event.asInstanceOf[E])
 
     case Input.FinishRecovery ⇒
-      finishRecovery()
-      val snapshot = this.snapshot
-      if (snapshot == null) sys.error(s"Actor (${getClass.getSimpleName}) for '$key': snapshot is null")
+      callFinishRecovery()
       sender() ! KeyedJournalingActor.Output.RecoveryFinished
 
     case _ ⇒ super.unhandled(msg)
   }
+
+  private def registerMe(): Unit = {
+    if (!registered) {
+      journalActor ! JsonJournalActor.Input.RegisterMe(Some(key))
+      registered = true
+    }
+  }
+
+  private def callFinishRecovery(): Unit = {
+    finishRecovery()
+    val snapshot = this.snapshot
+    if (snapshot == null) sys.error(s"Actor (${getClass.getSimpleName}) for '$key': snapshot is null")
+  }
 }
 
 object KeyedJournalingActor {
-  private[journal] object Input {
-    final case class RecoverFromSnapshot(snapshot: Any)
-    final case class RecoverFromEvent(eventStamped: Stamped[AnyKeyedEvent])
-    final case object FinishRecovery
+  object Input {
+    private[journal] final case class RecoverFromSnapshot(snapshot: Any)
+    private[journal] final case class RecoverFromEvent(eventStamped: Stamped[AnyKeyedEvent])
+    private[journal] final case object FinishRecovery
+    final case class Recover(snapshot: Any)
   }
 
   object Output {
-    case object RecoveryFinished
+    private[journal] case object RecoveryFinished
   }
 }

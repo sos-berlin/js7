@@ -24,11 +24,12 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.Jobnet.EndNode
 import com.sos.jobscheduler.data.jobnet.JobnetEvent.JobnetAttached
-import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetEvent, JobnetPath}
+import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderStepEnded}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor, RecoveredJournalingActors}
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant.now
@@ -67,7 +68,20 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
     keyedEventBus.subscribe(self, classOf[OrderEvent])
-    new MyJournalRecoverer().recoverAllAndSendTo(journalActor = journalActor)
+    recover()
+  }
+
+  private def recover(): Unit = {
+    val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster = eventsForMaster)
+    recoverer.recoverAll()
+    for (jobnet ← recoverer.jobnets)
+      jobnetRegister.recover(jobnet)
+    for (order ← recoverer.orders) {
+      val actor = addOrderActor(order.id)
+      orderRegister.recover(order, actor)
+      actor ! KeyedJournalingActor.Input.Recover(order)
+    }
+    startJournalAndFinishRecovery(context, journalActor = journalActor, orderRegister.recoveredJournalingActors)
   }
 
   override def postStop() = {
@@ -79,48 +93,6 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     val jobnetSnapshots = jobnetRegister.jobnets
     for (eventQueueSnapshot ← (eventsForMaster ? EventQueue.Input.GetSnapshot).mapTo[EventQueue.CompleteSnapshot])
       yield jobnetSnapshots :+ eventQueueSnapshot  // Future: don't use mutable `this`
-  }
-
-  private class MyJournalRecoverer extends JsonJournalRecoverer[Event] {
-    val jsonJournalMeta = MyJournalMeta
-    val journalFile = AgentOrderKeeper.this.journalFile
-
-    def recoverSnapshot = {
-      case jobnet: Jobnet ⇒
-        jobnetRegister.recover(jobnet)
-
-      case order: Order[Order.State] ⇒
-        val actor = addOrderActor(order.id)
-        orderRegister.insert(order, actor)
-        recoverActorForSnapshot(order, actor)
-
-      case snapshot: EventQueue.CompleteSnapshot ⇒
-        eventsForMaster ! snapshot  // TODO FinishRecovery for synchronization ?
-    }
-
-    def recoverNewKey = {
-      case Stamped(_, KeyedEvent(path: JobnetPath, event: JobnetEvent.JobnetAttached)) ⇒
-        jobnetRegister.handleEvent(KeyedEvent(event)(path))
-
-      case stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent.OrderAttached)) ⇒
-        val actor = addOrderActor(orderId)
-        orderRegister.handleOrderAttached(KeyedEvent(event)(orderId), actor)
-        recoverActorForNewKey(stamped, actor)
-        eventsForMaster ! stamped
-    }
-
-    override def onDeletedRecovered = {
-      case stamped @ Stamped(_, KeyedEvent(orderId: OrderId, OrderEvent.OrderDetached)) ⇒
-        // OrderActor stops itself
-        context.unwatch(orderRegister(orderId).actor)
-        orderRegister.handleOrderDetached(KeyedEvent(OrderEvent.OrderDetached)(orderId))
-        eventsForMaster ! stamped
-    }
-
-    override def onChangedRecovered = {
-      case stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
-        eventsForMaster ! stamped
-    }
   }
 
   def receive = journaling orElse {
@@ -395,15 +367,7 @@ object AgentOrderKeeper {
     Subtype[Order[Order.State]],
     Subtype[EventQueue.CompleteSnapshot])
 
-  private val MyJournalMeta = new JsonJournalMeta[Event](
-      SnapshotJsonFormat,
-      AgentKeyedEventJsonFormat,
-      snapshotToKey = {
-        case jobnet: Jobnet ⇒ jobnet.path
-        case order: Order[_] ⇒ order.id
-      },
-      isDeletedEvent = Set(OrderEvent.OrderDetached))
-    with GzipCompression
+  private[order] val MyJournalMeta = new JsonJournalMeta[Event](SnapshotJsonFormat, AgentKeyedEventJsonFormat) with GzipCompression
 
   sealed trait Input
   object Input {

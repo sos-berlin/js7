@@ -9,9 +9,7 @@ import com.sos.jobscheduler.data.event.{Event, KeyedTypedEventJsonFormat}
   */
 class JsonJournalMeta[E <: Event](
   val snapshotJsonFormat: TypedJsonFormat[Any],
-  implicit val eventJsonFormat: KeyedTypedEventJsonFormat[E],
-  val snapshotToKey: Any ⇒ Any,
-  val isDeletedEvent: E ⇒ Boolean)
+  implicit val eventJsonFormat: KeyedTypedEventJsonFormat[E])
 extends StreamConversion
 
 object JsonJournalMeta {

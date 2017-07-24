@@ -83,9 +83,7 @@ private object OrderActorTest {
     Map("VAR1" → "FROM-JOB"))
   private val TestJournalMeta = new JsonJournalMeta[OrderEvent](
     snapshotJsonFormat = TypedJsonFormat[Any](Subtype[Order[Order.State]]),
-    eventJsonFormat = KeyedEvent.typedJsonFormat[OrderEvent](KeyedSubtype[OrderEvent]),
-    snapshotToKey = _ ⇒ throw new NotImplementedError,
-    isDeletedEvent = Set())
+    eventJsonFormat = KeyedEvent.typedJsonFormat[OrderEvent](KeyedSubtype[OrderEvent]))
   private implicit val TestAkkaTimeout = Timeout(99.seconds)
 
   private final class TestActor(dir: Path, terminatedPromise: Promise[Completed])

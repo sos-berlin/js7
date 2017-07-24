@@ -38,7 +38,7 @@ with Stash {
   private var lastEventId = EventId.BeforeFirst
   private val commandQueue = mutable.Queue[Input.AttachOrder]()   // == Stash ???
   private val executingCommands = mutable.Set[Input.AttachOrder]()
-  private val orderIds = mutable.Set[OrderId]()
+  private val orderIds = mutable.Set[OrderId]()  // TODO Wozu brauchen wir orderIds?
   private var startCommandReceived = false
   private val reconnectPause = new ReconnectPause
 
@@ -97,8 +97,6 @@ with Stash {
     case Input.Recover(eventId, recoveredOrderIds) ⇒
       lastEventId = eventId
       orderIds ++= recoveredOrderIds
-      // TODO Wozu brauchen wir orderIds?
-      // TODO Kein Output.Recovered. Stattdessen Events vom Agenten lesen. Falls kein neues Event da ist, schickt der Agent ein Dummy-Event. MasterOrderKeeper ... ?
       sender() ! Output.Recovered
 
     case Input.Start ⇒
@@ -196,13 +194,9 @@ with Stash {
   private def handleInput(input: Input): Unit = input match {
     case cmd: Input.AttachOrder ⇒
       val orderId = cmd.order.id
-      if (orderIds contains orderId) {
-        logger.warn(s"Duplicate $orderId")
-      } else {
-        orderIds += orderId
-        commandQueue += cmd
-        self ! Internal.CommandReady
-      }
+      orderIds += orderId
+      commandQueue += cmd
+      self ! Internal.CommandReady
 
     case Input.DetachOrder(orderId) ⇒
       val cmd = AgentCommand.DetachOrder(orderId)
