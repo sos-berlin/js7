@@ -22,6 +22,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalActorRecoverer, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
 import java.nio.file.Path
 import scala.collection.immutable.Seq
@@ -57,7 +58,8 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override def preStart() = {
     super.preStart()
-    new MyJournalRecoverer().recoverAllAndTransferTo(journalActor = journalActor)
+    new MyJournalRecoverer().recoverAll()
+    startJournalAndFinishRecovery(journalActor = journalActor)
   }
 
   override def postStop() = {
@@ -66,14 +68,10 @@ extends KeyedEventJournalingActor[AgentEvent] {
     stoppedPromise.success(Completed)
   }
 
-  private class MyJournalRecoverer extends JsonJournalActorRecoverer[AgentEvent] {
-    val sender = AgentActor.this.sender()
-    val jsonJournalMeta = MyJournalMeta
-    val journalFile = AgentActor.this.journalFile
-
-    protected def snapshotToKey = {
-      case master: AgentSnapshot.Master ⇒ master.userId
-    }
+  private class MyJournalRecoverer extends JsonJournalRecoverer[AgentEvent] {
+    protected val sender = AgentActor.this.sender()
+    protected val jsonJournalMeta = MyJournalMeta
+    protected val journalFile = AgentActor.this.journalFile
 
     protected def isDeletedEvent = Set()
 
@@ -82,7 +80,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
         addOrderKeeper(userId)
     }
 
-    def recoverNewKey = {
+    def recoverEvent = {
       case Stamped(_, e @ KeyedEvent(_: UserId, AgentEvent.MasterAdded)) ⇒
         val keyedEvent = e.asInstanceOf[KeyedEvent[AgentEvent.MasterAdded.type]]
         update(keyedEvent)

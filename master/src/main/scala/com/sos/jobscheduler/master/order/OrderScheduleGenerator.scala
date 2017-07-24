@@ -28,7 +28,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
   private var recovered = false
   private var timer: Timer[Unit] = Timer.empty
 
-  def key = NoKey
+  def key = Key
 
   def snapshot = Option(generatedUntil) map OrderScheduleEndedAt.apply
 
@@ -103,6 +103,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
 }
 
 object OrderScheduleGenerator {
+  val Key = NoKey
   private val GenerateBeforeDuration = 10.s
   private val logger = Logger(getClass)
 

@@ -81,7 +81,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       orderRegister.recover(order, actor)
       actor ! KeyedJournalingActor.Input.Recover(order)
     }
-    startJournalAndFinishRecovery(context, journalActor = journalActor, orderRegister.recoveredJournalingActors)
+    startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors)
   }
 
   override def postStop() = {

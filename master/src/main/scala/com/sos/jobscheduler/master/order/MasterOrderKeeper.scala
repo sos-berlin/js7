@@ -28,7 +28,8 @@ import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentXmlParser}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalActorRecoverer, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalActorRecoverer, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.time.Duration
 import scala.collection.mutable
@@ -97,7 +98,9 @@ with Stash {
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
     keyedEventBus.subscribe(self, classOf[OrderEvent])
-    new MyJournalRecoverer().recoverAllAndTransferTo(journalActor = journalActor)
+    new MyJournalRecoverer().recoverAll()
+    startJournalAndFinishRecovery(journalActor = journalActor,
+      RecoveredJournalingActors(Map(OrderScheduleGenerator.Key → orderScheduleGenerator)))
   }
 
   override def postStop() = {
@@ -116,21 +119,14 @@ with Stash {
       //??? pathToJobnet.values ++
       (orderRegister.values map { _ .order }))
 
-  private class MyJournalRecoverer extends JsonJournalActorRecoverer[Event] {
+  private class MyJournalRecoverer extends JsonJournalRecoverer[Event] {
     protected val jsonJournalMeta = MyJournalMeta
     protected val journalFile = MasterOrderKeeper.this.journalFile
     protected val sender = MasterOrderKeeper.this.sender()
 
-    protected def snapshotToKey = {
-      case o: Order[_] ⇒ o.id
-      case _: OrderScheduleEndedAt ⇒ classOf[OrderScheduleEndedAt]
-    }
-
-    protected def isDeletedEvent = Set(/*OrderEvent.OrderRemoved fehlt*/)
-
     def recoverSnapshot = {
       case o: OrderScheduleEndedAt ⇒
-        recoverActorForSnapshot(o, orderScheduleGenerator)
+        orderScheduleGenerator ! KeyedJournalingActor.Input.RecoverFromSnapshot(o)
 
       case order: Order[Order.State] ⇒
         orderRegister += order.id → OrderEntry(order)
@@ -139,9 +135,9 @@ with Stash {
         agentRegister(agentPath).lastAgentEventId = eventId
     }
 
-    def recoverNewKey = {
+    def recoverEvent = {
       case stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent)) ⇒
-        recoverActorForNewKey(stamped, orderScheduleGenerator)
+        orderScheduleGenerator ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)
 
       case Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
         event match {
@@ -150,7 +146,7 @@ with Stash {
           case event: OrderCoreEvent ⇒
             orderRegister(orderId).update(event)
           case OrderStdWritten(t, chunk) ⇒
-            // TODO What do to with Order
+            // TODO What do to with Order output?
             logger.debug(s"$orderId recovered $t: ${chunk.trim}")
         }
 

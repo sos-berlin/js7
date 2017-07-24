@@ -23,7 +23,6 @@ trait JsonJournalRecoverer[E <: Event] {
   protected def journalFile: Path
   protected def recoverSnapshot: PartialFunction[Any, Unit]
   protected def recoverEvent: PartialFunction[Stamped[AnyKeyedEvent], Unit]
-  protected def recoveredJournalingActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty
 
   import jsonJournalMeta.{convertInputStream, eventJsonFormat, snapshotJsonFormat}
 
@@ -31,11 +30,6 @@ trait JsonJournalRecoverer[E <: Event] {
   private var lastEventId: EventId = EventId.BeforeFirst
   private var snapshotCount = 0
   private var eventCount = 0
-
-  final def recoverAllAndTransferTo(journalActor: ActorRef)(implicit context: ActorContext): Unit = {
-    recoverAll()
-    startJournalAndFinishRecovery(context, journalActor = journalActor, recoveredJournalingActors)
-  }
 
   final def recoverAll(): Unit = {
     try
@@ -105,7 +99,11 @@ trait JsonJournalRecoverer[E <: Event] {
 object JsonJournalRecoverer {
   private val logger = Logger(getClass)
 
-  def startJournalAndFinishRecovery(actorRefFactory: ActorRefFactory, journalActor: ActorRef, recoveredActors: RecoveredJournalingActors): Unit = {
+  def startJournalAndFinishRecovery(
+    journalActor: ActorRef,
+    recoveredActors: RecoveredJournalingActors = RecoveredJournalingActors.Empty)
+    (implicit actorRefFactory: ActorRefFactory)
+  : Unit = {
     val actors = recoveredActors.keyToJournalingActor.values
     val actorToKey = (recoveredActors.keyToJournalingActor map { case (k, a) ⇒ a → k })
     actorRefFactory.actorOf(

@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import akka.actor.ActorRef
+import akka.actor.{ActorContext, ActorRef}
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichUnitPartialFunction}
 import com.sos.jobscheduler.common.scalautil.DuplicateKeyException
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
 import scala.collection.mutable
 
 /**
@@ -19,6 +20,11 @@ trait JsonJournalActorRecoverer[E <: Event] extends JsonJournalRecoverer[E] {
   protected def isDeletedEvent: E ⇒ Boolean
 
   private val keyToActor = mutable.Map[Any, ActorRef]()
+
+  final def recoverAllAndTransferTo(journalActor: ActorRef)(implicit context: ActorContext): Unit = {
+    recoverAll()
+    startJournalAndFinishRecovery(journalActor = journalActor, recoveredJournalingActors)
+  }
 
   protected final def recoverEvent = {
     case stamped @ Stamped(_, KeyedEvent(key, event)) ⇒
@@ -51,6 +57,6 @@ trait JsonJournalActorRecoverer[E <: Event] extends JsonJournalRecoverer[E] {
     actorRef ! KeyedJournalingActor.Input.RecoverFromEvent(stampedEvent)
   }
 
-  override final def recoveredJournalingActors: RecoveredJournalingActors =
+  private[journal] final def recoveredJournalingActors: RecoveredJournalingActors =
     RecoveredJournalingActors(keyToActor.toMap)
 }
