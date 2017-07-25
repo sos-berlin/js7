@@ -16,7 +16,6 @@ import com.sos.jobscheduler.data.jobnet.Jobnet
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.order.agent.AgentDriver._
 import java.time.Instant.now
-import scala.collection.immutable.Iterable
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
@@ -81,7 +80,7 @@ with Stash {
       unstashAll()
       become(waitingForStart)
       if (startCommandReceived) {
-        self ! Input.Start
+        self ! Input.Start(lastEventId)
       }
 
     case msg: Internal.ConnectFailed ⇒
@@ -93,11 +92,8 @@ with Stash {
   }
 
   private def waitingForStart: Receive = {
-    case Input.Recover(eventId, recoveredOrderIds) ⇒
+    case Input.Start(eventId) ⇒
       lastEventId = eventId
-      sender() ! Output.Recovered
-
-    case Input.Start ⇒
       startCommandReceived = true
       startEventFetcher()
       processQueuedCommands()
@@ -236,15 +232,13 @@ private[master] object AgentDriver {
 
   sealed trait Input
   object Input {
-    case object Start
-    final case class Recover(lastAgentEventId: EventId, orderIds: Iterable[OrderId])
+    final case class Start(lastAgentEventId: EventId)
     final case class AttachOrder(order: Order[Order.Idle], jobnet: Jobnet) extends Input
     final case class DetachOrder(orderId: OrderId) extends Input
   }
 
   object Output {
     final case class EventFromAgent(stamped: Stamped[AnyKeyedEvent])
-    final case object Recovered
     final case class OrderDetached(orderId: OrderId)
   }
 

@@ -8,14 +8,13 @@ import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichTraversableOnce
+import com.sos.jobscheduler.common.scalautil.Collections.implicits.{InsertableMutableMap, RichTraversableOnce}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.{Jobnet, JobnetPath}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderStdWritten}
@@ -29,7 +28,7 @@ import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor, RecoveredJournalingActors}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.time.Duration
 import scala.collection.mutable
@@ -98,9 +97,7 @@ with Stash {
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
     keyedEventBus.subscribe(self, classOf[OrderEvent])
-    new MyJournalRecoverer().recoverAll()
-    startJournalAndFinishRecovery(journalActor = journalActor,
-      RecoveredJournalingActors(Map(OrderScheduleGenerator.Key → orderScheduleGenerator)))
+    recover()
   }
 
   override def postStop() = {
@@ -119,74 +116,31 @@ with Stash {
       //??? pathToJobnet.values ++
       (orderRegister.values map { _ .order }))
 
-  private class MyJournalRecoverer extends JsonJournalRecoverer[Event] {
-    protected val jsonJournalMeta = MyJournalMeta
-    protected val journalFile = MasterOrderKeeper.this.journalFile
-    protected val sender = MasterOrderKeeper.this.sender()
-
-    def recoverSnapshot = {
-      case o: OrderScheduleEndedAt ⇒
-        orderScheduleGenerator ! KeyedJournalingActor.Input.RecoverFromSnapshot(o)
-
-      case order: Order[Order.State] ⇒
-        orderRegister += order.id → OrderEntry(order)
-
-      case AgentEventId(agentPath, eventId) ⇒
-        agentRegister(agentPath).lastAgentEventId = eventId
+  private def recover() = {
+    val recoverer = new MasterJournalRecoverer(journalFile = journalFile, orderScheduleGenerator = orderScheduleGenerator)
+    recoverer.recoverAll()
+    for (order ← recoverer.orders) {
+      orderRegister.insert(order.id → OrderEntry(order))
     }
-
-    def recoverEvent = {
-      case stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent)) ⇒
-        orderScheduleGenerator ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)
-
-      case Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
-        event match {
-          case event: OrderAdded ⇒
-            registerOrder(Order.fromOrderAdded(orderId, event))
-          case event: OrderCoreEvent ⇒
-            orderRegister(orderId).update(event)
-          case OrderStdWritten(t, chunk) ⇒
-            // TODO What to do with Order output?
-            logger.debug(s"$orderId recovered $t: ${chunk.trim}")
-        }
-
-      case Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId))) ⇒
-        agentRegister(agentPath).lastAgentEventId = agentEventId
+    for ((agentPath, eventId) ← recoverer.agentToEventId) {
+      agentRegister(agentPath).lastAgentEventId = eventId
     }
+    startJournalAndFinishRecovery(journalActor = journalActor,
+      RecoveredJournalingActors(Map(OrderScheduleGenerator.Key → orderScheduleGenerator)))
   }
 
   def receive = journaling orElse {
     case JsonJournalRecoverer.Output.JournalIsReady ⇒
       for (agentEntry ← agentRegister.values) {
-        val orderIds = orderRegister.values.toImmutableSeq collect {
-          case orderEntry if orderEntry.order.agentPathOption contains agentEntry.agentPath ⇒
-            orderEntry.orderId
-        }
-        agentEntry.actor ! AgentDriver.Input.Recover(
-          lastAgentEventId = agentEntry.lastAgentEventId,
-          orderIds = orderIds)
+        agentEntry.actor ! AgentDriver.Input.Start(lastAgentEventId = agentEntry.lastAgentEventId)
       }
-      becomeWaitingForAgentDriverRecovery(agentRegister.size)
-
-    case _ ⇒
-      stash()
-  }
-
-  private def becomeWaitingForAgentDriverRecovery(remaining: Int): Unit =
-    if (remaining > 0) {
-      become(journaling orElse {
-        case AgentDriver.Output.Recovered ⇒ becomeWaitingForAgentDriverRecovery(remaining - 1)
-        case _ ⇒ stash()
-      })
-    } else {
       orderRegister.valuesIterator map { _.order } foreach handleRecoveredOrder
       logger.info(s"${orderRegister.size} Orders recovered, ready")
       become(ready)
-      for (o ← agentRegister.values) {
-        o.actor ! AgentDriver.Input.Start
-      }
       unstashAll()
-    }
+
+    case _ ⇒ stash()
+  }
 
   private def handleRecoveredOrder(order: Order[Order.State]): Unit =
     order.state match {
@@ -326,7 +280,7 @@ with Stash {
     event match {
       case event: OrderAdded ⇒
         val order = Order.fromOrderAdded(orderId, event)
-        registerOrder(order)
+        orderRegister.insert(order.id → OrderEntry(order))
         tryAttachOrderToAgent(order)
 
       case event: OrderEvent ⇒
@@ -350,9 +304,6 @@ with Stash {
           case _ ⇒
         }
     }
-
-  private def registerOrder(order: Order[Order.State]): Unit =
-    orderRegister += order.id → OrderEntry(order)
 
   private def moveAhead(orderId: OrderId): Unit = {
     val orderEntry = orderRegister(orderId)
@@ -389,7 +340,7 @@ object MasterOrderKeeper {
     Subtype[AgentEventId])
   //Subtype[Jobnet])
 
-  private val MyJournalMeta = new JsonJournalMeta(SnapshotJsonFormat, MasterKeyedEventJsonFormat) with GzipCompression
+  private[order] val MyJournalMeta = new JsonJournalMeta(SnapshotJsonFormat, MasterKeyedEventJsonFormat) with GzipCompression
 
   private val logger = Logger(getClass)
 
