@@ -38,7 +38,7 @@ extends KeyedJournalingActor[OrderEvent] {
     order = cast[Order[Order.State]](snapshot)
   }
 
-  protected def recoverFromEvent(event: OrderEvent) = updateOnly(event)
+  protected def recoverFromEvent(event: OrderEvent) = throw new NotImplementedError
 
   override protected def finishRecovery() = {
     assert(order != null, "No Order")
@@ -149,11 +149,14 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   private def update(event: OrderEvent) = {
-    updateOnly(event)
+    updateOrder(event)
     context.parent ! Output.OrderChanged(order, event)
+    if (event == OrderDetached) {
+      context.stop(self)
+    }
   }
 
-  private def updateOnly(event: OrderEvent) = {
+  private def updateOrder(event: OrderEvent) = {
     order = event match {
       case event: OrderAttached ⇒
         Order.fromOrderAttached(orderId, event)
@@ -161,7 +164,6 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case OrderDetached ⇒
         logger.trace("Stopping after OrderDetached")
-        context.stop(self)
         order
 
       case _: OrderStdWritten ⇒

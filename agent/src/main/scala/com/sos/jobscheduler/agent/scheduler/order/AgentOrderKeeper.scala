@@ -57,12 +57,10 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   protected val journalActor = context.actorOf(
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
-  private val eventsForMaster = context.actorOf(
-    Props { new EventQueue(timerService) },
-    "eventsForMaster")
   private val jobRegister = new JobRegister
   private val jobnetRegister = new JobnetRegister
   private val orderRegister = new OrderRegister(timerService)
+  private val eventsForMaster = context.actorOf(Props { new EventQueue(timerService) }, "eventsForMaster")
   private var terminating = false
 
   override def preStart() = {
@@ -134,7 +132,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       val orderEntry = orderRegister(orderId)
       onOrderAvailable(orderEntry)
 
-    case stamped @ Stamped(_, KeyedEvent(orderId: OrderId, _: OrderEvent)) if orderRegister contains orderId ⇒
+    case stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
       eventsForMaster ! stamped
 
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
@@ -175,7 +173,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       jobnetRegister.get(nodeKey.jobnetPath) match {
         case Some(jobnet) if jobnet isDefinedAt nodeKey.nodeId ⇒
           if (orderRegister contains order.id) {
-            // May occur after Master restart, if Master is not sure about order has been attached previously.
+            // May occur after Master restart when Master is not sure about order has been attached previously.
             logger.debug(s"Ignoring duplicate $cmd")
             Future.successful(EmptyResponse)
           } else {
@@ -193,7 +191,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           orderEntry.detaching = true  // OrderActor is terminating
           (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ EmptyResponse }
         case None ⇒
-          // May occur after Master restart, if Master is not sure about order has been detached previously.
+          // May occur after Master restart when Master is not sure about order has been detached previously.
           logger.debug(s"Ignoring duplicate $cmd")
           Future.successful(EmptyResponse)
       }

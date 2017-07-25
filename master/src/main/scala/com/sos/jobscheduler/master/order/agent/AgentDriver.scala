@@ -38,7 +38,6 @@ with Stash {
   private var lastEventId = EventId.BeforeFirst
   private val commandQueue = mutable.Queue[Input.AttachOrder]()   // == Stash ???
   private val executingCommands = mutable.Set[Input.AttachOrder]()
-  private val orderIds = mutable.Set[OrderId]()  // TODO Wozu brauchen wir orderIds?
   private var startCommandReceived = false
   private val reconnectPause = new ReconnectPause
 
@@ -96,7 +95,6 @@ with Stash {
   private def waitingForStart: Receive = {
     case Input.Recover(eventId, recoveredOrderIds) ⇒
       lastEventId = eventId
-      orderIds ++= recoveredOrderIds
       sender() ! Output.Recovered
 
     case Input.Start ⇒
@@ -146,9 +144,6 @@ with Stash {
           self ! Internal.CommandReady
       }
 
-    case Internal.OrderDetached(orderId) ⇒
-      orderIds -= orderId
-
     case Internal.CommandReady ⇒
 
     case Internal.AgentEvent(stamped) ⇒
@@ -193,8 +188,6 @@ with Stash {
 
   private def handleInput(input: Input): Unit = input match {
     case cmd: Input.AttachOrder ⇒
-      val orderId = cmd.order.id
-      orderIds += orderId
       commandQueue += cmd
       self ! Internal.CommandReady
 
@@ -205,7 +198,6 @@ with Stash {
         // Closure
         case Success(_) ⇒
           logger.info(s"$orderId detached from Agent")
-          self ! Internal.OrderDetached(orderId)
           sender ! Output.OrderDetached(orderId)
         case Failure(t) ⇒
           logger.error(s"$cmd: ${t.toStringWithCauses}")
@@ -264,7 +256,6 @@ private[master] object AgentDriver {
     final case object Ready
     final case class OrderAttachedToAgent(command: Input.AttachOrder, result: Try[Done])
     final case object CommandReady
-    final case class OrderDetached(orderId: OrderId)
     final case class AgentEvent(stamped: Stamped[KeyedEvent[OrderEvent]])
     final case class EventFetcherTerminated(completed: Try[Completed]) extends DeadLetterSuppression
   }

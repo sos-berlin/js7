@@ -18,7 +18,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.{Jobnet, JobnetPath}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderStdWritten, OrderStdoutWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.KeyedEventJsonFormats.MasterKeyedEventJsonFormat
 import com.sos.jobscheduler.master.command.MasterCommand
@@ -29,7 +29,7 @@ import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalActorRecoverer, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor, RecoveredJournalingActors}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.time.Duration
 import scala.collection.mutable
@@ -146,7 +146,7 @@ with Stash {
           case event: OrderCoreEvent ⇒
             orderRegister(orderId).update(event)
           case OrderStdWritten(t, chunk) ⇒
-            // TODO What do to with Order output?
+            // TODO What to do with Order output?
             logger.debug(s"$orderId recovered $t: ${chunk.trim}")
         }
 
@@ -175,11 +175,8 @@ with Stash {
   private def becomeWaitingForAgentDriverRecovery(remaining: Int): Unit =
     if (remaining > 0) {
       become(journaling orElse {
-        case AgentDriver.Output.Recovered ⇒
-          becomeWaitingForAgentDriverRecovery(remaining - 1)
-
-        case _ ⇒
-          stash()
+        case AgentDriver.Output.Recovered ⇒ becomeWaitingForAgentDriverRecovery(remaining - 1)
+        case _ ⇒ stash()
       })
     } else {
       orderRegister.valuesIterator map { _.order } foreach handleRecoveredOrder
@@ -191,14 +188,11 @@ with Stash {
       unstashAll()
     }
 
-    private def handleRecoveredOrder(order: Order[Order.State]): Unit = {
-      order.state match {
-        case Order.Ready ⇒
-          detachOrderFromAgent(order.id)
-        case Order.Detached ⇒
-          tryAttachOrderToAgent(order.castState[Order.Detached.type])
-        case _ ⇒
-      }
+  private def handleRecoveredOrder(order: Order[Order.State]): Unit =
+    order.state match {
+      case Order.Ready ⇒ detachOrderFromAgent(order.id)
+      case Order.Detached ⇒ tryAttachOrderToAgent(order.castState[Order.Detached.type])
+      case _ ⇒
     }
 
   private def ready: Receive = journaling orElse {
@@ -255,7 +249,6 @@ with Stash {
       if (orderRegister contains orderId) {
         val ownEvent = event match {
           case _: OrderEvent.OrderAttached ⇒ OrderEvent.OrderMovedToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-          case OrderEvent.OrderDetached ⇒ OrderEvent.OrderMovedToMaster
           case _ ⇒ event
         }
         persistAsync(KeyedEvent(ownEvent)(orderId)) { _ ⇒ }
@@ -266,13 +259,8 @@ with Stash {
         logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
       }
 
-    case msg @ AgentDriver.Output.OrderDetached(orderId) ⇒
-      val agentPath = agentRegister.actorToKey(sender())
-      if (orderRegister contains orderId) {
-        persistAsync(KeyedEvent(OrderEvent.OrderMovedToMaster)(orderId)) { _ ⇒ }
-      } else {
-        logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
-      }
+    case AgentDriver.Output.OrderDetached(orderId) if orderRegister contains orderId⇒
+      persistAsync(KeyedEvent(OrderEvent.OrderMovedToMaster)(orderId)) { _ ⇒ }
 
     case msg @ JsonJournalActor.Output.SerializationFailure(throwable) ⇒
       logger.error(msg.toString, throwable)

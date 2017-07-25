@@ -32,7 +32,7 @@ final class EventQueue(timerService: TimerService) extends Actor {
       val stamped = msg.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
       stamped.value match {
         case KeyedEvent(orderId: OrderId, OrderDetached) ⇒
-          // Master posts its own OrderDetached
+          // Master posts its own OrderDetached so we can forget the order's events here
           removeEventsFor(orderId)
         case _ ⇒
           eventQueue.put(stamped.eventId, stamped)
