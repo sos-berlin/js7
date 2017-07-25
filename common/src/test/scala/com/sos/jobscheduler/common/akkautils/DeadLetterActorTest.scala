@@ -20,9 +20,10 @@ final class DeadLetterActorTest extends FreeSpec {
     actorRef ! "stop"
     actorRef ! new TestMessage
     waitForCondition(10.s, 10.ms) { buffer.size == 1 }
-    actorSystem.shutdown()
+    actorSystem.terminate()
     assert(buffer.size == 1)
-    assert(buffer(0) startsWith "DeadLetter " + classOf[TestMessage].getName)
+    assert(buffer.head startsWith "DeadLetter ")
+    assert(buffer.head contains classOf[TestMessage].getName)
   }
 }
 

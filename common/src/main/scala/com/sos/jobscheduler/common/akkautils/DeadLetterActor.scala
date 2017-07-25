@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.{Actor, ActorSystem, DeadLetter, Props, UnhandledMessage}
+import com.sos.jobscheduler.common.akkautils.DeadLetterActor._
 import com.sos.jobscheduler.common.scalautil.Logger
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -9,11 +11,17 @@ import com.sos.jobscheduler.common.scalautil.Logger
 private class DeadLetterActor(output: (⇒ String) ⇒ Unit) extends Actor {
   def receive = {
     case o: DeadLetter ⇒
-      output(s"DeadLetter ${o.message.getClass.getName} from ${o.sender} to ${o.recipient}")
+      callOutput(s"DeadLetter from ${o.sender} to ${o.recipient}: ${o.message}")
 
     case o: UnhandledMessage ⇒
-      output(s"UnhandledMessage ${o.message.getClass.getName} from ${o.sender} to ${o.recipient}")
+      callOutput(s"UnhandledMessage from ${o.sender} to ${o.recipient}: ${o.message}")
   }
+
+  private def callOutput(string: ⇒ String) =
+    try output(string)
+    catch { case NonFatal(t) ⇒
+      logger.warn(t.toString)
+    }
 }
 
 object DeadLetterActor {
