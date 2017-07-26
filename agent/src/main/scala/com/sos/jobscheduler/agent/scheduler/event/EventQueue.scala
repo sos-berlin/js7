@@ -77,7 +77,7 @@ final class EventQueue(timerService: TimerService) extends Actor {
 
     case Internal.RequestTimedOut(promise, emptyEventSeq) ⇒
       requestors -= promise
-      promise.success(emptyEventSeq)
+      promise.trySuccess(emptyEventSeq)
 
     case Input.GetSnapshot ⇒
       sender() ! CompleteSnapshot(oldestKnownEventId, eventQueue.values.toVector)
