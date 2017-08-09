@@ -15,7 +15,6 @@ final class FileJsonWriter(
   header: JsonJournalHeader,
   convertOutput: OutputStream ⇒ OutputStream,
   val file: Path,
-  val syncOnFlush: Boolean,
   append: Boolean = false)
 extends AutoCloseable {
 
@@ -25,6 +24,7 @@ extends AutoCloseable {
   private val writer = new OutputStreamJsonSeqWriter(convertingOut)
   private val closed = new AtomicBoolean
   private var flushed = false
+  private var synced = false
 
   if (!append) {
     writer.writeJson(ByteString.fromString(header.toJson.compactPrint))
@@ -33,6 +33,7 @@ extends AutoCloseable {
 
   def writeJson(json: ByteString): Unit = {
     flushed = false
+    synced = false
     writer.writeJson(json)
   }
 
@@ -55,11 +56,17 @@ extends AutoCloseable {
       writer.flush()
       convertingOut.flush()
       out.flush()
-      if (syncOnFlush) {
-        out.getFD.sync()
-      }
       flushed = true
       true
     }
   }
+
+  def sync(): Unit = {
+    out.getFD.sync()
+    synced = true
+  }
+
+  def isFlushed = flushed
+
+  def isSynced = synced
 }

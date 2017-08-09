@@ -42,18 +42,9 @@ extends Actor with Stash {
   private var temporaryJsonWriter: FileJsonWriter = null
   private val keyToJournalingActor = mutable.Map[Any, ActorRef]()
   private val keylessJournalingActors = mutable.Set[ActorRef]()
-  private val writtenBuffer = mutable.ArrayBuffer[Written]()
-  private object statistics {
-    var commits = 0
-    var flushes = 0
-    override def toString =
-      if (jsonWriter == null || flushes == 0) ""
-      else {
-        val ops = if (jsonWriter.syncOnFlush) "syncs" else "flushs"
-        f"$commits commits ($flushes $ops)" //, coalescence factor ${commits.toDouble / flushes}%1.1f)"
-      }
-  }
-
+  private val writtenBuffer = mutable.ArrayBuffer[Written]()       // TODO Avoid OutOfMemoryError and commit when written JSON becomes big
+  private var dontSync = true
+  private val statistics = new StatisticsCounter
   private val logger = Logger.withPrefix[JsonJournalActor[_]](file.getFileName.toString)
 
   override def postStop() = {
@@ -68,6 +59,7 @@ extends Actor with Stash {
       s" $s written. $statistics"
     } else ""
     logger.info(s"Stopped.$msg")
+    logger.debug(statistics.timingString)
     super.postStop()
   }
 
@@ -94,7 +86,7 @@ extends Actor with Stash {
 
   private def becomeReady(sender: ActorRef): Unit = {
     context.become(ready)
-    logger.info(s"Ready, writing ${if (jsonWriter.syncOnFlush) "(with sync)" else "(without sync)"} journal file '${jsonWriter.file}'")
+    logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${jsonWriter.file}'")
     sender ! Output.Ready
   }
 
@@ -102,7 +94,7 @@ extends Actor with Stash {
     case msg: Input.RegisterMe ⇒
       handleRegisterMe(msg)
 
-    case Input.Store(keyedEvents, replyTo) ⇒
+    case Input.Store(keyedEvents, replyTo, noSync) ⇒
       val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]]) }}
       Try {
         stampedOptions.flatten map { _.toJson }
@@ -110,8 +102,8 @@ extends Actor with Stash {
         case Success(jsValueOptions) ⇒
           writeToDisk(jsValueOptions, replyTo)
           writtenBuffer += Written(stampedOptions, replyTo, sender())
+          dontSync &= noSync
           self.forward(Internal.Commit(writtenBuffer.length))  // Commit after possibly outstanding Input.Store messages
-          statistics.commits += 1
 
         case Failure(t) ⇒
           logger.error(s"$t")
@@ -119,27 +111,27 @@ extends Actor with Stash {
       }
 
     case Internal.Commit(level) ⇒
+      statistics.countCommit()
       if (level < writtenBuffer.length) {
         self.forward(Internal.Commit(writtenBuffer.length))  // storedBuffer has grown? Queue again to coalesce two commits
       } else
       if (level == writtenBuffer.length) {  // storedBuffer has not grown since last issued Commit
-        try jsonWriter.flush()
-        catch {
-          case NonFatal(t) ⇒
-            val tt = t.appendCurrentStackTrace
-            for (w ← writtenBuffer) w.replyTo.!(Output.StoreFailure(tt))(sender)
-            throw tt;
+        try flush(sync = syncOnCommit && !dontSync)
+        catch { case NonFatal(t) ⇒
+          val tt = t.appendCurrentStackTrace
+          for (w ← writtenBuffer) w.replyTo.!(Output.StoreFailure(tt))(sender)
+          throw tt;
         }
-        statistics.flushes += 1
         //logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.eventSnapshots.size }).sum} events:")
         for (Written(stampedOptions, replyTo, sender) ← writtenBuffer) {
           replyTo.!(Output.Stored(stampedOptions))(sender)
           for (stampedOption ← stampedOptions; stamped ← stampedOption) {
-            logger.trace(s"STORED #${statistics.flushes} $stamped")
+            logger.trace(s"STORED #${statistics.flushCount} $stamped")
             keyedEventBus.publish(stamped)
           }
         }
         writtenBuffer.clear()
+        dontSync = true
       } else
       if (writtenBuffer.nonEmpty) {
         logger.trace(s"Discarded: Commit($level), writtenBuffer.length=${writtenBuffer.length}")
@@ -155,6 +147,13 @@ extends Actor with Stash {
 
     case Input.Terminate ⇒
       context.stop(self)
+
+    case Input.GetState ⇒
+      sender() ! (
+        if (jsonWriter != null)
+          Output.State(isFlushed = jsonWriter.isFlushed, isSynced = jsonWriter.isSynced)
+        else
+          Output.State(isFlushed = false, isSynced = false))
 
     case Terminated(a) ⇒
       val keys = keyToJournalingActor collect { case (k, `a`) ⇒ k }
@@ -200,7 +199,7 @@ extends Actor with Stash {
   }
 
   private def newJsonWriter(file: Path, append: Boolean) =
-    new FileJsonWriter(Header, convertOutputStream, file, syncOnFlush = syncOnCommit, append = append)
+    new FileJsonWriter(Header, convertOutputStream, file, append = append)
 
   private def writeToDisk(jsValues: Seq[JsValue], errorReplyTo: ActorRef): Unit =
     try {
@@ -211,6 +210,17 @@ extends Actor with Stash {
       errorReplyTo.forward(Output.StoreFailure(tt))  // TODO Handle message in JournaledActor
       throw tt  // Stop Actor
     }
+
+  private def flush(sync: Boolean): Unit = {
+    statistics.beforeFlush()
+    jsonWriter.flush()
+    statistics.afterFlush()
+    if (sync) {
+      statistics.beforeSync()
+      jsonWriter.sync()
+      statistics.afterSync()
+    }
+  }
 
   private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
     case Input.RegisterMe(None) ⇒
@@ -227,9 +237,10 @@ object JsonJournalActor {
     private[journal] final case class Start(recoveredJournalingActors: RecoveredJournalingActors)
     final case object StartWithoutRecovery
     final case class RegisterMe(key: Option[Any])
-    final case class Store(eventStampeds: Seq[Option[AnyKeyedEvent]], journalingActor: ActorRef)
+    final case class Store(eventStampeds: Seq[Option[AnyKeyedEvent]], journalingActor: ActorRef, noSync: Boolean)
     final case object TakeSnapshot
     final case object Terminate
+    private[journal] case object GetState
   }
 
   sealed trait Output
@@ -239,6 +250,7 @@ object JsonJournalActor {
     final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken
+    private[journal] final case class State(isFlushed: Boolean, isSynced: Boolean)
   }
 
   private object Internal {

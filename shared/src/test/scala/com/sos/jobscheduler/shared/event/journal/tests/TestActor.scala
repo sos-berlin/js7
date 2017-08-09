@@ -99,6 +99,9 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
     case Input.TakeSnapshot ⇒
       (journalActor ? JsonJournalActor.Input.TakeSnapshot).mapTo[JsonJournalActor.Output.SnapshotTaken.type] pipeTo sender()
 
+    case Input.GetJournalState ⇒
+      journalActor.forward(JsonJournalActor.Input.GetState)
+
     case Terminated(actorRef) ⇒  // ???
       keyToAggregate --= keyToAggregate collectFirst { case (key, `actorRef`) ⇒ key }
   }
@@ -121,6 +124,7 @@ private[tests] object TestActor {
     final case object WaitUntilReady
     final case object TakeSnapshot
     final case class Forward(key: String, command: TestAggregateActor.Command)
+    final case object GetJournalState
     final case object GetAll
   }
 }

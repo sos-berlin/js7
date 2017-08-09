@@ -81,6 +81,22 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
     }
   }
 
+  "noSync" in {
+    withTestActor { actor ⇒
+      def journalState = ((actor ? TestActor.Input.GetJournalState).mapTo[JsonJournalActor.Output.State] await 99.s)
+      execute(actor, "TEST-E", TestAggregateActor.Command.Add("A"))  await 99.s
+      assert(journalState == JsonJournalActor.Output.State(isFlushed = true, isSynced = true))
+      execute(actor, "TEST-E", TestAggregateActor.Command.AppendNoSync("Bb")) await 99.s
+      assert(journalState == JsonJournalActor.Output.State(isFlushed = true, isSynced = false))
+      execute(actor, "TEST-E", TestAggregateActor.Command.Append("C")) await 99.s
+      assert(journalState == JsonJournalActor.Output.State(isFlushed = true, isSynced = true))
+      ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
+        TestAggregate("TEST-C", "CCC"),
+        TestAggregate("TEST-D", "DDD"),
+        TestAggregate("TEST-E", "ABbC"))
+    }
+  }
+
   "Massive parallel" in {
     for (_ ← 1 to 10) {
       delete(journalFile)
@@ -188,6 +204,7 @@ object JsonJournalTest {
     s"$prefix-A" → TestAggregateActor.Command.AppendNested("ghi"),
     s"$prefix-A" → TestAggregateActor.Command.AppendNestedAsync("jkl"),
     s"$prefix-B" → TestAggregateActor.Command.Remove)
+
   private def testEvents(prefix: String) = Vector(
     KeyedEvent(TestEvent.Added("AAA"))(s"$prefix-A"),
     KeyedEvent(TestEvent.Added("BBB"))(s"$prefix-B"),
