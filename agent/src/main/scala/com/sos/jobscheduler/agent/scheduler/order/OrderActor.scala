@@ -112,8 +112,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private def processing(node: Jobnet.JobNode, jobActor: ActorRef): Receive = journaling orElse {
     case Internal.StdoutStderrWritten(t, chunk, promise) ⇒
-      persistAsync(OrderStdWritten(t)(chunk)) { _ ⇒
-        // TODO Sync oder flush ist hier nicht nötig und wird große Ausgaben verlangsamen. persisAsync(commit=false) ?
+      persistAsync(OrderStdWritten(t)(chunk), noSync = true) { _ ⇒
         promise.success(Completed)
       }
 
