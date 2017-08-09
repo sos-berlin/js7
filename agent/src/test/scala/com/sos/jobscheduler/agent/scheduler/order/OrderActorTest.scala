@@ -9,14 +9,14 @@ import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKey
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobRunner, JobScript}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
-import com.sos.jobscheduler.agent.test.AgentDirectoryProvider.provideAgent2Directory
+import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -31,7 +31,9 @@ import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JsonJournalActor, JsonJournalMeta}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import java.nio.file.Path
-import org.scalatest.FreeSpec
+import java.time.Instant.now
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
+import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Promise
@@ -40,17 +42,50 @@ import scala.concurrent.duration.DurationInt
 /**
   * @author Joacim Zschimmer
   */
-final class OrderActorTest extends FreeSpec {
+final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
-  "TEST" in {
-    provideAgent2Directory { dir ⇒
-      withCloser { implicit closer ⇒
-        val actorSystem = Akkas.newActorSystem("OrderActorTest")
-        val terminatedPromise = Promise[Completed]()
-        actorSystem.actorOf(Props { new TestActor(dir, terminatedPromise) }, "OrderActorTest")
-        terminatedPromise.future await 99.s
-      }
-    }
+  private lazy val directoryProvider = new AgentDirectoryProvider {}
+  private lazy val actorSystem = Akkas.newActorSystem("OrderActorTest")
+
+  override def beforeAll() = {
+    super.beforeAll()
+    directoryProvider.provideAgent2Directories()
+  }
+
+  override def afterAll() = {
+    close()
+    directoryProvider.close()
+    super.afterAll()
+  }
+
+  "Shell script" in {
+    val terminatedPromise = Promise[Result]()
+    actorSystem.actorOf(Props { new TestActor(directoryProvider.agentDirectory, TestJobConfiguration, terminatedPromise) }, "OrderActorTest")
+    val result = terminatedPromise.future await 99.s
+    assert(result.events == ExpectedOrderEvents)
+    assert(result.stdoutStderr(Stdout).toString == s"Hej!${Nl}var1=FROM-JOB$Nl")
+    assert(result.stdoutStderr(Stderr).toString == s"THIS IS STDERR$Nl")
+  }
+
+  "Shell script with big stdout and stderr" in {
+    val terminatedPromise = Promise[Result]()
+    def line(x: String, i: Int) = (s" $x$i" * ((i+9)/10)).trim ensuring { _.length < 8000 }  // Windows: Maximum command line length is 8191 characters
+    val n = 1000
+    val expectedStderr = (for (i ← 1 to n) yield line("e", i) + Nl).mkString
+    val expectedStdout = (for (i ← 1 to n) yield line("o", i) + Nl).mkString
+    val jobConfiguration = JobConfiguration(TestJobPath,
+      JobScript(
+        (if (isWindows) "@echo off\n" else "") +
+        (for (i ← 1 to n) yield
+          s"""echo ${line("o", i)}
+             |echo ${line("e", i)} >&2
+             |""".stripMargin).mkString))
+    val t = now
+    actorSystem.actorOf(Props { new TestActor(directoryProvider.agentDirectory, jobConfiguration, terminatedPromise) }, "OrderActorTest")
+    val result = terminatedPromise.future await 99.s
+    info(s"2*($n unbuffered lines, ${(expectedStdout.length / 1000)}KB) took ${(now - t).pretty}")
+    assert(result.stdoutStderr(Stderr).toString == expectedStderr)
+    assert(result.stdoutStderr(Stdout).toString == expectedStdout)
   }
 }
 
@@ -64,6 +99,7 @@ private object OrderActorTest {
     OrderStepStarted,
     OrderStepSucceeded(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), returnValue = true, TestJobNode.onSuccess),
     OrderDetached)
+  private val Nl = System.lineSeparator
 
   private val TestJobConfiguration = JobConfiguration(TestJobPath,
     JobScript(
@@ -86,7 +122,9 @@ private object OrderActorTest {
     eventJsonFormat = KeyedEvent.typedJsonFormat[OrderEvent](KeyedSubtype[OrderEvent]))
   private implicit val TestAkkaTimeout = Timeout(99.seconds)
 
-  private final class TestActor(dir: Path, terminatedPromise: Promise[Completed])
+  private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutStderrType, String])
+
+  private final class TestActor(dir: Path, jobConfiguration: JobConfiguration, terminatedPromise: Promise[Result])
   extends Actor {
     private implicit val timerService = TimerService(idleTimeout = Some(1.s))
     private val journalFile = dir / "data" / "state" / "journal"
@@ -98,7 +136,7 @@ private object OrderActorTest {
 
     private val journalActor = context.actorOf(
       Props {
-        new JsonJournalActor[OrderEvent](TestJournalMeta, journalFile, syncOnCommit = false, new EventIdGenerator, keyedEventBus)
+        new JsonJournalActor[OrderEvent](TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, keyedEventBus)
       },
       "Journal")
     private val jobActor = JobRunner.actorOf(TestJobPath)
@@ -110,7 +148,7 @@ private object OrderActorTest {
 
     keyedEventBus.subscribe(self, classOf[OrderEvent])
     (journalActor ? JsonJournalActor.Input.StartWithoutRecovery).mapTo[JsonJournalActor.Output.Ready.type] await 99.s
-    (jobActor ? JobRunner.Command.StartWithConfiguration(TestJobConfiguration)).mapTo[JobRunner.Response.Ready.type] await 99.s
+    (jobActor ? JobRunner.Command.StartWithConfiguration(jobConfiguration)).mapTo[JobRunner.Response.Ready.type] await 99.s
     jobActor ! JobRunner.Input.OrderAvailable
 
     override def postRestart(t: Throwable) = terminatedPromise.failure(t)
@@ -145,11 +183,8 @@ private object OrderActorTest {
 
           case OrderDetached ⇒
             events += event
-            assert(events == ExpectedOrderEvents)
-            val nl = System.lineSeparator
-            assert(stdoutStderr(Stdout).toString == s"Hej!${nl}var1=FROM-JOB$nl")
-            assert(stdoutStderr(Stderr).toString == s"THIS IS STDERR$nl")
-            terminatedPromise.success(Completed)
+            terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }))
+            context.stop(self)
 
           case _ ⇒
             events += event
