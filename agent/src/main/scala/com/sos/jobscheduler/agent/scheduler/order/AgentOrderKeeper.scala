@@ -30,6 +30,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor, RecoveredJournalingActors}
+import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant.now
@@ -47,6 +48,7 @@ final class AgentOrderKeeper(
   syncOnCommit: Boolean,
   keyedEventBus: StampedKeyedEventBus,
   eventIdGenerator: EventIdGenerator,
+  config: Config,
   implicit private val timerService: TimerService)
 extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
@@ -231,7 +233,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
   private def addOrderActor(orderId: OrderId) =
     context.watch(context.actorOf(
-      Props { new OrderActor(orderId, journalActor = journalActor) },
+      Props { new OrderActor(orderId, journalActor = journalActor, config) },
       name = encodeAsActorName(s"Order-${orderId.string}")))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {

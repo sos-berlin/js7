@@ -23,7 +23,8 @@ import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalActorRecoverer, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.typesafe.config.Config
 import java.nio.file.Path
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -34,6 +35,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 private[scheduler] final class AgentActor(
   jobConfigurationDirectory: Path,
   stateDirectory: Path,
+  config: Config,
   implicit private val askTimeout: Timeout,
   syncOnCommit: Boolean,
   stoppedPromise: Promise[Completed])
@@ -191,6 +193,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
           syncOnCommit = syncOnCommit,
           keyedEventBus,
           eventIdGenerator,
+          config,
           timerService)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$userId"))

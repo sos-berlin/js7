@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.data.order.Order.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.taskserver.task.process.StdoutStderrWriter
+import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -145,7 +145,7 @@ object JobRunner {
     final case class StartWithConfigurationFile(path: Path)
     final case class StartWithConfiguration(conf: JobConfiguration)
     final case class ReadConfigurationFile(path: Path)
-    final case class ProcessOrder(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter) extends Command
+    final case class ProcessOrder(order: Order[Order.InProcess.type], stdChannels: StdChannels) extends Command
   }
 
   object Response {

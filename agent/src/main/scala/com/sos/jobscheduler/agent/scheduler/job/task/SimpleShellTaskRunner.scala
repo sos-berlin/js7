@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.taskserver.modules.shell.RichProcessStartSynchronizer
 import com.sos.jobscheduler.taskserver.task.TaskArguments
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startPipedShellScript
-import com.sos.jobscheduler.taskserver.task.process.{ProcessConfiguration, RichProcess, StdoutStderrWriter}
+import com.sos.jobscheduler.taskserver.task.process.{ProcessConfiguration, RichProcess, StdChannels}
 import java.nio.file.Files.delete
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
@@ -43,15 +43,15 @@ extends TaskRunner {
         Future.successful(Completed)
     }
 
-  def processOrder(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter): Future[TaskStepEnded] =
-    for (returnCode ← runProcess(order, stdoutStderrWriter)) yield
+  def processOrder(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[TaskStepEnded] =
+    for (returnCode ← runProcess(order, stdChannels)) yield
       TaskStepSucceeded(
         MapDiff.diff(order.variables, order.variables ++ fetchReturnValuesThenDeleteFile()),
         Order.Good(returnCode.isSuccess))
 
-  private def runProcess(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter): Future[ReturnCode] =
+  private def runProcess(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[ReturnCode] =
     for {
-      richProcess ← startProcess(order, stdoutStderrWriter) andThen {
+      richProcess ← startProcess(order, stdChannels) andThen {
         case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${jobConfiguration.path}")
       }
       returnCode ← richProcess.terminated andThen { case tried ⇒
@@ -70,7 +70,7 @@ extends TaskRunner {
     result
   }
 
-  private def startProcess(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter): Future[RichProcess] = {
+  private def startProcess(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[RichProcess] = {
     val env = {
       val params = jobConfiguration.variables ++ order.variables
       val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
@@ -86,7 +86,7 @@ extends TaskRunner {
         processConfiguration,
         name = jobConfiguration.path.name,
         script = jobConfiguration.script.string.trim,
-        stdoutStderrWriter)
+        stdChannels)
     } andThen { case Success(richProcess) ⇒
       richProcessOnce := richProcess
     }

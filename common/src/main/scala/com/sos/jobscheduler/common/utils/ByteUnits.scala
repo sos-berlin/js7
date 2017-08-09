@@ -8,9 +8,9 @@ object ByteUnits {
   def toKBGB(size: Long): String =
     size match {
       case _ if size < 0 ⇒ size + "bytes"
-      case _ if size == 0  ⇒ "0KB"
-      case _ if size < 1000  ⇒ "<1KB"
-      case _ if size < 1000000 ⇒ size / 1000 + "KB"
+      case _ if size == 0  ⇒ "0kB"
+      case _ if size < 1000  ⇒ "<1kB"
+      case _ if size < 1000000 ⇒ size / 1000 + "kB"
       case _ if size < 1000000000 ⇒ size / 1000000 + "MB"
       case _ ⇒ size / 1000000000 + "GB"
     }

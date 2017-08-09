@@ -17,8 +17,8 @@ import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.Order.Good
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.system.StdoutStderr._
-import com.sos.jobscheduler.taskserver.task.process.StdoutStderrWriter
+import com.sos.jobscheduler.taskserver.task.process.StdChannels
+import java.io.Writer
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -56,19 +56,21 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
           Map("a" → "A"))
         implicit val x = injector.instance[StandardAgentTaskFactory]
         val taskRunner = newTaskRunner(jobConfiguration)
-        val stdoutStderrWriter = new TestStdoutStderrWriter
-        val ended = taskRunner.processOrder(order, stdoutStderrWriter) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
+        val stdoutWriter = new TestStdoutStderrWriter
+        val stderrWriter = new TestStdoutStderrWriter
+        val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
+        val ended = taskRunner.processOrder(order, stdChannels) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
         assert(ended == TaskStepSucceeded(
           variablesDiff = MapDiff.addedOrUpdated(Map("result" → "TEST-RESULT-VALUE1")),
           Good(returnValue = true))
         )
         if (newTaskRunner.isInstanceOf[LegacyApiTaskRunner.Factory]) {  // TODO LegacyApiTaskRunner does not use StdoutStderrWriter
-          assert(stdoutStderrWriter.string(Stdout).isEmpty)
-          assert(stdoutStderrWriter.string(Stderr).isEmpty)
+          assert(stdoutWriter.string.isEmpty)
+          assert(stderrWriter.string.isEmpty)
         } else {
           val nl = System.lineSeparator
-          assert(stdoutStderrWriter.string(Stdout) == s"Hej!${nl}var1=VALUE1$nl")
-          assert(stdoutStderrWriter.string(Stderr) == s"THIS IS STDERR$nl")
+          assert(stdoutWriter.string == s"Hej!${nl}var1=VALUE1$nl")
+          assert(stderrWriter.string == s"THIS IS STDERR$nl")
         }
       }
     }
@@ -91,14 +93,19 @@ object TaskRunnerIT {
       |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
       |""".stripMargin
 
-  private final class TestStdoutStderrWriter extends StdoutStderrWriter {
-    private val builders = (for (t ← StdoutStderrType.values) yield t → new StringBuilder).toMap
+  private final class TestStdoutStderrWriter extends Writer {
+    private val stringBuilder = new StringBuilder
 
     def chunkSize = 10
 
-    def writeChunk(t: StdoutStderrType, chunk: String) =
-      builders(t) ++= chunk
 
-    def string(t: StdoutStderrType) = builders(t).toString
+    def write(chars: Array[Char], offset: Int, length: Int) =
+      stringBuilder.appendAll(chars, offset, length)
+
+    def string = stringBuilder.toString
+
+    def flush() = {}
+
+    def close() = {}
   }
 }

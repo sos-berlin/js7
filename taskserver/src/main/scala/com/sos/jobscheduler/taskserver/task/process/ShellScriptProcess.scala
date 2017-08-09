@@ -1,13 +1,11 @@
 package com.sos.jobscheduler.taskserver.task.process
 
-import akka.util.ByteString
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration.Encoding
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
-import java.io.{InputStreamReader, Reader}
+import java.io.{InputStreamReader, Reader, Writer}
 import java.nio.file.Path
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
@@ -60,7 +58,7 @@ object ShellScriptProcess {
     processConfiguration: ProcessConfiguration = ProcessConfiguration(),
     name: String = "shell-script",
     script: String,
-    stdoutStderrWriter: StdoutStderrWriter)
+    stdChannels: StdChannels)
     (implicit executionContext: ExecutionContext): ShellScriptProcess =
   {
     val shellFile = newTemporaryShellFile(name)
@@ -69,9 +67,9 @@ object ShellScriptProcess {
       val processBuilder = new ProcessBuilder(toShellCommandArguments(shellFile, processConfiguration.idArgumentOption.toList))
       processBuilder.environment ++= processConfiguration.additionalEnvironment
       val process = processBuilder.startRobustly()
-      import stdoutStderrWriter.{chunkSize, writeChunk}
-      val stdoutCompleted = readerTo(new InputStreamReader(process.getInputStream, Encoding), chunkSize)(writeChunk(Stdout, _))
-      val stderrCompleted = readerTo(new InputStreamReader(process.getErrorStream, Encoding), chunkSize)(writeChunk(Stderr, _))
+      import stdChannels.{charBufferSize, stderrWriter, stdoutWriter}
+      val stdoutCompleted = readerTo(new InputStreamReader(process.getInputStream, Encoding), charBufferSize, stdoutWriter)
+      val stderrCompleted = readerTo(new InputStreamReader(process.getErrorStream, Encoding), charBufferSize, stderrWriter)
 
       val conf = processConfiguration.copy(fileOption = Some(shellFile))
       new ShellScriptProcess(conf, process, shellFile, argumentsForLogging = shellFile.toString :: Nil) {
@@ -88,26 +86,27 @@ object ShellScriptProcess {
     }
   }
 
-  private def readerTo(reader: Reader, chunkSize: Int)(handleChunk: String ⇒ Unit)(implicit ec: ExecutionContext): Future[Completed] =
+  private def readerTo(reader: Reader, charBufferSize: Int, writer: Writer)(implicit ec: ExecutionContext): Future[Completed] =
     Future {
       blocking {
-        forEachChunkOfReader(reader, chunkSize)(handleChunk)
+        forEachChunkOfReader(reader, charBufferSize, writer)
         Completed
       }
     }
 
-  private def forEachChunkOfReader(reader: Reader, chunkSize: Int)(handleChunk: String ⇒ Unit): Unit = {
-    val array = new Array[Char](chunkSize)
+  private def forEachChunkOfReader(reader: Reader, charBufferSize: Int, writer: Writer): Unit = {
+    val array = new Array[Char](charBufferSize)
 
     @tailrec def loop(): Unit = {
       reader.read(array) match {
         case -1 ⇒
         case len ⇒
-          handleChunk(new String(array, 0, len))
+          writer.write(array, 0, len)
           loop()
       }
     }
 
-    loop()
+    try loop()
+    finally writer.close()  // End of file reached
   }
 }

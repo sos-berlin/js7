@@ -48,8 +48,9 @@ final class OrderHandler @Inject private(
       }
       actorSystem.actorOf(
         Props { new AgentActor(
-          stateDirectory = stateDirectory,
           jobConfigurationDirectory = jobConfigurationDirectory,
+          stateDirectory = stateDirectory,
+          config = conf.config,
           askTimeout = conf.akkaAskTimeout,
           syncOnCommit = conf.journalSyncOnCommit,
           stoppedPromise = actorStoppedPromise)

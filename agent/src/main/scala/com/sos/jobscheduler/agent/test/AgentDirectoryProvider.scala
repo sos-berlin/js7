@@ -27,6 +27,8 @@ trait AgentDirectoryProvider extends HasCloser {
     }
     agentDirectory
   }
+  final lazy val configDirectory = agentDirectory / "config"
+  final lazy val dataDirectory = agentDirectory / "data"
 
   final lazy val keystoreReference = KeystoreReference(
     (agentDirectory / KeystoreJksLocation).toURI.toURL,
@@ -34,9 +36,9 @@ trait AgentDirectoryProvider extends HasCloser {
     keyPassword = Some(SecretString("jobscheduler")))
 
   def provideAgent2Directories(): this.type = {
-    createDirectory(agentDirectory / "config" / "live")
-    createDirectory(agentDirectory / "data")
-    createDirectory(agentDirectory / "data" / "state")
+    createDirectory(configDirectory / "live")
+    createDirectory(dataDirectory)
+    createDirectory(dataDirectory / "state")
     this
   }
 }

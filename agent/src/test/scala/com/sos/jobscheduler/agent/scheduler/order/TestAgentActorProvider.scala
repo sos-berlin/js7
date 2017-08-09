@@ -73,6 +73,7 @@ object TestAgentActorProvider {
       Props { new AgentActor(
         stateDirectory = configAndData / "data",
         jobConfigurationDirectory = configAndData / "config" / "live",
+        config = agentConfiguration.config,
         askTimeout = Timeout(30.seconds),
         syncOnCommit = false,
         stoppedPromise = stopped) },

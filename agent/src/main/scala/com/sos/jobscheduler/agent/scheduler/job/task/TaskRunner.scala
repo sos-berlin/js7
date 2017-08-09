@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.taskserver.task.process.StdoutStderrWriter
+import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import scala.concurrent.Future
 
 /**
@@ -15,7 +15,7 @@ trait TaskRunner {
 
   def terminate(): Future[Completed]
 
-  def processOrder(order: Order[Order.InProcess.type], stdoutStderrWriter: StdoutStderrWriter): Future[TaskStepEnded]
+  def processOrder(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[TaskStepEnded]
 
   def kill(signal: ProcessSignal): Unit
 }

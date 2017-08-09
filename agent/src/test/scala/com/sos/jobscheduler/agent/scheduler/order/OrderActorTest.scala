@@ -30,6 +30,7 @@ import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStde
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JsonJournalActor, JsonJournalMeta}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
+import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Instant.now
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -45,7 +46,9 @@ import scala.concurrent.duration.DurationInt
 final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private lazy val directoryProvider = new AgentDirectoryProvider {}
+  private lazy val agentConfiguration = AgentConfiguration.forTest(Some(directoryProvider.agentDirectory))
   private lazy val actorSystem = Akkas.newActorSystem("OrderActorTest")
+
 
   override def beforeAll() = {
     super.beforeAll()
@@ -60,7 +63,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 
   "Shell script" in {
     val terminatedPromise = Promise[Result]()
-    actorSystem.actorOf(Props { new TestActor(directoryProvider.agentDirectory, TestJobConfiguration, terminatedPromise) }, "OrderActorTest")
+    actorSystem.actorOf(Props { new TestActor(directoryProvider.agentDirectory, TestJobConfiguration, terminatedPromise, agentConfiguration.config) }, "OrderActorTest")
     val result = terminatedPromise.future await 99.s
     assert(result.events == ExpectedOrderEvents)
     assert(result.stdoutStderr(Stdout).toString == s"Hej!${Nl}var1=FROM-JOB$Nl")
@@ -69,8 +72,8 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 
   "Shell script with big stdout and stderr" in {
     val terminatedPromise = Promise[Result]()
-    def line(x: String, i: Int) = (s" $x$i" * ((i+9)/10)).trim ensuring { _.length < 8000 }  // Windows: Maximum command line length is 8191 characters
     val n = 1000
+    def line(x: String, i: Int) = (s" $x$i" * ((i+n/100-1)/(n/100))).trim ensuring { _.length < 8000 }  // Windows: Maximum command line length is 8191 characters
     val expectedStderr = (for (i ← 1 to n) yield line("e", i) + Nl).mkString
     val expectedStdout = (for (i ← 1 to n) yield line("o", i) + Nl).mkString
     val jobConfiguration = JobConfiguration(TestJobPath,
@@ -81,9 +84,9 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
              |echo ${line("e", i)} >&2
              |""".stripMargin).mkString))
     val t = now
-    actorSystem.actorOf(Props { new TestActor(directoryProvider.agentDirectory, jobConfiguration, terminatedPromise) }, "OrderActorTest")
+    actorSystem.actorOf(Props { new TestActor(directoryProvider.agentDirectory, jobConfiguration, terminatedPromise, agentConfiguration.config) }, "OrderActorTest")
     val result = terminatedPromise.future await 99.s
-    info(s"2*($n unbuffered lines, ${(expectedStdout.length / 1000)}KB) took ${(now - t).pretty}")
+    info(s"2×($n unbuffered lines, ${(expectedStdout.length / 1000)}KB) took ${(now - t).pretty}")
     assert(result.stdoutStderr(Stderr).toString == expectedStderr)
     assert(result.stdoutStderr(Stdout).toString == expectedStdout)
   }
@@ -124,7 +127,7 @@ private object OrderActorTest {
 
   private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutStderrType, String])
 
-  private final class TestActor(dir: Path, jobConfiguration: JobConfiguration, terminatedPromise: Promise[Result])
+  private final class TestActor(dir: Path, jobConfiguration: JobConfiguration, terminatedPromise: Promise[Result], config: Config)
   extends Actor {
     private implicit val timerService = TimerService(idleTimeout = Some(1.s))
     private val journalFile = dir / "data" / "state" / "journal"
@@ -140,7 +143,7 @@ private object OrderActorTest {
       },
       "Journal")
     private val jobActor = JobRunner.actorOf(TestJobPath)
-    private val orderActor = context.actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor)}, TestOrder.id.string)
+    private val orderActor = context.actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor, config)}, TestOrder.id.string)
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
     private val events = mutable.Buffer[OrderEvent]()
@@ -154,7 +157,7 @@ private object OrderActorTest {
     override def postRestart(t: Throwable) = terminatedPromise.failure(t)
 
     def receive = {
-      case JobRunner.Output.ReadyForOrder ⇒  // JobRunner has sent this to its parent (that's me) in response to OrderAvailble
+      case JobRunner.Output.ReadyForOrder ⇒  // JobRunner has sent this to its parent (that's me) in response to OrderAvailable
         orderActor ! OrderActor.Command.Attach(TestOrder)
         context.become(attaching)
     }
