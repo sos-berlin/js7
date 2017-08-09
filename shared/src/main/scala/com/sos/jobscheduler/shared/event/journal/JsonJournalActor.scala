@@ -7,11 +7,11 @@ import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalActor._
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
-import com.sos.jobscheduler.shared.event.journal.Utils.toMB
 import java.nio.file.Files.move
 import java.nio.file.StandardCopyOption.{ATOMIC_MOVE, REPLACE_EXISTING}
 import java.nio.file.{Files, Path, Paths}

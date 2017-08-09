@@ -1,15 +1,15 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import akka.actor.{Actor, ActorContext, ActorRef, ActorRefFactory, Props}
+import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer._
-import com.sos.jobscheduler.shared.event.journal.Utils.toMB
 import java.nio.file.{Files, Path}
 import scala.util.control.NonFatal
 import spray.json.JsValue
