@@ -124,9 +124,9 @@ extends Actor with Stash {
         }
         //logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.eventSnapshots.size }).sum} events:")
         for (Written(stampedOptions, replyTo, sender) ← writtenBuffer) {
+          logStoredEvents(stampedOptions)
           replyTo.!(Output.Stored(stampedOptions))(sender)
           for (stampedOption ← stampedOptions; stamped ← stampedOption) {
-            logger.trace(s"STORED #${statistics.flushCount} $stamped")
             keyedEventBus.publish(stamped)
           }
         }
@@ -161,6 +161,12 @@ extends Actor with Stash {
       keyToJournalingActor --= keys
       keylessJournalingActors -= a
   }
+
+  private def logStoredEvents(stampedOptions: Seq[Option[Stamped[AnyKeyedEvent]]]) =
+    if (logger.underlying.isTraceEnabled) {
+      for (stampedOption ← stampedOptions; stamped ← stampedOption)
+        logger.trace(s"STORED #${statistics.flushCount} $stamped")
+    }
 
   private def becomeTakingSnapshotThen(andThen: ⇒ Unit) = {
     logger.debug(s"Taking snapshot")
