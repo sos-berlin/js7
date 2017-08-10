@@ -81,5 +81,5 @@ object MasterConfiguration {
     ConfigFactory
       .empty
       .withFallback(parseConfigIfExists(configDirectory / "private/private.conf"))
-      .withFallback(parseConfigIfExists(configDirectory / "agent.conf"))
+      .withFallback(parseConfigIfExists(configDirectory / "master.conf"))
 }
