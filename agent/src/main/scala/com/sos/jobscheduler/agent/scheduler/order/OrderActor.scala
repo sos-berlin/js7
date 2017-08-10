@@ -77,8 +77,8 @@ extends KeyedJournalingActor[OrderEvent] {
       case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, variables, outcome, _: Option[AgentPath])) ⇒
         context.become(waiting)
         persist(OrderAttached(nodeKey, state, variables, outcome)) { event ⇒
-          update(event)
           sender() ! Completed
+          update(event)
         }
 
       case _ ⇒
@@ -89,8 +89,8 @@ extends KeyedJournalingActor[OrderEvent] {
   private val waiting: Receive = journaling orElse {
     case Command.Detach ⇒
       persist(OrderDetached) { event ⇒
-        update(event)
         sender() ! Completed
+        update(event)
       }
 
     case command: Command ⇒
