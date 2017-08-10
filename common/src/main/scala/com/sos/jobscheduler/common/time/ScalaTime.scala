@@ -125,26 +125,49 @@ object ScalaTime {
     def toFiniteDuration: scala.concurrent.duration.FiniteDuration = javaToConcurrentFiniteDuration(delegate)
     override def toString = pretty  // For ScalaTest
 
-    def pretty =
-      if (delegate == Duration.ZERO) "0s"
-      else {
-        val seconds = delegate.getSeconds
-        val absSeconds = abs(seconds)
-        if (absSeconds >= 3*366*24*60*60) s"${seconds / (366*24*60*60)}~years"
-        else if (absSeconds >= 366*24*60*60) s"${seconds / (30*24*60*60)}~months"
-        else if (absSeconds >= 3*24*60*60) s"${seconds / (24*60*60)}d"
-        else if (absSeconds >= 3*60*60) s"${seconds / (60*60)}h"
-        else if (absSeconds >= 3*60) s"${seconds / 60}min"
-        else {
-          val millis = delegate.toMillis
-          val nanos = delegate.toNanos
-          if (abs(millis) >= 10 || millis >= 1 && nanos / 1000 % 1000 == 0) millisToPretty(millis)
-          else {
-            if (abs(nanos) > 10000) s"${delegate.toNanos / 1000}µs"
-            else s"${delegate.toNanos}ns"
-          }
-        }
-      }
+    def pretty: String =
+      if (delegate == Duration.ZERO)
+        "0s"
+      else if (abs(delegate.getSeconds) < 3*60)
+        smallPretty
+      else
+        bigPretty
+
+    private def smallPretty = {
+      val nanos = delegate.toNanos
+      val a = abs(nanos)
+      if (a >= 100000000)
+        formatNumber(nanos / 1000000000.0, 1000, "s")
+      else if (a >= 10000000)
+        formatNumber(nanos / 1000000.0, 10, "ms")
+      else if (a >= 1000000)
+        formatNumber(nanos / 1000000.0, 100, "ms")
+      else if (a >= 100000)
+        formatNumber(nanos / 1000000.0, 1000, "ms")
+      else if (a >= 10000)
+        formatNumber(nanos / 1000.0, 10, "µs")
+      else if (a >= 1000)
+        formatNumber(nanos / 1000.0, 100, "µs")
+      else if (a >= 100)
+        formatNumber(nanos / 1000.0, 1000, "µs")
+      else
+        nanos + "ns"
+    }
+
+    private def bigPretty = {
+      val seconds = delegate.getSeconds
+      val absSeconds = abs(seconds)
+      if (absSeconds >= 3*366*24*60*60)
+        s"${seconds / (366*24*60*60)}~years"
+      else if (absSeconds >= 366*24*60*60)
+        s"${seconds / (30*24*60*60)}~months"
+      else if (absSeconds >= 3*24*60*60)
+        s"${seconds / (24*60*60)}d"
+      else if (absSeconds >= 3*60*60)
+        s"${seconds / (60*60)}h"
+      else
+        s"${seconds / 60}min"
+    }
 
     def toSecondsString: String = delegate.toBigDecimal.bigDecimal.toPlainString + "s"
 
@@ -225,26 +248,24 @@ object ScalaTime {
     extraSleep()
   }
 
-  def millisToPretty(t: Long) = {
-    val result = new StringBuilder(30)
-    val a = abs(t)
-    if (t < 0) result += '-'
-    result.append(a / 1000)
-    val tailString = s"000${a % 1000}" takeRight 3
-    lengthWithoutTrailingZeros(tailString, tailString.length) match {
-      case 0 ⇒
-      case n ⇒ result.append('.').append(tailString.substring(0, n))
+  private def formatNumber(number: Double, divisor: Int, suffix: String) = {
+    val result = new StringBuilder(11 + suffix.length)
+    if (number < 0) result += '-'
+    val a = abs(number)
+    val integral = a.toInt
+    result.append(integral)
+    val b = ((a - integral) * divisor + 0.5).toInt
+    if (b > 0) {
+      val p = result.length
+      result.append(divisor + b)
+      result(p) = '.'
+      var truncated = result.length
+      while (result(truncated - 1) == '0') truncated -= 1
+      result.delete(truncated, result.length)
     }
-    result += 's'
-    result.toString()
+    result ++= suffix
+    result.toString
   }
-
-  @tailrec private def lengthWithoutTrailingZeros(s: String, n: Int): Int =
-    n match {
-      case 0 ⇒ 0
-      case _ if s(n - 1) == '0' => lengthWithoutTrailingZeros(s, n - 1)
-      case _ ⇒ n
-    }
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 }
