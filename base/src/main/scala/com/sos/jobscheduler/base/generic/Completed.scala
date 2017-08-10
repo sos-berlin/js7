@@ -12,4 +12,6 @@ sealed trait Completed
   * May be used for Future[Completed].
   * Like Akka's `Done`.
   */
-object Completed extends Completed
+object Completed extends Completed {
+  override def toString = "Completed"
+}
