@@ -195,6 +195,7 @@ extends KeyedJournalingActor[OrderEvent] {
     updateOrder(event)
     context.parent ! Output.OrderChanged(order, event)
     if (event == OrderDetached) {
+      logger.trace("Stopping after OrderDetached")
       context.stop(self)
     }
   }
@@ -206,7 +207,6 @@ extends KeyedJournalingActor[OrderEvent] {
         // Order.state = Attached / MovedToAgent ???
 
       case OrderDetached ⇒
-        logger.trace("Stopping after OrderDetached")
         order
 
       case _: OrderStdWritten ⇒
