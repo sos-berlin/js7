@@ -99,10 +99,11 @@ extends Actor with Stash {
       Try {
         stampedOptions.flatten map { _.toJson }
       } match {
-        case Success(jsValueOptions) ⇒
-          writeToDisk(jsValueOptions, replyTo)
+        case Success(jsValues) ⇒
+          writeToDisk(jsValues, replyTo)
           writtenBuffer += Written(stampedOptions, replyTo, sender())
           dontSync &= noSync
+          statistics.countCommit(jsValues.size)
           self.forward(Internal.Commit(writtenBuffer.length))  // Commit after possibly outstanding Input.Store messages
 
         case Failure(t) ⇒
@@ -111,7 +112,6 @@ extends Actor with Stash {
       }
 
     case Internal.Commit(level) ⇒
-      statistics.countCommit()
       if (level < writtenBuffer.length) {
         self.forward(Internal.Commit(writtenBuffer.length))  // storedBuffer has grown? Queue again to coalesce two commits
       } else
