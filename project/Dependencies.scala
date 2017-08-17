@@ -44,7 +44,7 @@ object Dependencies {
   val sprayTestkit        = "io.spray" %% "spray-testkit" % sprayVersion
   val sprayJson           = "io.spray" %% "spray-json" % "1.3.3" :: scalaReflect :: Nil
 
-  val scalaTags           = "com.lihaoyi" %% "scalatags" % "0.6.3"
+  val scalaTags           = "com.lihaoyi" %% "scalatags" % "0.6.5"
 
   val mockito             = "org.mockito" % "mockito-core" % "1.10.19"
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
