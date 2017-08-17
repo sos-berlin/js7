@@ -118,7 +118,6 @@ final class RecoveryIT extends FreeSpec {
     withCloser { implicit closer ⇒
       val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
       eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
-      logger.debug("Close")
       injector.instance[Closer].closeWithCloser
       val master = injector.instance[Master]
       master.start() await 99.s

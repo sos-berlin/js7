@@ -21,14 +21,10 @@ extends EventCollector(
   ExecutionContext.global)
 {
   def start(actorRefFactory: ActorRefFactory, keyedEventBus: StampedKeyedEventBus): Unit = {
-    actorRefFactory.actorOf(
+    val actor = actorRefFactory.actorOf(
       Props {
         new Actor {
-          override def preStart() = {
-            super.preStart()
-            keyedEventBus.subscribe(self, classOf[Event])
-            logger.trace("Ready")
-          }
+          logger.trace("Ready")
 
           override def postStop() = {
             keyedEventBus.unsubscribe(self)
@@ -44,6 +40,7 @@ extends EventCollector(
         }
       },
       name = "TestEventCollector")
+    keyedEventBus.subscribe(actor, classOf[Event])  // Subscribe before return
   }
 }
 
