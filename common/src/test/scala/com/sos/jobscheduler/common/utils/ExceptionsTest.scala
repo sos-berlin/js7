@@ -8,6 +8,7 @@ import com.sos.jobscheduler.common.utils.ExceptionsTest._
 import java.io.IOException
 import java.time.Instant
 import org.scalatest.FreeSpec
+import org.scalatest.Matchers._
 import scala.util.{Success, Try}
 
 /**
@@ -16,8 +17,12 @@ import scala.util.{Success, Try}
 final class ExceptionsTest extends FreeSpec {
 
   "repeatUntilNoException" in {
-    var i = 0
+    // Warm-up
+    var _i = 0
+    repeatUntilNoException(10.s, 10.ms) { _i += 1;if (_i < 2) sys.error("TEST") }
+
     val t = Instant.now()
+    var i = 0
     repeatUntilNoException(10.s, 10.ms) {
       i += 1
       if (i < 5) sys.error("TEST")
@@ -70,6 +75,17 @@ final class ExceptionsTest extends FreeSpec {
       }
     }
     assert(logged == ((exception.toString, exception)))
+  }
+
+  "andRethrow" in {
+    intercept[IllegalArgumentException] {
+      try throw new IllegalArgumentException
+      catch andRethrow {}
+    } .getSuppressed shouldEqual Array()
+    intercept[IllegalArgumentException] {
+      try throw new IllegalArgumentException
+      catch andRethrow { throw new IllegalStateException }
+    } .getSuppressed map { _.getClass } shouldBe Array(classOf[IllegalStateException])
   }
 }
 
