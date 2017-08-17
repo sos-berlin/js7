@@ -45,6 +45,8 @@ final class EventFetcherTest extends FreeSpec {
               dBarrier.await()
               assert(request.after == 201)
               EventSeq.Empty(lastEventId = 201)
+            case 5 ⇒  // May be passed
+              EventSeq.Empty(lastEventId = 201)
           }
         }
 
