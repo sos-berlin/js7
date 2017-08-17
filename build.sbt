@@ -17,7 +17,7 @@ addCommandAlias("build-quickly", "; compile-all; pack")
 addCommandAlias("pack", "universal:packageZipTarball")
 
 val commonSettings = List(
-  organization := "com.sos-berlin.jobscheduler.engine",
+  organization := "com.sos-berlin.jobscheduler.engine2",
   organizationName := "SOS Software GmbH, Berlin",
   organizationHomepage := Some(url("https://www.sos-berlin.com")),
   scalaVersion := Dependencies.scalaVersion,
