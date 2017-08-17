@@ -11,8 +11,49 @@ import org.scalatest.Matchers._
 
 final class WaitForConditionTest extends FreeSpec {
 
-  "realTimeIterator (time-critical test)" in {
+  "Warm-up" in {
     realTimeIterator(Seq(now().toEpochMilli)) // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern
+    meterElapsedTime { retryUntil(99.s, 1.s) { 7 } }
+    intercept[IllegalStateException] { throw new IllegalStateException }
+  }
+
+  "retryUntil" - {
+    class Fun(n: Int) extends (() ⇒ Int) {
+      var count = 0
+      def apply() = {
+        count += 1
+        if (count >= n) 7 else throw new IllegalStateException("FAILED")
+      }
+    }
+
+    "Immediate success" in {
+      val fun = new Fun(1)
+      meterElapsedTime {
+        retryUntil(99.s, 10.s) { fun() }
+      } should (be < 1.s)
+      assert(fun.count == 1)
+    }
+
+    "Late success" in {
+      val fun = new Fun(10)
+      meterElapsedTime {
+        retryUntil(99.s, 10.ms) { fun() }
+      } should (be < 1.s)
+      assert(fun.count == 10)
+    }
+
+    "Failure" in {
+      val fun = new Fun(1000)
+      meterElapsedTime {
+        intercept[IllegalStateException] {
+          retryUntil(100.ms, 10.ms) { fun() }
+        }
+      } should (be >= 100.ms)
+      assert(fun.count > 1)
+    }
+  }
+
+  "realTimeIterator (time-critical test)" in {
     meterElapsedTime { realTimeIterator(Seq((now() + 10.s).toEpochMilli)) } should be < 300.ms // Bereitstellung soll nicht warten
     val t0 = now().toEpochMilli
     val (t1, t2, t3) = (t0 + 500, t0 + 1500, t0 + 2000)
