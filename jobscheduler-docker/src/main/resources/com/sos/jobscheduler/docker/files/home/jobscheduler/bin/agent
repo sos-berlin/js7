@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+data=/var/opt/jobscheduler/agent/data
 exec /opt/jobscheduler/bin/agent \
-  -config-directory=/var/opt/jobscheduler/agent/config \
   -http-port=4444 \
+  -java-option="-XX:+HeapDumpOnOutOfMemoryError"
+  -java-option="-XX:HeapDumpPath=$data/log/OutOfMemoryError.hprof"
   "$@"

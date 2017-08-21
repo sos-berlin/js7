@@ -14,8 +14,8 @@ export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)
 . "$JOBSCHEDULER_HOME/bin/set-context.sh"
 declare classpath pathSeparator JAVA_HOME java
 
+config=/var/opt/jobscheduler/master/config
 data=/var/opt/jobscheduler/master/data
-config=""
 httpPort=4444
 masterOptions=()
 javaOptions=()
@@ -70,8 +70,13 @@ if [ ! -d "$config" ]; then :
   exit 1
 fi
 
-[ -z "$config" ] || masterOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
-[ -z "$data" ] || masterOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
+if [ ! -d "$data" ]; then :
+  echo "No such directory: -data-directory=$data"
+  exit 1
+fi
+
+masterOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
+masterOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
 [ -z "$httpPort" ] || masterOptions+=("-http-port=$httpPort")
 logs="$data/logs"
 

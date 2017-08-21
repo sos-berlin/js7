@@ -7,8 +7,8 @@ declare classpath pathSeparator JAVA_HOME java
 
 javaOptions=()
 agentOptions=()
+config=/var/opt/jobscheduler/agent/config
 data=/var/opt/jobscheduler/agent/data
-config=""
 
 httpPort=
 for arg in "$@"; do
@@ -61,8 +61,13 @@ if [ ! -d "$config" ]; then :
   exit 1
 fi
 
+if [ ! -d "$data" ]; then :
+  echo "No such directory: -data-directory=$data"
+  exit 1
+fi
+
 agentOptions+=("-config-directory=$(toSystemPath "$config" || kill $$)")
-[ -z "$data" ] || agentOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
+agentOptions+=("-data-directory=$(toSystemPath "$data" || kill $$)")
 [ -z "$httpPort" ] || agentOptions+=("-http-port=$httpPort")
 logs="$data/logs"
 
