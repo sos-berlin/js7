@@ -48,7 +48,7 @@ object AgentMain {
 
   def run(conf: AgentConfiguration): Unit =
     withCloser { implicit closer ⇒
-      val agent = new Agent(conf).closeWithCloser
+      val agent = Agent(conf).closeWithCloser
       JavaShutdownHook.add("AgentMain") {
         agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(OnJavaShutdownSigkillProcessesAfter)))
         awaitResult(agent.terminated, ShutdownTimeout)

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent
 
 import com.google.common.io.Closer
 import com.google.inject.Stage.PRODUCTION
-import com.google.inject.{Guice, Module}
+import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.Agent._
 import com.sos.jobscheduler.agent.command.CommandExecutor
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
@@ -15,12 +15,12 @@ import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder._
 import com.sos.jobscheduler.data.agent.AgentAddress
+import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -30,18 +30,17 @@ import scala.concurrent.{ExecutionContext, Future}
  *
  * @author Joacim Zschimmer
  */
-final class Agent(module: Module) extends AutoCloseable {
+@Singleton
+final class Agent @Inject private(
+  val configuration: AgentConfiguration,
+  webServer: AgentWebServer,
+  commandExecutor: CommandExecutor,
+  orderHandler: OrderHandler,
+  val injector: Injector)
+  (implicit closer: Closer, executionContext: ExecutionContext)
+extends AutoCloseable {
 
-  def this(configuration: AgentConfiguration) = this(new AgentModule(configuration))
-
-  val injector = Guice.createInjector(PRODUCTION, module)
-  val configuration = injector.instance[AgentConfiguration]
-  private implicit val closer = injector.instance[Closer]
-  private val webServer = injector.instance[AgentWebServer].closeWithCloser
   val localUri = AgentAddress(webServer.localUri.toString)
-  private val commandExecutor = injector.instance[CommandExecutor]
-  private val orderHandler = injector.instance[OrderHandler]
-  private implicit val executionContext = injector.instance[ExecutionContext]
 
   AgentStartInformation.initialize()
 
@@ -71,7 +70,13 @@ final class Agent(module: Module) extends AutoCloseable {
 object Agent {
   private val logger = Logger(getClass)
 
+  def apply(configuration: AgentConfiguration): Agent =
+    apply(new AgentModule(configuration))
+
+  def apply(module: Module): Agent =
+    Guice.createInjector(PRODUCTION, module).instance[Agent]
+
   def forTest(): Agent = forTest(httpPort = findRandomFreeTcpPort())
 
-  def forTest(httpPort: Int): Agent = new Agent(AgentConfiguration.forTest(httpPort = httpPort))
+  def forTest(httpPort: Int): Agent = Agent(AgentConfiguration.forTest(httpPort = httpPort))
 }

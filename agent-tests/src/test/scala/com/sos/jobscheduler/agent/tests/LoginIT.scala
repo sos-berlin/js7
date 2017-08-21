@@ -21,7 +21,7 @@ import spray.httpx.UnsuccessfulResponseException
   */
 final class LoginIT extends FreeSpec with BeforeAndAfterAll {
 
-  private lazy val agent = new Agent(AgentConfiguration.forTest())
+  private lazy val agent = Agent(AgentConfiguration.forTest())
 
   override protected def beforeAll() = {
     agent.start() await 5.s

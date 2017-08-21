@@ -129,7 +129,7 @@ final class RecoveryIT extends FreeSpec {
   }
 
   private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[Agent] ⇒ Unit): Unit = {
-    multipleAutoClosing(for (o ← confs) yield new Agent(o)) { agents ⇒
+    multipleAutoClosing(for (o ← confs) yield Agent(o)) { agents ⇒
       (for (a ← agents) yield a.start()) await 10.s
       body(agents)
     }

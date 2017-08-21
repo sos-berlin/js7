@@ -56,7 +56,7 @@ final class MasterIT extends FreeSpec {
               </params>
               <script language="shell">{TestScript}</script>
             </job>
-          new Agent(AgentConfiguration.forTest(Some(env.agentDir(agentPath))))
+          Agent(AgentConfiguration.forTest(Some(env.agentDir(agentPath))))
           .closeWithCloser
         }
 

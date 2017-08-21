@@ -92,7 +92,7 @@ object TerminateIT {
         <job tasks="10">
           <script language="shell">{AScript}</script>
         </job>
-      val agent = new Agent(AgentConfiguration.forTest(configAndData = Some(agentDirectory))).closeWithCloser
+      val agent = Agent(AgentConfiguration.forTest(configAndData = Some(agentDirectory))).closeWithCloser
       agent.start() await 10.s
       implicit val actorRefFactory: ActorRefFactory = Akkas.newActorSystem("TerminateIT")(closer)
       val client = AgentClient(

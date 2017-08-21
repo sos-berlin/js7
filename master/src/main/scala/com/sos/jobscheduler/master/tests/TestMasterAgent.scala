@@ -90,7 +90,7 @@ object TestMasterAgent {
                  |""".stripMargin
             }</script>
           </job>
-        val agent = new Agent(AgentConfiguration.forTest(
+        val agent = Agent(AgentConfiguration.forTest(
           configAndData = Some(env.agentDir(agentPath))).copy(
           journalSyncOnCommit = conf.syncAgent))
           .closeWithCloser
