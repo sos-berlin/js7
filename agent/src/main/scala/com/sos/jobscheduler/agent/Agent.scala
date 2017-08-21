@@ -10,9 +10,10 @@ import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Response
 import com.sos.jobscheduler.agent.scheduler.OrderHandler
-import com.sos.jobscheduler.agent.task.TaskHandler
 import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.agent.web.AgentWebServer
+import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -38,14 +39,16 @@ final class Agent(module: Module) extends AutoCloseable {
   private implicit val closer = injector.instance[Closer]
   private val webServer = injector.instance[AgentWebServer].closeWithCloser
   val localUri = AgentAddress(webServer.localUri.toString)
-  private val taskHandler = injector.instance[TaskHandler]
   private val commandExecutor = injector.instance[CommandExecutor]
   private val orderHandler = injector.instance[OrderHandler]
   private implicit val executionContext = injector.instance[ExecutionContext]
 
   AgentStartInformation.initialize()
 
-  def start(): Future[Unit] = webServer.start()
+  def start(): Future[Unit] = {
+    logger.info(s"Agent ${BuildInfo.buildVersion} config=${configuration.configDirectory getOrElse ""} data=${configuration.dataDirectory getOrElse ""}")
+    webServer.start()
+  }
 
   def close(): Unit = {
     logger.info("close")
@@ -61,8 +64,8 @@ final class Agent(module: Module) extends AutoCloseable {
   def executeCommand(command: AgentCommand): Future[Response] =
     commandExecutor.executeCommand(command)
 
-  def terminated: Future[Unit] =
-    Future.sequence(List(taskHandler.terminated, orderHandler.terminated)) map { _ ⇒ () }
+  def terminated: Future[Completed] =
+    orderHandler.terminated
 }
 
 object Agent {

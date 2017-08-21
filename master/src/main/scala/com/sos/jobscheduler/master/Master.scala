@@ -5,13 +5,16 @@ import akka.pattern.ask
 import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.master.Master._
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -55,6 +58,7 @@ extends OrderClient {
     "MasterOrderKeeper")
 
   def start(): Future[Completed] = {
+    logger.info(s"Master ${BuildInfo.buildVersion} config=${configuration.configDirectoryOption getOrElse ""} data=${configuration.dataDirectory}")
     closer.registerAutoCloseable(webServer)
     (webServer.start(): Future[Unit]) map { _ ⇒ Completed }
   }
@@ -79,6 +83,8 @@ extends OrderClient {
 }
 
 object Master {
+  private val logger = Logger(getClass)
+
   def apply(masterConfiguration: MasterConfiguration): Master =
     Guice.createInjector(new MasterModule(masterConfiguration)).instance[Master]
 }
