@@ -1,14 +1,14 @@
 package com.sos.jobscheduler.master.order
 
 import akka.Done
-import akka.actor.{ActorRef, OneForOneStrategy, Props, Stash, Status, SupervisorStrategy, Terminated}
-import com.sos.jobscheduler.base.generic.Completed
+import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
+import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.{InsertableMutableMap, RichTraversableOnce}
+import com.sos.jobscheduler.common.scalautil.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
@@ -32,7 +32,7 @@ import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalAc
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.time.Duration
 import scala.collection.mutable
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 /**
@@ -40,8 +40,7 @@ import scala.util.control.NonFatal
   */
 final class MasterOrderKeeper(
   masterConfiguration: MasterConfiguration,
-  scheduledOrderGeneratorKeeper: ScheduledOrderGeneratorKeeper,
-  stoppedPromise: Promise[Completed])
+  scheduledOrderGeneratorKeeper: ScheduledOrderGeneratorKeeper)
   (implicit
     timerService: TimerService,
     eventIdGenerator: EventIdGenerator,
@@ -50,9 +49,7 @@ final class MasterOrderKeeper(
 extends KeyedEventJournalingActor[Event]
 with Stash {
 
-  override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 0) {
-    case _ ⇒ SupervisorStrategy.Stop
-  }
+  override val supervisorStrategy = SupervisorStrategies.escalate
 
   import context.{become, dispatcher}
   intelliJuseImports(dispatcher)
@@ -103,12 +100,6 @@ with Stash {
   override def postStop() = {
     keyedEventBus.unsubscribe(self)
     super.postStop()
-    stoppedPromise.trySuccess(Completed)
-  }
-
-  override def preRestart(throwable: Throwable, message: Option[Any]): Unit = {
-    stoppedPromise.failure(throwable)
-    super.preRestart(throwable, message)
   }
 
   protected def snapshots = Future.successful(
@@ -267,7 +258,7 @@ with Stash {
           sender() ! Status.Failure(new NoSuchElementException(s"Unknown Jobnet '${order.nodeKey.jobnetPath.string}'"))
         case Some(_) ⇒
           logger.debug(s"Discarding duplicate AddOrderIfNew: ${order.id}")
-          sender() ! MasterCommand.Response.Accepted //Status.Failure(new IllegalStateException(s"Duplicate OrderId '${order.id}'"))
+          sender() ! MasterCommand.Response.Accepted //Status.Failure(new IllegalStateException(s"Duplicate OrderId '${order.taskId}'"))
       }
 
     case MasterCommand.Terminate ⇒

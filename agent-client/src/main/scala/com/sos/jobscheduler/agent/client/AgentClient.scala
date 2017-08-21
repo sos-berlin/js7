@@ -7,9 +7,10 @@ import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
-import com.sos.jobscheduler.agent.data.views.{TaskRegisterOverview, TaskOverview}
+import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonFormat
+import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
@@ -93,7 +94,9 @@ trait AgentClient {
     }
   }
 
-  private object task {
+  final def overview: Future[AgentOverview] = get[AgentOverview](_.overview)
+
+  object task {
     final def overview: Future[TaskRegisterOverview] = get[TaskRegisterOverview](_.task.overview)
 
     final def tasks: Future[immutable.Seq[TaskOverview]] = get[immutable.Seq[TaskOverview]](_.task.tasks)

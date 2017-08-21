@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
+import java.net.InetAddress
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext
@@ -14,6 +15,8 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   */
 final class LocalServerDialogConnectionTest extends FreeSpec {
+
+  InetAddress.getLocalHost  // log4j calls this too. On MacOS this call delays some seconds, so we do it now, before the test.
 
   "LocalServerDialogConnection" in {
     val n = 50

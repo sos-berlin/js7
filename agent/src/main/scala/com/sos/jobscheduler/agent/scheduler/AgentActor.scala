@@ -3,56 +3,58 @@ package com.sos.jobscheduler.agent.scheduler
 import akka.Done
 import akka.actor.{ActorRef, Props, Status, Terminated}
 import akka.pattern.ask
-import akka.util.Timeout
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobRunner}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
-import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.common.akkautils.Akkas
-import com.sos.jobscheduler.common.akkautils.Akkas.StoppingStrategies
+import com.sos.jobscheduler.agent.task.{TaskRegister, TaskRegisterActor}
+import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
+import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.JobPath
+import com.sos.jobscheduler.data.system.JavaInformation
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
-import com.typesafe.config.Config
-import java.nio.file.Path
+import javax.inject.Inject
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
   * @author Joacim Zschimmer
   */
-private[scheduler] final class AgentActor(
-  jobConfigurationDirectory: Path,
-  stateDirectory: Path,
-  config: Config,
-  implicit private val askTimeout: Timeout,
-  syncOnCommit: Boolean,
-  stoppedPromise: Promise[Completed])
-  (implicit
-    timerService: TimerService,
-    keyedEventBus: StampedKeyedEventBus,
-    eventIdGenerator: EventIdGenerator,
-    newTaskRunner: TaskRunner.Factory,
-    executionContext: ExecutionContext)
+private[agent] final class AgentActor @Inject private(
+  agentConfiguration: AgentConfiguration,
+  eventIdGenerator: EventIdGenerator,
+  newTaskRunner: TaskRunner.Factory,
+  keyedEventBus: StampedKeyedEventBus,
+  timerService: TimerService)
+  (implicit executionContext: ExecutionContext)
 extends KeyedEventJournalingActor[AgentEvent] {
 
-  override val supervisorStrategy = StoppingStrategies.stopping(logger)
+  import agentConfiguration.{akkaAskTimeout, liveDirectory, stateDirectory}
+  import context.actorOf
+
+  override val supervisorStrategy = SupervisorStrategies.escalate
+
   private val journalFile = stateDirectory / "journal"
-  protected val journalActor = context.actorOf(
-    Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
+  protected val journalActor = actorOf(
+    Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
-  private val jobKeeper = context.actorOf(Props { new JobKeeper(jobConfigurationDirectory, newTaskRunner) }, "JobKeeper")
+  private val jobKeeper = {
+    val taskRegister = new TaskRegister(actorOf(Props { new TaskRegisterActor(agentConfiguration, timerService) }))
+    actorOf(Props { new JobKeeper(liveDirectory, newTaskRunner, taskRegister, timerService) }, "JobKeeper")
+  }
   private val masterToOrderKeeper = new MasterRegister
   private var terminating = false
 
@@ -66,8 +68,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override def postStop() = {
     super.postStop()
-    logger.info("Terminated")
-    stoppedPromise.success(Completed)
+    logger.info("Stopped")
   }
 
   private class MyJournalRecoverer extends JsonJournalRecoverer[AgentEvent] {
@@ -111,12 +112,12 @@ extends KeyedEventJournalingActor[AgentEvent] {
     case JobKeeper.Output.Ready(jobs) ⇒
       for (a ← masterToOrderKeeper.values) a ! AgentOrderKeeper.Input.Start(jobs)  // Start recovered actors
       context.become(ready(jobs))
-      commander ! Output.Started
+      commander ! Output.Ready
   }
 
   private def ready(jobs: Seq[(JobPath, ActorRef)]): Receive = journaling orElse {
     case cmd: Input.ExternalCommand ⇒
-      executeCommand(cmd, jobs)
+      executeExternalCommand(cmd, jobs)
 
     case Input.RequestEvents(userId, input) ⇒
       masterToOrderKeeper.get(userId) match {
@@ -132,9 +133,17 @@ extends KeyedEventJournalingActor[AgentEvent] {
     case Terminated(a) if masterToOrderKeeper.contains(a) && terminating ⇒
       masterToOrderKeeper -= a
       handleActorTermination()
+
+    case Command.GetOverview ⇒
+      sender() ! AgentOverview(
+        version = AgentStartInformation.VersionString,
+        startedAt = AgentStartInformation.StartedAt,
+        isTerminating = terminating,
+        system = systemInformation(),
+        java = JavaInformation())
   }
 
-  private def executeCommand(externalCommand: Input.ExternalCommand, jobs: Seq[(JobPath, ActorRef)]): Unit = {
+  private def executeExternalCommand(externalCommand: Input.ExternalCommand, jobs: Seq[(JobPath, ActorRef)]): Unit = {
     import externalCommand.{command, response, userId}
     command match {
       case command: AgentCommand.Terminate ⇒
@@ -185,15 +194,15 @@ extends KeyedEventJournalingActor[AgentEvent] {
   }
 
   private def addOrderKeeper(userId: UserId): ActorRef = {
-    val actor = context.actorOf(
+    val actor = actorOf(
       Props {
         new AgentOrderKeeper(
           journalFile = stateDirectory / s"master-$userId.journal",
-          askTimeout = askTimeout,
-          syncOnCommit = syncOnCommit,
+          askTimeout = akkaAskTimeout,
+          syncOnCommit = agentConfiguration.journalSyncOnCommit,
           keyedEventBus,
           eventIdGenerator,
-          config,
+          agentConfiguration.config,
           timerService)
         },
       Akkas.encodeAsActorName(s"AgentOrderKeeper-for-$userId"))
@@ -213,16 +222,18 @@ extends KeyedEventJournalingActor[AgentEvent] {
 object AgentActor {
   private val logger = Logger(getClass)
 
-  sealed trait Input
+  object Command {
+    case object GetOverview
+  }
+
   object Input {
-    final case object Start extends Output
+    final case object Start
     final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[AgentCommand.Response])
     final case class RequestEvents(usedId: UserId, input: AgentOrderKeeper.Input.RequestEvents)
   }
 
-  sealed trait Output
   object Output {
-    case object Started extends Output
+    case object Ready
   }
 
   val MyJournalMeta = new JsonJournalMeta(AgentSnapshot.jsonFormat, AgentEvent.KeyedEventJsonFormat) with GzipCompression

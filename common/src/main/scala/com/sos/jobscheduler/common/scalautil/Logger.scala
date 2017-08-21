@@ -8,6 +8,9 @@ import scala.reflect.ClassTag
 
 object Logger {
 
+  def apply[A: ClassTag]: ScalaLogger =
+    apply(implicitClass[A])
+
   def apply(c: Class[_]): ScalaLogger =
     ScalaLogger(normalizeClassName(c))
 

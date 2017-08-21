@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.shared.event.journal.tests
 
 import akka.Done
-import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props, Stash, SupervisorStrategy, Terminated}
+import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -26,9 +27,7 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
 
   private implicit val executionContext = context.dispatcher
 
-  override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 0) {
-    case _ ⇒ SupervisorStrategy.Stop
-  }
+  override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(999.seconds)
   private val journalActor = context.actorOf(
     Props { new JsonJournalActor(TestJsonJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new StampedKeyedEventBus) },

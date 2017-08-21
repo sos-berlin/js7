@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.xmls.SafeXML
 import com.sos.jobscheduler.common.system.FileUtils._
@@ -22,7 +21,7 @@ import com.sos.jobscheduler.taskserver.moduleapi.Script
 import com.sos.jobscheduler.taskserver.modules.common.CommonArguments
 import com.sos.jobscheduler.taskserver.modules.javamodule.TestJavaModule
 import com.sos.jobscheduler.taskserver.modules.monitor.Monitor
-import com.sos.jobscheduler.taskserver.modules.shell.ShellProcessTaskTest.{Setting, _}
+import com.sos.jobscheduler.taskserver.modules.shell.ShellProcessTaskTest._
 import com.sos.jobscheduler.taskserver.spoolerapi.{SpoolerLog, SpoolerTask, TypedNamedIDispatches}
 import com.sos.jobscheduler.taskserver.task.TaskArguments
 import org.scalatest.Matchers._

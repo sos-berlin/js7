@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.job.task
 
 import com.google.inject.ImplementedBy
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
+import com.sos.jobscheduler.agent.task.BaseAgentTask
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.data.order.Order
@@ -18,6 +19,8 @@ trait TaskRunner {
   def processOrder(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[TaskStepEnded]
 
   def kill(signal: ProcessSignal): Unit
+
+  def asBaseAgentTask: BaseAgentTask
 }
 
 object TaskRunner {

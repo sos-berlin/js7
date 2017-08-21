@@ -6,6 +6,7 @@ import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
+import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.agent.web.common.{ExternalWebService, LoginSession}
 import com.sos.jobscheduler.common.auth.EncodedPasswordValidator
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -85,4 +86,9 @@ extends AbstractModule {
 
   @Provides @Singleton
   def closer(): Closer = Closer.create()  // Do not use concurrently !!!
+
+  @Provides @Singleton
+  def provideAgentWebServer(conf: AgentConfiguration, gateKeeperConfiguration: GateKeeper.Configuration, csrf: CSRF,
+    closer: Closer, injector: Injector, actorSystem: ActorSystem, executionContext: ExecutionContext): AgentWebServer =
+      new AgentWebServer(conf, gateKeeperConfiguration, csrf, closer, injector)(actorSystem, executionContext)
 }

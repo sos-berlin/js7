@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.convert.As._
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
-import com.sos.jobscheduler.common.configutils.Configs.{parseConfigIfExists, _}
+import com.sos.jobscheduler.common.configutils.Configs._
 import com.sos.jobscheduler.common.internet.IP.StringToServerInetSocketAddress
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.sprayutils.WebServerBinding

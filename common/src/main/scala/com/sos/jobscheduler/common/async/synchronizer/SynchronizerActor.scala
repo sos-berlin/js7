@@ -9,6 +9,7 @@ import scala.util.Try
   * @author Joacim Zschimmer
   */
 private[synchronizer] final class SynchronizerActor extends Actor {
+
   def receive = {
     case Execute(function, promise) ⇒ promise tryComplete Try { function() }
   }

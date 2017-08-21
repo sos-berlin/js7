@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.agent.task
 
 import akka.actor.ActorDSL._
+import akka.actor.{Props, Terminated}
+import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
@@ -11,7 +13,10 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.retryUntil
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -20,16 +25,30 @@ import com.typesafe.config.ConfigFactory
 import java.time.Instant.now
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.JavaConversions._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import scala.concurrent.Promise
+import scala.concurrent.duration.DurationLong
 
 /**
   * @author Joacim Zschimmer
   */
 final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfterAll with AgentDirectoryProvider {
 
+  private implicit lazy val actorSystem = Akkas.newActorSystem("TaskRegisterTest",
+    ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" → "100 millis")))  // Our default of 1s slows down this test
+  AgentDirectoryProvider
+  private implicit lazy val agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory)).finishAndProvideFiles
+  private implicit lazy val timerService = new TimerService(idleTimeout = Some(1.s))
+  private implicit lazy val me = inbox()
+  private lazy val actor = actorSystem.actorOf(Props { new TaskRegisterActor(agentConfiguration, timerService) })
+  private lazy val handle = {
+    implicit val askTimeout = Timeout(9.seconds)
+    new TaskRegister(actor)
+  }
+  private lazy val aTask = new TestTask(AgentTaskId(1, 11))
+  private lazy val bTask = new TestTask(AgentTaskId(2, 22))
+  private lazy val cTask = new TestTask(AgentTaskId(3, 33))
+
   override def beforeAll() = {
-    provideAgent2Directories()   // For CrashKillScript
     me.watch(actor)
     super.beforeAll()
   }
@@ -39,29 +58,14 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
     super.afterAll()
   }
 
-  private implicit lazy val actorSystem = Akkas.newActorSystem("TaskRegisterTest",
-    ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" → "100 millis")))  // Our default of 1s slows down this test
-  AgentDirectoryProvider
-  private implicit lazy val agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory)).finishAndProvideFiles
-  private implicit lazy val timerService = new TimerService(idleTimeout = Some(1.s))
-  private implicit lazy val me = inbox()
-  private val terminated = Promise[Completed]()
-  private lazy val actor = actorSystem.actorOf(TaskRegister.props(terminated))
-  private lazy val aTask = new TestTask(AgentTaskId(1, 11))
-  private lazy val bTask = new TestTask(AgentTaskId(2, 22))
-  private lazy val cTask = new TestTask(AgentTaskId(3, 33))
-
-
   "GetOverview empty" in {
-    actor ! TaskRegister.Command.GetOverview
-    assert(me.receive() == TaskRegister.Response.GotOverview(TaskRegisterOverview(0, 0)))
+    assert((handle.overview await 99.s) == TaskRegisterOverview(0, 0))
   }
 
   "Add" in {
-    actor ! TaskRegister.Input.Add(aTask)
-    actor ! TaskRegister.Input.Add(bTask)
-    actor ! TaskRegister.Command.GetOverview
-    assert(me.receive() == TaskRegister.Response.GotOverview(TaskRegisterOverview(2, 2)))
+    handle.add(aTask)
+    handle.add(bTask)
+    assert((handle.overview await 99.s) == TaskRegisterOverview(2, 2))
   }
 
   "crashKillScript (1)" in {
@@ -71,32 +75,32 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
 
   "GetTaskOverview" in {
     for (task ← Array(aTask, bTask)) {
-      actor ! TaskRegister.Command.GetTaskOverview(task.id)
-      assert(me.receive() == TaskRegister.Response.GotTaskOverview(task.overview))
+      assert((handle.taskOverview(task.id) await 99.s) == task.overview)
     }
   }
 
   "SendSignalToAllProcesses" in {
-    actor ! TaskRegister.Command.SendSignalToAllProcesses(SIGTERM)
-    assert(me.receive() == TaskRegister.Response.OK)
+    handle.sendSignalToAllProcesses(SIGTERM) await 99.s
     assert(aTask.signalled == SIGTERM)
     assert(bTask.signalled == SIGTERM)
   }
 
   "Remove" in {
-    actor ! TaskRegister.Input.Remove(aTask.id)
-    actor ! TaskRegister.Command.GetOverview
-    assert(me.receive() == TaskRegister.Response.GotOverview(TaskRegisterOverview(currentTaskCount = 1, totalTaskCount = 2)))
-    actor ! TaskRegister.Command.GetTaskOverviews
-    assert(me.receive() == TaskRegister.Response.GotTaskOverviews(List(bTask.overview)))
+    handle.remove(aTask.id)
+  }
+
+  "GetOverview" in {
+    assert((handle.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 1, totalTaskCount = 2))
+  }
+
+  "GetTaskOverviews" in {
+    assert((handle.taskOverviews await 99.s) == List(bTask.overview))
   }
 
   "Add (2)" in {
-    actor ! TaskRegister.Input.Add(cTask)
-    actor ! TaskRegister.Command.GetOverview
-    assert(me.receive() == TaskRegister.Response.GotOverview(TaskRegisterOverview(currentTaskCount = 2, totalTaskCount = 3)))
-    actor ! TaskRegister.Command.GetTaskOverviews
-    assert(me.receive().asInstanceOf[TaskRegister.Response.GotTaskOverviews].overviews.toSet == Set(bTask.overview, cTask.overview))
+    handle.add(cTask)
+    assert((handle.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 2, totalTaskCount = 3))
+    assert((handle.taskOverviews await 99.s).toSet == Set(bTask.overview, cTask.overview))
   }
 
   "crashKillScript (2)" in {
@@ -105,14 +109,18 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "Terminate" in {
-    actor ! TaskRegister.Command.Terminate(sigterm = true, sigkillProcessesAfter = now + 300.ms)
-    retryUntil(1.s, 10.ms) {
+    actor ! TaskRegisterActor.Command.Terminate(sigterm = true, sigkillProcessesAfter = now + 300.ms)
+    assert(me.receive() == Completed)
+    if (!isWindows) retryUntil(1.s, 10.ms) {
       assert(bTask.signalled == SIGTERM)
       assert(cTask.signalled == SIGTERM)
     }
-    assert(me.receive() == TaskRegister.Response.OK)
-    assert(bTask.signalled == SIGKILL)
-    assert(cTask.signalled == SIGKILL)
+    retryUntil(99.s, 10.ms) {
+      assert(bTask.signalled == SIGKILL)
+      assert(cTask.signalled == SIGKILL)
+    }
+
+    assert(me.receive().asInstanceOf[Terminated].actor == actor)
   }
 
   private def crashKillScript = autoClosing(io.Source.fromFile(agentConfiguration.crashKillScriptFile)) { _.getLines.toList } .toSet

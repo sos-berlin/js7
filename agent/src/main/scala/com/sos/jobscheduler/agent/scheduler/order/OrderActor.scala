@@ -29,6 +29,7 @@ private final class OrderActor(orderId: OrderId, protected val journalActor: Act
 extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
+
   private var order: Order[Order.State] = null
   private val stdCharBlockSize = config.getInt("jobscheduler.agent.task.stdout-event-size")  // See also StdPipeCharBufferSize
   private val delay = config.as[Duration]("jobscheduler.agent.task.stdout-delay")
@@ -41,7 +42,7 @@ extends KeyedJournalingActor[OrderEvent] {
   protected def key = orderId
   protected def snapshot = Option(order)
 
-  override def postStop(): Unit = {
+  override def postStop() = {
     cancelStdoutStderrTimer()
     super.postStop()
   }

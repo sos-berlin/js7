@@ -3,6 +3,7 @@ package com.sos.jobscheduler.shared.event.journal
 import akka.actor._
 import akka.util.ByteString
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -34,9 +35,8 @@ extends Actor with Stash {
 
   import meta.{convertOutputStream, eventJsonFormat, snapshotJsonFormat}
 
-  override val supervisorStrategy = OneForOneStrategy(maxNrOfRetries = 0) {
-    case _ ⇒ SupervisorStrategy.Stop
-  }
+  private val logger = Logger.withPrefix[JsonJournalActor[_]](file.getFileName.toString)
+  override val supervisorStrategy = SupervisorStrategies.escalate
 
   private var jsonWriter: FileJsonWriter = null
   private var temporaryJsonWriter: FileJsonWriter = null
@@ -45,7 +45,6 @@ extends Actor with Stash {
   private val writtenBuffer = mutable.ArrayBuffer[Written]()       // TODO Avoid OutOfMemoryError and commit when written JSON becomes big
   private var dontSync = true
   private val statistics = new StatisticsCounter
-  private val logger = Logger.withPrefix[JsonJournalActor[_]](file.getFileName.toString)
 
   override def postStop() = {
     if (temporaryJsonWriter != null) {

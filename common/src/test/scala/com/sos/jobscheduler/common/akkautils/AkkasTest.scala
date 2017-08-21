@@ -1,8 +1,10 @@
 package com.sos.jobscheduler.common.akkautils
 
-import akka.actor.{ActorPath, ActorSystem}
+import akka.actor.{Actor, ActorPath, ActorSystem, Props}
 import akka.util.{ByteString, Timeout}
 import com.sos.jobscheduler.common.akkautils.Akkas._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.typesafe.config.ConfigFactory
 import java.util.concurrent.TimeUnit
 import org.scalatest.FreeSpec
@@ -71,5 +73,17 @@ final class AkkasTest extends FreeSpec {
       assert(ActorPath.isValidPathElement(actorName))
       assert(decodeActorName(actorName) == string)
     }
+  }
+
+  "SupervisorStrategy" in {
+    val actorSystem = ActorSystem("AkkasTest")
+    try {
+      actorSystem.actorOf(Props { new Actor {
+        def receive = {
+          case body: (() ⇒ Unit) ⇒ body()
+        }
+      }})
+    }
+    finally actorSystem.terminate() await 99.s
   }
 }

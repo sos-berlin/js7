@@ -4,8 +4,9 @@ import akka.actor.{Actor, ActorRef, Stash, Terminated}
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeper._
-import com.sos.jobscheduler.common.akkautils.Akkas.StoppingStrategies
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
+import com.sos.jobscheduler.agent.task.TaskRegister
+import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
@@ -17,10 +18,11 @@ import scala.concurrent.ExecutionContext
 /**
   * @author Joacim Zschimmer
   */
-final class JobKeeper(jobConfigurationDirectory: Path, newTaskRunner: TaskRunner.Factory)(implicit ts: TimerService, ec: ExecutionContext)
+final class JobKeeper(jobConfigurationDirectory: Path, newTaskRunner: TaskRunner.Factory, taskRegister: TaskRegister, timerService: TimerService)
+  (implicit ec: ExecutionContext)
 extends Actor with Stash {
 
-  override val supervisorStrategy = StoppingStrategies.stopping(logger)
+  override val supervisorStrategy = SupervisorStrategies.escalate
   private val startedJobActors = mutable.Set[ActorRef]()
   private var terminating = false
 
@@ -31,7 +33,7 @@ extends Actor with Stash {
           val pathToActor = mutable.Map[JobPath, ActorRef]()
           forEachTypedFile(jobConfigurationDirectory, Set(JobPath)) {
             case (file, jobPath: JobPath) ⇒
-              val a = context.watch(JobRunner.actorOf(jobPath, newTaskRunner))
+              val a = context.watch(JobRunner.actorOf(jobPath, registeringNewTaskRunner, timerService))
               pathToActor += jobPath → a
               a ! JobRunner.Command.StartWithConfigurationFile(file)
           }
@@ -42,6 +44,14 @@ extends Actor with Stash {
           stash()
       }
     }
+
+  private val registeringNewTaskRunner = new TaskRunner.Factory {
+    def apply(jobConfiguration: JobConfiguration) = {
+      val taskRunner = newTaskRunner(jobConfiguration)
+      taskRegister.add(taskRunner.asBaseAgentTask)  // TaskRegisterActor removes task automatically
+      taskRunner
+    }
+  }
 
   private def starting(pathToActor: Map[JobPath, ActorRef], commander: ActorRef): Unit = {
     val expectedActors = mutable.Set[ActorRef]() ++ pathToActor.values

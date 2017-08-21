@@ -1,19 +1,20 @@
 package com.sos.jobscheduler.agent.main
 
-import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closers.{EmptyAutoCloseable, withCloser}
-import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.taskserver.dotnet.DotnetEnvironment
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NonFatal
 
 /**
@@ -27,7 +28,8 @@ object AgentMain {
   private val ShutdownTimeout = OnJavaShutdownSigkillProcessesAfter + 2.s
 
   def main(args: Array[String]): Unit = {
-    val (conf, environment) = tryProvideDotnet(AgentConfiguration(args))
+    val agentConfiguration = AgentConfiguration(args).finishAndProvideFiles
+    val (conf, environment) = tryProvideDotnet(agentConfiguration)
     try autoClosing(environment) { _ ⇒
       run(conf)
     }
@@ -48,13 +50,16 @@ object AgentMain {
 
   def run(conf: AgentConfiguration): Unit =
     withCloser { implicit closer ⇒
-      val agent = Agent(conf).closeWithCloser
-      JavaShutdownHook.add("AgentMain") {
-        agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(OnJavaShutdownSigkillProcessesAfter)))
-        awaitResult(agent.terminated, ShutdownTimeout)
-        closer.close()
-        Log4j.shutdown()
-      }.closeWithCloser
-      agent.run()
+      for (agent ← RunningAgent(conf)) {
+        agent.closeWithCloser
+        JavaShutdownHook.add("AgentMain") {
+          logger.info("Terminating Agent due to Java shutdown")
+          agent.commandHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(OnJavaShutdownSigkillProcessesAfter)))
+          agent.terminated await ShutdownTimeout
+          agent.close()
+          Log4j.shutdown()
+        }.closeWithCloser
+        agent.terminated.awaitInfinite
+      }
     }
 }

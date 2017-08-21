@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.fileordersource
 
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAutoCloseable, _}
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.touchAndDeleteWithCloser

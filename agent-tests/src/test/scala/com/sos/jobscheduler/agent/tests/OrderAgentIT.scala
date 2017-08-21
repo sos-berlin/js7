@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.tests
 
-import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
@@ -8,7 +8,6 @@ import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider.provideAgent2Directory
 import com.sos.jobscheduler.agent.tests.OrderAgentIT._
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -24,6 +23,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderReady
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer
@@ -36,17 +36,9 @@ final class OrderAgentIT extends FreeSpec {
       (jobDir / "a.job.xml").xml = AJobXml
       (jobDir / "b.job.xml").xml = BJobXml
       val agentConf = AgentConfiguration.forTest(Some(directory))
-        //config = ConfigFactory.parseMap(Map(
-            //"akka.persistence.journal.plugin" → "dummy-journal",
-            //"dummy-journal.class" → classOf[org.dmonix.akka.persistence.JournalPlugin].getName,
-            //"dummy-journal.plugin-dispatcher" → "akka.actor.default-dispatcher")))
-            //"akka.persistence.journal.plugin" → "akka.persistence.journal.leveldb",
-            //"akka.persistence.journal.leveldb.dir" → s"$persistenceDir/persistence",
-            //"akka.persistence.snapshot-store.plugin" → "akka.persistence.snapshot-store.local",
-            //"akka.persistence.snapshot-store.local.dir" → s"$persistenceDir/snapshots")))
-      autoClosing(new Agent(agentConf)) { agent ⇒
-        agent.start() await 5.s
+      for (agent ← RunningAgent(agentConf)) {
         withCloser { implicit closer ⇒
+          agent.closeWithCloser
           implicit val actorSystem = newActorSystem(getClass.getSimpleName) withCloser { _.terminate() await 99.s }
           val agentClient = AgentClient(agent.localUri.toString)
 
@@ -77,6 +69,7 @@ final class OrderAgentIT extends FreeSpec {
             variables = Map("x" → "X", "result" → "TEST-RESULT-BBB")))
 
           agentClient.executeCommand(DetachOrder(order.id)) await 99.s shouldEqual EmptyResponse
+          //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
         }
       }
     }

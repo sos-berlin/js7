@@ -12,7 +12,7 @@ import spray.json.DefaultJsonProtocol._
  */
 final case class TaskOverview(
   jobPath: JobPath,
-  id: AgentTaskId,
+  taskId: AgentTaskId,
   pid: Option[Pid] = None,
   startedAt: Instant)
 

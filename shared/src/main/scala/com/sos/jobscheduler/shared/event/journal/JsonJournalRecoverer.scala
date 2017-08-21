@@ -105,7 +105,7 @@ object JsonJournalRecoverer {
     (implicit actorRefFactory: ActorRefFactory)
   : Unit = {
     val actors = recoveredActors.keyToJournalingActor.values
-    val actorToKey = (recoveredActors.keyToJournalingActor map { case (k, a) ⇒ a → k })
+    val actorToKey = recoveredActors.keyToJournalingActor map { case (k, a) ⇒ a → k }
     actorRefFactory.actorOf(
       Props {
         new Actor {

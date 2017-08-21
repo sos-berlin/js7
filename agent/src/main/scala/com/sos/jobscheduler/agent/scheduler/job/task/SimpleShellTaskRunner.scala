@@ -2,8 +2,10 @@ package com.sos.jobscheduler.agent.scheduler.job.task
 
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.views.TaskOverview
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.task.SimpleShellTaskRunner._
+import com.sos.jobscheduler.agent.task.BaseAgentTask
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.utils.MapDiff
@@ -17,8 +19,9 @@ import com.sos.jobscheduler.taskserver.task.TaskArguments
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startPipedShellScript
 import com.sos.jobscheduler.taskserver.task.process.{ProcessConfiguration, RichProcess, StdChannels}
 import java.nio.file.Files.delete
+import java.time.Instant.now
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Success
 
 /**
@@ -31,6 +34,19 @@ final class SimpleShellTaskRunner(jobConfiguration: JobConfiguration,
   (implicit ec: ExecutionContext)
 extends TaskRunner {
 
+  val asBaseAgentTask = new BaseAgentTask {
+    def id = agentTaskId
+    def jobPath = jobConfiguration.path
+    def pidOption = richProcessOnce flatMap { _.pidOption }
+    def terminated = terminatedPromise.future
+    def overview = TaskOverview(jobPath, id, pidOption, startedAt)
+
+    def sendProcessSignal(signal: ProcessSignal) =
+      for (o ← richProcessOnce) o.sendProcessSignal(signal)
+  }
+
+  private val terminatedPromise = Promise[Completed]()
+  private val startedAt = now
   private val variablePrefix = TaskArguments.DefaultShellVariablePrefix
   private lazy val returnValuesProvider = new ShellReturnValuesProvider
   private val richProcessOnce = new SetOnce[RichProcess]
@@ -88,12 +104,12 @@ extends TaskRunner {
         script = jobConfiguration.script.string.trim,
         stdChannels)
     } andThen { case Success(richProcess) ⇒
+      terminatedPromise.completeWith(richProcess.terminated map { _ ⇒ Completed })
       richProcessOnce := richProcess
     }
   }
 
   def kill(signal: ProcessSignal): Unit = {
-    logger.trace(s"sendProcessSignal $signal")
     for (p ← richProcessOnce) p.sendProcessSignal(signal)
   }
 }

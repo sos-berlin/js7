@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.tests
 import akka.actor.{Actor, ActorSystem, Props}
 import com.google.common.io.Closer
 import com.google.inject.Guice
-import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
@@ -90,18 +90,17 @@ object TestMasterAgent {
                  |""".stripMargin
             }</script>
           </job>
-        val agent = Agent(AgentConfiguration.forTest(
-          configAndData = Some(env.agentDir(agentPath))).copy(
-          journalSyncOnCommit = conf.syncAgent))
-          .closeWithCloser
-        env.xmlFile(agentPath).xml = <agent uri={agent.localUri.string}/>
-        agent.start()
+        val agent = RunningAgent(AgentConfiguration.forTest(
+            configAndData = Some(env.agentDir(agentPath))).copy(
+            journalSyncOnCommit = conf.syncAgent))
+          .map { _.closeWithCloser } await 99.s
+        env.xmlFile(agentPath).xml = <agent uri={agent.localUri.toString}/>
         agent
       }
       JavaShutdownHook.add("TestMasterAgent") {
         print('\n')
         (for (agent ← agents) yield {
-          agent.executeCommand(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.s)))
+          agent.commandHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.s)))
           val r = agent.terminated
           agent.close()
           r

@@ -100,6 +100,7 @@ final class AgentConfigurationTest extends FreeSpec {
       assert(myConf.killScript == Some(ProcessKillScript(expectedFile)))
       delete(expectedFile)
       delete(data / "logs")
+      delete(data / "state")
       delete(data / "tmp")
       delete(data)
     }
@@ -116,16 +117,18 @@ final class AgentConfigurationTest extends FreeSpec {
       val myConf = conf(List(s"-data-directory=$data", "-kill-script=")).finishAndProvideFiles
       assert(myConf.killScript == None)
       delete(data / "logs")
+      delete(data / "state")
       delete(data / "tmp")
       delete(data)
     }
   }
 
-  "-kill-script=FILE" - {
+  "-kill-script=FILE" in {
     val data = createTempDirectory("AgentConfigurationTest-")
     val myConf = conf(List(s"-data-directory=$data", "-kill-script=/my/kill/script")).finishAndProvideFiles
     assert(myConf.killScript == Some(ProcessKillScript(Paths.get("/my/kill/script").toAbsolutePath)))
     delete(data / "logs")
+    delete(data / "state")
     delete(data / "tmp")
     delete(data)
   }

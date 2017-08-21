@@ -3,7 +3,7 @@ package com.sos.jobscheduler.tests
 import akka.actor.ActorSystem
 import com.google.common.io.Closer
 import com.google.inject.Guice
-import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentEvent}
 import com.sos.jobscheduler.base.utils.MapDiff
@@ -128,12 +128,8 @@ final class RecoveryIT extends FreeSpec {
     }
   }
 
-  private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[Agent] ⇒ Unit): Unit = {
-    multipleAutoClosing(for (o ← confs) yield Agent(o)) { agents ⇒
-      (for (a ← agents) yield a.start()) await 10.s
-      body(agents)
-    }
-  }
+  private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[RunningAgent] ⇒ Unit): Unit =
+    multipleAutoClosing(confs map { o ⇒ RunningAgent(o) } await 10.s)(body)
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
     import AgentActor.MyJournalMeta.eventJsonFormat

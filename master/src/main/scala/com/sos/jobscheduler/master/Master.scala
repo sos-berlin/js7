@@ -6,6 +6,7 @@ import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -24,7 +25,8 @@ import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.Files.{createDirectory, exists}
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Success
 import spray.http.Uri
 
 /**
@@ -52,15 +54,14 @@ extends OrderClient {
     case _ ⇒
   }
 
-  private val actorStoppedPromise = Promise[Completed]()
-  private[master] val orderKeeper = actorSystem.actorOf(
-    Props { new MasterOrderKeeper(configuration, scheduledOrderGeneratorKeeper, actorStoppedPromise)(timerService, eventIdGenerator, eventCollector, keyedEventBus) },
-    "MasterOrderKeeper")
+  private[master] val (orderKeeper, actorStopped) = CatchingActor.actorOf[Completed](
+    _ ⇒ Props { new MasterOrderKeeper(configuration, scheduledOrderGeneratorKeeper)(timerService, eventIdGenerator, eventCollector, keyedEventBus) },
+    onStopped = _ ⇒ Success(Completed))
 
   def start(): Future[Completed] = {
     logger.info(s"Master ${BuildInfo.buildVersion} config=${configuration.configDirectoryOption getOrElse ""} data=${configuration.dataDirectory}")
     closer.registerAutoCloseable(webServer)
-    (webServer.start(): Future[Unit]) map { _ ⇒ Completed }
+    (webServer.start(): Future[Completed]) map { _ ⇒ Completed }
   }
 
   def executeCommand(command: MasterCommand): Future[command.MyResponse] =
@@ -79,7 +80,7 @@ extends OrderClient {
     webServer.localUri
 
   def terminated: Future[Completed] =
-    actorStoppedPromise.future
+    actorStopped
 }
 
 object Master {

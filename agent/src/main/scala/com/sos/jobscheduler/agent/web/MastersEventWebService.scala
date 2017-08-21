@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.scheduler.OrderHandler
+import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonFormat
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
@@ -19,7 +19,7 @@ import spray.routing.Directives._
 trait MastersEventWebService extends AgentWebService {
 
   protected implicit def executionContext: ExecutionContext
-  protected def orderHandler: OrderHandler
+  protected def agentHandle: AgentHandle
   implicit protected def akkaAskTimeout: Timeout
 
   routeBuilder.addApiRoute { user ⇒
@@ -29,7 +29,7 @@ trait MastersEventWebService extends AgentWebService {
           eventRequest[OrderEvent](defaultReturnType = Some("OrderEvent")).apply {
             case request: EventRequest[OrderEvent] ⇒
               complete {
-                for (events ← orderHandler.events(user.id, request)) yield
+                for (events ← agentHandle.fetchEvents(user.id, request)) yield
                   events
               }
             case _: ReverseEventRequest[OrderEvent] ⇒

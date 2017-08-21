@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import akka.actor.{Actor, ActorRef, PoisonPill, Props}
-import akka.pattern.ask
+import akka.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
+import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.AgentTaskId
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobRunner, JobScript}
@@ -13,6 +15,7 @@ import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.MapDiff
+import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -48,13 +51,8 @@ import scala.concurrent.duration.DurationInt
 final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private lazy val directoryProvider = new AgentDirectoryProvider {}
-  private lazy val agentConfiguration = AgentConfiguration.forTest(Some(directoryProvider.agentDirectory))
-  private lazy val actorSystem = Akkas.newActorSystem("OrderActorTest")
-
-  override def beforeAll() = {
-    super.beforeAll()
-    directoryProvider.provideAgent2Directories()
-  }
+  private lazy val agentConfiguration = AgentConfiguration.forTest(Some(directoryProvider.agentDirectory)).finishAndProvideFiles
+  private lazy val actorSystem = newActorSystem("OrderActorTest")
 
   override def afterAll() = {
     close()
@@ -91,9 +89,9 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
   }
 
   private def runTestActor(jobConfiguration: JobConfiguration): (ActorRef, Result) = {
-    val terminatedPromise = Promise[Result]()
-    val testActor = actorSystem.actorOf(Props { new TestActor(directoryProvider.agentDirectory, jobConfiguration, terminatedPromise, agentConfiguration.config) }, "TestActor")
-    val result: Result = terminatedPromise.future await 99.s
+    def props(promise: Promise[Result]) = Props { new TestActor(directoryProvider.agentDirectory, jobConfiguration, promise, agentConfiguration.config) }
+    val (testActor, terminated) = CatchingActor.actorOf(props, "TestActor")(actorSystem)
+    val result: Result = terminated await 99.s
     (testActor, result)
   }
 }
@@ -138,54 +136,72 @@ private object OrderActorTest {
 
   private final class TestActor(dir: Path, jobConfiguration: JobConfiguration, terminatedPromise: Promise[Result], config: Config)
   extends Actor {
+    import context.{actorOf, become}
+    override val supervisorStrategy = SupervisorStrategies.escalate
     private implicit val timerService = TimerService(idleTimeout = Some(1.s))
     private val journalFile = dir / "data" / "state" / "journal"
     private val keyedEventBus = new StampedKeyedEventBus
     private val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
       new AgentTaskId.Generator,
-      new StandardRichProcessStartSynchronizer()(context),
+      new StandardRichProcessStartSynchronizer()(context.system),
       AgentConfiguration.forTest(configAndData = Some(dir)))
 
-    private val journalActor = context.actorOf(
+    private val journalActor = actorOf(
       Props {
         new JsonJournalActor[OrderEvent](TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, keyedEventBus)
       },
       "Journal")
-    private val jobActor = JobRunner.actorOf(TestJobPath, taskRunnerFactory)
-    private val orderActor = context.actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor, config)}, TestOrder.id.string)
+    private val jobActor = context.watch(JobRunner.actorOf(TestJobPath, taskRunnerFactory, timerService))
+    private val orderActor = actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor, config)}, s"Order-${TestOrder.id.string}")
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
     private val events = mutable.Buffer[OrderEvent]()
     private val stdoutStderr = (for (t ← StdoutStderrType.values) yield t → new StringBuilder).toMap
-    private var detached = false
+    private var jobActorTerminated = false
 
     keyedEventBus.subscribe(self, classOf[OrderEvent])
-    (journalActor ? JsonJournalActor.Input.StartWithoutRecovery).mapTo[JsonJournalActor.Output.Ready.type] await 99.s
-    (jobActor ? JobRunner.Command.StartWithConfiguration(jobConfiguration)).mapTo[JobRunner.Response.Ready.type] await 99.s
-    jobActor ! JobRunner.Input.OrderAvailable
-
-    override def postRestart(t: Throwable) = terminatedPromise.failure(t)
+    (journalActor ? JsonJournalActor.Input.StartWithoutRecovery) pipeTo self
 
     def receive = {
+      case JsonJournalActor.Output.Ready ⇒
+        become(journalReady)
+        (jobActor ? JobRunner.Command.StartWithConfiguration(jobConfiguration)) pipeTo self
+    }
+
+    private def journalReady: Receive = {
+      case JobRunner.Response.Ready ⇒
+        become(jobRunnerReady)
+        jobActor ! JobRunner.Input.OrderAvailable
+    }
+
+    private def jobRunnerReady: Receive = {
       case JobRunner.Output.ReadyForOrder ⇒  // JobRunner has sent this to its parent (that's me) in response to OrderAvailable
         orderActor ! OrderActor.Command.Attach(TestOrder)
-        context.become(attaching)
+        become(attaching)
     }
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed ⇒
         orderActor ! OrderActor.Input.StartStep(TestJobNode, jobActor = jobActor)
-        context.become(ready)
+        become(ready)
     }
 
-    private def ready: Receive = receiveOrderEvent
+    private def ready: Receive = receiveOrderEvent orElse {
+      case JobRunner.Output.ReadyForOrder ⇒  // Ready for next order
+    }
 
     private def detaching: Receive = receiveOrderEvent orElse {
       case Completed ⇒
-        detached = true
-        checkTermination()
+        jobActor ! AgentCommand.Terminate(sigkillProcessesAfter = Some(0.s))
+        become(terminatingJobActor)
 
       case JobRunner.Output.ReadyForOrder ⇒  // Ready for next order
+    }
+
+    private def terminatingJobActor: Receive = receiveOrderEvent orElse {
+      case Terminated(`jobActor`) ⇒
+        jobActorTerminated = true
+        checkTermination()
     }
 
     private def receiveOrderEvent: Receive = {
@@ -193,7 +209,7 @@ private object OrderActorTest {
         orderChangeds += o
         checkTermination()
 
-      case Stamped(_, KeyedEvent(TestOrder.id, event: OrderEvent)) ⇒  // Duplicate to OrderChangsed, in unknown order
+      case Stamped(_, KeyedEvent(TestOrder.id, event: OrderEvent)) ⇒  // Duplicate to OrderChanged, in unknown order
         event match {
           case OrderStdWritten(t, chunk) ⇒
             assert(events.last == OrderStepStarted)
@@ -202,7 +218,7 @@ private object OrderActorTest {
           case _: OrderStepEnded ⇒
             events += event
             orderActor ! OrderActor.Command.Detach
-            context.become(detaching)
+            become(detaching)
 
           case OrderDetached ⇒
             events += event
@@ -214,7 +230,7 @@ private object OrderActorTest {
       }
 
     private def checkTermination(): Unit = {
-      if (detached && events.lastOption == Some(OrderDetached) && (orderChangeds.lastOption map { _.event }) ==  Some(OrderDetached)) {
+      if (jobActorTerminated && events.lastOption.contains(OrderDetached) && (orderChangeds.lastOption map { _.event } contains OrderDetached)) {
         assert(events == (orderChangeds map { _.event }))
         terminatedPromise.success(Result(events.toVector, stdoutStderr mapValues { _.toString }))
         context.stop(self)

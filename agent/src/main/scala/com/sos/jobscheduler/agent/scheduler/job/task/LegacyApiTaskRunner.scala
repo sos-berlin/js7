@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.job.task
 import akka.util.ByteString
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.task.LegacyApiTaskRunner._
-import com.sos.jobscheduler.agent.task.{AgentTask, AgentTaskFactory, StartNonApiTask, StartTask}
+import com.sos.jobscheduler.agent.task.{AgentTask, AgentTaskFactory, StartNonApiTask}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
@@ -25,6 +25,8 @@ import scala.concurrent.{ExecutionContext, Future}
 final class LegacyApiTaskRunner private[task](jobConfiguration: JobConfiguration, newTask: AgentTaskFactory)
   (implicit executionContext: ExecutionContext)
 extends TaskRunner {
+
+  def asBaseAgentTask = taskOnce()
 
   private val taskOnce = new SetOnce[AgentTask]
   private val moduleInstanceRunnerOnce = new SetOnce[ModuleInstanceRunner]

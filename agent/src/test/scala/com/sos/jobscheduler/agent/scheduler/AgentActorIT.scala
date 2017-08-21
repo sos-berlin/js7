@@ -42,7 +42,7 @@ final class AgentActorIT extends FreeSpec {
           </job>
         withCloser { implicit closer ⇒
           val lastEventId = eventCollector.lastEventId
-          (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Started.type] await 99.s
+          (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
           executeCommand(RegisterAsMaster) await 99.s
           executeCommand(AttachJobnet(AJobnet)) await 99.s
           val stopwatch = new Stopwatch
@@ -60,7 +60,6 @@ final class AgentActorIT extends FreeSpec {
           (for (orderId ← orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
         }
         executeCommand(AgentCommand.Terminate()) await 99.s
-        provider.terminated await 99.s
       }
     }
   }

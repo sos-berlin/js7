@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.order.agent
 
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -40,7 +41,7 @@ extends AutoCloseable {
           fetchEvents(EventRequest.singleClass(after = after, EventTimeout))
         } onComplete {
           case Failure(t) ⇒
-            promise.failure(t)
+            promise.failure(t.appendCurrentStackTrace)
           case Success(EventSeq.NonEmpty(stampeds)) ⇒
             for (stamped ← stampeds if !closed) {
               count += 1

@@ -4,7 +4,7 @@ import akka.util.Timeout
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
 import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
-import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AbortImmediately, Terminate}
@@ -12,6 +12,7 @@ import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.agent.AgentAddress
 import java.time.Duration
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import javax.inject.Singleton
@@ -23,19 +24,15 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientCommandMarshallingTest extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with AgentTest {
-
-  override def afterAll(): Unit = {
-    onClose { super.afterAll() }
-    close()
-  }
+final class AgentClientCommandMarshallingTest
+extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with AgentTest {
 
   override protected def extraAgentModule = new AbstractModule {
     def configure() = {}
 
     @Provides @Singleton
-    def commandExecutor(): CommandExecutor = new CommandExecutor {
-      def executeCommand(command: AgentCommand, meta: CommandMeta): Future[command.Response] =
+    def commandHandler(): CommandHandler = new CommandHandler {
+      def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] =
         Future {
           (command match {
             case ExpectedTerminate ⇒ EmptyResponse
@@ -44,11 +41,13 @@ final class AgentClientCommandMarshallingTest extends FreeSpec with BeforeAndAft
           })
           .asInstanceOf[command.Response]
         }
-      }
-  }
 
+      def overview = throw new NotImplementedError
+      def detailed = throw new NotImplementedError
+    }
+  }
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
-  private lazy val client = SimpleAgentClient(agentUri = agent.localUri).closeWithCloser
+  private lazy val client = SimpleAgentClient(agentUri = AgentAddress(agent.localUri.toString)).closeWithCloser
 
   "commandDurationToRequestTimeout" in {
     val upperBound = 30 * 24.h  // The upper bound depends on Akka tick length (Int.MaxValue ticks, a tick can be as short as 1ms)

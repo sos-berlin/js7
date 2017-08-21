@@ -15,7 +15,8 @@ import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.jobscheduler.common.akkautils.Akkas.{StoppingStrategies, encodeAsActorName}
+import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
+import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -29,7 +30,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderStepEnded
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor, RecoveredJournalingActors}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Duration
@@ -54,7 +55,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
   import context.dispatcher
 
-  override val supervisorStrategy = StoppingStrategies.stopping(logger)
+  override val supervisorStrategy = SupervisorStrategies.escalate
 
   protected val journalActor = context.actorOf(
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },

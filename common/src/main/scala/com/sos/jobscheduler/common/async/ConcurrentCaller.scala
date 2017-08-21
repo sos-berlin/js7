@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.async
 
+import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import java.time.Duration
 import scala.concurrent.{Future, Promise, blocking}
 
@@ -38,7 +39,7 @@ final class ConcurrentCaller(pauses: TraversableOnce[Duration], function: () ⇒
         }
         function()
       }
-      catch { case t: Throwable ⇒ terminatedPromise.failure(t) }
+      catch { case t: Throwable ⇒ terminatedPromise.failure(t.appendCurrentStackTrace) }
       finally terminatedPromise.trySuccess(())
     }
   }

@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.sprayutils.JsObjectMarshallers._
 import com.sos.jobscheduler.data.system.JavaInformation
 import java.time.Instant
 import org.scalatest.FreeSpec
+import scala.concurrent.Future
 import spray.http.HttpHeaders.Accept
 import spray.http.MediaTypes.{`application/json`, `text/plain`}
 import spray.json._
@@ -16,22 +17,19 @@ import spray.json._
  */
 final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWebService {
 
-  protected def agentOverview = AgentOverview(
+  protected def executionContext = actorSystem.dispatcher
+  protected def agentOverview = Future.successful(AgentOverview(
     startedAt = Instant.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
-    currentTaskCount = 777,
-    totalTaskCount = 999,
     isTerminating = false,
     system = SystemInformation(hostname = "TEST-HOSTNAME"),
     java = JavaInformation(
       systemProperties = Map("test" → "TEST"),
-      JavaInformation.Memory(maximum = 3, total = 2, free = 1)))
+      JavaInformation.Memory(maximum = 3, total = 2, free = 1))))
 
   private def expectedOverviewJsObject = """{
     "startedAt": "2015-06-01T12:00:00Z",
     "version": "TEST-VERSION",
-    "currentTaskCount": 777,
-    "totalTaskCount": 999,
     "isTerminating": false,
     "system": {
       "hostname": "TEST-HOSTNAME",

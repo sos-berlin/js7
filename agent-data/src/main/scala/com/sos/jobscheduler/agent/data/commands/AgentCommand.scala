@@ -50,14 +50,16 @@ object AgentCommand {
     implicit val MyJsonFormat = jsonFormat0(() ⇒ AbortImmediately)
   }
 
-  case object Login extends AgentCommand {
+  sealed trait SessionCommand extends AgentCommand
+
+  case object Login extends SessionCommand {
     type Response = LoginResponse
 
     val SerialTypeName = "Login"
     implicit val jsonFormat = jsonFormat0(() ⇒ Login)
   }
 
-  case object Logout extends AgentCommand {
+  case object Logout extends SessionCommand {
     type Response = EmptyResponse.type
 
     val SerialTypeName = "Logout"

@@ -28,6 +28,7 @@ object Dependencies {
   val scalactic           = "org.scalactic" %% "scalactic" % "3.0.1"
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0" :: slf4j :: Nil
 
+  val tagging             = "com.softwaremill.common" %% "tagging" % "2.2.0"
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
   val guice               = "com.google.inject" % "guice" % "3.0" :: javaxInject :: Nil
 

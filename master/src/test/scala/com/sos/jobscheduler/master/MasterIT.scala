@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master
 import akka.actor.{Actor, ActorSystem, Props}
 import com.google.common.io.Closer
 import com.google.inject.{Guice, Injector}
-import com.sos.jobscheduler.agent.Agent
+import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
@@ -16,10 +16,12 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.jobscheduler.common.sprayutils.WebServerBinding
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
+import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath, NodeId, NodeKey}
@@ -31,6 +33,7 @@ import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.order.{MasterOrderKeeper, OrderGeneratorPath}
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
+import java.net.InetSocketAddress
 import java.time.Instant
 import java.time.Instant.now
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -48,7 +51,7 @@ final class MasterIT extends FreeSpec {
   "test" in {
     autoClosing(new TestEnvironment(AgentPaths, temporaryDirectory / "MasterIT")) { env ⇒
       withCloser { implicit closer ⇒
-        val agents = AgentPaths map { agentPath ⇒
+        val agentConfigs = AgentPaths map { agentPath ⇒
           env.agentXmlFile(agentPath, JobPath("/test")).xml =
             <job>
               <params>
@@ -56,11 +59,10 @@ final class MasterIT extends FreeSpec {
               </params>
               <script language="shell">{TestScript}</script>
             </job>
-          Agent(AgentConfiguration.forTest(Some(env.agentDir(agentPath))))
-          .closeWithCloser
+          AgentConfiguration.forTest(Some(env.agentDir(agentPath)))
         }
 
-        agents(0).start() await 10.s
+        val agent0 = RunningAgent(agentConfigs(0)) await 10.s
         env.xmlFile(JobnetPath("/test")).xml =
           <job_chain>
             <job_chain_node state="100" agent="test-agent-111" job="/test"/>
@@ -77,15 +79,15 @@ final class MasterIT extends FreeSpec {
             </run_time>
           </order>
         env.xmlFile(AgentPath("/test-agent-111")).xml =
-          <agent uri={agents(0).localUri.string}/>
+          <agent uri={agent0.localUri.toString}/>
+        val agent1Port = FreeTcpPortFinder.findRandomFreeTcpPort()
         env.xmlFile(AgentPath("/test-agent-222")).xml =
-          <agent uri={agents(1).localUri.string}/>
+          <agent uri={s"http://127.0.0.1:$agent1Port"}/>
 
         val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = env.masterDir)))
         injector.instance[Closer].closeWithCloser
         val lastEventId = injector.instance[EventCollector].lastEventId
         val actorSystem = injector.instance[ActorSystem]
-        val agentClients = for (a ← agents) yield AgentClient(a.localUri.string)(actorSystem)
         val eventGatherer = new TestEventGatherer(injector)
         val master = injector.instance[Master]
         master.start() await 99.s
@@ -96,10 +98,11 @@ final class MasterIT extends FreeSpec {
 
         sleep(3.s)
         master.orderKeeper ! MasterOrderKeeper.Input.SuspendDetaching
-        agents(1).start() await 10.s  // Start early to recover orders
+        val agent1 = RunningAgent(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
         master.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
 
         master.eventCollector.when[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
+        val agentClients = for (a ← List(agent0, agent1)) yield AgentClient(a.localUri.toString)(actorSystem)
         assert(agentClients(0).orders() await 99.s map { _.id } contains TestOrderId)
         master.orderKeeper ! MasterOrderKeeper.Input.ContinueDetaching
 

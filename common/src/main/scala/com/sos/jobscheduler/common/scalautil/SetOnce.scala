@@ -16,7 +16,7 @@ class SetOnce[A](name: String = "SetOnce") {
    *
    * @throws IllegalStateException
    */
-  def apply() = getOrElse { throw new IllegalStateException(s"$name has not been set") }
+  def apply() = getOrElse { throw new IllegalStateException(s"$name is not yet ready") }
 
   final override def toString = toStringOr("(not yet set)")
 

@@ -25,6 +25,8 @@ trait AgentDirectoryProvider extends HasCloser {
       deleteDirectoryRecursively(agentDirectory)
       throw t
     }
+    createDirectory(agentDirectory / "config" / "live")
+    createDirectory(agentDirectory / "data")
     agentDirectory
   }
   final lazy val configDirectory = agentDirectory / "config"
@@ -34,13 +36,6 @@ trait AgentDirectoryProvider extends HasCloser {
     (agentDirectory / KeystoreJksLocation).toURI.toURL,
     storePassword = Some(SecretString("jobscheduler")),
     keyPassword = Some(SecretString("jobscheduler")))
-
-  def provideAgent2Directories(): this.type = {
-    createDirectory(configDirectory / "live")
-    createDirectory(dataDirectory)
-    createDirectory(dataDirectory / "state")
-    this
-  }
 }
 
 object AgentDirectoryProvider {
@@ -53,7 +48,6 @@ object AgentDirectoryProvider {
 
   def provideAgent2Directory[A](body: Path ⇒ A): A =
     autoClosing(new AgentDirectoryProvider {}) { provider ⇒
-      provider.provideAgent2Directories()
       body(provider.agentDirectory)
     }
 }

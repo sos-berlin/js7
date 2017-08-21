@@ -1,37 +1,24 @@
 package com.sos.jobscheduler.agent.tests
 
-import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.client.{AgentClient, SimpleAgentClient}
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Login, Logout, NoOperation}
+import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentAddress
 import com.sos.jobscheduler.data.session.SessionToken
+import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import spray.http.StatusCodes.{Forbidden, Unauthorized}
 import spray.httpx.UnsuccessfulResponseException
 
 /**
   * @author Joacim Zschimmer
   */
-final class LoginIT extends FreeSpec with BeforeAndAfterAll {
-
-  private lazy val agent = Agent(AgentConfiguration.forTest())
-
-  override protected def beforeAll() = {
-    agent.start() await 5.s
-    super.beforeAll()
-  }
-
-  override protected def afterAll() = {
-    agent.close()
-    super.afterAll()
-  }
+final class LoginIT extends FreeSpec with AgentTest {
 
   "Login and Logout" in {
     withClient { client ⇒

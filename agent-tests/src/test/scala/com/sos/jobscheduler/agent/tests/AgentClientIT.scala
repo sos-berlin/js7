@@ -2,39 +2,30 @@ package com.sos.jobscheduler.agent.tests
 
 import akka.actor.ActorRefFactory
 import akka.util.Timeout
-import com.google.common.io.Closer
-import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
-import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
+import com.sos.jobscheduler.agent.configuration.Akkas
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.common.scalautil.Closers.implicits._
+import com.sos.jobscheduler.agent.test.AgentTest
+import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.soslicense.LicenseKeyString
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
+import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientIT extends FreeSpec with ScalaFutures with BeforeAndAfterAll {
+final class AgentClientIT extends FreeSpec with ScalaFutures with AgentTest {
 
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
-  private implicit val closer = Closer.create()
 
-  private lazy val agent = {
-    val conf = AgentConfiguration.forTest().copy(uriPathPrefix = "test")
-    Agent(conf).closeWithCloser
-  }
+  override lazy val agentConfiguration = newAgentConfiguration().copy(uriPathPrefix = "test")
   private implicit lazy val actorRefFactory: ActorRefFactory = Akkas.newActorSystem("AgentClientIT")(closer)
-  private lazy val client = AgentClient(
-    agentUri = agent.localUri.string,
-    licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))
-
-  override def beforeAll() = agent.start() await 10.s
+  private lazy val client = AgentClient(agentUri = agent.localUri.toString)
+    //licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))
 
   override def afterAll() = {
     closer.close()
@@ -46,6 +37,12 @@ final class AgentClientIT extends FreeSpec with ScalaFutures with BeforeAndAfter
     for (duration ← List[Duration](0.s, 1.s, upperBound)) {
       assert(commandDurationToRequestTimeout(duration) == Timeout((RequestTimeout + duration).toMillis, MILLISECONDS))
     }
+  }
+
+  "get /" in {
+    val overview = client.overview await  2.s
+    assert(!overview.isTerminating)
+    assert(overview.version == AgentStartInformation.VersionString)
   }
 
   //"get /task" in {

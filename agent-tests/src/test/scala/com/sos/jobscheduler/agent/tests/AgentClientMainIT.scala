@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.tests
 
 import com.sos.jobscheduler.agent.client.main.AgentClientMain
-import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
@@ -25,14 +25,17 @@ final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCl
 
   override protected def extraAgentModule = new ScalaAbstractModule {
     def configure() = {
-      bindInstance[CommandExecutor](new CommandExecutor {
-        def executeCommand(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
+      bindInstance[CommandHandler](new CommandHandler {
+        def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
           val response = command match {
             case ExpectedTerminate ⇒ EmptyResponse
             case _ ⇒ fail()
           }
           Future.successful(response.asInstanceOf[command.Response])
         }
+
+        def overview = throw new NotImplementedError
+        def detailed = throw new NotImplementedError
       })
     }
   }
@@ -40,20 +43,18 @@ final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCl
   "main" in {
     val output = mutable.Buffer[String]()
     val commandYaml = """{ $TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }"""
-    AgentClientMain.run(List(agent.localUri.string, commandYaml, "/"), o ⇒ output += o)
+    AgentClientMain.run(List(agent.localUri.toString, commandYaml, "/"), o ⇒ output += o)
     assert(output.size == 3)
     assert(output(0) == "{}")
     assert(output(1) == "---")
     assert(output(2) contains "startedAt: '2")
     assert(output(2) contains "isTerminating: false")
-    assert(output(2) contains "totalTaskCount: 0")
-    assert(output(2) contains "currentTaskCount: 0")
   }
 
   "main with Agent URI only checks wether Agent is responding (it is)" in {
     val output = mutable.Buffer[String]()
     assertResult(0) {
-      AgentClientMain.run(List(agent.localUri.string), o ⇒ output += o)
+      AgentClientMain.run(List(agent.localUri.toString), o ⇒ output += o)
     }
     assert(output == List("JobScheduler Agent is responding"))
   }

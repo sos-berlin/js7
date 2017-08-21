@@ -103,9 +103,11 @@ final case class AgentConfiguration(
 
   def withDotnetAdapterDirectory(directory: Option[Path]) = copy(dotnet = dotnet.copy(adapterDllDirectory = directory))
 
-  def liveDirectoryOption: Option[Path] = configDirectory map { _ / "live" }
+  def liveDirectory: Path =
+    configDirectory map { _ / "live" } getOrElse { throw new NoSuchElementException("Missing data directory") }
 
-  def stateDirectoryOption: Option[Path] = dataDirectory map { _ / "state" }
+  def stateDirectory: Path =
+    dataDirectory map { _ / "state" } getOrElse { throw new NoSuchElementException("Missing data directory")}
 
   def finishAndProvideFiles: AgentConfiguration =
     provideDataSubdirectories()
@@ -115,6 +117,9 @@ final case class AgentConfiguration(
     for (data ← dataDirectory) {
       if (logDirectory == defaultLogDirectory(data) && !exists(logDirectory)) {
         createDirectory(logDirectory)
+      }
+      if (!exists(stateDirectory)) {
+        createDirectory(stateDirectory)
       }
       if (!exists(temporaryDirectory)) {
         assert(temporaryDirectory == data / "tmp")
@@ -126,14 +131,14 @@ final case class AgentConfiguration(
 
   private def provideKillScript(): AgentConfiguration = {
     killScript match {
-      case Some(ProcessKillScript(DelayUntilFinishFile)) ⇒
+      case Some(DelayUntilFinishKillScript) ⇒
         val provider = new ProcessKillScriptProvider  //.closeWithCloser  After Agent termination, leave behind the kill script, in case of regular termination after error.
         copy(killScript = Some(provider.provideTo(temporaryDirectory)))
       case _ ⇒ this
     }
   }
 
-  def crashKillScriptEnabled = dataDirectory.isDefined   // Suppressed when using a standard temporary directory to allow concurrent runs (and tests)
+  def crashKillScriptEnabled = dataDirectory.isDefined   // Suppressed when using a escalate temporary directory to allow concurrent runs (and tests)
 
   def crashKillScriptFile: Path = temporaryDirectory / s"kill_tasks_after_crash$ShellFileExtension"
 
@@ -151,7 +156,7 @@ final case class AgentConfiguration(
 
 object AgentConfiguration {
   val InvalidAuthenticationDelay = 1.s
-  private val DelayUntilFinishFile = EmptyPath  // Marker for finish
+  private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   private[configuration] lazy val DefaultsConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
@@ -179,7 +184,7 @@ object AgentConfiguration {
       dotnet = DotnetConfiguration(classDllDirectory = c.optionAs("task.dotnet.class-directory")(asAbsolutePath)),
       rpcKeepaliveDuration = c.durationOption("task.rpc.keepalive.duration"),
       jobJavaOptions = c.stringSeq("task.java.options"),
-      killScript = Some(ProcessKillScript(DelayUntilFinishFile)),  // Changed below
+      killScript = Some(DelayUntilFinishKillScript),  // Changed later
       startupTimeout = c.getDuration("startup-timeout"),
       commandTimeout = c.getDuration("command-timeout"),
       akkaAskTimeout = c.getDuration("akka-ask-timeout").toFiniteDuration,

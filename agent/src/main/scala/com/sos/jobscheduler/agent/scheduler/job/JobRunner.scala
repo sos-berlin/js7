@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
-import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, Props, Stash}
+import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, DeadLetterSuppression, Props, Stash}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobRunner._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskRunner, TaskStepEnded, TaskStepFailed}
@@ -23,7 +23,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JobRunner private(jobPath: JobPath, newTaskRunner: TaskRunner.Factory)(implicit timerService: TimerService, ec: ExecutionContext)
+final class JobRunner private(jobPath: JobPath, newTaskRunner: TaskRunner.Factory, timerService: TimerService)(implicit ec: ExecutionContext)
 extends Actor with Stash {
 
   private val logger = Logger.withPrefix[JobRunner](jobPath.toString)
@@ -71,22 +71,23 @@ extends Actor with Stash {
     case Internal.TaskFinished(order, triedStepEnded) ⇒
       orderToTask -= order.id
       sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
-      handleActorStop()
+      handleStop()
       handleIfReadyForOrder()
 
     case AgentCommand.Terminate(sigtermProcesses, sigkillProcessesAfter) ⇒
+      logger.debug("Terminating")
       terminating = true
       if (sigtermProcesses) {
         killAll(SIGTERM)
       }
       sigkillProcessesAfter match {
-        case Some(duration) ⇒
+        case Some(duration) if taskCount > 0 ⇒
           timerService.delayedFuture(duration) {
-            self.forward(Internal.KillAll)
+            self ! Internal.KillAll
           }
-        case None ⇒
+        case _ ⇒
       }
-      handleActorStop()
+      handleStop()
 
     case Internal.KillAll ⇒
       killAll(SIGKILL)
@@ -116,9 +117,13 @@ extends Actor with Stash {
     }
   }
 
-  private def handleActorStop(): Unit = {
-    if (terminating && orderToTask.isEmpty) {
-      context.stop(self)
+  private def handleStop(): Unit = {
+    if (terminating) {
+      if (orderToTask.isEmpty) {
+        context.stop(self)
+      } else {
+        logger.debug(s"Still awaiting termination of ${orderToTask.size} tasks")
+      }
     }
   }
 
@@ -128,9 +133,9 @@ extends Actor with Stash {
 }
 
 object JobRunner {
-  def actorOf(jobPath: JobPath, newTaskRunner: TaskRunner.Factory)(implicit actorRefFactory: ActorRefFactory, ts: TimerService, ec: ExecutionContext): ActorRef =
+  def actorOf(jobPath: JobPath, newTaskRunner: TaskRunner.Factory, ts: TimerService)(implicit actorRefFactory: ActorRefFactory, ec: ExecutionContext): ActorRef =
     actorRefFactory.actorOf(
-      Props { new JobRunner(jobPath, newTaskRunner) },
+      Props { new JobRunner(jobPath, newTaskRunner, ts) },
       name = toActorName(jobPath))
 
   def toActorName(o: JobPath): String =
@@ -138,7 +143,6 @@ object JobRunner {
 
   def toJobPath(o: ActorPath): JobPath =
     JobPath("/" + decodeActorName(o.name))
-
 
   sealed trait Command
   object Command {
@@ -164,6 +168,6 @@ object JobRunner {
 
   private object Internal {
     final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[TaskStepEnded])
-    final case object KillAll
+    final case object KillAll extends DeadLetterSuppression
   }
 }

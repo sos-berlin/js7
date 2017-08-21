@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.Props
 import akka.pattern.ask
+import akka.util.Timeout
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
@@ -9,6 +10,7 @@ import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeperTest._
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
+import com.sos.jobscheduler.agent.task.{TaskRegister, TaskRegisterActor}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
@@ -30,6 +32,7 @@ final class JobKeeperTest extends FreeSpec {
     logger.info("START")
     TestAgentActorProvider.provide { provider ⇒
       import provider.agentDirectory
+      implicit val agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory))
       val jobDir = agentDirectory / "config" / "live"
       for (i ← (1 to N).par) (jobDir / s"test-$i.job.xml").contentString = TestJobXmlString
       logger.info(s"$N files created, ${TestJobXmlString.length} bytes each")
@@ -38,12 +41,14 @@ final class JobKeeperTest extends FreeSpec {
         import actorSystem.dispatcher
 
         val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest(Some(agentDirectory))))
-        implicit val newTaskRunner = injector.instance[TaskRunner.Factory]
+        implicit val timeout = Timeout(99.seconds)
         implicit val timerService = injector.instance[TimerService]
+        implicit val newTaskRunner = injector.instance[TaskRunner.Factory]
+        val taskRegister = new TaskRegister(actorSystem.actorOf(Props { new TaskRegisterActor(agentConfiguration, timerService)}))
 
         for (_ ← 1 to 5) {
           val stopwatch = new Stopwatch
-          val jobKeeper = actorSystem.actorOf(Props { new JobKeeper(jobDir, newTaskRunner) })
+          val jobKeeper = actorSystem.actorOf(Props { new JobKeeper(jobDir, newTaskRunner, taskRegister, timerService) })
           val JobKeeper.Output.Ready(jobs) = jobKeeper.ask(JobKeeper.Input.Start)(600.seconds).mapTo[JobKeeper.Output.Ready] await 600.s
           info(stopwatch.itemsPerSecondString(N, "jobs"))
           assert(jobs.size == N)

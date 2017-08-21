@@ -2,16 +2,17 @@ package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
 import com.google.inject.Guice
+import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
-import com.sos.jobscheduler.agent.views.AgentOverview
+import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
 import com.sos.jobscheduler.agent.web.AgentWebServerIT._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.sprayutils.WebServerBinding
@@ -50,15 +51,15 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   private lazy val List(httpPort, httpsPort) = findRandomFreeTcpPorts(2)
   private lazy val agentConfiguration = AgentConfiguration
     .forTest(Some(agentDirectory))
-    .copy(
-      http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
+    .copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
     .withHttpsInetSocketAddress(new InetSocketAddress("127.0.0.1", httpsPort))
-  private lazy val webServer = Guice.createInjector(new AgentModule(agentConfiguration)).instance[AgentWebServer]
+    .finishAndProvideFiles
+  private lazy val agent = RunningAgent(agentConfiguration) map { _.closeWithCloser } await 10.s
   private implicit lazy val actorSystem = {
     val config = ConfigFactory.parseMap(Map("spray.can.server.verbose-error-logging" → true))
-    ActorSystem("AgentWebServerIT", config) withCloser { _.shutdown() }
+    ActorSystem("AgentWebServerIT", config) withCloser { _.terminate() await 99.s }
   }
-  private lazy val httpsSetup = Some(Https.toHostConnectorSetup(ClientKeystoreRef, webServer.localHttpsUriOption.get))
+  private lazy val httpsSetup = Some(Https.toHostConnectorSetup(ClientKeystoreRef, agent.webServer.localHttpsUriOption.get))
 
   private def pipeline[A: FromResponseUnmarshaller](password: Option[String], setupOption: Option[HostConnectorSetup] = None): HttpRequest ⇒ Future[A] =
     (password map { o ⇒ addCredentials(BasicHttpCredentials("SHA512-USER", o)) } getOrElse identity[HttpRequest] _) ~>
@@ -75,11 +76,11 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "start" in {
-    webServer.start() await 10.s
+    agent
   }
 
   "HTTPS" - {
-    lazy val uri = s"${webServer.localHttpsUriOption.get}/$Api"
+    lazy val uri = s"${agent.webServer.localHttpsUriOption.get}/$Api"
 
     "Unauthorized request is rejected" - {
       "due to missing credentials" in {
@@ -106,7 +107,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 
       "is accepted" in {
         val overview = pipeline[AgentOverview](password, httpsSetup).apply(Get(uri)) await 10.s
-        assert(overview.totalTaskCount == 0)
+        assert(overview.version == AgentStartInformation.VersionString)
       }
 
       addPostTextPlainText(uri, password)
@@ -116,16 +117,16 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "HTTP" - {
-    lazy val uri = s"${webServer.localHttpUriOption.get}/$Api"
+    lazy val uri = s"${agent.webServer.localHttpUriOption.get}/$Api"
 
     "Without credentials" in {
       val overview = pipeline[AgentOverview](password = None).apply(Get(uri)) await 10.s
-      assert(overview.totalTaskCount == 0)
+      assert(overview.version == AgentStartInformation.VersionString)
     }
 
     "Credentials are ignored" in {
       val overview = pipeline[AgentOverview](Some("WRONG-PASSWORD")).apply(Get(uri)) await 10.s
-      assert(overview.totalTaskCount == 0)
+      assert(overview.version == AgentStartInformation.VersionString)
     }
 
     addPostTextPlainText(uri)
@@ -139,10 +140,10 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "close" in {
-    webServer.close()
+    agent.close()
   }
 
-  private def addPostTextPlainText(uri: Uri, password: Option[String] = None, setupOption: Option[HostConnectorSetup] = None): Unit =
+  private def addPostTextPlainText(uri: ⇒ Uri, password: Option[String] = None, setupOption: Option[HostConnectorSetup] = None): Unit =
     "POST plain/text is rejected due to CSRF" in {
       val response = intercept[UnsuccessfulResponseException] {
         pipeline[HttpResponse](password, setupOption).apply(Post(uri, "TEXT")) await 10.s
@@ -151,13 +152,13 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
       assert(response.as[String].right.get == "HTML form POST is forbidden")
     }
 
-  private def addThroughputMeasurementTests(uri: Uri, setupOption: Option[HostConnectorSetup] = None): Unit = {
+  private def addThroughputMeasurementTests(uri: ⇒ Uri, setupOption: Option[HostConnectorSetup] = None): Unit = {
     if (false) {
       addThroughputMeasurementTest[TimerServiceOverview](s"$uri/timer", setupOption)
     }
   }
 
-  private def addThroughputMeasurementTest[A: FromResponseUnmarshaller: ClassTag](uri: Uri, setupOption: Option[HostConnectorSetup] = None) {
+  private def addThroughputMeasurementTest[A: FromResponseUnmarshaller: ClassTag](uri: ⇒ Uri, setupOption: Option[HostConnectorSetup] = None) =
     s"Measure throughput of ${implicitClass[A].getSimpleName}" in {
       val get = Get(uri)
       val p = pipeline[A](Some("SHA512-PASSWORD"), setupOption)
@@ -166,10 +167,9 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
       val result: A = p(get) await 10.s
       logger.info(s"${m * n} $result")
       val stopwatch = new Stopwatch
-      (for (_ ← 1 to m) yield Future { for (i ← 1 to n) p(get) await 10.s }) await 60.s
+      (for (_ ← 1 to m) yield Future { for (_ ← 1 to n) p(get) await 10.s }) await 60.s
       logger.info(stopwatch.itemsPerSecondString(m * n, "requests"))
     }
-  }
 }
 
 private object AgentWebServerIT {

@@ -198,6 +198,7 @@ lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserve
       sprayTestkit % "test" ++
       intelliJAnnotations % "compile" ++
       scalactic ++
+      tagging ++
       guice ++
       mockito % "test" ++
       scalaTest % "test" ++

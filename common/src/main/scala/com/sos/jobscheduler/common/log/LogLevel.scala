@@ -38,7 +38,7 @@ object LogLevel {
         case Error ⇒ delegate.isErrorEnabled
       }
 
-    def log(level: LogLevel, message: ⇒ String): Unit = {
+    def log(level: LogLevel, message: ⇒ String): Unit =
       level match {
         case LogNone  ⇒
         case Trace ⇒ delegate.trace(message)
@@ -47,7 +47,16 @@ object LogLevel {
         case Warn  ⇒ delegate.warn(message)
         case Error ⇒ delegate.error(message)
       }
-    }
+
+    def log(level: LogLevel, message: ⇒ String, throwable: Throwable): Unit =
+      level match {
+        case LogNone  ⇒
+        case Trace ⇒ delegate.trace(message, throwable)
+        case Debug ⇒ delegate.debug(message, throwable)
+        case Info  ⇒ delegate.info(message, throwable)
+        case Warn  ⇒ delegate.warn(message, throwable)
+        case Error ⇒ delegate.error(message, throwable)
+      }
   }
 
   implicit class LevelScalaLogger(val delegate: ScalaLogger) extends AnyVal {
@@ -56,6 +65,12 @@ object LogLevel {
     def log(level: LogLevel, message: ⇒ String): Unit = {
       if (isEnabled(level)) {
         delegate.underlying.log(level, message)
+      }
+    }
+
+    def log(level: LogLevel, message: ⇒ String, throwable: Throwable): Unit = {
+      if (isEnabled(level)) {
+        delegate.underlying.log(level, message, throwable)
       }
     }
   }

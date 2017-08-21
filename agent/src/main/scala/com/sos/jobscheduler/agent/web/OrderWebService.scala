@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.web
 
+import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.scheduler.OrderHandler
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
@@ -16,7 +16,7 @@ import spray.routing.Directives._
   */
 trait OrderWebService extends AgentWebService {
 
-  protected def orderHandler: OrderHandler
+  protected def commandHandler: CommandHandler
   protected def eventIdGenerator: EventIdGenerator
   protected implicit def executionContext: ExecutionContext
 
@@ -25,18 +25,18 @@ trait OrderWebService extends AgentWebService {
       path(Segment) { orderIdString ⇒
         val orderId = OrderId(orderIdString)
         complete {
-          orderHandler.execute(user.id, AgentCommand.GetOrder(orderId)) map { _.order }
+          commandHandler.typedExecute(AgentCommand.GetOrder(orderId), CommandMeta(user)) map { _.order }
         }
       } ~
       pathSingleSlash {
         parameter("return" ? "Order") {
           case "OrderId" ⇒
             complete {
-              orderHandler.execute(user.id, AgentCommand.GetOrderIds) map { _.orders }
+              commandHandler.typedExecute(AgentCommand.GetOrderIds, CommandMeta(user)) map { _.orders }
             }
           case "Order" ⇒
             complete {
-              orderHandler.execute(user.id, AgentCommand.GetOrders) map { _.order }
+              commandHandler.typedExecute(AgentCommand.GetOrders, CommandMeta(user)) map { _.order }
             }
         }
       }

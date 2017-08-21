@@ -11,6 +11,7 @@ import com.sos.jobscheduler.common.sprayutils.SprayUtils.{addHeader, passIf}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.typesafe.config.{Config, ConfigFactory}
 import java.time.Duration
+import scala.collection.JavaConversions._
 import spray.http.ContentTypes.`text/plain(UTF-8)`
 import spray.http.HttpHeaders.`Remote-Address`
 import spray.http.StatusCodes.{BadRequest, InternalServerError}
@@ -18,7 +19,6 @@ import spray.http.{HttpEntity, HttpHeader, HttpRequest, HttpResponse, RemoteAddr
 import spray.routing.Directives._
 import spray.routing._
 import spray.routing.directives.LoggingMagnet
-import scala.collection.JavaConversions._
 
 /**
   * @author Joacim Zschimmer
@@ -45,6 +45,10 @@ object WebLogDirectives {
           webLogger.debug(toLogMessage(request, e), e)
           complete((BadRequest, e.publicMessage))
         }
+
+      case e: HttpStatusCodeException ⇒
+        complete((e.statusCode, e.message))
+
       case e ⇒
         requestInstance { request ⇒
           webLogger.debug(toLogMessage(request, e), e)

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.tests
 
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.TextAgentClient
-import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
+import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -32,9 +32,12 @@ import spray.routing.authentication._
  */
 final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCloser with AgentTest with AgentDirectoryProvider {
 
-  override protected def agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory)).copy(
-    http = None)
-    .withHttpsInetSocketAddress(super.agentConfiguration.http.get.address)
+  override protected lazy val agentConfiguration = {
+    val c = newAgentConfiguration()
+    c.copy(
+      http = None)
+      .withHttpsInetSocketAddress(c.http.get.address)
+  }
 
   override def afterAll() = {
     onClose { super.afterAll() }
@@ -45,14 +48,17 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
     def configure() = {}
 
     @Provides @Singleton
-    def commandExecutor(): CommandExecutor = new CommandExecutor {
-      def executeCommand(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
+    def commandExecutor(): CommandHandler = new CommandHandler {
+      def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
         val response = command match {
           case ExpectedTerminate ⇒ EmptyResponse
           case _ ⇒ fail()
         }
         Future.successful(response.asInstanceOf[command.Response])
       }
+
+      def overview = throw new NotImplementedError
+      def detailed = throw new NotImplementedError
     }
 
     @Provides @Singleton
@@ -84,8 +90,6 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
     assert(output(1) == "---")
     assert(output(2) contains "startedAt: '2")
     assert(output(2) contains "isTerminating: false")
-    assert(output(2) contains "totalTaskCount: 0")
-    assert(output(2) contains "currentTaskCount: 0")
   }
 
   "requireIsResponding" in {
@@ -101,7 +105,7 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
   }
 
   private def newTextAgentClient(output: String ⇒ Unit, login: Option[UserAndPassword]) =
-    new TextAgentClient(agentUri = agent.localUri, output, login, Some(keystoreReference))
+    new TextAgentClient(agentUri = AgentAddress(agent.localUri.toString), output, login, Some(keystoreReference))
 }
 
 private object TextAgentClientIT {

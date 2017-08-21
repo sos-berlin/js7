@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.io.{IO, Tcp}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichAny
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.sprayutils.WebServerBinding
@@ -11,7 +12,6 @@ import com.sos.jobscheduler.common.sprayutils.https.Https.newServerSSLEngineProv
 import com.sos.jobscheduler.common.sprayutils.web.SprayWebServer._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.net.InetSocketAddress
-import java.util.concurrent.ConcurrentLinkedQueue
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import spray.can.Http
@@ -28,12 +28,11 @@ trait SprayWebServer extends AutoCloseable {
   protected implicit def executionContext: ExecutionContext
   protected def newRouteActorRef(binding: WebServerBinding): ActorRef
   protected def bindings: Iterable[WebServerBinding]
-  private val httpListeners = new ConcurrentLinkedQueue[ActorRef]
 
   /**
    * @return Future, completed when Agent has been started and is running.
    */
-  def start(): Future[Unit] =
+  def start(): Future[Completed] =
     if (bindings.isEmpty)
       Future.failed(newPortNeededException)
     else {
@@ -42,7 +41,7 @@ trait SprayWebServer extends AutoCloseable {
         case o: WebServerBinding.Http ⇒ bindHttp(o)
         case o: WebServerBinding.Https ⇒ bindHttps(o)
       }
-      Future.sequence(bound) map { _ ⇒ () }
+      Future.sequence(bound) map { _ ⇒ Completed }
     }
 
   private def bindHttp(http: WebServerBinding.Http): Future[Unit] =
@@ -86,7 +85,6 @@ object SprayWebServer {
 
     lazy val localHttpUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Http ⇒ toLocallyUsableUri("http", o.address) }
     lazy val localHttpsUriOption: Option[Uri] = bindings collectFirst { case o: WebServerBinding.Https ⇒ toLocallyUsableUri("https", o.address) }
-
     lazy val localUri: Uri = localHttpUriOption orElse localHttpsUriOption getOrElse { throw newPortNeededException }
 
     private def toLocallyUsableUri(scheme: String, address: InetSocketAddress) = {
