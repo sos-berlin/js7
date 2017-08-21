@@ -4,10 +4,10 @@ import akka.actor.ActorRefFactory
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.client.AgentClient._
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent, LoginResponse, StartTaskResponse}
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
-import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskOverview}
+import com.sos.jobscheduler.agent.data.views.{TaskRegisterOverview, TaskOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonFormat
 import com.sos.jobscheduler.base.generic.SecretString
@@ -15,7 +15,6 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.soslicense.LicenseKeyString
-import com.sos.jobscheduler.common.sprayutils.SimpleTypeSprayJsonSupport._
 import com.sos.jobscheduler.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
@@ -41,12 +40,10 @@ import spray.httpx.UnsuccessfulResponseException
 import spray.httpx.encoding.Gzip
 import spray.httpx.unmarshalling._
 import spray.json.DefaultJsonProtocol._
-import spray.json.JsBoolean
 
 /**
  * Client for JobScheduler Agent.
  * The HTTP requests are considerd to be responded within `RequestTimeout`.
- * The command [[RequestFileOrderSourceContent]] has an own timeout, which is used for the HTTP request, too (instead of `RequestTimeout`).
  *
  * @author Joacim Zschimmer
  */
@@ -72,8 +69,6 @@ trait AgentClient {
   final def executeCommand(command: AgentCommand): Future[command.Response] = {
     logger.debug(s"Execute $command")
     val response = command match {
-      case command: RequestFileOrderSourceContent ⇒ executeRequestFileOrderSourceContent(command)
-      case command: StartTask ⇒ unmarshallingPipeline[StartTaskResponse](RequestTimeout).apply(Post(agentUris.command, command: AgentCommand))
       case Login ⇒
         for (response ← unmarshallingPipeline[LoginResponse](RequestTimeout, SessionAction.Login).apply(Post(agentUris.command, command: AgentCommand))) yield {
           setSessionToken(response.sessionToken)
@@ -87,7 +82,7 @@ trait AgentClient {
           sessionTokenRef.compareAndSet(tokenOption, None)  // Changes nothing in case of a concurrent successful Login
           response
         }
-      case (_: DeleteFile | Logout | _: MoveFile | NoOperation | _: OrderCommand | RegisterAsMaster | _: SendProcessSignal | _: CloseTask | _: Terminate | AbortImmediately) ⇒
+      case (Logout | NoOperation | _: OrderCommand | RegisterAsMaster | _: TerminateOrAbort) ⇒
         unmarshallingPipeline[EmptyResponse.type](RequestTimeout).apply(Post(agentUris.command, command: AgentCommand))
     }
     response map { _.asInstanceOf[command.Response] } recover {
@@ -98,20 +93,8 @@ trait AgentClient {
     }
   }
 
-  private def executeRequestFileOrderSourceContent(command: RequestFileOrderSourceContent): Future[FileOrderSourceContent] = {
-    val timeout = commandDurationToRequestTimeout(command.duration)
-    val pipeline =
-      addHeader(Accept(`application/json`)) ~>
-        agentSendReceive(timeout) ~>
-        unmarshal[FileOrderSourceContent]
-    pipeline(Post(agentUris.command, command: AgentCommand))
-  }
-
-  final def fileExists(filePath: String): Future[Boolean] =
-    unmarshallingPipeline[JsBoolean](RequestTimeout).apply(Get(agentUris.fileExists(filePath))) map { _.value }
-
-  object task {
-    final def overview: Future[TaskHandlerOverview] = get[TaskHandlerOverview](_.task.overview)
+  private object task {
+    final def overview: Future[TaskRegisterOverview] = get[TaskRegisterOverview](_.task.overview)
 
     final def tasks: Future[immutable.Seq[TaskOverview]] = get[immutable.Seq[TaskOverview]](_.task.tasks)
 

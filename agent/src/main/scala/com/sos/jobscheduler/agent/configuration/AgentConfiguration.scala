@@ -107,7 +107,7 @@ final case class AgentConfiguration(
 
   def stateDirectoryOption: Option[Path] = dataDirectory map { _ / "state" }
 
-  private[configuration] def finishAndProvideFiles: AgentConfiguration =
+  def finishAndProvideFiles: AgentConfiguration =
     provideDataSubdirectories()
       .provideKillScript()
 

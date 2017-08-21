@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.data.web
 
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.tunnel.data.TunnelId
 import org.scalatest.FreeSpec
 
 /**
@@ -41,23 +40,6 @@ final class AgentUrisTest extends FreeSpec {
   "task.tasks" in {
     assert(agentUris.task(AgentTaskId("TASK-ID")) ==
       "http://example.com:9999/testPrefix/jobscheduler/agent/api/task/TASK-ID")
-  }
-
-  "tunnel" - {
-    "overview" in {
-      assert(agentUris.tunnel.overview ==
-        "http://example.com:9999/testPrefix/jobscheduler/agent/api/tunnel")
-    }
-
-    "tunnels" in {
-      assert(agentUris.tunnel.tunnels ==
-      "http://example.com:9999/testPrefix/jobscheduler/agent/api/tunnel/")
-    }
-
-    "tunnel" in {
-      assert(agentUris.tunnel(TunnelId("TUNNEL-ID")) ==
-        "http://example.com:9999/testPrefix/jobscheduler/agent/api/tunnel/TUNNEL-ID")
-    }
   }
 
   "overview" in {

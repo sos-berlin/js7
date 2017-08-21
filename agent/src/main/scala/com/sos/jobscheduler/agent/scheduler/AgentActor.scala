@@ -52,7 +52,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
   protected val journalActor = context.actorOf(
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
-  private val jobKeeper = context.actorOf(Props { new JobKeeper(jobConfigurationDirectory) }, "JobKeeper")
+  private val jobKeeper = context.actorOf(Props { new JobKeeper(jobConfigurationDirectory, newTaskRunner) }, "JobKeeper")
   private val masterToOrderKeeper = new MasterRegister
   private var terminating = false
 
@@ -173,8 +173,8 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   private def terminateOrderKeepers(): Future[EmptyResponse.type] =
     Future.sequence(
-      (for (a ← masterToOrderKeeper.values) yield
-        (a ? AgentOrderKeeper.Input.Terminate).mapTo[Done]))
+      for (a ← masterToOrderKeeper.values) yield
+        (a ? AgentOrderKeeper.Input.Terminate).mapTo[Done])
     .map { _ ⇒ EmptyResponse }
 
   private def update(keyedEvent: KeyedEvent[AgentEvent]): Unit = {

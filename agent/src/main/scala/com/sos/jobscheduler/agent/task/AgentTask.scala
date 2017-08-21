@@ -1,25 +1,23 @@
 package com.sos.jobscheduler.agent.task
 
+import akka.util.ByteString
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.views.TaskOverview
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.utils.HasKey
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Closers._
-import com.sos.jobscheduler.common.scalautil.Futures.SynchronousExecutionContext
+import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.taskserver.TaskServer
-import com.sos.jobscheduler.taskserver.task.TaskArguments
-import com.sos.jobscheduler.tunnel.server.TunnelHandle
-import java.time.Instant
+import java.time.Instant.now
 import scala.concurrent.Future
-import scala.util.Success
 
 /**
 * @author Joacim Zschimmer
 */
 trait AgentTask
 extends AutoCloseable
+with BaseAgentTask
 with HasKey {
 
   final type Key = AgentTaskId
@@ -27,55 +25,30 @@ with HasKey {
 
   def id: AgentTaskId
 
-  def startMeta: AgentCommand.StartTask.Meta
+  def jobPath: JobPath
 
-  protected def taskArgumentsFuture: Future[TaskArguments]
-
-  /**
-    * ReleaseCall has been called on RemoteModuleInstanceServer.
-    */
-  protected def taskReleaseFuture: Future[Unit]
-
-  def tunnel: TunnelHandle
+  protected def apiConnection: ApiConnection
 
   protected def taskServer: TaskServer
 
-  private val startedAt = Instant.now()
+  private val startedAt = now
 
-  final def closeTunnelAndTaskServer() = closeOrdered(tunnel, taskServer)  // Close tunnel before taskServer
-
-  final def closeTunnel() = tunnel.close()
+  final def closeApiConnectionAndTaskServer() = closeOrdered(apiConnection, taskServer)  // Close connection before taskServer
 
   final def start(): Unit = taskServer.start()
 
-  final def onTunnelInactivity(callback: Instant ⇒ Unit): Unit = tunnel.onInactivity(callback)
+  final def request(byteString: ByteString): Future[ByteString] =
+    apiConnection.request(byteString)
 
   final def sendProcessSignal(signal: ProcessSignal): Unit = taskServer.sendProcessSignal(signal)
 
   final def deleteLogFiles(): Unit = taskServer.deleteLogFiles()
 
-  final def terminated: Future[Unit] = taskServer.terminated.map { _ ⇒ () } (SynchronousExecutionContext)
+  final def terminated = taskServer.terminated
 
   final def pidOption: Option[Pid] = taskServer.pidOption
 
-  final def overview = TaskOverview(
-    id,
-    pid = taskServer.pidOption map { _.number },
-    tunnel.id,
-    startedAt,
-    startedByHttpIp = tunnel.startedByHttpIpOption,
-    startMeta = AgentTask.this.startMeta,
-    arguments = taskArgumentsFuture.value collect {
-      case Success(a) ⇒
-        TaskOverview.Arguments(
-          language = a.rawModuleArguments.language.string,
-          javaClassName = a.rawModuleArguments.javaClassNameOption,
-          monitorCount = a.rawMonitorArguments.size)
-    })
-
-  private[task] final def isReleasedCalled = taskReleaseFuture.isCompleted
-
-  private[task] final def tunnelToken = tunnel.tunnelToken
+  final def overview = TaskOverview(jobPath, id, pid = taskServer.pidOption, startedAt)
 
   override def toString = s"$id: $taskServer"
 }

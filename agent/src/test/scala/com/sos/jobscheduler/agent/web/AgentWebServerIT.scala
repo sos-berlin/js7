@@ -5,7 +5,6 @@ import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.data.views.TaskHandlerOverview
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.agent.web.AgentWebServerIT._
@@ -154,7 +153,6 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 
   private def addThroughputMeasurementTests(uri: Uri, setupOption: Option[HostConnectorSetup] = None): Unit = {
     if (false) {
-      addThroughputMeasurementTest[TaskHandlerOverview](s"$uri/task", setupOption)
       addThroughputMeasurementTest[TimerServiceOverview](s"$uri/timer", setupOption)
     }
   }

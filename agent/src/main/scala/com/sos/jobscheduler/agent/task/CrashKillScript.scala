@@ -10,6 +10,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
 import com.sos.jobscheduler.data.job.TaskId
+import com.sos.jobscheduler.data.jobnet.JobPath
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
 import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}
@@ -22,12 +23,12 @@ import scala.collection.mutable
   */
 final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
 
-  private val tasks = new mutable.HashMap[AgentTaskId, (String, TaskId, Option[Pid])]
+  private val tasks = new mutable.HashMap[AgentTaskId, (JobPath, TaskId, Option[Pid])]
 
   deleteIfExists(file)
   createFile(file)
 
-  def add(id: AgentTaskId, pid: Option[Pid], taskId: TaskId, jobPath: String): Unit =
+  def add(id: AgentTaskId, pid: Option[Pid], taskId: TaskId, jobPath: JobPath): Unit =
     synchronized {
       tasks.put(id, (jobPath, taskId, pid))
       ignoreException(logger.asLazy.warn) {
@@ -57,7 +58,7 @@ final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
       move(tmp, file, REPLACE_EXISTING)
     }
 
-  private def idToKillCommand(id: AgentTaskId, pid: Option[Pid], jobPath: String, taskId: TaskId) = {
+  private def idToKillCommand(id: AgentTaskId, pid: Option[Pid], jobPath: JobPath, taskId: TaskId) = {
     val args = killScript.toCommandArguments(id, pid, jobPath = jobPath, taskId)
     val cleanTail = args.tail collect { case CleanArgument(o) ⇒ o }
     ((s""""${args.head}"""" +: cleanTail) mkString " ") + LineSeparator

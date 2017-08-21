@@ -5,10 +5,10 @@ import spray.json.DefaultJsonProtocol._
 /**
  * @author Joacim Zschimmer
  */
-final case class TaskHandlerOverview(
+final case class TaskRegisterOverview(
   currentTaskCount: Int,
   totalTaskCount: Int)
 
-object TaskHandlerOverview {
+object TaskRegisterOverview {
   implicit val MyJsonFormat = jsonFormat2(apply)
 }

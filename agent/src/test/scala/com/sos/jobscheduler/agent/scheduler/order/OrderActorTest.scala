@@ -141,7 +141,7 @@ private object OrderActorTest {
     private implicit val timerService = TimerService(idleTimeout = Some(1.s))
     private val journalFile = dir / "data" / "state" / "journal"
     private val keyedEventBus = new StampedKeyedEventBus
-    private implicit val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
+    private val taskRunnerFactory: TaskRunner.Factory = new SimpleShellTaskRunner.Factory(
       new AgentTaskId.Generator,
       new StandardRichProcessStartSynchronizer()(context),
       AgentConfiguration.forTest(configAndData = Some(dir)))
@@ -151,7 +151,7 @@ private object OrderActorTest {
         new JsonJournalActor[OrderEvent](TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, keyedEventBus)
       },
       "Journal")
-    private val jobActor = JobRunner.actorOf(TestJobPath)
+    private val jobActor = JobRunner.actorOf(TestJobPath, taskRunnerFactory)
     private val orderActor = context.actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor, config)}, TestOrder.id.string)
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()

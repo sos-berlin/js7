@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
 import scala.concurrent.duration.FiniteDuration
+import scala.language.implicitConversions
 import scala.math.abs
 import scala.util.Random
 

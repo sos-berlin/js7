@@ -1,16 +1,12 @@
 package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent, LoginResponse, StartTaskResponse}
-import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.job.TaskId
 import com.sos.jobscheduler.data.jobnet.Jobnet
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import java.time.Duration
-import scala.collection.immutable
 import scala.collection.immutable.Seq
 import spray.json.DefaultJsonProtocol._
 import spray.json._
@@ -38,9 +34,7 @@ object AgentCommand {
      */
     implicit object MyJsonFormat extends RootJsonWriter[Response] {
       def write(response: Response) = response match {
-        case o: FileOrderSourceContent ⇒ o.toJson
         case o: LoginResponse ⇒ o.toJson
-        case o: StartTaskResponse ⇒ o.toJson
         case EmptyResponse ⇒ EmptyResponse.toJson
         case o ⇒ throw new UnsupportedOperationException(s"Class ${o.getClass.getName} is not serializable as JSON")
       }
@@ -84,7 +78,7 @@ object AgentCommand {
     implicit val jsonFormat = jsonFormat0(() ⇒ RegisterAsMaster)
   }
 
-  trait TerminateOrAbort extends AgentCommand
+  sealed trait TerminateOrAbort extends AgentCommand
 
   final case class Terminate(
     sigtermProcesses: Boolean = false,
@@ -155,113 +149,6 @@ object AgentCommand {
     final case class Response(order: Seq[Order[Order.State]]) extends AgentCommand.Response
   }
 
-  /**
-    * JobScheduler version 1 (C++) only command.
-    */
-  sealed trait V1 extends AgentCommand
-
-  trait TaskCommand extends V1
-
-  final case class CloseTask(agentTaskId: AgentTaskId, kill: Boolean)
-  extends V1 with TaskCommand {
-    type Response = EmptyResponse.type
-  }
-
-  object CloseTask {
-    val SerialTypeName = "CloseTask"
-    implicit val MyJsonFormat = jsonFormat2(apply)
-  }
-
-  sealed trait FileCommand extends V1
-
-  final case class DeleteFile(path: String) extends FileCommand {
-    type Response = EmptyResponse.type
-  }
-
-  object DeleteFile {
-    val SerialTypeName = "DeleteFile"
-    implicit val MyJsonFormat = jsonFormat1(apply)
-  }
-
-  final case class RequestFileOrderSourceContent(
-    directory: String,
-    regex: String,
-    duration: Duration,
-    knownFiles: immutable.Set[String])
-  extends V1 {
-    type Response = FileOrderSourceContent
-
-    override def toShortString = s"RequestFileOrderSourceContent($directory,$regex,$duration,${knownFiles.size} known files})"
-
-    override def toStringIsLonger = knownFiles.nonEmpty
-  }
-
-  final case class MoveFile(path: String, toDirectory: String) extends FileCommand {
-    type Response = EmptyResponse.type
-  }
-
-  object MoveFile {
-    val SerialTypeName = "MoveFile"
-    implicit val MyJsonFormat = jsonFormat2(apply)
-  }
-
-  object RequestFileOrderSourceContent {
-    val SerialTypeName = "RequestFileOrderSourceContent"
-    val MaxDuration = Duration.ofDays(20) // The upper bound depends on Akka tick length (Int.MaxValue ticks, a tick can be as short as 1ms)
-    implicit val MyJsonFormat = jsonFormat4(apply)
-  }
-
-  trait StartTask extends TaskCommand {
-    type Response = StartTaskResponse
-
-    def meta: Option[StartTask.Meta]
-  }
-
-  object StartTask {
-    final case class Meta(
-      job: String,
-      taskId: TaskId)
-
-    object Meta {
-      /** For compatibility with a master before v1.10.4 **/
-      val Default = Meta(job = "/(OLD-MASTER)", TaskId(-1))
-      implicit val MyJsonFormat = jsonFormat2(apply)
-      val NoCppJobSchedulerTaskId = TaskId(0)   // Not the old C++ JobScheduler
-    }
-  }
-
-  final case class StartApiTask(
-    meta: Option[StartTask.Meta],
-    javaOptions: String,
-    javaClasspath: String)
-  extends StartTask
-
-  object StartApiTask {
-    val SerialTypeName = "StartApiTask"
-    implicit val MyJsonFormat = jsonFormat3(apply)
-  }
-
-  final case class StartNonApiTask(meta: Option[StartTask.Meta])
-  extends StartTask
-
-  object StartNonApiTask {
-    val SerialTypeName = "StartNonApiTask"
-    implicit val MyJsonFormat = jsonFormat1(apply)
-  }
-
-  final case class SendProcessSignal(agentTaskId: AgentTaskId, signal: ProcessSignal)
-  extends TaskCommand {
-    type Response = EmptyResponse.type
-  }
-
-  object SendProcessSignal {
-    val SerialTypeName = "SendProcessSignal"
-    implicit val MyJsonFormat = {
-      implicit def UnixProcessSignalJsonFormat = ProcessSignal.MyJsonFormat
-      jsonFormat2(apply)
-    }
-  }
-
   implicit val MyJsonFormat = TypedJsonFormat[AgentCommand](typeField = "$TYPE", shortenTypeOnlyValue = false)(
     Subtype[AbortImmediately.type](AbortImmediately.SerialTypeName),
     Subtype[Login.type](Login.SerialTypeName),
@@ -273,14 +160,5 @@ object AgentCommand {
     Subtype[AttachOrder](AttachOrder.SerialTypeName),
     Subtype[DetachOrder](DetachOrder.SerialTypeName),
     Subtype[GetOrder](GetOrder.SerialTypeName),
-    Subtype[GetOrderIds.type](GetOrderIds.SerialTypeName),
-
-    // Legacy version 1 commands
-    Subtype[CloseTask](CloseTask.SerialTypeName),
-    Subtype[DeleteFile](DeleteFile.SerialTypeName),
-    Subtype[MoveFile](MoveFile.SerialTypeName),
-    Subtype[RequestFileOrderSourceContent](RequestFileOrderSourceContent.SerialTypeName),
-    Subtype[SendProcessSignal](SendProcessSignal.SerialTypeName),
-    Subtype[StartApiTask](StartApiTask.SerialTypeName),
-    Subtype[StartNonApiTask](StartNonApiTask.SerialTypeName))
+    Subtype[GetOrderIds.type](GetOrderIds.SerialTypeName))
 }

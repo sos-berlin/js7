@@ -5,12 +5,11 @@ import com.google.inject.Injector
 import com.sos.jobscheduler.agent.command.{AgentCommandHandler, CommandExecutor, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.views.TaskHandlerView
 import com.sos.jobscheduler.agent.scheduler.OrderHandler
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.agent.web.WebServiceActor._
 import com.sos.jobscheduler.agent.web.common.{ExternalWebService, LoginSession}
-import com.sos.jobscheduler.agent.web.views.{CommandViewWebService, RootWebService, TaskWebService}
+import com.sos.jobscheduler.agent.web.views.{CommandViewWebService, RootWebService}
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -18,9 +17,6 @@ import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeper
 import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.session.SessionToken
-import com.sos.jobscheduler.tunnel.data.{TunnelId, TunnelToken}
-import com.sos.jobscheduler.tunnel.server.TunnelServer
-import java.time.Duration
 import javax.inject.{Inject, Provider, Singleton}
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext
@@ -33,10 +29,8 @@ import spray.routing._
 final private class WebServiceActor private(
   gateKeeper: GateKeeper,
   commandExecutor: CommandExecutor,
-  tunnelServer: TunnelServer,
   agentOverviewProvider: Provider[AgentOverview],
   protected val sessionRegister: SessionRegister[LoginSession],
-  protected val taskHandlerView: TaskHandlerView,
   protected val commandHandler: AgentCommandHandler,
   protected val orderHandler: OrderHandler,
   protected val timerService: TimerService,
@@ -49,14 +43,10 @@ final private class WebServiceActor private(
 extends HttpServiceActor
 with TimerWebService
 with CommandWebService
-with TunnelWebService
 with MastersEventWebService
-with FileStatusWebService
 with OrderWebService
 with RootWebService
-with TaskWebService
 with CommandViewWebService
-with NoJobSchedulerEngineWebService
 {
   protected val uriPathPrefix = agentConfiguration.uriPathPrefix
   protected def akkaAskTimeout = agentConfiguration.akkaAskTimeout
@@ -67,11 +57,6 @@ with NoJobSchedulerEngineWebService
   protected def commandRunOverviews = commandHandler.commandRuns
   protected def executeCommand(command: AgentCommand, meta: CommandMeta) = commandExecutor.executeCommand(command, meta)
   protected def agentOverview = agentOverviewProvider.get()
-  protected def tunnelAccess(tunnelToken: TunnelToken) = tunnelServer.tunnelAccess(tunnelToken)
-  protected def onTunnelHeartbeat(tunnelToken: TunnelToken, timeout: Duration) = tunnelServer.onHeartbeat(tunnelToken, timeout)
-  protected def tunnelHandlerOverview = tunnelServer.overview
-  protected def tunnelOverviews = tunnelServer.tunnelOverviews
-  protected def tunnelView(tunnelId: TunnelId) = tunnelServer.tunnelView(tunnelId)
   protected def config = agentConfiguration.config
 
   for (o ← extraWebServices) {
@@ -93,10 +78,8 @@ private[web] object WebServiceActor {
   @Singleton
   private class Factory @Inject private(
     commandExecutor: CommandExecutor,
-    tunnelServer: TunnelServer,
     agentOverviewProvider: Provider[AgentOverview],
     sessionRegister: SessionRegister[LoginSession],
-    taskHandlerView: TaskHandlerView,
     commandHandler: AgentCommandHandler,
     orderHandler: OrderHandler,
     timerService: TimerService,
@@ -111,10 +94,8 @@ private[web] object WebServiceActor {
       new WebServiceActor(
         gateKeeper,
         commandExecutor,
-        tunnelServer,
         agentOverviewProvider,
         sessionRegister,
-        taskHandlerView,
         commandHandler,
         orderHandler,
         timerService,

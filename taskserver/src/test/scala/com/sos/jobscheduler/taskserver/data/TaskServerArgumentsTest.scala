@@ -1,7 +1,5 @@
 package com.sos.jobscheduler.taskserver.data
 
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.data.job.TaskId
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 import spray.json._
@@ -12,13 +10,7 @@ import spray.json._
 final class TaskServerArgumentsTest extends FreeSpec {
 
   "logFilenamePart" in {
-    assertResult("task-1-1-test-123") {
-      TaskServerArguments.forTest().copy(startMeta = AgentCommand.StartTask.Meta(job = "/folder/test", TaskId(123))).logFilenamePart
-    }
-  }
-
-  "logFilenamePart when master < v1.10.4" in {
-    assertResult("task-1-1-(OLD-MASTER)--1") {
+    assertResult("task-TEST-JOB-PATH-1-1") {
       TaskServerArguments.forTest().logFilenamePart
     }
   }
@@ -36,15 +28,7 @@ final class TaskServerArgumentsTest extends FreeSpec {
           "a": "A",
           "bb": "BB"
         },
-        "startMeta": {
-          "job": "/(OLD-MASTER)",
-          "taskId": "-1"
-        },
-        "tunnelToken": {
-          "id": "TEST-TUNNEL",
-          "secret": "TUNNEL-SECRET"
-        },
-        "masterAddress": "127.0.0.1:999999999",
+        "jobPath": "/TEST-JOB-PATH",
         "logDirectory": "LOG-DIRECTORY",
         "workingDirectory": "DIRECTORY",
         "dotnet": {}

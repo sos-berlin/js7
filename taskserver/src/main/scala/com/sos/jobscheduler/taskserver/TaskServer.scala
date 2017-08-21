@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.taskserver
 
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.taskserver.TaskServer._
 import com.sos.jobscheduler.taskserver.data.TaskServerArguments
 import scala.concurrent.Future
 
@@ -17,16 +17,8 @@ trait TaskServer extends AutoCloseable {
   def start(): Unit
   def sendProcessSignal(signal: ProcessSignal): Unit
   def deleteLogFiles(): Unit
-  def terminated: Future[Terminated.type]
+  def terminated: Future[Completed]
   def pidOption: Option[Pid]
 
-  override def toString = Some(s"master=${arguments.masterAddress})") ++ pidOption mkString (s"${getClass.getSimpleName}(", " ", ")")
-}
-
-object TaskServer {
-
-  /**
-    * For Future[Terminated], succeeds when TaskServer has terminated.
-    */
-  object Terminated
+  override def toString = pidOption.mkString(s"${getClass.getSimpleName}(", " ", ")")
 }

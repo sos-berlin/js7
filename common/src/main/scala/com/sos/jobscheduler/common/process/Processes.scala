@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.process
 
+import com.sos.jobscheduler.base.generic.GenericLong
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.process.OperatingSystemSpecific.OS
 import com.sos.jobscheduler.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
@@ -21,9 +22,11 @@ object Processes {
 
   def processToPidOption(process: Process): Option[Pid] = ProcessesJava8pid.processToPid(process)
 
-  final case class Pid(number: Long) {
+  final case class Pid(number: Long) extends GenericLong {
     def string = number.toString
   }
+
+  object Pid extends GenericLong.HasJsonFormat[Pid]
 
   /**
    * Builds an argument list for [[ProcessBuilder]].

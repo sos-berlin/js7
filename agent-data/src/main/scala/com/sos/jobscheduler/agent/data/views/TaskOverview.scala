@@ -1,11 +1,9 @@
 package com.sos.jobscheduler.agent.data.views
 
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.base.sprayjson.InetAddressJsonSupport._
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits.InstantJsonFormat
-import com.sos.jobscheduler.tunnel.data.TunnelId
-import java.net.InetAddress
+import com.sos.jobscheduler.common.process.Processes.Pid
+import com.sos.jobscheduler.data.jobnet.JobPath
 import java.time.Instant
 import spray.json.DefaultJsonProtocol._
 
@@ -13,20 +11,11 @@ import spray.json.DefaultJsonProtocol._
  * @author Joacim Zschimmer
  */
 final case class TaskOverview(
+  jobPath: JobPath,
   id: AgentTaskId,
-  pid: Option[Long] = None,
-  tunnelId: TunnelId,
-  startedAt: Instant,
-  startedByHttpIp: Option[InetAddress],
-  startMeta: AgentCommand.StartTask.Meta,
-  arguments: Option[TaskOverview.Arguments])
+  pid: Option[Pid] = None,
+  startedAt: Instant)
 
 object TaskOverview {
-  implicit val ArgumentsJsonFormat = jsonFormat3(Arguments)
-  implicit val MyJsonFormat = jsonFormat7(apply)
-
-  final case class Arguments(
-    language: String,
-    javaClassName: Option[String],
-    monitorCount: Int)
+  implicit val MyJsonFormat = jsonFormat4(apply)
 }

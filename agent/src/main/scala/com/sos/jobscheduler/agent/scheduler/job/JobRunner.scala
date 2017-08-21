@@ -23,7 +23,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JobRunner private(jobPath: JobPath)(implicit newTaskRunner: TaskRunner.Factory, timerService: TimerService, ec: ExecutionContext)
+final class JobRunner private(jobPath: JobPath, newTaskRunner: TaskRunner.Factory)(implicit timerService: TimerService, ec: ExecutionContext)
 extends Actor with Stash {
 
   private val logger = Logger.withPrefix[JobRunner](jobPath.toString)
@@ -128,9 +128,9 @@ extends Actor with Stash {
 }
 
 object JobRunner {
-  def actorOf(jobPath: JobPath)(implicit actorRefFactory: ActorRefFactory, newTaskRunner: TaskRunner.Factory, ts: TimerService, ec: ExecutionContext): ActorRef =
+  def actorOf(jobPath: JobPath, newTaskRunner: TaskRunner.Factory)(implicit actorRefFactory: ActorRefFactory, ts: TimerService, ec: ExecutionContext): ActorRef =
     actorRefFactory.actorOf(
-      Props { new JobRunner(jobPath) },
+      Props { new JobRunner(jobPath, newTaskRunner) },
       name = toActorName(jobPath))
 
   def toActorName(o: JobPath): String =

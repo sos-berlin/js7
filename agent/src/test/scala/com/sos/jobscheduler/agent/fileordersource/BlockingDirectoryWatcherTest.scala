@@ -5,7 +5,6 @@ import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.touchAndDeleteWithCloser
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.system.OperatingSystem.isMac
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.nio.file.Files.{createTempDirectory, delete}
 import java.time.Instant.now

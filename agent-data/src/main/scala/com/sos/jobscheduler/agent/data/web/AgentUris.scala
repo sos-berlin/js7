@@ -5,7 +5,6 @@ import com.sos.jobscheduler.agent.data.web.AgentUris._
 import com.sos.jobscheduler.data.agent.AgentAddress
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.tunnel.data.TunnelId
 import spray.http.Uri
 import spray.http.Uri.Path
 
@@ -31,14 +30,6 @@ final class AgentUris private(agentUri: AgentAddress) {
     def tasks = uriString(s"$Api/task/")
 
     def apply(id: AgentTaskId) = uriString(Path(s"$Api/task") / id.string)
-  }
-
-  object tunnel {
-    def overview = uriString(s"$Api/tunnel")
-
-    def tunnels = uriString(s"$Api/tunnel/")
-
-    def apply(id: TunnelId) = uriString(Path(s"$Api/tunnel") / id.string)
   }
 
   object order {

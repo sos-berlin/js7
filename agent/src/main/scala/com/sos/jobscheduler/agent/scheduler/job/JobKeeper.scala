@@ -17,7 +17,7 @@ import scala.concurrent.ExecutionContext
 /**
   * @author Joacim Zschimmer
   */
-final class JobKeeper(jobConfigurationDirectory: Path)(implicit newTaskRunner: TaskRunner.Factory, ts: TimerService, ec: ExecutionContext)
+final class JobKeeper(jobConfigurationDirectory: Path, newTaskRunner: TaskRunner.Factory)(implicit ts: TimerService, ec: ExecutionContext)
 extends Actor with Stash {
 
   override val supervisorStrategy = StoppingStrategies.stopping(logger)
@@ -31,7 +31,7 @@ extends Actor with Stash {
           val pathToActor = mutable.Map[JobPath, ActorRef]()
           forEachTypedFile(jobConfigurationDirectory, Set(JobPath)) {
             case (file, jobPath: JobPath) ⇒
-              val a = context.watch(JobRunner.actorOf(jobPath))
+              val a = context.watch(JobRunner.actorOf(jobPath, newTaskRunner))
               pathToActor += jobPath → a
               a ! JobRunner.Command.StartWithConfigurationFile(file)
           }

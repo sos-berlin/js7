@@ -5,8 +5,7 @@ import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
-import com.sos.jobscheduler.agent.data.views.TaskHandlerView
-import com.sos.jobscheduler.agent.task.{StandardAgentTaskFactory, TaskHandler}
+import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
 import com.sos.jobscheduler.agent.web.common.{ExternalWebService, LoginSession}
 import com.sos.jobscheduler.common.auth.EncodedPasswordValidator
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -50,9 +49,6 @@ extends AbstractModule {
 
   @Provides @Singleton
   def actorRefFactory(o: ActorSystem): ActorRefFactory = o
-
-  @Provides @Singleton
-  def taskHandlerView(o: TaskHandler): TaskHandlerView = o
 
   @Provides @Singleton
   def moduleFactoryRegister(shellModuleFactory: ShellModule.Factory): ModuleFactoryRegister = {

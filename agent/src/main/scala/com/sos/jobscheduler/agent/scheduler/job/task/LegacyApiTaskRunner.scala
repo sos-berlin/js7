@@ -1,23 +1,21 @@
 package com.sos.jobscheduler.agent.scheduler.job.task
 
 import akka.util.ByteString
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{StartNonApiTask, StartTask}
 import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.task.LegacyApiTaskRunner._
-import com.sos.jobscheduler.agent.task.{AgentTask, AgentTaskFactory}
+import com.sos.jobscheduler.agent.task.{AgentTask, AgentTaskFactory, StartNonApiTask, StartTask}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.data.job.TaskId
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.minicom.remoting.ClientRemoting
 import com.sos.jobscheduler.minicom.remoting.dialog.ClientDialogConnection
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatch
 import com.sos.jobscheduler.taskserver.task.RemoteModuleInstanceServer
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
-import com.sos.jobscheduler.tunnel.server.TunnelHandle
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -31,7 +29,7 @@ extends TaskRunner {
   private val taskOnce = new SetOnce[AgentTask]
   private val moduleInstanceRunnerOnce = new SetOnce[ModuleInstanceRunner]
   private var _killed = false
-  private val taskId = AgentCommand.StartTask.Meta.NoCppJobSchedulerTaskId
+  private val taskId = TaskId(-1) // ???
 
   def processOrder(order: Order[Order.InProcess.type], stdChannels: StdChannels) = {
     // TODO stdoutStderrHandle is not used. No OrderStdWritten events are produced. Maybe LegacyApiTaskRunner will not be used anyway (requirement?).
@@ -55,7 +53,7 @@ extends TaskRunner {
   private def startModuleInstance(): Future[(ModuleInstanceRunner, Boolean)] = {
     val task = startTask()
     taskOnce := task
-    val remoting = newRemoting(task.tunnel, name = task.id.string)
+    val remoting = newRemoting(task.request, name = task.id.string)
     for (moduleInstance ← createModuleInstance(remoting);
          moduleInstanceRunner = moduleInstanceRunnerOnce := new ModuleInstanceRunner(jobConfiguration, taskId, moduleInstance);
          startOk ← moduleInstanceRunner.start())
@@ -64,7 +62,7 @@ extends TaskRunner {
   }
 
   private def startTask(): AgentTask = {
-    val command = StartNonApiTask(Some(StartTask.Meta(job = jobConfiguration.path.string, taskId)))
+    val command = StartNonApiTask(jobPath = jobConfiguration.path)
     val task = newTask(command, clientIpOption = None)
     task.start()
     task
@@ -76,12 +74,11 @@ extends TaskRunner {
     _killed |= signal == SIGKILL
   }
 
-  private def newRemoting(tunnel: TunnelHandle, name: String): ClientRemoting =
+  private def newRemoting(request: ByteString ⇒ Future[ByteString], name: String): ClientRemoting =
     new ClientRemoting (
       new ClientDialogConnection with ClientDialogConnection.ImplementBlocking {
         protected implicit def executionContext = LegacyApiTaskRunner.this.executionContext
-        def sendAndReceive(data: ByteString) =
-          tunnel.request(data, timeout = None) map Some.apply
+        def sendAndReceive(data: ByteString) = request(data) map Some.apply
       },
       name = name)
 

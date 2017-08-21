@@ -3,34 +3,19 @@ package com.sos.jobscheduler.agent.tests
 import akka.actor.ActorRefFactory
 import akka.util.Timeout
 import com.google.common.io.Closer
-import com.google.common.io.Files._
 import com.sos.jobscheduler.agent.Agent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{DeleteFile, MoveFile, RequestFileOrderSourceContent}
-import com.sos.jobscheduler.agent.data.views.{TaskHandlerOverview, TaskOverview}
-import com.sos.jobscheduler.agent.tests.AgentClientIT._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
-import com.sos.jobscheduler.common.scalautil.FileUtils._
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.soslicense.LicenseKeyString
 import com.sos.jobscheduler.common.time.ScalaTime._
-import java.nio.file.Files
-import java.nio.file.Files._
-import java.nio.file.attribute.FileTime
-import java.time.{Duration, Instant}
+import java.time.Duration
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.matching.Regex
-import spray.http.StatusCodes.InternalServerError
-import spray.httpx.UnsuccessfulResponseException
 
 /**
  * @author Joacim Zschimmer
@@ -57,103 +42,33 @@ final class AgentClientIT extends FreeSpec with ScalaFutures with BeforeAndAfter
   }
 
   "commandMillisToRequestTimeout" in {
-    val upperBound = RequestFileOrderSourceContent.MaxDuration  // The upper bound depends on Akka tick length (Int.MaxValue ticks, a tick can be as short as 1ms)
+    val upperBound = 30 * 24.h  // The upper bound depends on Akka tick length (Int.MaxValue ticks, a tick can be as short as 1ms)
     for (duration ← List[Duration](0.s, 1.s, upperBound)) {
       assert(commandDurationToRequestTimeout(duration) == Timeout((RequestTimeout + duration).toMillis, MILLISECONDS))
     }
   }
 
-  "Commands" - {
-    "RequestFileOrderSourceContent" in {
-      val dir = createTempDirectory("agent-") withCloser delete
-      val knownFile = dir / "x-known"
-      val instant = Instant.parse("2015-01-01T12:00:00Z")
-      val expectedFiles = List(
-        (dir / "x-1", instant),
-        (dir / "prefix-x-3", instant + 2.s),
-        (dir / "x-2", instant + 4.s))
-      val expectedResult = FileOrderSourceContent(expectedFiles map { case (file, t) ⇒ FileOrderSourceContent.Entry(file.toString, t.toEpochMilli) })
-      val ignoredFiles = List(
-        (knownFile, instant),
-        (dir / "ignore-4", instant))
-      for ((file, t) ← expectedFiles ++ ignoredFiles) {
-        touchAndDeleteWithCloser(file)
-        setLastModifiedTime(file, FileTime.from(t))
-      }
-      val regex = "x-"
-      assert(new Regex(regex).findFirstIn(knownFile.toString).isDefined)
-      val command = RequestFileOrderSourceContent(
-        directory = dir.toString,
-        regex = regex,
-        duration = RequestFileOrderSourceContent.MaxDuration,
-        knownFiles = Set(knownFile.toString))
-      whenReady(client.executeCommand(command)) { o ⇒
-        assert(o == expectedResult)
-      }
-    }
-
-    "DeleteFile" in {
-      val file = Files.createTempFile("TEST-", ".tmp")
-      assert(Files.exists(file))
-      whenReady(client.executeCommand(DeleteFile(file.toString))) { case EmptyResponse ⇒
-        assert(!Files.exists(file))
-      }
-    }
-
-    "MoveFile" in {
-      val file = Files.createTempFile("TEST-", ".tmp")
-      val dir = Files.createTempDirectory("TEST-")
-      assert(Files.exists(file))
-      val movedPath = dir resolve file.getFileName
-      whenReady(client.executeCommand(MoveFile(file.toString, dir.toString))) { case EmptyResponse ⇒
-        assert(!Files.exists(file))
-        assert(Files.exists(movedPath))
-      }
-      Files.delete(movedPath)
-      Files.delete(dir)
-    }
-
-    "MoveFile to file fails" in {
-      val file = Files.createTempFile("TEST-", ".tmp")
-      val destination = file.getParent resolve s"NEW-${file.getFileName}"
-      assert(Files.exists(file))
-      assert(Await.ready(client.executeCommand(MoveFile(file.toString, destination.toString)), 10.seconds).value.get.failed.get.getMessage
-        contains "directory")
-    }
-  }
-
-  "fileExists" in {
-    val file = createTempFile("AgentClientIT with blank", ".tmp")
-    closer.onClose { deleteIfExists(file) }
-    for (_ ← 1 to 3) {   // Check no-cache
-      touch(file)
-      whenReady(client.fileExists(file.toString)) { exists ⇒ assert(exists) }
-      delete(file)
-      whenReady(client.fileExists(file.toString)) { exists ⇒ assert(!exists) }
-    }
-  }
-
-  "get /task" in {
-    val view = awaitResult(client.task.overview, 2.s)
-    assert(view == TaskHandlerOverview(
-      currentTaskCount = 0,
-      totalTaskCount = 0))
-  }
-
-  "get /task/ (incomplete)" in {
-    val tasks = awaitResult(client.task.tasks, 2.s)
-    assert(tasks == Nil)
-    pending
-  }
-
-  "get /task/1-123 (incomplete)" in {
-    val e = intercept[UnsuccessfulResponseException] {
-      awaitResult(client.task(TestAgentTaskId), 2.s): TaskOverview
-    }
-    assert(e.response.status == InternalServerError)
-    assert(e.response.entity.asString contains "UnknownTaskException")
-    pending
-  }
+  //"get /task" in {
+  //  val view = awaitResult(client.task.overview, 2.s)
+  //  assert(view == TaskRegisterOverview(
+  //    currentTaskCount = 0,
+  //    totalTaskCount = 0))
+  //}
+  //
+  //"get /task/ (incomplete)" in {
+  //  val tasks = awaitResult(client.task.tasks, 2.s)
+  //  assert(tasks == Nil)
+  //  pending
+  //}
+  //
+  //"get /task/1-123 (incomplete)" in {
+  //  val e = intercept[UnsuccessfulResponseException] {
+  //    awaitResult(client.task(TestAgentTaskId), 2.s): TaskOverview
+  //  }
+  //  assert(e.response.status == InternalServerError)
+  //  assert(e.response.entity.asString contains "UnknownTaskException")
+  //  pending
+  //}
 }
 
 object AgentClientIT {

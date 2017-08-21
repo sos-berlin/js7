@@ -1,14 +1,10 @@
 package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.base.process.ProcessSignal.SIGTERM
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.TaskId
 import com.sos.jobscheduler.data.jobnet.Jobnet.{EndNode, JobNode}
 import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import java.time.Duration
 import org.scalatest.FreeSpec
 import spray.json._
 
@@ -170,127 +166,6 @@ final class AgentCommandTest extends FreeSpec {
       }""".parseJson
       assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
       assert(obj == json.convertTo[AgentCommand])
-    }
-  }
-
-  "Legacy version 1 commands" - {
-    "CloseTask" in {
-      val obj = AgentCommand.CloseTask(AgentTaskId("111-222"), kill = true)
-      val json = """{
-        "$TYPE": "CloseTask",
-        "agentTaskId": "111-222",
-        "kill": true
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
-    }
-
-    "DeleteFile" in {
-      val obj = AgentCommand.DeleteFile("FILE")
-      val json = """{
-        "$TYPE": "DeleteFile",
-        "path": "FILE"
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
-    }
-
-    "MoveFile" in {
-      val obj = AgentCommand.MoveFile("OLD", "TO-DIRECTORY")
-      val json = """{
-        "$TYPE": "MoveFile",
-        "path": "OLD",
-        "toDirectory": "TO-DIRECTORY"
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
-    }
-
-    "RequestFileOrderSourceContent" in {
-      val obj = AgentCommand.RequestFileOrderSourceContent(
-        directory = "DIRECTORY",
-        regex = "REGEX",
-        duration = Duration.ofMillis(111222333444555666L),
-        knownFiles = Set("KNOWN"))
-      val json = """{
-        "$TYPE": "RequestFileOrderSourceContent",
-        "directory": "DIRECTORY",
-        "regex": "REGEX",
-        "duration": 111222333444555.666,
-        "knownFiles": [ "KNOWN" ]
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
-    }
-
-    "SendProcessSignal" in {
-      val obj = AgentCommand.SendProcessSignal(AgentTaskId("111-222"), SIGTERM)
-      val json = """{
-        "$TYPE": "SendProcessSignal",
-        "agentTaskId": "111-222",
-        "signal": "SIGTERM"
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
-    }
-
-    "StartApiTask" - {
-      "JSON minimum" in {
-        val obj = AgentCommand.StartApiTask(
-          meta = None,
-          javaOptions = "JAVA-OPTIONS",
-          javaClasspath = "JAVA-CLASSPATH")
-        val json = """{
-          "$TYPE": "StartApiTask",
-          "javaOptions": "JAVA-OPTIONS",
-          "javaClasspath": "JAVA-CLASSPATH"
-        }""".parseJson
-        assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-        assert(obj == json.convertTo[AgentCommand])
-      }
-
-      "JSON maximum" in {
-        val obj = AgentCommand.StartApiTask(
-          meta = Some(AgentCommand.StartTask.Meta(
-            job = "/folder/test",
-            TaskId(123))),
-          javaOptions = "JAVA-OPTIONS",
-          javaClasspath = "JAVA-CLASSPATH")
-        val json = """{
-          "$TYPE": "StartApiTask",
-          "meta": {
-            "job": "/folder/test",
-            "taskId": "123"
-          },
-          "javaOptions": "JAVA-OPTIONS",
-          "javaClasspath": "JAVA-CLASSPATH"
-        }""".parseJson
-        assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-        assert(obj == json.convertTo[AgentCommand])
-      }
-    }
-
-    "StartNonApiTask" - {
-      "JSON minimum" in {
-        val obj = AgentCommand.StartNonApiTask(meta = None)
-        val json = """{ "$TYPE": "StartNonApiTask" }""".parseJson
-        assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-        assert(obj == json.convertTo[AgentCommand])
-      }
-
-      "JSON maximum" in {
-        val obj = AgentCommand.StartNonApiTask(Some(AgentCommand.StartTask.Meta(job = "/folder/test", TaskId(123))))
-        val json =
-          """{
-            "$TYPE": "StartNonApiTask",
-            "meta": {
-              "job": "/folder/test",
-              "taskId": "123"
-              }
-            }""".parseJson
-        assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-        assert(obj == json.convertTo[AgentCommand])
-      }
     }
   }
 }

@@ -5,9 +5,9 @@ import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
 import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
 import com.sos.jobscheduler.agent.command.{CommandExecutor, CommandMeta}
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, FileOrderSourceContent}
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AbortImmediately, RequestFileOrderSourceContent, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AbortImmediately, Terminate}
 import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -39,7 +39,8 @@ final class AgentClientCommandMarshallingTest extends FreeSpec with BeforeAndAft
         Future {
           (command match {
             case ExpectedTerminate ⇒ EmptyResponse
-            case xx ⇒ ExpectedFileOrderSourceContent
+            case AbortImmediately ⇒ EmptyResponse
+            case _ ⇒ throw new NotImplementedError
           })
           .asInstanceOf[command.Response]
         }
@@ -50,14 +51,13 @@ final class AgentClientCommandMarshallingTest extends FreeSpec with BeforeAndAft
   private lazy val client = SimpleAgentClient(agentUri = agent.localUri).closeWithCloser
 
   "commandDurationToRequestTimeout" in {
-    val upperBound = RequestFileOrderSourceContent.MaxDuration  // The upper bound depends on Akka tick length (Int.MaxValue ticks, a tick can be as short as 1ms)
+    val upperBound = 30 * 24.h  // The upper bound depends on Akka tick length (Int.MaxValue ticks, a tick can be as short as 1ms)
     for (duration ← List[Duration](0.s, 1.s, upperBound)) {
       assert(commandDurationToRequestTimeout(duration) == Timeout((RequestTimeout + duration).toMillis, MILLISECONDS))
     }
   }
 
   List[(AgentCommand, AgentCommand.Response)](
-    ExpectedRequestFileOrderSourceContent → ExpectedFileOrderSourceContent,
     ExpectedTerminate → EmptyResponse,
     AbortImmediately → EmptyResponse)
   .foreach { case (command, response) ⇒
@@ -70,13 +70,5 @@ final class AgentClientCommandMarshallingTest extends FreeSpec with BeforeAndAft
 }
 
 private object AgentClientCommandMarshallingTest {
-  private val ExpectedRequestFileOrderSourceContent = RequestFileOrderSourceContent(
-    directory = "DIRECTORY",
-    regex = "REGEX",
-    duration= 111222.ms,
-    knownFiles = Set("a", "b"))
-  private val ExpectedFileOrderSourceContent = FileOrderSourceContent(List(
-    FileOrderSourceContent.Entry("a.txt", 23334445555L),
-    FileOrderSourceContent.Entry("b.txt", 20000000000L)))
   private val ExpectedTerminate = Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.s))
 }

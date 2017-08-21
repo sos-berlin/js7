@@ -102,6 +102,10 @@ final class OrderHandler @Inject private(
             promise.future
          })
       yield response
+
+  def overview = OrdersOverview(
+    currentTaskCount = 0,
+    totalTaskCount = 0)
 }
 
 object OrderHandler {
