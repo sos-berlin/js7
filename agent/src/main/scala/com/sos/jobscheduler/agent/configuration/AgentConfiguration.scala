@@ -212,7 +212,7 @@ object AgentConfiguration {
   private def defaultLogDirectory(data: Path) = data / "logs"
 
   object forTest {
-    private val TaskServerLogbackResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/logback.xml")
+    private val TaskServerLog4jResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/log4j.xml")
 
     def apply(configAndData: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
       fromDirectories(
@@ -221,6 +221,6 @@ object AgentConfiguration {
         config)
       .copy(
         http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))),
-        jobJavaOptions = List(s"-Dlogback.configurationFile=${TaskServerLogbackResource.path}") ++ sys.props.get("agent.job.javaOptions"))
+        jobJavaOptions = List(s"-Dlog4j.configurationFile=${TaskServerLog4jResource.path}") ++ sys.props.get("agent.job.javaOptions"))
   }
 }

@@ -14,7 +14,6 @@ object Dependencies {
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
 //val julToSlf4J          = "org.slf4j" % "jul-to-slf4j" % slf4jVersion
-  val logbackClassic      = "ch.qos.logback" % "logback-classic" % "1.1.3"
   val log4jApi            = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore           = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val log4jSlf4j          = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion
