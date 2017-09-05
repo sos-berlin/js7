@@ -26,8 +26,8 @@ import spray.json.DefaultJsonProtocol._
 final class CommandActor(sessionActor: ActorRef @@ SessionActor, agentHandle: AgentHandle)(implicit ec: ExecutionContext)
 extends Actor {
 
-  private var nextId = 0L
   private var totalCounter = 0L
+  private var nextId = 0L
   private val idToCommand = mutable.Map[InternalCommandId, CommandRun]()
 
 
@@ -53,7 +53,7 @@ extends Actor {
     val id = InternalCommandId(nextId)
     logger.info(s"$id ${command.toShortString}")
     if (command.toStringIsLonger) logger.debug(s"$id $command")  // Complete string
-    idToCommand += id → CommandRun(id, now(), command)
+    idToCommand += id → CommandRun(id, now, command)
     val myResponse = Promise[Response]()
     executeCommand2(id, command, meta, myResponse)
     myResponse.future onComplete { tried ⇒

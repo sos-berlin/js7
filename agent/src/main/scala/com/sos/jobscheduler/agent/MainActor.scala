@@ -31,9 +31,10 @@ extends Actor {
   import context.{actorOf, watch}
 
   override val supervisorStrategy = CatchingSupervisorStrategy(stoppedPromise)
-  private val agentActor = watch(actorOf(Props { injector.instance[AgentActor] }, "agent"))
 
+  private val agentActor = watch(actorOf(Props { injector.instance[AgentActor] }, "agent"))
   private val agentHandle = new AgentHandle(agentActor)(akkaAskTimeout)
+
   private val commandHandler = injector.option[CommandHandler] getOrElse { // Bound only for tests
     val sessionActor = actorOf(Props { new SessionActor(sessionRegister) }, "session").taggedWith[SessionActor]
     val actor = actorOf(Props { new CommandActor(sessionActor, agentHandle) }, "command")

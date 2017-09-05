@@ -128,21 +128,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     case Input.ExternalCommand(cmd: OrderCommand, response) ⇒
       response.completeWith(processOrderCommand(cmd))
 
-    case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
-      handleOrderEvent(order, event)
-
-    case Internal.Due(orderId) if orderRegister contains orderId ⇒
-      val orderEntry = orderRegister(orderId)
-      onOrderAvailable(orderEntry)
-
-    case stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
-      eventsForMaster ! stamped
-
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
       eventsForMaster.forward(EventQueue.Input.RequestEvents(after, timeout, limit, promise))
-
-    case JobRunner.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
-      tryStartStep(jobRegister(sender()))
 
     case Input.Terminate ⇒
       if (!terminating) {
@@ -153,6 +140,19 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       }
       checkActorStop()
       sender() ! Done
+
+    case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
+      handleOrderEvent(order, event)
+
+    case JobRunner.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
+      tryStartStep(jobRegister(sender()))
+
+    case Internal.Due(orderId) if orderRegister contains orderId ⇒
+      val orderEntry = orderRegister(orderId)
+      onOrderAvailable(orderEntry)
+
+    case stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
+      eventsForMaster ! stamped
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
