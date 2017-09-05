@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, Cancellable, Status, Terminated}
-import com.sos.jobscheduler.agent.scheduler.job.JobRunner
+import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.base.generic.Completed
@@ -116,7 +116,7 @@ extends KeyedJournalingActor[OrderEvent] {
       context.watch(jobActor)
       persist(OrderStepStarted) { event ⇒
         update(event)
-        jobActor ! JobRunner.Command.ProcessOrder(
+        jobActor ! JobActor.Command.ProcessOrder(
           order.castAfterEvent(event),
           new StdChannels(
             charBufferSize = min(StdPipeCharBufferSize, stdCharBlockSize),
@@ -148,7 +148,7 @@ extends KeyedJournalingActor[OrderEvent] {
         flushStdoutAndStderr()
         stdoutStderrTimer = null
 
-      case JobRunner.Response.OrderProcessed(`orderId`, moduleStepEnded) if node != null ⇒
+      case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) if node != null ⇒
         val event = moduleStepEnded match {
           case TaskStepSucceeded(variablesDiff, good) ⇒
             OrderStepSucceeded(variablesDiff, good.returnValue, nextNodeId(node, good))

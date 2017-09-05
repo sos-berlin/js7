@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
-import com.sos.jobscheduler.agent.scheduler.job.JobRunner
+import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
@@ -144,7 +144,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
       handleOrderEvent(order, event)
 
-    case JobRunner.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
+    case JobActor.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
       tryStartStep(jobRegister(sender()))
 
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
@@ -303,7 +303,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     if (jobEntry.waitingForOrder) {
       tryStartStep(jobEntry)
     } else {
-      jobEntry.actor ! JobRunner.Input.OrderAvailable
+      jobEntry.actor ! JobActor.Input.OrderAvailable
     }
   }
 

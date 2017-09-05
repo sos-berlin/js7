@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, DeadLetterSuppression, Props, Stash}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.scheduler.job.JobRunner._
+import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskRunner, TaskStepEnded, TaskStepFailed}
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
@@ -23,10 +23,10 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JobRunner private(jobPath: JobPath, newTaskRunner: TaskRunner.Factory, timerService: TimerService)(implicit ec: ExecutionContext)
+final class JobActor private(jobPath: JobPath, newTaskRunner: TaskRunner.Factory, timerService: TimerService)(implicit ec: ExecutionContext)
 extends Actor with Stash {
 
-  private val logger = Logger.withPrefix[JobRunner](jobPath.toString)
+  private val logger = Logger.withPrefix[JobActor](jobPath.toString)
   private var jobConfiguration: JobConfiguration = null
   private val orderToTask = mutable.Map[OrderId, TaskRunner]()
   private var waitingForNextOrder = false
@@ -127,15 +127,15 @@ extends Actor with Stash {
     }
   }
 
-  override def toString = s"JobRunner(${jobPath.string})"
+  override def toString = s"JobActor(${jobPath.string})"
 
   private def taskCount = orderToTask.size
 }
 
-object JobRunner {
+object JobActor {
   def actorOf(jobPath: JobPath, newTaskRunner: TaskRunner.Factory, ts: TimerService)(implicit actorRefFactory: ActorRefFactory, ec: ExecutionContext): ActorRef =
     actorRefFactory.actorOf(
-      Props { new JobRunner(jobPath, newTaskRunner, ts) },
+      Props { new JobActor(jobPath, newTaskRunner, ts) },
       name = toActorName(jobPath))
 
   def toActorName(o: JobPath): String =

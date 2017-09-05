@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobRunner, JobScript}
+import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobActor, JobScript}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
 import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
 import com.sos.jobscheduler.base.generic.Completed
@@ -151,7 +151,7 @@ private object OrderActorTest {
         new JsonJournalActor[OrderEvent](TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, keyedEventBus)
       },
       "Journal")
-    private val jobActor = context.watch(JobRunner.actorOf(TestJobPath, taskRunnerFactory, timerService))
+    private val jobActor = context.watch(JobActor.actorOf(TestJobPath, taskRunnerFactory, timerService))
     private val orderActor = actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor, config)}, s"Order-${TestOrder.id.string}")
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
@@ -165,17 +165,17 @@ private object OrderActorTest {
     def receive = {
       case JsonJournalActor.Output.Ready ⇒
         become(journalReady)
-        (jobActor ? JobRunner.Command.StartWithConfiguration(jobConfiguration)) pipeTo self
+        (jobActor ? JobActor.Command.StartWithConfiguration(jobConfiguration)) pipeTo self
     }
 
     private def journalReady: Receive = {
-      case JobRunner.Response.Ready ⇒
-        become(jobRunnerReady)
-        jobActor ! JobRunner.Input.OrderAvailable
+      case JobActor.Response.Ready ⇒
+        become(jobActorReady)
+        jobActor ! JobActor.Input.OrderAvailable
     }
 
-    private def jobRunnerReady: Receive = {
-      case JobRunner.Output.ReadyForOrder ⇒  // JobRunner has sent this to its parent (that's me) in response to OrderAvailable
+    private def jobActorReady: Receive = {
+      case JobActor.Output.ReadyForOrder ⇒  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
         orderActor ! OrderActor.Command.Attach(TestOrder)
         become(attaching)
     }
@@ -187,7 +187,7 @@ private object OrderActorTest {
     }
 
     private def ready: Receive = receiveOrderEvent orElse {
-      case JobRunner.Output.ReadyForOrder ⇒  // Ready for next order
+      case JobActor.Output.ReadyForOrder ⇒  // Ready for next order
     }
 
     private def detaching: Receive = receiveOrderEvent orElse {
@@ -195,7 +195,7 @@ private object OrderActorTest {
         jobActor ! AgentCommand.Terminate(sigkillProcessesAfter = Some(0.s))
         become(terminatingJobActor)
 
-      case JobRunner.Output.ReadyForOrder ⇒  // Ready for next order
+      case JobActor.Output.ReadyForOrder ⇒  // Ready for next order
     }
 
     private def terminatingJobActor: Receive = receiveOrderEvent orElse {

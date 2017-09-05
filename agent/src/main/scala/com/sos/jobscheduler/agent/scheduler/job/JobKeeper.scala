@@ -33,9 +33,9 @@ extends Actor with Stash {
           val pathToActor = mutable.Map[JobPath, ActorRef]()
           forEachTypedFile(jobConfigurationDirectory, Set(JobPath)) {
             case (file, jobPath: JobPath) ⇒
-              val a = context.watch(JobRunner.actorOf(jobPath, registeringNewTaskRunner, timerService))
+              val a = context.watch(JobActor.actorOf(jobPath, registeringNewTaskRunner, timerService))
               pathToActor += jobPath → a
-              a ! JobRunner.Command.StartWithConfigurationFile(file)
+              a ! JobActor.Command.StartWithConfigurationFile(file)
           }
           unstashAll()
           starting(pathToActor.toMap, sender())
@@ -67,7 +67,7 @@ extends Actor with Stash {
 
     if (!ifAllJobsStartedThenBecomeStarted()) {
       context.become(handleReadyForOrder orElse {
-        case JobRunner.Response.Ready ⇒
+        case JobActor.Response.Ready ⇒
           context.unwatch(sender())
           startedJobActors += sender()
           ifAllJobsStartedThenBecomeStarted()
@@ -96,7 +96,7 @@ extends Actor with Stash {
     }
 
   private def handleReadyForOrder: Receive = {
-    case msg: JobRunner.Output.ReadyForOrder.type ⇒
+    case msg: JobActor.Output.ReadyForOrder.type ⇒
       context.parent.forward(msg)
   }
 }

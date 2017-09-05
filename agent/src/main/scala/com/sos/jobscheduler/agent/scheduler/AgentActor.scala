@@ -8,7 +8,7 @@ import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
-import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobRunner}
+import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobActor}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
 import com.sos.jobscheduler.agent.task.{TaskRegister, TaskRegisterActor}
 import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
@@ -125,7 +125,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
         case None ⇒ sender() ! Status.Failure(new NoSuchElementException(s"No Master registered for User '$userId'"))
       }
 
-    case msg: JobRunner.Output.ReadyForOrder.type ⇒
+    case msg: JobActor.Output.ReadyForOrder.type ⇒
       for (actor ← masterToOrderKeeper.values) {
         actor.forward(msg)
       }
