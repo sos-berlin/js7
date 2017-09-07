@@ -1,21 +1,21 @@
 package com.sos.jobscheduler.agent.web
 
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.model.MediaTypes.`application/json`
+import akka.http.scaladsl.model.StatusCodes.OK
+import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandHandlerDetailed, CommandHandlerOverview, CommandMeta, CommandRunOverview, InternalCommandId}
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
-import com.sos.jobscheduler.common.sprayutils.JsObjectMarshallers._
+import com.sos.jobscheduler.common.akkahttp.JsObjectMarshallers._
+import com.sos.jobscheduler.common.akkahttp.JsonString
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
-import spray.http.HttpHeaders.Accept
-import spray.http.MediaTypes.`application/json`
-import spray.http.StatusCodes.OK
-import spray.httpx.SprayJsonSupport._
-import spray.httpx.marshalling.BasicMarshallers.stringMarshaller
 import spray.json._
 
 /**
@@ -53,8 +53,8 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
     }
   }
 
-  private def postJsonCommand(json: String): RouteResult =
-    Post("/test/jobscheduler/agent/api/command", json)(stringMarshaller(`application/json`)) ~>
+  private def postJsonCommand(json: String): RouteTestResult =
+    Post("/test/jobscheduler/agent/api/command", JsonString(json)) ~>
       Accept(`application/json`) ~>
       route
 

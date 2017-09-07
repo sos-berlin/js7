@@ -1,15 +1,16 @@
 package com.sos.jobscheduler.common.event.collector
 
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
+import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import com.google.common.base.Splitter
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.common.sprayutils.SprayUtils._
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event._
+import java.time.Duration
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
-import shapeless.{::, HNil}
-import spray.routing.Directives._
-import spray.routing._
 
 /**
   * @author Joacim Zschimmer
@@ -23,7 +24,7 @@ object EventDirectives {
 
   def eventRequest[E <: Event: KeyedTypedEventJsonFormat: ClassTag](defaultReturnType: Option[String] = None): Directive1[SomeEventRequest[E]] =
     new Directive1[SomeEventRequest[E]] {
-      def happly(inner: SomeEventRequest[E] :: HNil ⇒ Route) =
+      def tapply(inner: Tuple1[SomeEventRequest[E]] ⇒ Route) =
         parameter("return".?) {
           _ orElse defaultReturnType match {
             case Some(returnType) ⇒
@@ -44,19 +45,22 @@ object EventDirectives {
         }
     }
 
-  private def eventRequestRoute[E <: Event](eventClasses: Set[Class[_ <: E]], inner: SomeEventRequest[E] :: HNil ⇒ Route): Route = {
+  private implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
+    Unmarshaller.strict(parseDuration)
+
+  private def eventRequestRoute[E <: Event](eventClasses: Set[Class[_ <: E]], inner: Tuple1[SomeEventRequest[E]] ⇒ Route): Route = {
     parameter("limit" ? Int.MaxValue) {
       case 0 ⇒
         reject(ValidationRejection(s"Invalid limit=0"))
       case limit if limit > 0 ⇒
         parameter("after".as[EventId]) { after ⇒
           parameter("timeout" ? 0.s) { timeout ⇒
-            inner(EventRequest[E](eventClasses, after = after, timeout, limit = limit) :: HNil)
+            inner(Tuple1(EventRequest[E](eventClasses, after = after, timeout, limit = limit)))
           }
         }
       case limit if limit < 0 ⇒
         parameter("after" ? EventId.BeforeFirst) { after ⇒
-          inner(ReverseEventRequest[E](eventClasses, after = after, limit = -limit) :: HNil)
+          inner(Tuple1(ReverseEventRequest[E](eventClasses, after = after, limit = -limit)))
         }
     }
   }

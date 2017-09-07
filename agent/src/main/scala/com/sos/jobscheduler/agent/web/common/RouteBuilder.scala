@@ -1,17 +1,17 @@
 package com.sos.jobscheduler.agent.web.common
 
 import akka.actor.ActorRefFactory
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.web.common.RouteBuilder._
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
+import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.sos.jobscheduler.common.auth.User
 import com.sos.jobscheduler.common.auth.User.Anonymous
 import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichSeq
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
-import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeper
-import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
 import scala.collection.mutable
-import spray.routing.Directives._
-import spray.routing.Route
 
 /**
   * @author Joacim Zschimmer
@@ -83,7 +83,7 @@ final class RouteBuilder(sessionRegister: SessionRegister[LoginSession]) extends
 
     logAllEntries()
 
-    (decompressRequest() & compressResponseIfRequested(())) {
+    (decodeRequest & encodeResponse) {
       possiblyEmptyPathPrefix(uriPathPrefix) {
         pathSegments("jobscheduler") {
           pathSegments("agent/api") {

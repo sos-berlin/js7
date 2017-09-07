@@ -1,16 +1,16 @@
 package com.sos.jobscheduler.agent.web
 
+import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
+import akka.http.scaladsl.model.headers.`Cache-Control`
+import akka.http.scaladsl.server.Directives._
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.akkahttp.SprayJsonOrYamlSupport._
 import com.sos.jobscheduler.data.session.SessionToken
 import scala.concurrent.ExecutionContext
-import spray.http.CacheDirectives.`max-age`
-import spray.http.HttpHeaders.`Cache-Control`
 import spray.json.DefaultJsonProtocol._
-import spray.routing.Directives._
 
 /**
  * @author Joacim Zschimmer

@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.tests
 
+import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import com.sos.jobscheduler.agent.client.{AgentClient, SimpleAgentClient}
 import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Login, Logout, NoOperation}
@@ -12,8 +13,6 @@ import com.sos.jobscheduler.data.agent.AgentAddress
 import com.sos.jobscheduler.data.session.SessionToken
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import spray.http.StatusCodes.{Forbidden, Unauthorized}
-import spray.httpx.UnsuccessfulResponseException
 
 /**
   * @author Joacim Zschimmer
@@ -38,10 +37,10 @@ final class LoginIT extends FreeSpec with AgentTest {
 
       // Using old SessionToken is Unauthorized
       client.setSessionToken(sessionToken)
-      val throwable = intercept[UnsuccessfulResponseException] {
+      val throwable = intercept[AgentClient.HttpException] {
         client.executeCommand(NoOperation) await 99.s
       }
-      throwable.response.status should (equal(Unauthorized) or equal(Forbidden))
+      throwable.status should (equal(Unauthorized) or equal(Forbidden))
       assert(AgentClient.sessionIsPossiblyLost(throwable))
     }
   }
@@ -51,10 +50,10 @@ final class LoginIT extends FreeSpec with AgentTest {
     // With Unauthorized or Forbidden, the client learns about the invalid session.
     withClient { client ⇒
       client.setSessionToken(SessionToken.apply(SecretString("DISCARDED")))
-      val throwable = intercept[UnsuccessfulResponseException] {
+      val throwable = intercept[AgentClient.HttpException] {
         client.executeCommand(NoOperation) await 99.s
       }
-      throwable.response.status should (equal(Unauthorized) or equal(Forbidden))
+      throwable.status should (equal(Unauthorized) or equal(Forbidden))
       assert(AgentClient.sessionIsPossiblyLost(throwable))
 
       client.clearSession()
@@ -74,10 +73,10 @@ final class LoginIT extends FreeSpec with AgentTest {
       withClient { otherClient ⇒
         // Using old SessionToken is Unauthorized
         otherClient.setSessionToken(aSessionToken)
-        val throwable = intercept[UnsuccessfulResponseException] {
+        val throwable = intercept[AgentClient.HttpException] {
           otherClient.executeCommand(NoOperation) await 99.s
         }
-        throwable.response.status should (equal(Unauthorized) or equal(Forbidden))
+        throwable.status should (equal(Unauthorized) or equal(Forbidden))
         assert(AgentClient.sessionIsPossiblyLost(throwable))
       }
 

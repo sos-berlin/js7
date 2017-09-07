@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.common.time.timer
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.someUnless
+import com.sos.jobscheduler.common.akkahttp.YamlJsonConversion.ToYamlString
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.sprayutils.YamlJsonConversion.ToYamlString
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.Timer.nowMillis
 import com.sos.jobscheduler.common.time.timer.TimerService._

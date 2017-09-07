@@ -2,9 +2,10 @@ package com.sos.jobscheduler.master.web
 
 import akka.actor.ActorSystem
 import com.google.inject.Injector
-import com.sos.jobscheduler.common.sprayutils.WebServerBinding
-import com.sos.jobscheduler.common.sprayutils.web.SprayWebServer
-import com.sos.jobscheduler.common.sprayutils.web.auth.{CSRF, GateKeeper}
+import com.sos.jobscheduler.common.akkahttp.WebServerBinding
+import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
+import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
+import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
@@ -17,19 +18,20 @@ final class MasterWebServer @Inject private(
   masterConfiguration: MasterConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration,
   csrf: CSRF,
+  timerService: TimerService,
   injector: Injector)
   (implicit
     protected val actorSystem: ActorSystem,
     protected val executionContext: ExecutionContext)
-extends SprayWebServer with SprayWebServer.HasUri {
+extends AkkaWebServer with AkkaWebServer.HasUri {
 
   protected def uriPathPrefix = ""
   protected val bindings = masterConfiguration.webServerBindings
 
-  protected def newRouteActorRef(binding: WebServerBinding) =
-    actorSystem.actorOf(
-      WebServiceActor(
-        new GateKeeper(gateKeeperConfiguration, csrf, isUnsecuredHttp = binding.isUnsecuredHttp),
-        injector),
-      name = SprayWebServer.actorName("EngineWebServer", binding))
+  protected def newRoute(binding: WebServerBinding) =
+    new RouteProvider(
+      new GateKeeper(gateKeeperConfiguration, csrf, timerService, isUnsecuredHttp = binding.isUnsecuredHttp),
+      actorSystem,
+      injector)
+    .route
 }

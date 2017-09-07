@@ -1,10 +1,21 @@
 package com.sos.jobscheduler.agent.client
-
-import akka.actor.ActorRefFactory
-import akka.util.Timeout
+import akka.actor.{ActorRefFactory, ActorSystem}
+import akka.http.scaladsl.coding.Gzip
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.marshalling.Marshal
+import akka.http.scaladsl.model.HttpMethods.{GET, POST}
+import akka.http.scaladsl.model.MediaTypes._
+import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
+import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
+import akka.http.scaladsl.model.headers.HttpEncodings.gzip
+import akka.http.scaladsl.model.headers.{Accept, Authorization, BasicHttpCredentials, `Accept-Encoding`, `Cache-Control`}
+import akka.http.scaladsl.model.{HttpHeader, HttpRequest, Uri, _}
+import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
+import akka.http.scaladsl.{Http, HttpsConnectionContext}
+import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.agent.client.AgentClient._
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
+import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
@@ -13,33 +24,20 @@ import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEve
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.decodeResponse
 import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.soslicense.LicenseKeyString
-import com.sos.jobscheduler.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
+import com.sos.jobscheduler.common.utils.Strings.TruncatedString
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken
-import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
-import org.jetbrains.annotations.TestOnly
-import org.scalactic.Requirements._
 import scala.collection.immutable
 import scala.collection.immutable.Seq
-import scala.concurrent.{ExecutionContext, Future}
-import spray.can.Http.HostConnectorSetup
-import spray.client.pipelining._
-import spray.http.CacheDirectives.{`no-cache`, `no-store`}
-import spray.http.HttpHeaders.{Accept, `Cache-Control`}
-import spray.http.MediaTypes._
-import spray.http.StatusCodes.{Forbidden, InternalServerError, Unauthorized}
-import spray.http._
-import spray.httpx.SprayJsonSupport._
-import spray.httpx.UnsuccessfulResponseException
-import spray.httpx.encoding.Gzip
-import spray.httpx.unmarshalling._
+import scala.concurrent.Future
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -51,48 +49,58 @@ import spray.json.DefaultJsonProtocol._
 trait AgentClient {
   import actorRefFactory.dispatcher
 
+  protected val actorSystem = ActorSystem()
+  private implicit val materializer = ActorMaterializer()(actorSystem)
+
   val agentUri: Uri
-  protected def licenseKeys: immutable.Iterable[LicenseKeyString]
   implicit protected val actorRefFactory: ActorRefFactory
-  protected def hostConnectorSetupOption: Option[HostConnectorSetup]
+  protected def httpsConnectionContextOption: Option[HttpsConnectionContext]
   protected def userAndPasswordOption: Option[UserAndPassword]
 
   private lazy val logger = Logger.withPrefix[AgentClient](agentUri.toString)
   protected lazy val agentUris = AgentUris(agentUri.toString)
-  private lazy val addLicenseKeys: RequestTransformer = if (licenseKeys.nonEmpty) addHeader(AgentUris.LicenseKeyHeaderName, licenseKeys mkString " ")
-    else identity
-  private lazy val addUserAndPassword: RequestTransformer = userAndPasswordOption match {
-    case Some(UserAndPassword(UserId(user), SecretString(password))) ⇒ addCredentials(BasicHttpCredentials(user, password))
-    case None ⇒ identity
+  private lazy val uriPrefixString = agentUris.prefixedUri.path.toString
+  private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
+  private lazy val credentialsHeaders: List[HttpHeader] = userAndPasswordOption match {
+    case Some(UserAndPassword(UserId(user), SecretString(password))) ⇒ Authorization(BasicHttpCredentials(user, password)) :: Nil
+    case None ⇒ Nil
   }
   private val sessionTokenRef = new AtomicReference[Option[SessionToken]](None)
+  private val http = Http(actorSystem)
 
   final def executeCommand(command: AgentCommand): Future[command.Response] = {
     logger.debug(s"Execute $command")
     val response = command match {
       case Login ⇒
-        for (response ← unmarshallingPipeline[LoginResponse](RequestTimeout, SessionAction.Login).apply(Post(agentUris.command, command: AgentCommand))) yield {
+        for (response ← executeCommand2[Login.Response](command, SessionAction.Login)) yield {
           setSessionToken(response.sessionToken)
           response
         }
+
       case Logout ⇒
         val tokenOption = sessionTokenRef.get
-        val whenResponded = unmarshallingPipeline[EmptyResponse.type](RequestTimeout, SessionAction.Logout(tokenOption))
-          .apply(Post(agentUris.command, command: AgentCommand))
-        for (response ← whenResponded) yield {
+        for (response ← executeCommand2[Logout.Response](command, SessionAction.Logout(tokenOption))) yield {
           sessionTokenRef.compareAndSet(tokenOption, None)  // Changes nothing in case of a concurrent successful Login
           response
         }
-      case (Logout | NoOperation | _: OrderCommand | RegisterAsMaster | _: TerminateOrAbort) ⇒
-        unmarshallingPipeline[EmptyResponse.type](RequestTimeout).apply(Post(agentUris.command, command: AgentCommand))
+
+      case (NoOperation | _: OrderCommand | RegisterAsMaster | _: TerminateOrAbort) ⇒
+        executeCommand2[EmptyResponse.type](command)
     }
-    response map { _.asInstanceOf[command.Response] } recover {
-      case e: UnsuccessfulResponseException if e.response.status == InternalServerError ⇒
-        import e.response.entity
-        val message = if (entity.data.length < 1024) entity.asString else entity.data.length + " bytes"
-        throw new RuntimeException(s"HTTP-${e.response.status}: $message")
-    }
+    response map { _.asInstanceOf[command.Response] }
   }
+
+  private def executeCommand2[A: FromResponseUnmarshaller](command: AgentCommand, sessionAction: SessionAction = SessionAction.Default): Future[A] =
+    for {
+      entity ← Marshal(command).to[RequestEntity]
+      httpResponse ← sendReceive(
+        Gzip.encodeMessage(
+          HttpRequest(POST, agentUris.command, Accept(`application/json`) :: Nil, entity)),
+        sessionAction)
+      response ← Unmarshal(httpResponse).to[A]
+    } yield
+      response
+
 
   final def overview: Future[AgentOverview] = get[AgentOverview](_.overview)
 
@@ -114,65 +122,57 @@ trait AgentClient {
     get[Seq[Order[Order.State]]](_.order.orders)
 
   final def mastersEvents(request: EventRequest[OrderEvent]): Future[EventSeq[Seq, KeyedEvent[OrderEvent]]] = {
-    val timeout = request match {
-      case o: EventRequest[_] ⇒ o.timeout + 10.s
-      case _ ⇒ RequestTimeout
-    }
-    get[EventSeq[Seq, KeyedEvent[OrderEvent]]](_.mastersEvents(request), timeout)
+    //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
+    // See https://gist.github.com/burakbala/49617745ead702b4c83cf89699c266ff
+    //val timeout = request match {
+    //  case o: EventRequest[_] ⇒ o.timeout + 10.s
+    //  case _ ⇒ akka configured default value
+    //}
+    get[EventSeq[Seq, KeyedEvent[OrderEvent]]](_.mastersEvents(request))
   }
 
-  final def get[A: FromResponseUnmarshaller](uri: AgentUris ⇒ String, timeout: Duration = RequestTimeout): Future[A] =
-    unmarshallingPipeline[A](timeout).apply(Get(uri(agentUris)))
+  final def get[A: FromResponseUnmarshaller](uri: AgentUris ⇒ Uri): Future[A] =
+    getUri[A](uri(agentUris))
 
-  @TestOnly
-  private[sos] final def sendReceive[A: FromResponseUnmarshaller](request: HttpRequest, timeout: Duration = RequestTimeout): Future[A] =
+  final def getUri[A: FromResponseUnmarshaller](uri: Uri): Future[A] =
+    sendReceive(HttpRequest(GET, uri, Accept(`application/json`) :: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
+
+  private def sendReceive[A: FromResponseUnmarshaller](request: HttpRequest, sessionAction: SessionAction = SessionAction.Default): Future[A] =
     withCheckedAgentUri(request) { request ⇒
-      unmarshallingPipeline[A](timeout).apply(request)
+      val req = Gzip.encodeMessage(request.copy(
+        headers = sessionCredentialsHeaders(sessionAction) ::: `Accept-Encoding`(gzip) :: request.headers.toList))
+      http.singleRequest(req, httpsConnectionContext) flatMap { httpResponse ⇒
+        if (httpResponse.status.isSuccess)
+          Unmarshal(decodeResponse(httpResponse)).to[A]
+        else
+          for (message ← Unmarshal(decodeResponse(httpResponse)).to[String]/*TODO Possible OutOfMemoryError*/) yield
+            throw new HttpException(httpResponse.status, message truncateWithEllipsis ErrorMessageLengthMaximum)
+      }
     }
 
-  final def sendReceiveWithHeaders[A: FromResponseUnmarshaller]
-    (request: HttpRequest, headers: List[HttpHeader], timeout: Duration = RequestTimeout)
-  : Future[A] =
-    withCheckedAgentUri(request) { request ⇒
-      (addHeaders(headers) ~> httpResponsePipeline(timeout) ~> unmarshal[A]).apply(request)
-    }
-
-  private def unmarshallingPipeline[A: FromResponseUnmarshaller](timeout: Duration, sessionAction: SessionAction = SessionAction.Default) =
-    addHeader(Accept(`application/json`)) ~>
-      addHeader(`Cache-Control`(`no-cache`, `no-store`)) ~>   // Unnecessary ?
-      httpResponsePipeline(timeout, sessionAction) ~>
-      unmarshal[A]
-
-  private def httpResponsePipeline(timeout: Duration, sessionAction: SessionAction = SessionAction.Default): HttpRequest ⇒ Future[HttpResponse] =
-    agentSendReceive(timeout.toFiniteDuration, sessionAction)
-
-  private[sos] def agentSendReceive(futureTimeout: Timeout)(implicit ec: ExecutionContext): SendReceive =
-    agentSendReceive(futureTimeout, SessionAction.Default)
-
-  private def agentSendReceive(futureTimeout: Timeout, sessionAction: SessionAction)(implicit ec: ExecutionContext): SendReceive = {
-    addSessionCredentials(sessionAction) ~>
-      encode(Gzip) ~>
-      extendedSendReceive(futureTimeout, hostConnectorSetupOption)(actorRefFactory, ec) ~>
-      decode(Gzip)
-  }
-
-  private def addSessionCredentials(sessionAction: SessionAction): RequestTransformer =
+  private def sessionCredentialsHeaders(sessionAction: SessionAction): List[HttpHeader] =
     sessionAction match {
       case SessionAction.Default ⇒ sessionTokenRef.get match {
         case o: Some[SessionToken] ⇒
-          sessionTokenRequestTransformer(o)  // In session: Server should have credentials (see login)
+          sessionTokenRequestHeaderOption(o).toList  // In session: Server should have credentials (see login)
         case None ⇒
-          addUserAndPassword ~> addLicenseKeys  // No session: transfer credentials with every request
+          credentialsHeaders   // No session: transfer credentials with every request
       }
       case SessionAction.Login ⇒
-        sessionTokenRequestTransformer(sessionTokenRef.get) ~>  // Logout optional previous session
-          addUserAndPassword ~> addLicenseKeys
+        sessionTokenRequestHeaderOption(sessionTokenRef.get) ++:  // Logout optional previous session
+          credentialsHeaders
       case SessionAction.Logout(sessionTokenOption) ⇒
-        sessionTokenRequestTransformer(sessionTokenOption)
+        sessionTokenRequestHeaderOption(sessionTokenOption).toList
     }
 
-  private def sessionTokenRequestTransformer(sessionTokenOption: Option[SessionToken]): RequestTransformer =
-    sessionTokenOption map { token ⇒ addHeader(SessionToken.HeaderName, token.secret.string) } getOrElse identity
+  private def sessionTokenRequestHeaderOption(sessionTokenOption: Option[SessionToken]): Option[HttpHeader] =
+    sessionTokenOption map { token ⇒ makeHeader(SessionToken.HeaderName, token.secret.string) }
+
+  private def makeHeader(name: String, value: String): HttpHeader =
+    HttpHeader.parse(name, value) match {
+      case HttpHeader.ParsingResult.Ok(header, Nil) ⇒ header
+      case o ⇒ throw new IllegalArgumentException(o.errors.headOption map { _.summary } getOrElse s"Invalid http header: $name")
+    }
 
   private[agent] final def setSessionToken(sessionToken: SessionToken): Unit =
     sessionTokenRef.set(Some(sessionToken))
@@ -202,9 +202,10 @@ trait AgentClient {
   }
 
   private[client] def checkAgentUri(uri: Uri): Option[Uri] = {
-    val myAgentUri = Uri(scheme = uri.scheme, authority = uri.authority)
-    myAgentUri == agentUri && uri.path.toString.startsWith(agentUris.prefixedUri.path.toString) option
-      uri
+    uri.scheme == agentUri.scheme &&
+      uri.authority == agentUri.authority &&
+      (uri.path.toString startsWith uriPrefixString) option
+        uri
   }
 
   override def toString = s"AgentClient($agentUri)"
@@ -214,36 +215,28 @@ object AgentClient {
   intelliJuseImports(StringJsonFormat)  // for import spray.json.DefaultJsonProtocol._
 
   val RequestTimeout = 60.s
-  //private val RequestTimeoutMaximum = Int.MaxValue.ms  // Limit is the number of Akka ticks, where a tick can be as short as 1ms (see akka.actor.LightArrayRevolverScheduler.checkMaxDelay)
+  val ErrorMessageLengthMaximum = 10000
 
   def apply(
     agentUri: Uri,
     licenseKeys: immutable.Iterable[LicenseKeyString] = Nil,
-    hostConnectorSetupOption: Option[HostConnectorSetup] = None,
+    httpsConntextContextOption: Option[HttpsConnectionContext] = None,
     userAndPasswordOption: Option[UserAndPassword] = None)
     (implicit actorRefFactory: ActorRefFactory)
   : AgentClient =
-    new Standard(agentUri, licenseKeys, hostConnectorSetupOption, userAndPasswordOption)
+    new Standard(agentUri, licenseKeys, httpsConntextContextOption, userAndPasswordOption)
 
   private class Standard(
     val agentUri: Uri,
     protected val licenseKeys: immutable.Iterable[LicenseKeyString] = Nil,
-    protected val hostConnectorSetupOption: Option[HostConnectorSetup] = None,
+    protected val httpsConnectionContextOption: Option[HttpsConnectionContext] = None,
     protected val userAndPasswordOption: Option[UserAndPassword] = None)
     (implicit protected val actorRefFactory: ActorRefFactory)
   extends AgentClient
 
-  /**
-   * The returns timeout for the HTTP request is longer than the expected duration of the request
-   */
-  private[agent] def commandDurationToRequestTimeout(duration: Duration): Timeout = {
-    require(duration >= 0.s)
-    Timeout((duration + RequestTimeout).toFiniteDuration)
-  }
-
   def sessionIsPossiblyLost(t: Throwable): Boolean =
     t match {
-      case t: UnsuccessfulResponseException if t.response.status == Unauthorized || t.response.status == Forbidden ⇒ true
+      case t: HttpException if t.status == Unauthorized || t.status == Forbidden ⇒ true
       case _ ⇒ false
     }
 
@@ -253,4 +246,6 @@ object AgentClient {
     final case object Login extends SessionAction
     final case class Logout(sessionTokenOption: Option[SessionToken]) extends SessionAction
   }
+
+  final class HttpException(val status: StatusCode, message: String) extends RuntimeException(s"$status: $message".trim)
 }

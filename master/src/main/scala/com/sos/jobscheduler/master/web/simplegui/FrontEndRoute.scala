@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.master.web.simplegui
 
-import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
+import akka.http.scaladsl.model.headers.`Cache-Control`
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.master.web.simplegui.FrontEndRoute._
-import spray.http.CacheDirectives.`max-age`
-import spray.http.HttpHeaders.`Cache-Control`
-import spray.routing.Directives._
-import spray.routing.Route
 
 /**
   * @author Joacim Zschimmer

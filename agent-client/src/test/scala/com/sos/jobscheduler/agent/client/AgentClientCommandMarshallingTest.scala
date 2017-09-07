@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.agent.client
 
-import akka.util.Timeout
 import com.google.inject.{AbstractModule, Provides}
-import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
 import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
@@ -13,8 +11,6 @@ import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentAddress
-import java.time.Duration
-import java.util.concurrent.TimeUnit.MILLISECONDS
 import javax.inject.Singleton
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -48,13 +44,6 @@ extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with Ag
   }
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
   private lazy val client = SimpleAgentClient(agentUri = AgentAddress(agent.localUri.toString)).closeWithCloser
-
-  "commandDurationToRequestTimeout" in {
-    val upperBound = 30 * 24.h  // The upper bound depends on Akka tick length (Int.MaxValue ticks, a tick can be as short as 1ms)
-    for (duration ← List[Duration](0.s, 1.s, upperBound)) {
-      assert(commandDurationToRequestTimeout(duration) == Timeout((RequestTimeout + duration).toMillis, MILLISECONDS))
-    }
-  }
 
   List[(AgentCommand, AgentCommand.Response)](
     ExpectedTerminate → EmptyResponse,

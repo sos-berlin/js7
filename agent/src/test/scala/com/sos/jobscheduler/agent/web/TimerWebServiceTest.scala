@@ -1,5 +1,8 @@
 package com.sos.jobscheduler.agent.web
 
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.model.MediaTypes._
+import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -7,9 +10,6 @@ import com.sos.jobscheduler.common.time.timer.{TimerOverview, TimerService, Time
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.collection.immutable
-import spray.http.HttpHeaders.Accept
-import spray.http.MediaTypes._
-import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 

@@ -1,9 +1,14 @@
 package com.sos.jobscheduler.master.web.api
 
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.model.MediaTypes.`application/json`
+import akka.http.scaladsl.model.headers.Accept
+import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
@@ -16,12 +21,7 @@ import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
-import spray.http.HttpHeaders.Accept
-import spray.http.MediaTypes.`application/json`
-import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
-import spray.routing.Route
-import spray.testkit.ScalatestRouteTest
 
 /**
   * @author Joacim Zschimmer
@@ -63,7 +63,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
   }
 
   for (uri ← List(
-      s"$OrderUri/?return=Order")) {
+       s"$OrderUri/?return=Order")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         val Stamped(_, orders) = responseAs[Stamped[Seq[Order[Order.State]]]]

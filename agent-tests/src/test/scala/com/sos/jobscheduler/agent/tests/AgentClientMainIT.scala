@@ -65,7 +65,8 @@ final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCl
     assertResult(1) {
       AgentClientMain.run(List(s"http://127.0.0.1:$port"), output += _)
     }
-    assert(output == List(s"JobScheduler Agent is not responding: Connection attempt to 127.0.0.1:$port failed"))
+    assert(output.head contains "JobScheduler Agent is not responding: ")
+    assert(output.head contains "Connection refused")
   }
 }
 

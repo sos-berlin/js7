@@ -16,7 +16,7 @@ final class OwnActorSynchronizerTest extends FreeSpec {
 
   "test" in {
     withCloser { implicit closer ⇒
-      val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.shutdown() }
+      val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.terminate() }
       import actorSystem.dispatcher
       val synchronizer =
         new OwnActorSynchronizer[Int] {

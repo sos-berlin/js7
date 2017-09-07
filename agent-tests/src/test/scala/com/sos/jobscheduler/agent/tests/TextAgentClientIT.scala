@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.agent.tests
 
+import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.TextAgentClient
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
@@ -10,10 +12,10 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.test.{AgentDirectoryProvider, AgentTest}
 import com.sos.jobscheduler.agent.tests.TextAgentClientIT._
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.auth.{User, UserAndPassword, UserId}
+import com.sos.jobscheduler.common.akkahttp.web.auth.OurAuthenticator
+import com.sos.jobscheduler.common.auth.{HashedPassword, User, UserAndPassword, UserId}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.HasCloser
-import com.sos.jobscheduler.common.sprayutils.web.auth.SimpleUserPassAuthenticator
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.data.agent.AgentAddress
@@ -22,10 +24,6 @@ import org.scalatest.Assertions._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
-import spray.can.Http
-import spray.http.StatusCodes._
-import spray.httpx.UnsuccessfulResponseException
-import spray.routing.authentication._
 
 /**
  * @author Joacim Zschimmer
@@ -62,8 +60,11 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
     }
 
     @Provides @Singleton
-    def authenticator(conf: AgentConfiguration)(implicit ec: ExecutionContext): UserPassAuthenticator[User] =
-      new SimpleUserPassAuthenticator(Set(UserAndPassword(TestUserId → Password)), Map())
+    def authenticator(conf: AgentConfiguration)(implicit ec: ExecutionContext): Authenticator[User] =
+      new OurAuthenticator({
+        case TestUserId ⇒ Some(HashedPassword(Password, identity))
+        case _ ⇒ None
+      })
   }
 
   "Unauthorized" in {
@@ -100,7 +101,9 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
     assert(output == List("JobScheduler Agent is responding"))
     val agentUri = AgentAddress(s"http://127.0.0.1:${findRandomFreeTcpPort()}")
     autoClosing(new TextAgentClient(agentUri, _ ⇒ Unit)) { client ⇒
-      intercept[Http.ConnectionAttemptFailedException] {client.requireIsResponding() }
+      intercept[akka.stream.StreamTcpException] {
+        client.requireIsResponding()
+      }
     }
   }
 
@@ -114,9 +117,9 @@ private object TextAgentClientIT {
   private val Password = SecretString("SHA512-PASSWORD")
 
   private def interceptUnauthorized(body: ⇒ Unit) = {
-    val e = intercept[UnsuccessfulResponseException] {
+    val e = intercept[TextAgentClient.HttpException] {
       body
     }
-    assert(e.response.status == Unauthorized)
+    assert(e.status == Unauthorized)
   }
 }

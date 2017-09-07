@@ -1,14 +1,14 @@
 package com.sos.jobscheduler.agent.web.test
 
 import akka.actor.ActorRefFactory
+import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import com.sos.jobscheduler.agent.web.common.{AgentWebService, LoginSession}
+import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
+import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
+import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.sos.jobscheduler.common.scalautil.HasCloser
-import com.sos.jobscheduler.common.sprayutils.WebLogDirectives
-import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeper
-import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.duration._
-import spray.testkit.ScalatestRouteTest
 
 /**
   * @author Joacim Zschimmer

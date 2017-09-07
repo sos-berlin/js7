@@ -126,18 +126,17 @@ lazy val common = project.dependsOn(base, data)
       javaxInject ++
       guice ++
       typesafeConfig ++
+      akkaHttpTestkit % "test" ++
+      akkaHttp ++
+      akkaHttpSprayJson ++
       akkaActor ++
       scalaTags ++
-      sprayCan ++
-      sprayHttpx ++
-      sprayRouting ++
       sprayJson ++
       snakeYaml ++
       guava ++
       intelliJAnnotations % "compile" ++
       javaxAnnotations % "compile" ++
       scalaTest % "test" ++
-      sprayTestkit % "test" ++
       mockito % "test" ++
       log4j % "test" ++
       Nil
@@ -163,7 +162,8 @@ lazy val master = project.dependsOn(shared, common, `agent-client`)
       webjars.bootstrap ++
       webjars.jQuery ++
       scalaTest % "test" ++
-      sprayTestkit % "test" ++
+      akkaHttpTestkit % "test" ++
+      akkaHttp/*force version?*/ % "test" ++
       log4j % "test"
   }
 
@@ -188,14 +188,13 @@ lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserve
       javaxAnnotations % "compile" ++
       sprayJson ++
       akkaActor ++
+      akkaStream ++
     //akkaPersistence ++
     //akkaPersistenceInmemory ++
       akkaSlf4j ++
-      sprayCan ++
-      sprayHttp ++
-      sprayRouting ++
-      sprayClient ++
-      sprayTestkit % "test" ++
+      akkaHttpTestkit % "test" ++
+      akkaHttp ++
+      akkaHttpSprayJson ++
       intelliJAnnotations % "compile" ++
       scalactic ++
       tagging ++
@@ -219,8 +218,8 @@ lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-
     libraryDependencies ++=
       guice ++
       akkaActor ++
-      sprayHttp ++
-      sprayClient ++
+      akkaHttp ++
+      akkaHttpSprayJson ++
       sprayJson ++
       scalaTest % "test" ++
       log4j % "test"
@@ -272,13 +271,14 @@ lazy val `http-client` = project.dependsOn(common, data)
     import Dependencies._
     libraryDependencies ++=
       sprayJson ++
-      sprayRouting ++
-      sprayClient ++
       akkaActor ++
       akkaSlf4j ++
+      akkaStream ++
+      akkaHttpTestkit % "test" ++
+      akkaHttp ++
+      akkaHttpSprayJson ++
       scalactic ++
       intelliJAnnotations % "compile" ++
-      sprayTestkit % "test" ++
       scalaTest % "test" ++
       log4j % "test"
   }
@@ -290,9 +290,9 @@ lazy val `http-server` = project.dependsOn(`http-client`, common, data)
     import Dependencies._
     libraryDependencies ++=
       sprayJson ++
-      sprayRouting ++
-      sprayHttp ++
-      sprayTestkit % "test" ++
+      akkaHttpTestkit % "test" ++
+      akkaHttp ++
+      akkaHttpSprayJson ++
       akkaActor ++
       akkaSlf4j ++
       scalactic ++
@@ -340,13 +340,13 @@ lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data)
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      sprayJson ++
-      sprayRouting ++
-      sprayHttp ++
-      sprayClient ++
+      akkaHttp ++
+      akkaHttpSprayJson ++
+      akkaStream ++
       akkaActor ++
       akkaAgent ++
       akkaSlf4j ++
+      sprayJson ++
       scalactic ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
@@ -490,7 +490,7 @@ def isIT(name: String): Boolean = name endsWith "IT"
 
 def isTestJar(name: String) = // How to automatically determine/exclude test dependencies ???
   name.startsWith("com.typesafe.akka.akka-testkit_") ||
-  name.startsWith("io.spray.spray-testkit_") ||
+  name.startsWith("com.typesafe.akka.akka-http-testkit_") ||
   name.startsWith("org.scalatest.scalatest_") ||
   name.startsWith("org.mockito.") ||
   name.startsWith("org.hamcrest.")

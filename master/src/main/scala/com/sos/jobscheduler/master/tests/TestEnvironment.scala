@@ -2,10 +2,12 @@ package com.sos.jobscheduler.master.tests
 
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import java.nio.file.Files.{createDirectories, createDirectory}
+import com.sos.jobscheduler.master.tests.TestEnvironment._
+import java.nio.file.Files.{createDirectories, createDirectory, exists}
 import java.nio.file.Path
 import scala.collection.immutable._
 
@@ -14,6 +16,11 @@ import scala.collection.immutable._
   */
 final class TestEnvironment(agentPaths: Seq[AgentPath], temporaryDirectory: Path)
 extends AutoCloseable {
+
+  if (exists(temporaryDirectory)) {
+    logger.warn(s"Delting $temporaryDirectory")
+    deleteDirectoryRecursively(temporaryDirectory)
+  }
 
   createDirectories(masterDir / "config/live")
   for (agentPath ← agentPaths) {
@@ -38,4 +45,8 @@ extends AutoCloseable {
     require(FolderPath.parentOf(agentPath) == FolderPath.Root, "Directory layout is not suitable for nested Agent paths")
     temporaryDirectory / s"agents/${agentPath.withoutStartingSlash}"
   }
+}
+
+object TestEnvironment {
+  private val logger = Logger(getClass)
 }

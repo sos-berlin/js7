@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.agent.client
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.data.agent.AgentAddress
-import spray.http.Uri
 
 /**
  * Simple client for JobScheduler Agent.
@@ -15,10 +15,10 @@ final class SimpleAgentClient private(val agentUri: Uri) extends AgentClient wit
 
   protected val licenseKeys = Nil
   protected val actorRefFactory = ActorSystem("SimpleAgentClient")
-  protected def hostConnectorSetupOption = None
+  protected def httpsConnectionContextOption = None
   protected def userAndPasswordOption = None
 
-  def close() = actorRefFactory.shutdown()
+  def close() = actorRefFactory.terminate()
 
 }
 

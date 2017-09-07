@@ -1,29 +1,31 @@
 package com.sos.jobscheduler.agent.client
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.coding.Gzip
+import akka.http.scaladsl.model.HttpMethods.{GET, POST}
+import akka.http.scaladsl.model.MediaTypes._
+import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
+import akka.http.scaladsl.model.headers.{Accept, Authorization, BasicHttpCredentials, `Cache-Control`}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest, StatusCode}
+import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.agent.client.TextAgentClient._
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.decodeResponse
+import com.sos.jobscheduler.common.akkahttp.SimpleTypeSprayJsonSupport.jsValueMarshaller
+import com.sos.jobscheduler.common.akkahttp.YamlJsonConversion.yamlToJsValue
+import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.common.configutils.Configs
-import com.sos.jobscheduler.common.scalautil.Futures.awaitResult
-import com.sos.jobscheduler.common.sprayutils.YamlJsonConversion.yamlToJsValue
-import com.sos.jobscheduler.common.sprayutils.https.{Https, KeystoreReference}
-import com.sos.jobscheduler.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.data.agent.AgentAddress
-import java.nio.charset.StandardCharsets._
 import scala.concurrent.Future
 import scala.util.Try
-import spray.client.pipelining._
-import spray.http.CacheDirectives.{`no-cache`, `no-store`}
-import spray.http.HttpHeaders.{Accept, `Cache-Control`}
-import spray.http.MediaTypes._
-import spray.http.{BasicHttpCredentials, HttpEntity}
-import spray.httpx.encoding.Gzip
-import spray.httpx.marshalling.Marshaller
-import spray.json.{JsValue, JsonParser}
+import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -33,48 +35,51 @@ private[agent] final class TextAgentClient(agentUri: AgentAddress, print: String
 extends AutoCloseable {
 
   private val agentUris = AgentUris(agentUri)
-  private implicit val actorSystem = ActorSystem("AgentClient", Configs.loadResource(ConfigurationResource))
+  private val actorSystem = ActorSystem("AgentClient", Configs.loadResource(ConfigurationResource))
   import actorSystem.dispatcher
+  private implicit val materialized = ActorMaterializer()(actorSystem)
+  private val http = Http(actorSystem)
 
-  private val hostConnectorSetupOption = keystore/*Option*/ map { o ⇒ Https.toHostConnectorSetup(o, uri = agentUri.string) }
-  private val pipeline = {
-    val addUserAndPassword: RequestTransformer = userAndPassword match {
-      case Some(UserAndPassword(UserId(user), SecretString(password))) ⇒ addCredentials(BasicHttpCredentials(user, password))
-      case _ ⇒ identity
-    }
-    addUserAndPassword ~>
-      addHeader(Accept(`text/plain`)) ~>
-      addHeader(`Cache-Control`(`no-cache`, `no-store`)) ~>
-      encode(Gzip) ~>
-      extendedSendReceive(60.s.toFiniteDuration, hostConnectorSetupOption) ~>
-      decode(Gzip) ~>
-      unmarshal[String]
-  }
+  private val httpsConnectionContext = keystore/*Option*/ map Https.toHttpsConnectionContext getOrElse http.defaultClientHttpsContext
   private var needYamlDocumentSeparator = false
 
-  def close() = actorSystem.shutdown()
+  def close() = actorSystem.terminate()
 
   def executeCommand(command: String): Unit =
-    doPrint(resultString(pipeline(Post(agentUris.command, forceToJson(command)))))
+    doPrint(singleRequest(HttpRequest(POST, agentUris.command, entity = HttpEntity(`application/json`, forceToJson(command).compactPrint))) await 99.s)
 
   def get(uri: String): Unit =
-    doPrint(resultString(pipeline(Get(agentUris.api(uri)))))
+    doPrint(singleRequest(HttpRequest(GET, agentUris.api(uri))) await 99.s)
 
   def checkIsResponding(): Boolean = {
     try {
       requireIsResponding()
       true
-    }
-    catch {
-      case t: spray.can.Http.ConnectionAttemptFailedException ⇒
-        print(s"JobScheduler Agent is not responding: ${t.getMessage}")
-        false
+    } catch { case t: akka.stream.StreamTcpException ⇒
+      print(s"JobScheduler Agent is not responding: ${t.getMessage}")
+      false
     }
   }
 
   def requireIsResponding(): Unit = {
-    resultString(pipeline(Get(agentUris.overview)))
+    singleRequest(HttpRequest(GET, agentUris.overview)) await 99.s
     print("JobScheduler Agent is responding")
+  }
+
+  private def singleRequest(request: HttpRequest): Future[String] = {
+    val authentication = userAndPassword map {
+      case UserAndPassword(UserId(user), SecretString(password)) ⇒ Authorization(BasicHttpCredentials(user, password))
+    }
+    val myRequest = request.withHeaders(Vector(Accept(`text/plain`), `Cache-Control`(`no-cache`, `no-store`)) ++ authentication ++ request.headers)
+    for {
+      httpResponse ← http.singleRequest(Gzip.encodeMessage(myRequest), httpsConnectionContext)
+      string ←
+        if (httpResponse.status.isSuccess)
+          Unmarshal(decodeResponse(httpResponse)).to[String]
+        else
+          for (message ← Unmarshal(decodeResponse(httpResponse)).to[String]) yield
+            throw new HttpException(httpResponse.status, message)
+    } yield string
   }
 
   private def doPrint(string: String): Unit = {
@@ -87,12 +92,10 @@ extends AutoCloseable {
 object TextAgentClient {
   private val ConfigurationResource = JavaResource("com/sos/jobscheduler/agent/client/main/akka.conf")
 
-  implicit val JsValueMarshaller = Marshaller.of[JsValue](`application/json`) { (value, contentType, ctx) ⇒
-    ctx.marshalTo(HttpEntity(`application/json`, value.compactPrint.getBytes(UTF_8)))
-  }
+  implicit val JsValueMarshaller = jsValueMarshaller[JsValue]
 
   private def forceToJson(jsonOrYaml: String): JsValue =
     Try { JsonParser(jsonOrYaml) } getOrElse yamlToJsValue(jsonOrYaml)
 
-  private def resultString(future: Future[String]) = awaitResult(future, 2 * AgentClient.RequestTimeout)
+  final class HttpException(val status: StatusCode, message: String) extends RuntimeException(s"$status: $message".trim)
 }

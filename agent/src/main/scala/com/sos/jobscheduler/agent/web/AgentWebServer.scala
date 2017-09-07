@@ -1,19 +1,21 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.StatusCodes.ServiceUnavailable
 import com.google.common.io.Closer
 import com.google.inject.Injector
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.agent.web.AgentWebServer._
+import com.sos.jobscheduler.common.akkahttp.web.AkkaWebServer
+import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
+import com.sos.jobscheduler.common.akkahttp.{HttpStatusCodeException, WebServerBinding}
+import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.SetOnce
-import com.sos.jobscheduler.common.sprayutils.web.SprayWebServer
-import com.sos.jobscheduler.common.sprayutils.web.auth.{CSRF, GateKeeper}
-import com.sos.jobscheduler.common.sprayutils.{HttpStatusCodeException, WebServerBinding}
+import com.sos.jobscheduler.common.time.timer.TimerService
 import scala.concurrent.ExecutionContext
-import spray.http.StatusCodes.ServiceUnavailable
 
 /**
  * @author Joacim Zschimmer
@@ -22,16 +24,17 @@ final class AgentWebServer(
   conf: AgentConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration,
   csrf: CSRF,
+  timerService: TimerService,
   closer: Closer,
   injector: Injector)
   (implicit
     protected val actorSystem: ActorSystem,
     protected val executionContext: ExecutionContext)
-extends SprayWebServer with SprayWebServer.HasUri {
+extends AkkaWebServer with AkkaWebServer.HasUri {
 
   closer.registerAutoCloseable(this)
 
-  protected val bindings = conf.http ++ conf.https
+  protected val bindings = (conf.http ++ conf.https).toVector
   protected val uriPathPrefix = conf.uriPathPrefix
   private val commandHandler = new SetOnce[CommandHandler]("CommandHandler")
   private val agentHandle = new SetOnce[AgentHandle]("Agent")
@@ -42,14 +45,11 @@ extends SprayWebServer with SprayWebServer.HasUri {
   def setAgentActor(agentHandle: AgentHandle) =
     this.agentHandle := agentHandle
 
-  protected def newRouteActorRef(binding: WebServerBinding) =
-    actorSystem.actorOf(
-      WebServiceActor.props(
-        new GateKeeper(gateKeeperConfiguration, csrf, isUnsecuredHttp = binding.isUnsecuredHttp),
+  protected def newRoute(binding: WebServerBinding) =
+    injector.instance[RouteProvider.Factory].toRoute(
+        new GateKeeper(gateKeeperConfiguration, csrf, timerService, isUnsecuredHttp = binding.isUnsecuredHttp),
         () ⇒ commandHandler getOrElse newServiceUnavailable(),
-        () ⇒ agentHandle getOrElse newServiceUnavailable(),
-        injector),
-      name = SprayWebServer.actorName("AgentWebServer", binding))
+        () ⇒ agentHandle getOrElse newServiceUnavailable())
 }
 
 object AgentWebServer {

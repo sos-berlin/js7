@@ -8,10 +8,10 @@ import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.agent.web.common.{ExternalWebService, LoginSession}
-import com.sos.jobscheduler.common.auth.EncodedPasswordValidator
+import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
+import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
+import com.sos.jobscheduler.common.auth.EncodedToHashedPassword
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
-import com.sos.jobscheduler.common.sprayutils.web.auth.{CSRF, GateKeeper}
-import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
 import com.sos.jobscheduler.taskserver.moduleapi.ModuleFactoryRegister
@@ -42,7 +42,7 @@ extends AbstractModule {
   def provideGateKeeperConfiguration(config: Config): GateKeeper.Configuration =
     GateKeeper.Configuration
       .fromSubConfig(config.getConfig("jobscheduler.agent.webserver.auth"))
-      .copy(providePasswordValidator = () ⇒ EncodedPasswordValidator.fromSubConfig(config.getConfig("jobscheduler.agent.auth.users")))
+      .copy(userIdToHashedPassword = () ⇒ EncodedToHashedPassword.fromSubConfig(config.getConfig("jobscheduler.agent.auth.users")))
 
   @Provides @Singleton
   def extraWebServices(agentConfiguration: AgentConfiguration, injector: Injector): immutable.Seq[ExternalWebService] =
@@ -89,6 +89,7 @@ extends AbstractModule {
 
   @Provides @Singleton
   def provideAgentWebServer(conf: AgentConfiguration, gateKeeperConfiguration: GateKeeper.Configuration, csrf: CSRF,
+    timerService: TimerService,
     closer: Closer, injector: Injector, actorSystem: ActorSystem, executionContext: ExecutionContext): AgentWebServer =
-      new AgentWebServer(conf, gateKeeperConfiguration, csrf, closer, injector)(actorSystem, executionContext)
+      new AgentWebServer(conf, gateKeeperConfiguration, csrf, timerService, closer, injector)(actorSystem, executionContext)
 }

@@ -1,6 +1,17 @@
 package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.coding.Gzip
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.model.HttpMethods.{GET, POST}
+import akka.http.scaladsl.model.MediaTypes._
+import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
+import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
+import akka.http.scaladsl.model.headers.{Accept, Authorization, BasicHttpCredentials, `Cache-Control`}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCode, Uri}
+import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
+import akka.http.scaladsl.{Http, HttpsConnectionContext}
+import akka.stream.ActorMaterializer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
@@ -11,13 +22,12 @@ import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
 import com.sos.jobscheduler.agent.web.AgentWebServerIT._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.common.akkahttp.WebServerBinding
+import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
-import com.sos.jobscheduler.common.sprayutils.WebServerBinding
-import com.sos.jobscheduler.common.sprayutils.https.{Https, KeystoreReference}
-import com.sos.jobscheduler.common.sprayutils.sprayclient.ExtendedPipelining.extendedSendReceive
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.time.timer.TimerServiceOverview
@@ -31,17 +41,6 @@ import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.reflect.ClassTag
-import spray.can.Http.HostConnectorSetup
-import spray.client.pipelining._
-import spray.http.CacheDirectives.{`no-cache`, `no-store`}
-import spray.http.HttpHeaders.{Accept, `Cache-Control`}
-import spray.http.MediaTypes._
-import spray.http.StatusCodes.{Forbidden, Unauthorized}
-import spray.http.{BasicHttpCredentials, HttpRequest, HttpResponse, Uri}
-import spray.httpx.SprayJsonSupport._
-import spray.httpx.UnsuccessfulResponseException
-import spray.httpx.encoding.Gzip
-import spray.httpx.unmarshalling.{FromResponseUnmarshaller, PimpedHttpResponse}
 
 /**
  * @author Joacim Zschimmer
@@ -56,19 +55,11 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     .finishAndProvideFiles
   private lazy val agent = RunningAgent(agentConfiguration) map { _.closeWithCloser } await 10.s
   private implicit lazy val actorSystem = {
-    val config = ConfigFactory.parseMap(Map("spray.can.server.verbose-error-logging" → true))
+    val config = ConfigFactory.parseMap(Map("akka.http.server.verbose-error-messages" → true, "ssl-config.ssl.loose.acceptAnyCertificate" -> true))
     ActorSystem("AgentWebServerIT", config) withCloser { _.terminate() await 99.s }
   }
-  private lazy val httpsSetup = Some(Https.toHostConnectorSetup(ClientKeystoreRef, agent.webServer.localHttpsUriOption.get))
-
-  private def pipeline[A: FromResponseUnmarshaller](password: Option[String], setupOption: Option[HostConnectorSetup] = None): HttpRequest ⇒ Future[A] =
-    (password map { o ⇒ addCredentials(BasicHttpCredentials("SHA512-USER", o)) } getOrElse identity[HttpRequest] _) ~>
-    addHeader(Accept(`application/json`)) ~>
-    addHeader(`Cache-Control`(`no-cache`, `no-store`)) ~>
-    encode(Gzip) ~>
-    extendedSendReceive(60.s.toFiniteDuration, setupOption) ~>
-    decode(Gzip) ~>
-    unmarshal[A]
+  private implicit lazy val materializer = ActorMaterializer()
+  private lazy val http = Http()
 
   override protected def afterAll() = {
     close()
@@ -80,23 +71,24 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "HTTPS" - {
+    implicit lazy val httpsConnectionContext = Https.toHttpsConnectionContext(ClientKeystoreRef)
     lazy val uri = s"${agent.webServer.localHttpsUriOption.get}/$Api"
 
     "Unauthorized request is rejected" - {
       "due to missing credentials" in {
-        intercept[UnsuccessfulResponseException] {
-          pipeline[HttpResponse](password = None, httpsSetup).apply(Get(s"$uri/task")) await 10.s
+        intercept[HttpException] {
+          executeRequest[HttpResponse](HttpRequest(GET, s"$uri/task"), password = None) await 10.s
         }
-        .response.status shouldEqual Unauthorized
+        .status shouldEqual Unauthorized
       }
 
       "due to wrong credentials" in {
         val t = now
-        val e = intercept[UnsuccessfulResponseException] {
-          pipeline[AgentOverview](Some("WRONG-PASSWORD"), httpsSetup).apply(Get(uri)) await 10.s
+        val e = intercept[HttpException] {
+          executeRequest[AgentOverview](HttpRequest(GET, uri), Some("WRONG-PASSWORD")) await 10.s
         }
         assert(now - t > InvalidAuthenticationDelay - 50.ms)  // Allow for timer rounding
-        e.response.status shouldEqual Unauthorized
+        e.status shouldEqual Unauthorized
       }
 
       addPostTextPlainText(uri)
@@ -106,7 +98,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
       val password = Some("SHA512-PASSWORD")
 
       "is accepted" in {
-        val overview = pipeline[AgentOverview](password, httpsSetup).apply(Get(uri)) await 10.s
+        val overview = executeRequest[AgentOverview](HttpRequest(GET, uri), password) await 10.s
         assert(overview.version == AgentStartInformation.VersionString)
       }
 
@@ -120,12 +112,12 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     lazy val uri = s"${agent.webServer.localHttpUriOption.get}/$Api"
 
     "Without credentials" in {
-      val overview = pipeline[AgentOverview](password = None).apply(Get(uri)) await 10.s
+      val overview = executeRequest[AgentOverview](HttpRequest(GET, uri), password = None) await 10.s
       assert(overview.version == AgentStartInformation.VersionString)
     }
 
     "Credentials are ignored" in {
-      val overview = pipeline[AgentOverview](Some("WRONG-PASSWORD")).apply(Get(uri)) await 10.s
+      val overview = executeRequest[AgentOverview](HttpRequest(GET, uri), Some("WRONG-PASSWORD")) await 10.s
       assert(overview.version == AgentStartInformation.VersionString)
     }
 
@@ -135,41 +127,57 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 
   "WebService fails when HTTP port is not available" in {
     val webServer = Guice.createInjector(new AgentModule(agentConfiguration)).instance[AgentWebServer]
-    intercept[RuntimeException] { webServer.start() await 10.s }
-      .getMessage should include (s"127.0.0.1:$httpPort")
+    intercept[Exception] { webServer.start() await 10.s }
+      .getMessage should include ("Bind failed because of Address already in use")  //(s"127.0.0.1:$httpPort")
   }
 
   "close" in {
     agent.close()
   }
 
-  private def addPostTextPlainText(uri: ⇒ Uri, password: Option[String] = None, setupOption: Option[HostConnectorSetup] = None): Unit =
+  private def addPostTextPlainText(uri: ⇒ Uri, password: Option[String] = None)(implicit httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext): Unit =
     "POST plain/text is rejected due to CSRF" in {
-      val response = intercept[UnsuccessfulResponseException] {
-        pipeline[HttpResponse](password, setupOption).apply(Post(uri, "TEXT")) await 10.s
-      } .response
-      assert(response.status == Forbidden)
-      assert(response.as[String].right.get == "HTML form POST is forbidden")
+      val exception = intercept[HttpException] {
+        executeRequest[HttpResponse](HttpRequest(POST, uri, entity = "TEXT"), password) await 10.s
+      }
+      assert(exception.status == Forbidden)
+      assert(exception.getMessage contains "HTML form POST is forbidden")
     }
 
-  private def addThroughputMeasurementTests(uri: ⇒ Uri, setupOption: Option[HostConnectorSetup] = None): Unit = {
+  private def addThroughputMeasurementTests(uri: ⇒ Uri)(implicit httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext): Unit = {
     if (false) {
-      addThroughputMeasurementTest[TimerServiceOverview](s"$uri/timer", setupOption)
+      addThroughputMeasurementTest[TimerServiceOverview](s"$uri/timer")
     }
   }
 
-  private def addThroughputMeasurementTest[A: FromResponseUnmarshaller: ClassTag](uri: ⇒ Uri, setupOption: Option[HostConnectorSetup] = None) =
+  private def addThroughputMeasurementTest[A: FromResponseUnmarshaller: ClassTag](uri: ⇒ Uri)(implicit httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext) =
     s"Measure throughput of ${implicitClass[A].getSimpleName}" in {
-      val get = Get(uri)
-      val p = pipeline[A](Some("SHA512-PASSWORD"), setupOption)
+      val get = HttpRequest(GET, uri)
       val m = 2 * sys.runtime.availableProcessors
       val n = 1000
-      val result: A = p(get) await 10.s
+      val result: A = executeRequest[A](get, Some("SHA512-PASSWORD")) await 10.s
       logger.info(s"${m * n} $result")
       val stopwatch = new Stopwatch
-      (for (_ ← 1 to m) yield Future { for (_ ← 1 to n) p(get) await 10.s }) await 60.s
+      (for (_ ← 1 to m) yield Future { for (_ ← 1 to n) executeRequest[A](get, Some("SHA512-PASSWORD")) await 10.s }) await 60.s
       logger.info(stopwatch.itemsPerSecondString(m * n, "requests"))
     }
+
+  private def executeRequest[A: FromResponseUnmarshaller](request: HttpRequest, password: Option[String])(implicit httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext): Future[A] = {
+    val whenHttpResponse = http.singleRequest(
+      Gzip.encodeMessage(request withHeaders
+        Accept(`application/json`) ::
+        `Cache-Control`(`no-cache`, `no-store`) ::
+        (password.toList map { pw ⇒ Authorization(BasicHttpCredentials("SHA512-USER", pw)) }) ++
+        request.headers),
+      httpsConnectionContext)
+    whenHttpResponse map { o ⇒ Gzip.decodeMessage(o) } flatMap { response ⇒
+      if (response.status.isSuccess)
+        implicitly[FromResponseUnmarshaller[A]].apply(response)
+      else
+        for (message ← Unmarshal(Gzip.decodeMessage(response)).to[String]) yield
+          throw new HttpException(response.status, message)
+    }
+  }
 }
 
 private object AgentWebServerIT {
@@ -178,4 +186,6 @@ private object AgentWebServerIT {
     AgentDirectoryProvider.PublicHttpJksResource.url,
     Some(SecretString("jobscheduler")))
   private val logger = Logger(getClass)
+
+  private class HttpException(val status: StatusCode, message: String) extends RuntimeException(s"$status: $message".trim)
 }

@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.agent.data.web
 
+import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.Uri.{Path, Query}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.web.AgentUris._
 import com.sos.jobscheduler.data.agent.AgentAddress
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import spray.http.Uri
-import spray.http.Uri.Path
 
 /**
  * URIs of the JobScheduler Agent.
@@ -17,45 +17,42 @@ final class AgentUris private(agentUri: AgentAddress) {
 
   val prefixedUri = Uri(s"$agentUri/$AgentUriConstantPrefix")
 
-  def overview = uriString(Api)
+  def overview = toUri(Api)
 
-  val command = uriString(s"$Api/command")
-
-  def fileExists(filePath: String): String =
-    (withPath("api/fileExists") withQuery ("file" → filePath)).toString()
+  val command = toUri(s"$Api/command")
 
   object task {
-    def overview = uriString(s"$Api/task")
+    def overview = toUri(s"$Api/task")
 
-    def tasks = uriString(s"$Api/task/")
+    def tasks = toUri(s"$Api/task/")
 
-    def apply(id: AgentTaskId) = uriString(Path(s"$Api/task") / id.string)
+    def apply(id: AgentTaskId) = toUri(Path(s"$Api/task") / id.string)
   }
 
   object order {
-    def apply(orderId: OrderId): String =
-      uriString(Uri(path = Path(s"$Api/order") / orderId.string))
+    def apply(orderId: OrderId): Uri =
+      toUri(Uri(path = Path(s"$Api/order") / orderId.string))
 
-    def ids: String =
-      uriString(Uri(path = Path(s"$Api/order/"), query = Uri.Query("return" → "OrderId")))
+    def ids: Uri =
+      toUri(Uri(path = Path(s"$Api/order/")) withQuery Query("return" → "OrderId"))
 
-    def events: String =
-      uriString(Uri(path = Path(s"$Api/order/"), query = Uri.Query("return" → "OrderEvent")))
+    def events: Uri =
+      toUri(Uri(path = Path(s"$Api/order/")) withQuery Query("return" → "OrderEvent"))
 
-    def orders: String =
-      uriString(Uri(path = Path(s"$Api/order/"), query = Uri.Query("return" → "Order")))
+    def orders: Uri =
+      toUri(Uri(path = Path(s"$Api/order/")) withQuery Query("return" → "Order"))
   }
 
   def mastersEvents(request: EventRequest[OrderEvent]) =
-    uriString(Uri(path = Uri.Path(s"$Api/master/event"), query = Uri.Query(request.toQueryParameters: _*)))
+    toUri(Uri(path = Uri.Path(s"$Api/master/event")) withQuery Query(request.toQueryParameters: _*))
 
-  def apply(relativeUri: String) = uriString(Path(stripLeadingSlash(relativeUri)))
+  def apply(relativeUri: String) = toUri(Path(stripLeadingSlash(relativeUri)))
 
-  def api(relativeUri: String) = uriString(s"$Api/${stripLeadingSlash(relativeUri)}")
+  def api(relativeUri: String) = toUri(s"$Api/${stripLeadingSlash(relativeUri)}")
 
-  private def uriString(path: Path): String = uriString(Uri(path = path))
+  private def toUri(path: Path): Uri = toUri(Uri(path = path))
 
-  private def uriString(uri: Uri): String = withPath(uri).toString()
+  private def toUri(uri: Uri): Uri = withPath(uri)
 
   def withPath(uri: Uri) = {
     val u = uri.resolvedAgainst(prefixedUri)

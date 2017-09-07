@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.agent.web.common
 
 import akka.actor.{ActorRefFactory, ActorSystem}
-import com.sos.jobscheduler.common.sprayutils.WebLogDirectives.handleErrorAndLog
-import com.sos.jobscheduler.common.sprayutils.web.auth.GateKeeper
-import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
+import akka.http.scaladsl.model.Uri.Path
+import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.common.akkahttp.WebLogDirectives.handleErrorAndLog
+import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
+import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.typesafe.config.Config
-import spray.http.Uri.Path
-import spray.routing._
 
 /**
  * Standard trait for Agent web services.

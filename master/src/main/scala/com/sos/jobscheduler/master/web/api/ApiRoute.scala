@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.master.web.api
 
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
-import com.sos.jobscheduler.common.sprayutils.SprayJsonOrYamlSupport._
-import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.SprayJsonOrYamlSupport._
 import com.sos.jobscheduler.master.web.simplegui.FrontEndRoute
 import spray.json.DefaultJsonProtocol._
-import spray.routing.Directives._
-import spray.routing.Route
 
 /**
   * @author Joacim Zschimmer

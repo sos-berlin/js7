@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.master.web.simplegui
 
-import com.sos.jobscheduler.common.sprayutils.html.HtmlDirectives.ToHtmlPage
+import akka.http.scaladsl.model.Uri
+import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.ToHtmlPage
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderOverview}
 import com.sos.jobscheduler.master.web.simplegui.OrdersHtmlPage._
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 import scalatags.Text.all._
-import spray.http.Uri
 
 /**
   * @author Joacim Zschimmer

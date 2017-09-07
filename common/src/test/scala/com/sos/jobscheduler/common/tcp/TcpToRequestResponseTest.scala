@@ -16,7 +16,7 @@ final class TcpToRequestResponseTest extends FreeSpec with BeforeAndAfterAll {
   private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
 
   override protected def afterAll() = {
-    actorSystem.shutdown()
+    actorSystem.terminate()
     super.afterAll()
   }
 

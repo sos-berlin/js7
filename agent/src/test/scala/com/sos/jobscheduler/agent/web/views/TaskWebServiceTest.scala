@@ -1,6 +1,9 @@
 package com.sos.jobscheduler.agent.web.views
 
 import akka.actor.Props
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import akka.http.scaladsl.model.MediaTypes.`application/json`
+import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
@@ -17,9 +20,6 @@ import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.collection.immutable
 import scala.concurrent.duration.DurationInt
-import spray.http.HttpHeaders.Accept
-import spray.http.MediaTypes.`application/json`
-import spray.httpx.SprayJsonSupport._
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 

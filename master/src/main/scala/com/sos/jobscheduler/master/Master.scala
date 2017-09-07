@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master
 
 import akka.actor.{ActorSystem, Props}
+import akka.http.scaladsl.model.Uri
 import akka.pattern.ask
 import com.google.common.io.Closer
 import com.google.inject.Guice
@@ -27,7 +28,6 @@ import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Success
-import spray.http.Uri
 
 /**
   * @author Joacim Zschimmer

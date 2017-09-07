@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.master.web.simplegui
 
-import com.sos.jobscheduler.common.sprayutils.html.WebServiceContext
+import akka.http.scaladsl.model.Uri
+import com.sos.jobscheduler.common.akkahttp.html.WebServiceContext
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext._
-import spray.http.Uri
 
 /**
   * @author Joacim Zschimmer

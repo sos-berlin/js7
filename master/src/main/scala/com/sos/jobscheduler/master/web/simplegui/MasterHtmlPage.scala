@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.master.web.simplegui
 
+import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.sprayutils.html.HtmlIncluder.{toCssLinkHtml, toScriptHtml}
-import com.sos.jobscheduler.common.sprayutils.html.HtmlPage
-import com.sos.jobscheduler.common.sprayutils.html.HtmlPage.seqFrag
+import com.sos.jobscheduler.common.akkahttp.html.HtmlIncluder.{toCssLinkHtml, toScriptHtml}
+import com.sos.jobscheduler.common.akkahttp.html.HtmlPage
+import com.sos.jobscheduler.common.akkahttp.html.HtmlPage.seqFrag
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.data.event.EventId
@@ -17,7 +18,6 @@ import java.time.{Instant, LocalDate, OffsetDateTime, ZoneId}
 import scala.language.implicitConversions
 import scalatags.Text.all._
 import scalatags.Text.{TypedTag, tags2}
-import spray.http.Uri
 
 /**
   * @author Joacim Zschimmer

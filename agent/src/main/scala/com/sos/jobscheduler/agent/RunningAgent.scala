@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.agent
 
 import akka.actor.{ActorSystem, Props}
+import akka.http.scaladsl.model.Uri
 import com.google.common.io.Closer
 import com.google.inject
 import com.google.inject.Stage.PRODUCTION
@@ -14,16 +15,15 @@ import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.agent.web.common.LoginSession
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.sprayutils.web.session.SessionRegister
 import com.sos.jobscheduler.common.time.ScalaTime._
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
-import spray.http.Uri
 
 /**
  * JobScheduler Agent.

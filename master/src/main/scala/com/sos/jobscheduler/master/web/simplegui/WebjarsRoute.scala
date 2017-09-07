@@ -1,16 +1,16 @@
 package com.sos.jobscheduler.master.web.simplegui
 
 import akka.actor.ActorRefFactory
+import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
+import akka.http.scaladsl.model.headers.`Cache-Control`
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.common.akkahttp.html.Webjar
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.sprayutils.html.Webjar
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.master.web.simplegui.WebjarsRoute._
 import scala.util.control.NonFatal
-import spray.http.CacheDirectives.`max-age`
-import spray.http.HttpHeaders.`Cache-Control`
-import spray.routing.Directives._
-import spray.routing._
 
 /**
   * @author Joacim Zschimmer

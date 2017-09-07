@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.configuration
 
+import akka.http.scaladsl.model.Uri
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
 import com.sos.jobscheduler.agent.data.ProcessKillScript
@@ -7,6 +8,8 @@ import com.sos.jobscheduler.agent.web.common.ExternalWebService
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.base.convert.As.asAbsolutePath
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.common.akkahttp.WebServerBinding
+import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.configutils.Configs._
@@ -14,8 +17,6 @@ import com.sos.jobscheduler.common.internet.IP._
 import com.sos.jobscheduler.common.process.Processes.ShellFileExtension
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
-import com.sos.jobscheduler.common.sprayutils.WebServerBinding
-import com.sos.jobscheduler.common.sprayutils.https.KeystoreReference
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
@@ -30,7 +31,6 @@ import java.time.Duration
 import org.scalactic.Requirements._
 import scala.collection.immutable
 import scala.reflect.ClassTag
-import spray.http.Uri
 
 /**
  * @author Joacim Zschimmer

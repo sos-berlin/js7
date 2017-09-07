@@ -2,10 +2,10 @@ package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.ActorSystem.Settings
 import akka.actor.Cancellable
+import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
-import spray.http.Uri
 
 /**
  * @author Joacim Zschimmer

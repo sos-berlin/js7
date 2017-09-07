@@ -1,15 +1,15 @@
 package com.sos.jobscheduler.agent.web.views
 
+import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
+import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.system.SystemInformation
-import com.sos.jobscheduler.common.sprayutils.JsObjectMarshallers._
+import com.sos.jobscheduler.common.akkahttp.JsObjectMarshallers._
 import com.sos.jobscheduler.data.system.JavaInformation
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
-import spray.http.HttpHeaders.Accept
-import spray.http.MediaTypes.{`application/json`, `text/plain`}
 import spray.json._
 
 /**

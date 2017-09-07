@@ -1,25 +1,31 @@
 package com.sos.jobscheduler.agent.client
 
-import akka.actor.ActorRefFactory
+import akka.actor.ActorSystem
+import akka.http.scaladsl.model.{HttpResponse, Uri}
 import com.sos.jobscheduler.agent.client.AgentClientTest._
-import org.scalatest.FreeSpec
-import spray.client.pipelining.Get
-import spray.http.{HttpResponse, Uri}
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentClientTest extends FreeSpec {
+final class AgentClientTest extends FreeSpec with BeforeAndAfterAll {
 
   private val agentUri = Uri("https://example.com:9999")
-  private val agentClient = AgentClient(agentUri)(null: ActorRefFactory)
+  private lazy val actorSystem = ActorSystem("AgentClientTest")
+  private lazy val agentClient = AgentClient(agentUri)(actorSystem)
+
+  override def afterAll() = {
+    actorSystem.terminate()
+    super.afterAll()
+  }
 
   "toCheckedAgentUri, checkAgentUri and apply, failing" - {
-    for ((uri, None) ← Setting ) s"$uri" in {
+    for ((uri, None) ← Setting) s"$uri" in {
       assert(agentClient.checkAgentUri(uri) == None)
       assert(agentClient.toCheckedAgentUri(uri) == None)
-      assert(agentClient.sendReceive[HttpResponse](Get(uri)).failed.value.get.get.getMessage contains "does not match")
-      assert(agentClient.sendReceiveWithHeaders[HttpResponse](Get(uri), headers = Nil).failed.value.get.get.getMessage contains "does not match")
+      assert((agentClient.getUri[HttpResponse](uri).failed await 99.s).getMessage contains "does not match")
     }
   }
 

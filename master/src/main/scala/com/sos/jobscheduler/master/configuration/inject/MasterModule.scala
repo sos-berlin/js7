@@ -3,12 +3,12 @@ package com.sos.jobscheduler.master.configuration.inject
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
+import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.sprayutils.web.auth.{CSRF, GateKeeper}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.master.configuration.MasterConfiguration

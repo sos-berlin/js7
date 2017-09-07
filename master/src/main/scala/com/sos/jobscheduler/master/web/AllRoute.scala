@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.master.web
 
 import akka.actor.ActorRefFactory
-import com.sos.jobscheduler.common.sprayutils.SprayUtils.pathSegments
+import akka.http.scaladsl.model.StatusCodes.TemporaryRedirect
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.master.web.api.ApiRoute
-import spray.http.StatusCodes.TemporaryRedirect
-import spray.routing.Directives._
-import spray.routing.Route
 
 /**
   * @author Joacim Zschimmer
@@ -15,7 +15,7 @@ trait AllRoute extends ApiRoute {
   protected implicit def actorRefFactory: ActorRefFactory
 
   def allRoutes: Route =
-    (decompressRequest() & compressResponseIfRequested(())) {
+    (decodeRequest & encodeResponse) {
       pathSegments("jobscheduler") {
         pathSegments("master") {
           masterRoute

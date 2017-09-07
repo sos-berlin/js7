@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.order.agent
 
 import akka.Done
 import akka.actor.{Actor, DeadLetterSuppression, Stash}
+import akka.http.scaladsl.model.Uri
 import akka.pattern.pipe
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -19,7 +20,6 @@ import java.time.Instant.now
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
-import spray.http.Uri
 
 /**
   * Keeps connection to an Agent, sends orders, and fetches events (using `EventFetcher`).
@@ -130,9 +130,9 @@ with Stash {
           commandQueue.dequeueFirst(_ == cmd)
           self ! Internal.CommandReady
         case Failure(t) if AgentClient.sessionIsPossiblyLost(t) ⇒
-          onConnectionError(msg.toString)
-        case Failure(_: spray.can.Http.ConnectionException)  ⇒
-          onConnectionError(msg.toString)
+          onConnectionError(t.toString)
+        case Failure(e: AgentClient.HttpException)  ⇒
+          onConnectionError(e.toString)
         case Failure(t) ⇒
           logger.error(s"${cmd.order.id}: ${t.toStringWithCauses}")
           // TODO How to inform the commander ?

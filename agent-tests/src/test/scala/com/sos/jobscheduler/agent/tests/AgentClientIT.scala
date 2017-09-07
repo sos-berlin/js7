@@ -1,19 +1,15 @@
 package com.sos.jobscheduler.agent.tests
 
 import akka.actor.ActorRefFactory
-import akka.util.Timeout
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.client.AgentClient.{RequestTimeout, commandDurationToRequestTimeout}
 import com.sos.jobscheduler.agent.configuration.Akkas
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
-import java.time.Duration
 import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
-import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -30,13 +26,6 @@ final class AgentClientIT extends FreeSpec with ScalaFutures with AgentTest {
   override def afterAll() = {
     closer.close()
     super.afterAll()
-  }
-
-  "commandMillisToRequestTimeout" in {
-    val upperBound = 30 * 24.h  // The upper bound depends on Akka tick length (Int.MaxValue ticks, a tick can be as short as 1ms)
-    for (duration ← List[Duration](0.s, 1.s, upperBound)) {
-      assert(commandDurationToRequestTimeout(duration) == Timeout((RequestTimeout + duration).toMillis, MILLISECONDS))
-    }
   }
 
   "get /" in {

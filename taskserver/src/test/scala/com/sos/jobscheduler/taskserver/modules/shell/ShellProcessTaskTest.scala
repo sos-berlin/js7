@@ -35,7 +35,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  */
 final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
-  private lazy val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.shutdown() }
+  private lazy val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.terminate() }
   private val synchronizedStartProcess = new StandardRichProcessStartSynchronizer()(actorSystem).closeWithCloser
 
   override protected def afterAll() = {

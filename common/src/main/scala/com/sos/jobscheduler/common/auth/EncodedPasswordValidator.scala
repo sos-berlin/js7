@@ -10,6 +10,7 @@ import com.typesafe.config.Config
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.util.{Failure, Success, Try}
 
+// NOT USED
 /**
   * Validates an `UserAndPassword` agains an encoded password.
   * The encoded passwords are prefixed with a hash scheme or `"plain:"`.
