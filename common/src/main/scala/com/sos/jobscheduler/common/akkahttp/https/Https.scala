@@ -20,9 +20,8 @@ import scala.collection.JavaConversions._
   *
   * @author Joacim Zschimmer
   * @see http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#CreateKeystore
-  *      http://spray.io/documentation/1.2.3/spray-can/http-server/#ssl-support
+  *      https://doc.akka.io/docs/akka-http/current/scala/http/server-side/server-https-support.html
   *      https://tools.ietf.org/html/rfc5246
-  *
   */
 object Https {
   private val logger = Logger(getClass)
