@@ -28,7 +28,6 @@ import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Joacim Zschimmer
@@ -37,6 +36,8 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
 
   private lazy val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.terminate() }
   private val synchronizedStartProcess = new StandardRichProcessStartSynchronizer()(actorSystem).closeWithCloser
+
+  private implicit val executionContext = ExecutionContext.global
 
   override protected def afterAll() = {
     onClose { super.afterAll() }
@@ -92,7 +93,7 @@ final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndA
     }
   }
 
-  private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting)(implicit ec: ExecutionContext) = {
+  private def newShellProcessTask(id: String, spoolerLog: SpoolerLog, setting: Setting)(implicit executionContext: ExecutionContext) = {
     val factory = new ShellModule.Factory(synchronizedStartProcess)
     new ShellProcessTask(
       factory.newModule(ShellModule.Arguments(factory, testScript(setting.exitCode))),

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
-import com.sos.jobscheduler.agent.test.{AgentDirectoryProvider, AgentTest}
+import com.sos.jobscheduler.agent.test.{TestAgentDirectoryProvider, AgentTest}
 import com.sos.jobscheduler.agent.tests.TextAgentClientIT._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.web.auth.OurAuthenticator
@@ -28,7 +28,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
  * @author Joacim Zschimmer
  */
-final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCloser with AgentTest with AgentDirectoryProvider {
+final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCloser with AgentTest with TestAgentDirectoryProvider {
 
   override protected lazy val agentConfiguration = {
     val c = newAgentConfiguration()

@@ -49,7 +49,7 @@ final class BlockingTcpConnectionTest extends FreeSpec with HasCloser with Befor
     val data = Array.fill(length) { Random.nextInt().toByte }
     val message = smallIntToBytes(length) ++ data
     for (_ ← 1 to 10) {
-      val received = Future { tcpConnection.receiveMessage() }
+      val received = blockingFuture { tcpConnection.receiveMessage() }
       out.write(message)
       assert((received await 10.s) == Some(ByteString(data)))
     }
@@ -58,7 +58,7 @@ final class BlockingTcpConnectionTest extends FreeSpec with HasCloser with Befor
   "sendMessage" in {
     val length = 261
     val sentData = Array.fill(length) { Random.nextInt().toByte }
-    val received = Future {
+    val received = blockingFuture {
       val receivedData = new Array[Byte](4 + length)
       val receivedLength = in.read(receivedData)
       (receivedData, receivedLength)
@@ -80,14 +80,14 @@ final class BlockingTcpConnectionTest extends FreeSpec with HasCloser with Befor
 
   "Close while receiving" in {
     val myTcpConnection = connect()
-    val future = Future { myTcpConnection.receiveMessage() }
+    val future = blockingFuture { myTcpConnection.receiveMessage() }
     intercept[TimeoutException] { awaitResult(future, 500.ms) }
     myTcpConnection.close()
     intercept[java.nio.channels.AsynchronousCloseException] { awaitResult(future, 1.s) }
   }
 
   private def connect(): BlockingTcpConnection = {
-    val connected = Future { BlockingTcpConnection.connect(new InetSocketAddress(localhost, listenSocket.getLocalPort)) }
+    val connected = blockingFuture { BlockingTcpConnection.connect(new InetSocketAddress(localhost, listenSocket.getLocalPort)) }
     listenSocket.setSoTimeout(10*1000)
     testSocket = listenSocket.accept().closeWithCloser
     awaitResult(connected, 1.s)

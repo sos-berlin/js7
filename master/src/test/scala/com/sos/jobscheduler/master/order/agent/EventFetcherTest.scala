@@ -8,13 +8,14 @@ import com.sos.jobscheduler.master.order.agent.EventFetcherTest._
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
   */
 final class EventFetcherTest extends FreeSpec {
+
+  private implicit val executionContext = ExecutionContext.global
 
   "test" in {
     implicit val timerService = TimerService(idleTimeout = Some(1.s))

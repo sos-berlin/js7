@@ -14,7 +14,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
  * @author Joacim Zschimmer
  */
-trait AgentProvider extends AgentDirectoryProvider {
+trait TestAgentProvider extends TestAgentDirectoryProvider {
 
   protected def extraAgentModule: Module = EMPTY_MODULE
 

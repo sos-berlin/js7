@@ -10,7 +10,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider._
-import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.common.auth.User.Anonymous
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
@@ -28,7 +28,7 @@ import scala.concurrent.{Future, Promise}
   * @author Joacim Zschimmer
   */
 private class TestAgentActorProvider extends HasCloser {
-  private val directoryProvider = new AgentDirectoryProvider {} .closeWithCloser
+  private val directoryProvider = new TestAgentDirectoryProvider {} .closeWithCloser
   lazy val agentDirectory = directoryProvider.agentDirectory
 
   lazy val (eventCollector, agentActor) = start(agentDirectory)

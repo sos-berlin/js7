@@ -17,7 +17,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration.InvalidAuthenticationDelay
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
 import com.sos.jobscheduler.agent.web.AgentWebServerIT._
 import com.sos.jobscheduler.base.generic.SecretString
@@ -27,6 +27,7 @@ import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -45,7 +46,7 @@ import scala.reflect.ClassTag
 /**
  * @author Joacim Zschimmer
  */
-final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfterAll with AgentDirectoryProvider {
+final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
   private lazy val List(httpPort, httpsPort) = findRandomFreeTcpPorts(2)
   private lazy val agentConfiguration = AgentConfiguration
@@ -158,7 +159,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
       val result: A = executeRequest[A](get, Some("SHA512-PASSWORD")) await 10.s
       logger.info(s"${m * n} $result")
       val stopwatch = new Stopwatch
-      (for (_ ← 1 to m) yield Future { for (_ ← 1 to n) executeRequest[A](get, Some("SHA512-PASSWORD")) await 10.s }) await 60.s
+      (for (_ ← 1 to m) yield blockingFuture { for (_ ← 1 to n) executeRequest[A](get, Some("SHA512-PASSWORD")) await 10.s }) await 60.s
       logger.info(stopwatch.itemsPerSecondString(m * n, "requests"))
     }
 
@@ -183,7 +184,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 private object AgentWebServerIT {
   private val Api = "jobscheduler/agent/api"
   private val ClientKeystoreRef = KeystoreReference(
-    AgentDirectoryProvider.PublicHttpJksResource.url,
+    TestAgentDirectoryProvider.PublicHttpJksResource.url,
     Some(SecretString("jobscheduler")))
   private val logger = Logger(getClass)
 

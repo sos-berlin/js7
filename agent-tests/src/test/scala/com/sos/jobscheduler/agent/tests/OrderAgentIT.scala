@@ -6,7 +6,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
-import com.sos.jobscheduler.agent.test.AgentDirectoryProvider.provideAgent2Directory
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgent2Directory
 import com.sos.jobscheduler.agent.tests.OrderAgentIT._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser

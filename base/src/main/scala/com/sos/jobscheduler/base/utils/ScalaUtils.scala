@@ -74,7 +74,7 @@ object ScalaUtils {
     }
   }
 
-  private object RichThrowable {
+  /*Scala 2.12.3 crashes: private*/ object RichThrowable {
     private val isIgnorableClass = Set[Class[_ <: Throwable]](
       classOf[IllegalArgumentException],
       classOf[RuntimeException])

@@ -7,7 +7,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, Login, RegisterAsMaster, Terminate}
-import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.agent.tests.TerminateIT._
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -85,7 +85,7 @@ object TerminateIT {
       |""".stripMargin
 
   private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit closer: Closer): Unit = {
-    AgentDirectoryProvider.provideAgent2Directory { agentDirectory ⇒
+    TestAgentDirectoryProvider.provideAgent2Directory { agentDirectory ⇒
       (agentDirectory / "config" / "live" / "test.job.xml").xml =
         <job tasks="10">
           <script language="shell">{AScript}</script>

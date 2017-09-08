@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.test
 
-import com.sos.jobscheduler.agent.test.AgentDirectoryProvider._
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -13,10 +13,10 @@ import java.nio.file.Files.{createDirectories, createDirectory, createTempDirect
 import java.nio.file.Path
 import scala.util.control.NonFatal
 
-trait AgentDirectoryProvider extends HasCloser {
+trait TestAgentDirectoryProvider extends HasCloser {
 
   final lazy val agentDirectory = {
-    val agentDirectory = createTempDirectory("AgentDirectoryProvider-") withCloser deleteDirectoryRecursively
+    val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser deleteDirectoryRecursively
     try {
       val privateDir = createDirectories(agentDirectory / "config/private")
       PrivateHttpJksResource.copyToFile(agentDirectory / KeystoreJksLocation) withCloser delete
@@ -38,7 +38,7 @@ trait AgentDirectoryProvider extends HasCloser {
     keyPassword = Some(SecretString("jobscheduler")))
 }
 
-object AgentDirectoryProvider {
+object TestAgentDirectoryProvider {
   // Following resources have been generated with the command line:
   // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -data-directory=engine-agent/src/main/resources/com/sos/jobscheduler/agent/test -alias=agent-https
   val PrivateHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private-https.jks")
@@ -47,7 +47,7 @@ object AgentDirectoryProvider {
   private val KeystoreJksLocation = "config/private/private-https.jks"
 
   def provideAgent2Directory[A](body: Path ⇒ A): A =
-    autoClosing(new AgentDirectoryProvider {}) { provider ⇒
+    autoClosing(new TestAgentDirectoryProvider {}) { provider ⇒
       body(provider.agentDirectory)
     }
 }

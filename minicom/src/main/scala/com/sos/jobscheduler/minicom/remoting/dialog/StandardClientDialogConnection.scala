@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.minicom.remoting.dialog
 
 import akka.util.ByteString
+import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
 import com.sos.jobscheduler.common.tcp.BlockingMessageConnection
-import scala.concurrent.{ExecutionContext, Future, blocking}
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
@@ -14,10 +15,8 @@ extends ClientDialogConnection with ExclusiveLock {
   protected implicit def executionContext: ExecutionContext
 
   def sendAndReceive(data: ByteString): Future[Option[ByteString]] =
-    Future {
-      blocking {
-        blockingSendAndReceive(data)
-      }
+    blockingFuture {
+      blockingSendAndReceive(data)
     }
 
   override def blockingSendAndReceive(data: ByteString): Option[ByteString] =

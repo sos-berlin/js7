@@ -3,13 +3,14 @@ package com.sos.jobscheduler.taskserver.task.process
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
 import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration.Encoding
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
 import java.io.{InputStreamReader, Reader, Writer}
 import java.nio.file.Path
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
-import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 
 /**
@@ -87,11 +88,9 @@ object ShellScriptProcess {
   }
 
   private def readerTo(reader: Reader, charBufferSize: Int, writer: Writer)(implicit ec: ExecutionContext): Future[Completed] =
-    Future {
-      blocking {
-        forEachChunkOfReader(reader, charBufferSize, writer)
-        Completed
-      }
+    blockingFuture {
+      forEachChunkOfReader(reader, charBufferSize, writer)
+      Completed
     }
 
   private def forEachChunkOfReader(reader: Reader, charBufferSize: Int, writer: Writer): Unit = {

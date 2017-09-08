@@ -8,13 +8,14 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
   */
 final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
+
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   private implicit val eventIdGenerator = new EventIdGenerator
   private implicit lazy val timerService = TimerService()

@@ -21,7 +21,6 @@ final class ThrottledExecutionContextTest extends FreeSpec with BeforeAndAfterAl
     super.afterAll()
   }
 
-
   "With slow operation" in {
     val range = 1 to 1000
     val throttle = 3

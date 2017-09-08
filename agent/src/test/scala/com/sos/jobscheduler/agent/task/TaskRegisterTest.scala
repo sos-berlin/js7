@@ -7,7 +7,7 @@ import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.task.TaskRegisterTest._
-import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
@@ -31,11 +31,11 @@ import scala.concurrent.duration.DurationLong
 /**
   * @author Joacim Zschimmer
   */
-final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfterAll with AgentDirectoryProvider {
+final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
   private implicit lazy val actorSystem = Akkas.newActorSystem("TaskRegisterTest",
     ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" → "100 millis")))  // Our default of 1s slows down this test
-  AgentDirectoryProvider
+  TestAgentDirectoryProvider
   private implicit lazy val agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory)).finishAndProvideFiles
   private implicit lazy val timerService = new TimerService(idleTimeout = Some(1.s))
   private implicit lazy val me = inbox()

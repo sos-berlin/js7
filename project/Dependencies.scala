@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 
 //noinspection TypeAnnotation
 object Dependencies {
-  val scalaVersion = "2.11.11"
+  val scalaVersion = "2.12.3"
 
   val akkaVersion = "2.5.4"
   val akkaHttpVersion = "10.0.10"

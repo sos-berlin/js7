@@ -32,12 +32,13 @@ final class ProcessesIT extends FreeSpec {
     val forkJoinPool = new ForkJoinPool(threadCount)
     implicit val executionContext = ExecutionContext.fromExecutor(forkJoinPool)
     val stopwatch = new Stopwatch
-    val filesAndProcesses = for (i ← 0 until n) yield Future {
-      val file = newTemporaryShellFile(s"#$i")
-      file.contentString = "exit"
-      val process = new ProcessBuilder(List(s"$file")).startRobustly()
-      (file, process)
-    }
+    val filesAndProcesses = for (i ← 0 until n) yield
+      Future {
+        val file = newTemporaryShellFile(s"#$i")
+        file.contentString = "exit"
+        val process = new ProcessBuilder(List(s"$file")).startRobustly()
+        (file, process)
+      }
     val (files, processes) = (filesAndProcesses await 300.s).unzip
     waitForCondition(300.s, 100.ms) { !(processes exists { _.isAlive }) }
     info(stopwatch.itemsPerSecondString(n, "processes"))

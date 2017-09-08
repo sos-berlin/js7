@@ -12,13 +12,13 @@ import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.agent.web.views.TaskWebServiceTest._
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.common.scalautil.Futures.NoFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.collection.immutable
+import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
 import spray.json.DefaultJsonProtocol._
 import spray.json._
@@ -41,7 +41,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
       def pidOption = overview.pid
       def jobPath = overview.jobPath
       def id = overview.taskId
-      def terminated = NoFuture
+      def terminated = Promise().future
       def sendProcessSignal(signal: ProcessSignal) = {}
     })
     super.beforeAll()

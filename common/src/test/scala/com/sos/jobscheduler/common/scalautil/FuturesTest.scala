@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.{FutureNotSucceededException, NoFuture, catchInFuture, namedThreadFuture, promiseFuture}
+import com.sos.jobscheduler.common.scalautil.Futures.{FutureNotSucceededException, catchInFuture, namedThreadFuture, promiseFuture}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import java.util.concurrent.TimeoutException
@@ -88,11 +88,6 @@ final class FuturesTest extends FreeSpec {
   "future.flatten" in {
     val a = Future { Future { 77 } }
     assert((a.flatten await 100.ms) == 77)
-  }
-
-  "NoFuture" in {
-    val neverHappeningFuture: Future[Int] = NoFuture
-    assert(!neverHappeningFuture.isCompleted)
   }
 
   private def stackTraceContainsCreationsStackTrace(body: ⇒ Int): Boolean =

@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.shared.event.journal.SnapshotWriter._
 import scala.collection.immutable
-import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 import spray.json._
@@ -19,7 +18,7 @@ extends Actor {
 
   private var remaining = journalingActors.size
   private var snapshotCount = 0
-  private val pipeline = new ParallelExecutingPipeline[(Any, ByteString)](o ⇒ write(o._2))(ExecutionContext.global)
+  private val pipeline = new ParallelExecutingPipeline[(Any, ByteString)](o ⇒ write(o._2))
 
   self ! Internal.Start
 
@@ -42,7 +41,7 @@ extends Actor {
       context.unwatch(sender())
       abortOnError {
         for (snapshot ← snapshots) {
-          pipeline.add { snapshot → ByteString(CompactPrinter(jsonFormat.write(snapshot))) }
+          pipeline.blockingAdd { snapshot → ByteString(CompactPrinter(jsonFormat.write(snapshot))) }
           logger.trace(s"Stored $snapshot")  // Without sync
           snapshotCount += 1
         }

@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.minicom.remoting.dialog
 
 import akka.util.ByteString
+import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
 import com.sos.jobscheduler.common.tcp.BlockingMessageConnection
 import org.scalactic.Requirements._
-import scala.concurrent.{ExecutionContext, Future, blocking}
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Enforces a ping-pong-style dialog, where each call of `sendMessage` is paired with a call of `receiveMessage`.
@@ -19,16 +20,13 @@ extends ServerDialogConnection with StandardClientDialogConnection {
   private var firstMessageReceived = false
   private var lastMessageSent = false
 
-  def receiveFirstMessage(): Future[Option[ByteString]] = {
-    Future {
-      blocking {
-        requireState(!firstMessageReceived)
-        val r = connection.receiveMessage()
-        firstMessageReceived = true
-        r
-      }
+  def receiveFirstMessage(): Future[Option[ByteString]] =
+    blockingFuture {
+      requireState(!firstMessageReceived)
+      val r = connection.receiveMessage()
+      firstMessageReceived = true
+      r
     }
-  }
 
   override def sendAndReceive(data: ByteString): Future[Option[ByteString]] = {
     requireState(firstMessageReceived && !lastMessageSent)

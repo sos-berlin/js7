@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.scalautil
 import com.sos.jobscheduler.base.utils.StackTraces._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
-import java.util.concurrent.TimeoutException
+import java.util.concurrent.ForkJoinPool
 import scala.collection.generic.CanBuildFrom
 import scala.concurrent._
 import scala.concurrent.duration.Duration.Inf
@@ -35,11 +35,23 @@ object Futures {
       case NonFatal(t) ⇒ Future.failed(t)
     }
 
+  /**
+    * A Future for blocking code.
+    * A big number of blocking Futures may be started, each consuming a thread.
+    * This differs from ExecutionContext.global, which limits the number of threads to (number of cores) + 256.
+    */
+  def blockingFuture[A](body: ⇒ A): Future[A] =
+    namedThreadFuture("")(body)
+
   def namedThreadFuture[A](name: String)(body: ⇒ A): Future[A] = {
     val promise = Promise[A]()
     new Thread {
-      setName(name)
-      override def run() = promise complete Try { body }
+      if (name.nonEmpty) setName(name)
+      override def run() =
+        try promise.success(body)
+        catch { case t: Throwable ⇒  // Not only NonFatal (or what should we do else?)
+          promise.failure(t)
+        }
     } .start()
     promise.future
   }
@@ -48,17 +60,6 @@ object Futures {
     val promise = Promise[A]()
     body(promise)
     promise.future
-  }
-
-  /**
-   * A Future that will never happen.
-   */
-  object NoFuture extends Future[Nothing] {
-    def onComplete[U](f: (Try[Nothing]) ⇒ U)(implicit ec: ExecutionContext) = {}
-    def isCompleted = false
-    def value = None
-    def result(atMost: duration.Duration)(implicit permit: CanAwait) = throw new TimeoutException("NoFuture")
-    def ready(atMost: duration.Duration)(implicit permit: CanAwait) = throw new TimeoutException("NoFuture")
   }
 
   object implicits {

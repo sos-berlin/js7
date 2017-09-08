@@ -11,7 +11,7 @@ import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKey
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobActor, JobScript}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
-import com.sos.jobscheduler.agent.test.AgentDirectoryProvider
+import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.MapDiff
@@ -50,7 +50,7 @@ import scala.concurrent.duration.DurationInt
   */
 final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
-  private lazy val directoryProvider = new AgentDirectoryProvider {}
+  private lazy val directoryProvider = new TestAgentDirectoryProvider {}
   private lazy val agentConfiguration = AgentConfiguration.forTest(Some(directoryProvider.agentDirectory)).finishAndProvideFiles
   private lazy val actorSystem = newActorSystem("OrderActorTest")
 

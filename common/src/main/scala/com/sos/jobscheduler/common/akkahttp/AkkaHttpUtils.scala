@@ -199,6 +199,7 @@ object AkkaHttpUtils {
       case HttpEncodings.gzip ⇒ Gzip
       case HttpEncodings.deflate ⇒ Deflate
       case HttpEncodings.identity ⇒ NoCoding
+      case o ⇒ throw new RuntimeException(s"Unsupported Encoding: $o")
     }
     decoder.decodeMessage(response)
   }

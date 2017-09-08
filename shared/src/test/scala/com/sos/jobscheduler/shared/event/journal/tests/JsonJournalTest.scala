@@ -10,6 +10,7 @@ import com.sos.jobscheduler.common.scalautil.Collections.RichGenericCompanion
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -24,7 +25,6 @@ import java.util.zip.GZIPInputStream
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import spray.json.{JsObject, JsString, JsValue}
 
@@ -83,7 +83,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
 
   "noSync" in {
     withTestActor { actor ⇒
-      def journalState = ((actor ? TestActor.Input.GetJournalState).mapTo[JsonJournalActor.Output.State] await 99.s)
+      def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JsonJournalActor.Output.State] await 99.s
       execute(actor, "TEST-E", TestAggregateActor.Command.Add("A"))  await 99.s
       assert(journalState == JsonJournalActor.Output.State(isFlushed = true, isSynced = true))
       execute(actor, "TEST-E", TestAggregateActor.Command.AppendNoSync("Bb")) await 99.s
@@ -108,7 +108,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
           execute(actor, key, cmd)
         }) await 99.s
         // Start executing remaining commands ...
-        val executed = for (p ← prefixes) yield Future { for ((key, cmd) ← testCommands(p).tail) execute(actor, key, cmd) await 99.s }
+        val executed = for (p ← prefixes) yield blockingFuture { for ((key, cmd) ← testCommands(p).tail) execute(actor, key, cmd) await 99.s }
         // ... while disturbing form a different Actor to test persistAsync()
         // Disturb responds with String, not Done. See TestActor
         val disturbed = for (p ← prefixes) yield execute(actor, s"$p-A", TestAggregateActor.Command.Disturb)

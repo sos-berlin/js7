@@ -3,6 +3,7 @@ package com.sos.jobscheduler.taskserver
 import akka.util.ByteString
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.minicom.remoting.dialog.ServerDialogConnection
 import com.sos.jobscheduler.minicom.remoting.{Remoting, ServerRemoting}
@@ -53,7 +54,7 @@ extends TaskServer with HasCloser {
 
   final def start(): Unit = {
     (for (_ ← { blocking { beforeStart() }; remoting.run() };
-          _ ← Future { blocking { afterStop() }}) yield Completed
+          _ ← blockingFuture { afterStop() }) yield Completed
     ) onComplete { tried ⇒
       val (correctedTried, msg) = tried match {
         case Failure(t: AsynchronousCloseException)         ⇒ (Success(Completed), s"Terminated after close(): $t")

@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import com.sos.jobscheduler.common.scalautil.Closers._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
+import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.FreeSpec
 import scala.collection.immutable.IndexedSeq
@@ -27,7 +28,7 @@ final class OwnActorSynchronizerTest extends FreeSpec {
       val numbers = 1 to 100
       @volatile var critical = false
       val futureFutures: IndexedSeq[Future[Future[Int]]] =
-        for (i ← numbers) yield Future {
+        for (i ← numbers) yield blockingFuture {
           synchronizedFuture {
             assert(!critical)
             critical = true

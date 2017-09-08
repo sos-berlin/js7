@@ -22,7 +22,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -62,9 +62,10 @@ object RunningAgent {
     val agentConfiguration = injector.instance[AgentConfiguration]
     logger.info(s"Agent ${BuildInfo.buildVersion} config=${agentConfiguration.configDirectory getOrElse ""} data=${agentConfiguration.dataDirectory getOrElse ""}")
 
+    implicit val executionContext = injector.instance[ExecutionContext]
+    implicit val actorSystem = injector.instance[ActorSystem]
     val webServer = injector.instance[AgentWebServer]
     val webServerReady = webServer.start()
-    implicit val actorSystem = injector.instance[ActorSystem]
     val sessionRegister = injector.getInstance(inject.Key.get(new inject.TypeLiteral[SessionRegister[LoginSession]] {}))
     val readyPromise = Promise[MainActor.Ready]()
     val stoppedPromise = Promise[Completed]()
