@@ -38,7 +38,7 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
     super.preStart()
     val recoverer = new MyJournalRecoverer()
     recoverer.recoverAllAndTransferTo(journalActor = journalActor)
-    keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map { case (k: String, a) ⇒ k → a }
+    keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map { case (k: String @unchecked, a) ⇒ k → a }
   }
 
   private class MyJournalRecoverer extends JsonJournalActorRecoverer[TestEvent] {

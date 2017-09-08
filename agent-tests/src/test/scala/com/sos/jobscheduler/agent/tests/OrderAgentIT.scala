@@ -35,7 +35,7 @@ final class OrderAgentIT extends FreeSpec {
       val jobDir = directory / "config" / "live"
       (jobDir / "a.job.xml").xml = AJobXml
       (jobDir / "b.job.xml").xml = BJobXml
-      val agentConf = AgentConfiguration.forTest(Some(directory))
+      val agentConf = AgentConfiguration.forTest(Some(directory)).finishAndProvideFiles
       for (agent ← RunningAgent(agentConf)) {
         withCloser { implicit closer ⇒
           agent.closeWithCloser
