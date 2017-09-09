@@ -1,12 +1,11 @@
 package com.sos.jobscheduler.jobapi.scripting
 
-import com.google.common.base.Supplier
 import com.google.common.collect.ImmutableMap
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.jobapi.scripting.ScriptInstanceTest._
 import org.scalatest.Matchers._
 import org.scalatest.{FreeSpec, OneInstancePerTest}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 final class ScriptInstanceTest extends FreeSpec with OneInstancePerTest {
@@ -112,9 +111,7 @@ final class ScriptInstanceTest extends FreeSpec with OneInstancePerTest {
     val completeBindings = Map("spooler_log" → scriptLogger) ++ bindings
     new TestExecutor(new JobScriptInstanceAdapter(
       language,
-      new Supplier[ImmutableMap[String, AnyRef]] {
-        def get() = ImmutableMap.copyOf(completeBindings)
-      },
+      () ⇒ ImmutableMap.copyOf(completeBindings.asJava),
       script))
   }
 }

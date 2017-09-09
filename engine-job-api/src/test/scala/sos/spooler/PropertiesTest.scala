@@ -4,13 +4,13 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import java.lang.reflect.{Method, Modifier, Type}
 import org.reflections.Reflections
 import org.scalatest.FreeSpec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import sos.spooler.PropertiesTest._
 
 /** Prüft für alle Idispatch-Klassen, ob die zugehörigen Bean-Klassen korrekt sind. */
 final class PropertiesTest extends FreeSpec {
 
-  for (javaClass ← new Reflections(sosSpoolerPackage.getName).getSubTypesOf(classOf[Idispatch]).toSeq sortBy { _.getName }) {
+  for (javaClass ← new Reflections(sosSpoolerPackage.getName).getSubTypesOf(classOf[Idispatch]).asScala.toSeq sortBy { _.getName }) {
     val beanClass = Class.forName(javaClass.getName + "Bean")
     val beanClassName = beanClass.getSimpleName
 

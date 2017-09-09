@@ -7,7 +7,6 @@ import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.auth.SecretStringGenerator
 import com.sos.jobscheduler.data.session.SessionToken
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.JavaConversions._
 
 /**
   * @author Joacim Zschimmer
@@ -18,17 +17,17 @@ final class SessionRegister[S] {
 
   def add(session: S): SessionToken = {
     val token = SessionToken(SecretStringGenerator.newSecretString())
-    assert(!sessions.isDefinedAt(token))
-    sessions += token → session
+    assert(!sessions.containsKey(token))
+    sessions.put(token, session)
     token
   }
 
   def remove(sessionToken: SessionToken): Unit = {
-    sessions -= sessionToken
+    sessions.remove(sessionToken)
   }
 
   def contains(sessionToken: SessionToken): Boolean =
-    sessions isDefinedAt sessionToken
+    sessions containsKey sessionToken
 
   object directives {
     object session extends Directive1[S] {

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.time.timer
 
 import TreeMapOrderedQueue._
 import com.sos.jobscheduler.common.scalautil.Logger
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
@@ -16,7 +16,7 @@ extends OrderedQueue.Implement[K, V] {
 
   def isEmpty = treeMap.isEmpty
 
-  def size = (treeMap.values map { _.size }).sum
+  def size = (treeMap.values.asScala map { _.size }).sum
 
   def clear(): Unit = treeMap.clear()
 

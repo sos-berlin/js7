@@ -9,7 +9,7 @@ import com.sos.jobscheduler.taskserver.task.process.RichProcess._
 import java.io.{InputStreamReader, Reader, Writer}
 import java.nio.file.Path
 import scala.annotation.tailrec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 
@@ -65,8 +65,8 @@ object ShellScriptProcess {
     val shellFile = newTemporaryShellFile(name)
     try {
       shellFile.write(script.trim, Encoding)
-      val processBuilder = new ProcessBuilder(toShellCommandArguments(shellFile, processConfiguration.idArgumentOption.toList))
-      processBuilder.environment ++= processConfiguration.additionalEnvironment
+      val processBuilder = new ProcessBuilder(toShellCommandArguments(shellFile, processConfiguration.idArgumentOption.toList).asJava)
+      processBuilder.environment.putAll(processConfiguration.additionalEnvironment.asJava)
       val process = processBuilder.startRobustly()
       import stdChannels.{charBufferSize, stderrWriter, stdoutWriter}
       val stdoutCompleted = readerTo(new InputStreamReader(process.getInputStream, Encoding), charBufferSize, stdoutWriter)

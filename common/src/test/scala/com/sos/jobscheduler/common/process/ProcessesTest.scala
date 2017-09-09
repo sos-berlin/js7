@@ -12,7 +12,7 @@ import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
  * @author Joacim Zschimmer
@@ -21,13 +21,13 @@ final class ProcessesTest extends FreeSpec {
 
   "processToPidOption, toShellCommandArguments" in {
     if (isWindows) {
-      val process = new ProcessBuilder(directShellCommandArguments("rem")).start()
+      val process = new ProcessBuilder(directShellCommandArguments("rem").asJava).start()
       assert(processToPidOption(process).isEmpty)
       process.waitFor()
     } else {
       val args = directShellCommandArguments("echo $$")
       assert(args == List("/bin/sh", "-c", "echo $$"))
-      val process = new ProcessBuilder(args).redirectInput(PIPE).start()
+      val process = new ProcessBuilder(args.asJava).redirectInput(PIPE).start()
       val echoLine = io.Source.fromInputStream(process.getInputStream).getLines().next()
       assert(processToPidOption(process) contains Pid(echoLine.toLong))
       process.waitFor()
@@ -46,7 +46,7 @@ final class ProcessesTest extends FreeSpec {
       assert(exists(file))
       assert(!(file.toString contains "--"))
       file.contentString = ShellScript
-      val process = new ProcessBuilder(toShellCommandArguments(file, Args)).redirectOutput(PIPE).start()
+      val process = new ProcessBuilder(toShellCommandArguments(file, Args).asJava).redirectOutput(PIPE).start()
       val echoLines = io.Source.fromInputStream(process.getInputStream).getLines().toList
       val normalizedFirstEcho = if (isWindows) echoLines.head stripSuffix "\"" stripPrefix "\"" else echoLines.head  // Windows (with sbt?) may echo the quoted file path
       assert(normalizedFirstEcho == file.toString)

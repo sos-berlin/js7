@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Directives._
 import com.sos.jobscheduler.common.akkahttp.web.auth.CSRF._
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * Simplistic check agains some CSRF attacks, especially HTML 5 form POST.
@@ -50,6 +50,6 @@ object CSRF {
       rejectedContentTypes = Set(`application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`) map { _.value })
 
     def fromSubConfig(config: Config) = new Configuration(
-      rejectedContentTypes = Set("none/none") ++ config.getStringList("reject-post-content-types"))
+      rejectedContentTypes = Set("none/none") ++ config.getStringList("reject-post-content-types").asScala)
   }
 }

@@ -39,7 +39,7 @@ import java.time.Instant.now
 import java.util.concurrent.ConcurrentLinkedQueue
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.reflect.ClassTag
 
@@ -149,11 +149,13 @@ private object MasterIT {
 
   private class TestEventGatherer(injector: Injector) {
     import TestEventGatherer._
-    val events = new ConcurrentLinkedQueue[Entry]
+    private val _events = new ConcurrentLinkedQueue[Entry]
+
+    def events = _events.asScala
 
     def orderIdsOf[E <: OrderEvent: ClassTag]: Set[OrderId] = (collect[E] map { _.key }).toSet
 
-    def collect[E <: OrderEvent: ClassTag] = events collect {
+    def collect[E <: OrderEvent: ClassTag] = _events.asScala collect {
       case Entry(_, KeyedEvent(orderId: OrderId, e: OrderEvent)) if implicitClass[E] isAssignableFrom e.getClass ⇒
         KeyedEvent[OrderEvent](orderId, e)
     }
@@ -162,7 +164,7 @@ private object MasterIT {
       new Actor {
         injector.instance[StampedKeyedEventBus].subscribe(self, classOf[Event])
         def receive = {
-          case Stamped(_, e: AnyKeyedEvent) ⇒ events.add(Entry(now, e))
+          case Stamped(_, e: AnyKeyedEvent) ⇒ _events.add(Entry(now, e))
         }
       }
     }

@@ -11,7 +11,7 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigRes
 import java.nio.file.Files.exists
 import java.nio.file.Path
 import java.time.Duration
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.immutable
 
 /**
@@ -52,8 +52,8 @@ object Configs {
     def stringSeq(path: String, default: ⇒ Iterable[String]): immutable.IndexedSeq[String] =
       if (delegate.hasPath(path)) stringSeq(path) else default.toVector
 
-    def stringSeq(path: String): immutable.IndexedSeq[String] = delegate.getStringList(path).toVector
-
+    def stringSeq(path: String): immutable.IndexedSeq[String] =
+      delegate.getStringList(path).asScala.toVector
 
     def durationOption(path: String): Option[Duration] = delegate.hasPath(path) option delegate.getDuration(path)
   }

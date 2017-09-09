@@ -1,6 +1,6 @@
-import java.nio.file.{FileVisitOption, Files, Path}
+import java.nio.file.{FileVisitOption, Files}
 import sbt.File
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 
 object BuildUtils {
@@ -22,7 +22,7 @@ object BuildUtils {
     val javaStream = Files.walk(directory.toPath, options: _*)
     try {
       val builder = Vector.newBuilder[File]
-      for (file ← javaStream.iterator) builder += file.toFile
+      for (file ← javaStream.iterator.asScala) builder += file.toFile
       builder.result.sortBy { _.toString }
     }
     finally javaStream.close()

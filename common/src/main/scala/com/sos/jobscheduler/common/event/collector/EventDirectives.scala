@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event._
 import java.time.Duration
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 /**
@@ -29,7 +29,7 @@ object EventDirectives {
           _ orElse defaultReturnType match {
             case Some(returnType) ⇒
               val eventSuperclass = implicitClass[E]
-              val returnTypeNames = ReturnSplitter.split(returnType).toSet
+              val returnTypeNames = ReturnSplitter.split(returnType).asScala.toSet
               val eventClasses = returnTypeNames flatMap { t ⇒
                 implicitly[KeyedTypedEventJsonFormat[E]].typeNameToClass.get(t)
               } collect {

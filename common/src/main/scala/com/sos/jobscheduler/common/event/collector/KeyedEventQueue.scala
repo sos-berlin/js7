@@ -4,7 +4,7 @@ import com.google.common.collect.{AbstractIterator ⇒ GuavaIterator}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, Stamped}
 import java.util.NoSuchElementException
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * @author Joacim Zschimmer
@@ -37,19 +37,20 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
     *   None is returned if the queue has torn at its front (`after` < `oldestEventId`).
     */
   def after(after: EventId): Option[Iterator[Stamped[AnyKeyedEvent]]] = {
-    val result = new EventIterator(after, queue.navigableKeySet.tailSet(after, false).iterator map queue.get)
+    val result = new EventIterator(after, queue.navigableKeySet.tailSet(after, false).iterator.asScala map queue.get)
     try {
       // hasNext and peek may throw NoSuchElementException in case of race condition ?
       if (result.hasNext) result.peek
       // result is empty or has the first Stamped in its head buffer.
-      after >= oldestEventId option result
+      after >= oldestEventId option result.asScala
     } catch { case _: NoSuchElementException ⇒
       None
     }
   }
 
   def reverseEvents(after: EventId): Iterator[Stamped[AnyKeyedEvent]] =
-    new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator takeWhile { _ > after } map queue.get)
+    new EventIterator(EventId.MaxValue, queue.navigableKeySet.descendingIterator.asScala takeWhile { _ > after } map queue.get)
+      .asScala
 
   def lastEventId: EventId =
     if (queue.isEmpty) oldestEventId else queue.lastKey

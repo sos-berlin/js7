@@ -21,7 +21,7 @@ import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 import scala.util.control.NonFatal
 
@@ -78,7 +78,7 @@ extends HasCloser with ClosedFuture {
 
   private def executeKillScript(args: Seq[String]) = {
     logger.info("Executing kill script: " + args.mkString("  "))
-    val onKillProcess = new ProcessBuilder(args).redirectOutput(INHERIT).redirectError(INHERIT).start()
+    val onKillProcess = new ProcessBuilder(args.asJava).redirectOutput(INHERIT).redirectError(INHERIT).start()
     namedThreadFuture("Kill script") {
       waitForProcessTermination(onKillProcess)
       onKillProcess.exitValue match {
@@ -130,10 +130,10 @@ object RichProcess {
   private[process] def startProcessBuilder(processConfiguration: ProcessConfiguration, file: Path, arguments: Seq[String] = Nil)
       (start: ProcessBuilder ⇒ Process): Process = {
     import processConfiguration.{additionalEnvironment, stdFileMap}
-    val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption))
+    val processBuilder = new ProcessBuilder(toShellCommandArguments(file, arguments ++ processConfiguration.idArgumentOption).asJava)
     processBuilder.redirectOutput(toRedirect(stdFileMap.get(Stdout)))
     processBuilder.redirectError(toRedirect(stdFileMap.get(Stderr)))
-    processBuilder.environment ++= additionalEnvironment
+    processBuilder.environment.putAll(additionalEnvironment.asJava)
     start(processBuilder)
   }
 

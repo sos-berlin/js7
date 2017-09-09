@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import java.security.KeyStore
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * Provides TLS encryption to Spray HTTP.
@@ -65,7 +65,7 @@ object Https {
       val pw = (keystoreRef.storePassword map { _.string.toCharArray }).orNull
       keystore.load(in, pw)
     }
-    for (alias ← keystore.aliases; cert = keystore.getCertificate(alias)) logger.debug(s"Alias $alias: $cert")
+    for (alias ← keystore.aliases.asScala; cert = keystore.getCertificate(alias)) logger.debug(s"Alias $alias: $cert")
     keystore
   }
 }

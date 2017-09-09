@@ -7,7 +7,7 @@ import java.nio.file
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * @author Joacim Zschimmer
@@ -38,11 +38,11 @@ object TypedPathDirectoryWalker {
 
   //def typedFileIterator(directory: Path, types: Set[TypedPath.AnyCompanion]): AutoCloseable with Iterator[(Path, TypedPath)] =
   //  new AbstractIterator[(Path, TypedPath)] with AutoCloseable {
-  //    def close() = ???
+  //    def close() = ?
   //
-  //    def hasNext = ???
+  //    def hasNext = ?
   //
-  //    def next() = ???
+  //    def next() = ?
   //  }
   //
   ///**
@@ -76,7 +76,7 @@ object TypedPathDirectoryWalker {
   //      iterator.hasNext
   //    }
   //
-  //    def next() = ???
+  //    def next() = ?
   //  }
   //  autoClosing() { stream ⇒
   //    for (path ← stream.iterator) {
@@ -95,7 +95,7 @@ object TypedPathDirectoryWalker {
     */
   private def deepForEachPathAndAttributes(directory: Path, nestingLimit: Int)(callback: (Path, BasicFileAttributes) ⇒ Unit): Unit =
     autoClosing(newDirectoryStream(directory)) { stream ⇒
-      for (path ← stream.iterator) {
+      for (path ← stream.iterator.asScala) {
         val attrs = Files.readAttributes(path, classOf[BasicFileAttributes]) // IOException in case of invalid symbolic link
         callback(path, attrs)
         if (attrs.isDirectory) {

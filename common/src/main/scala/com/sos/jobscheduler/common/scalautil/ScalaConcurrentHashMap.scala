@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 /**
@@ -28,7 +28,7 @@ class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]{
     this
   }
 
-  final def iterator = delegate.entrySet().toIterator map { o ⇒ o.getKey → o.getValue }
+  final def iterator = delegate.entrySet().iterator.asScala map { o ⇒ o.getKey → o.getValue }
 
   final def get(key: K) = Option(delegate.get(key))
 
@@ -43,11 +43,11 @@ class ScalaConcurrentHashMap[K, V] extends mutable.Map[K, V]{
 
   override final def isEmpty = delegate.isEmpty
 
-  override final def keysIterator = delegate.keySet.iterator
+  override final def keysIterator = delegate.keySet.iterator.asScala
 
-  override final def keySet = delegate.keySet
+  override final def keySet = delegate.keySet.asScala
 
-  override final def valuesIterator = delegate.values.iterator
+  override final def valuesIterator = delegate.values.iterator.asScala
 
-  override final def values = delegate.values
+  override final def values = delegate.values.asScala
 }

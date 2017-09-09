@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.scalautil
 
 import javax.annotation.Nullable
 import scala.annotation.tailrec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.generic.{GenMapFactory, GenericCompanion}
 import scala.collection.immutable.Vector
 import scala.collection.{GenMap, GenMapLike, GenTraversable, TraversableLike, immutable, mutable}
@@ -49,12 +49,12 @@ object Collections {
 
     implicit class RichJavaIterable[A](val delegate: java.lang.Iterable[A]) extends AnyVal {
       def toImmutableSeq: immutable.Seq[A] =
-        Vector() ++ delegate
+        Vector() ++ delegate.asScala
     }
 
     implicit class RichJavaIterator[A](val delegate: java.util.Iterator[A]) extends AnyVal {
       def toImmutableSeq: immutable.Seq[A] =
-        Vector() ++ delegate
+        Vector() ++ delegate.asScala
     }
 
     implicit class RichTraversable[A](val delegate: Traversable[A]) extends AnyVal {
@@ -109,10 +109,11 @@ object Collections {
       }
     }
 
-    implicit def javaStreamToIterator[A](stream: java.util.stream.Stream[A]): Iterator[A] = stream.iterator
+    implicit def javaStreamToIterator[A](stream: java.util.stream.Stream[A]): Iterator[A] = stream.iterator.asScala
 
     implicit class RichJavaStream[A](val delegate: java.util.stream.Stream[A]) extends AnyVal {
-      def toImmutableSeq: immutable.Seq[A] = Vector() ++ delegate.iterator
+      def toImmutableSeq: immutable.Seq[A] =
+        Vector() ++ delegate.iterator.asScala
     }
   }
 

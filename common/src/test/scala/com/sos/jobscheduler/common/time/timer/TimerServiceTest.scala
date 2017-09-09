@@ -18,7 +18,7 @@ import java.util.concurrent.{ArrayBlockingQueue, ConcurrentLinkedQueue, CountDow
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import org.scalatest.concurrent.ScalaFutures
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future, Promise, blocking}
@@ -50,7 +50,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       timerService.at(t + 200.ms, "test") onElapsed { results.add("B" → now) }
       sleep(500.ms)
       withClue(s"Run $nr: ") {
-        val r = results.toVector
+        val r = results.asScala.toVector
         logger.info((r map { case (s, i) ⇒ (s, i - t) } mkString " ") + s" $timerService")
         assert((r map { _._1 }) == Vector("A", "B", "C"))
         assert(r(0)._2 >= t && r(0)._2 <= t + 200.ms)
@@ -76,7 +76,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         assert(cancelledTimer.isCanceled)
         sleep(700.ms)
         withClue(s"Run $nr: ") {
-          val r = results.toVector
+          val r = results.asScala.toVector
           assert((r map { _._1 }) == Vector("200"))
           assert(r(0)._2 >= t + 200.ms && r(0)._2 <= t + 300.ms)
         }

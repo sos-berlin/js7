@@ -7,7 +7,7 @@ import com.sos.jobscheduler.taskserver.common.StdFiles._
 import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration._
 import java.nio.charset.Charset
 import java.nio.file.Path
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.immutable
 
 /**
@@ -39,5 +39,7 @@ object StdFiles {
   private val LineSplitter = Splitter on '\n'
 
   private[taskserver] def prefixLinesWithStdoutOrStderr(t: StdoutStderrType, lines: String): String =
-    LineSplitter split (lines stripSuffix "\n" stripSuffix "\r")  map { o ⇒ s"[${t.string}] $o"} mkString "\n"
+    (LineSplitter split (lines stripSuffix "\n" stripSuffix "\r")).asScala
+      .map { o ⇒ s"[${t.string}] $o"}
+      .mkString("\n")
 }

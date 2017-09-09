@@ -10,7 +10,7 @@ import java.nio.file.{FileSystems, Path, WatchEvent}
 import java.time.{Duration, Instant}
 import java.time.Instant.now
 import java.util.concurrent.TimeUnit.MILLISECONDS
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent._
 
 /**
@@ -44,7 +44,7 @@ private[fileordersource] final class BlockingDirectoryWatcher(directory: Path, p
         false
       } else
         try
-          watchKey.pollEvents().asInstanceOf[java.util.List[WatchEvent[Path]]] exists { event ⇒
+          watchKey.pollEvents().asInstanceOf[java.util.List[WatchEvent[Path]]].asScala exists { event ⇒
             logger.trace(s"$logPrefix, event ${event.kind} ${event.context}")
             event.kind == OVERFLOW || pathMatches(directory resolve event.context)
           }

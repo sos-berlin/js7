@@ -12,7 +12,6 @@ import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import org.scalatest.FreeSpec
-import scala.collection.JavaConversions._
 import scala.concurrent.forkjoin.ForkJoinPool
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
@@ -36,7 +35,7 @@ final class ProcessesIT extends FreeSpec {
       Future {
         val file = newTemporaryShellFile(s"#$i")
         file.contentString = "exit"
-        val process = new ProcessBuilder(List(s"$file")).startRobustly()
+        val process = new ProcessBuilder(s"$file").startRobustly()
         (file, process)
       }
     val (files, processes) = (filesAndProcesses await 300.s).unzip

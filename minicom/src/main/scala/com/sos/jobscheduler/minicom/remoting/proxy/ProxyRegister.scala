@@ -8,7 +8,7 @@ import com.sos.jobscheduler.minicom.remoting.proxy.ProxyRegister._
 import com.sos.jobscheduler.minicom.types.HRESULT.E_POINTER
 import com.sos.jobscheduler.minicom.types.{COMException, IUnknown}
 import javax.annotation.Nullable
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.immutable
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
@@ -56,7 +56,11 @@ private[remoting] final class ProxyRegister {
 
   def iUnknown(proxyId: ProxyId): IUnknown = {
     if (proxyId == ProxyId.Null) throw new COMException(E_POINTER)
-    synchronized { proxyIdToIUnknown(proxyId) }
+    synchronized {
+      Option(proxyIdToIUnknown.get(proxyId)) getOrElse {
+        throw new NoSuchElementException(s"No such element in ProxyRegister: $proxyId")
+      }
+    }
   }
 
   override def toString = s"${getClass.getSimpleName}($size proxies)"
@@ -66,7 +70,7 @@ private[remoting] final class ProxyRegister {
    */
   def iUnknowns[A <: IUnknown: ClassTag]: immutable.Iterable[A] =
     synchronized {
-      (proxyIdToIUnknown.valuesIterator collect assignableFrom[A]).toVector
+      (proxyIdToIUnknown.values.iterator.asScala collect assignableFrom[A]).toVector
     }
 
   def size: Int = proxyIdToIUnknown.size

@@ -34,7 +34,8 @@ extends PromiseFuture[A] {
 
   override def toString = s"Timer($at $name)"
 
-  def isCanceled = promise.future.value contains CanceledFailure
+  def isCanceled: Boolean =
+    promise.future.value contains CanceledFailure
 }
 
 object Timer {
@@ -43,7 +44,7 @@ object Timer {
   private[timer] def nowMillis = System.currentTimeMillis
 
   private final class CanceledException private[Timer] extends RuntimeException with NoStackTrace
-  val CanceledFailure = Failure(new CanceledException)
+  private val CanceledFailure = Failure(new CanceledException)
 
   final class ElapsedException private[Timer] extends RuntimeException with NoStackTrace
   private[timer] val ElapsedFailure = Failure(new ElapsedException)

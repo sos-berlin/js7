@@ -24,7 +24,7 @@ import com.sos.jobscheduler.data.jobnet.JobPath
 import com.typesafe.config.ConfigFactory
 import java.time.Instant.now
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationLong
 
@@ -34,7 +34,7 @@ import scala.concurrent.duration.DurationLong
 final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
   private implicit lazy val actorSystem = Akkas.newActorSystem("TaskRegisterTest",
-    ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" → "100 millis")))  // Our default of 1s slows down this test
+    ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" → "100 millis").asJava))  // Our default of 1s slows down this test
   TestAgentDirectoryProvider
   private implicit lazy val agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory)).finishAndProvideFiles
   private implicit lazy val timerService = new TimerService(idleTimeout = Some(1.s))

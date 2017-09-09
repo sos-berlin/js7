@@ -19,7 +19,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.Strings.TruncatedString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.time.Duration
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * @author Joacim Zschimmer
@@ -30,7 +30,8 @@ object WebLogDirectives {
   val TestConfig = ConfigFactory.parseMap(Map(
     "jobscheduler.webserver.log.level" → "debug",
     "jobscheduler.webserver.log.elapsed-time" → false.toString,
-    "jobscheduler.webserver.verbose-error-messages" → true.toString))
+    "jobscheduler.webserver.verbose-error-messages" → true.toString)
+    .asJava)
 
   def handleErrorAndLog(config: Config, system: ActorSystem): Directive0 = {
     val logLevel = LogLevel(config.getString("jobscheduler.webserver.log.level"))

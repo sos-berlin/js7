@@ -13,7 +13,7 @@ import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider._
 import java.nio.file.Files.{delete, exists, setPosixFilePermissions}
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.{OWNER_EXECUTE, OWNER_READ}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
  * @author Joacim Zschimmer
@@ -30,7 +30,7 @@ final class ProcessKillScriptProvider extends HasCloser {
         ignoreException(logger.asLazy.error) { delete(file) }
       }
       if (isUnix)  {
-        setPosixFilePermissions(file, Set(OWNER_READ, OWNER_EXECUTE))
+        setPosixFilePermissions(file, Set(OWNER_READ, OWNER_EXECUTE).asJava)
       }
     }
 

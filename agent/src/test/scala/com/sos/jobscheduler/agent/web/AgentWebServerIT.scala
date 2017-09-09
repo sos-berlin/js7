@@ -38,7 +38,7 @@ import java.net.InetSocketAddress
 import java.time.Instant.now
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.reflect.ClassTag
@@ -56,7 +56,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     .finishAndProvideFiles
   private lazy val agent = RunningAgent(agentConfiguration) map { _.closeWithCloser } await 10.s
   private implicit lazy val actorSystem = {
-    val config = ConfigFactory.parseMap(Map("akka.http.server.verbose-error-messages" → true))
+    val config = ConfigFactory.parseMap(Map("akka.http.server.verbose-error-messages" → true).asJava)
     ActorSystem("AgentWebServerIT", config) withCloser { _.terminate() await 99.s }
   }
   private implicit lazy val materializer = ActorMaterializer()

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.runtime.BoxedUnit
 import scala.runtime.BoxedUnit.UNIT
@@ -28,7 +28,7 @@ class ScalaConcurrentHashSet[A] extends mutable.Set[A]{
     this
   }
 
-  final def iterator = delegate.keys.toIterator
+  final def iterator = delegate.keys.asScala
 
   final def contains(a: A) = delegate containsKey a
 

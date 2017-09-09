@@ -5,14 +5,14 @@ import com.sos.jobscheduler.common.scalautil.ScalaThreadLocal._
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{Attribute, StartElement}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 object ScalaStax {
   private val logger = Logger(getClass)
 
   implicit final class RichStartElement(val delegate: StartElement) extends AnyVal {
     def attributes: Iterator[Attribute] =
-      delegate.getAttributes.asInstanceOf[java.util.Iterator[Attribute]]
+      delegate.getAttributes.asInstanceOf[java.util.Iterator[Attribute]].asScala
   }
 
   private val xmlInputFactoryLogged = new AtomicBoolean

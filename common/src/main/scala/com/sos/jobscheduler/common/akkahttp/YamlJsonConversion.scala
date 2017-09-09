@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import org.yaml.snakeyaml.DumperOptions.FlowStyle
 import org.yaml.snakeyaml.nodes.Tag
 import org.yaml.snakeyaml.{DumperOptions, Yaml}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import spray.json._
 
 /**
@@ -55,10 +55,7 @@ object YamlJsonConversion {
       case JsNumber(o) ⇒
         try o.toLongExact
         catch { case _: ArithmeticException ⇒ o: BigDecimal }
-      case JsArray(o) ⇒ o map jsValueToJava: java.util.List[Any]
-      case o: JsObject ⇒ jsObjectToMap(o)
+      case JsArray(o) ⇒ (o map jsValueToJava).asJava: java.util.List[Any]
+      case JsObject(fields) ⇒ (fields map { case (k, v) ⇒ k → jsValueToJava(v) }).asJava: java.util.Map[String, Any]
     }
-
-  private def jsObjectToMap(jsObject: JsObject): java.util.Map[String, Any] =
-    jsObject.fields map { case (k, v) ⇒ k → jsValueToJava(v) }
 }

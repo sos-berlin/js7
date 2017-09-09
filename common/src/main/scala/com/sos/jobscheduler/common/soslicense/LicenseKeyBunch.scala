@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.soslicense
 import com.google.common.base.Splitter
 import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter
 import com.sos.jobscheduler.common.soslicense.LicenseKey.Parameter.{Expired, Missing, OK}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.immutable
 
 /**
@@ -26,7 +26,7 @@ object LicenseKeyBunch {
   private val BunchSplitter = Splitter.on(" ").trimResults.omitEmptyStrings
   private val Empty = new LicenseKeyBunch(Nil)
 
-  def apply(keys: String) = new LicenseKeyBunch((BunchSplitter split keys map { o ⇒ LicenseKey(o) }).toVector)
+  def apply(keys: String) = new LicenseKeyBunch((BunchSplitter.split(keys).asScala map { o ⇒ LicenseKey(o) }).toVector)
 
   def apply() = Empty
 }

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.base.sprayjson
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import java.nio.file.{Path, Paths}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import spray.json._
 
 /**
@@ -25,12 +25,12 @@ object SprayJson {
       case v: Iterable[_] ⇒ new JsArray((v map valueToJsValue).toVector)
       case v: JsValue ⇒ v
       case v: java.math.BigDecimal ⇒ JsNumber(v)
-      case v: java.lang.Iterable[_] ⇒ JsArray((v map valueToJsValue).toVector)
-      case v: java.util.Map[_, _] ⇒ mapToJsObject(v.asInstanceOf[java.util.Map[String, Any]])
+      case v: java.lang.Iterable[_] ⇒ JsArray((v.asScala map valueToJsValue).toVector)
+      case v: java.util.Map[_, _] ⇒ mapToJsObject(v.asInstanceOf[java.util.Map[String, Any]].asScala.toMap)
     }
 
-  def mapToJsObject(m: java.util.Map[String, Any]): JsObject =
-    JsObject(m.entrySet.toSeq map { e ⇒ e.getKey → valueToJsValue(e.getValue) }: _*)
+  def mapToJsObject(m: Map[String, Any]): JsObject =
+    JsObject(m map { case (k, v) ⇒ k → valueToJsValue(v) })
 
   def jsValueToAny(jsValue: JsValue): Any =
     jsValue match {

@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.auth.EncodedToHashedPasswordTest._
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.typesafe.config.ConfigFactory
 import org.scalatest.FreeSpec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * @author Joacim Zschimmer
@@ -38,7 +38,7 @@ private object EncodedToHashedPasswordTest {
 
   private val TestConfigValidator = ConfigFactory.parseMap(Map(
     PlainUserId.string → PlainConfiguredPassword.string,
-    Sha512UserId.string → Sha512ConfiguredPassword.string))
+    Sha512UserId.string → Sha512ConfiguredPassword.string).asJava)
 
   private val encodedToHashedPassword = new EncodedToHashedPassword(userId ⇒ TestConfigValidator.optionAs[SecretString](userId.string))
 }

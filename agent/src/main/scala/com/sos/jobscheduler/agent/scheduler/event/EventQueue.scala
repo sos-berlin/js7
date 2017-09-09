@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import java.time.Duration
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
@@ -50,7 +50,7 @@ final class EventQueue(timerService: TimerService) extends Actor {
         logger.debug(error)
         sender() ! Status.Failure(new IllegalArgumentException(error))  // TODO Does requester handle Status.Failure ?
       } else {
-        val stampeds = (eventQueue.navigableKeySet.tailSet(after, false).iterator take limit map eventQueue.get).toVector
+        val stampeds = (eventQueue.navigableKeySet.tailSet(after, false).iterator.asScala take limit map eventQueue.get).toVector
         if (stampeds.nonEmpty) {
           promise.success(EventSeq.NonEmpty(stampeds))
         } else
@@ -69,7 +69,7 @@ final class EventQueue(timerService: TimerService) extends Actor {
       if (eventId == eventQueue.lastKey/*may return null*/ && firstResponse != NoFirstResponse/*to be sure*/) {
         for ((promise, timer) ← requestors) {
           timerService.cancel(timer)
-          promise.success(EventSeq.NonEmpty((eventQueue.navigableKeySet.tailSet(firstResponse, true).iterator map eventQueue.get).toVector))
+          promise.success(EventSeq.NonEmpty((eventQueue.navigableKeySet.tailSet(firstResponse, true).iterator.asScala map eventQueue.get).toVector))
         }
         firstResponse = NoFirstResponse
         requestors.clear()
@@ -80,12 +80,13 @@ final class EventQueue(timerService: TimerService) extends Actor {
       promise.trySuccess(emptyEventSeq)
 
     case Input.GetSnapshot ⇒
-      sender() ! CompleteSnapshot(oldestKnownEventId, eventQueue.values.toVector)
+      sender() ! CompleteSnapshot(oldestKnownEventId, eventQueue.values.asScala.toVector)
 
     case CompleteSnapshot(eventId, stampedEvents) ⇒
       assert(eventQueue.isEmpty)
       oldestKnownEventId = eventId
-      eventQueue ++= stampedEvents map { o ⇒ java.lang.Long.valueOf(o.eventId) → o }
+      for (o ← stampedEvents)
+        eventQueue.put(o.eventId, o)
       logger.debug(s"${stampedEvents.size} events recovered, oldestKnownEventId=${EventId.toString(oldestKnownEventId)}")
   }
 

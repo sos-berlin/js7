@@ -19,7 +19,7 @@ import java.nio.file.Files._
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit.SECONDS
 import org.scalatest.FreeSpec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, blocking}
 import scala.io
@@ -60,7 +60,7 @@ final class ProcessKillScriptTest extends FreeSpec {
     val file = Processes.newTemporaryShellFile("test")
     file.contentString = Script
     val args = List(file.toString, s"-agent-task-id=${agentTaskId.string}")
-    val process = new ProcessBuilder(args).redirectOutput(out).redirectError(INHERIT).start()
+    val process = new ProcessBuilder(args.asJava).redirectOutput(out).redirectError(INHERIT).start()
     logger.info(s"Started process ${processToPidOption(process)}")
     (file, process)
   }
@@ -69,7 +69,7 @@ final class ProcessKillScriptTest extends FreeSpec {
     autoClosing(new ProcessKillScriptProvider) { provider ⇒
       val killScript = provider.provideTo(temporaryDirectory)
       val args = killScript.toCommandArguments(agentTaskId, pidOption)
-      val killProcess = new ProcessBuilder(args).start()
+      val killProcess = new ProcessBuilder(args.asJava).start()
       startLogStreams(killProcess, "Kill script") await 60.s
       killProcess.waitFor(60, SECONDS)
       assert(killProcess.exitValue == 0)
@@ -88,7 +88,7 @@ private object ProcessKillScriptTest {
 
   private def logProcessTree(): Unit = {
     if (isUnix && !isMac) {
-      val ps = new ProcessBuilder(List("ps", "fux")).start()
+      val ps = new ProcessBuilder("ps", "fux").start()
       startLogStreams(ps, "ps (for information only, please ignore errors)") await 15.s
       ps.waitFor()
     }
