@@ -122,7 +122,7 @@ with Stash {
     case msg @ Internal.EventFetcherTerminated(Success(Completed)) ⇒
       logger.debug(msg.toString)
 
-    case msg @ Internal.OrderAttachedToAgent(cmd, tried) ⇒
+    case Internal.OrderAttachedToAgent(cmd, tried) ⇒
       executingCommands -= cmd
       tried match {
         case Success(Done) ⇒
@@ -134,8 +134,17 @@ with Stash {
         case Failure(e: AgentClient.HttpException)  ⇒
           onConnectionError(e.toString)
         case Failure(t) ⇒
-          logger.error(s"${cmd.order.id}: ${t.toStringWithCauses}")
-          // TODO How to inform the commander ?
+          logger.error(s"${cmd.order.id}: ${t.toStringWithCauses}", t)
+          // TODO Retry several times, finally inform commander about failure (dropping the order)
+          // 1) Wenn es ein Verbindungsfehler ist (oder ein HTTP-Fehlercode eines Proxys), dann versuchen wir endlos weiter.
+          // Der Verbindungsfehler kann die eine TCP-Verbindung betreffen. Dann genügt ein neuer Versuch.
+          // Wenn wir einige (zwei?) Fehler in Folge ohne Erfolg zwischendurch erhalten, dann unterbrechen wir die Verbindung zum Agenten
+          // für kurze Zeit, bevor wir sie wiederaufleben lassen.
+          // Diesen Mechanisms haben wir schon.
+          // 2) akka.stream.BufferOverflowException: Später wieder versuchen
+          // 3) Mehrere Kommandos (alle in commandQueue, doch limitiert) gebündelt dem Agenten schicken,
+          // Agent antwortet mit entsprechened vielen Okays oder Fehlermeldungen
+          // 4) Prüfen, ob akka.http.host-connection-pool.client.max-retries von 0 auf 5 (die Voreinstellung) erhöht werden kann.
           commandQueue.dequeueFirst(_ == cmd)
           self ! Internal.CommandReady
       }
@@ -196,7 +205,7 @@ with Stash {
           logger.info(s"$orderId detached from Agent")
           sender ! Output.OrderDetached(orderId)
         case Failure(t) ⇒
-          logger.error(s"$cmd: ${t.toStringWithCauses}")
+          logger.error(s"$cmd: ${t.toStringWithCauses}", t)
       }
   }
 
