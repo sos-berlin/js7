@@ -56,7 +56,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     .finishAndProvideFiles
   private lazy val agent = RunningAgent(agentConfiguration) map { _.closeWithCloser } await 10.s
   private implicit lazy val actorSystem = {
-    val config = ConfigFactory.parseMap(Map("akka.http.server.verbose-error-messages" → true, "ssl-config.ssl.loose.acceptAnyCertificate" -> true))
+    val config = ConfigFactory.parseMap(Map("akka.http.server.verbose-error-messages" → true))
     ActorSystem("AgentWebServerIT", config) withCloser { _.terminate() await 99.s }
   }
   private implicit lazy val materializer = ActorMaterializer()
