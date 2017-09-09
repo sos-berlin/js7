@@ -46,7 +46,7 @@ import spray.json.DefaultJsonProtocol._
  *
  * @author Joacim Zschimmer
  */
-trait AgentClient {
+trait AgentClient extends AutoCloseable {
   import actorRefFactory.dispatcher
 
   protected val actorSystem = ActorSystem()
@@ -67,6 +67,10 @@ trait AgentClient {
   }
   private val sessionTokenRef = new AtomicReference[Option[SessionToken]](None)
   private val http = Http(actorSystem)
+
+  def close() = {
+    materializer.shutdown()  // (Seems to be an asynchronous operation)
+  }
 
   final def executeCommand(command: AgentCommand): Future[command.Response] = {
     logger.debug(s"Execute $command")

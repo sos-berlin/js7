@@ -39,8 +39,8 @@ final class OrderAgentIT extends FreeSpec {
       for (agent ← RunningAgent(agentConf)) {
         withCloser { implicit closer ⇒
           agent.closeWithCloser
-          implicit val actorSystem = newActorSystem(getClass.getSimpleName) withCloser { _.terminate() await 99.s }
-          val agentClient = AgentClient(agent.localUri.toString)
+          implicit val actorSystem = newActorSystem(getClass.getSimpleName)
+          val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
 
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual EmptyResponse  // Without Login, this registers all anonymous clients
           agentClient.executeCommand(AttachJobnet(TestJobnet)) await 99.s shouldEqual EmptyResponse

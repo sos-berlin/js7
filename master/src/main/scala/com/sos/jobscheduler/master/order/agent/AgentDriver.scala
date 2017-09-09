@@ -48,7 +48,11 @@ with Stash {
       eventFetcher.close()
     }
     if (client.hasSession) {
-      client.executeCommand(AgentCommand.Logout)  // Ignoring response
+      client.executeCommand(AgentCommand.Logout) onComplete {
+        _ ⇒ client.close()  // Ignoring the response
+      }
+    } else {
+      client.close()
     }
     super.postStop()
   }

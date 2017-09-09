@@ -18,8 +18,10 @@ final class SimpleAgentClient private(val agentUri: Uri) extends AgentClient wit
   protected def httpsConnectionContextOption = None
   protected def userAndPasswordOption = None
 
-  def close() = actorRefFactory.terminate()
-
+  override def close() = {
+    super.close()
+    actorRefFactory.terminate()
+  }
 }
 
 object SimpleAgentClient {
