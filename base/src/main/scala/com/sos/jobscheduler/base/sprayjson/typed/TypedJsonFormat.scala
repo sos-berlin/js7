@@ -36,7 +36,7 @@ object TypedJsonFormat {
     * <p><b>On compile error using TypedJsonFormat(Subtype ...):</b> check if every Subtype really denotes a subtype of A.
     */
   def apply[A: ClassTag](subtype: Subtype[_], subtypes: Subtype[_]*): TypedJsonFormat[A] =
-    _apply[A](subtypes = subtype +: subtypes)
+    _apply[A](superclassName = implicitClass[A].getSimpleName, subtypes = subtype +: subtypes)
 
   /**
     * A RootJsonType for polymorphic types.
@@ -52,22 +52,24 @@ object TypedJsonFormat {
     */
   def apply[A: ClassTag](
     typeField: String = DefaultTypeFieldName,
+    name: String = "",  // This name is only for users of typeNameToClass, like "Event"
     shortenTypeOnlyValue: Boolean = DefaultShortenTypeOnlyValue)
     (subtypes: Subtype[_]*)
   : TypedJsonFormat[A] =
-    _apply[A](typeFieldName = typeField, shortenTypeOnlyValue = shortenTypeOnlyValue, subtypes = subtypes)
+    _apply[A](typeFieldName = typeField, superclassName = name, shortenTypeOnlyValue = shortenTypeOnlyValue, subtypes = subtypes)
 
   private def _apply[A: ClassTag](
     typeFieldName: String = DefaultTypeFieldName,
+    superclassName: String,  // This name is only for users of typeNameToClass, like "Event"
     shortenTypeOnlyValue: Boolean = DefaultShortenTypeOnlyValue,
     subtypes: Seq[Subtype[_]]): TypedJsonFormat[A]
   = {
-    val superclassName = implicitClass[A].getSimpleName   // This name is only for users of typeNameToClass, like "Event"
+    val mySuperclassName = if (superclassName.nonEmpty) superclassName else implicitClass[A].getSimpleName
     val typeNamesAndClasses = subtypes flatMap { _.nameToClass mapValues { _.asInstanceOf[Class[_ <: A]] }}
     new WithSubtypeRegister[A](
       implicitClass[A],
       classToJsonWriter = (subtypes flatMap { _.toClassToJsonWriter(typeFieldName) }).toMap,
-      typeNameToClass = (Vector(superclassName → implicitClass[A]) ++ typeNamesAndClasses).toMap withDefault throwUnknownType,
+      typeNameToClass = (Vector(mySuperclassName → implicitClass[A]) ++ typeNamesAndClasses).toMap withDefault throwUnknownType,
       typeNameToJsonReader = (subtypes flatMap { _.toTypeToReader(typeFieldName) }).toMap withDefault throwUnknownType,
       (typeNamesAndClasses map { _._1 }).toVector,
       typeFieldName = typeFieldName,

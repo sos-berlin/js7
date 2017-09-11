@@ -86,7 +86,7 @@ extends Actor with Stash {
       case cmd: AgentCommand.Terminate ⇒
         terminating = true
         for (a ← startedJobActors) a ! cmd
-        sender() ! EmptyResponse
+        sender() ! AgentCommand.Accepted
 
       case Terminated(a) if startedJobActors contains a ⇒
         startedJobActors -= a

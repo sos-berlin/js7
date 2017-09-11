@@ -3,9 +3,8 @@ package com.sos.jobscheduler.agent.client
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AbortImmediately, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AbortImmediately, Accepted, Terminate}
 import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -31,8 +30,8 @@ extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with Ag
       def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] =
         Future {
           (command match {
-            case ExpectedTerminate ⇒ EmptyResponse
-            case AbortImmediately ⇒ EmptyResponse
+            case ExpectedTerminate ⇒ Accepted
+            case AbortImmediately ⇒ Accepted
             case _ ⇒ throw new NotImplementedError
           })
           .asInstanceOf[command.Response]
@@ -46,8 +45,8 @@ extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with Ag
   private lazy val client = SimpleAgentClient(agentUri = AgentAddress(agent.localUri.toString)).closeWithCloser
 
   List[(AgentCommand, AgentCommand.Response)](
-    ExpectedTerminate → EmptyResponse,
-    AbortImmediately → EmptyResponse)
+    ExpectedTerminate → Accepted,
+    AbortImmediately → Accepted)
   .foreach { case (command, response) ⇒
     command.getClass.getSimpleName in {
       whenReady(client.executeCommand(command)) { o ⇒

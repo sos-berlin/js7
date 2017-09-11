@@ -4,7 +4,6 @@ import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue
@@ -162,11 +161,11 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           promiseFuture[Response] { promise ⇒
             persist(KeyedEvent(JobnetAttached(jobnet.inputNodeId, jobnet.idToNode))(jobnet.path)) { stampedEvent ⇒
               jobnetRegister.handleEvent(stampedEvent.value)
-              promise.success(EmptyResponse)
+              promise.success(AgentCommand.Accepted)
             }
           }
         case Some(`jobnet`) ⇒
-          Future.successful(EmptyResponse)
+          Future.successful(AgentCommand.Accepted)
         case Some(_) ⇒
           Future.failed(new IllegalStateException(s"Changed ${jobnet.path}"))
       }
@@ -178,9 +177,9 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           if (orderRegister contains order.id) {
             // May occur after Master restart when Master is not sure about order has been attached previously.
             logger.debug(s"Ignoring duplicate $cmd")
-            Future.successful(EmptyResponse)
+            Future.successful(AgentCommand.Accepted)
           } else {
-            attachOrder(order) map { case Completed ⇒ EmptyResponse }
+            attachOrder(order) map { case Completed ⇒ AgentCommand.Accepted }
           }
         case Some(_) ⇒
           Future.failed(new IllegalArgumentException(s"Unknown NodeId ${nodeKey.nodeId} in ${nodeKey.jobnetPath}"))
@@ -192,11 +191,11 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       orderRegister.get(orderId) match {
         case Some(orderEntry) ⇒
           orderEntry.detaching = true  // OrderActor is terminating
-          (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ EmptyResponse }
+          (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ AgentCommand.Accepted }
         case None ⇒
           // May occur after Master restart when Master is not sure about order has been detached previously.
           logger.debug(s"Ignoring duplicate $cmd")
-          Future.successful(EmptyResponse)
+          Future.successful(AgentCommand.Accepted)
       }
 
     case GetOrder(orderId) ⇒
@@ -266,7 +265,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     val orderEntry = orderRegister(orderId)
     orderEntry.order.state match {
       case Order.Scheduled(instant) if now < instant ⇒
-        orderEntry.at(instant) {
+        orderEntry.at(instant) {  // TODO Register only the next order in TimerService ?
           self ! Internal.Due(orderId)
         }
 

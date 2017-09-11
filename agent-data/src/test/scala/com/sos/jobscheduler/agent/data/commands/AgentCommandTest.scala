@@ -13,159 +13,150 @@ import spray.json._
   */
 final class AgentCommandTest extends FreeSpec {
 
+  "Compound" in {
+    check(AgentCommand.Compound(List(AgentCommand.NoOperation, AgentCommand.Logout)),
+      """{
+        "TYPE": "Compound",
+        "commands": [
+          { "TYPE": "NoOperation" },
+          { "TYPE": "Logout" }
+        ]
+      }""".parseJson)
+  }
+
   "AbortImmediately" in {
-    val obj = AgentCommand.AbortImmediately
-    val json = """{ "$TYPE": "AbortImmediately" }""".parseJson
-    assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-    assert(obj == json.convertTo[AgentCommand])
+    check(AgentCommand.AbortImmediately,
+      """{ "TYPE": "AbortImmediately" }""".parseJson)
   }
 
   "Login" in {
-    val obj = AgentCommand.Login
-    val json = """{
-      "$TYPE": "Login"
-    }""".parseJson
-    assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-    assert(obj == json.convertTo[AgentCommand.Login.type])
+    check(AgentCommand.Login,
+      """{
+        "TYPE": "Login"
+      }""".parseJson)
   }
 
   "Logout" in {
-    val obj = AgentCommand.Logout
-    val json = """{
-      "$TYPE": "Logout"
-    }""".parseJson
-    assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-    assert(obj == json.convertTo[AgentCommand.Logout.type])
+    check(AgentCommand.Logout,
+      """{
+        "TYPE": "Logout"
+      }""".parseJson)
   }
 
   "NoOperation" in {
-    val obj = AgentCommand.NoOperation
-    val json = """{
-      "$TYPE": "NoOperation"
-    }""".parseJson
-    assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-    assert(obj == json.convertTo[AgentCommand.NoOperation.type])
+    check(AgentCommand.NoOperation,
+      """{
+        "TYPE": "NoOperation"
+      }""".parseJson)
   }
 
   "RegisterAsMaster" in {
-    val obj = AgentCommand.RegisterAsMaster
-    val json = """{
-      "$TYPE": "RegisterAsMaster"
-    }""".parseJson
-    assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-    assert(obj == json.convertTo[AgentCommand.RegisterAsMaster.type])
+    check(AgentCommand.RegisterAsMaster,
+      """{
+        "TYPE": "RegisterAsMaster"
+      }""".parseJson)
   }
 
   "Terminate" - {
     "JSON without sigkillProcessesAfter" in {
-      val obj = AgentCommand.Terminate(sigtermProcesses = true)
-      val json = """{
-        "$TYPE":"Terminate",
-        "sigtermProcesses": true
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
+      check(AgentCommand.Terminate(sigtermProcesses = true),
+        """{
+          "TYPE":"Terminate",
+          "sigtermProcesses": true
+        }""".parseJson)
     }
 
     "JSON with sigkillProcessesAfter" in {
-      val obj = AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(30.s))
-      val json = """{
-        "$TYPE":"Terminate",
-        "sigtermProcesses": true,
-        "sigkillProcessesAfter": 30
-      }""".parseJson
-      //assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
+      check(AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(30.s)),
+        """{
+          "TYPE":"Terminate",
+          "sigtermProcesses": true,
+          "sigkillProcessesAfter": 30
+        }""".parseJson)
     }
   }
 
   "OrderCommand" - {
     "AttachJobnet" in {
-      val obj = AgentCommand.AttachJobnet(Jobnet(
+      check(AgentCommand.AttachJobnet(Jobnet(
         JobnetPath("/JOBNET"),
         NodeId("START"),
         List(
           JobNode(NodeId("START"), AgentPath("/AGENT"), JobPath("/JOB"), NodeId("END"), NodeId("END")),
-          EndNode(NodeId("END")))))
-      val json = """{
-        "$TYPE": "AttachJobnet",
-        "jobnet": {
-          "path": "/JOBNET",
-          "inputNodeId": "START",
-          "idToNode": {
-            "START": {
-              "agentPath": "/AGENT",
-              "onSuccess": "END",
-              "id": "START",
-              "jobPath": "/JOB",
-              "onFailure": "END",
-              "TYPE": "JobNode"
-            },
-            "END": {
-              "id": "END",
-              "TYPE": "EndNode"
+          EndNode(NodeId("END"))))),
+        """{
+          "TYPE": "AttachJobnet",
+          "jobnet": {
+            "path": "/JOBNET",
+            "inputNodeId": "START",
+            "idToNode": {
+              "START": {
+                "agentPath": "/AGENT",
+                "onSuccess": "END",
+                "id": "START",
+                "jobPath": "/JOB",
+                "onFailure": "END",
+                "TYPE": "JobNode"
+              },
+              "END": {
+                "id": "END",
+                "TYPE": "EndNode"
+              }
             }
           }
-        }
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
+        }""".parseJson)
     }
 
     "AttachOrder" in {
-      val obj = AgentCommand.AttachOrder(Order(
+      check(AgentCommand.AttachOrder(Order(
         OrderId("ORDER-ID"),
         NodeKey(JobnetPath("/JOBNET"),NodeId("INPUT")),
-        Order.Waiting))
-      val json = """{
-        "$TYPE": "AttachOrder",
-        "order": {
-          "state": {
-            "TYPE":
-            "Waiting"
-          },
-          "outcome": {
-            "returnValue": true
-          },
-          "variables": {},
-          "id": "ORDER-ID",
-          "nodeKey": {
-            "jobnetPath": "/JOBNET",
-            "nodeId": "INPUT"
+        Order.Waiting)),
+        """{
+          "TYPE": "AttachOrder",
+          "order": {
+            "state": {
+              "TYPE":
+              "Waiting"
+            },
+            "outcome": {
+              "returnValue": true
+            },
+            "variables": {},
+            "id": "ORDER-ID",
+            "nodeKey": {
+              "jobnetPath": "/JOBNET",
+              "nodeId": "INPUT"
+            }
           }
-        }
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
+        }""".parseJson)
     }
 
     "DetachOrder" in {
-      val obj = AgentCommand.DetachOrder(OrderId("ORDER-ID"))
-      val json = """{
-        "$TYPE": "DetachOrder",
-        "orderId": "ORDER-ID"
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
+      check(AgentCommand.DetachOrder(OrderId("ORDER-ID")),
+        """{
+          "TYPE": "DetachOrder",
+          "orderId": "ORDER-ID"
+        }""".parseJson)
     }
 
     "GetOrder" in {
-      val obj = AgentCommand.GetOrder(OrderId("ORDER-ID"))
-      val json = """{
-        "$TYPE": "GetOrder",
-        "orderId": "ORDER-ID"
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
+      check(AgentCommand.GetOrder(OrderId("ORDER-ID")),
+         """{
+          "TYPE": "GetOrder",
+          "orderId": "ORDER-ID"
+        }""".parseJson)
     }
 
     "GetOrderIds" in {
-      val obj = AgentCommand.GetOrderIds
-      val json = """{
-        "$TYPE": "GetOrderIds"
-      }""".parseJson
-      assert((obj: AgentCommand).toJson == json)   // AgentCommand serializer includes $TYPE
-      assert(obj == json.convertTo[AgentCommand])
-    }
+      check(AgentCommand.GetOrderIds,
+        """{
+          "TYPE": "GetOrderIds"
+        }""".parseJson)  }
+  }
+
+  private def check(command: AgentCommand, json: JsValue): Unit = {
+    assert(command.toJson == json)
+    assert(command == json.convertTo[AgentCommand])
   }
 }

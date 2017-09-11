@@ -2,7 +2,6 @@ package com.sos.jobscheduler.agent.tests
 
 import com.sos.jobscheduler.agent.client.main.AgentClientMain
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.agent.test.AgentTest
@@ -28,7 +27,7 @@ final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCl
       bindInstance[CommandHandler](new CommandHandler {
         def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {
           val response = command match {
-            case ExpectedTerminate ⇒ EmptyResponse
+            case ExpectedTerminate ⇒ AgentCommand.Accepted
             case _ ⇒ fail()
           }
           Future.successful(response.asInstanceOf[command.Response])
@@ -42,10 +41,10 @@ final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCl
 
   "main" in {
     val output = mutable.Buffer[String]()
-    val commandYaml = """{ $TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }"""
+    val commandYaml = """{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }"""
     AgentClientMain.run(List(agent.localUri.toString, commandYaml, "/"), o ⇒ output += o)
     assert(output.size == 3)
-    assert(output(0) == "{}")
+    assert(output(0) == "TYPE: Accepted")
     assert(output(1) == "---")
     assert(output(2) contains "startedAt: '2")
     assert(output(2) contains "isTerminating: false")
@@ -73,3 +72,4 @@ final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCl
 private object AgentClientMainIT {
   private val ExpectedTerminate = Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.s))
 }
+

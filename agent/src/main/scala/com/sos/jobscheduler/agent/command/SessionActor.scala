@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.command
 
 import akka.actor.Actor
 import com.sos.jobscheduler.agent.command.SessionActor._
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Login, Logout, Response, SessionCommand}
 import com.sos.jobscheduler.agent.web.common.LoginSession
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
@@ -33,7 +33,7 @@ extends Actor {
   private def login(currentSessionTokenOption: Option[SessionToken], user: User) =
     Future fromTry Try {
       currentSessionTokenOption foreach sessionRegister.remove
-      LoginResponse(sessionRegister.add(LoginSession(user)))
+      Login.Response(sessionRegister.add(LoginSession(user)))
     }
 
   private def logout(sessionTokenOption: Option[SessionToken]) =
@@ -42,7 +42,7 @@ extends Actor {
         throw new IllegalArgumentException("Logout without SessionToken")
       }
       sessionRegister.remove(sessionToken)
-      EmptyResponse
+      AgentCommand.Accepted
     }
 }
 

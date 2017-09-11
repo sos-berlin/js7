@@ -1,15 +1,14 @@
 package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.jobnet.Jobnet
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.session.SessionToken
 import java.time.Duration
 import scala.collection.immutable.Seq
 import spray.json.DefaultJsonProtocol._
-import spray.json._
 
 /**
  * @author Joacim Zschimmer
@@ -28,56 +27,69 @@ sealed trait AgentCommand {
 object AgentCommand {
   trait Response
 
-  object Response {
-    /**
-     * Serialization of all Response for a function AgentCommand => Response, which returns the unspecific type Response.
-     */
-    implicit object MyJsonFormat extends RootJsonWriter[Response] {
-      def write(response: Response) = response match {
-        case o: LoginResponse ⇒ o.toJson
-        case EmptyResponse ⇒ EmptyResponse.toJson
-        case o ⇒ throw new UnsupportedOperationException(s"Class ${o.getClass.getName} is not serializable as JSON")
+  final case class Compound(commands: Seq[AgentCommand])
+  extends AgentCommand {
+    type Response = Compound.Response
+
+    override def toString = s"Compound(${commands.size} commands: ${commands take 3 map { _.getClass.getSimpleName } mkString ", "} ...)"
+  }
+
+  object Compound {
+    final case class Succeeded(response: AgentCommand.Response)
+    extends SingleResponse
+
+    /** Failed commands let the web service succeed and are returns as Failed. */
+    final case class Failed(message: String) extends SingleResponse
+
+    sealed trait SingleResponse
+
+    object SingleResponse {
+      implicit val jsonFormat = TypedJsonFormat[SingleResponse](name = "SingleResponse")(
+        Subtype(jsonFormat1(Succeeded.apply), "Succeeded"),
+        Subtype(jsonFormat1(Failed.apply), "Failed"))
+    }
+
+    final case class Response(responses: Seq[SingleResponse])
+    extends AgentCommand.Response {
+      override def toString = {
+        val succeeded = responses count { _.isInstanceOf[Succeeded] }
+        s"Compound($succeeded succeeded and ${responses.size - succeeded} failed)"
       }
+    }
+
+    object Response {
+      implicit val jsonFormat = jsonFormat1(apply)
     }
   }
 
-  case object AbortImmediately extends TerminateOrAbort {
-    val SerialTypeName = "AbortImmediately"
+  case object Accepted extends AgentCommand.Response {
+    implicit val jsonFormat = jsonFormat0(() ⇒ Accepted)
+  }
 
+  case object AbortImmediately extends TerminateOrAbort {
     /** The JVM is halted before responding. */
     type Response = Nothing
-
-    implicit val MyJsonFormat = jsonFormat0(() ⇒ AbortImmediately)
   }
 
   sealed trait SessionCommand extends AgentCommand
 
   case object Login extends SessionCommand {
-    type Response = LoginResponse
-
-    val SerialTypeName = "Login"
-    implicit val jsonFormat = jsonFormat0(() ⇒ Login)
+    final case class Response(sessionToken: SessionToken) extends AgentCommand.Response
+    object Response {
+      implicit val jsonFormat = jsonFormat1(apply)
+    }
   }
 
   case object Logout extends SessionCommand {
-    type Response = EmptyResponse.type
-
-    val SerialTypeName = "Logout"
-    implicit val jsonFormat = jsonFormat0(() ⇒ Logout)
+    type Response = Accepted.type
   }
 
   case object NoOperation extends AgentCommand {
-    type Response = EmptyResponse.type
-
-    val SerialTypeName = "NoOperation"
-    implicit val jsonFormat = jsonFormat0(() ⇒ NoOperation)
+    type Response = Accepted.type
   }
 
   case object RegisterAsMaster extends AgentCommand {
-    type Response = EmptyResponse.type
-
-    val SerialTypeName = "RegisterAsMaster"
-    implicit val jsonFormat = jsonFormat0(() ⇒ RegisterAsMaster)
+    type Response = Accepted.type
   }
 
   sealed trait TerminateOrAbort extends AgentCommand
@@ -86,81 +98,68 @@ object AgentCommand {
     sigtermProcesses: Boolean = false,
     sigkillProcessesAfter: Option[Duration] = None)
   extends TerminateOrAbort {
-    type Response = EmptyResponse.type
+    type Response = Accepted.type
   }
 
   object Terminate {
-    val SerialTypeName = "Terminate"
     val MaxDuration = 31 * 24.h
-    implicit val MyJsonFormat = jsonFormat2(apply)
   }
-
-
 
   sealed trait OrderCommand extends AgentCommand
 
-  final case class AttachJobnet(jobnet: Jobnet) extends OrderCommand {
-    type Response = EmptyResponse.type
-  }
-
-  object AttachJobnet {
-    val SerialTypeName = "AttachJobnet"
-    implicit val jsonFormat = jsonFormat1(apply)
+  final case class AttachJobnet(jobnet: Jobnet)
+  extends OrderCommand {
+    type Response = Accepted.type
   }
 
   final case class AttachOrder(order: Order[Order.Idle])
   extends OrderCommand {
-    type Response = EmptyResponse.type
-  }
-
-  object AttachOrder {
-    val SerialTypeName = "AttachOrder"
-    implicit val jsonFormat = jsonFormat1(apply)
+    type Response = Accepted.type
   }
 
 
   final case class DetachOrder(orderId: OrderId)
   extends OrderCommand {
-    type Response = EmptyResponse.type
+    type Response = Accepted.type
   }
 
-  object DetachOrder {
-    val SerialTypeName = "DetachOrder"
-    implicit val jsonFormat = jsonFormat1(apply)
-  }
-
-
-  final case class GetOrder(orderId: OrderId) extends OrderCommand {
+  final case class GetOrder(orderId: OrderId)
+  extends OrderCommand {
     type Response = GetOrder.Response
   }
 
   object GetOrder {
-    val SerialTypeName = "GetOrder"
-    implicit val jsonFormat = jsonFormat1(apply)
     final case class Response(order: Order[Order.State]) extends AgentCommand.Response
   }
 
   case object GetOrderIds extends OrderCommand {
-    val SerialTypeName = "GetOrderIds"
-    implicit val jsonFormat = jsonFormat0(() ⇒ GetOrderIds)
     final case class Response(orders: Seq[OrderId]) extends AgentCommand.Response
   }
 
   case object GetOrders extends OrderCommand {
-    val SerialTypeName = "GetOrders"
     final case class Response(order: Seq[Order[Order.State]]) extends AgentCommand.Response
   }
 
-  implicit val MyJsonFormat = TypedJsonFormat[AgentCommand](typeField = "$TYPE", shortenTypeOnlyValue = false)(
-    Subtype[AbortImmediately.type](AbortImmediately.SerialTypeName),
-    Subtype[Login.type](Login.SerialTypeName),
-    Subtype[Logout.type](Logout.SerialTypeName),
-    Subtype[NoOperation.type](NoOperation.SerialTypeName),
-    Subtype[RegisterAsMaster.type](RegisterAsMaster.SerialTypeName),
-    Subtype[Terminate](Terminate.SerialTypeName),
-    Subtype[AttachJobnet](AttachJobnet.SerialTypeName),
-    Subtype[AttachOrder](AttachOrder.SerialTypeName),
-    Subtype[DetachOrder](DetachOrder.SerialTypeName),
-    Subtype[GetOrder](GetOrder.SerialTypeName),
-    Subtype[GetOrderIds.type](GetOrderIds.SerialTypeName))
+  implicit val CommandJsonFormat: TypedJsonFormat[AgentCommand] =
+    TypedJsonFormat.asLazy(
+      TypedJsonFormat[AgentCommand](
+        Subtype(jsonFormat1(Compound.apply)),
+        Subtype(jsonFormat0(() ⇒ AbortImmediately)),
+        Subtype(jsonFormat0(() ⇒ Login)),
+        Subtype(jsonFormat0(() ⇒ Logout)),
+        Subtype(jsonFormat0(() ⇒ NoOperation)),
+        Subtype(jsonFormat0(() ⇒ RegisterAsMaster)),
+        Subtype(jsonFormat2(Terminate.apply)),
+        Subtype(jsonFormat1(AttachJobnet.apply)),
+        Subtype(jsonFormat1(AttachOrder.apply)),
+        Subtype(jsonFormat1(DetachOrder.apply)),
+        Subtype(jsonFormat1(GetOrder.apply)),
+        Subtype(jsonFormat0(() ⇒ GetOrderIds))))
+
+  implicit val ResponseJsonFormat: TypedJsonFormat[AgentCommand.Response] =
+    TypedJsonFormat.asLazy(
+      TypedJsonFormat[AgentCommand.Response]()(
+        Subtype[Compound.Response]("MultipleResponse"),
+        Subtype[Accepted.type]("Accepted"),
+        Subtype[Login.Response]("LoginResponse")))
 }

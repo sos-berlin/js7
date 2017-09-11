@@ -179,7 +179,7 @@ with Stash {
             orderEntry.order.agentPathOption match {
               case Some(agentPath) ⇒
                 sender() ! Status.Failure(new IllegalStateException(s"Order cannot be removed because it is attached to Agent '$agentPath'"))  // ???
-                //(agents(agentPath) ? AgentDriver.Input.DetachOrder(orderId)).mapTo[EmptyResponse.type]
+                //(agents(agentPath) ? AgentDriver.Input.DetachOrder(orderId)).mapTo[Accepted.type]
                 //  .pipeTo(sender())
               case None ⇒
                 //orderEntry.order = orderEntry.order.update(OrderRemoved)  // TODO Persist

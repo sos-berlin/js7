@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import com.sos.jobscheduler.agent.client.{AgentClient, SimpleAgentClient}
-import com.sos.jobscheduler.agent.data.commandresponses.{EmptyResponse, LoginResponse}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Login, Logout, NoOperation}
 import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.base.generic.SecretString
@@ -24,15 +24,15 @@ final class LoginIT extends FreeSpec with AgentTest {
       assert(!client.hasSession)
 
       // Access without Login (Session) is permitted
-      client.executeCommand(NoOperation) await 99.s shouldEqual EmptyResponse
+      client.executeCommand(NoOperation) await 99.s shouldEqual AgentCommand.Accepted
       assert(!client.hasSession)
 
       // Login and Logout
-      val LoginResponse(sessionToken) = client.executeCommand(Login) await 99.s
+      val Login.Response(sessionToken) = client.executeCommand(Login) await 99.s
       assert(client.hasSession)
-      client.executeCommand(NoOperation) await 99.s shouldEqual EmptyResponse
+      client.executeCommand(NoOperation) await 99.s shouldEqual AgentCommand.Accepted
       assert(client.hasSession)
-      client.executeCommand(Logout) await 99.s shouldEqual EmptyResponse
+      client.executeCommand(Logout) await 99.s shouldEqual AgentCommand.Accepted
       assert(!client.hasSession)
 
       // Using old SessionToken is Unauthorized
@@ -65,7 +65,7 @@ final class LoginIT extends FreeSpec with AgentTest {
 
   "Second Login invalidates first Login" in {
     withClient { client ⇒
-      val LoginResponse(aSessionToken) = client.executeCommand(Login) await 99.s
+      val Login.Response(aSessionToken) = client.executeCommand(Login) await 99.s
       assert(client.hasSession)
       client.executeCommand(Login) await 99.s
       assert(client.hasSession)
@@ -80,7 +80,7 @@ final class LoginIT extends FreeSpec with AgentTest {
         assert(AgentClient.sessionIsPossiblyLost(throwable))
       }
 
-      client.executeCommand(Logout) await 99.s shouldEqual EmptyResponse
+      client.executeCommand(Logout) await 99.s shouldEqual AgentCommand.Accepted
       assert(!client.hasSession)
     }
   }

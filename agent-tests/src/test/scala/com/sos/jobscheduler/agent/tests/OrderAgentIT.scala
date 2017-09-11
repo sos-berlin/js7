@@ -4,7 +4,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgent2Directory
 import com.sos.jobscheduler.agent.tests.OrderAgentIT._
@@ -42,15 +42,15 @@ final class OrderAgentIT extends FreeSpec {
           implicit val actorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
 
-          agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual EmptyResponse  // Without Login, this registers all anonymous clients
-          agentClient.executeCommand(AttachJobnet(TestJobnet)) await 99.s shouldEqual EmptyResponse
+          agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
+          agentClient.executeCommand(AttachJobnet(TestJobnet)) await 99.s shouldEqual AgentCommand.Accepted
 
           val order = Order(
-            OrderId("TEST-ORDER"),
+            OrderId(s"TEST-ORDER"),
             NodeKey(TestJobnet.path, ANodeId),
             Order.Waiting,
             Map("x" → "X"))
-          agentClient.executeCommand(AttachOrder(order)) await 99.s shouldEqual EmptyResponse
+          agentClient.executeCommand(AttachOrder(order)) await 99.s shouldEqual AgentCommand.Accepted
 
           waitForCondition(10.s, 100.ms) {
             agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.s)) await 99.s match {
@@ -67,9 +67,9 @@ final class OrderAgentIT extends FreeSpec {
             state = Order.Ready,
             outcome = Order.Good(true),
             variables = Map("x" → "X", "result" → "TEST-RESULT-BBB")))
-
-          agentClient.executeCommand(DetachOrder(order.id)) await 99.s shouldEqual EmptyResponse
+          agentClient.executeCommand(DetachOrder(order.id)) await 99.s shouldEqual AgentCommand.Accepted
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
+          agent.terminated await 99.s
         }
       }
     }

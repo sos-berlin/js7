@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.order.agent
 
-import akka.Done
 import akka.actor.{Actor, DeadLetterSuppression, Stash}
 import akka.http.scaladsl.model.Uri
 import akka.pattern.pipe
@@ -17,8 +16,9 @@ import com.sos.jobscheduler.data.jobnet.Jobnet
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.order.agent.AgentDriver._
 import java.time.Instant.now
+import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -33,11 +33,12 @@ with Stash {
 
   private val logger = Logger.withPrefix[AgentDriver](agentPath.string)
   private val client = AgentClient(uri)
+  private var startCommandReceived = false
   private var eventFetcher: EventFetcher[OrderEvent] = null
   private var lastEventId = EventId.BeforeFirst
-  private val commandQueue = mutable.Queue[Input.AttachOrder]()   // == Stash ???
+  private val commandQueue = mutable.Queue[Input.AttachOrder]()
   private val executingCommands = mutable.Set[Input.AttachOrder]()
-  private var startCommandReceived = false
+  private val openRequestCount = new AtomicInteger
   private val reconnectPause = new ReconnectPause
 
   become(disconnected)
@@ -64,7 +65,7 @@ with Stash {
       logger.info(s"Trying to connect $uri")
       reconnectPause.onConnect()
       (for {
-        _ ← client.executeCommand(AgentCommand.Login)
+        _ ← client.executeCommand(AgentCommand.Login)  // Separate commands because AgentClient catches the SessionToken of Login.Response
         _ ← client.executeCommand(AgentCommand.RegisterAsMaster)
       } yield Internal.Connected)
       .recover {
@@ -126,18 +127,28 @@ with Stash {
     case msg @ Internal.EventFetcherTerminated(Success(Completed)) ⇒
       logger.debug(msg.toString)
 
-    case Internal.OrderAttachedToAgent(cmd, tried) ⇒
+    case Internal.OrderAttachedToAgent(cmd, outcome) ⇒
       executingCommands -= cmd
-      tried match {
-        case Success(Done) ⇒
+      outcome match {
+        case AttachOrderResult.Attached ⇒
           logger.info(s"Order '${cmd.order.id}' attached to Agent")
           commandQueue.dequeueFirst(_ == cmd)
           self ! Internal.CommandReady
-        case Failure(t) if AgentClient.sessionIsPossiblyLost(t) ⇒
+
+        case AttachOrderResult.Rejected(message) ⇒
+          commandQueue.dequeueFirst(_ == cmd)
+          logger.error(s"Agent has rejected the order: $message")
+          // Agent has rejected the order ???
+
+        case AttachOrderResult.Failure(t) if AgentClient.sessionIsPossiblyLost(t) ⇒
+          commandQueue.dequeueFirst(_ == cmd)
           onConnectionError(t.toString)
-        case Failure(e: AgentClient.HttpException)  ⇒
+
+        case AttachOrderResult.Failure(e: AgentClient.HttpException)  ⇒
+          commandQueue.dequeueFirst(_ == cmd)
           onConnectionError(e.toString)
-        case Failure(t) ⇒
+
+        case AttachOrderResult.Failure(t) ⇒
           logger.error(s"${cmd.order.id}: ${t.toStringWithCauses}", t)
           // TODO Retry several times, finally inform commander about failure (dropping the order)
           // 1) Wenn es ein Verbindungsfehler ist (oder ein HTTP-Fehlercode eines Proxys), dann versuchen wir endlos weiter.
@@ -201,7 +212,7 @@ with Stash {
       self ! Internal.CommandReady
 
     case Input.DetachOrder(orderId) ⇒
-      val cmd = AgentCommand.DetachOrder(orderId)
+      val cmd = AgentCommand.DetachOrder(orderId)   // TODO commandQueue sollte auch DetachOrder aufnehmen, so dass mehrere als Compound geschickt werden können.
       val sender = this.sender()
       client.executeCommand(cmd) onComplete {
         // Closure
@@ -214,14 +225,38 @@ with Stash {
   }
 
   private def processQueuedCommands(): Unit = {
-    for (cmd ← commandQueue.find(o ⇒ !executingCommands(o))) {
-      executingCommands += cmd
-      (for {
-        _ ← client.executeCommand(AgentCommand.AttachJobnet(cmd.jobnet))
-        _ ← client.executeCommand(AgentCommand.AttachOrder(cmd.order))
-      } yield Done)
-      .onComplete {
-        tried ⇒ self ! Internal.OrderAttachedToAgent(cmd, tried)
+    if (openRequestCount.get < OpenRequestsMaximum) {
+      val cmds = commandQueue.filter(o ⇒ !executingCommands(o)).toVector
+      if (cmds.nonEmpty) {
+        executingCommands ++= cmds
+        val compoundCommand = AgentCommand.Compound(
+          for (c ← cmds; cmd ← AgentCommand.AttachJobnet(c.jobnet) :: AgentCommand.AttachOrder(c.order) :: Nil)
+          yield cmd)
+        val factor = 2  // TODO AttachOrder und AttachJobNet zu einem Kommando verschmelzen, so dass factor und grouped entfallen können. commandQueue soll direkt AttachOrder aufnehmen
+        assert(compoundCommand.commands.size == factor * cmds.size)
+        openRequestCount.incrementAndGet()
+        val whenOrderResponses: Future[Seq[AttachOrderOutcome]] =
+          client.executeCommand(compoundCommand) map { compoundResponse ⇒
+            for (response ← (compoundResponse.responses grouped factor).toVector) yield
+              response collectFirst {
+                case AgentCommand.Compound.Failed(message) ⇒ message
+              } match {
+                case None ⇒ AttachOrderResult.Attached
+                case Some(message) ⇒ AttachOrderResult.Rejected(message)
+              }
+            } recover {
+              case t ⇒ Vector.fill(cmds.size) { AttachOrderResult.Failure(t) }
+            }
+        for (orderResponses ← whenOrderResponses) {
+          for ((cmd, o) ← cmds zip orderResponses) {
+            self ! Internal.OrderAttachedToAgent(cmd, o)
+          }
+        }
+        whenOrderResponses onComplete { _ ⇒
+          if (openRequestCount.decrementAndGet() == 0) {
+            self ! Internal.CommandReady
+          }
+        }
       }
     }
   }
@@ -230,6 +265,8 @@ with Stash {
 }
 
 private[master] object AgentDriver {
+
+  private val OpenRequestsMaximum = 2
 
   private class ReconnectPause {
     private val ShortPause = 1.s
@@ -261,9 +298,16 @@ private[master] object AgentDriver {
     final case class ConnectFailed(throwable: Throwable)
     final case object LoggedOut
     final case object Ready
-    final case class OrderAttachedToAgent(command: Input.AttachOrder, result: Try[Done])
+    final case class OrderAttachedToAgent(command: Input.AttachOrder, outcome: AttachOrderOutcome)
     final case object CommandReady
     final case class AgentEvent(stamped: Stamped[KeyedEvent[OrderEvent]])
     final case class EventFetcherTerminated(completed: Try[Completed]) extends DeadLetterSuppression
+  }
+
+  private sealed trait AttachOrderOutcome
+  private object AttachOrderResult {
+    case class Rejected(string: String) extends AttachOrderOutcome
+    case object Attached extends AttachOrderOutcome
+    case class Failure(throwable: Throwable) extends AttachOrderOutcome
   }
 }

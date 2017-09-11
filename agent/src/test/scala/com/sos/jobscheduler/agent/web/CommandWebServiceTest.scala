@@ -5,7 +5,6 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandHandlerDetailed, CommandHandlerOverview, CommandMeta, CommandRunOverview, InternalCommandId}
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
@@ -30,7 +29,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
     def execute(command: AgentCommand, meta: CommandMeta) =
       Future.successful {
         command match {
-          case TestCommand ⇒ EmptyResponse
+          case TestCommand ⇒ AgentCommand.Accepted
           case _ ⇒ fail()
         }
       }
@@ -43,13 +42,13 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
 
   "Terminate" in {
     val json = """{
-        "$TYPE": "Terminate",
+        "TYPE": "Terminate",
         "sigtermProcesses": false,
         "sigkillProcessesAfter": "PT999S"
       }"""
     postJsonCommand(json) ~> check {
-      assert(responseAs[EmptyResponse.type] == EmptyResponse)
-      assert(responseAs[String].parseJson == "{}".parseJson)
+      assert(responseAs[AgentCommand.Accepted.type] == AgentCommand.Accepted)
+      assert(responseAs[String].parseJson == """{ "TYPE": "Accepted" }""".parseJson)
     }
   }
 

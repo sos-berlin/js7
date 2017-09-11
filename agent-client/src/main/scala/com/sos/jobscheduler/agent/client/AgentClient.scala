@@ -15,7 +15,6 @@ import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.agent.client.AgentClient._
 import com.sos.jobscheduler.agent.data.AgentTaskId
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
@@ -88,8 +87,8 @@ trait AgentClient extends AutoCloseable {
           response
         }
 
-      case (NoOperation | _: OrderCommand | RegisterAsMaster | _: TerminateOrAbort) ⇒
-        executeCommand2[EmptyResponse.type](command)
+      case _ ⇒
+        executeCommand2[AgentCommand.Response](command)
     }
     response map { _.asInstanceOf[command.Response] }
   }

@@ -12,4 +12,7 @@ final case class InternalCommandId(value: Long) extends IsString {
 
 object InternalCommandId extends IsString.HasJsonFormat[InternalCommandId] {
   def apply(o: String) = InternalCommandId(o.toLong)
+
+  def newGenerator(): Iterator[InternalCommandId] =
+    Iterator.iterate(1L) { _ + 1 } map InternalCommandId.apply
 }

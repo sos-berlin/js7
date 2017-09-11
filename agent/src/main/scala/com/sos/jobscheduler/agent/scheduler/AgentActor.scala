@@ -4,11 +4,10 @@ import akka.Done
 import akka.actor.{ActorRef, Props, Status, Terminated}
 import akka.pattern.ask
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
-import com.sos.jobscheduler.agent.scheduler.job.{JobKeeper, JobActor}
+import com.sos.jobscheduler.agent.scheduler.job.{JobActor, JobKeeper}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
 import com.sos.jobscheduler.agent.task.{TaskRegister, TaskRegisterActor}
 import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
@@ -52,7 +51,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
   private val jobKeeper = {
-    val taskRegister = new TaskRegister(actorOf(Props { new TaskRegisterActor(agentConfiguration, timerService) }))
+    val taskRegister = new TaskRegister(actorOf(Props { new TaskRegisterActor(agentConfiguration, timerService) }, "TaskRegister"))
     actorOf(Props { new JobKeeper(liveDirectory, newTaskRunner, taskRegister, timerService) }, "JobKeeper")
   }
   private val masterToOrderKeeper = new MasterRegister
@@ -149,7 +148,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
       case command: AgentCommand.Terminate ⇒
         terminating = true
         terminateOrderKeepers() onComplete { orderTried ⇒
-          (jobKeeper ? command).mapTo[EmptyResponse.type] onComplete { j ⇒
+          (jobKeeper ? command).mapTo[AgentCommand.Accepted.type] onComplete { j ⇒
             response.complete(orderTried flatMap { _ ⇒ j })
           }
         }
@@ -158,12 +157,12 @@ extends KeyedEventJournalingActor[AgentEvent] {
       case AgentCommand.RegisterAsMaster if !terminating ⇒
         //??? require(sessionToken.isDefined)
         if (masterToOrderKeeper contains userId) {
-          response.success(EmptyResponse)
+          response.success(AgentCommand.Accepted)
         } else {
           persist(KeyedEvent(AgentEvent.MasterAdded)(userId)) { case Stamped(_, keyedEvent) ⇒
             update(keyedEvent)
             masterToOrderKeeper(userId) ! AgentOrderKeeper.Input.Start(jobs)
-            response.success(EmptyResponse)
+            response.success(AgentCommand.Accepted)
           }
         }
 
@@ -180,11 +179,11 @@ extends KeyedEventJournalingActor[AgentEvent] {
     }
   }
 
-  private def terminateOrderKeepers(): Future[EmptyResponse.type] =
+  private def terminateOrderKeepers(): Future[AgentCommand.Accepted.type] =
     Future.sequence(
       for (a ← masterToOrderKeeper.values) yield
         (a ? AgentOrderKeeper.Input.Terminate).mapTo[Done])
-    .map { _ ⇒ EmptyResponse }
+    .map { _ ⇒ AgentCommand.Accepted }
 
   private def update(keyedEvent: KeyedEvent[AgentEvent]): Unit = {
     keyedEvent match {
