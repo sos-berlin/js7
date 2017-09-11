@@ -15,7 +15,7 @@ trait CatchingSupervisorStrategy[A] extends SupervisorStrategy {
 
   abstract override def processFailure(context: ActorContext, restart: Boolean, child: ActorRef, throwable: Throwable, stats: ChildRestartStats, children: Iterable[ChildRestartStats]): Unit = {
     if (!restart) { // That means SupervisorStrategy.Stop
-      if (!promise.tryFailure(new ActorCrashedException(s"Actor '${child.path}' crashed", throwable))) {
+      if (!promise.tryFailure(new ActorCrashedException(s"Actor '${child.path}' crashed: $throwable", throwable))) {
         logger.warn(s"promise.tryFailure failed: $throwable", throwable)
       }
     }

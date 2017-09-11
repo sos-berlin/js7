@@ -35,7 +35,7 @@ extends Actor {
   private val agentActor = watch(actorOf(Props { injector.instance[AgentActor] }, "agent"))
   private val agentHandle = new AgentHandle(agentActor)(akkaAskTimeout)
 
-  private val commandHandler = injector.option[CommandHandler] getOrElse { // Bound only for tests
+  private val commandHandler = injector.option[CommandHandler] getOrElse { // Only tests bind a CommandHandler
     val sessionActor = actorOf(Props { new SessionActor(sessionRegister) }, "session").taggedWith[SessionActor]
     val actor = actorOf(Props { new CommandActor(sessionActor, agentHandle) }, "command")
     new CommandActor.Handle(actor)(akkaAskTimeout)
@@ -48,9 +48,10 @@ extends Actor {
   }
 
   override def postStop() = {
-    super.postStop()
     logger.info("Terminated")
-    stoppedPromise.trySuccess(Completed)
+    for (p ← Array(readyPromise, stoppedPromise))
+      p.tryFailure(new RuntimeException("MainActor stopped unexpectedly"))
+    super.postStop()
   }
 
   def receive = {
@@ -59,6 +60,7 @@ extends Actor {
 
     case Terminated(`agentActor`) ⇒
       logger.debug("AgentActor has stopped")
+      stoppedPromise.trySuccess(Completed)
       context.stop(self)
   }
 }
