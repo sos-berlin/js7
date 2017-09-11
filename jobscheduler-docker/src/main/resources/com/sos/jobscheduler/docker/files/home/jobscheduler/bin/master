@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-data=/var/opt/jobscheduler/master/data
+hprof=/var/opt/jobscheduler/master/data/logsOutOfMemoryError.hprof
+rm -fv "$hprof"
+
 exec /opt/jobscheduler/bin/master \
-  -java-option="-XX:+HeapDumpOnOutOfMemoryError"
-  -java-option="-XX:HeapDumpPath=$data/log/OutOfMemoryError.hprof"
+  -java-option="-XX:+HeapDumpOnOutOfMemoryError" \
+  -java-option="-XX:HeapDumpPath=$hprof" \
   "$@"
