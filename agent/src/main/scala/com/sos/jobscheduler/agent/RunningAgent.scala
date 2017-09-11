@@ -21,9 +21,9 @@ import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
+import java.time.Duration
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.ExecutionContext
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 /**
  * JobScheduler Agent.
@@ -53,14 +53,19 @@ object RunningAgent {
   private val logger = Logger(getClass)
   private val WebServerReadyTimeout = 60.s
 
-  def run[A](configuration: AgentConfiguration)(body: RunningAgent ⇒ Unit): Unit = {
+  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ Unit): Unit = {
     import ExecutionContext.Implicits.global
-    val agent = (for (agent ← apply(configuration)) yield {
-      body(agent)
-      agent
-    }).awaitInfinite
-    agent.terminated.awaitInfinite
-    agent.close()
+    val terminated = for {
+      agent ← apply(configuration)
+      terminated ← {
+        body(agent)
+        agent.terminated
+      }
+    } yield terminated
+    timeout match {
+      case Some(o) ⇒ terminated await o
+      case None ⇒ terminated.awaitInfinite
+    }
   }
 
   def apply(configuration: AgentConfiguration): Future[RunningAgent] =

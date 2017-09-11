@@ -23,7 +23,6 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderReady
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer
@@ -36,9 +35,8 @@ final class OrderAgentIT extends FreeSpec {
       (jobDir / "a.job.xml").xml = AJobXml
       (jobDir / "b.job.xml").xml = BJobXml
       val agentConf = AgentConfiguration.forTest(Some(directory)).finishAndProvideFiles
-      for (agent ← RunningAgent(agentConf)) {
+      RunningAgent.run(agentConf, timeout = Some(99.s)) { agent ⇒
         withCloser { implicit closer ⇒
-          agent.closeWithCloser
           implicit val actorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
 
@@ -69,7 +67,7 @@ final class OrderAgentIT extends FreeSpec {
             variables = Map("x" → "X", "result" → "TEST-RESULT-BBB")))
           agentClient.executeCommand(DetachOrder(order.id)) await 99.s shouldEqual AgentCommand.Accepted
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
-          agent.terminated await 99.s
+          agentClient.executeCommand(AgentCommand.Terminate()) await 99.s
         }
       }
     }
