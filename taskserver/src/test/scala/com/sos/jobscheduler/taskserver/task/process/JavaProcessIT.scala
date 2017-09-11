@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.jobscheduler.data.system.StdoutStderr._
+import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
@@ -10,8 +10,9 @@ import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.system.StdoutStderr._
 import com.sos.jobscheduler.taskserver.task.process.JavaProcessIT._
-import java.lang.System.{err, exit, out}
+import java.lang.System.{err, out}
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NonFatal
@@ -66,8 +67,11 @@ private object JavaProcessIT {
     if (args.toVector == Arguments) {
       out.println(s"STDOUT $TestValue")
       err.println(s"STDERR $TestValue")
-      exit(77)
-    } else
-      exit(3)
+      Log4j.shutdown()
+      sys.runtime.exit(77)
+    } else {
+      Log4j.shutdown()
+      sys.runtime.exit(3)
+    }
   }
 }

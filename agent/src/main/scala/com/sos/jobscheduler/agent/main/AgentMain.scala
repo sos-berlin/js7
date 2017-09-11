@@ -14,7 +14,6 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.taskserver.dotnet.DotnetEnvironment
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NonFatal
 
 /**
@@ -36,7 +35,8 @@ object AgentMain {
     catch { case NonFatal(t) ⇒
       println(s"JOBSCHEDULER AGENT TERMINATED DUE TO ERROR: $t")
       logger.error(t.toString, t)
-      System.exit(1)
+      Log4j.shutdown()
+      sys.runtime.exit(1)
     }
   }
 
@@ -50,8 +50,7 @@ object AgentMain {
 
   def run(conf: AgentConfiguration): Unit =
     withCloser { implicit closer ⇒
-      for (agent ← RunningAgent(conf)) {
-        agent.closeWithCloser
+      RunningAgent.run(conf) { agent ⇒
         JavaShutdownHook.add("AgentMain") {
           logger.info("Terminating Agent due to Java shutdown")
           agent.commandHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(OnJavaShutdownSigkillProcessesAfter)))
@@ -59,7 +58,6 @@ object AgentMain {
           agent.close()
           Log4j.shutdown()
         }.closeWithCloser
-        agent.terminated.awaitInfinite
       }
     }
 }

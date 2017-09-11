@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.client.main
 
 import com.sos.jobscheduler.agent.client.TextAgentClient
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
+import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentAddress
@@ -18,12 +19,14 @@ object AgentClientMain {
   def main(args: Array[String]): Unit =
     try {
       val rc = run(args, println)
-      System.exit(rc)
+      Log4j.shutdown()
+      sys.runtime.exit(rc)
     }
     catch { case NonFatal(t) ⇒
       println(s"ERROR: $t")
       logger.error(t.toString, t)
-      System.exit(1)
+      Log4j.shutdown()
+      sys.runtime.exit(1)
     }
 
   def run(args: Seq[String], print: String ⇒ Unit): Int = {
