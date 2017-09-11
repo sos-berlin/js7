@@ -131,7 +131,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
     case Terminated(a) if masterToOrderKeeper.contains(a) && terminating ⇒
       masterToOrderKeeper -= a
-      handleActorTermination()
+      checkActorStop()
 
     case Command.GetOverview ⇒
       sender() ! AgentOverview(
@@ -152,7 +152,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
             response.complete(orderTried flatMap { _ ⇒ j })
           }
         }
-        handleActorTermination()
+        checkActorStop()
 
       case AgentCommand.RegisterAsMaster if !terminating ⇒
         //??? require(sessionToken.isDefined)
@@ -209,7 +209,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
     context.watch(actor)
   }
 
-  private def handleActorTermination(): Unit = {
+  private def checkActorStop(): Unit = {
     if (masterToOrderKeeper.isEmpty) {
       context.stop(self)
     }

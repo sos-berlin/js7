@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.Done
-import akka.actor.{ActorRef, Props, Stash, Terminated}
+import akka.actor.{ActorRef, PoisonPill, Props, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
@@ -17,7 +17,6 @@ import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -52,17 +51,17 @@ final class AgentOrderKeeper(
   implicit private val timerService: TimerService)
 extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
-  import context.dispatcher
+  import context.{actorOf, dispatcher, watch}
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  protected val journalActor = context.actorOf(
+  protected val journalActor = actorOf(
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
   private val jobRegister = new JobRegister
   private val jobnetRegister = new JobnetRegister
   private val orderRegister = new OrderRegister(timerService)
-  private val eventsForMaster = context.actorOf(Props { new EventQueue(timerService) }, "eventsForMaster")
+  private val eventsForMaster = actorOf(Props { new EventQueue(timerService) }, "eventsForMaster")
   private var terminating = false
 
   override def preStart() = {
@@ -77,7 +76,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     for (jobnet ← recoverer.jobnets)
       jobnetRegister.recover(jobnet)
     for (order ← recoverer.orders) {
-      val actor = addOrderActor(order.id)
+      val actor = newOrderActor(order.id)
       orderRegister.recover(order, actor)
       actor ! KeyedJournalingActor.Input.Recover(order)
     }
@@ -99,7 +98,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     case Input.Start(jobPathsAndActors) ⇒
       for ((jobPath, actorRef) ← jobPathsAndActors) {
         jobRegister.insert(jobPath, actorRef)
-        context.watch(actorRef)
+        watch(actorRef)
       }
       context.become(awaitJournalIsReady)
       unstashAll()
@@ -137,6 +136,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           o.actor ! OrderActor.Input.Terminate
         }
       }
+      eventsForMaster ! PoisonPill
       checkActorStop()
       sender() ! Done
 
@@ -223,14 +223,14 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     }
 
   private def attachOrder(order: Order[Order.Idle]): Future[Completed] = {
-    val actor = addOrderActor(order.id)
+    val actor = newOrderActor(order.id)
     orderRegister.insert(order, actor)
     (actor ? OrderActor.Command.Attach(order)).mapTo[Completed]
     // Now expecting OrderEvent.OrderAttached
   }
 
-  private def addOrderActor(orderId: OrderId) =
-    context.watch(context.actorOf(
+  private def newOrderActor(orderId: OrderId) =
+    watch(actorOf(
       Props { new OrderActor(orderId, journalActor = journalActor, config) },
       name = encodeAsActorName(s"Order-${orderId.string}")))
 
@@ -336,7 +336,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           logger.error(s"Actor '$jobPath' has stopped unexpectedly")
         }
         jobRegister.onActorTerminated(actorRef)
-        checkActorStop()
+          checkActorStop()
 
       case Terminated(actorRef) if orderRegister contains actorRef ⇒
         val orderId = orderRegister(actorRef).order.id
