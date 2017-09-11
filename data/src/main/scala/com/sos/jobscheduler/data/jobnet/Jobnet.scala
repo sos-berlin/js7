@@ -32,6 +32,8 @@ final case class Jobnet(path: JobnetPath, inputNodeId: NodeId, idToNode: Map[Nod
 
   def agentPathOption(nodeId: NodeId): Option[AgentPath] =
     idToNode.get(nodeId) collect { case o: Jobnet.JobNode ⇒ o.agentPath }
+
+  def jobNodeCount = idToNode.values count { _.isInstanceOf[JobNode] }
 }
 
 object Jobnet {
