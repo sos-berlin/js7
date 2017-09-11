@@ -9,7 +9,7 @@ object Dependencies {
   val akkaVersion = "2.5.4"
   val akkaHttpVersion = "10.0.10"
   val slf4jVersion = "1.7.25"
-  val log4jVersion = "2.8.2"
+  val log4jVersion = "2.9.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
