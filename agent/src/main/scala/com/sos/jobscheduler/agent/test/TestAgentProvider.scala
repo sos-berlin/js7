@@ -23,7 +23,7 @@ trait TestAgentProvider extends TestAgentDirectoryProvider {
   protected final def newAgentConfiguration() = AgentConfiguration.forTest(configAndData = Some(agentDirectory))
 
   protected lazy final val agent: RunningAgent = {
-    val confModule = new AgentModule(agentConfiguration.finishAndProvideFiles)
+    val confModule = new AgentModule(agentConfiguration)
     val combinedModule = Modules.`override`(confModule) `with` extraAgentModule
     RunningAgent(combinedModule) map { _.closeWithCloser } await 10.s
   }.closeWithCloser

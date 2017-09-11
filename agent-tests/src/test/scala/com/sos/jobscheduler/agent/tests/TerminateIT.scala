@@ -85,12 +85,12 @@ object TerminateIT {
       |""".stripMargin
 
   private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit closer: Closer): Unit = {
-    TestAgentDirectoryProvider.provideAgent2Directory { agentDirectory ⇒
+    TestAgentDirectoryProvider.provideAgentDirectory { agentDirectory ⇒
       (agentDirectory / "config" / "live" / "test.job.xml").xml =
         <job tasks="10">
           <script language="shell">{AScript}</script>
         </job>
-      val agent = RunningAgent(AgentConfiguration.forTest(configAndData = Some(agentDirectory)).finishAndProvideFiles) map { _.closeWithCloser } await 10.s
+      val agent = RunningAgent(AgentConfiguration.forTest(configAndData = Some(agentDirectory))) map { _.closeWithCloser } await 10.s
       implicit val actorRefFactory: ActorRefFactory = Akkas.newActorSystem("TerminateIT")(closer)
       val client = AgentClient(
         agentUri = agent.localUri.toString,

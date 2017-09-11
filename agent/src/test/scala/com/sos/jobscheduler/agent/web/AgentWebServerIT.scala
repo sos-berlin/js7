@@ -53,7 +53,6 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     .forTest(Some(agentDirectory))
     .copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
     .withHttpsInetSocketAddress(new InetSocketAddress("127.0.0.1", httpsPort))
-    .finishAndProvideFiles
   private lazy val agent = RunningAgent(agentConfiguration) map { _.closeWithCloser } await 10.s
   private implicit lazy val actorSystem = {
     val config = ConfigFactory.parseMap(Map("akka.http.server.verbose-error-messages" → true).asJava)

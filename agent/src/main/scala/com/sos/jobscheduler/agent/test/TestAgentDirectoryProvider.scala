@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.utils.JavaResource
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import java.nio.file.Path
@@ -16,7 +16,10 @@ import scala.util.control.NonFatal
 trait TestAgentDirectoryProvider extends HasCloser {
 
   final lazy val agentDirectory = {
-    val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser deleteDirectoryRecursively
+    val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir ⇒
+      logger.debug(s"Deleting $dir")
+      deleteDirectoryRecursively(dir)
+    }
     try {
       val privateDir = createDirectories(agentDirectory / "config/private")
       PrivateHttpJksResource.copyToFile(agentDirectory / KeystoreJksLocation) withCloser delete
@@ -45,8 +48,9 @@ object TestAgentDirectoryProvider {
   val PublicHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/public-https.jks")
   val PrivateConfResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private.conf")
   private val KeystoreJksLocation = "config/private/private-https.jks"
+  private val logger = Logger(getClass)
 
-  def provideAgent2Directory[A](body: Path ⇒ A): A =
+  def provideAgentDirectory[A](body: Path ⇒ A): A =
     autoClosing(new TestAgentDirectoryProvider {}) { provider ⇒
       body(provider.agentDirectory)
     }

@@ -27,7 +27,7 @@ object AgentMain {
   private val ShutdownTimeout = OnJavaShutdownSigkillProcessesAfter + 2.s
 
   def main(args: Array[String]): Unit = {
-    val agentConfiguration = AgentConfiguration(args).finishAndProvideFiles
+    val agentConfiguration = AgentConfiguration(args)
     val (conf, environment) = tryProvideDotnet(agentConfiguration)
     try autoClosing(environment) { _ ⇒
       run(conf)

@@ -51,7 +51,7 @@ import scala.concurrent.duration.DurationInt
 final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
   private lazy val directoryProvider = new TestAgentDirectoryProvider {}
-  private lazy val agentConfiguration = AgentConfiguration.forTest(Some(directoryProvider.agentDirectory)).finishAndProvideFiles
+  private lazy val config = AgentConfiguration.forTest(Some(directoryProvider.agentDirectory)).finishAndProvideFiles.config
   private lazy val actorSystem = newActorSystem("OrderActorTest")
 
   override def afterAll() = {
@@ -89,7 +89,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
   }
 
   private def runTestActor(jobConfiguration: JobConfiguration): (ActorRef, Result) = {
-    def props(promise: Promise[Result]) = Props { new TestActor(directoryProvider.agentDirectory, jobConfiguration, promise, agentConfiguration.config) }
+    def props(promise: Promise[Result]) = Props { new TestActor(directoryProvider.agentDirectory, jobConfiguration, promise, config) }
     val (testActor, terminated) = CatchingActor.actorOf(props, "TestActor")(actorSystem)
     val result: Result = terminated await 99.s
     (testActor, result)
