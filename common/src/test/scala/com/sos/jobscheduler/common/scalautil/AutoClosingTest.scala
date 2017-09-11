@@ -86,7 +86,7 @@ final class AutoClosingTest extends FreeSpec {
 }
 
 private object AutoClosingTest {
-  private class A {
+  private class A extends AutoCloseable {
     var closed = false
 
     def close(): Unit = {

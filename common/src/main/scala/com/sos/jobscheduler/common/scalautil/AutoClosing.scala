@@ -2,15 +2,12 @@ package com.sos.jobscheduler.common.scalautil
 
 import com.google.common.io.Closer
 import java.io.Closeable
-import scala.language.reflectiveCalls
-import scala.util.control.{ControlThrowable, NonFatal}
 import scala.language.higherKinds
+import scala.util.control.{ControlThrowable, NonFatal}
 
-/** Wie java try(AutoClosable), aber für alle Klassen mit close().
+/** Wie java try(AutoCloseable), aber für alle Klassen mit close().
   * @author Joacim Zschimmer */
 object AutoClosing {
-
-  private type HasClose = ({ def close(): Unit }) with AnyRef
 
   private val logger = Logger(getClass)
 
@@ -24,7 +21,7 @@ object AutoClosing {
   }
 
   /** Wie Java 7 try-with-resource */
-  def autoClosing[A <: HasClose, B](resource: A)(body: resource.type ⇒ B): B = {
+  def autoClosing[A <: AutoCloseable, B](resource: A)(body: resource.type ⇒ B): B = {
     val result = closeOnError(resource) {
       body(resource)
     }
@@ -32,7 +29,7 @@ object AutoClosing {
     result
   }
 
-  final def closeOnError[A <: HasClose, B](closeable: A)(body: ⇒ B): B = {
+  final def closeOnError[A <: AutoCloseable, B](closeable: A)(body: ⇒ B): B = {
     if (closeable == null) throw new NullPointerException
     try body
     catch {
@@ -42,7 +39,7 @@ object AutoClosing {
     }
   }
 
-  private def closeAfterError[A <: HasClose](resource: A, t: Throwable): Unit = {
+  private def closeAfterError[A <: AutoCloseable](resource: A, t: Throwable): Unit = {
     t match {
       case (NonFatal(_) | _: ControlThrowable) ⇒ // Normal exception
       case _ ⇒ logger.error(t.toString, t)
