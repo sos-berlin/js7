@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.job.task
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.views.TaskOverview
-import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
+import com.sos.jobscheduler.agent.scheduler.job.ShellReturnValuesProvider
 import com.sos.jobscheduler.agent.scheduler.job.task.SimpleShellTaskRunner._
 import com.sos.jobscheduler.agent.task.BaseAgentTask
 import com.sos.jobscheduler.base.generic.Completed
@@ -27,7 +27,7 @@ import scala.util.Success
 /**
   * @author Joacim Zschimmer
   */
-final class SimpleShellTaskRunner(jobConfiguration: JobConfiguration,
+final class SimpleShellTaskRunner(conf: TaskConfiguration,
   agentTaskId: AgentTaskId,
   synchronizedStartProcess: RichProcessStartSynchronizer,
   agentConfiguration: AgentConfiguration)
@@ -36,13 +36,15 @@ extends TaskRunner {
 
   val asBaseAgentTask = new BaseAgentTask {
     def id = agentTaskId
-    def jobPath = jobConfiguration.path
+    def jobPath = conf.jobPath
     def pidOption = richProcessOnce flatMap { _.pidOption }
     def terminated = terminatedPromise.future
     def overview = TaskOverview(jobPath, id, pidOption, startedAt)
 
     def sendProcessSignal(signal: ProcessSignal) =
       for (o ← richProcessOnce) o.sendProcessSignal(signal)
+
+    override def toString = SimpleShellTaskRunner.this.toString
   }
 
   private val terminatedPromise = Promise[Completed]()
@@ -68,7 +70,7 @@ extends TaskRunner {
   private def runProcess(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[ReturnCode] =
     for {
       richProcess ← startProcess(order, stdChannels) andThen {
-        case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${jobConfiguration.path}")
+        case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobPath}")
       }
       returnCode ← richProcess.terminated andThen { case tried ⇒
         logger.info(s"Process '$richProcess' terminated with $tried")
@@ -88,7 +90,7 @@ extends TaskRunner {
 
   private def startProcess(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[RichProcess] = {
     val env = {
-      val params = jobConfiguration.variables ++ order.variables
+      val params = conf.jobConfiguration.variables ++ order.variables
       val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
       /*environment +*/ paramEnv + returnValuesProvider.env
     }
@@ -98,11 +100,7 @@ extends TaskRunner {
       agentTaskIdOption = Some(agentTaskId),
       killScriptOption = agentConfiguration.killScript)
     synchronizedStartProcess {
-      startPipedShellScript(
-        processConfiguration,
-        name = jobConfiguration.path.name,
-        script = jobConfiguration.script.string.trim,
-        stdChannels)
+      startPipedShellScript(conf.shellFile, processConfiguration, stdChannels)
     } andThen { case Success(richProcess) ⇒
       terminatedPromise.completeWith(richProcess.terminated map { _ ⇒ Completed })
       richProcessOnce := richProcess
@@ -112,6 +110,8 @@ extends TaskRunner {
   def kill(signal: ProcessSignal): Unit = {
     for (p ← richProcessOnce) p.sendProcessSignal(signal)
   }
+
+  override def toString = s"SimpleShellTaskRunner($agentTaskId ${conf.jobPath})"
 }
 
 object SimpleShellTaskRunner {
@@ -125,9 +125,9 @@ object SimpleShellTaskRunner {
     (implicit ec: ExecutionContext)
   extends TaskRunner.Factory
   {
-    def apply(jobConfiguration: JobConfiguration) = {
+    def apply(conf: TaskConfiguration) = {
       val agentTaskId = agentTaskIdGenerator.next()
-      new SimpleShellTaskRunner(jobConfiguration, agentTaskId, synchronizedStartProcess, agentConfiguration)
+      new SimpleShellTaskRunner(conf, agentTaskId, synchronizedStartProcess, agentConfiguration)
     }
   }
 }

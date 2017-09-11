@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, ActorRef, Stash, Terminated}
-import com.sos.jobscheduler.agent.data.commandresponses.EmptyResponse
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeper._
-import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
+import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner}
 import com.sos.jobscheduler.agent.task.TaskRegister
-import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
+import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
+import com.sos.jobscheduler.common.akkautils.LoggingOneForOneStrategy
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
@@ -22,7 +22,10 @@ final class JobKeeper(jobConfigurationDirectory: Path, newTaskRunner: TaskRunner
   (implicit ec: ExecutionContext)
 extends Actor with Stash {
 
-  override val supervisorStrategy = SupervisorStrategies.escalate
+  import context._
+
+  override val supervisorStrategy = LoggingOneForOneStrategy.defaultStrategy
+
   private val startedJobActors = mutable.Set[ActorRef]()
   private var terminating = false
 
@@ -33,7 +36,9 @@ extends Actor with Stash {
           val pathToActor = mutable.Map[JobPath, ActorRef]()
           forEachTypedFile(jobConfigurationDirectory, Set(JobPath)) {
             case (file, jobPath: JobPath) ⇒
-              val a = context.watch(JobActor.actorOf(jobPath, registeringNewTaskRunner, timerService))
+              val a = watch(actorOf(
+                JobActor.props(jobPath, registeringNewTaskRunner, timerService),
+                encodeAsActorName(jobPath.withoutStartingSlash)))
               pathToActor += jobPath → a
               a ! JobActor.Command.StartWithConfigurationFile(file)
           }
@@ -46,8 +51,8 @@ extends Actor with Stash {
     }
 
   private val registeringNewTaskRunner = new TaskRunner.Factory {
-    def apply(jobConfiguration: JobConfiguration) = {
-      val taskRunner = newTaskRunner(jobConfiguration)
+    def apply(conf: TaskConfiguration) = {
+      val taskRunner = newTaskRunner(conf)
       taskRegister.add(taskRunner.asBaseAgentTask)  // TaskRegisterActor removes task automatically
       taskRunner
     }
@@ -60,15 +65,15 @@ extends Actor with Stash {
     def ifAllJobsStartedThenBecomeStarted(): Boolean =
       startedJobActors == expectedActors && {
         logger.info(s"Ready, ${pathToActor.size} jobs")
-        context.become(ready)
+        become(ready)
         commander ! Output.Ready(pathToActor.toVector)
         true
       }
 
     if (!ifAllJobsStartedThenBecomeStarted()) {
-      context.become(handleReadyForOrder orElse {
+      become(handleReadyForOrder orElse {
         case JobActor.Response.Ready ⇒
-          context.unwatch(sender())
+          unwatch(sender())
           startedJobActors += sender()
           ifAllJobsStartedThenBecomeStarted()
 
@@ -91,13 +96,13 @@ extends Actor with Stash {
       case Terminated(a) if startedJobActors contains a ⇒
         startedJobActors -= a
         if (terminating && startedJobActors.isEmpty) {
-          context.stop(self)
+          stop(self)
         }
     }
 
   private def handleReadyForOrder: Receive = {
     case msg: JobActor.Output.ReadyForOrder.type ⇒
-      context.parent.forward(msg)
+      parent.forward(msg)
   }
 }
 

@@ -4,11 +4,13 @@ import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerIT._
+import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, ShellReturnValuesProvider}
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.xmlElemToSource
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -17,7 +19,7 @@ import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.Order.Good
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.taskserver.task.process.StdChannels
+import com.sos.jobscheduler.taskserver.task.process.{RichProcess, StdChannels}
 import java.io.Writer
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -48,6 +50,10 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
             </params>
             <script language="shell">{TestScript}</script>
           </job>))
+      val shellFile = newTemporaryShellFile("TaskRunnerIT")
+      shellFile.contentString = jobConfiguration.script.string.trim
+      val shellReturnValuesProvider = new ShellReturnValuesProvider
+      val taskConfiguration = TaskConfiguration(jobConfiguration, shellFile, shellReturnValuesProvider)
       measureTime(10, "TaskRunner") {
         val order = Order(
           OrderId("TEST"),
@@ -55,7 +61,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
           Order.InProcess,
           Map("a" → "A"))
         implicit val x = injector.instance[StandardAgentTaskFactory]
-        val taskRunner = newTaskRunner(jobConfiguration)
+        val taskRunner = newTaskRunner(taskConfiguration)
         val stdoutWriter = new TestStdoutStderrWriter
         val stderrWriter = new TestStdoutStderrWriter
         val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
@@ -73,6 +79,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
           assert(stderrWriter.string == s"THIS IS STDERR$nl")
         }
       }
+      RichProcess.tryDeleteFiles(shellFile :: shellReturnValuesProvider.file :: Nil)
     }
   }
 }

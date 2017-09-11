@@ -4,7 +4,6 @@ import com.sos.jobscheduler.agent.data.ProcessKillScript
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal._
 import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
@@ -14,6 +13,7 @@ import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.common.xml.VariableSets
 import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
 import com.sos.jobscheduler.taskserver.common.StdoutStderrWell
 import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration._
 import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated

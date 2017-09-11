@@ -1,6 +1,6 @@
-package com.sos.jobscheduler.agent.scheduler.job.task
+package com.sos.jobscheduler.agent.scheduler.job
 
-import com.sos.jobscheduler.agent.scheduler.job.task.ShellReturnValuesProvider._
+import com.sos.jobscheduler.agent.scheduler.job.ShellReturnValuesProvider._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.nio.charset.StandardCharsets.ISO_8859_1
@@ -13,6 +13,10 @@ import java.nio.file.Path
 final class ShellReturnValuesProvider {
   val file: Path = createTempFile("sos-", ".tmp")
 
+  def clear(): Unit = {
+    file.contentString = ""
+  }
+
   def env: (String, String) =
     ReturnValuesFileEnvironmentVariableName → file.toString
 
@@ -20,6 +24,8 @@ final class ShellReturnValuesProvider {
     autoClosing(io.Source.fromFile(file)(Encoding)) { source ⇒
       (source.getLines map lineToKeyValue).toMap
     }
+
+  override def toString = s"ShellReturnValuesProvider($file)"
 }
 
 object ShellReturnValuesProvider {

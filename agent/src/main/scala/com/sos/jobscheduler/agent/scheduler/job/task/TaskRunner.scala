@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.job.task
 
 import com.google.inject.ImplementedBy
-import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.task.BaseAgentTask
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
@@ -26,6 +25,6 @@ trait TaskRunner {
 object TaskRunner {
   @ImplementedBy(classOf[SimpleShellTaskRunner.Factory])
   trait Factory {
-    def apply(jobConfiguration: JobConfiguration): TaskRunner
+    def apply(conf: TaskConfiguration): TaskRunner
   }
 }

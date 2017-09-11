@@ -23,9 +23,7 @@ object JavaProcess {
   {
     val classpathEnv = "CLASSPATH" → (classpath getOrElse "").substitute("" → File.pathSeparator)  // Java does not like empty classpath
     RichProcess.start(
-      processConfiguration.copy(
-        fileOption = Some(JavaExecutable),
-        additionalEnvironment = processConfiguration.additionalEnvironment + classpathEnv),
+      processConfiguration.copy(additionalEnvironment = processConfiguration.additionalEnvironment + classpathEnv),
       file = JavaExecutable,
       arguments = options ++ List(mainClass) ++ arguments)
   }

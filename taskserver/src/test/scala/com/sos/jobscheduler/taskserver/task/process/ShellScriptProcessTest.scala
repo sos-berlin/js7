@@ -3,7 +3,6 @@ package com.sos.jobscheduler.taskserver.task.process
 import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
-import com.sos.jobscheduler.data.system.StdoutStderr.Stdout
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
@@ -14,6 +13,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.{KernelSupportsNestedS
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.system.StdoutStderr.Stdout
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
 import java.nio.file.Files._
 import org.scalatest.FreeSpec
@@ -35,7 +35,7 @@ final class ShellScriptProcessTest extends FreeSpec {
     assert(!shellProcess.closed.isCompleted)
     shellProcess.close()
     assert(shellProcess.closed.isCompleted)
-    shellProcess.scriptFileDeleted await 5.s
+    shellProcess.terminated await 5.s
     assert(!exists(shellProcess.temporaryScriptFile))
   }
 
@@ -92,7 +92,7 @@ final class ShellScriptProcessTest extends FreeSpec {
         agentTaskIdOption = Some(agentTaskId),
         killScriptOption = Some(ProcessKillScript(killScriptFile)))
       val shellProcess = startShellScript(processConfig, scriptString = script)
-      assert(shellProcess.processConfiguration.files.size == 3)
+      assert(shellProcess.processConfiguration.files.size == 2)
       sleep(3.s)
       assert(shellProcess.isAlive)
       shellProcess.sendProcessSignal(SIGKILL)

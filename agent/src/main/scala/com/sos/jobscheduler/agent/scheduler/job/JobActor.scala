@@ -1,19 +1,25 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
-import akka.actor.{Actor, ActorPath, ActorRef, ActorRefFactory, DeadLetterSuppression, Props, Stash}
+import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobActor._
-import com.sos.jobscheduler.agent.scheduler.job.task.{TaskRunner, TaskStepEnded, TaskStepFailed}
+import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
-import com.sos.jobscheduler.common.akkautils.Akkas.{decodeActorName, encodeAsActorName}
+import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.data.order.Order.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration.Encoding
+import com.sos.jobscheduler.taskserver.task.process.RichProcess.tryDeleteFile
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
+import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
@@ -27,10 +33,28 @@ final class JobActor private(jobPath: JobPath, newTaskRunner: TaskRunner.Factory
 extends Actor with Stash {
 
   private val logger = Logger.withPrefix[JobActor](jobPath.toString)
-  private var jobConfiguration: JobConfiguration = null
-  private val orderToTask = mutable.Map[OrderId, TaskRunner]()
+  private val orderToTask = mutable.Map[OrderId, Entry]()
   private var waitingForNextOrder = false
   private var terminating = false
+  private var jobConfiguration: JobConfiguration = null
+  private lazy val filePool = new FilePool(jobConfiguration)
+  private lazy val shellFile = newTemporaryShellFile(jobConfiguration.path.name) sideEffect { file ⇒
+    autoClosing(new OutputStreamWriter(new FileOutputStream(file), Encoding)) { w ⇒
+      val content = jobConfiguration.script.string.trim
+      if (content.nonEmpty) {
+        w.write(jobConfiguration.script.string.trim)
+        w.write("\n")
+      }
+    }
+  }
+
+  override def postStop() = {
+    killAll(SIGKILL)
+    if (shellFile != null) {
+      tryDeleteFile(shellFile)
+    }
+    super.postStop()
+  }
 
   def receive = {
     case Command.StartWithConfigurationFile(path: Path) ⇒
@@ -57,18 +81,20 @@ extends Actor with Stash {
 
     case Command.ProcessOrder(order, stdoutStderrWriter) if waitingForNextOrder ⇒
       logger.trace(s"ProcessOrder(${order.id})")
-      val taskRunner = newTaskRunner(jobConfiguration)
-      orderToTask.insert(order.id → taskRunner)
-      waitingForNextOrder = false
-      handleIfReadyForOrder()
+      val fileSet = filePool.get()
+      val taskRunner = newTaskRunner(TaskConfiguration(jobConfiguration, shellFile, fileSet.shellReturnValuesProvider))
+      orderToTask.insert(order.id → Entry(fileSet, taskRunner))
       val sender = this.sender()
       taskRunner.processOrder(order, stdoutStderrWriter)
         .andThen { case _ ⇒ taskRunner.terminate() }
         .onComplete { triedStepEnded ⇒
           self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
         }
+      waitingForNextOrder = false
+      handleIfReadyForOrder()
 
     case Internal.TaskFinished(order, triedStepEnded) ⇒
+      filePool.release(orderToTask(order.id).fileSet)
       orderToTask -= order.id
       sender() ! Response.OrderProcessed(order.id, recoverFromFailure(triedStepEnded))
       handleStop()
@@ -111,8 +137,9 @@ extends Actor with Stash {
   private def killAll(signal: ProcessSignal): Unit = {
     if (orderToTask.nonEmpty) {
       logger.warn(s"Terminating, sending $signal to all $taskCount tasks")
-      for (task ← orderToTask.values) {
-        task.kill(signal)
+      for ((orderId, t) ← orderToTask) {
+        logger.warn(s"Kill $signal ${t.taskRunner.asBaseAgentTask.id} processing $orderId")
+        t.taskRunner.kill(signal)
       }
     }
   }
@@ -133,16 +160,8 @@ extends Actor with Stash {
 }
 
 object JobActor {
-  def actorOf(jobPath: JobPath, newTaskRunner: TaskRunner.Factory, ts: TimerService)(implicit actorRefFactory: ActorRefFactory, ec: ExecutionContext): ActorRef =
-    actorRefFactory.actorOf(
-      Props { new JobActor(jobPath, newTaskRunner, ts) },
-      name = toActorName(jobPath))
-
-  def toActorName(o: JobPath): String =
-    encodeAsActorName(o.withoutStartingSlash)
-
-  def toJobPath(o: ActorPath): JobPath =
-    JobPath("/" + decodeActorName(o.name))
+  def props(jobPath: JobPath, newTaskRunner: TaskRunner.Factory, ts: TimerService)(implicit ec: ExecutionContext): Props =
+    Props { new JobActor(jobPath, newTaskRunner, ts) }
 
   sealed trait Command
   object Command {
@@ -170,4 +189,6 @@ object JobActor {
     final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[TaskStepEnded])
     final case object KillAll extends DeadLetterSuppression
   }
+
+  private case class Entry(fileSet: FilePool.FileSet, taskRunner: TaskRunner)
 }

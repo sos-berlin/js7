@@ -4,13 +4,13 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.process.Processes._
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger, SetOnce}
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
 import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
@@ -40,9 +40,7 @@ extends HasCloser with ClosedFuture {
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
   private val terminatedPromiseOnce = new SetOnce[Promise[ReturnCode]]
 
-  logger.info(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
-
-  def terminated: Future[ReturnCode] =
+  private lazy val _terminated: Future[ReturnCode] =
     (terminatedPromiseOnce getOrUpdate {
       Promise[ReturnCode]() sideEffect {
         _ completeWith namedThreadFuture("Process watch") {
@@ -53,6 +51,11 @@ extends HasCloser with ClosedFuture {
       }
     })
     .future
+
+  logger.debug(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
+
+  def terminated: Future[ReturnCode] =
+    _terminated
 
   final def sendProcessSignal(signal: ProcessSignal): Unit =
     if (process.isAlive) {
@@ -150,6 +153,8 @@ object RichProcess {
     logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
     ReturnCode(returnCode)
   }
+
+  def tryDeleteFile(file: Path) = tryDeleteFiles(file :: Nil)
 
   def tryDeleteFiles(files: Iterable[Path]): Boolean = {
     var allFilesDeleted = true

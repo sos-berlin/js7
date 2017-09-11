@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.akkautils
 
-import akka.actor.SupervisorStrategy.{Decider, Directive, Escalate, Restart, Resume, Stop}
-import akka.actor.{ActorContext, ActorInitializationException, ActorRef, OneForOneStrategy}
+import akka.actor.SupervisorStrategy.{Decider, Directive, Escalate, Restart, Resume, Stop, defaultDecider}
+import akka.actor.{ActorContext, ActorInitializationException, ActorRef, OneForOneStrategy, SupervisorStrategy}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkautils.LoggingOneForOneStrategy._
 import com.sos.jobscheduler.common.log.LogLevel._
@@ -37,4 +37,8 @@ extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(d
 
 object LoggingOneForOneStrategy {
   private val logger = Logger(getClass)
+
+  final val defaultStrategy: SupervisorStrategy = {
+    new LoggingOneForOneStrategy()(defaultDecider)
+  }
 }

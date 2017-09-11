@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.job.task
 
 import akka.util.ByteString
-import com.sos.jobscheduler.agent.scheduler.job.JobConfiguration
 import com.sos.jobscheduler.agent.scheduler.job.task.LegacyApiTaskRunner._
 import com.sos.jobscheduler.agent.task.{AgentTask, AgentTaskFactory, StartNonApiTask}
 import com.sos.jobscheduler.base.generic.Completed
@@ -22,7 +21,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-final class LegacyApiTaskRunner private[task](jobConfiguration: JobConfiguration, newTask: AgentTaskFactory)
+final class LegacyApiTaskRunner private[task](conf: TaskConfiguration, newTask: AgentTaskFactory)
   (implicit executionContext: ExecutionContext)
 extends TaskRunner {
 
@@ -57,14 +56,14 @@ extends TaskRunner {
     taskOnce := task
     val remoting = newRemoting(task.request, name = task.id.string)
     for (moduleInstance ← createModuleInstance(remoting);
-         moduleInstanceRunner = moduleInstanceRunnerOnce := new ModuleInstanceRunner(jobConfiguration, taskId, moduleInstance);
+         moduleInstanceRunner = moduleInstanceRunnerOnce := new ModuleInstanceRunner(conf.jobConfiguration, taskId, moduleInstance);
          startOk ← moduleInstanceRunner.start())
       yield
         (moduleInstanceRunner, startOk)
   }
 
   private def startTask(): AgentTask = {
-    val command = StartNonApiTask(jobPath = jobConfiguration.path)
+    val command = StartNonApiTask(jobPath = conf.jobPath)
     val task = newTask(command, clientIpOption = None)
     task.start()
     task
@@ -108,7 +107,7 @@ extends TaskRunner {
   private def newKilledException() = new IllegalStateException("Task killed")
 
   override def toString =
-    s"LegacyApiTaskRunner(${jobConfiguration.path}" +
+    s"LegacyApiTaskRunner(${conf.jobPath}" +
       (taskOnce.toOption map { _.toString } getOrElse "") +
       ")"
 }
@@ -118,7 +117,7 @@ object LegacyApiTaskRunner {
 
   @Singleton
   final case class Factory @Inject private(newTask: AgentTaskFactory)(implicit ec: ExecutionContext) extends TaskRunner.Factory {
-    def apply(jobConfiguration: JobConfiguration) =
-      new LegacyApiTaskRunner(jobConfiguration, newTask)
+    def apply(conf: TaskConfiguration) =
+      new LegacyApiTaskRunner(conf, newTask)
   }
 }

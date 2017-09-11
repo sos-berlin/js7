@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderRegister._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached}
+import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import java.time.Instant
@@ -30,7 +30,7 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
 
   def onActorTerminated(actor: ActorRef)(implicit timerService: TimerService): Unit = {
     for (orderEntry ← remove(actorToKey(actor))) {
-      logger.debug(s"Removing ${orderEntry.order.id} after Actor death")
+      logger.debug(s"Removing ${orderEntry.order.id}")
       orderEntry.timer foreach timerService.cancel
     }
   }
