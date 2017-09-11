@@ -53,6 +53,16 @@ object RunningAgent {
   private val logger = Logger(getClass)
   private val WebServerReadyTimeout = 60.s
 
+  def run[A](configuration: AgentConfiguration)(body: RunningAgent ⇒ Unit): Unit = {
+    import ExecutionContext.Implicits.global
+    val agent = (for (agent ← apply(configuration)) yield {
+      body(agent)
+      agent
+    }).awaitInfinite
+    agent.terminated.awaitInfinite
+    agent.close()
+  }
+
   def apply(configuration: AgentConfiguration): Future[RunningAgent] =
     apply(new AgentModule(configuration))
 
