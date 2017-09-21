@@ -14,14 +14,14 @@ final class SetOnceTest extends FreeSpec {
     assert(!a.nonEmpty)
     assert(!a.isDefined)
     intercept[IllegalStateException] { a() }
-    assert(a.get == None)
+    assert(a.toOption == None)
     assert((a getOrElse -1) == -1)
     a := 0
     assert(!a.isEmpty)
     assert(a.nonEmpty)
     assert(a.isDefined)
     assert(a() == 0)
-    assert(a.get == Some(0))
+    assert(a.toOption == Some(0))
     assert((a getOrElse -1) == -0)
     intercept[IllegalStateException] { a := 0 } .getMessage should include ("SetOnce[java.lang.Integer]")
     assert((for (i ← a) yield (i: Int) + 3) == Some(3))

@@ -21,13 +21,13 @@ class SetOnce[A](name: String = "SetOnce") {
   final override def toString = toStringOr("(not yet set)")
 
   @inline final def toStringOr(or: ⇒ String): String =
-    ref.get() match {
+    ref.get match {
       case null ⇒ or
       case o ⇒ o.toString
     }
 
   @inline final def getOrElse[B >: A](els: ⇒ B) =
-    ref.get() match {
+    ref.get match {
       case null ⇒ els
       case o ⇒ o
     }
@@ -40,9 +40,7 @@ class SetOnce[A](name: String = "SetOnce") {
       ref.get
     }
 
-  final def get = toOption
-
-  final def toOption = Option(ref.get())
+  final def toOption = Option(ref.get)
 
   final def isDefined = nonEmpty
 

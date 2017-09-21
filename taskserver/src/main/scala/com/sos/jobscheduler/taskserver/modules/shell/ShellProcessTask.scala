@@ -102,7 +102,7 @@ extends HasCloser with Task {
 
   def step() = {
     requireState(startCalled)
-    richProcessOnce.get match {
+    richProcessOnce.toOption match {
       case None ⇒
         logger.warn("step, but no process has been started")
         <process.result spooler_process_result="false" exit_code="999888999"/>.toString()
