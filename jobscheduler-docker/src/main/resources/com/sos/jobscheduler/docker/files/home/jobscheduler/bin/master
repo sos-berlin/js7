@@ -7,4 +7,5 @@ rm -fv "$hprof"
 exec /opt/jobscheduler/bin/master \
   -java-option="-XX:+HeapDumpOnOutOfMemoryError" \
   -java-option="-XX:HeapDumpPath=$hprof" \
+  -java-option="--illegal-access=warn" \
   "$@"

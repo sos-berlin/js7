@@ -8,4 +8,5 @@ exec /opt/jobscheduler/bin/agent \
   -http-port=4444 \
   -java-option="-XX:+HeapDumpOnOutOfMemoryError" \
   -java-option="-XX:HeapDumpPath=$hprof" \
+  -java-option="--illegal-access=warn" \
   "$@"
