@@ -44,6 +44,11 @@ object ScalaUtils {
       }
   }
 
+  def namedIdentity[A] = new (A ⇒ A) {
+    def apply(a: A) = a
+    override def toString = "identity"
+  }
+
   implicit class RichThrowable[A <: Throwable](val delegate: A) extends AnyVal {
     def rootCause: Throwable = {
       @tailrec def cause(t: Throwable): Throwable =
