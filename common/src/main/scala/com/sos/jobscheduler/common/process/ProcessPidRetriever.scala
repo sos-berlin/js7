@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.process
 
 import com.sos.jobscheduler.common.process.Processes.Pid
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import javax.lang.model.SourceVersion
 
@@ -11,9 +12,10 @@ import javax.lang.model.SourceVersion
  * @see https://github.com/flapdoodle-oss/de.flapdoodle.embed.process/blob/master/src/main/java/de/flapdoodle/embed/process/runtime/Processes.java
  * @author Joacim Zschimmer
  */
-private[process] object ProcessesJava8pid {
+private[process] object ProcessPidRetriever {
 
   private val hasJava9 = SourceVersion.values map { _.toString } contains "RELEASE_9"
+  private val logger = Logger(getClass)
 
   private[process] val processToPid = {
     if (hasJava9)
@@ -25,11 +27,16 @@ private[process] object ProcessesJava8pid {
   }
 
   private object Java9ProcessToPid extends (Process ⇒ Option[Pid]) {
-    private lazy val getPid = classOf[Process].getMethod("getPid")   // Needs Java 9
+    private val getPid = classOf[Process].getMethod("pid")   // Needs Java 9
+    private var logged = false
 
     def apply(process: Process) =
       try Some(Pid(getPid.invoke(process).asInstanceOf[java.lang.Long]))
-      catch { case _: Throwable ⇒
+      catch { case t: Throwable ⇒
+        if (!logged) {
+          logged = true
+          logger.error(s"Process.pid: $t", t)
+        }
         None
       }
   }

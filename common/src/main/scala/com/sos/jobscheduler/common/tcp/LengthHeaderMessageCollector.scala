@@ -52,7 +52,7 @@ final class LengthHeaderMessageCollector {
   }
 
   @TestOnly
-  private[tcp] def isReset = lengthBuffer.position == 0 && lengthBuffer.limit == 4 && length == -1 && contentBuffer == null
+  private[tcp] def isReset = lengthBuffer.position() == 0 && lengthBuffer.limit() == 4 && length == -1 && contentBuffer == null
 
   override def toString = getClass.getSimpleName concat "(" concat (
       if (isReset) "reset"

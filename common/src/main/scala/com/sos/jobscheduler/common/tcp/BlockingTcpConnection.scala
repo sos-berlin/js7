@@ -24,21 +24,21 @@ extends AutoCloseable with BlockingMessageConnection {
   def receiveMessage(): Option[ByteString] = {
     val lengthBuffer = ByteBuffer.allocate(4)
     receiveBuffer(lengthBuffer)
-    if (lengthBuffer.position == 0)
+    if (lengthBuffer.position() == 0)
       None
     else {
       lengthBuffer.rewind()
       val buffer = ByteBuffer.allocate(lengthBuffer.getInt)
       receiveBuffer(buffer)
-      if (buffer.position != buffer.limit) throw new AsynchronousCloseException
+      if (buffer.position() != buffer.limit()) throw new AsynchronousCloseException
       buffer.rewind()
       Some(ByteString(buffer))
     }
   }
 
   private def receiveBuffer(buffer: ByteBuffer) = {
-    do channel.read(buffer) while (buffer.position > 0 && buffer.position < buffer.limit)
-    assert(buffer.position == 0 || buffer.position == buffer.limit)
+    do channel.read(buffer) while (buffer.position() > 0 && buffer.position() < buffer.limit())
+    assert(buffer.position() == 0 || buffer.position() == buffer.limit())
   }
 
   def sendMessage(data: ByteString): Unit = sendMessage(data.asByteBuffers, data.size)
