@@ -6,6 +6,7 @@
   */
 
 import BuildUtils._
+import sbt.Keys.testOptions
 
 javaOptions += BuildUtils.JavaOptions
 val fastSbt = sys.env contains "FAST_SBT"
@@ -24,6 +25,9 @@ val commonSettings = List(
   javacOptions in Compile ++= List("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= List("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   logBuffered in Test := false,
+  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFG"),  // D: Durations, F: Print full stack strace
+  testOptions in ForkedTest += Tests.Argument(TestFrameworks.ScalaTest, "-oFG"),  // D: Durations, F: Print full stack strace
+  logBuffered in Test := false,  // Recommended for ScalaTest
   testForkedParallel in Test := fastSbt,  // Experimental in sbt 0.13.13
   sources in (Compile, doc) := Nil, // No ScalaDoc
   credentials += Credentials(Path.userHome / ".ivy2" / ".credentials_snapshot"),
