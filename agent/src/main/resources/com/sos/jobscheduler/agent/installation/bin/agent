@@ -11,6 +11,8 @@ config=/var/opt/jobscheduler/agent/config
 data=/var/opt/jobscheduler/agent/data
 
 httpPort=
+log4jLmax=false
+
 for arg in "$@"; do
   case "$arg" in
     -rmx-port=*)
@@ -49,6 +51,10 @@ for arg in "$@"; do
       httpPort="${arg#*=}"
       shift
       ;;
+    -log4j-lmax)
+      log4jLmax=true
+      shift
+      ;;
     *)
       agentOptions+=("$arg")
       shift
@@ -78,9 +84,13 @@ echo "crashKillScript=$crashKillScript"
 export SCHEDULER_LOGS="$logs"  # Used in logging configuration
 if [ -f "$config/log4j2.xml" ]; then :
   javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
+fi
+if $log4jLmax; then :
   javaOptions+=("-DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
+  javaOptions+=("-DAsyncLogger.WaitStrategy=Blocking")
 fi
 
+classpathString="$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
 execute=(
   "$java" \
   "${javaOptions[@]}" \
@@ -89,23 +99,38 @@ execute=(
 )
 echo "${execute[@]}"
 
-if [ -n "$crashKillScript" ]; then :
-  rm -f "$crashKillScript"
+[ -z "$crashKillScript" ] || rm -f "$crashKillScript"
 
-  "${execute[@]}" &
-  trap "kill -SIGTERM $! && wait $!" SIGTERM
-  wait $!
-  trap - SIGTERM
+"${execute[@]}" &
+pid=$!
+echo PID $pid
 
-  returnCode=$?
-  if [ -s "$crashKillScript" ]; then :
-    ps fux || true
-    echo Executing crash kill script $crashKillScript:
-    cat $crashKillScript
-    (. "$crashKillScript" || true)
-    ps fux || true
-  fi
-  exit $returnCode
-else
-  exec "${execute[@]}"
+function terminate() {
+  tasksTimeout=5
+  # Add enough time to start Java with AgentClientMain
+  agentTimeout=15
+  "$java" -Xmx50m \
+    -Dlog4j.configurationFile=com/sos/jobscheduler/agent/client/main/log4j2.xml \
+    -classpath "$classpathString" \
+    com.sos.jobscheduler.agent.client.main.AgentClientMain \
+    http://127.0.0.1:$httpPort \
+    "{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: $tasksTimeout }" >/dev/null &
+  (sleep $agentTimeout && kill $pid)&
+  killer=$!
+  wait $pid
+  kill $killer
+}
+
+trap "terminate" SIGTERM
+wait $pid
+trap - SIGTERM
+
+returnCode=$?
+if [ -n "$crashKillScript" -a -s "$crashKillScript" ]; then :
+  ps fux || true
+  echo Executing crash kill script $crashKillScript:
+  cat $crashKillScript
+  (. "$crashKillScript" || true)
+  ps fux || true
 fi
+exit $returnCode

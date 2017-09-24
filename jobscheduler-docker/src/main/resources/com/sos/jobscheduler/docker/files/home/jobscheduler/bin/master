@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
-hprof=/var/opt/jobscheduler/master/data/logsOutOfMemoryError.hprof
+hprof=/var/opt/jobscheduler/master/data/logs/OutOfMemoryError.hprof
 rm -fv "$hprof"
 
 exec /opt/jobscheduler/bin/master \
+  -sync-journal- \
+  -log4j-lmax \
   -java-option="-XX:+HeapDumpOnOutOfMemoryError" \
   -java-option="-XX:HeapDumpPath=$hprof" \
   -java-option="--illegal-access=warn" \

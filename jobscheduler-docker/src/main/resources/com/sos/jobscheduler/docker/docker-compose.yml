@@ -4,7 +4,7 @@ services:
     build: build
     image: jobscheduler
     container_name: jobscheduler-master
-    command: ["master"]
+    command: ["master", "-java-option=-Xmx500m"]
     networks:
     - default
     ports:
