@@ -12,6 +12,14 @@ final class CommandLineArgumentsTest extends FreeSpec {
   "Flag" - {
     "boolean" in {
       assert(parse(Array("-option")) { _.boolean("-option") })
+      assert(parse(Array("-option")) { _.boolean("-option") })
+      assert(!parse(Nil) { _.boolean("-option") })
+      assert(!parse(Nil) { _.boolean("-option", false) })
+      assert(parse(Nil) { _.boolean("-option", true) })
+    }
+
+    "false" in {
+      assert(!parse(Array("-option-")) { _.boolean("-option") })
     }
 
     "Missing boolean" in {

@@ -1,24 +1,24 @@
 package com.sos.jobscheduler.common.commandline
 
 import com.sos.jobscheduler.base.convert.ConvertibleMultiPartialFunction
-import com.sos.jobscheduler.common.commandline.CommandLineArguments.{Argument, NameOnly}
+import com.sos.jobscheduler.common.commandline.CommandLineArguments._
 import java.util.NoSuchElementException
 import scala.collection.mutable
 
 /**
  * @author Joacim Zschimmer
  */
-final class CommandLineArguments private(val argMap: mutable.LinkedHashMap[String, Vector[Argument]])
+final class CommandLineArguments private(argMap: mutable.LinkedHashMap[String, Vector[Argument]])
 extends PartialFunction[String, Vector[String]]
 with ConvertibleMultiPartialFunction[String, String] {
 
   private val unusedArguments = new mutable.LinkedHashMap[String, Vector[Argument]] ++ argMap
   private val unusedKeylessArguments = new mutable.HashSet[Int]() ++ apply("").indices
 
-  def boolean(key: String): Boolean =
+  def boolean(key: String, default: Boolean = false): Boolean =
     arguments(key) match {
-      case Vector() ⇒ false
-      case Vector(_: NameOnly) ⇒ true
+      case Vector() ⇒ default
+      case Vector(Switch(_, value)) ⇒ value
       case _ ⇒ throw new IllegalArgumentException(s"Multiple command line options '$key'")
     }
 
@@ -76,7 +76,8 @@ object CommandLineArguments {
     string match {
       case OptionWithValueRegex(key, value) ⇒ NameValue(key, value)
       case "-" ⇒ ValueOnly("-")
-      case o if string startsWith "-" ⇒ NameOnly(o)
+      case o if string.startsWith("-") && string.endsWith("-") ⇒ Switch(o dropRight 1, false)
+      case o if string.startsWith("-") ⇒ Switch(o, true)
       case o ⇒ ValueOnly(o)
     }
 
@@ -92,7 +93,7 @@ object CommandLineArguments {
     def value: String
   }
 
-  final case class NameOnly(key: String) extends Argument {
+  final case class Switch(key: String, booleanValue: Boolean) extends Argument {
     override def toString = key
     def value = throw new UnsupportedOperationException(s"Option $key has no value")
   }
