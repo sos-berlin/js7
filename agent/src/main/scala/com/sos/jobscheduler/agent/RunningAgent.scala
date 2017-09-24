@@ -6,7 +6,6 @@ import com.google.common.io.Closer
 import com.google.inject
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
-import com.sos.jobscheduler.agent.RunningAgent._
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
@@ -17,13 +16,13 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
 
 /**
  * JobScheduler Agent.
@@ -39,34 +38,22 @@ final class RunningAgent private(
   closer: Closer,
   @TestOnly val injector: Injector)
 extends AutoCloseable {
-  val localUri: Uri = webServer.localUri
-  closer.registerAutoCloseable(webServer)
 
-  def close(): Unit = {
-    logger.debug("close")
-    closer.close()
-    logger.debug("closed")
-  }
+  val localUri: Uri = webServer.localUri
+
+  def close() = closer.close()
 }
 
 object RunningAgent {
   private val logger = Logger(getClass)
   private val WebServerReadyTimeout = 60.s
 
-  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ Unit): Unit = {
-    import ExecutionContext.Implicits.global
-    val terminated = for {
-      agent ← apply(configuration)
-      terminated ← {
-        body(agent)
-        agent.terminated
-      }
-    } yield terminated
-    timeout match {
-      case Some(o) ⇒ terminated await o
-      case None ⇒ terminated.awaitInfinite
+  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ A): A =
+    autoClosing(apply(configuration) await timeout) { agent ⇒
+      val a = body(agent)
+      agent.terminated await 99.s
+      a
     }
-  }
 
   def apply(configuration: AgentConfiguration): Future[RunningAgent] =
     apply(new AgentModule(configuration))
@@ -79,6 +66,7 @@ object RunningAgent {
 
     implicit val executionContext = injector.instance[ExecutionContext]
     implicit val actorSystem = injector.instance[ActorSystem]
+    val closer = injector.instance[Closer]
     val webServer = injector.instance[AgentWebServer]
     val webServerReady = webServer.start()
     val sessionRegister = injector.getInstance(inject.Key.get(new inject.TypeLiteral[SessionRegister[LoginSession]] {}))
@@ -91,7 +79,14 @@ object RunningAgent {
       webServerReady await WebServerReadyTimeout
       webServer.setCommandHandler(ready.commandHandler)
       webServer.setAgentActor(ready.agentHandle)
-      new RunningAgent(webServer, stoppedPromise.future, ready.commandHandler, injector.instance[Closer], injector)
+      val terminated = stoppedPromise.future andThen { case _ ⇒
+        blocking {
+          logger.debug("Delaying close to let HTTP server respond open requests")
+          sleep(500.ms)
+        }
+        closer.close()  // Close automatically after termination
+      }
+      new RunningAgent(webServer, terminated, ready.commandHandler, closer, injector)
     }
   }
 }

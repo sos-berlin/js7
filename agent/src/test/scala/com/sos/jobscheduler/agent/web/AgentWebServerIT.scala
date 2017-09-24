@@ -25,9 +25,9 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -53,7 +53,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     .forTest(Some(agentDirectory))
     .copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort))))
     .withHttpsInetSocketAddress(new InetSocketAddress("127.0.0.1", httpsPort))
-  private lazy val agent = RunningAgent(agentConfiguration) map { _.closeWithCloser } await 10.s
+  private lazy val agent = RunningAgent(agentConfiguration) await 10.s
   private implicit lazy val actorSystem = {
     val config = ConfigFactory.parseMap(Map("akka.http.server.verbose-error-messages" → true).asJava)
     ActorSystem("AgentWebServerIT", config) withCloser { _.terminate() await 99.s }
