@@ -11,6 +11,7 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.Exceptions.logException
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order
@@ -70,10 +71,10 @@ extends TaskRunner {
   private def runProcess(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[ReturnCode] =
     for {
       richProcess ← startProcess(order, stdChannels) andThen {
-        case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobPath}")
+        case Success(richProcess) ⇒ logger.info(s"System process '$richProcess' started for ${order.id}, ${conf.jobPath}, script ${conf.shellFile}")
       }
       returnCode ← richProcess.terminated andThen { case tried ⇒
-        logger.info(s"Process '$richProcess' terminated with $tried")
+        logger.info(s"System process '$richProcess' terminated with $tried after ${richProcess.duration.pretty}")
       }
     } yield {
       richProcess.close()

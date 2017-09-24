@@ -9,6 +9,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger, SetOnce}
 import com.sos.jobscheduler.common.system.OperatingSystem._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
@@ -18,7 +19,8 @@ import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import java.time.Duration
+import java.time.Instant.now
+import java.time.{Duration, Instant}
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import org.jetbrains.annotations.TestOnly
 import scala.collection.JavaConverters._
@@ -32,6 +34,7 @@ class RichProcess protected[process](val processConfiguration: ProcessConfigurat
   (implicit executionContext: ExecutionContext)
 extends HasCloser with ClosedFuture {
 
+  val startedAt = Instant.now
   val pidOption: Option[Pid] = processToPidOption(process)
   private val logger = Logger.withPrefix[RichProcess](toString)
   /**
@@ -53,6 +56,8 @@ extends HasCloser with ClosedFuture {
     .future
 
   logger.debug(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
+
+  def duration = now - startedAt
 
   def terminated: Future[ReturnCode] =
     _terminated
@@ -117,7 +122,7 @@ extends HasCloser with ClosedFuture {
 
   final def stdin: OutputStream = process.getOutputStream
 
-  override def toString = processConfiguration.agentTaskIdOption ++ List(processToString(process, pidOption)) mkString " "
+  override def toString = Some(processToString(process, pidOption)) ++ processConfiguration.agentTaskIdOption mkString " "
 }
 
 object RichProcess {
