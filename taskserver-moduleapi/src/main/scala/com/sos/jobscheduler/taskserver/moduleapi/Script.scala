@@ -2,6 +2,7 @@ package com.sos.jobscheduler.taskserver.moduleapi
 
 import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
 import com.sos.jobscheduler.common.utils.Strings.TruncatedString
 
 /**
@@ -18,7 +19,7 @@ object Script {
   val Empty = new Script("")
 
   def parseXmlString(xmlString: String): Script =
-    ScalaXMLEventReader.parseString(xmlString) { eventReader ⇒
+    ScalaXMLEventReader.parseDocument(stringToSource(xmlString)) { eventReader ⇒
       import eventReader._
       val parts = parseElement("source") {
         parseEachRepeatingElement("source_part") {

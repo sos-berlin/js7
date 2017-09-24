@@ -27,7 +27,7 @@ object AkkaHttpUtils {
 
   def accept(mediaTypes: Set[MediaType.WithOpenCharset]): Directive0 =
     mapInnerRoute { route ⇒
-      headerValueByType[Accept]() {
+      headerValueByType[Accept](()) {
         case Accept(requestedMediaTypes) if requestedMediaTypes exists { o ⇒ mediaTypes exists o.matches } ⇒
           route
         case _ ⇒

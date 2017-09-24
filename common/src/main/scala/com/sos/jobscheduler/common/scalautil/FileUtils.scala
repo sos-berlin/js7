@@ -11,9 +11,9 @@ import java.nio.charset.Charset
 import java.nio.file.Files.{delete, isSymbolicLink}
 import java.nio.file.attribute.FileAttribute
 import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
+import java.util.concurrent.ThreadLocalRandom
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
-import scala.concurrent.forkjoin.ThreadLocalRandom
 import scala.language.implicitConversions
 
 object FileUtils {

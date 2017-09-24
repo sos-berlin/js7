@@ -16,9 +16,9 @@ object StandardJavaModule extends ModuleFactory {
   val Language = ModuleLanguage("java")
 
   def toModuleArguments = {
-    case args @ RawModuleArguments(ModuleLanguage("java"), Some(javaClassName), script, None, None) ⇒
-      new Arguments(className = javaClassName)
-    case args @ RawModuleArguments(ModuleLanguage("java"), None, script, None, None) ⇒
+    case RawModuleArguments(ModuleLanguage("java"), Some(javaClassName), script, None, None) ⇒
+      Arguments(className = javaClassName)
+    case RawModuleArguments(ModuleLanguage("java"), None, script, None, None) ⇒
       throw new IllegalArgumentException(s"language='$language' requires a class name")
   }
 

@@ -236,12 +236,6 @@ object ScalaXMLEventReader {
 
   implicit def scalaXMLEventReaderToXMLEventReader(o: ScalaXMLEventReader): XMLEventReader = o.xmlEventReader
 
-  @deprecated("Use parseDocument(XmlSources.stringToSource)", "v1.11")
-  def parseString[A](xml: String, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), config: Config = Config.Default)
-    (parse: ScalaXMLEventReader ⇒ A)
-  : A =
-    parseDocument(stringToSource(xml), inputFactory, config)(parse)
-
   def parseDocument[A](source: Source, inputFactory: XMLInputFactory = getCommonXMLInputFactory(), config: Config = Config.Default)
     (parse: ScalaXMLEventReader ⇒ A)
   : A =

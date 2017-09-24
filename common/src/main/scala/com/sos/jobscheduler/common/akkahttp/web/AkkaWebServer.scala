@@ -54,11 +54,9 @@ trait AkkaWebServer extends AutoCloseable {
     bind(https, toHttpsConnectionContext(https.keystoreReference))
   }
 
-  private def bind(binding: WebServerBinding, connectionContext: ConnectionContext): Future[Http.ServerBinding] = {
-    //implicit val timeout: Timeout = 10.seconds
+  private def bind(binding: WebServerBinding, connectionContext: ConnectionContext): Future[Http.ServerBinding] =
     akkaHttp.bindAndHandle(newRoute(binding), interface = binding.address.getAddress.getHostAddress, port = binding.address.getPort,
       connectionContext)
-  }
 
   def close() = {
     if (activeBindings != null) {
@@ -66,6 +64,7 @@ trait AkkaWebServer extends AutoCloseable {
         for (binding ← future) yield
           binding.unbind()
       ) await ShutdownTimeout
+      //akkaHttp.gracefulShutdown()  https://github.com/akka/akka-http/issues/188, https://github.com/lagom/lagom/issues/644
     }
   }
 }

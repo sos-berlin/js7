@@ -8,8 +8,10 @@
 import BuildUtils._
 import sbt.Keys.testOptions
 
-javaOptions += BuildUtils.JavaOptions
 val fastSbt = sys.env contains "FAST_SBT"
+
+scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
+javaOptions += BuildUtils.JavaOptions
 
 addCommandAlias("compile-all", "; project engine-job-api; compile; project /; compile")
 addCommandAlias("test-all", "; test:compile; test; ForkedTest:test")
@@ -471,7 +473,7 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
       }
     }.taskValue)
 
-lazy val tests = project.dependsOn(master % "test->test", agent % "test->test", `agent-client` % "test->test")
+lazy val tests = project.dependsOn(master, agent, `agent-client`)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(
     commonSettings,

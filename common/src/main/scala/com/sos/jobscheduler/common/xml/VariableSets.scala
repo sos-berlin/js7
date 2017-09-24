@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.xml
 
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
 import javax.xml.stream.XMLEventReader
 import scala.xml.{TopScope, UnprefixedAttribute}
 
@@ -32,7 +33,7 @@ object VariableSets {
   def parseXml(string: String): Map[String, String] = parseXml(string, groupName = "", elementName = DefaultElementName)
 
   def parseXml(string: String, groupName: String, elementName: String): Map[String, String] =
-    ScalaXMLEventReader.parseString(string) { eventReader ⇒ parseXml(eventReader, groupName, elementName) }
+    ScalaXMLEventReader.parseDocument(stringToSource(string)) { eventReader ⇒ parseXml(eventReader, groupName, elementName) }
 
   def parseXml(xmlEventReader: XMLEventReader, groupName: String, elementName: String): Map[String, String] = {
     val eventReader = new ScalaXMLEventReader(xmlEventReader)
