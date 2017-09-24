@@ -5,6 +5,8 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import java.lang.System.nanoTime
 import java.time.Duration
 import Stopwatch._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * @author Joacim Zschimmer
@@ -47,6 +49,14 @@ object Stopwatch {
     val result = Result(duration, n, itemName)
     logger.info(s"$linePrefix$result")
     result
+  }
+
+  def measureTimeParallel(n: Int, itemName: String, warmUp: Int = 1)(body: ⇒ Unit)(implicit ec: ExecutionContext = ExecutionContext.global): Result = {
+    (for (_ ← 1 to warmUp) yield Future { body }).awaitInfinite
+    val start = nanoTime()
+    (for (_ ← 1 to n) yield Future { body }).awaitInfinite
+    val duration = Duration.ofNanos(nanoTime() - start)
+    Result(duration, n, itemName)
   }
 
   /**
