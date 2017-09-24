@@ -14,13 +14,14 @@ import com.sos.jobscheduler.data.agent.AgentAddress
 final class SimpleAgentClient private(val agentUri: Uri) extends AgentClient with AutoCloseable {
 
   protected val licenseKeys = Nil
-  protected val actorRefFactory = ActorSystem("SimpleAgentClient")
+  protected val actorSystem = ActorSystem("SimpleAgentClient")
+  protected def executionContext = actorSystem.dispatcher
   protected def httpsConnectionContextOption = None
   protected def userAndPasswordOption = None
 
   override def close() = {
     super.close()
-    actorRefFactory.terminate()
+    actorSystem.terminate()
   }
 }
 

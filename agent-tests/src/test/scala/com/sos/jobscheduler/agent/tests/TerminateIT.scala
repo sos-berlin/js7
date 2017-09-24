@@ -1,11 +1,12 @@
 package com.sos.jobscheduler.agent.tests
 
-import akka.actor.ActorRefFactory
+import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Injector}
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
-import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, Login, RegisterAsMaster, Terminate}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.agent.tests.TerminateIT._
@@ -36,6 +37,8 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
 
   "Terminate" in {
     withCloser { implicit closer ⇒
+      implicit val actorSystem = ActorSystem("TerminateIT")
+      closer onClose actorSystem.terminate()
       provideAgent { (client, agent) ⇒
         val eventCollector = newEventCollector(agent.injector)
         val lastEventId = eventCollector.lastEventId
@@ -84,14 +87,14 @@ object TerminateIT {
       |sleep 10
       |""".stripMargin
 
-  private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit closer: Closer): Unit = {
+  private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit actorSystem: ActorSystem, closer: Closer): Unit = {
     TestAgentDirectoryProvider.provideAgentDirectory { agentDirectory ⇒
       (agentDirectory / "config" / "live" / "test.job.xml").xml =
         <job tasks="10">
           <script language="shell">{AScript}</script>
         </job>
       val agent = RunningAgent(AgentConfiguration.forTest(configAndData = Some(agentDirectory))) map { _.closeWithCloser } await 10.s
-      implicit val actorRefFactory: ActorRefFactory = Akkas.newActorSystem("TerminateIT")(closer)
+      implicit val actorRefFactory: ActorRefFactory = newActorSystem("TerminateIT")(closer)
       val client = AgentClient(
         agentUri = agent.localUri.toString,
         licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))

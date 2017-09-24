@@ -1,5 +1,5 @@
 package com.sos.jobscheduler.agent.client
-import akka.actor.{ActorRefFactory, ActorSystem}
+import akka.actor.ActorSystem
 import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.marshalling.Marshal
@@ -36,7 +36,7 @@ import com.sos.jobscheduler.data.session.SessionToken
 import java.util.concurrent.atomic.AtomicReference
 import scala.collection.immutable
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -46,13 +46,10 @@ import spray.json.DefaultJsonProtocol._
  * @author Joacim Zschimmer
  */
 trait AgentClient extends AutoCloseable {
-  import actorRefFactory.dispatcher
 
-  protected val actorSystem = ActorSystem()
-  private implicit val materializer = ActorMaterializer()(actorSystem)
-
+  protected def actorSystem: ActorSystem
+  protected implicit def executionContext: ExecutionContext
   val agentUri: Uri
-  implicit protected val actorRefFactory: ActorRefFactory
   protected def httpsConnectionContextOption: Option[HttpsConnectionContext]
   protected def userAndPasswordOption: Option[UserAndPassword]
 
@@ -65,7 +62,8 @@ trait AgentClient extends AutoCloseable {
     case None ⇒ Nil
   }
   private val sessionTokenRef = new AtomicReference[Option[SessionToken]](None)
-  private val http = Http(actorSystem)
+  private implicit lazy val materializer = ActorMaterializer()(actorSystem)
+  private lazy val http = Http(actorSystem)
 
   def close() = {
     materializer.shutdown()  // (Seems to be an asynchronous operation)
@@ -225,16 +223,17 @@ object AgentClient {
     licenseKeys: immutable.Iterable[LicenseKeyString] = Nil,
     httpsConntextContextOption: Option[HttpsConnectionContext] = None,
     userAndPasswordOption: Option[UserAndPassword] = None)
-    (implicit actorRefFactory: ActorRefFactory)
+    (implicit actorSystem: ActorSystem)
   : AgentClient =
-    new Standard(agentUri, licenseKeys, httpsConntextContextOption, userAndPasswordOption)
+    new Standard(actorSystem, agentUri, licenseKeys, httpsConntextContextOption, userAndPasswordOption)(actorSystem.dispatcher)
 
   private class Standard(
+    protected val actorSystem: ActorSystem,
     val agentUri: Uri,
     protected val licenseKeys: immutable.Iterable[LicenseKeyString] = Nil,
     protected val httpsConnectionContextOption: Option[HttpsConnectionContext] = None,
     protected val userAndPasswordOption: Option[UserAndPassword] = None)
-    (implicit protected val actorRefFactory: ActorRefFactory)
+    (implicit protected val executionContext: ExecutionContext)
   extends AgentClient
 
   def sessionIsPossiblyLost(t: Throwable): Boolean =

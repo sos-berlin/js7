@@ -35,7 +35,7 @@ private[agent] final class TextAgentClient(agentUri: AgentAddress, print: String
 extends AutoCloseable {
 
   private val agentUris = AgentUris(agentUri)
-  private val actorSystem = ActorSystem("AgentClient", Configs.loadResource(ConfigurationResource))
+  private val actorSystem = ActorSystem("TextAgentClient", Configs.loadResource(ConfigurationResource))
   import actorSystem.dispatcher
   private implicit val materialized = ActorMaterializer()(actorSystem)
   private val http = Http(actorSystem)
