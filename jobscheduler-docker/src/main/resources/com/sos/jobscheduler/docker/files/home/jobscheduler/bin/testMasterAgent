@@ -41,6 +41,7 @@ logs="$directory"
 export SCHEDULER_LOGS="$logs"  # Used in log4j2.xml
 javaOptions+=("-Dlog4j.configurationFile=$log4jXml")
 javaOptions+=("-DLog4jContextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
+javaOptions+=("-DAsyncLogger.WaitStrategy=Blocking")
 
 execute=(
   "$java"
