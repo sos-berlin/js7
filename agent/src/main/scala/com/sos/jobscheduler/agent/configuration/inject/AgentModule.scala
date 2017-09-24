@@ -92,4 +92,5 @@ extends AbstractModule {
     timerService: TimerService,
     closer: Closer, injector: Injector, actorSystem: ActorSystem, executionContext: ExecutionContext): AgentWebServer =
       new AgentWebServer(conf, gateKeeperConfiguration, csrf, timerService, closer, injector)(actorSystem, executionContext)
+        .closeWithCloser(closer)
 }
