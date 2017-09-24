@@ -14,6 +14,7 @@ import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
 import scala.concurrent.{ExecutionContext, Promise}
+import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
@@ -48,9 +49,13 @@ extends Actor {
   }
 
   override def postStop() = {
+    if (!readyPromise.isCompleted) {
+      readyPromise.tryFailure(new RuntimeException("MainActor has stopped before AgentActor has become ready") with NoStackTrace)
+    }
+    if (!stoppedPromise.isCompleted) {
+      stoppedPromise.tryFailure(new RuntimeException("MainActor has stopped unexpectedly") with NoStackTrace)
+    }
     logger.info("Terminated")
-    for (p ← Array(readyPromise, stoppedPromise))
-      p.tryFailure(new RuntimeException("MainActor stopped unexpectedly"))
     super.postStop()
   }
 

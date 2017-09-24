@@ -6,6 +6,7 @@ import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Collections.implicits.InsertableMutableMap
@@ -130,7 +131,7 @@ extends Actor with Stash {
     tried match {
       case Success(o) ⇒ o
       case Failure(t) ⇒
-        logger.error(s"TaskRunner.stepOne failed: $t", t)
+        logger.error(s"TaskRunner.stepOne failed: ${t.toStringWithCauses}", t)
         TaskStepFailed(Bad("TaskRunner.stepOne failed"))
     }
 
