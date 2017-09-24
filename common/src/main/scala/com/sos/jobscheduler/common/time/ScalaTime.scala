@@ -163,7 +163,7 @@ object ScalaTime {
       else if (absSeconds >= 366*24*60*60)
         s"${seconds / (30*24*60*60)}~months"
       else if (absSeconds >= 3*24*60*60)
-        s"${seconds / (24*60*60)}d"
+        s"${seconds / (24*60*60)}days"
       else if (absSeconds >= 3*60*60)
         s"${seconds / (60*60)}h"
       else

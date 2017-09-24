@@ -139,37 +139,43 @@ final class ScalaTimeTest extends FreeSpec {
     }
 
     "pretty" in {
-      Long.MaxValue.s.pretty shouldEqual s"${Long.MaxValue / (366*24*60*60)}~years"   // No overflow
-      0.s.pretty shouldEqual "0s"
-      1.s.pretty shouldEqual "1s"
-      1200.ms.pretty shouldEqual "1.2s"
-      1230.ms.pretty shouldEqual "1.23s"
-      1234.ms.pretty shouldEqual "1.234s"
-      10.ms.pretty shouldEqual "10ms"
-      1.ms.pretty shouldEqual "1ms"
-      (-10).ms.pretty shouldEqual "-10ms"
-      (-1).s.pretty shouldEqual "-1s"
-      179.s.pretty shouldEqual "179s"
-      180.s.pretty shouldEqual "3min"
-      (5*60+1).s.pretty shouldEqual "5min"
-      (-5*60-1).s.pretty shouldEqual "-5min"
-      (5*60*60).s.pretty shouldEqual "5h"
-      (-5*60*60).s.pretty shouldEqual "-5h"
-      (5*24*60*60).s.pretty shouldEqual "5d"
-      (-5*24*60*60).s.pretty shouldEqual "-5d"
-      (366*24*60*60).s.pretty shouldEqual "12~months"
-      (-366*24*60*60).s.pretty shouldEqual "-12~months"
-      (12*366*24*60*60).s.pretty shouldEqual "12~years"
-      (-12*366*24*60*60).s.pretty shouldEqual "-12~years"
-      Duration.ofNanos(123456789).pretty shouldEqual "0.123s"
-      Duration.ofNanos(12345678).pretty shouldEqual "12.3ms"
-      Duration.ofNanos(1234567).pretty shouldEqual "1.23ms"
-      Duration.ofNanos(123456).pretty shouldEqual "0.123ms"
-      Duration.ofNanos(12345).pretty shouldEqual "12.3µs"
-      Duration.ofNanos(1234).pretty shouldEqual "1.23µs"
-      Duration.ofNanos(123).pretty shouldEqual "0.123µs"
-      Duration.ofNanos(12).pretty shouldEqual "12ns"
-      Duration.ofNanos(1).pretty shouldEqual "1ns"
+      assert(0.s.pretty == "0s")
+      assert(Duration.ofNanos(1).pretty == "1ns")
+      assert(Duration.ofNanos(12).pretty == "12ns")
+      assert(Duration.ofNanos(123).pretty == "0.123µs")
+      assert(Duration.ofNanos(1234).pretty == "1.23µs")
+      assert(Duration.ofNanos(12345).pretty == "12.3µs")
+      assert(Duration.ofNanos(123456).pretty == "0.123ms")
+      assert(Duration.ofNanos(1234567).pretty == "1.23ms")
+      assert(10.ms.pretty == "10ms")
+      assert((-10).ms.pretty == "-10ms")
+      assert(Duration.ofNanos(12345678).pretty == "12.3ms")
+      assert(Duration.ofNanos(123456789).pretty == "0.123s")
+      assert(1.ms.pretty == "1ms")
+      assert(1200.ms.pretty == "1.2s")
+      assert(1230.ms.pretty == "1.23s")
+      assert(1234.ms.pretty == "1.234s")
+      assert(1.s.pretty == "1s")
+      assert((-1).s.pretty == "-1s")
+      assert(179.s.pretty == "179s")
+      assert(180.s.pretty == "3min")
+      assert((5*60+1).s.pretty == "5min")
+      assert((-5*60-1).s.pretty == "-5min")
+      assert((5*60*60).s.pretty == "5h")
+      assert((-5*60*60).s.pretty == "-5h")
+      assert((71*60*60).s.pretty == "71h")
+      assert((-71*60*60).s.pretty == "-71h")
+      assert((72*60*60).s.pretty == "3days")
+      assert((-72*60*60).s.pretty == "-3days")
+      assert((365*24*60*60).s.pretty == "365days")
+      assert((-365*24*60*60).s.pretty == "-365days")
+      assert((366*24*60*60).s.pretty == "12~months")
+      assert((-366*24*60*60).s.pretty == "-12~months")
+      assert(((2*366+365)*24*60*60).s.pretty == "36~months")
+      assert((-(2*366+365)*24*60*60).s.pretty == "-36~months")
+      assert((3*366*24*60*60).s.pretty == "3~years")
+      assert((-3*366*24*60*60).s.pretty == "-3~years")
+      assert(Long.MaxValue.s.pretty == s"${Long.MaxValue / (366*24*60*60)}~years")   // No overflow
     }
 
     "toSecondsString" in {
