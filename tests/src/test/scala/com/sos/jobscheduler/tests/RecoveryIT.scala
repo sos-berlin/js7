@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
-import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
@@ -10,7 +9,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -25,7 +24,7 @@ import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderMovedToAgent, OrderMovedToMaster, OrderReady, OrderStdoutWritten, OrderStepFailed, OrderStepStarted, OrderStepSucceeded}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.master.Master
+import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -91,7 +90,7 @@ final class RecoveryIT extends FreeSpec {
               val orderId = (finishedEventSeq: @unchecked) match {
                 case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderFinished.type]] ⇒ eventSeq.stampeds.toVector.last.value.key
               }
-              master.order(orderId) await 99.s shouldEqual
+              master.orderClient.order(orderId) await 99.s shouldEqual
                 Some(Order(
                   orderId,
                   NodeKey(TestJobnetPath, NodeId("END")),
@@ -114,18 +113,14 @@ final class RecoveryIT extends FreeSpec {
     }
   }
 
-  private def runMaster(directory: Path)(body: Master ⇒ Unit): Unit = {
-    withCloser { implicit closer ⇒
-      val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
-      eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
-      injector.instance[Closer].closeWithCloser
-      val master = injector.instance[Master]
-      master.start() await 99.s
-      master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s))  // Will block on recovery until Agents are started: await 99.s
-      body(master)
-      master.executeCommand(MasterCommand.Terminate) await 99.s
-      master.terminated await 99.s
-    }
+  private def runMaster(directory: Path)(body: RunningMaster ⇒ Unit): Unit = {
+    val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
+    eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
+    val master = RunningMaster(injector) await 99.s
+    master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s))  // Will block on recovery until Agents are started: await 99.s
+    body(master)
+    master.executeCommand(MasterCommand.Terminate) await 99.s
+    master.terminated await 99.s
   }
 
   private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[RunningAgent] ⇒ Unit): Unit =

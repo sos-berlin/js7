@@ -1,12 +1,13 @@
 package com.sos.jobscheduler.master
 
+import akka.actor.ActorSystem
 import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAutoCloseable, RichClosersCloser}
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichArray
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.SideEffect._
@@ -18,7 +19,9 @@ import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import scala.collection.immutable.Seq
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 /**
   * JobScheduler Master.
@@ -31,32 +34,32 @@ final class MasterMain(conf: MasterConfiguration) extends HasCloser {
   lazy val injector = Guice.createInjector(new MasterModule(conf)) sideEffect { o ⇒
     closer.registerAutoCloseable(o.instance[Closer])
   }
-  lazy val master = injector.instance[Master]
-
-  JavaShutdownHook.add("MasterMain") {
-    logger.info("Terminate")
-    close()
-    Log4j.shutdown()
-  }.closeWithCloser
-
-  def run(): Nothing = {
-    start() await 1.h
-    master.executeCommand(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration))  // Will block on recovery until Agents are started: await 99.s
-    while (true) sleep(100 * 365 * 24.h)
-    sys.error("Unreachable code for now")
-  }
-
-  def start(): Future[Completed] = {
-    master.start()
+  locally {
+    injector.instance[ActorSystem].whenTerminated onComplete { _ ⇒
+      logger.debug("ActorSystem terminated")
+    }
   }
 }
 
 object MasterMain {
   private val OrderScheduleDuration = 1 * 60.s
+  private val ShutdownTimeout = 5.s
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
-    try run(args.toImmutableSeq)
+    import scala.concurrent.ExecutionContext.Implicits.global
+    try
+      start(MasterConfiguration.fromCommandLine(args.toImmutableSeq))
+        .flatMap { _.terminated }
+        .onComplete {
+          case Success(Completed) ⇒
+            println("JobScheduler Agent terminated")
+            logger.debug("Terminated")
+            Log4j.shutdown()
+            sys.runtime.exit(0)
+          case Failure(t) ⇒
+            exitJava(t)
+        }
     catch { case t: Throwable ⇒
       println(s"JOBSCHEDULER MASTER TERMINATED DUE TO ERROR: $t")
       logger.error(t.toString, t)
@@ -65,9 +68,30 @@ object MasterMain {
     }
   }
 
-  def run(args: Seq[String]): Unit =
-    run(MasterConfiguration.fromCommandLine(args))
+  def start(conf: MasterConfiguration): Future[RunningMaster] =
+    for (master ← RunningMaster(conf)) yield {
+      val hook = JavaShutdownHook.add("MasterMain") {
+        // TODO Interfers with Akkas CoordinatedShutdown shutdown hook
+        onJavaShutdown(master)
+      }
+      master.executeCommand(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration)) // Will block on recovery until Agents are started: await 99.s
+      master.terminated andThen { case _ ⇒
+        hook.remove()
+      }
+      master
+    }
 
-  def run(conf: MasterConfiguration): Unit =
-    autoClosing(new MasterMain(conf)) { _.run() }
+  private def exitJava(throwable: Throwable): Unit = {
+    println(s"JOBSCHEDULER MASTER TERMINATED DUE TO ERROR: ${throwable.toStringWithCauses}")
+    logger.error(throwable.toString, throwable)
+    Log4j.shutdown()
+    sys.runtime.exit(1)
+  }
+
+  private def onJavaShutdown(master: RunningMaster): Unit = {
+    logger.info("Terminating Master due to Java shutdown")
+    master.terminated await ShutdownTimeout
+    master.close()
+    Log4j.shutdown()
+  }
 }

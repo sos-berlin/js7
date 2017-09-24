@@ -26,7 +26,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.master.Master
+import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -127,8 +127,7 @@ object TestMasterAgent {
           </order>
       }
 
-      val master = injector.instance[Master]
-      master.start()
+      val master = RunningMaster(injector) await 99.s
       val startTime = now
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(60.s))
       injector.instance[ActorSystem].actorOf(Props {
@@ -151,7 +150,7 @@ object TestMasterAgent {
               if (finished > printedFinished) {
                 val duration = lastDuration map { _.pretty } getOrElse "-"
                 val delta = finished - printedFinished
-                val diff = s"(diff ${(finished - (now - startTime).getSeconds * conf.orderGeneratorCount)})"
+                val diff = s"(diff ${finished - (now - startTime).getSeconds * conf.orderGeneratorCount})"
                 val notFinished = added - finished
                 val throughput = stopwatch.itemsPerSecondString(finished, "orders")
                 val cpu = getOperatingSystemMXBean match {

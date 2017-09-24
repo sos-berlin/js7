@@ -7,8 +7,10 @@ import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.master.command.MasterCommand
+import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import org.scalatest.FreeSpec
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer
@@ -19,13 +21,13 @@ final class MasterMainIT extends FreeSpec {
 
   "Simplistic test of start" in {
     autoClosing(new TestEnvironment(Nil, temporaryDirectory / "MasterMainIT")) { env ⇒
-      val main = new MasterMain(List(
+      for (runningMaster ← MasterMain.start(MasterConfiguration.fromCommandLine(List(
         "-data-directory=" + env.masterDir,
-        "-http-port=" + httpPort))
-      main.start() await 99.s
-      main.master.executeCommand(MasterCommand.Terminate) await 99.s
-      main.master.terminated await 99.s
-      main.close()
+        "-http-port=" + httpPort)))) yield {
+      runningMaster.executeCommand(MasterCommand.Terminate) await 99.s
+      runningMaster.terminated await 99.s
+      runningMaster.close()
+      }
     }
   }
 }
