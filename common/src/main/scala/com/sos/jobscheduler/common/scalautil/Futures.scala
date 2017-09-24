@@ -84,14 +84,37 @@ object Futures {
         } (SynchronousExecutionContext)
       }
 
-      def await(duration: Duration) = Await.ready(delegate, duration.toFiniteDuration).successValue
+      /**
+        * Awaits the futures completion for the duration or infinite.
+        */
+      def await(duration: Option[Duration]): A =
+        duration match {
+          case Some(o) ⇒ await(o)
+          case None ⇒ awaitInfinite
+        }
 
-      def awaitInfinite = Await.ready(delegate, Inf).successValue
+      def await(duration: Duration): A =
+        Await.ready(delegate, duration.toFiniteDuration).successValue
+
+      def awaitInfinite: A =
+        Await.ready(delegate, Inf).successValue
     }
 
     implicit class RichFutures[A, M[X] <: TraversableOnce[X]](val delegate: M[Future[A]]) extends AnyVal {
+      /**
+        * Awaits the futures completion for the duration or infinite.
+        */
+      def await(duration: Option[Duration])(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+        duration match {
+          case Some(o) ⇒ await(o)
+          case None ⇒ awaitInfinite
+        }
+
       def await(duration: Duration)(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
         Await.result(Future.sequence(delegate)(cbf, ec), duration.toFiniteDuration)
+
+      def awaitInfinite(implicit ec: ExecutionContext, cbf: CanBuildFrom[M[Future[A]], A, M[A]]): M[A] =
+        Await.ready(Future.sequence(delegate)(cbf, ec), Inf).successValue
     }
 
     implicit class RichFutureFuture[A](val delegate: Future[Future[A]]) extends AnyVal {
