@@ -25,6 +25,13 @@ extends Actor {
   override val supervisorStrategy = CatchingSupervisorStrategy[A](terminated, loggingEnabled = loggingEnabled, decider = decider)
   private val child = watch(actorOf(props, "catching"))
 
+  override def postStop() = {
+    if (!terminated.isCompleted) {
+      terminated.tryComplete(onStopped(self))
+    }
+    super.postStop()
+  }
+
   def receive = {
     case Terminated(`child`) ⇒
       if (!terminated.isCompleted) {
