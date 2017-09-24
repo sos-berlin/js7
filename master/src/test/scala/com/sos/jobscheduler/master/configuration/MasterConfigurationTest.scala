@@ -11,9 +11,10 @@ import scala.concurrent.duration.DurationInt
   */
 final class MasterConfigurationTest extends FreeSpec {
 
+  private val configuration = MasterConfiguration.fromCommandLine(Vector("-data-directory=DATA"))
+
   "Empty argument list" in {
-    val c = MasterConfiguration.fromCommandLine(Vector("-data-directory=DATA"))
-    assert(c.copy(config = ConfigFactory.empty) == MasterConfiguration(
+    assert(configuration.copy(config = ConfigFactory.empty) == MasterConfiguration(
       dataDirectory = Paths.get("DATA").toAbsolutePath,
       configDirectoryOption = None,
       webServerBindings = Vector(),
@@ -22,4 +23,13 @@ final class MasterConfigurationTest extends FreeSpec {
       journalSyncOnCommit = true,
       config = ConfigFactory.empty))
   }
+
+  "-sync-journal" in {
+    assert(conf().journalSyncOnCommit)
+    assert(conf("-sync-journal").journalSyncOnCommit)
+    assert(conf("-sync-journal-").journalSyncOnCommit == false)
+  }
+
+  private def conf(args: String*) =
+    MasterConfiguration.fromCommandLine(Vector("-data-directory=DATA") ++ args)
 }

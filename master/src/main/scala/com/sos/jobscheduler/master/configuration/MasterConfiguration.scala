@@ -33,7 +33,8 @@ final case class MasterConfiguration(
   private def withCommandLineArguments(a: CommandLineArguments): MasterConfiguration =
     copy(
       webServerBindings = webServerBindings ++
-        a.optionAs("-http-port=")(As(o ⇒ WebServerBinding.Http(StringToServerInetSocketAddress(o)))))
+        a.optionAs("-http-port=")(As(o ⇒ WebServerBinding.Http(StringToServerInetSocketAddress(o)))),
+      journalSyncOnCommit = a.boolean("-sync-journal", journalSyncOnCommit))
 
   def liveDirectoryOption: Option[Path] = configDirectoryOption map { _ / "live" }
 
