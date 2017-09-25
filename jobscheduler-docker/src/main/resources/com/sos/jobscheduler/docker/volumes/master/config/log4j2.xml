@@ -20,7 +20,7 @@
   <loggers>
     <logger name="com.sos.jobscheduler.master" level="DEBUG"/>
     <logger name="com.sos.jobscheduler.shared" level="DEBUG"/>
-    <root level="DEBUG">
+    <root level="INFO">
       <appenderRef ref="console" level="INFO"/>
       <appenderRef ref="file" level="DEBUG"/>
     </root>

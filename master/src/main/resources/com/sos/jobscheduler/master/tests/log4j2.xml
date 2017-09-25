@@ -17,7 +17,7 @@
     </rollingRandomAccessFile>
   </appenders>
   <loggers>
-    <root level="INFO">
+    <root level="DEBUG">
       <appenderRef ref="console" level="WARN"/>
       <appenderRef ref="file" level="INFO"/>
     </root>

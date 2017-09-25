@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <configuration status="warn" shutdownhook="disable">
   <appenders>
-    <console name="console" target="system_err">
-      <patternlayout pattern="%highlight{%d{ee hh:mm:ss.sss} %-5level{info=info, debug=debug, trace=trace} %logger - %message}%n"/>
+    <console name="console" target="SYSTEM_ERR">
+      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}%n"/>
     </console>
-    <rollingrandomaccessfile name="file"
-                             filename="${env:scheduler_logs}/agent.log"
-                             filepattern="${env:scheduler_logs}/agent-%d{yyyy-mm-dd}-%i.log.gz"
-                             immediateflush="false">
-      <patternlayout pattern="%d{ee hh:mm:ss.sss} %-5level{info=info, debug=debug, trace=trace} %logger - %message%n"
-                     charset="utf-8"/>
+    <rollingRandomAccessFile name="file"
+                             fileName="${env:SCHEDULER_LOGS}/agent.log"
+                             filePattern="${env:SCHEDULER_LOGS}/agent-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="false">
+      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message%n"
+                     charset="UTF-8"/>
       <policies>
         <onstartuptriggeringpolicy/>
         <timebasedtriggeringpolicy/>
         <sizebasedtriggeringpolicy size="1gb"/>
       </policies>
-    </rollingrandomaccessfile>
+    </rollingRandomAccessFile>
   </appenders>
   <loggers>
     <logger name="com.sos.jobscheduler.agent" level="debug"/>
