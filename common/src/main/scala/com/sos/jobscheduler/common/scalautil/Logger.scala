@@ -30,5 +30,5 @@ object Logger {
 
   /** Removes '$' from Scalas companion object class. */
   def normalizeClassName(c: Class[_]): String =
-    c.getName stripSuffix "$"
+    c.getName stripSuffix "$" replaceFirst("^com[.]sos[.]jobscheduler", "jobscheduler")
 }
