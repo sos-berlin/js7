@@ -2,7 +2,7 @@
 <configuration status="WARN">
   <appenders>
     <console name="console" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} [%thread] %-5level %logger - %message}%n"/>
+      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}%n"/>
     </console>
   </appenders>
   <loggers>

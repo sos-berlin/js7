@@ -1,24 +1,28 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<configuration status="WARN" shutdownHook="disable">
+<?xml version="1.0" encoding="utf-8"?>
+<configuration status="warn" shutdownhook="disable">
   <appenders>
-    <console name="console" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level %logger - %message}%n"/>
+    <console name="console" target="system_err">
+      <patternlayout pattern="%highlight{%d{ee hh:mm:ss.sss} %-5level{info=info, debug=debug, trace=trace} %logger - %message}%n"/>
     </console>
-    <rollingRandomAccessFile name="file" fileName="${env:SCHEDULER_LOGS}/agent.log" filePattern="${env:SCHEDULER_LOGS}/agent-%d{yyyy-MM-dd}-%i.log.gz">
-      <patternLayout pattern="%d{EE HH:mm:ss.SSS} [%thread] %-5level %logger - %message%n"/>
+    <rollingrandomaccessfile name="file"
+                             filename="${env:scheduler_logs}/agent.log"
+                             filepattern="${env:scheduler_logs}/agent-%d{yyyy-mm-dd}-%i.log.gz"
+                             immediateflush="false">
+      <patternlayout pattern="%d{ee hh:mm:ss.sss} %-5level{info=info, debug=debug, trace=trace} %logger - %message%n"
+                     charset="utf-8"/>
       <policies>
-        <onStartupTriggeringPolicy/>
-        <timeBasedTriggeringPolicy/>
-        <sizeBasedTriggeringPolicy size="1GB"/>
+        <onstartuptriggeringpolicy/>
+        <timebasedtriggeringpolicy/>
+        <sizebasedtriggeringpolicy size="1gb"/>
       </policies>
-    </rollingRandomAccessFile>
+    </rollingrandomaccessfile>
   </appenders>
   <loggers>
-    <logger name="com.sos.jobscheduler.agent" level="DEBUG"/>
-    <logger name="com.sos.jobscheduler.shared" level="DEBUG"/>
-    <root level="INFO">
-      <appenderRef ref="console" level="INFO"/>
-      <appenderRef ref="file" level="DEBUG"/>
+    <logger name="com.sos.jobscheduler.agent" level="debug"/>
+    <logger name="com.sos.jobscheduler.shared" level="debug"/>
+    <root level="debug">
+      <appenderref ref="console" level="info"/>
+      <appenderref ref="file" level="debug"/>
     </root>
   </loggers>
 </configuration>

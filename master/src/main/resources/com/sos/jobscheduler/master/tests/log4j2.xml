@@ -2,10 +2,13 @@
 <configuration status="WARN" shutdownHook="disable">
   <appenders>
     <console name="console" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} [%thread] %-5level %logger - %message}%n"/>
+      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}%n"/>
     </console>
-    <rollingRandomAccessFile name="file" fileName="${env:SCHEDULER_LOGS}/test.log" filePattern="${env:SCHEDULER_LOGS}/test-%d{yyyy-MM-dd}-%i.log.gz">
-      <patternLayout pattern="%d{EE HH:mm:ss.SSS} [%thread] %-5level %logger - %message%n"/>
+    <rollingRandomAccessFile name="file"
+                             fileName="${env:SCHEDULER_LOGS}/test.log"
+                             filePattern="${env:SCHEDULER_LOGS}/test-%d{yyyy-MM-dd}-%i.log.gz">
+    <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message%n"
+                   charset="UTF-8"/>
       <policies>
         <onStartupTriggeringPolicy/>
         <timeBasedTriggeringPolicy/>
@@ -14,7 +17,7 @@
     </rollingRandomAccessFile>
   </appenders>
   <loggers>
-    <root level="DEBUG">
+    <root level="INFO">
       <appenderRef ref="console" level="WARN"/>
       <appenderRef ref="file" level="INFO"/>
     </root>
