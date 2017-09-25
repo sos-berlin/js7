@@ -112,6 +112,12 @@ final class CollectionsTest extends FreeSpec {
     intercept[DuplicateKeyException] { m.insert(3 → "drei") }
   }
 
+  "isDisjoint with" in {
+    assert(Set(1, 2) isDisjointWith Set(3, 4))
+    assert(!Set(1, 2).isDisjointWith(Set(2, 3)))
+    assert(!Set(1, 2).isDisjointWith(Set(1, 2)))
+  }
+
   "emptyToNone" in {
     emptyToNone("") shouldEqual None
     emptyToNone(null: String) shouldEqual None

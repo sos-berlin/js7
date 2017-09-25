@@ -92,6 +92,11 @@ object Collections {
       }
     }
 
+    implicit class RichSet[A](val delegate: Set[A]) extends AnyVal {
+      def isDisjointWith(o: Set[A]): Boolean =
+        delegate forall (k ⇒ !o.contains(k))
+    }
+
     implicit class RichPairTraversable[A, B](val delegate: Traversable[(A, B)]) extends AnyVal {
       def uniqueToMap = {
         delegate.requireUniqueness { _._1 }
