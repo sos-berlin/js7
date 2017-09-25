@@ -23,6 +23,17 @@ final class MapDiffTest extends FreeSpec {
       MapDiff(Map("b" → "BBB", "c" → "C"), Set("x")))
   }
 
+  "empty"in {
+    val m = Map("a" → "A")
+    assert(MapDiff.empty.applyTo(m) == m)
+  }
+
+  "empty MapDiff.apply retains same object" in {
+    val m = Map("a" → "A")
+    assert(MapDiff.empty.applyTo(m) eq m)
+    assert(MapDiff().applyTo(m) eq m)
+  }
+
   "JSON" in {
     check(MapDiff[String, String](),
       """{

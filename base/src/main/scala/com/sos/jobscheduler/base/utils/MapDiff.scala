@@ -14,6 +14,11 @@ final case class MapDiff[K, V](addedOrUpdated: Map[K, V], removed: Set[K]) {
 }
 
 object MapDiff {
+  private val Empty = MapDiff()
+
+  def empty[K, V]: MapDiff[K, V] =
+    Empty.asInstanceOf[MapDiff[K, V]]
+
   implicit val VariablesDiffJsonFormat: RootJsonFormat[MapDiff[String, String]] =
     jsonFormat[String, String]
 
