@@ -20,7 +20,7 @@ object Processes {
 
   def processToString(process: Process, pid: Option[Pid]) = pid map { _.toString } getOrElse process.toString
 
-  def processToPidOption(process: Process): Option[Pid] = ProcessesJava8pid.processToPid(process)
+  def processToPidOption(process: Process): Option[Pid] = ProcessPidRetriever.processToPid(process)
 
   final case class Pid(number: Long) extends GenericLong {
     def string = number.toString
