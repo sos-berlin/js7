@@ -85,11 +85,11 @@ object WebLogDirectives {
     val sb = new StringBuilder(500)
     sb.append(remoteAddress.toOption map { _.getHostAddress } getOrElse "-")
     sb.append(" ")
-    sb.append(request.method)
+    sb.append(request.method.value)
     sb.append(' ')
     sb.append(request.uri)
     sb.append(' ')
-    sb.append(request.protocol)
+    sb.append(request.protocol.value)
     response match {
       case response: HttpResponse ⇒
         sb.append(' ')
@@ -127,5 +127,5 @@ object WebLogDirectives {
   }
 
   private def toLogMessage(request: HttpRequest, throwable: Throwable) =
-    s"Error while handling ${request.method} ${request.uri}: ${throwable.toStringWithCauses}"
+    s"Error while handling ${request.method.value} ${request.uri}: ${throwable.toStringWithCauses}"
 }
