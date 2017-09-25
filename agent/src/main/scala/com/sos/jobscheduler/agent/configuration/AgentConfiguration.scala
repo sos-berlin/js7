@@ -213,7 +213,7 @@ object AgentConfiguration {
   private def defaultLogDirectory(data: Path) = data / "logs"
 
   object forTest {
-    private val TaskServerLog4jResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/log4j.xml")
+    private val TaskServerLog4jResource = JavaResource("com/sos/jobscheduler/taskserver/configuration/log4j2.xml")
 
     def apply(configAndData: Option[Path] = None, httpPort: Int = findRandomFreeTcpPort(), config: Config = ConfigFactory.empty) =
       fromDirectories(
