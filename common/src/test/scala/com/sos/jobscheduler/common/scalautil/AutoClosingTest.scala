@@ -7,7 +7,7 @@ import java.io.Closeable
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import org.scalatest.mock.MockitoSugar.mock
+import org.scalatest.mockito.MockitoSugar.mock
 
 final class AutoClosingTest extends FreeSpec {
 

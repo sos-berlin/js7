@@ -7,7 +7,7 @@ import com.sos.jobscheduler.taskserver.data.TaskServerArguments
 import java.io.File
 import java.nio.file.Paths
 import org.scalatest.Matchers._
-import org.scalatest.mock.MockitoSugar.mock
+import org.scalatest.mockito.MockitoSugar.mock
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.util.Random
 

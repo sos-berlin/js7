@@ -4,7 +4,7 @@ import com.sos.jobscheduler.minicom.idispatch.{DISPATCH_METHOD, DISPATCH_PROPERT
 import com.sos.jobscheduler.taskserver.modules.javamodule.JavaInvokerTest._
 import org.mockito.Mockito._
 import org.scalatest.FreeSpec
-import org.scalatest.mock.MockitoSugar.mock
+import org.scalatest.mockito.MockitoSugar.mock
 
 /**
  * @author Joacim Zschimmer

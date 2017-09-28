@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
 import com.sos.jobscheduler.taskserver.dotnet.SimpleDotnetTest._
 import com.sos.jobscheduler.taskserver.dotnet.api.{DotnetModuleReference, TaskContext}
 import org.mockito.Mockito._
-import org.scalatest.mock.MockitoSugar.mock
+import org.scalatest.mockito.MockitoSugar.mock
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 
 /**
