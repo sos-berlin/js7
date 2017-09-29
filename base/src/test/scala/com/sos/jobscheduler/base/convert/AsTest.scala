@@ -23,6 +23,19 @@ final class AsTest extends FreeSpec {
     intercept[NumberFormatException] { conv("-2147483649") }
   }
 
+  "StringAsBigDecimal" in {
+    val conv = implicitly[As[String, BigDecimal]]
+    intercept[NumberFormatException] { conv("") }
+    intercept[NumberFormatException] { conv(" 1") }
+    intercept[NumberFormatException] { conv("1 ") }
+    intercept[NumberFormatException] { conv("1x") }
+    assert(conv("123") == BigDecimal(123))
+    assert(conv("123.1") == BigDecimal("123.1"))
+    assert(conv("+123") == BigDecimal(123))
+    assert(conv("-123") == BigDecimal(-123))
+    intercept[NumberFormatException] { conv("1,0") }
+  }
+
   "StringAsBoolean" in {
     val conv = implicitly[As[String, Boolean]]
     intercept[IllegalArgumentException] { conv("") }

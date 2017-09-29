@@ -13,9 +13,7 @@ trait As[V, W] {
 object As {
 
   def apply[V, W](asW: V ⇒ W): As[V, W] =
-    new As[V, W] {
-      def apply(v: V) = asW(v)
-    }
+    v ⇒ asW(v)
 
   def convert[V, W](from: V)(implicit to: As[V, W]): W =
     to(from)
@@ -40,6 +38,9 @@ object As {
 
   implicit val StringAsLong: As[String, Long] =
     As(java.lang.Long.parseLong)
+
+  implicit val StringAsBigDecimal: As[String, BigDecimal] =
+    As(o ⇒ new java.math.BigDecimal(o))
 
   def asAbsolutePath: As[String, Path] =
     As(o ⇒ StringAsPath(o).toAbsolutePath)
