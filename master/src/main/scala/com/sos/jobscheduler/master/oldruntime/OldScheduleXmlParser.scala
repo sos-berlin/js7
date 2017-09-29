@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.oldruntime
 
 import com.sos.jobscheduler.base.convert.As
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
+import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time._
 import javax.xml.stream.XMLEventReader
 
@@ -38,7 +39,7 @@ object OldScheduleXmlParser{
             RepeatPeriod(
               begin = attributeMap.as[LocalTime]("begin", LocalTime.MIN),
               end = attributeMap.as[ExtendedLocalTime]("end", ExtendedLocalTime.EndOfDay),
-              absoluteRepeat = Duration.ofSeconds(attributeMap.as[Int]("absolute_repeat")))
+              absoluteRepeat = bigDecimalToDuration(attributeMap.as[BigDecimal]("absolute_repeat")))
               //startOnce = attributeMap.as[Boolean]("start_once", default.startOnce))
         }
       }
