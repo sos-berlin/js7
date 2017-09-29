@@ -93,7 +93,7 @@ extends Actor with Stash {
     case msg: Input.RegisterMe ⇒
       handleRegisterMe(msg)
 
-    case msg @ Input.Store(keyedEvents, replyTo, noSync) ⇒
+    case Input.Store(keyedEvents, replyTo, noSync) ⇒
       val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]]) }}
       Try {
         stampedOptions.flatten map { _.toJson }
