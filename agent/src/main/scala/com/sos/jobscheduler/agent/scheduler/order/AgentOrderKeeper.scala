@@ -4,7 +4,6 @@ import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachJobnet, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
@@ -123,7 +122,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   private def ready: Receive = journaling orElse {
-    case Input.ExternalCommand(cmd: OrderCommand, response) ⇒
+    case Input.ExternalCommand(cmd, response) ⇒
       response.completeWith(processOrderCommand(cmd))
 
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
@@ -235,27 +234,23 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       name = encodeAsActorName(s"Order-${orderId.string}")))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
-    orderRegister(order.id).order = order
-    handleOrderEvent(order.id, event)
-  }
-
-  private def handleOrderEvent(orderId: OrderId, event: OrderEvent): Unit = {
-    val orderEntry = orderRegister(orderId)
-    import orderEntry.order
+    val orderEntry = orderRegister(order.id)
     event match {
       case _: OrderAttached ⇒
+        orderEntry.order = order
         handleAddedOrder(order.id)
 
       case e: OrderStepEnded ⇒
-        for (jobNode ← jobnetRegister.nodeKeyToJobNodeOption(order.nodeKey);
-             jobEntry ← jobRegister.get(jobNode.jobPath)) {
-          jobEntry.queue -= order.id
-        }
         assert(order.nodeId == e.nextNodeId)
         assert(order.state == Order.Waiting)
+        val fromNode = jobnetRegister.nodeKeyToJobNodeOption(orderEntry.order.nodeKey).get
+        for (jobEntry ← jobRegister.get(fromNode.jobPath))  // Job may be stopped
+          jobEntry.queue -= order.id
+        orderEntry.order = order
         onOrderAvailable(orderEntry)
 
       case _ ⇒
+        orderEntry.order = order
     }
   }
 
@@ -307,13 +302,20 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   private def tryStartStep(jobEntry: JobEntry): Unit = {
     jobEntry.queue.dequeue() match {
       case Some(orderId) ⇒
-        val orderEntry = orderRegister(orderId)
-        jobnetRegister.nodeKeyToNodeOption(orderEntry.order.nodeKey) match {
-          case Some(node: Jobnet.JobNode) ⇒
-            startStep(orderEntry, node, jobEntry)
-          case _ ⇒
-            logger.error(s"${orderEntry.order.id}: ${orderEntry.order.nodeKey} does not denote a JobNode")
+        orderRegister.get(orderId) match {
+          case None ⇒
+            logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobPath}. Order has been removed?")  // TODO Why can this happen?
+
+          case Some(orderEntry) ⇒
+            jobnetRegister.nodeKeyToNodeOption(orderEntry.order.nodeKey) match {
+              case Some(node: Jobnet.JobNode) ⇒
+                startStep(orderEntry, node, jobEntry)
+              case _ ⇒
+                logger.error(s"${orderEntry.order.id}: ${orderEntry.order.nodeKey} does not denote a JobNode")
+            }
+            jobEntry.waitingForOrder = false
         }
+
       case None ⇒
         jobEntry.waitingForOrder = true
     }
@@ -371,7 +373,7 @@ object AgentOrderKeeper {
   object Input {
     final case class Start(jobs: Seq[(JobPath, ActorRef)]) extends Input
     final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[EventQueue.MyEventSeq]) extends Input
-    final case class ExternalCommand(command: AgentCommand, response: Promise[Response])
+    final case class ExternalCommand(command: OrderCommand, response: Promise[Response])
     final case object Terminate
   }
 
