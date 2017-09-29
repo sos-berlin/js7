@@ -29,7 +29,7 @@ object Dependencies {
 
   val tagging             = "com.softwaremill.common" %% "tagging" % "2.2.0"
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
-  val guice               = "com.google.inject" % "guice" % "3.0" :: javaxInject :: Nil
+  val guice               = "com.google.inject" % "guice" % "4.1.0" :: javaxInject :: Nil
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.3.1"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
