@@ -6,6 +6,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -36,7 +37,7 @@ final class JavaProcessIT extends FreeSpec {
         mainClass = JavaProcessIT.getClass.getName stripSuffix "$", // Scala object class name ends with '$'
         arguments = Arguments)
       try {
-        val returnCode = process.waitForTermination()
+        val returnCode = process.terminated await 99.s
         if (returnCode != ReturnCode(77)) {
           info(stdFileMap(Stdout).contentString)
           info(stdFileMap(Stderr).contentString)

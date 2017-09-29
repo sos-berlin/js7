@@ -30,7 +30,7 @@ final class ShellScriptProcessTest extends FreeSpec {
     val exitCode = 42
     val processConfig = ProcessConfiguration(additionalEnvironment = Map(envName → envValue))
     val shellProcess = startShellScript(processConfig, name = "TEST", s"exit $exitCode")
-    val returnCode = shellProcess.waitForTermination()
+    val returnCode = shellProcess.terminated await 99.s
     assert(returnCode == ReturnCode(exitCode))
     assert(!shellProcess.closed.isCompleted)
     shellProcess.close()
@@ -60,7 +60,7 @@ final class ShellScriptProcessTest extends FreeSpec {
           val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-shebang")
           val processConfig = ProcessConfiguration(stdFileMap)
           val shellProcess = startShellScript(processConfig, name = "TEST", scriptString = scriptString)
-          shellProcess.waitForTermination()
+          shellProcess.terminated await 99.s
           shellProcess.close()
           assert(stdFileMap(Stdout).contentString ==
             """INTERPRETER-START
@@ -98,7 +98,7 @@ final class ShellScriptProcessTest extends FreeSpec {
       shellProcess.sendProcessSignal(SIGKILL)
       waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
       assert(!shellProcess.isAlive)
-      val rc = shellProcess.waitForTermination()
+      val rc = shellProcess.terminated await 99.s
       assert(rc == (
         if (isWindows) ReturnCode(1/* This is Java destroy()*/)
         else if (isSolaris) ReturnCode(SIGKILL.value)  // Solaris: No difference between exit 9 and kill !!!
@@ -120,7 +120,7 @@ final class ShellScriptProcessTest extends FreeSpec {
       shellProcess.sendProcessSignal(SIGTERM)
       waitForCondition(10.s, 100.ms) { !shellProcess.isAlive }
       assert(!shellProcess.isAlive)
-      val rc = shellProcess.waitForTermination()
+      val rc = shellProcess.terminated await 99.s
       assert(rc == ReturnCode(7))
       shellProcess.close()
     }

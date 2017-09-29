@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
-import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger, SetOnce}
+import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.job.ReturnCode
@@ -41,19 +41,21 @@ extends HasCloser with ClosedFuture {
    * UTF-8 encoded stdin.
    */
   lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
-  private val terminatedPromiseOnce = new SetOnce[Promise[ReturnCode]]
 
-  private lazy val _terminated: Future[ReturnCode] =
-    (terminatedPromiseOnce getOrUpdate {
-      Promise[ReturnCode]() sideEffect {
-        _ completeWith namedThreadFuture("Process watch") {
-          val returnCode = waitForProcessTermination(process)
-          logger.debug(s"Process ended with $returnCode")
-          returnCode
+  private lazy val _terminated: Future[ReturnCode] = {
+    val promise =
+      if (process.isAlive)
+        Promise[ReturnCode]() sideEffect { _ completeWith
+          namedThreadFuture("Process watch") {
+            val returnCode = waitForProcessTermination(process)
+            logger.debug(s"Process ended with $returnCode")
+            returnCode
+          }
         }
-      }
-    })
-    .future
+      else
+        Promise.successful(ReturnCode(process.exitValue))
+    promise.future
+  }
 
   logger.debug(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
 
@@ -105,13 +107,6 @@ extends HasCloser with ClosedFuture {
 
   @TestOnly
   private[task] final def isAlive = process.isAlive
-
-  final def waitForTermination(): ReturnCode = {
-    val isMyPromise = terminatedPromiseOnce trySet Promise[ReturnCode]()
-    val returnCode = waitForProcessTermination(process)
-    if (isMyPromise) terminatedPromiseOnce().success(returnCode)
-    ReturnCode(process.exitValue)
-  }
 
   final def waitForTermination(duration: Duration): Option[ReturnCode] = {
     val exited = blocking {

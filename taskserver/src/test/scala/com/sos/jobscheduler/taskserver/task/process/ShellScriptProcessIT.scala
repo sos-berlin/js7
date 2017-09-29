@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.task.process
 
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.{RichFutures, _}
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
@@ -29,7 +29,7 @@ final class ShellScriptProcessIT extends FreeSpec {
     val processes = processFutures await 300.s
     waitForCondition(300.s, 100.ms) { !(processes exists { _.isAlive }) }
     for (p ← processes) {
-      val rc = p.waitForTermination()
+      val rc = p.terminated await 99.s
       assert(rc == ReturnCode(0))
       p.close()
     }
