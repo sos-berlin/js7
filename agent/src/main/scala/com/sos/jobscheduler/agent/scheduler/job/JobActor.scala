@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
+import akka.pattern.pipe
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
@@ -80,19 +81,28 @@ extends Actor with Stash {
     case Input.OrderAvailable ⇒
       handleIfReadyForOrder()
 
-    case Command.ProcessOrder(order, stdoutStderrWriter) if waitingForNextOrder ⇒
-      logger.trace(s"ProcessOrder(${order.id})")
+    case cmd: Command.ProcessOrder if waitingForNextOrder ⇒
+      logger.trace(s"ProcessOrder(${cmd.order.id})")
+      assert(taskCount < jobConfiguration.taskLimit, "Task limit exceeded")
       val fileSet = filePool.get()
-      val taskRunner = newTaskRunner(TaskConfiguration(jobConfiguration, shellFile, fileSet.shellReturnValuesProvider))
-      orderToTask.insert(order.id → Entry(fileSet, taskRunner))
-      val sender = this.sender()
-      taskRunner.processOrder(order, stdoutStderrWriter)
-        .andThen { case _ ⇒ taskRunner.terminate() }
-        .onComplete { triedStepEnded ⇒
-          self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
-        }
-      waitingForNextOrder = false
-      handleIfReadyForOrder()
+      newTaskRunner(TaskConfiguration(jobConfiguration, shellFile, fileSet.shellReturnValuesProvider))
+        .map(runner ⇒ Internal.TaskRegistered(cmd, fileSet, runner))
+        .pipeTo(self)(sender())
+
+    case Internal.TaskRegistered(Command.ProcessOrder(order, stdoutStderrWriter), fileSet, taskRunner) ⇒
+      if (terminating) {
+        taskRunner.kill(SIGKILL)  // Kill before start
+      } else {
+        orderToTask.insert(order.id → Entry(fileSet, taskRunner))
+        val sender = this.sender()
+        taskRunner.processOrder(order, stdoutStderrWriter)
+          .andThen { case _ ⇒ taskRunner.terminate()/*for now (shell only), returns immediately s a completed Future*/ }
+          .onComplete { triedStepEnded ⇒
+            self.!(Internal.TaskFinished(order, triedStepEnded))(sender)
+          }
+        waitingForNextOrder = false
+        handleIfReadyForOrder()
+      }
 
     case Internal.TaskFinished(order, triedStepEnded) ⇒
       filePool.release(orderToTask(order.id).fileSet)
@@ -187,6 +197,7 @@ object JobActor {
   }
 
   private object Internal {
+    final case class TaskRegistered(processOrder: Command.ProcessOrder, fileSet: FilePool.FileSet, taskRunner: TaskRunner)
     final case class TaskFinished(order: Order[Order.State], triedStepEnded: Try[TaskStepEnded])
     final case object KillAll extends DeadLetterSuppression
   }

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.task
 
 import akka.actor.ActorDSL._
-import akka.actor.{Props, Terminated}
+import akka.actor.Terminated
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
@@ -39,7 +39,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   private implicit lazy val agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory)).finishAndProvideFiles
   private implicit lazy val timerService = new TimerService(idleTimeout = Some(1.s))
   private implicit lazy val me = inbox()
-  private lazy val actor = actorSystem.actorOf(Props { new TaskRegisterActor(agentConfiguration, timerService) })
+  private lazy val actor = actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration, timerService) )
   private lazy val handle = {
     implicit val askTimeout = Timeout(9.seconds)
     new TaskRegister(actor)
@@ -63,8 +63,8 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "Add" in {
-    handle.add(aTask)
-    handle.add(bTask)
+    handle.add(aTask) await 99.s
+    handle.add(bTask) await 99.s
     assert((handle.overview await 99.s) == TaskRegisterOverview(2, 2))
   }
 
@@ -98,7 +98,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "Add (2)" in {
-    handle.add(cTask)
+    handle.add(cTask) await 99.s
     assert((handle.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 2, totalTaskCount = 3))
     assert((handle.taskOverviews await 99.s).toSet == Set(bTask.overview, cTask.overview))
   }

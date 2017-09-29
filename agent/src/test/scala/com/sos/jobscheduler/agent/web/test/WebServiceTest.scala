@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.web.test
 
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.web.common.{AgentWebService, LoginSession}
 import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
@@ -19,7 +20,9 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
   protected def uriPathPrefix = ""
 
   protected val sessionRegister = new SessionRegister[LoginSession]
-  protected val actorSystem = system
+
+  override def testConfig = AgentConfiguration.DefaultsConfig
+  protected final def actorSystem = system
   protected val config = WebLogDirectives.TestConfig
 
   implicit val routeTestTimeout = RouteTestTimeout(5.seconds)
@@ -29,6 +32,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
 
   override protected def afterAll() = {
     closer.close()
+    cleanUp()
     super.afterAll()
   }
 

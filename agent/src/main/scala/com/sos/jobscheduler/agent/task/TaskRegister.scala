@@ -9,6 +9,8 @@ import com.sos.jobscheduler.agent.task.TaskRegisterActor.Command
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.SIGTERM
+import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
 
@@ -20,12 +22,15 @@ final class TaskRegister(actor: ActorRef)(implicit askTimeout: Timeout) {
   /**
     * TaskRegister removes task automatically when task terminates.
     */
-  def add(task: BaseAgentTask): Unit =
-    actor ! TaskRegisterActor.Input.Add(task)
+  def add(task: BaseAgentTask): Future[Completed] =
+    promiseFuture[Completed] { promise ⇒
+      actor ! TaskRegisterActor.Input.Add(task, promise)
+    }
 
   /**
     * TaskRegister removes task automatically when task terminates.
     */
+  @TestOnly
   def remove(taskId: AgentTaskId): Unit =
     actor ! TaskRegisterActor.Input.Remove(taskId)
 

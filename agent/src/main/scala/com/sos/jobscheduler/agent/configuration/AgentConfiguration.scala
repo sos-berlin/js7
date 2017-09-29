@@ -158,7 +158,7 @@ final case class AgentConfiguration(
 object AgentConfiguration {
   val InvalidAuthenticationDelay = 1.s
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
-  private[configuration] lazy val DefaultsConfig = Configs.loadResource(
+  lazy val DefaultsConfig = Configs.loadResource(
     JavaResource("com/sos/jobscheduler/agent/configuration/agent.conf"))
 
   def apply(args: Seq[String]) = CommandLineArguments.parse(args) { a ⇒

@@ -44,7 +44,7 @@ final class JobKeeperTest extends FreeSpec {
         implicit val timeout = Timeout(99.seconds)
         implicit val timerService = injector.instance[TimerService]
         implicit val newTaskRunner = injector.instance[TaskRunner.Factory]
-        val taskRegister = new TaskRegister(actorSystem.actorOf(Props { new TaskRegisterActor(agentConfiguration, timerService)}))
+        val taskRegister = new TaskRegister(actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration, timerService)))
 
         for (_ ← 1 to 5) {
           val stopwatch = new Stopwatch

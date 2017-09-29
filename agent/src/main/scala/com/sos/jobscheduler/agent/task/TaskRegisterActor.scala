@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.agent.task
 
-import akka.actor.{Actor, Cancellable, DeadLetterSuppression, Status}
+import akka.actor.{Actor, ActorSystem, Cancellable, DeadLetterSuppression, PoisonPill, Props, Status}
+import akka.dispatch.{PriorityGenerator, UnboundedStablePriorityMailbox}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.views.TaskRegisterOverview
@@ -13,9 +14,11 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.job.TaskId
+import com.typesafe.config.Config
 import java.time.Instant
 import java.time.Instant.now
 import scala.collection.mutable
+import scala.concurrent.Promise
 import scala.util.control.NonFatal
 
 /**
@@ -49,13 +52,14 @@ final class TaskRegisterActor(agentConfiguration: AgentConfiguration, timerServi
 
   private def handleInput(input: Input): Unit =
     input match {
-      case Input.Add(task) ⇒
+      case Input.Add(task, promise) ⇒
         idToTask += task.id → task
         totalCount += 1
         for (o ← crashKillScriptOption) o.add(task.id, task.pidOption, TaskId(0), task.jobPath)
         task.terminated onComplete { _ ⇒
           self ! Input.Remove(task.id)
         }
+        promise.success(Completed)
 
       case Input.Remove(taskId) ⇒
         idToTask -= taskId
@@ -123,12 +127,16 @@ final class TaskRegisterActor(agentConfiguration: AgentConfiguration, timerServi
   override def toString = s"TaskRegisterActor(${idToTask.size} active tasks, $totalCount total)"
 }
 
-private[task] object TaskRegisterActor {
+object TaskRegisterActor {
   private val logger = Logger(getClass)
+
+  def props(agentConfiguration: AgentConfiguration, timerService: TimerService) =
+    Props { new TaskRegisterActor(agentConfiguration, timerService) }
+      .withDispatcher("jobscheduler.agent.internal.TaskRegisterActor.mailbox")
 
   sealed trait Input
   object Input {
-    final case class Add(task: BaseAgentTask) extends Input
+    final case class Add(task: BaseAgentTask, response: Promise[Completed]) extends Input
     final case class Remove(taskId: AgentTaskId) extends Input
   }
 
@@ -146,3 +154,13 @@ private[task] object TaskRegisterActor {
     final case object KillAll extends Internal with DeadLetterSuppression
   }
 }
+
+private[task] final class TaskRegisterActorMailbox(settings: ActorSystem.Settings, config: Config)
+extends UnboundedStablePriorityMailbox(
+  PriorityGenerator {
+    case _: Input.Remove ⇒ 0  // Process with priority, to avoid task and process overflow
+    case PoisonPill ⇒ 1
+    case _: Command ⇒ 2
+    case _: Input.Add ⇒ 3
+    case _ ⇒ 3
+  })

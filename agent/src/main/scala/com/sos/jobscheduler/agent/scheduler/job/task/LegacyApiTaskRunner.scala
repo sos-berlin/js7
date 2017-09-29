@@ -118,6 +118,6 @@ object LegacyApiTaskRunner {
   @Singleton
   final case class Factory @Inject private(newTask: AgentTaskFactory)(implicit ec: ExecutionContext) extends TaskRunner.Factory {
     def apply(conf: TaskConfiguration) =
-      new LegacyApiTaskRunner(conf, newTask)
+      Future.successful(new LegacyApiTaskRunner(conf, newTask))
   }
 }

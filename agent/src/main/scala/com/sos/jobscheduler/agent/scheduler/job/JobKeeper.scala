@@ -51,11 +51,11 @@ extends Actor with Stash {
     }
 
   private val registeringNewTaskRunner = new TaskRunner.Factory {
-    def apply(conf: TaskConfiguration) = {
-      val taskRunner = newTaskRunner(conf)
-      taskRegister.add(taskRunner.asBaseAgentTask)  // TaskRegisterActor removes task automatically
-      taskRunner
-    }
+    def apply(conf: TaskConfiguration) =
+      for {
+        taskRunner ← newTaskRunner(conf)
+        _ ← taskRegister.add(taskRunner.asBaseAgentTask)  // TaskRegisterActor removes task automatically
+      } yield taskRunner
   }
 
   private def starting(pathToActor: Map[JobPath, ActorRef], commander: ActorRef): Unit = {

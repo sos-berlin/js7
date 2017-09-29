@@ -61,7 +61,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
           Order.InProcess,
           Map("a" → "A"))
         implicit val x = injector.instance[StandardAgentTaskFactory]
-        val taskRunner = newTaskRunner(taskConfiguration)
+        val taskRunner = newTaskRunner(taskConfiguration) await 99.s
         val stdoutWriter = new TestStdoutStderrWriter
         val stderrWriter = new TestStdoutStderrWriter
         val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)

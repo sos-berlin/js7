@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.agent.web.views
 
-import akka.actor.Props
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
@@ -12,6 +11,7 @@ import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.agent.web.views.TaskWebServiceTest._
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.common.process.Processes.Pid
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.jobnet.JobPath
@@ -29,7 +29,7 @@ import spray.json._
 final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWebService {
 
   protected lazy val taskRegister = {
-    val actor = actorSystem.actorOf(Props { new TaskRegisterActor(AgentConfiguration.forTest(), new TimerService(idleTimeout = Some(1.s))) })
+    val actor = actorSystem.actorOf(TaskRegisterActor.props(AgentConfiguration.forTest(), new TimerService(idleTimeout = Some(1.s))))
     new TaskRegister(actor)(99.seconds)
   }
 
@@ -43,7 +43,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
       def id = overview.taskId
       def terminated = Promise().future
       def sendProcessSignal(signal: ProcessSignal) = {}
-    })
+    }) await 99.s
     super.beforeAll()
   }
 

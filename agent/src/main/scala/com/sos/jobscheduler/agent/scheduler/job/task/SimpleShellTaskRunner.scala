@@ -53,6 +53,7 @@ extends TaskRunner {
   private val variablePrefix = TaskArguments.DefaultShellVariablePrefix
   private lazy val returnValuesProvider = new ShellReturnValuesProvider
   private val richProcessOnce = new SetOnce[RichProcess]
+  private var killedBeforeStart = false
 
   def terminate(): Future[Completed] =
     richProcessOnce.toOption match {
@@ -90,27 +91,36 @@ extends TaskRunner {
   }
 
   private def startProcess(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[RichProcess] = {
-    val env = {
-      val params = conf.jobConfiguration.variables ++ order.variables
-      val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
-      /*environment +*/ paramEnv + returnValuesProvider.env
-    }
-    val processConfiguration = ProcessConfiguration(
-      stdFileMap = Map(),
-      additionalEnvironment = env,
-      agentTaskIdOption = Some(agentTaskId),
-      killScriptOption = agentConfiguration.killScript)
-    synchronizedStartProcess {
-      startPipedShellScript(conf.shellFile, processConfiguration, stdChannels)
-    } andThen { case Success(richProcess) ⇒
-      terminatedPromise.completeWith(richProcess.terminated map { _ ⇒ Completed })
-      richProcessOnce := richProcess
+    if (killedBeforeStart)
+      Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
+    else {
+      val env = {
+        val params = conf.jobConfiguration.variables ++ order.variables
+        val paramEnv = params map { case (k, v) ⇒ (variablePrefix concat k.toUpperCase) → v }
+        /*environment +*/ paramEnv + returnValuesProvider.env
+      }
+      val processConfiguration = ProcessConfiguration(
+        stdFileMap = Map(),
+        additionalEnvironment = env,
+        agentTaskIdOption = Some(agentTaskId),
+        killScriptOption = agentConfiguration.killScript)
+      synchronizedStartProcess {
+        startPipedShellScript(conf.shellFile, processConfiguration, stdChannels)
+      } andThen { case Success(richProcess) ⇒
+        terminatedPromise.completeWith(richProcess.terminated map { _ ⇒ Completed })
+        richProcessOnce := richProcess
+      }
     }
   }
 
-  def kill(signal: ProcessSignal): Unit = {
-    for (p ← richProcessOnce) p.sendProcessSignal(signal)
-  }
+  def kill(signal: ProcessSignal): Unit =
+    richProcessOnce.toOption match {
+      case Some(richProcess) ⇒
+        richProcess.sendProcessSignal(signal)
+      case None ⇒
+        terminatedPromise.tryFailure(new RuntimeException(s"$agentTaskId killed before start"))
+        killedBeforeStart = true
+    }
 
   override def toString = s"SimpleShellTaskRunner($agentTaskId ${conf.jobPath})"
 }
@@ -128,7 +138,7 @@ object SimpleShellTaskRunner {
   {
     def apply(conf: TaskConfiguration) = {
       val agentTaskId = agentTaskIdGenerator.next()
-      new SimpleShellTaskRunner(conf, agentTaskId, synchronizedStartProcess, agentConfiguration)
+      Future.successful(new SimpleShellTaskRunner(conf, agentTaskId, synchronizedStartProcess, agentConfiguration))
     }
   }
 }

@@ -51,7 +51,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
   private val jobKeeper = {
-    val taskRegister = new TaskRegister(actorOf(Props { new TaskRegisterActor(agentConfiguration, timerService) }, "TaskRegister"))
+    val taskRegister = new TaskRegister(actorOf(TaskRegisterActor.props(agentConfiguration, timerService), "TaskRegister"))
     actorOf(Props { new JobKeeper(liveDirectory, newTaskRunner, taskRegister, timerService) }, "JobKeeper")
   }
   private val masterToOrderKeeper = new MasterRegister
@@ -185,12 +185,11 @@ extends KeyedEventJournalingActor[AgentEvent] {
         (a ? AgentOrderKeeper.Input.Terminate).mapTo[Done])
     .map { _ ⇒ AgentCommand.Accepted }
 
-  private def update(keyedEvent: KeyedEvent[AgentEvent]): Unit = {
+  private def update(keyedEvent: KeyedEvent[AgentEvent]): Unit =
     keyedEvent match {
       case KeyedEvent(userId: UserId, AgentEvent.MasterAdded) ⇒
         addOrderKeeper(userId)
     }
-  }
 
   private def addOrderKeeper(userId: UserId): ActorRef = {
     val actor = actorOf(
