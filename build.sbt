@@ -482,6 +482,7 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`)
     import Dependencies._
     libraryDependencies ++=
       scalaTest % "test" ++
+      akkaHttpTestkit % "test" ++  // For IntelliJ
       mockito % "test" ++
       log4j % "test"
   }
