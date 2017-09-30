@@ -2,17 +2,20 @@ package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.shared.event.journal.JsonJournalActor.{EventsHeader, SnapshotsHeader}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer._
 import java.nio.file.{Files, Path}
+import scala.annotation.tailrec
 import scala.util.control.NonFatal
-import spray.json.JsValue
+import spray.json.{JsObject, JsValue}
 
 /**
   * @author Joacim Zschimmer
@@ -34,8 +37,15 @@ trait JsonJournalRecoverer[E <: Event] {
   final def recoverAll(): Unit = {
     try
       autoClosing(newJsonIterator()) { jsonIterator ⇒
-        while (jsonIterator.hasNext) {
-          recoverJsValue(jsonIterator.next())
+        var separator: Option[JsValue] = jsonIterator.hasNext option jsonIterator.next()
+        if (separator contains SnapshotsHeader) {
+          separator = recoverJsValues(jsonIterator, recoverSnapshotJsValue)
+        }
+        if (separator contains EventsHeader) {
+          separator = recoverJsValues(jsonIterator, recoverEventJsValue)
+        }
+        for (jsValue ← separator) {
+          sys.error(s"Unexpected JSON value in '$journalFile': $jsValue")
         }
       }
     catch {
@@ -56,13 +66,18 @@ trait JsonJournalRecoverer[E <: Event] {
       JsonFileIterator.Empty
     }
 
-  private def recoverJsValue(jsValue: JsValue): Unit = {
-    if (eventJsonFormat canDeserialize jsValue.asJsObject) {
-      recoverEventJsValue(jsValue)
-    } else {
-      recoverSnapshotJsValue(jsValue)
-    }
-  }
+  @tailrec
+  private def recoverJsValues(jsonIterator: Iterator[JsValue], recover: JsValue ⇒ Unit): Option[JsValue] =
+    if (jsonIterator.hasNext)
+      jsonIterator.next() match {
+        case o: JsObject ⇒
+          recover(o)
+          recoverJsValues(jsonIterator, recover)
+        case o ⇒
+          Some(o)
+      }
+    else
+      None
 
   private def recoverSnapshotJsValue(jsValue: JsValue): Unit = {
     snapshotCount += 1

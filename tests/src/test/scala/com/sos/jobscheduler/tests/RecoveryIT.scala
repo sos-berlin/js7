@@ -40,6 +40,7 @@ import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
+import spray.json.JsObject
 
 /**
   * @author Joacim Zschimmer
@@ -130,7 +131,7 @@ final class RecoveryIT extends FreeSpec {
     import AgentActor.MyJournalMeta.eventJsonFormat
     autoClosing(new JsonFileIterator(JsonJournalMeta.Header, in ⇒ new GZIPInputStream(in), journalFile)) {
       _.toVector collect {
-        case o if eventJsonFormat.canDeserialize(o.asJsObject) ⇒
+        case o: JsObject if eventJsonFormat.canDeserialize(o) ⇒
           o.convertTo[Stamped[KeyedEvent[AgentEvent]]]
       }
     }

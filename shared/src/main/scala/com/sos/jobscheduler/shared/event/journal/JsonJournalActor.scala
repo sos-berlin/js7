@@ -68,13 +68,15 @@ extends Actor with Stash {
       val sender = this.sender()
       becomeTakingSnapshotThen {
         unstashAll()
-        becomeReady(sender)
+        becomeReady()
+        sender ! Output.Ready
       }
 
     case Input.StartWithoutRecovery ⇒
       jsonWriter = newJsonWriter(file, append = false)
       unstashAll()
-      becomeReady(sender())
+      becomeReady()
+      sender() ! Output.Ready
 
     case msg: Input.RegisterMe ⇒
       handleRegisterMe(msg)
@@ -83,10 +85,10 @@ extends Actor with Stash {
       stash()
   }
 
-  private def becomeReady(sender: ActorRef): Unit = {
+  private def becomeReady(): Unit = {
     context.become(ready)
     logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${jsonWriter.file}'")
-    sender ! Output.Ready
+    jsonWriter.writeJson(ByteString(CompactPrinter(EventsHeader)))
   }
 
   private def ready: Receive = {
@@ -141,7 +143,7 @@ extends Actor with Stash {
       val sender = this.sender()
       becomeTakingSnapshotThen {
         sender ! Output.SnapshotTaken
-        context.become(ready)
+        becomeReady()
       }
 
     case Input.Terminate ⇒
@@ -173,6 +175,7 @@ extends Actor with Stash {
       jsonWriter.close()
     }
     temporaryJsonWriter = newJsonWriter(Paths.get(s"$file.tmp"), append = false)
+    temporaryJsonWriter.writeJson(ByteString(CompactPrinter(SnapshotsHeader)))
     val journalingActors = keyToJournalingActor.values.toSet ++ keylessJournalingActors
     context.actorOf(
       Props { new SnapshotWriter(temporaryJsonWriter.writeJson, journalingActors, snapshotJsonFormat) },
@@ -237,6 +240,8 @@ extends Actor with Stash {
 }
 
 object JsonJournalActor {
+  val SnapshotsHeader = JsString("SNAPSHOTS")
+  val EventsHeader = JsString("EVENTS")
 
   object Input {
     private[journal] final case class Start(recoveredJournalingActors: RecoveredJournalingActors)

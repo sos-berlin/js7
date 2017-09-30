@@ -66,7 +66,7 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
 
 object KeyedJournalingActor {
   object Input {
-    final case class  RecoverFromSnapshot(snapshot: Any)
+    final case class RecoverFromSnapshot(snapshot: Any)
     final case class RecoverFromEvent(eventStamped: Stamped[AnyKeyedEvent])
     final case class Recover(snapshot: Any)
     final case object FinishRecovery
