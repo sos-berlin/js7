@@ -18,7 +18,7 @@ extends Actor {
 
   private var remaining = journalingActors.size
   private var snapshotCount = 0
-  private val pipeline = new ParallelExecutingPipeline[(Any, ByteString)](o ⇒ write(o._2))
+  private val pipeline = new ParallelExecutingPipeline[ByteString](write)
 
   self ! Internal.Start
 
@@ -41,7 +41,7 @@ extends Actor {
       context.unwatch(sender())
       abortOnError {
         for (snapshot ← snapshots) {
-          pipeline.blockingAdd { snapshot → ByteString(CompactPrinter(jsonFormat.write(snapshot))) }
+          pipeline.blockingAdd { ByteString(CompactPrinter(jsonFormat.write(snapshot))) }
           logger.trace(s"Stored $snapshot")  // Without sync
           snapshotCount += 1
         }
