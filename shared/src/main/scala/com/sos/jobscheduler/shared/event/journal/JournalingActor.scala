@@ -56,18 +56,11 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
         }
       }
       logger.trace(s"($toString) *** callbacks=${callbacks.size}")
-      //if (callbacks.isEmpty/*everything is stored*/ && timeoutSchedule != null) {
-      //  timeoutSchedule.cancel()
-      //  timeoutSchedule = null
-      //}
       if (isStashing) {
         isStashing = false
         context.unbecome()
         unstashAll()
       }
-
-    //case Internal.TimedOut ⇒
-    //  logger.warn(s"Writing to journal takes longer than ${StoreWarnTimeout.pretty}: $toString")
 
     case Input.GetSnapshot ⇒
       val sender = this.sender()
@@ -90,13 +83,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
 }
 
 object JournalingActor {
-  //private val StoreWarnTimeout = 30.s
   private val logger = Logger(getClass)
-
-  //private sealed trait Internal
-  //private object Internal {
-    //case object TimedOut extends Internal
-  //}
 
   object Input {
     private[journal] final case object GetSnapshot

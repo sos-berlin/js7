@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.shared.event.journal
 
+import com.sos.jobscheduler.common.concurrent.ParallelismCounter
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Instant.now
-import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.FreeSpec
 import scala.collection.mutable
 
@@ -14,13 +14,9 @@ final class ParallelExecutingPipelineTest extends FreeSpec {
   "ParallelExecutionPipeline" in {
     val result = mutable.Buffer[Int]()
     val pipeline = new ParallelExecutingPipeline[Int](result.+=)
-    val currentParallelism = new AtomicInteger
-    val maxParallelism = new AtomicInteger
-    def f(i: Int) = {
-      val p = currentParallelism.incrementAndGet()
-      maxParallelism.compareAndSet(p - 1, p)
+    val count = new ParallelismCounter
+    def f(i: Int) = count {
       Thread.sleep(1)
-      currentParallelism.decrementAndGet()
       i
     }
     pipeline.blockingAdd {  // Warm-up
@@ -34,7 +30,7 @@ final class ParallelExecutingPipelineTest extends FreeSpec {
        }
     }
     pipeline.flush()
-    assert(maxParallelism.get == sys.runtime.availableProcessors)
+    assert(count.maximum == sys.runtime.availableProcessors)
     val duration = now - t
     assert(duration < 2 * n * 1.ms / sys.runtime.availableProcessors)
     assert(result == (0 to n))
