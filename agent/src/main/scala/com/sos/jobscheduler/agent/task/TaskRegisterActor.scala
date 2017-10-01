@@ -41,6 +41,8 @@ final class TaskRegisterActor(agentConfiguration: AgentConfiguration, timerServi
     if (killAllSchedule != null) {
       killAllSchedule.cancel()
     }
+    for (o ← crashKillScriptOption)
+      o.close()
     super.postStop()
   }
 

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.task
 import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -26,23 +26,25 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
   private val killScript = ProcessKillScript(Paths.get("test-kill.sh"))
 
   "Overwrites file" in {
-    autoDeleting(Files.createTempFile("CrashKillScriptTest-", ".tmp")) { file ⇒
-      file.contentString = "garbage"
-      new CrashKillScript(killScript = killScript, file = file)
+    val file = Files.createTempFile("CrashKillScriptTest-", ".tmp")
+    file.contentString = "garbage"
+    autoClosing(new CrashKillScript(killScript = killScript, file = file)) { _ ⇒
       assert(size(file) == 0)
     }
+    assert(!exists(file))
   }
 
   "Creates file" in {
-    autoDeleting(Files.createTempFile("CrashKillScriptTest-", ".tmp")) { file ⇒
-      delete(file)
-      new CrashKillScript(killScript = killScript, file = file)
+    val file = Files.createTempFile("CrashKillScriptTest-", ".tmp")
+    delete(file)
+    autoClosing(new CrashKillScript(killScript = killScript, file = file)) { _ ⇒
       assert(size(file) == 0)
     }
+    assert(!exists(file))
   }
 
   private lazy val file = Files.createTempFile("CrashKillScriptTest-", ".tmp")
-  private lazy val crashKillScript = new CrashKillScript(killScript = killScript, file = file)
+  private lazy val crashKillScript = new CrashKillScript(killScript = killScript, file = file).closeWithCloser
 
   "Script is initially empty" in {
     assert(lines == Nil)
@@ -69,6 +71,12 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
 
   "add then remove" in {
     crashKillScript.add(AgentTaskId("4-444"), pid = None, TaskId(4), JobPath("/folder/four"))
+    assert(lines.toSet == Set(""""test-kill.sh" -kill-agent-task-id=1-111 -master-task-id=1 -job=/folder/one""",
+                              """"test-kill.sh" -kill-agent-task-id=3-333 -master-task-id=3 -job=/folder/three""",
+                              """"test-kill.sh" -kill-agent-task-id=4-444 -master-task-id=4 -job=/folder/four"""))
+  }
+
+  "remove again" in {
     crashKillScript.remove(AgentTaskId("3-333"))
     assert(lines.toSet == Set(""""test-kill.sh" -kill-agent-task-id=1-111 -master-task-id=1 -job=/folder/one""",
                               """"test-kill.sh" -kill-agent-task-id=4-444 -master-task-id=4 -job=/folder/four"""))
@@ -93,6 +101,15 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
       crashKillScript.add(AgentTaskId(s"$i"), pid = None, TaskId(i), JobPath(evil))
     }
     assert(lines.toSet == (evilJobPaths.indices map { i ⇒ s""""test-kill.sh" -kill-agent-task-id=$i -master-task-id=$i""" }).toSet)
+    for (i ← evilJobPaths.indices) {
+      crashKillScript.remove(AgentTaskId(s"$i"))
+    }
+  }
+
+  "close with left tasks does not delete file" in {
+    crashKillScript.add(AgentTaskId("LEFT"), pid = None, TaskId(999), JobPath("/LEFT-JOB"))
+    crashKillScript.close()
+    assert(lines == s""""test-kill.sh" -kill-agent-task-id=LEFT -master-task-id=999 -job=/LEFT-JOB""" :: Nil)
   }
 
   private def lines = autoClosing(io.Source.fromFile(file)) { _.getLines.toList }

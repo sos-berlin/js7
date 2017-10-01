@@ -123,7 +123,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
     assert(me.receive().asInstanceOf[Terminated].actor == actor)
   }
 
-  private def crashKillScript = autoClosing(io.Source.fromFile(agentConfiguration.crashKillScriptFile)) { _.getLines.toList } .toSet
+  private def crashKillScript = autoClosing(io.Source.fromFile(agentConfiguration.crashKillScriptFile)) { _.getLines.toSet }
 
   private def killFile = agentConfiguration.killScript.get.file
 }

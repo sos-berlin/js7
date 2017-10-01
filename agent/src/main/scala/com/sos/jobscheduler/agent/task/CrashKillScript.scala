@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
 import com.sos.jobscheduler.data.job.TaskId
 import com.sos.jobscheduler.data.jobnet.JobPath
-import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
+import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter, Writer}
 import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}
 import java.nio.file.Path
@@ -21,18 +21,51 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
+final class CrashKillScript(killScript: ProcessKillScript, file: Path)
+extends AutoCloseable {
 
-  private val tasks = new mutable.HashMap[AgentTaskId, (JobPath, TaskId, Option[Pid])]
+  private val tasks = new mutable.HashMap[AgentTaskId, Entry]
+
+  private object writer {
+    private var w: Writer = null
+
+    def write(id: AgentTaskId, entry: Entry): Unit = {
+      if (w == null) {
+        w = open(file, append = true)
+      }
+      w.write(idToKillCommand(id, entry))
+      w.flush()
+    }
+
+    def close(): Unit =
+      if (w != null) {
+        w.close()
+        w = null
+      }
+  }
 
   deleteIfExists(file)
   createFile(file)
 
-  def add(id: AgentTaskId, pid: Option[Pid], taskId: TaskId, jobPath: JobPath): Unit =
-    synchronized {
-      tasks.put(id, (jobPath, taskId, pid))
+  def close(): Unit = {
+    writer.close()
+    if (tasks.isEmpty) {
       ignoreException(logger.asLazy.warn) {
-        file.append(idToKillCommand(id, pid, jobPath = jobPath, taskId), defaultCharset)
+        deleteIfExists(file)
+      }
+    } else {
+      for ((agentTaskId, e) ← tasks) logger.warn(s"CrashKillScript left with task $agentTaskId $e")
+    }
+  }
+
+  def add(id: AgentTaskId, pid: Option[Pid], taskId: TaskId, jobPath: JobPath): Unit =
+    add(id, Entry(jobPath, taskId, pid))
+
+  private def add(id: AgentTaskId, entry: Entry): Unit =
+    synchronized {
+      tasks.put(id, entry)
+      ignoreException(logger.asLazy.warn) {
+        writer.write(id, entry)
       }
     }
 
@@ -45,21 +78,23 @@ final class CrashKillScript(killScript: ProcessKillScript, file: Path) {
       }
     }
 
-  private def rewriteFile(): Unit =
+  private def rewriteFile(): Unit = {
+    writer.close()
     if (tasks.isEmpty) {
       deleteIfExists(file)
     } else {
       val tmp = file.getParent resolve s"~${file.getFileName}.tmp"
-      autoClosing(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmp), defaultCharset))) { writer ⇒
-        for ((id, (jobPath, taskId, pid)) ← tasks) {
-          writer.write(idToKillCommand(id, pid, jobPath = jobPath, taskId))
+      autoClosing(open(tmp)) { writer ⇒
+        for ((id, entry) ← tasks) {
+          writer.write(idToKillCommand(id, entry))
         }
       }
       move(tmp, file, REPLACE_EXISTING)
     }
+  }
 
-  private def idToKillCommand(id: AgentTaskId, pid: Option[Pid], jobPath: JobPath, taskId: TaskId) = {
-    val args = killScript.toCommandArguments(id, pid, jobPath = jobPath, taskId)
+  private def idToKillCommand(id: AgentTaskId, entry: Entry) = {
+    val args = killScript.toCommandArguments(id, entry.pidOption, entry.jobPath, entry.taskId)
     val cleanTail = args.tail collect { case CleanArgument(o) ⇒ o }
     ((s""""${args.head}"""" +: cleanTail) mkString " ") + LineSeparator
   }
@@ -69,4 +104,11 @@ object CrashKillScript {
   private val logger = Logger(getClass)
   private val LineSeparator = sys.props(LINE_SEPARATOR.key)
   private val CleanArgument = "([A-Za-z0-9=,;:.+_/#-]*)".r      // No shell meta characters
+
+  private case class Entry(jobPath: JobPath, taskId: TaskId, pidOption: Option[Pid]) {
+    override def toString = s"$jobPath $taskId ${pidOption getOrElse ""}".trim
+  }
+
+  private def open(path: Path, append: Boolean = false): Writer =
+    new BufferedWriter(new OutputStreamWriter(new FileOutputStream(path, append), defaultCharset))
 }
