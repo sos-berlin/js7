@@ -2,7 +2,8 @@ package com.sos.jobscheduler.agent.scheduler.event
 
 import akka.actor.{Actor, Status}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue._
-import com.sos.jobscheduler.base.sprayjson.typed.NamedJsonFormat.ToTypeJsonFormat
+import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.common.scalautil.Collections.RichGenericCompanion
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
@@ -10,6 +11,7 @@ import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import java.time.Duration
+import org.scalactic.Requirements._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -35,7 +37,7 @@ final class EventQueue(timerService: TimerService) extends Actor {
           // Master posts its own OrderDetached so we can forget the order's events here
           removeEventsFor(orderId)
         case _ ⇒
-          eventQueue.put(stamped.eventId, stamped)
+          add(stamped)
           if (requestors.nonEmpty) {
             if (firstResponse == NoFirstResponse) {
               firstResponse = stamped.eventId
@@ -79,15 +81,26 @@ final class EventQueue(timerService: TimerService) extends Actor {
       requestors -= promise
       promise.trySuccess(emptyEventSeq)
 
-    case Input.GetSnapshot ⇒
-      sender() ! CompleteSnapshot(oldestKnownEventId, eventQueue.values.asScala.toVector)
+    case Input.GetSnapshots ⇒
+      sender() ! Output.GotSnapshots(Vector.build[Snapshot] { b ⇒
+        b.sizeHint(1 + eventQueue.values.size)
+        b += Snapshot.HeaderSnapshot(oldestKnownEventId)
+        b ++= eventQueue.values.asScala map Snapshot.EventSnapshot
+      })
 
-    case CompleteSnapshot(eventId, stampedEvents) ⇒
-      assert(eventQueue.isEmpty)
+    case Snapshot.HeaderSnapshot(eventId) ⇒
+      logger.debug(s"oldestKnownEventId=${EventId.toString(oldestKnownEventId)}")
       oldestKnownEventId = eventId
-      for (o ← stampedEvents)
-        eventQueue.put(o.eventId, o)
-      logger.debug(s"${stampedEvents.size} events recovered, oldestKnownEventId=${EventId.toString(oldestKnownEventId)}")
+
+    case Snapshot.EventSnapshot(stampedEvent) ⇒
+      add(stampedEvent)
+  }
+
+  private def add(stampedEvent: Stamped[KeyedEvent[OrderEvent]]): Unit = {
+    if (!eventQueue.isEmpty) {
+      requireState(eventQueue.lastKey < stampedEvent.eventId)
+    }
+    eventQueue.put(stampedEvent.eventId, stampedEvent)
   }
 
   private def removeEventsFor(orderId: OrderId): Unit = {
@@ -97,7 +110,7 @@ final class EventQueue(timerService: TimerService) extends Actor {
       if (e.value.key == orderId) {
         i.remove()
         if (oldestKnownEventId < e.eventId) {
-          oldestKnownEventId = e.eventId
+          oldestKnownEventId = e.eventId  // TODO Gilt e.eventId nicht nur für Events einer bestimmten OrderId?
         }
       }
     }
@@ -114,13 +127,21 @@ object EventQueue {
   sealed trait Input
   object Input {
     final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[MyEventSeq]) extends Input
-    final case object GetSnapshot
+    final case object GetSnapshots
   }
 
-  final case class CompleteSnapshot(oldestKnownEventId: EventId, events: Seq[StampedEvent])   // TODO May become big when serialized to journal
+  object Output {
+    final case class GotSnapshots(snapshots: Vector[Snapshot])
+  }
 
-  object CompleteSnapshot {
-    implicit val jsonFormat = jsonFormat2(apply) withTypeName "EventQueue.Snapshot"
+  sealed trait Snapshot
+  object Snapshot {
+    final case class HeaderSnapshot(oldestKnownEventId: EventId) extends Snapshot
+    final case class EventSnapshot(stamped: StampedEvent) extends Snapshot
+
+    implicit val jsonFormat = TypedJsonFormat[Snapshot](
+      Subtype(jsonFormat1(HeaderSnapshot.apply), "EventQueue.Header"),
+      Subtype(jsonFormat1(EventSnapshot.apply), "EventQueue.Event"))
   }
 
   private object Internal {

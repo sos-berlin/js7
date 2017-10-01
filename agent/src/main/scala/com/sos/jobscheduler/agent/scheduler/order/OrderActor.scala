@@ -70,7 +70,7 @@ extends KeyedJournalingActor[OrderEvent] {
       case _ ⇒
     }
     logger.debug(s"Recovered $order")
-    sender() ! Output.RecoveryFinished(order)
+    sender() ! Output.RecoveryFinished(order)  // Sent via JsonJournalRecoverer to AgentOrderKeeper
   }
 
   def receive = journaling orElse {

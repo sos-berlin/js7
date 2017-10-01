@@ -70,7 +70,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   private def recover(): Unit = {
-    val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster = eventsForMaster)
+    val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster = eventsForMaster)(self)
     recoverer.recoverAll()
     for (jobnet ← recoverer.jobnets)
       jobnetRegister.recover(jobnet)
@@ -89,8 +89,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
   def snapshots = {
     val jobnetSnapshots = jobnetRegister.jobnets
-    for (eventQueueSnapshot ← (eventsForMaster ? EventQueue.Input.GetSnapshot).mapTo[EventQueue.CompleteSnapshot])
-      yield jobnetSnapshots :+ eventQueueSnapshot  // Future: don't use mutable `this`
+    for (got ← (eventsForMaster ? EventQueue.Input.GetSnapshots).mapTo[EventQueue.Output.GotSnapshots])
+      yield jobnetSnapshots ++ got.snapshots  // Future: don't use mutable `this`
   }
 
   def receive = journaling orElse {
@@ -112,7 +112,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       handleAddedOrder(order.id)
 
     case JsonJournalRecoverer.Output.JournalIsReady ⇒
-     logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
+      logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
       context.become(ready)
       unstashAll()
       logger.info("Ready")
@@ -244,7 +244,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
         assert(order.nodeId == e.nextNodeId)
         assert(order.state == Order.Waiting)
         val fromNode = jobnetRegister.nodeKeyToJobNodeOption(orderEntry.order.nodeKey).get
-        for (jobEntry ← jobRegister.get(fromNode.jobPath))  // Job may be stopped
+        for (jobEntry ← jobRegister.get(fromNode.jobPath))  // JobActor may be stopped
           jobEntry.queue -= order.id
         orderEntry.order = order
         onOrderAvailable(orderEntry)
@@ -365,7 +365,7 @@ object AgentOrderKeeper {
   private val SnapshotJsonFormat = TypedJsonFormat[Any](
     Subtype[Jobnet],
     Subtype[Order[Order.State]],
-    Subtype[EventQueue.CompleteSnapshot])
+    Subtype[EventQueue.Snapshot])
 
   private[order] val MyJournalMeta = new JsonJournalMeta[Event](SnapshotJsonFormat, AgentKeyedEventJsonFormat) with GzipCompression
 

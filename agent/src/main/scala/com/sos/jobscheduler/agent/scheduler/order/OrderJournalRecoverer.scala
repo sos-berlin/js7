@@ -15,7 +15,7 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 private[order] final class OrderJournalRecoverer(protected val journalFile: Path, eventsForMaster: ActorRef)
-  (implicit protected val sender: ActorRef)
+  (implicit self: ActorRef)
 extends JsonJournalRecoverer[Event] {
 
   protected val jsonJournalMeta = AgentOrderKeeper.MyJournalMeta
@@ -29,8 +29,8 @@ extends JsonJournalRecoverer[Event] {
     case order: Order[Order.State] ⇒
       idToOrder.insert(order.id → order)
 
-    case snapshot: EventQueue.CompleteSnapshot ⇒
-      eventsForMaster ! snapshot  // TODO FinishRecovery for synchronization ?
+    case snapshot: EventQueue.Snapshot ⇒
+      eventsForMaster ! snapshot
   }
 
   protected def recoverEvent = {
