@@ -90,7 +90,7 @@ object Order {
   sealed trait Outcome
 
   object Outcome {
-    private implicit val succeededJsonFormat: RootJsonFormat[Good] = jsonFormat1(Good)
+    private implicit val succeededJsonFormat: RootJsonFormat[Good] = jsonFormat1(Good.apply)
     private implicit val failedJsonFormat: RootJsonFormat[Bad] = jsonFormat1(Bad)
 
     implicit val outcomeJsonFormat =
@@ -110,7 +110,14 @@ object Order {
       }
   }
 
-  final case class Good(returnValue: Boolean) extends Outcome
+  final case class Good private(returnValue: Boolean) extends Outcome
+  object Good {
+    private val False = new Good(false)
+    private val True = new Good(true)
+
+    def apply(returnValue: Boolean) = if (returnValue) True else False
+  }
+
   final case class Bad(error: String) extends Outcome
 
   implicit val IdleJsonFormat: TypedJsonFormat[Idle] = TypedJsonFormat(
