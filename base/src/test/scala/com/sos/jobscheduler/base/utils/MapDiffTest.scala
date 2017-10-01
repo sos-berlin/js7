@@ -28,6 +28,10 @@ final class MapDiffTest extends FreeSpec {
     assert(MapDiff.empty.applyTo(m) == m)
   }
 
+  "empty is singleton" in {
+    assert(MapDiff(Map(), Set()) eq MapDiff.empty)
+  }
+
   "empty MapDiff.apply retains same object" in {
     val m = Map("a" → "A")
     assert(MapDiff.empty.applyTo(m) eq m)

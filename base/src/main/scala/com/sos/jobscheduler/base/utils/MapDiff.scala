@@ -6,7 +6,7 @@ import spray.json.{JsonFormat, RootJsonFormat}
 /**
   * @author Joacim Zschimmer
   */
-final case class MapDiff[K, V](addedOrUpdated: Map[K, V], removed: Set[K]) {
+final case class MapDiff[K, V] private(addedOrUpdated: Map[K, V], removed: Set[K]) {
   require((removed & addedOrUpdated.keySet).isEmpty, "MapDiff: addedOrUpdated and removed are not disjunct")
 
   def applyTo(variables: Map[K, V]): Map[K, V] =
@@ -14,7 +14,7 @@ final case class MapDiff[K, V](addedOrUpdated: Map[K, V], removed: Set[K]) {
 }
 
 object MapDiff {
-  private val Empty = MapDiff()
+  private val Empty = new MapDiff(Map(), Set())
 
   def empty[K, V]: MapDiff[K, V] =
     Empty.asInstanceOf[MapDiff[K, V]]
@@ -24,6 +24,12 @@ object MapDiff {
 
   def apply[K, V](addedOrUpdated: Map[K, V] = Map[K, V]()) =
     new MapDiff[K, V](addedOrUpdated, removed = Set[K]())
+
+  def apply[K, V](addedOrUpdated: Map[K, V], removed: Set[K]): MapDiff[K, V] =
+    if (addedOrUpdated.isEmpty && removed.isEmpty)
+      empty
+    else
+      new MapDiff(addedOrUpdated, removed)
 
   implicit def jsonFormat[K: JsonFormat, V: JsonFormat]: RootJsonFormat[MapDiff[K, V]] =
     jsonFormat2((addedOrUpdated: Map[K, V], removed: Set[K]) ⇒ new MapDiff(addedOrUpdated, removed))
