@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.ActorRef
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister._
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.{DuplicateKeyException, Logger}
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.data.order.OrderId
@@ -37,21 +38,25 @@ object JobRegister {
     private var inProcess = mutable.Set[OrderId]()
 
     def dequeue(): Option[OrderId] =
-      for (orderId ← queue find { o ⇒ !inProcess(o) }) yield {
+      queue.nonEmpty option {
+        val orderId = queue.remove(0)
         inProcess += orderId
         orderId
       }
 
     def +=(orderId: OrderId) = {
       if (inProcess(orderId)) throw new DuplicateKeyException(s"Duplicate $orderId")
+      if (queue contains orderId) throw new DuplicateKeyException(s"Duplicate $orderId")
       queue += orderId
     }
 
-    def -=(orderId: OrderId) = {
-      val s = queue.size
-      queue -= orderId
-      if (queue.size == s) throw new IllegalArgumentException(s"JobRegister.OrderQueue: unknown $orderId")
-      inProcess -= orderId
-    }
+    def -=(orderId: OrderId) =
+      if (!inProcess.remove(orderId)) {
+        val s = queue.size
+        queue -= orderId
+        if (queue.size == s) {
+          logger.warn(s"JobRegister.OrderQueue: unknown $orderId")
+        }
+      }
   }
 }
