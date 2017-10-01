@@ -189,7 +189,7 @@ extends Actor with Stash {
       val snapshotCount = done.get  // Crash !!!
       if (stopwatch.duration >= 1.s) logger.debug(stopwatch.itemsPerSecondString(snapshotCount, "objects"))
       if (snapshotCount > 0) {
-        logger.info(s"$snapshotCount snapshot written to journal")
+        logger.info(s"$snapshotCount snapshots written to journal")
       }
 
       if (jsonWriter != null) {
