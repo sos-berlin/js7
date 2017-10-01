@@ -32,7 +32,6 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
   override def unhandled(msg: Any) = msg match {
     case Input.Recover(snapshot) ⇒
       recoverFromSnapshot(snapshot)
-      callFinishRecovery()
 
     case Input.RecoverFromSnapshot(o) ⇒
       registered = true
