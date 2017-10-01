@@ -14,8 +14,6 @@ trait JsonJournalActorRecoverer[E <: Event] extends JsonJournalRecoverer[E] {
 
   protected implicit def sender: ActorRef
   protected def recoverNewKey: PartialFunction[Stamped[AnyKeyedEvent], Unit]
-  protected def onChangedRecovered: PartialFunction[Stamped[AnyKeyedEvent], Unit] = PartialFunction.empty
-  protected def onDeletedRecovered: PartialFunction[Stamped[AnyKeyedEvent], Unit] = PartialFunction.empty
   protected def snapshotToKey: Any ⇒ Any
   protected def isDeletedEvent: E ⇒ Boolean
 
@@ -36,9 +34,7 @@ trait JsonJournalActorRecoverer[E <: Event] extends JsonJournalRecoverer[E] {
           a ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)   // TODO OutOfMemoryError
           if (isDeletedEvent(event.asInstanceOf[E])) {
             keyToActor -= key
-            onDeletedRecovered.callIfDefined(stamped)
-          } else
-            onChangedRecovered.callIfDefined(stamped)
+          }
         }
   }
 
