@@ -323,4 +323,12 @@ final class ScalaTimeTest extends FreeSpec {
       assert(LocalDateTime.of(2016, 7, 1, 12, 0, 0).toInstant(timeZone) == Instant.parse("2016-07-01T09:00:00Z"))
     }
   }
+
+  "concurrent Duration to Java Duration" in {
+    assert(0.seconds.toJavaDuration == 0.s)
+    assert(123.seconds.toJavaDuration == 123.s)
+    assert(123.millis.toJavaDuration == 123.ms)
+    assert(123.nanos.toJavaDuration == Duration.ofNanos(123))
+    assert(292.days.toJavaDuration == Duration.ofDays(292))  // Maximum
+  }
 }

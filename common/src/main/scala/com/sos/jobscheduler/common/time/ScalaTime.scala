@@ -220,8 +220,8 @@ object ScalaTime {
     else simpleJavaToConcurrentFiniteDuration(o)
   }
 
-  private def simpleJavaToConcurrentFiniteDuration(o: Duration) =
-    new FiniteDuration(o.toNanos, TimeUnit.NANOSECONDS).toCoarsest.asInstanceOf[FiniteDuration]
+  private def simpleJavaToConcurrentFiniteDuration(o: Duration): FiniteDuration =
+    new FiniteDuration(o.toNanos, TimeUnit.NANOSECONDS).toCoarsest
 
   @tailrec
   def sleepUntil(until: Instant): Unit = {
@@ -269,4 +269,8 @@ object ScalaTime {
   }
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
+
+  implicit final class RichConcurrentDuration(val underlying: FiniteDuration) extends AnyVal {
+    def toJavaDuration = Duration.ofNanos(underlying.toNanos)
+  }
 }
