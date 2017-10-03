@@ -54,19 +54,19 @@ extends Actor {
     if (command.toStringIsLonger) logger.debug(s"${run.idString} $command")  // Complete string
     idToCommand += id → run
     val myResponse = Promise[AgentCommand.Response]()
-    executeCommand2(id, command, meta, myResponse)
+    executeCommand2(compoundId, id, command, meta, myResponse)
     myResponse.future onComplete { tried ⇒
       self ! Internal.Respond(run, promise, tried)
     }
   }
 
-  private def executeCommand2(id: InternalCommandId, command: AgentCommand, meta: CommandMeta, response: Promise[AgentCommand.Response]): Unit = {
+  private def executeCommand2(compoundId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta, response: Promise[AgentCommand.Response]): Unit = {
     import AgentCommand._
     command match {
       case Compound(commands) ⇒
         val responses = Vector.fill(commands.size) { Promise[AgentCommand.Response] }
         for ((c, r) ← commands zip responses)
-          executeCommand(c, meta, r, Some(id))
+          executeCommand(c, meta, r, compoundId orElse Some(id))
         val singleResponseFutures = responses map { _.future } map { _
           .map(Compound.Succeeded.apply)
           .recover { case t ⇒ Compound.Failed(t.toString) }}
