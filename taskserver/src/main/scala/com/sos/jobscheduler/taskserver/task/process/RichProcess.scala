@@ -48,7 +48,7 @@ extends HasCloser with ClosedFuture {
         Promise[ReturnCode]() sideEffect { _ completeWith
           namedThreadFuture("Process watch") {
             val returnCode = waitForProcessTermination(process)
-            logger.debug(s"Process ended with $returnCode")
+            //logger.debug(s"Process ended with $returnCode")
             returnCode
           }
         }
@@ -57,7 +57,7 @@ extends HasCloser with ClosedFuture {
     promise.future
   }
 
-  logger.debug(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
+  //logger.debug(s"Process started " + (argumentsForLogging map { o ⇒ s"'$o'" } mkString ", "))
 
   def duration = now - startedAt
 
@@ -146,11 +146,11 @@ object RichProcess {
     (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, id, o) }).toMap
 
   private def waitForProcessTermination(process: Process): ReturnCode = {
-    logger.debug(s"waitFor ${processToString(process)} ...")
+    logger.trace(s"waitFor ${processToString(process)} ...")
     val returnCode = blocking {
       process.waitFor()
     }
-    logger.debug(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
+    logger.trace(s"waitFor ${processToString(process)} exitCode=${process.exitValue}")
     ReturnCode(returnCode)
   }
 

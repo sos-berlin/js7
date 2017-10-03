@@ -35,4 +35,7 @@ private[order] final class StatisticalWriter(writer: Writer) extends Writer {
   def flush() = writer.flush()
 
   def close() = writer.close()
+
+  def nonEmpty = !isEmpty
+  def isEmpty = messageCount == 0
 }

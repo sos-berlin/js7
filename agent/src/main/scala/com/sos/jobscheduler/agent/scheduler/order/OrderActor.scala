@@ -6,6 +6,7 @@ import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSu
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -112,7 +113,8 @@ extends KeyedJournalingActor[OrderEvent] {
     case Input.StartStep(node, jobActor) ⇒
       val stdoutWriter = new StatisticalWriter(stdWriters(Stdout))
       val stderrWriter = new StatisticalWriter(stdWriters(Stderr))
-      context.become(processing(node, jobActor, () ⇒ s"stdout: $stdoutWriter, stderr: $stderrWriter"))
+      context.become(processing(node, jobActor,
+        () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
       context.watch(jobActor)
       persist(OrderStepStarted) { event ⇒
         update(event)
@@ -131,7 +133,7 @@ extends KeyedJournalingActor[OrderEvent] {
       context.stop(self)
   }
 
-  private def processing(node: Jobnet.JobNode, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ String): Receive =
+  private def processing(node: Jobnet.JobNode, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
     journaling orElse {
       case Internal.StdoutStderrWritten(t, chunk, promise) ⇒
         persistAsync(OrderStdWritten(t)(chunk)) { _ ⇒
@@ -169,10 +171,10 @@ extends KeyedJournalingActor[OrderEvent] {
         terminating = true
     }
 
-  private def endOrderStep(event: OrderStepEnded, node: Jobnet.JobNode, stdoutStderrStatistics: () ⇒ String): Unit = {
+  private def endOrderStep(event: OrderStepEnded, node: Jobnet.JobNode, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
     flushStdoutAndStderr()
     cancelStdoutStderrTimer()
-    logger.debug(stdoutStderrStatistics())
+    for (o ← stdoutStderrStatistics()) logger.debug(o)
     context.become(waiting)
     persist(event) { event ⇒
       update(event)
