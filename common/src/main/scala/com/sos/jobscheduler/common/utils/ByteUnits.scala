@@ -5,6 +5,7 @@ package com.sos.jobscheduler.common.utils
   */
 object ByteUnits {
 
+  /** Converts to bytes, kB, MB or GB */
   def toKBGB(size: Long): String =
     size match {
       case _ if size < 0 ⇒ size + "bytes"
