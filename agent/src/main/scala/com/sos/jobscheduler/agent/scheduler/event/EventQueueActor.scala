@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.agent.scheduler.event
 
 import akka.actor.{Actor, Status}
-import com.sos.jobscheduler.agent.scheduler.event.EventQueue._
+import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor._
+import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.scalautil.Collections.RichGenericCompanion
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -21,7 +22,7 @@ import spray.json.DefaultJsonProtocol._
 /**
   * @author Joacim Zschimmer
   */
-final class EventQueue(timerService: TimerService) extends Actor {
+final class EventQueueActor(timerService: TimerService) extends Actor {
 
   private implicit val executionContext = context.dispatcher
   private val eventQueue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, StampedEvent]
@@ -31,19 +32,15 @@ final class EventQueue(timerService: TimerService) extends Actor {
 
   def receive = {
     case msg @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
-      val stamped = msg.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
-      stamped.value match {
-        case KeyedEvent(orderId: OrderId, OrderDetached) ⇒
-          // Master posts its own OrderDetached so we can forget the order's events here
-          removeEventsFor(orderId)
-        case _ ⇒
-          add(stamped)
-          if (requestors.nonEmpty) {
-            if (firstResponse == NoFirstResponse) {
-              firstResponse = stamped.eventId
-            }
-            self ! Internal.OnAdded(stamped.eventId)
-          }
+      // Throttled (via ask) because an event flood (from recovery) may let grow the actor's message mailbox faster
+      // than this actor deletes unused events after OrderDetached.
+      try {
+        val stamped = msg.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
+        handleEvent(stamped)
+        sender() ! Completed
+      } catch { case t: Throwable ⇒
+        sender() ! Status.Failure(t)
+        throw t
       }
 
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
@@ -96,6 +93,21 @@ final class EventQueue(timerService: TimerService) extends Actor {
       add(stampedEvent)
   }
 
+  private def handleEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
+    stamped.value match {
+      case KeyedEvent(orderId: OrderId, OrderDetached) ⇒
+        // Master posts its own OrderDetached so we can forget the order's events here
+        removeEventsFor(orderId)
+      case _ ⇒
+        add(stamped)
+        if (requestors.nonEmpty) {
+          if (firstResponse == NoFirstResponse) {
+            firstResponse = stamped.eventId
+          }
+          self ! Internal.OnAdded(stamped.eventId)
+        }
+    }
+
   private def add(stampedEvent: Stamped[KeyedEvent[OrderEvent]]): Unit = {
     if (!eventQueue.isEmpty) {
       requireState(eventQueue.lastKey < stampedEvent.eventId)
@@ -117,21 +129,21 @@ final class EventQueue(timerService: TimerService) extends Actor {
   }
 }
 
-object EventQueue {
+object EventQueueActor {
   private val logger = Logger(getClass)
   private val NoFirstResponse = EventId.BeforeFirst
 
   private type StampedEvent = Stamped[KeyedEvent[OrderEvent]]
   type MyEventSeq = EventSeq[Seq, KeyedEvent[OrderEvent]]
 
-  sealed trait Input
   object Input {
-    final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[MyEventSeq]) extends Input
+    final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[MyEventSeq])
     final case object GetSnapshots
   }
 
   object Output {
     final case class GotSnapshots(snapshots: Vector[Snapshot])
+    final case class AllowanceToSendEvent(count: Int)
   }
 
   sealed trait Snapshot

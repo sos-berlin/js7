@@ -4,9 +4,10 @@ import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.softwaremill.tagging.Tagger
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
-import com.sos.jobscheduler.agent.scheduler.event.EventQueue
+import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
@@ -17,6 +18,7 @@ import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -63,7 +65,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   private val jobRegister = new JobRegister
   private val jobnetRegister = new JobnetRegister
   private val orderRegister = new OrderRegister(timerService)
-  private val eventsForMaster = actorOf(Props { new EventQueue(timerService) }, "eventsForMaster")
+  private val eventsForMaster = actorOf(Props { new EventQueueActor(timerService) }, "eventsForMaster").taggedWith[EventQueueActor]
+
   private var terminating = false
 
   override def preStart() = {
@@ -73,7 +76,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   private def recover(): Unit = {
-    val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster = eventsForMaster)(self)
+    val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster)(askTimeout)
     recoverer.recoverAll()
     for (jobnet ← recoverer.jobnets)
       jobnetRegister.recover(jobnet)
@@ -92,7 +95,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
   def snapshots = {
     val jobnetSnapshots = jobnetRegister.jobnets
-    for (got ← (eventsForMaster ? EventQueue.Input.GetSnapshots).mapTo[EventQueue.Output.GotSnapshots])
+    for (got ← (eventsForMaster ? EventQueueActor.Input.GetSnapshots).mapTo[EventQueueActor.Output.GotSnapshots])
       yield jobnetSnapshots ++ got.snapshots  // Future: don't use mutable `this`
   }
 
@@ -129,7 +132,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       response.completeWith(processOrderCommand(cmd))
 
     case Input.RequestEvents(after, timeout, limit, promise) ⇒
-      eventsForMaster.forward(EventQueue.Input.RequestEvents(after, timeout, limit, promise))
+      eventsForMaster.forward(EventQueueActor.Input.RequestEvents(after, timeout, limit, promise))
 
     case Input.Terminate ⇒
       if (!terminating) {
@@ -166,8 +169,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       val orderEntry = orderRegister(orderId)
       onOrderAvailable(orderEntry)
 
-    case stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
-      eventsForMaster ! stamped
+    case stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) if !terminating ⇒
+      (eventsForMaster ? stamped) await 2 * askTimeout.duration.toJavaDuration  // blocking !!!
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
@@ -374,14 +377,14 @@ object AgentOrderKeeper {
   private val SnapshotJsonFormat = TypedJsonFormat[Any](
     Subtype[Jobnet],
     Subtype[Order[Order.State]],
-    Subtype[EventQueue.Snapshot])
+    Subtype[EventQueueActor.Snapshot])
 
   private[order] val MyJournalMeta = new JsonJournalMeta[Event](SnapshotJsonFormat, AgentKeyedEventJsonFormat) with GzipCompression
 
   sealed trait Input
   object Input {
     final case class Start(jobs: Seq[(JobPath, ActorRef)]) extends Input
-    final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[EventQueue.MyEventSeq]) extends Input
+    final case class RequestEvents(after: EventId, timeout: Duration, limit: Int, result: Promise[EventQueueActor.MyEventSeq]) extends Input
     final case class ExternalCommand(command: OrderCommand, response: Promise[Response])
     final case object Terminate
   }

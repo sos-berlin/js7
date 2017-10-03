@@ -1,8 +1,15 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
+import akka.NotUsed
 import akka.actor.ActorRef
-import com.sos.jobscheduler.agent.scheduler.event.EventQueue
+import akka.pattern.ask
+import akka.stream.scaladsl.{Flow, Sink}
+import akka.util.Timeout
+import com.softwaremill.tagging.@@
+import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor
 import com.sos.jobscheduler.common.scalautil.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.{Jobnet, JobnetEvent, JobnetPath}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderStdWritten}
@@ -14,8 +21,8 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-private[order] final class OrderJournalRecoverer(protected val journalFile: Path, eventsForMaster: ActorRef)
-  (implicit self: ActorRef)
+private[order] final class OrderJournalRecoverer(protected val journalFile: Path, eventsForMaster: ActorRef @@ EventQueueActor)
+(implicit askTimeout: Timeout)
 extends JsonJournalRecoverer[Event] {
 
   protected val jsonJournalMeta = AgentOrderKeeper.MyJournalMeta
@@ -29,7 +36,7 @@ extends JsonJournalRecoverer[Event] {
     case order: Order[Order.State] ⇒
       idToOrder.insert(order.id → order)
 
-    case snapshot: EventQueue.Snapshot ⇒
+    case snapshot: EventQueueActor.Snapshot ⇒
       eventsForMaster ! snapshot
   }
 
@@ -38,8 +45,8 @@ extends JsonJournalRecoverer[Event] {
       jobnetRegister.handleEvent(KeyedEvent(event)(path))
 
     case stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
+      (eventsForMaster ? stamped) await 2 * askTimeout.duration.toJavaDuration  // blocking !!!
       handleEvent(orderId, event)
-      eventsForMaster ! stamped
   }
 
   private def handleEvent(orderId: OrderId, event: OrderEvent) =

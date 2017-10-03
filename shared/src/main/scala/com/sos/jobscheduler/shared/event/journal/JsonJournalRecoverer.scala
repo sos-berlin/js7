@@ -13,6 +13,7 @@ import com.sos.jobscheduler.shared.event.journal.JsonJournalActor.{EventsHeader,
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
 import java.nio.file.{Files, Path}
 import scala.annotation.tailrec
+import scala.concurrent.blocking
 import scala.util.control.NonFatal
 import spray.json.{JsObject, JsValue}
 
@@ -36,16 +37,18 @@ trait JsonJournalRecoverer[E <: Event] {
 
   final def recoverAll(): Unit = {
     try
-      autoClosing(newJsonIterator()) { jsonIterator ⇒
-        var separator: Option[JsValue] = jsonIterator.hasNext option jsonIterator.next()
-        if (separator contains SnapshotsHeader) {
-          separator = recoverJsValues(jsonIterator, recoverSnapshotJsValue)
-        }
-        if (separator contains EventsHeader) {
-          separator = recoverJsValues(jsonIterator, recoverEventJsValue)
-        }
-        for (jsValue ← separator) {
-          sys.error(s"Unexpected JSON value in '$journalFile': $jsValue")
+      blocking {  // May take a long time
+        autoClosing(newJsonIterator()) { jsonIterator ⇒
+          var separator: Option[JsValue] = jsonIterator.hasNext option jsonIterator.next()
+          if (separator contains SnapshotsHeader) {
+            separator = recoverJsValues(jsonIterator, recoverSnapshotJsValue)
+          }
+          if (separator contains EventsHeader) {
+            separator = recoverJsValues(jsonIterator, recoverEventJsValue)
+          }
+          for (jsValue ← separator) {
+            sys.error(s"Unexpected JSON value in '$journalFile': $jsValue")
+          }
         }
       }
     catch {
