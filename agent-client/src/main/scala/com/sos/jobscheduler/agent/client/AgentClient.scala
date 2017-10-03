@@ -236,7 +236,7 @@ object AgentClient {
     (implicit protected val executionContext: ExecutionContext)
   extends AgentClient
 
-  def sessionIsPossiblyLost(t: Throwable): Boolean =
+  def sessionMayBeLost(t: Throwable): Boolean =
     t match {
       case t: HttpException if t.status == Unauthorized || t.status == Forbidden ⇒ true
       case _ ⇒ false

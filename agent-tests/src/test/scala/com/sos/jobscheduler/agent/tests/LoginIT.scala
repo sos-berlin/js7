@@ -41,7 +41,7 @@ final class LoginIT extends FreeSpec with AgentTest {
         client.executeCommand(NoOperation) await 99.s
       }
       throwable.status should (equal(Unauthorized) or equal(Forbidden))
-      assert(AgentClient.sessionIsPossiblyLost(throwable))
+      assert(AgentClient.sessionMayBeLost(throwable))
     }
   }
 
@@ -54,7 +54,7 @@ final class LoginIT extends FreeSpec with AgentTest {
         client.executeCommand(NoOperation) await 99.s
       }
       throwable.status should (equal(Unauthorized) or equal(Forbidden))
-      assert(AgentClient.sessionIsPossiblyLost(throwable))
+      assert(AgentClient.sessionMayBeLost(throwable))
 
       client.clearSession()
       client.executeCommand(Login) await 99.s
@@ -77,7 +77,7 @@ final class LoginIT extends FreeSpec with AgentTest {
           otherClient.executeCommand(NoOperation) await 99.s
         }
         throwable.status should (equal(Unauthorized) or equal(Forbidden))
-        assert(AgentClient.sessionIsPossiblyLost(throwable))
+        assert(AgentClient.sessionMayBeLost(throwable))
       }
 
       client.executeCommand(Logout) await 99.s shouldEqual AgentCommand.Accepted

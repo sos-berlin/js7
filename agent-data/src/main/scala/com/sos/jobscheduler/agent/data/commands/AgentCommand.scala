@@ -107,12 +107,7 @@ object AgentCommand {
 
   sealed trait OrderCommand extends AgentCommand
 
-  final case class AttachJobnet(jobnet: Jobnet)
-  extends OrderCommand {
-    type Response = Accepted.type
-  }
-
-  final case class AttachOrder(order: Order[Order.Idle])
+  final case class AttachOrder(order: Order[Order.Idle], jobnet: Jobnet)
   extends OrderCommand {
     type Response = Accepted.type
   }
@@ -150,8 +145,7 @@ object AgentCommand {
         Subtype(jsonFormat0(() ⇒ NoOperation)),
         Subtype(jsonFormat0(() ⇒ RegisterAsMaster)),
         Subtype(jsonFormat2(Terminate.apply)),
-        Subtype(jsonFormat1(AttachJobnet.apply)),
-        Subtype(jsonFormat1(AttachOrder.apply)),
+        Subtype(jsonFormat2(AttachOrder.apply)),
         Subtype(jsonFormat1(DetachOrder.apply)),
         Subtype(jsonFormat1(GetOrder.apply)),
         Subtype(jsonFormat0(() ⇒ GetOrderIds))))

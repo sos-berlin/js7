@@ -7,7 +7,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, Login, RegisterAsMaster, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Login, RegisterAsMaster, Terminate}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.agent.tests.TerminateIT._
 import com.sos.jobscheduler.common.event.collector.EventCollector
@@ -43,14 +43,15 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
         val eventCollector = newEventCollector(agent.injector)
         val lastEventId = eventCollector.lastEventId
 
-        client.executeCommand(AttachJobnet(AJobnet)) await 99.s
         val orderIds = for (i ← 0 until 3) yield OrderId(s"TEST-ORDER-$i")
         (for (orderId ← orderIds) yield
-          client.executeCommand(AttachOrder(Order(
-            orderId,
-            NodeKey(AJobnet.path, NodeId("100")),
-            Order.Waiting,
-            Map("a" → "A"))))
+          client.executeCommand(AttachOrder(
+            Order(
+              orderId,
+              NodeKey(AJobnet.path, NodeId("100")),
+              Order.Waiting,
+              Map("a" → "A")),
+            AJobnet))
         ) await 99.s
 
         val whenStepEnded: Future[Seq[OrderEvent.OrderStepEnded]] =

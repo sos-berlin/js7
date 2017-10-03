@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, Compound, DetachOrder, Login, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Compound, DetachOrder, Login, RegisterAsMaster}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDirectory
 import com.sos.jobscheduler.agent.tests.OrderAgentIT._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -41,10 +41,9 @@ final class OrderAgentIT extends FreeSpec {
           val agentClient = AgentClient(agent.localUri.toString).closeWithCloser
 
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
-          agentClient.executeCommand(AttachJobnet(TestJobnet)) await 99.s shouldEqual AgentCommand.Accepted
 
           val order = Order(OrderId("TEST-ORDER"), NodeKey(TestJobnet.path, StartNodeId), Order.Waiting, Map("x" → "X"))
-          agentClient.executeCommand(AttachOrder(order)) await 99.s shouldEqual AgentCommand.Accepted
+          agentClient.executeCommand(AttachOrder(order, TestJobnet)) await 99.s shouldEqual AgentCommand.Accepted
 
           while (
             agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.s)) await 99.s match {
@@ -84,7 +83,7 @@ final class OrderAgentIT extends FreeSpec {
             Order(OrderId(s"TEST-ORDER-$i"), NodeKey(TestJobnet.path, StartNodeId), Order.Waiting, Map("x" → "X"))
 
           val stopwatch = new Stopwatch
-          agentClient.executeCommand(Compound(AttachJobnet(TestJobnet) +: (orders map AttachOrder.apply))) await 99.s
+          agentClient.executeCommand(Compound(orders map { AttachOrder(_, TestJobnet) })) await 99.s
 
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()

@@ -77,15 +77,35 @@ final class AgentCommandTest extends FreeSpec {
   }
 
   "OrderCommand" - {
-    "AttachJobnet" in {
-      check(AgentCommand.AttachJobnet(Jobnet(
-        JobnetPath("/JOBNET"),
-        NodeId("START"),
-        List(
-          JobNode(NodeId("START"), AgentPath("/AGENT"), JobPath("/JOB"), NodeId("END"), NodeId("END")),
-          EndNode(NodeId("END"))))),
+    "AttachOrder" in {
+      check(AgentCommand.AttachOrder(
+        Order(
+          OrderId("ORDER-ID"),
+          NodeKey(JobnetPath("/JOBNET"),NodeId("INPUT")),
+          Order.Waiting),
+        Jobnet(
+          JobnetPath("/JOBNET"),
+          NodeId("START"),
+          List(
+            JobNode(NodeId("START"), AgentPath("/AGENT"), JobPath("/JOB"), NodeId("END"), NodeId("END")),
+            EndNode(NodeId("END"))))),
         """{
-          "TYPE": "AttachJobnet",
+          "TYPE": "AttachOrder",
+          "order": {
+            "state": {
+              "TYPE":
+              "Waiting"
+            },
+            "outcome": {
+              "returnValue": true
+            },
+            "variables": {},
+            "id": "ORDER-ID",
+            "nodeKey": {
+              "jobnetPath": "/JOBNET",
+              "nodeId": "INPUT"
+            }
+          },
           "jobnet": {
             "path": "/JOBNET",
             "inputNodeId": "START",
@@ -102,31 +122,6 @@ final class AgentCommandTest extends FreeSpec {
                 "id": "END",
                 "TYPE": "EndNode"
               }
-            }
-          }
-        }""".parseJson)
-    }
-
-    "AttachOrder" in {
-      check(AgentCommand.AttachOrder(Order(
-        OrderId("ORDER-ID"),
-        NodeKey(JobnetPath("/JOBNET"),NodeId("INPUT")),
-        Order.Waiting)),
-        """{
-          "TYPE": "AttachOrder",
-          "order": {
-            "state": {
-              "TYPE":
-              "Waiting"
-            },
-            "outcome": {
-              "returnValue": true
-            },
-            "variables": {},
-            "id": "ORDER-ID",
-            "nodeKey": {
-              "jobnetPath": "/JOBNET",
-              "nodeId": "INPUT"
             }
           }
         }""".parseJson)

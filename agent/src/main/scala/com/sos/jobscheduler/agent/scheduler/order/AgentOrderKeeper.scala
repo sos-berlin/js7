@@ -4,7 +4,8 @@ import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachJobnet, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueue
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
@@ -16,6 +17,7 @@ import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
+import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -34,6 +36,7 @@ import java.time.Duration
 import java.time.Instant.now
 import scala.collection.immutable.Seq
 import scala.concurrent.{Future, Promise}
+import scala.util.control.NoStackTrace
 
 /**
   * Keeper of one Master's orders.
@@ -145,6 +148,20 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     case JobActor.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
       tryStartStep(jobRegister(sender()))
 
+    case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, jobnet), promise) ⇒
+      import order.nodeKey
+      promise completeWith {
+        if (!jobnet.isDefinedAt(nodeKey.nodeId))
+          Future.failed(new IllegalArgumentException(s"Unknown NodeId ${nodeKey.nodeId} in ${nodeKey.jobnetPath}"))
+        else
+          if (orderRegister contains order.id) {
+            // May occur after Master restart when Master is not sure about order has been attached previously.
+            logger.debug(s"Ignoring duplicate $cmd")
+            Future.successful(Accepted)
+          } else
+            attachOrder(order) map { case Completed ⇒ Accepted }
+      }
+
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
       val orderEntry = orderRegister(orderId)
       onOrderAvailable(orderEntry)
@@ -154,8 +171,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
-    case AttachJobnet(jobnet) if !terminating ⇒
-      jobnetRegister.get(jobnet.path) match {
+    case cmd @ AttachOrder(_, jobnet) if !terminating ⇒
+      val jobnetResponse = jobnetRegister.get(jobnet.path) match {
         case None ⇒
           persistFuture(KeyedEvent(JobnetAttached(jobnet.inputNodeId, jobnet.idToNode))(jobnet.path)) { stampedEvent ⇒
             jobnetRegister.handleEvent(stampedEvent.value)
@@ -166,29 +183,21 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
         case Some(_) ⇒
           Future.failed(new IllegalStateException(s"Changed ${jobnet.path}"))
       }
-
-    case AttachOrder(order) if !terminating ⇒
-      import order.nodeKey
-      jobnetRegister.get(nodeKey.jobnetPath) match {
-        case Some(jobnet) if jobnet isDefinedAt nodeKey.nodeId ⇒
-          if (orderRegister contains order.id) {
-            // May occur after Master restart when Master is not sure about order has been attached previously.
-            logger.debug(s"Ignoring duplicate $cmd")
-            Future.successful(Accepted)
-          } else {
-            attachOrder(order) map { case Completed ⇒ Accepted }
-          }
-        case Some(_) ⇒
-          Future.failed(new IllegalArgumentException(s"Unknown NodeId ${nodeKey.nodeId} in ${nodeKey.jobnetPath}"))
-        case None ⇒
-          Future.failed(new IllegalArgumentException(s"Unknown ${nodeKey.jobnetPath}"))
+      jobnetResponse flatMap { case Accepted ⇒
+        promiseFuture[Accepted.type] { promise ⇒
+          self ! Internal.ContinueAttachOrder(cmd, promise)
+        }
       }
 
     case DetachOrder(orderId) ⇒
       orderRegister.get(orderId) match {
         case Some(orderEntry) ⇒
-          orderEntry.detaching = true  // OrderActor is terminating
-          (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }
+          if (orderEntry.order.state != Order.Ready)
+            Future.failed(new IllegalStateException(s"DetachOrder $orderId: Not in state 'Ready': ${orderEntry.order.state}") with NoStackTrace)
+          else {
+            orderEntry.detaching = true  // OrderActor is terminating
+            (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }
+          }
         case None ⇒
           // May occur after Master restart when Master is not sure about order has been detached previously.
           logger.debug(s"Ignoring duplicate $cmd")
@@ -378,6 +387,7 @@ object AgentOrderKeeper {
   }
 
   private object Internal {
+    final case class ContinueAttachOrder(cmd: AgentCommand.AttachOrder, promise: Promise[Accepted.type])
     final case class Due(orderId: OrderId)
   }
 }

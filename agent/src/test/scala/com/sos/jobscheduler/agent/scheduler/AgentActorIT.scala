@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.scheduler
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachJobnet, AttachOrder, DetachOrder, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, RegisterAsMaster}
 import com.sos.jobscheduler.agent.scheduler.AgentActorIT._
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
@@ -44,15 +44,16 @@ final class AgentActorIT extends FreeSpec {
           val lastEventId = eventCollector.lastEventId
           (provider.agentActor ? AgentActor.Input.Start).mapTo[AgentActor.Output.Ready.type] await 99.s
           executeCommand(RegisterAsMaster) await 99.s
-          executeCommand(AttachJobnet(AJobnet)) await 99.s
           val stopwatch = new Stopwatch
           val orderIds = for (i ← 0 until n) yield OrderId(s"TEST-ORDER-$i")
           (for (orderId ← orderIds) yield
-            executeCommand(AttachOrder(Order(
-              orderId,
-              NodeKey(AJobnet.path, NodeId("100")),
-              Order.Waiting,
-              Map("a" → "A"))))
+            executeCommand(AttachOrder(
+              Order(
+                orderId,
+                NodeKey(AJobnet.path, NodeId("100")),
+                Order.Waiting,
+                Map("a" → "A")),
+              AJobnet))
           ) await 99.s
           for (orderId ← orderIds)
             eventCollector.whenKeyedEvent[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
