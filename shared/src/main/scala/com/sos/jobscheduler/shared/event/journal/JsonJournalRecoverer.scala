@@ -33,7 +33,7 @@ trait JsonJournalRecoverer[E <: Event] {
   private var lastEventId: EventId = EventId.BeforeFirst
   private var snapshotCount = 0
   private var eventCount = 0
-  private lazy val logger = Logger.withPrefix[JsonJournalActor[_]](journalFile.toString)
+  private lazy val logger = Logger.withPrefix[JsonJournalRecoverer[_]](journalFile.toString)
 
   final def recoverAll(): Unit = {
     try
@@ -106,7 +106,7 @@ trait JsonJournalRecoverer[E <: Event] {
 
   private def logSomething(): Unit = {
     if (stopwatch.duration >= 1.s) {
-      logger.debug("Speed: " + stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events"))
+      logger.debug(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events"))
     }
     if (eventCount > 0) {
       logger.info(s"Recovered last EventId is ${EventId.toString(lastEventId)} ($snapshotCount snapshots and $eventCount events read)")
