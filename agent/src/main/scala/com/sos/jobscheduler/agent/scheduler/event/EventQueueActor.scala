@@ -12,7 +12,6 @@ import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import java.time.Duration
-import org.scalactic.Requirements._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -26,6 +25,7 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
 
   private implicit val executionContext = context.dispatcher
   private val eventQueue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, StampedEvent]
+  private val orderToEventIds = mutable.Map[OrderId, mutable.Buffer[java.lang.Long]]()
   private val requestors = mutable.Map[Promise[MyEventSeq], Timer[Unit]]()
   private var oldestKnownEventId = EventId.BeforeFirst
   private var firstResponse = NoFirstResponse
@@ -95,7 +95,7 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
 
   private def handleEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
     stamped.value match {
-      case KeyedEvent(orderId: OrderId, OrderDetached) ⇒
+      case KeyedEvent(orderId, OrderDetached) ⇒
         // Master posts its own OrderDetached so we can forget the order's events here
         removeEventsFor(orderId)
       case _ ⇒
@@ -109,25 +109,28 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
     }
 
   private def add(stampedEvent: Stamped[KeyedEvent[OrderEvent]]): Unit = {
-    if (!eventQueue.isEmpty) {
-      requireState(eventQueue.lastKey < stampedEvent.eventId)
+    val boxedEventId = Long.box(stampedEvent.eventId)
+    if (!eventQueue.isEmpty && eventQueue.lastKey >= stampedEvent.eventId)
+      throw new AssertionError(s"EventQueueActor: expected eventId > ${eventQueue.lastKey}: $stampedEvent")
+    eventQueue.put(boxedEventId, stampedEvent)
+    val orderId = stampedEvent.value.key
+    orderToEventIds.get(orderId) match {
+      case None ⇒ orderToEventIds(orderId) = mutable.Buffer(boxedEventId)
+      case Some(eventIds) ⇒ eventIds += boxedEventId
     }
-    eventQueue.put(stampedEvent.eventId, stampedEvent)
   }
 
-  private def removeEventsFor(orderId: OrderId): Unit = {
-    val i = eventQueue.values.iterator
-    while (i.hasNext) {
-      val e = i.next()
-      if (e.value.key == orderId) {
-        i.remove()
-        if (oldestKnownEventId < e.eventId) {
-          oldestKnownEventId = e.eventId  // TODO Gilt e.eventId nicht nur für Events einer bestimmten OrderId?
+  private def removeEventsFor(orderId: OrderId): Unit =
+    for (eventIds ← orderToEventIds.get(orderId)) {
+      for (eventId ← eventIds) {
+        eventQueue.remove(eventId)
+        if (oldestKnownEventId < eventId) {
+          oldestKnownEventId = eventId   // TODO Ist das immer die richtige oldestKnownEventId?
         }
       }
+      orderToEventIds -= orderId
     }
   }
-}
 
 object EventQueueActor {
   private val logger = Logger(getClass)

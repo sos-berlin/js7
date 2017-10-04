@@ -7,9 +7,10 @@ import com.softwaremill.tagging.Tagger
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActorTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.OrderReady
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderFinished, OrderReady}
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import java.time.Duration
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -25,7 +26,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
 
   private val actorSystem = ActorSystem("EventQueueActorTest")
   private val timerService = new TimerService(idleTimeout = Some(1.s))
-  private val actor = actorSystem.actorOf(Props { new EventQueueActor(timerService) }).taggedWith[EventQueueActor]
+  private val actor = actorSystem.actorOf(Props { new EventQueueActor(timerService) }, "EventQueueActor").taggedWith[EventQueueActor]
   private var lastEventId = EventId.BeforeFirst
   private implicit val askTimeout = Timeout(99.seconds)
 
@@ -79,6 +80,23 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
       }
       assert(received.toVector == sent)
     }
+  }
+
+  for (n ← sys.props.get("test.speed") map (_.toInt)) s"Speed test ×$n" in {
+    val testEvent = KeyedEvent(OrderFinished)(OrderId("1"))
+    val events = for (i ← 0 until n) yield Stamped(1000000 + i, testEvent)
+    val stopwatch = new Stopwatch
+    for (e ← events) (actor ? e) await 99.s
+    info(stopwatch.itemsPerSecondString(n, "events"))
+  }
+
+  if (sys.props contains "test.speed") s"Speed test OrderDetached" in {
+    val n = 1000
+    val testEvent = KeyedEvent(OrderDetached)(OrderId("1"))
+    val events = for (i ← 0 until n) yield Stamped(1000000 + i, testEvent)
+    val stopwatch = new Stopwatch
+    for (e ← events) (actor ? e) await 99.s
+    info(stopwatch.itemsPerSecondString(n, "OrderDetached"))
   }
 
   private def requestEvents(after: EventId, timeout: Duration, limit: Int = Int.MaxValue): Future[EventSeq[Seq, KeyedEvent[OrderEvent]]] = {
