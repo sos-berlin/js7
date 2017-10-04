@@ -55,11 +55,11 @@ final class FuturesTest extends FreeSpec {
   }
 
   "namedThreadFuture" in {
-    val (n, warmUp) = if (sys.props contains "test.speed") (10000, 10000) else (100, 100)
-    measureTime(n, "namedThreadFuture", warmUp = warmUp) {
+    val (n, warmUp) = sys.props.get("test.speed") map (o ⇒ (o.toInt, 1000)) getOrElse (100, 100)
+    info(measureTime(n, "namedThreadFuture", warmUp = warmUp) {
       val future = namedThreadFuture("FuturesTest") { "x" }
       assert(Await.result(future, 2.seconds) == "x")
-    }
+    }.toString)
     val future = namedThreadFuture("FuturesTest") { sys.error("TEST-ERROR") }
     assert(Await.ready(future, 2.seconds).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
   }

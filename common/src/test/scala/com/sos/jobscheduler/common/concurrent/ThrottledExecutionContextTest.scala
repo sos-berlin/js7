@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.concurrent
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import java.util.concurrent.Executors.newFixedThreadPool
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.{ExecutionContext, Future}
@@ -42,11 +42,12 @@ final class ThrottledExecutionContextTest extends FreeSpec with BeforeAndAfterAl
   "With quick operation" in {
     for (n ← Array(1/*warm-up*/, 1, 2)) {
       for (throttle ← 1 to 3) {
-        Stopwatch.measureTime(10000, "FutureThrottle", linePrefix = s"n=$n throttle=$throttle: ") {
-          implicit val throttledExecutionContext = new ThrottledExecutionContext(throttle)(executionContext)
-          val futures = for (i ← 1 to n) yield Future { i }
-          assert((futures await 60.s).sum == (1 to n).sum)
-        }
+        info(s"n=$n throttle=$throttle: " +
+          measureTime(10000, "FutureThrottle") {
+            implicit val throttledExecutionContext = new ThrottledExecutionContext(throttle)(executionContext)
+            val futures = for (i ← 1 to n) yield Future { i }
+            assert((futures await 60.s).sum == (1 to n).sum)
+          }.toString)
       }
     }
   }
@@ -55,10 +56,11 @@ final class ThrottledExecutionContextTest extends FreeSpec with BeforeAndAfterAl
   "Ordinary Future" in {
     import ExecutionContext.Implicits.global
     for (n ← 1 to 2) {
-      Stopwatch.measureTime(10000, "Future", linePrefix = s"n=$n: ") {
-        val futures = for (i ← 1 to n) yield Future { i }
-        assert((futures await 60.s).sum == (1 to n).sum)
-      }
+      info(s"n=$n: " +
+        measureTime(10000, "Future") {
+          val futures = for (i ← 1 to n) yield Future { i }
+          assert((futures await 60.s).sum == (1 to n).sum)
+        }.toString)
     }
   }
 }

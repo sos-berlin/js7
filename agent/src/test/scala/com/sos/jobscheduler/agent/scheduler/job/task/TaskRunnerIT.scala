@@ -54,7 +54,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
       shellFile.contentString = jobConfiguration.script.string.trim
       val shellReturnValuesProvider = new ShellReturnValuesProvider
       val taskConfiguration = TaskConfiguration(jobConfiguration, shellFile, shellReturnValuesProvider)
-      measureTime(10, "TaskRunner") {
+      info(measureTime(10, "TaskRunner") {
         val order = Order(
           OrderId("TEST"),
           NodeKey(JobnetPath("/JOBCHAIN"), NodeId("NODE")),
@@ -78,7 +78,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
           assert(stdoutWriter.string == s"Hej!${nl}var1=VALUE1$nl")
           assert(stderrWriter.string == s"THIS IS STDERR$nl")
         }
-      }
+      }.toString)
       RichProcess.tryDeleteFiles(shellFile :: shellReturnValuesProvider.file :: Nil)
     }
   }

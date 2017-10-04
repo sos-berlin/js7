@@ -38,9 +38,9 @@ final class JobConfigurationTest extends FreeSpec {
       </job>.toString
     val jobPath = JobPath("/TEST")
     for (_ ← 1 to 10) {
-      Stopwatch.measureTime(n, "job") {
+      info(Stopwatch.measureTime(n, "job") {
         JobConfiguration.parseXml(jobPath, xmlString)
-      }
+      }.toString)
     }
   }
 }

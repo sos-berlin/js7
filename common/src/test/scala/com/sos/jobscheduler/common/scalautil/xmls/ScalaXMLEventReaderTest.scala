@@ -212,11 +212,12 @@ final class ScalaXMLEventReaderTest extends FreeSpec {
   }
 
   if (sys.props contains "test.speed") "Speed for minimal XML document" in {
-    for (_ ← 1 to 10) measureTime(10000, "document") {
-      parseDocument("<A/>") { eventReader ⇒
-        eventReader.parseElement("A") {}
-      }
-    }
+    for (_ ← 1 to 10) info(
+      measureTime(10000, "document") {
+        parseDocument("<A/>") { eventReader ⇒
+          eventReader.parseElement("A") {}
+        }
+      }.toString)
   }
 }
 

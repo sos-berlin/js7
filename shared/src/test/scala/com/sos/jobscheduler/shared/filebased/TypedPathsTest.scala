@@ -26,12 +26,12 @@ final class TypedPathsTest extends FreeSpec {
     }
   }
 
-  if (sys.props contains "test.speed")
-  "speed" in {
+  if (sys.props contains "test.speed") "speed" in {
     val dir = Paths.get("/some/dir")
     val path = dir / "folder/test.job.xml"
-    for (_ ← 1 to 10) measureTime(100000, "xmlFileToTypedPath") {
+    for (_ ← 1 to 10) info(
+      measureTime(100000, "xmlFileToTypedPath") {
       xmlFileToTypedPath[JobPath](path, stripDirectory = dir)
-    }
+    }.toString)
   }
 }

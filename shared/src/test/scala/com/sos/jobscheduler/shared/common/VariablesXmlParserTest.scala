@@ -2,7 +2,7 @@ package com.sos.jobscheduler.shared.common
 
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
-import com.sos.jobscheduler.common.time.Stopwatch
+import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import org.scalatest.FreeSpec
 
 /**
@@ -35,10 +35,9 @@ final class VariablesXmlParserTest extends FreeSpec {
         for (i ← 1 to 10) yield <variable name={s"NAME-$i"} value={"*" * 100}/>
       }</variables>
       .toString
-    for (_ ← 1 to 10) {
-      Stopwatch.measureTime(n, "job") {
+    for (_ ← 1 to 10) info(
+      measureTime(n, "job") {
         ScalaXMLEventReader.parseDocument(xmlString)(VariablesXmlParser.parse)
-      }
-    }
+      }.toString)
   }
 }

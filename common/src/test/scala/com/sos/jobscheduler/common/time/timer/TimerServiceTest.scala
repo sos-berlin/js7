@@ -264,14 +264,15 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
 
   "ArrayBlockingQueue.offer" in {
     val q = new ArrayBlockingQueue[Boolean](1)
-    measureTime(1000000, "offer", linePrefix = "ArrayBlockingQueue ") {
-      q.offer(true)
-      q.take()
-    }
+    info("ArrayBlockingQueue " +
+      measureTime(1000000, "offer") {
+        q.offer(true)
+        q.take()
+      })
     val future = Future { blocking { while(q.take()) {} }}
-    measureTime(10000, "put", linePrefix = "ArrayBlockingQueue ") {
+    info("ArrayBlockingQueue " + measureTime(10000, "put") {
       q.put(true)
-    }
+    })
     q.put(false)
     future await 1.s
   }

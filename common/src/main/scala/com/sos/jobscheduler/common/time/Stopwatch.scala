@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
  * @author Joacim Zschimmer
  */
 final class Stopwatch {
-  private val start = nanoTime()
+  private val start = nanoTime
 
   def result(n: Int, ops: String = "ops"): Result =
     Result(duration, n, ops)
@@ -24,7 +24,7 @@ final class Stopwatch {
     duration.toMillis
 
   def duration: Duration =
-    Duration.ofNanos(nanoTime() - start)
+    Duration.ofNanos(nanoTime - start)
 
   override def toString =
     duration.pretty
@@ -33,30 +33,20 @@ final class Stopwatch {
 object Stopwatch {
   private val logger = Logger(getClass)
 
-  def measureTime[A](message: String)(body: ⇒ A): A = {
-    val start = nanoTime()
-    val result = body
-    val duration = Duration.ofNanos(nanoTime() - start)
-    logger.info(s"$message ${duration.pretty}")
-    result
-  }
-
-  def measureTime(n: Int, itemName: String, linePrefix: String = "", warmUp: Int = 1)(body: ⇒ Unit): Result = {
+  def measureTime(n: Int, ops: String = "ops", warmUp: Int = 1)(body: ⇒ Unit): Result = {
     for (_ ← 1 to warmUp) body
-    val start = nanoTime()
+    val start = nanoTime
     for (_ ← 1 to n) body
-    val duration = Duration.ofNanos(nanoTime() - start)
-    val result = Result(duration, n, itemName)
-    logger.info(s"$linePrefix$result")
-    result
+    val duration = Duration.ofNanos(nanoTime - start)
+    Result(duration, n, ops)
   }
 
-  def measureTimeParallel(n: Int, itemName: String, warmUp: Int = 1)(body: ⇒ Unit)(implicit ec: ExecutionContext = ExecutionContext.global): Result = {
+  def measureTimeParallel(n: Int, ops: String = "ops", warmUp: Int = 1)(body: ⇒ Unit)(implicit ec: ExecutionContext = ExecutionContext.global): Result = {
     (for (_ ← 1 to warmUp) yield Future { body }).awaitInfinite
-    val start = nanoTime()
+    val start = nanoTime
     (for (_ ← 1 to n) yield Future { body }).awaitInfinite
-    val duration = Duration.ofNanos(nanoTime() - start)
-    Result(duration, n, itemName)
+    val duration = Duration.ofNanos(nanoTime - start)
+    Result(duration, n, ops)
   }
 
   /**
