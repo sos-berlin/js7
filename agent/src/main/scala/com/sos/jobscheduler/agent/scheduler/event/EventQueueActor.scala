@@ -65,7 +65,8 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
       }
 
     case Internal.OnAdded(eventId) ⇒
-      if (eventId == eventQueue.lastKey/*may return null*/ && firstResponse != NoFirstResponse/*to be sure*/) {
+      if (eventId == eventQueue.lastKey/*may return null*/) {  // Requests are completed first when no more event has been added
+        assert(firstResponse != NoFirstResponse)
         for ((promise, timer) ← requestors) {
           timerService.cancel(timer)
           promise.success(EventSeq.NonEmpty((eventQueue.navigableKeySet.tailSet(firstResponse, true).iterator.asScala map eventQueue.get).toVector))

@@ -2,11 +2,14 @@ package com.sos.jobscheduler.master.order.agent
 
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.master.order.agent.EventFetcher._
+import com.typesafe.config.Config
+import java.time.Duration
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.reflect.ClassTag
@@ -19,12 +22,13 @@ abstract class EventFetcher[E <: Event: ClassTag](after: EventId)
   (implicit timerService: TimerService, protected val executionContext: ExecutionContext)
 extends AutoCloseable {
 
-  protected val delay = 0.ms
+  protected def config: Config
 
   protected def fetchEvents(request: EventRequest[E]): Future[EventSeq[Seq, KeyedEvent[E]]]
 
   protected def onEvent(stamped: Stamped[KeyedEvent[E]]): Unit
 
+  protected lazy val delay = config.as[Duration]("jobscheduler.master.agent-driver.event-fetcher.delay")
   private var count = 0
   @volatile private var closed = false
 

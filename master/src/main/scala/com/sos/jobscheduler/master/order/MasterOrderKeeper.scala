@@ -85,7 +85,7 @@ with Stash {
           AgentXmlParser.parseXml(agentPath, src)
         }
         val actor = context.actorOf(
-          Props { new AgentDriver(agent.path, agent.uri) },
+          Props { new AgentDriver(agent.path, agent.uri, masterConfiguration.config) },
           name = encodeAsActorName("Agent-" + agentPath.withoutStartingSlash))
         agentRegister.insert(agentPath → AgentEntry(agentPath, actor))
     }

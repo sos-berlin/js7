@@ -5,8 +5,10 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent, NoKeyEvent, Stamped}
 import com.sos.jobscheduler.master.order.agent.EventFetcherTest._
+import com.typesafe.config.ConfigFactory
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -22,6 +24,7 @@ final class EventFetcherTest extends FreeSpec {
     val collector = mutable.Buffer[Stamped[KeyedEvent[TestEvent]]]()
     val aBarrier, bBarrier, cBarrier, dBarrier = new CountDownLatch(1)
     val fetcher = new EventFetcher[TestEvent](after = 100) {
+      protected val config = ConfigFactory.parseMap(Map("jobscheduler.master.agent-driver.event-fetcher.delay" → "0ms").asJava)
       var step = 0
       def fetchEvents(request: EventRequest[TestEvent]) =
         Future {

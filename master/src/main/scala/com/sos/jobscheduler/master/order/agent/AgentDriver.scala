@@ -16,6 +16,7 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, Ke
 import com.sos.jobscheduler.data.jobnet.Jobnet
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.order.agent.AgentDriver._
+import com.typesafe.config.Config
 import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
 import java.time.Instant.now
 import java.util.concurrent.atomic.AtomicInteger
@@ -29,7 +30,7 @@ import scala.util.{Failure, Success, Try}
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver(agentPath: AgentPath, uri: Uri)
+final class AgentDriver(agentPath: AgentPath, uri: Uri, config: Config)
 (implicit timerService: TimerService, executionContext: ExecutionContext)
 extends Actor
 with Stash {
@@ -126,6 +127,7 @@ with Stash {
     assert(eventFetcher == null)
     logger.info(s"Fetching events after ${EventId.toString(lastEventId)}")
     eventFetcher = new EventFetcher[OrderEvent](lastEventId) {
+      def config = AgentDriver.this.config
       def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request)
       def onEvent(stamped: Stamped[KeyedEvent[OrderEvent]]) = self ! Internal.AgentEvent(stamped)  // TODO Possible OutOfMemoryError
     }
