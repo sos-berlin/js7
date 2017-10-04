@@ -53,7 +53,7 @@ object ScalaTime {
     /**
      * Duration, counted in microseconds.
      */
-    final def µs = Duration ofNanos 1000L * delegate
+    final def µs = Duration.ofSeconds(delegate / 1000000, delegate % 1000000 * 1000)
 
     /**
      * Duration, counted in milliseconds.
@@ -100,14 +100,20 @@ object ScalaTime {
     * </ul>
     */
   def parseDuration(string: String): Duration =
-    Duration parse (
-      if (string.nonEmpty && isAsciiDigit(string.head))
-        if (isAsciiDigit(string.last))
-          s"PT${string}S"
-        else
-          s"PT$string"
+    if (string.nonEmpty && isAsciiDigit(string.head))
+      if (isAsciiDigit(string.last))
+        Duration parse s"PT${string}S"
       else
-        string)
+      if (string endsWith "ms")
+        Duration ofMillis string.dropRight(2).toLong
+      else
+      if (string endsWith "µs")
+        string.dropRight(2).toLong.µs
+      else {
+        Duration parse s"PT$string"
+      }
+    else
+      Duration parse string
 
   def randomDuration(maximum: Duration): Duration = Duration ofNanos (maximum.toNanos * Random.nextFloat).toLong
 

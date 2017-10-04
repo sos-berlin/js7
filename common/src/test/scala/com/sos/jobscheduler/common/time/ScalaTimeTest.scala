@@ -12,26 +12,28 @@ final class ScalaTimeTest extends FreeSpec {
 
   "Duration" - {
     "Int.µs" in {
-      (7.µs: Duration).toNanos shouldEqual 7000
-      (123456789.µs: Duration).toNanos shouldEqual 123456789000L
+      assert(7.µs == Duration.ofNanos(7000))
+      assert(Int.MaxValue.µs == Duration.ofNanos(1000L * Int.MaxValue))
     }
 
     "Long.µs" in {
-      (7L.µs: Duration).toNanos shouldEqual 7000
+      assert(7L.µs == Duration.ofNanos(7000))
+      assert(Long.MaxValue.µs == Duration.ofSeconds(Long.MaxValue / 1000000, Long.MaxValue % 1000000 * 1000))
     }
 
     "Int.ms" in {
-      (7.ms: Duration).toMillis shouldEqual 7
+      assert(7.ms == Duration.ofMillis(7))
+      assert(Int.MaxValue.ms == Duration.ofMillis(Int.MaxValue))
     }
 
     "Long.ms" in {
-      (7L.ms: Duration).toMillis shouldEqual 7
-      (123456789L.µs: Duration).toNanos shouldEqual 123456789000L
+      assert(7L.ms == Duration.ofMillis(7))
+      assert(Long.MaxValue.ms == Duration.ofMillis(Long.MaxValue))
     }
 
     "Int.s" in {
       (7.s: Duration).getSeconds shouldEqual 7
-      (7.s: Duration).toMillis shouldEqual (7*1000)
+      assert(Long.MaxValue.s == Duration.ofSeconds(Long.MaxValue))
     }
 
     "Long.s" in {
@@ -196,6 +198,8 @@ final class ScalaTimeTest extends FreeSpec {
       assert(parseDuration("P1d") == 24 * 3600.s)
       assert(parseDuration("1") == 1.s)
       assert(parseDuration("111222333444555666.123456789") == Duration.ofSeconds(111222333444555666L, 123456789))
+      assert(parseDuration("111222333444555666ms") == 111222333444555666L.ms)
+      assert(parseDuration("111222333444555666µs") == Duration.ofSeconds(111222333444L, 555666000L))
     }
 
     "toConcurrent" in {
