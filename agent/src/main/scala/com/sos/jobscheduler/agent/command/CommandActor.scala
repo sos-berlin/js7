@@ -42,37 +42,37 @@ extends Actor {
       sender() ! CommandHandlerDetailed((idToCommand.values map { _.overview }).toVector)
 
     case Internal.Respond(run, promise, response) ⇒
-      if (run.compoundInternalId.isEmpty || response != Success(Compound.Succeeded(Accepted))) {
+      if (run.batchInternalId.isEmpty || response != Success(Batch.Succeeded(Accepted))) {
         logger.debug(s"Response to ${run.idString} ${run.command.getClass.getSimpleName stripSuffix "$"} (${(now - run.startedAt).pretty}): $response")
       }
       idToCommand -= run.internalId
       promise.complete(response)
   }
 
-  def executeCommand(command: AgentCommand, meta: CommandMeta, promise: Promise[Response], compoundId: Option[InternalCommandId] = None): Unit = {
+  def executeCommand(command: AgentCommand, meta: CommandMeta, promise: Promise[Response], batchId: Option[InternalCommandId] = None): Unit = {
     totalCounter += 1
     val id = idGenerator.next()
-    val run = CommandRun(id, compoundId, now, command)
+    val run = CommandRun(id, batchId, now, command)
     logger.info(run.toString)
     if (command.toStringIsLonger) logger.debug(s"${run.idString} $command")  // Complete string
     idToCommand += id → run
     val myResponse = Promise[Response]()
-    executeCommand2(compoundId, id, command, meta, myResponse)
+    executeCommand2(batchId, id, command, meta, myResponse)
     myResponse.future onComplete { tried ⇒
       self ! Internal.Respond(run, promise, tried)
     }
   }
 
-  private def executeCommand2(compoundId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta, response: Promise[Response]): Unit = {
+  private def executeCommand2(batchId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta, response: Promise[Response]): Unit = {
     command match {
-      case Compound(commands) ⇒
+      case Batch(commands) ⇒
         val responses = Vector.fill(commands.size) { Promise[Response] }
         for ((c, r) ← commands zip responses)
-          executeCommand(c, meta, r, compoundId orElse Some(id))
+          executeCommand(c, meta, r, batchId orElse Some(id))
         val singleResponseFutures = responses map { _.future } map { _
-          .map(Compound.Succeeded.apply)
-          .recover { case t ⇒ Compound.Failed(t.toString) }}
-        response.completeWith(Future.sequence(singleResponseFutures) map Compound.Response.apply)
+          .map(Batch.Succeeded.apply)
+          .recover { case t ⇒ Batch.Failed(t.toString) }}
+        response.completeWith(Future.sequence(singleResponseFutures) map Batch.Response.apply)
 
       case command: SessionCommand ⇒
         sessionActor.forward(SessionActor.Command.Execute(command, meta, response))
@@ -108,13 +108,13 @@ object CommandActor {
     final case class Respond(run: CommandRun, promise: Promise[Response], response: Try[Response])
   }
 
-  final case class CommandRun(internalId: InternalCommandId, compoundInternalId: Option[InternalCommandId], startedAt: Instant, command: AgentCommand) {
+  final case class CommandRun(internalId: InternalCommandId, batchInternalId: Option[InternalCommandId], startedAt: Instant, command: AgentCommand) {
 
     override def toString = s"$idString ${command.toShortString}"
 
-    def idString = compoundInternalId match {
+    def idString = batchInternalId match {
       case None ⇒ internalId.toString  // #100
-      case Some(compoundId) ⇒ s"$compoundId+${internalId.number - compoundId.number}"  // #100+1
+      case Some(batchId) ⇒ s"$batchId+${internalId.number - batchId.number}"  // #100+1
     }
 
     def overview = new CommandRunOverview(internalId, startedAt, command)

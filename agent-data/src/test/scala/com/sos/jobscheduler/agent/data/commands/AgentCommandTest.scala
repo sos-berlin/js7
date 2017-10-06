@@ -13,10 +13,10 @@ import spray.json._
   */
 final class AgentCommandTest extends FreeSpec {
 
-  "Compound" in {
-    check(AgentCommand.Compound(List(AgentCommand.NoOperation, AgentCommand.Logout)),
+  "Batch" in {
+    check(AgentCommand.Batch(List(AgentCommand.NoOperation, AgentCommand.Logout)),
       """{
-        "TYPE": "Compound",
+        "TYPE": "Batch",
         "commands": [
           { "TYPE": "NoOperation" },
           { "TYPE": "Logout" }

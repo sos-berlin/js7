@@ -162,14 +162,14 @@ with Stash {
     case msg @ Internal.EventFetcherTerminated(Success(Completed)) ⇒
       logger.debug(msg.toString)
 
-    case msg: CommandQueue.Message.CompoundResponse ⇒
-      val detachedOrderIds = commandQueue.handleCompoundResponse(msg)
+    case msg: CommandQueue.Message.BatchResponse ⇒
+      val detachedOrderIds = commandQueue.handleBatchResponse(msg)
       if (detachedOrderIds.nonEmpty) {
         context.parent ! Output.OrdersDetached(detachedOrderIds)
       }
 
-    case failed: CommandQueue.Message.CompoundFailed ⇒
-      commandQueue.handleCompoundFailed(failed)
+    case failed: CommandQueue.Message.BatchFailed ⇒
+      commandQueue.handleBatchFailed(failed)
       failed.throwable match {
         case t: AgentClient.HttpException ⇒
           onConnectionError(t.toStringWithCauses)

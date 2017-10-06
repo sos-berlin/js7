@@ -27,13 +27,13 @@ sealed trait AgentCommand {
 object AgentCommand {
   trait Response
 
-  final case class Compound(commands: Seq[AgentCommand])
+  final case class Batch(commands: Seq[AgentCommand])
   extends AgentCommand {
-    type Response = Compound.Response
+    type Response = Batch.Response
 
-    override def toString = s"Compound(${commands.size} commands: ${commands take 3 map { _.getClass.getSimpleName } mkString ", "} ...)"
+    override def toString = s"Batch(${commands.size} commands: ${commands take 3 map { _.getClass.getSimpleName } mkString ", "} ...)"
   }
-  object Compound {
+  object Batch {
     final case class Succeeded(response: AgentCommand.Response)
     extends SingleResponse
 
@@ -52,7 +52,7 @@ object AgentCommand {
     extends AgentCommand.Response {
       override def toString = {
         val succeeded = responses count { _.isInstanceOf[Succeeded] }
-        s"Compound($succeeded succeeded and ${responses.size - succeeded} failed)"
+        s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
       }
     }
 
@@ -139,7 +139,7 @@ object AgentCommand {
   implicit val CommandJsonFormat: TypedJsonFormat[AgentCommand] =
     TypedJsonFormat.asLazy(
       TypedJsonFormat[AgentCommand](
-        Subtype(jsonFormat1(Compound.apply)),
+        Subtype(jsonFormat1(Batch.apply)),
         Subtype(jsonFormat0(() ⇒ AbortImmediately)),
         Subtype(jsonFormat0(() ⇒ Login)),
         Subtype(jsonFormat0(() ⇒ Logout)),
@@ -154,7 +154,7 @@ object AgentCommand {
   implicit val ResponseJsonFormat: TypedJsonFormat[AgentCommand.Response] =
     TypedJsonFormat.asLazy(
       TypedJsonFormat[AgentCommand.Response]()(
-        Subtype[Compound.Response]("MultipleResponse"),
+        Subtype[Batch.Response]("BatchResponse"),
         Subtype[Accepted.type]("Accepted"),
         Subtype[Login.Response]("LoginResponse")))
 }

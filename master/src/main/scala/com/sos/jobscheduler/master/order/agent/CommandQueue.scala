@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.order.agent
 import akka.actor.ActorRef
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Compound}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch}
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.master.order.agent.AgentDriver.Input
 import com.sos.jobscheduler.master.order.agent.CommandQueue._
@@ -59,11 +59,11 @@ private class CommandQueue(client: AgentClient, self: ActorRef, logger: ScalaLog
       if (inputs.nonEmpty) {
         executingInputs ++= inputs
         openRequestCount += 1
-        client.executeCommand(Compound(inputs map inputToAgentCommand)) onComplete {
-          case Success(Compound.Response(responses)) ⇒
-            self ! Message.CompoundResponse(for ((input, o) ← inputs zip responses) yield Message.QueuedInputResponse(input, o))
+        client.executeCommand(Batch(inputs map inputToAgentCommand)) onComplete {
+          case Success(Batch.Response(responses)) ⇒
+            self ! Message.BatchResponse(for ((input, o) ← inputs zip responses) yield Message.QueuedInputResponse(input, o))
           case Failure(t) ⇒
-            self ! Message.CompoundFailed(inputs, t)
+            self ! Message.BatchFailed(inputs, t)
         }
       }
     }
@@ -76,22 +76,22 @@ private class CommandQueue(client: AgentClient, self: ActorRef, logger: ScalaLog
         AgentCommand.DetachOrder(orderId)
     }
 
-  def handleCompoundResponse(compoundResponse: Message.CompoundResponse): Set[OrderId] = {
+  def handleBatchResponse(batchResponse: Message.BatchResponse): Set[OrderId] = {
     freshReconnected = false
-    val inputs = compoundResponse.responses.map(_.input).toSet
+    val inputs = batchResponse.responses.map(_.input).toSet
     queue.dequeueAll(inputs)  // Including rejected commands. The corresponding orders are ignored henceforth.
     onQueuedInputsResponded(inputs)
-    compoundResponse.responses.flatMap {
-      case Message.QueuedInputResponse(input, Compound.Succeeded(Accepted)) ⇒
+    batchResponse.responses.flatMap {
+      case Message.QueuedInputResponse(input, Batch.Succeeded(Accepted)) ⇒
         Some(input.orderId)
-      case Message.QueuedInputResponse(input, Compound.Failed(message)) ⇒
+      case Message.QueuedInputResponse(input, Batch.Failed(message)) ⇒
         logger.error(s"Agent has rejected the command ${input.toShortString}: $message")
         // Agent's state does not match master's state ???
         None
     }.toSet
   }
 
-  def handleCompoundFailed(failed: Message.CompoundFailed): Unit = {
+  def handleBatchFailed(failed: Message.BatchFailed): Unit = {
     // Don't remove from inputQueue. Queued inputs will be processed again
     onQueuedInputsResponded(failed.inputs.toSet)
   }
@@ -109,8 +109,8 @@ object CommandQueue {
   private[agent] final case class QueuedInput(sender: ActorRef, input: Input.QueueableInput)
 
   private[agent] object Message {
-    final case class CompoundResponse(responses: Seq[QueuedInputResponse])
-    final case class QueuedInputResponse(input: Input.QueueableInput, response: Compound.SingleResponse)
-    final case class CompoundFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable)
+    final case class BatchResponse(responses: Seq[QueuedInputResponse])
+    final case class QueuedInputResponse(input: Input.QueueableInput, response: Batch.SingleResponse)
+    final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable)
   }
 }

@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Compound, DetachOrder, Login, RegisterAsMaster}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, Login, RegisterAsMaster}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDirectory
 import com.sos.jobscheduler.agent.tests.OrderAgentIT._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -83,7 +83,7 @@ final class OrderAgentIT extends FreeSpec {
             Order(OrderId(s"TEST-ORDER-$i"), NodeKey(TestJobnet.path, StartNodeId), Order.Waiting, Map("x" → "X"))
 
           val stopwatch = new Stopwatch
-          agentClient.executeCommand(Compound(orders map { AttachOrder(_, TestJobnet) })) await 99.s
+          agentClient.executeCommand(Batch(orders map { AttachOrder(_, TestJobnet) })) await 99.s
 
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()
@@ -96,7 +96,7 @@ final class OrderAgentIT extends FreeSpec {
                 true
             }
           ) {}
-          agentClient.executeCommand(Compound(orders map { o ⇒ DetachOrder(o.id) })) await 99.s
+          agentClient.executeCommand(Batch(orders map { o ⇒ DetachOrder(o.id) })) await 99.s
           info(stopwatch.itemsPerSecondString(n, "orders"))
 
           agentClient.executeCommand(AgentCommand.Terminate()) await 99.s
