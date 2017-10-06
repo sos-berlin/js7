@@ -204,8 +204,14 @@ with Stash {
         logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
       }
 
-    case AgentDriver.Output.OrderDetached(orderId) if orderRegister contains orderId⇒
-      persistAsync(KeyedEvent(OrderEvent.OrderMovedToMaster)(orderId)) { _ ⇒ }
+    case AgentDriver.Output.OrdersDetached(orderIds) ⇒
+      val unknown = orderIds -- orderRegister.keySet
+      if (unknown.nonEmpty) {
+        logger.error(s"Received OrdersDetached from Agent for unknown orders:" + unknown.mkString(", "))
+      }
+      for (orderId ← orderIds -- unknown) {
+        persistAsync(KeyedEvent(OrderEvent.OrderMovedToMaster)(orderId)) { _ ⇒ }
+      }
 
     case msg @ JsonJournalActor.Output.SerializationFailure(throwable) ⇒
       logger.error(msg.toString, throwable)
@@ -289,7 +295,11 @@ with Stash {
           case OrderEvent.OrderReady ⇒
             detachOrderFromAgent(orderId)
 
+          case OrderEvent.OrderMovedToAgent(agentPath) ⇒
+            logger.debug(s"$orderId attached to $agentPath")
+
           case OrderEvent.OrderMovedToMaster ⇒
+            logger.debug(s"$orderId detached from Agent")
             moveAhead(orderId)
 
           case _ ⇒

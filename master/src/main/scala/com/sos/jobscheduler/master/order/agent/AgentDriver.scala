@@ -1,11 +1,10 @@
 package com.sos.jobscheduler.master.order.agent
 
-import akka.actor.{Actor, ActorRef, DeadLetterSuppression, Stash}
+import akka.actor.{Actor, DeadLetterSuppression, Stash}
 import akka.http.scaladsl.model.Uri
 import akka.pattern.pipe
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Compound}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -17,11 +16,7 @@ import com.sos.jobscheduler.data.jobnet.Jobnet
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.order.agent.AgentDriver._
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
 import java.time.Instant.now
-import java.util.concurrent.atomic.AtomicInteger
-import scala.collection.immutable.Seq
-import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
@@ -45,7 +40,8 @@ with Stash {
   become(disconnected)
   self ! Internal.Connect
 
-  private val commandQueue = new CommandQueue(client, self, logger)
+  private val commandQueue = new CommandQueue(client, self, logger,
+    batchSize = config.getInt("jobscheduler.master.agent-driver.command-batch-size"))
 
   override def postStop() = {
     if (eventFetcher != null) {
@@ -65,7 +61,6 @@ with Stash {
 
   private def disconnected: Receive = {
     case Internal.Connect ⇒
-      logger.info(s"Trying to connect $uri")
       reconnectPause.onConnect()
       (for {
         _ ← client.executeCommand(AgentCommand.Login)  // Separate commands because AgentClient catches the SessionToken of Login.Response
@@ -85,6 +80,7 @@ with Stash {
     case Internal.Connected ⇒
       logger.info("Connected")
       reconnectPause.onConnectSucceeded()
+      commandQueue.onReconnected()
       unstashAll()
       become(waitingForStart)
       if (startInputReceived) {
@@ -104,7 +100,7 @@ with Stash {
       lastEventId = eventId
       startInputReceived = true
       startEventFetcher()
-      commandQueue.processQueued()
+      commandQueue.maySend()
       unstashAll()
       become(ready)
       logger.info("Ready")
@@ -118,7 +114,7 @@ with Stash {
       onConnectionError(msg.toString)
 
     case Internal.CommandQueueReady ⇒
-      commandQueue.processQueued()
+      commandQueue.maySend()
   }
 
   private def become(r: Receive) = context.become(r orElse handleOtherMessage)
@@ -160,16 +156,19 @@ with Stash {
   }
 
   private def handleOtherMessage: Receive = {
-    case input: Input ⇒
+    case input: Input if sender() == context.parent ⇒
       handleInput(input)
 
     case msg @ Internal.EventFetcherTerminated(Success(Completed)) ⇒
       logger.debug(msg.toString)
 
-    case msg: Internal.CompoundResponse ⇒
-      commandQueue.handleCompoundResponse(msg)
+    case msg: CommandQueue.Message.CompoundResponse ⇒
+      val detachedOrderIds = commandQueue.handleCompoundResponse(msg)
+      if (detachedOrderIds.nonEmpty) {
+        context.parent ! Output.OrdersDetached(detachedOrderIds)
+      }
 
-    case failed: Internal.CompoundFailed ⇒
+    case failed: CommandQueue.Message.CompoundFailed ⇒
       commandQueue.handleCompoundFailed(failed)
       failed.throwable match {
         case t: AgentClient.HttpException ⇒
@@ -198,12 +197,8 @@ with Stash {
   }
 
   private def handleInput(input: Input): Unit = input match {
-    case cmd: Input.AttachOrder ⇒
+    case cmd: Input.QueueableInput ⇒
       commandQueue.enqueue(sender(), cmd)
-      self ! Internal.CommandQueueReady
-
-    case msg: Input.DetachOrder ⇒
-      commandQueue.enqueue(sender(), msg)
       self ! Internal.CommandQueueReady
   }
 
@@ -211,8 +206,6 @@ with Stash {
 }
 
 private[master] object AgentDriver {
-
-  private val OpenRequestsMaximum = 2
 
   private class ReconnectPause {
     private val ShortPause = 1.s
@@ -244,7 +237,7 @@ private[master] object AgentDriver {
 
   object Output {
     final case class EventFromAgent(stamped: Stamped[AnyKeyedEvent])
-    final case class OrderDetached(orderId: OrderId)
+    final case class OrdersDetached(orderIds: Set[OrderId])
   }
 
   private object Internal {
@@ -253,82 +246,8 @@ private[master] object AgentDriver {
     final case class ConnectFailed(throwable: Throwable)
     final case object LoggedOut
     final case object Ready
-    final case class CompoundResponse(responses: Seq[QueuedInputResponse])
-    final case class QueuedInputResponse(input: QueuedInput, response: Compound.SingleResponse)
-    final case class CompoundFailed(inputs: Seq[QueuedInput], throwable: Throwable)
     final case object CommandQueueReady
     final case class AgentEvent(stamped: Stamped[KeyedEvent[OrderEvent]])
     final case class EventFetcherTerminated(completed: Try[Completed]) extends DeadLetterSuppression
-  }
-
-  private case class QueuedInput(sender: ActorRef, input: Input.QueueableInput)
-
-  private class CommandQueue(client: AgentClient, self: ActorRef, logger: ScalaLogger)(implicit ec: ExecutionContext) {
-    private val inputQueue = mutable.Queue[QueuedInput]()
-    private val executingInputs = mutable.Set[QueuedInput]()
-    private val openRequestCount = new AtomicInteger
-
-    def enqueue(sender: ActorRef, input: Input.QueueableInput): Unit =
-      inputQueue += QueuedInput(sender, input)
-
-    def processQueued(): Unit =
-      if (openRequestCount.get < OpenRequestsMaximum) {
-        val cmds = inputQueue.filterNot(executingInputs).toVector
-        if (cmds.nonEmpty) {
-          executingInputs ++= cmds
-          openRequestCount.incrementAndGet()
-          client.executeCommand(Compound(cmds map (_.input) map inputToAgentCommand)) onComplete {
-            case Success(Compound.Response(responses)) ⇒
-              self ! Internal.CompoundResponse(for ((cmd, o) ← cmds zip responses) yield Internal.QueuedInputResponse(cmd, o))
-            case Failure(t) ⇒
-              self ! Internal.CompoundFailed(cmds, t)
-          }
-        }
-      }
-
-    private def inputToAgentCommand(input: Input.QueueableInput): AgentCommand =
-      input match {
-        case Input.AttachOrder(order, jobnet) ⇒
-          AgentCommand.AttachOrder(order, jobnet)
-        case Input.DetachOrder(orderId) ⇒
-          AgentCommand.DetachOrder(orderId)
-      }
-
-    def handleCompoundResponse(compoundResponse: Internal.CompoundResponse): Unit = {
-      for (Internal.QueuedInputResponse(QueuedInput(sender, cmd), response) ← compoundResponse.responses) {
-        handleSingleResponse(sender, cmd, response)
-      }
-      val inputs = (compoundResponse.responses map (_.input)).toSet
-      inputQueue.dequeueAll(inputs)
-      onQueuedInputsProcessed(inputs)
-    }
-
-    private def handleSingleResponse(sender: ActorRef, cmd: Input.QueueableInput, response: Compound.SingleResponse): Unit =
-      response match {
-         case Compound.Succeeded(Accepted) ⇒
-           cmd match {
-             case cmd: Input.AttachOrder ⇒
-               logger.info(s"Order '${cmd.orderId}' attached to Agent")
-             case cmd: Input.DetachOrder ⇒
-               logger.debug(s"Order '${cmd.orderId}' detached from Agent")
-               sender ! Output.OrderDetached(cmd.orderId)
-           }
-
-         case Compound.Failed(message) ⇒
-           logger.error(s"Agent has rejected the command ${cmd.toShortString}: $message")
-           // Agent's state does not match master's state ???
-       }
-
-    def handleCompoundFailed(failed: Internal.CompoundFailed): Unit = {
-      // Don't remove from inputQueue. Queued inputs will be processed again
-      onQueuedInputsProcessed(failed.inputs.toSet)
-    }
-
-    private def onQueuedInputsProcessed(inputs: Set[QueuedInput]): Unit = {
-      executingInputs --= inputs
-      if (openRequestCount.decrementAndGet() == 0) {
-        self ! Internal.CommandQueueReady
-      }
-    }
   }
 }

@@ -6,6 +6,7 @@ import akka.util.Timeout
 import com.softwaremill.tagging.@@
 import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
+import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.jobscheduler.common.log.Log4j
@@ -15,7 +16,7 @@ import java.time.Instant
 import java.time.Instant.now
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.util.Try
+import scala.util.{Success, Try}
 import spray.json.DefaultJsonProtocol._
 
 /**
@@ -41,30 +42,31 @@ extends Actor {
       sender() ! CommandHandlerDetailed((idToCommand.values map { _.overview }).toVector)
 
     case Internal.Respond(run, promise, response) ⇒
-      logger.debug(s"Response to ${run.idString} ${run.command.getClass.getSimpleName} (${(now - run.startedAt).pretty}): $response")
+      if (run.compoundInternalId.isEmpty || response != Success(Compound.Succeeded(Accepted))) {
+        logger.debug(s"Response to ${run.idString} ${run.command.getClass.getSimpleName stripSuffix "$"} (${(now - run.startedAt).pretty}): $response")
+      }
       idToCommand -= run.internalId
       promise.complete(response)
   }
 
-  def executeCommand(command: AgentCommand, meta: CommandMeta, promise: Promise[AgentCommand.Response], compoundId: Option[InternalCommandId] = None): Unit = {
+  def executeCommand(command: AgentCommand, meta: CommandMeta, promise: Promise[Response], compoundId: Option[InternalCommandId] = None): Unit = {
     totalCounter += 1
     val id = idGenerator.next()
     val run = CommandRun(id, compoundId, now, command)
     logger.info(run.toString)
     if (command.toStringIsLonger) logger.debug(s"${run.idString} $command")  // Complete string
     idToCommand += id → run
-    val myResponse = Promise[AgentCommand.Response]()
+    val myResponse = Promise[Response]()
     executeCommand2(compoundId, id, command, meta, myResponse)
     myResponse.future onComplete { tried ⇒
       self ! Internal.Respond(run, promise, tried)
     }
   }
 
-  private def executeCommand2(compoundId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta, response: Promise[AgentCommand.Response]): Unit = {
-    import AgentCommand._
+  private def executeCommand2(compoundId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta, response: Promise[Response]): Unit = {
     command match {
       case Compound(commands) ⇒
-        val responses = Vector.fill(commands.size) { Promise[AgentCommand.Response] }
+        val responses = Vector.fill(commands.size) { Promise[Response] }
         for ((c, r) ← commands zip responses)
           executeCommand(c, meta, r, compoundId orElse Some(id))
         val singleResponseFutures = responses map { _.future } map { _
@@ -99,18 +101,21 @@ object CommandActor {
   }
 
   object Input {
-    final case class Execute(command: AgentCommand, meta: CommandMeta, response: Promise[AgentCommand.Response])
+    final case class Execute(command: AgentCommand, meta: CommandMeta, response: Promise[Response])
   }
 
   private object Internal {
-    final case class Respond(run: CommandRun, promise: Promise[AgentCommand.Response], response: Try[AgentCommand.Response])
+    final case class Respond(run: CommandRun, promise: Promise[Response], response: Try[Response])
   }
 
   final case class CommandRun(internalId: InternalCommandId, compoundInternalId: Option[InternalCommandId], startedAt: Instant, command: AgentCommand) {
 
     override def toString = s"$idString ${command.toShortString}"
 
-    def idString = (compoundInternalId map { o ⇒ s"$o." } getOrElse "") + s"$internalId "
+    def idString = compoundInternalId match {
+      case None ⇒ internalId.toString  // #100
+      case Some(compoundId) ⇒ s"$compoundId+${internalId.number - compoundId.number}"  // #100+1
+    }
 
     def overview = new CommandRunOverview(internalId, startedAt, command)
   }
@@ -121,7 +126,7 @@ object CommandActor {
 
   final class Handle(actor: ActorRef)(implicit askTimeout: Timeout) extends CommandHandler {
     def execute(command: AgentCommand, meta: CommandMeta) = {
-      val promise = Promise[AgentCommand.Response]()
+      val promise = Promise[Response]()
       actor ! Input.Execute(command, meta, promise)
       promise.future
     }

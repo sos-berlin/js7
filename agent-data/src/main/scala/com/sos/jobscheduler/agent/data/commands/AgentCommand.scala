@@ -33,7 +33,6 @@ object AgentCommand {
 
     override def toString = s"Compound(${commands.size} commands: ${commands take 3 map { _.getClass.getSimpleName } mkString ", "} ...)"
   }
-
   object Compound {
     final case class Succeeded(response: AgentCommand.Response)
     extends SingleResponse
@@ -107,14 +106,17 @@ object AgentCommand {
 
   sealed trait OrderCommand extends AgentCommand
 
+  sealed trait AttachOrDetachOrder extends OrderCommand
+
   final case class AttachOrder(order: Order[Order.Idle], jobnet: Jobnet)
-  extends OrderCommand {
+  extends AttachOrDetachOrder {
     type Response = Accepted.type
+
+    override def toShortString = s"AttachOrder($order,${jobnet.path})"
   }
 
-
   final case class DetachOrder(orderId: OrderId)
-  extends OrderCommand {
+  extends AttachOrDetachOrder {
     type Response = Accepted.type
   }
 
@@ -122,7 +124,6 @@ object AgentCommand {
   extends OrderCommand {
     type Response = GetOrder.Response
   }
-
   object GetOrder {
     final case class Response(order: Order[Order.State]) extends AgentCommand.Response
   }
