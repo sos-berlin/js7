@@ -53,6 +53,9 @@ final class ScalaTimeTest extends FreeSpec {
         assert(bigDecimalToDuration(bigDecimal) == duration)
         assert(duration.toBigDecimal == bigDecimal)
       }
+      intercept[ArithmeticException] {
+        bigDecimalToDuration(BigDecimal("0.1112223334"))
+      }
     }
 
 //    "Int.min" in {

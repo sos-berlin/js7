@@ -84,8 +84,11 @@ object ScalaTime {
   }
 
   def bigDecimalToDuration(o: BigDecimal) = {
-    val (seconds, nanos) = o /% 1
-    Duration.ofSeconds(seconds.toLongExact, (nanos * 1000*1000*1000).toIntExact)
+    val (seconds, fraction) = o /% 1
+    try Duration.ofSeconds(seconds.toLongExact, (fraction * 1000*1000*1000).toIntExact)
+    catch { case t: ArithmeticException ⇒
+      throw new ArithmeticException(s"Not a Duration (${t.getMessage}: $o")
+    }
   }
 
   implicit val StringAsDuration: As[String, Duration] = As(parseDuration)
