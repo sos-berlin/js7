@@ -27,7 +27,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.Jobnet.EndNode
 import com.sos.jobscheduler.data.jobnet.JobnetEvent.JobnetAttached
 import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderStepEnded}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderStepEnded}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
@@ -169,8 +169,13 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       val orderEntry = orderRegister(orderId)
       onOrderAvailable(orderEntry)
 
-    case stamped @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) if !terminating ⇒
-      (eventsForMaster ? stamped) await 2 * askTimeout.duration.toJavaDuration  // blocking !!!
+    case stamped @ Stamped(_, KeyedEvent(_: OrderId, event: OrderEvent)) if !terminating ⇒
+      event match {
+        case OrderDetached ⇒
+          (eventsForMaster ? stamped) await 2 * askTimeout.duration.toJavaDuration  // blocking !!!
+        case _ ⇒
+          eventsForMaster ! stamped
+      }
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {

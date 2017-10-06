@@ -1,9 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import akka.NotUsed
 import akka.actor.ActorRef
 import akka.pattern.ask
-import akka.stream.scaladsl.{Flow, Sink}
 import akka.util.Timeout
 import com.softwaremill.tagging.@@
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor
@@ -12,7 +10,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.{Jobnet, JobnetEvent, JobnetPath}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderDetached, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer
 import java.nio.file.Path
@@ -45,7 +43,12 @@ extends JsonJournalRecoverer[Event] {
       jobnetRegister.handleEvent(KeyedEvent(event)(path))
 
     case stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
-      (eventsForMaster ? stamped) await 2 * askTimeout.duration.toJavaDuration  // blocking !!!
+      event match {
+        case OrderDetached ⇒
+          (eventsForMaster ? stamped) await 2 * askTimeout.duration.toJavaDuration  // blocking !!!
+        case _ ⇒
+          eventsForMaster ! stamped
+      }
       handleEvent(orderId, event)
   }
 

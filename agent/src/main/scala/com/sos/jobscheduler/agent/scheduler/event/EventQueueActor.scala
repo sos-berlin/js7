@@ -31,16 +31,29 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
   private var firstResponse = NoFirstResponse
 
   def receive = {
-    case msg @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
+    case msg @ Stamped(_, KeyedEvent(_: OrderId, OrderDetached)) ⇒
       // Throttled (via ask) because an event flood (from recovery) may let grow the actor's message mailbox faster
       // than this actor deletes unused events after OrderDetached.
       try {
         val stamped = msg.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
+        val orderId = stamped.value.key
+        // Master posts its own OrderDetached so we can forget the order's events here
+        removeEventsFor(orderId)
         handleEvent(stamped)
         sender() ! Completed
       } catch { case t: Throwable ⇒
         sender() ! Status.Failure(t)
         throw t
+      }
+
+    case msg @ Stamped(_, KeyedEvent(_: OrderId, _: OrderEvent)) ⇒
+      val stamped = msg.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
+      add(stamped)
+      if (requestors.nonEmpty) {
+        if (firstResponse == NoFirstResponse) {
+          firstResponse = stamped.eventId
+        }
+        self ! Internal.OnAdded(stamped.eventId)
       }
 
     case Input.RequestEvents(after, timeout, limit, promise) ⇒

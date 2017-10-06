@@ -40,7 +40,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
     assert((requestEvents(after = EventId.BeforeFirst, timeout = 10.ms) await 99.s) == EventSeq.Empty(EventId.BeforeFirst))
 
     val aKeyedEvent = KeyedEvent(OrderReady)(OrderId("1"))
-    (actor ? Stamped(111, aKeyedEvent)) await 99.s
+    actor ! Stamped(111, aKeyedEvent)
     val aEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
     assert((aEventSeq.stampeds map { _.value }) == List(aKeyedEvent))
     val aEventId = aEventSeq.stampeds.last.eventId
@@ -49,7 +49,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
     val whenBEventSeq = requestEvents(after = aEventId, timeout = 99.s).mapTo[EventSeq.NonEmpty[Seq, KeyedEvent[OrderEvent]]]
     sleep(50.ms)
     val bKeyedEvent = KeyedEvent(OrderReady)(OrderId("1"))
-    (actor ? Stamped(222, bKeyedEvent)) await 99.s
+    actor ! Stamped(222, bKeyedEvent)
     val bEventSeq = whenBEventSeq await 99.s
     assert((bEventSeq.stampeds map { _.value }) == List(bKeyedEvent))
     assert(bEventSeq.stampeds.last.eventId > EventId.BeforeFirst)
@@ -70,7 +70,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
       val whenAEventSeq = requestEvents(after = lastEventId, timeout = 99.s)
       val keyedEvent = KeyedEvent(OrderReady)(OrderId("2"))
       val sent = for (i ← 1 to 1000) yield Stamped(lastEventId + i, keyedEvent)
-      sent foreach actor.?  // Don't await Futures
+      sent foreach actor.!
       val received = mutable.Buffer[Stamped[KeyedEvent[OrderEvent]]]()
       received ++= (whenAEventSeq await 99.s).asInstanceOf[MyNonEmptyEventSeq].stampeds
       lastEventId = received.last.eventId
@@ -86,14 +86,14 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
     val testEvent = KeyedEvent(OrderFinished)(OrderId("1"))
     val events = for (i ← 0 until n) yield Stamped(1000000 + i, testEvent)
     val stopwatch = new Stopwatch
-    for (e ← events) (actor ? e) await 99.s
+    for (e ← events) actor ! e
     info(stopwatch.itemsPerSecondString(n, "events"))
   }
 
   if (sys.props contains "test.speed") s"Speed test OrderDetached" in {
     val n = 1000
-    val testEvent = KeyedEvent(OrderDetached)(OrderId("1"))
-    val events = for (i ← 0 until n) yield Stamped(1000000 + i, testEvent)
+    val orderDetached = KeyedEvent(OrderDetached)(OrderId("1"))
+    val events = for (i ← 0 until n) yield Stamped(1000000 + i, orderDetached)
     val stopwatch = new Stopwatch
     for (e ← events) (actor ? e) await 99.s
     info(stopwatch.itemsPerSecondString(n, "OrderDetached"))
