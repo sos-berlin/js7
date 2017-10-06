@@ -110,7 +110,7 @@ trait Remoting extends ProxyRegistering with ProxyRemoting {
     proxyRegister.iUnknowns[A]
 
   final def release(proxyId: ProxyId) = {
-    logger.trace(s"release $proxyId '${proxyRegister.iUnknown(proxyId)}")
+    logger.trace(s"release $proxyId '${proxyRegister.iUnknown(proxyId)}'")
     for (response ← sendReceive(ReleaseCall(proxyId))) yield {
       response.readEmptyResult()
       Completed

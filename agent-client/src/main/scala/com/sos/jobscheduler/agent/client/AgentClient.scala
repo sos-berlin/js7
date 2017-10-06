@@ -188,7 +188,7 @@ trait AgentClient extends AutoCloseable {
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest ⇒ Future[A]): Future[A] =
     toCheckedAgentUri(request.uri) match {
       case Some(uri) ⇒ body(request.copy(uri = uri))
-      case None ⇒ Future.failed(new IllegalArgumentException(s"URI '${request.uri} does not match $toString"))
+      case None ⇒ Future.failed(new IllegalArgumentException(s"URI '${request.uri}' does not match $toString"))
     }
 
   private[client] final def toCheckedAgentUri(uri: Uri): Option[Uri] =

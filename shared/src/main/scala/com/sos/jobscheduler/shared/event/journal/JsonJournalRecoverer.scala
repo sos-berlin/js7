@@ -146,7 +146,7 @@ object JsonJournalRecoverer {
             } else {
               context.become {
                 case KeyedJournalingActor.Output.RecoveryFinished ⇒
-                  logger.trace(s"${n - 1} actors left: Actor has RecoveryFinished: '${actorToKey(sender())}'")
+                  logger.trace(s"${n - 1} actors left: Actor has RecoveryFinished: ${actorToKey(sender())}'")
                   becomeWaitingForChildren(n - 1)
 
                 case msg if actorToKey contains sender() ⇒

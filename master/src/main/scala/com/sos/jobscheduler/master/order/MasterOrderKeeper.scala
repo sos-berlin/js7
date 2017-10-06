@@ -146,7 +146,7 @@ with Stash {
 
     case Command.AddOrderSchedule(orders) ⇒
       for (order ← orders) {
-        val logMsg = s"Order scheduled for ${order.state.at}: '${order.id}'"
+        val logMsg = s"Order scheduled for ${order.state.at}: ${order.id}"
         orderRegister.get(order.id) match {
           case Some(_) ⇒
             logger.info(s"$logMsg is duplicate and discarded")
