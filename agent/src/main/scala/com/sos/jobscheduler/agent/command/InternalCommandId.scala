@@ -5,9 +5,9 @@ import com.sos.jobscheduler.base.generic.IsString
 /**
  * @author Joacim Zschimmer
  */
-final case class InternalCommandId(value: Long) extends IsString {
-  def string = value.toString
-  override def toString = s"#$value"
+final case class InternalCommandId(number: Long) extends IsString {
+  def string = number.toString
+  override def toString = s"#$number"
 }
 
 object InternalCommandId extends IsString.HasJsonFormat[InternalCommandId] {

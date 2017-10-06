@@ -106,7 +106,7 @@ trait JsonJournalRecoverer[E <: Event] {
 
   private def logSomething(): Unit = {
     if (stopwatch.duration >= 1.s) {
-      logger.debug(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events"))
+      logger.debug(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events") + " read")
     }
     if (eventCount > 0) {
       logger.info(s"Recovered last EventId is ${EventId.toString(lastEventId)} ($snapshotCount snapshots and $eventCount events read)")

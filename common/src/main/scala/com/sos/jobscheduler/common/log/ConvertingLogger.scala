@@ -201,7 +201,7 @@ object ConvertingLogger {
   final class Prefixed(prefix: String, protected val delegate: ScalaLogger) extends ConvertingLogger {
     private val escapedPrefix = prefix.replace("{}", "\\{}")
 
-    def convertMessage(o: String) = s"($prefix) $o"
-    def convertFormat(o: String) = s"($escapedPrefix) $o"
+    def convertMessage(o: String) = s"“$prefix” $o"
+    def convertFormat(o: String) = s"“$escapedPrefix” $o"
   }
 }
