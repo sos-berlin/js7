@@ -6,7 +6,7 @@ import scala.language.implicitConversions
 object Dependencies {
   val scalaVersion = "2.12.3"
 
-  val akkaVersion = "2.5.4"
+  val akkaVersion = "2.5.6"
   val akkaHttpVersion = "10.0.10"
   val slf4jVersion = "1.7.25"
   val log4jVersion = "2.9.0"
