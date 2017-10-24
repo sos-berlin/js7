@@ -26,7 +26,7 @@ object Subtype {
       jsonFormat,
       name = jsonFormat match {
         case o: NamedJsonFormat[A] ⇒ o.typeName
-        case _ ⇒ implicitClass[A].getSimpleName stripSuffix "$"
+        case _ ⇒ implicitClass[A].simpleName stripSuffix "$"
       })
 
   def apply[A: ClassTag](lazyJsonFormat: ⇒ RootJsonFormat[A], name: String): Subtype[A] = {

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.sprayjson.typed
 
 import com.sos.jobscheduler.base.sprayjson.SprayJson.implicits.RichJsValue
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import scala.reflect.ClassTag
 import spray.json._
 
@@ -36,7 +36,7 @@ object TypedJsonFormat {
     * <p><b>On compile error using TypedJsonFormat(Subtype ...):</b> check if every Subtype really denotes a subtype of A.
     */
   def apply[A: ClassTag](subtype: Subtype[_], subtypes: Subtype[_]*): TypedJsonFormat[A] =
-    _apply[A](superclassName = implicitClass[A].getSimpleName, subtypes = subtype +: subtypes)
+    _apply[A](superclassName = implicitClass[A].simpleName, subtypes = subtype +: subtypes)
 
   /**
     * A RootJsonType for polymorphic types.
@@ -64,7 +64,7 @@ object TypedJsonFormat {
     shortenTypeOnlyValue: Boolean = DefaultShortenTypeOnlyValue,
     subtypes: Seq[Subtype[_]]): TypedJsonFormat[A]
   = {
-    val mySuperclassName = if (superclassName.nonEmpty) superclassName else implicitClass[A].getSimpleName
+    val mySuperclassName = if (superclassName.nonEmpty) superclassName else implicitClass[A].simpleName
     val typeNamesAndClasses = subtypes flatMap { _.nameToClass mapValues { _.asInstanceOf[Class[_ <: A]] }}
     new WithSubtypeRegister[A](
       implicitClass[A],

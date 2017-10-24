@@ -15,6 +15,15 @@ final class ScalaUtilsTest extends FreeSpec {
     f[String] shouldEqual classOf[String]
   }
 
+  "simpleClassName" in {
+    assert(simpleClassName("C") == "C")
+    assert(simpleClassName("a.C") == "C")
+    assert(simpleClassName("a.C$") == "C$")
+    assert(simpleClassName("aa.bbb.C") == "C")
+    assert(simpleClassName("aa.B$C") == "C")
+    assert(simpleClassName("aa.B$CC") == "CC")
+  }
+
   "Function1.withToString" in {
     def function(o: Int) = 2*o
     val f = function _

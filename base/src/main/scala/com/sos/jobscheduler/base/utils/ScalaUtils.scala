@@ -4,11 +4,26 @@ import com.sos.jobscheduler.base.exceptions.PublicException
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.math.max
 import scala.reflect.ClassTag
 
 object ScalaUtils {
 
   def implicitClass[A : ClassTag]: Class[A] = implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
+
+
+  implicit class RichJavaClass[A](val underlying: Class[A]) {
+    /**
+      * Workaround for JDK-8057919 Class#getSimpleName (resolved in Java 9).
+      * @see https://bugs.openjdk.java.net/browse/JDK-8057919
+      */
+    def simpleName: String =
+      simpleClassName(underlying.getName)
+  }
+
+  private[utils] def simpleClassName[A](name: String): String = {
+    name.substring(max(name.lastIndexOf('.', name.length - 2), name.lastIndexOf('$', name.length - 2)) + 1)
+  }
 
   /**
    * Returns 'body' as a argumentless function with replaced toString.
