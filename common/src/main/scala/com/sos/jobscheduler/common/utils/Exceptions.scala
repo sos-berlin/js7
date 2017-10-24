@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.utils
 
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import java.time.{Duration, Instant}
 import scala.util.control.NonFatal
@@ -60,5 +61,11 @@ object Exceptions {
         val suppresseds = t.getSuppressed
         if (suppresseds.isEmpty || (suppresseds.last ne suppressed)) // Suppression disabled?
           logger.warn(s"While handling an exception, this second exception is ignored: $suppressed\n" + s"Original exception is: $t", suppressed)
+    }
+
+  def wrapException[A](message: ⇒ String)(body: ⇒ A): A =
+    try body
+    catch { case NonFatal(t) ⇒
+      throw new RuntimeException(s"$message: ${t.toSimplifiedString}", t)
     }
 }
