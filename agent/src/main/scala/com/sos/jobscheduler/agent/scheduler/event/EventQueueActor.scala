@@ -31,15 +31,12 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
   private var firstResponse = NoFirstResponse
 
   def receive = {
-    case msg @ Stamped(_, KeyedEvent(_: OrderId, OrderDetached)) ⇒
+    case Stamped(_, KeyedEvent(orderId: OrderId, OrderDetached)) ⇒
       // Throttled (via ask) because an event flood (from recovery) may let grow the actor's message mailbox faster
       // than this actor deletes unused events after OrderDetached.
       try {
-        val stamped = msg.asInstanceOf[Stamped[KeyedEvent[OrderEvent]]]
-        val orderId = stamped.value.key
         // Master posts its own OrderDetached so we can forget the order's events here
         removeEventsFor(orderId)
-        handleEvent(stamped)
         sender() ! Completed
       } catch { case t: Throwable ⇒
         sender() ! Status.Failure(t)
@@ -106,21 +103,6 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
     case Snapshot.EventSnapshot(stampedEvent) ⇒
       add(stampedEvent)
   }
-
-  private def handleEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
-    stamped.value match {
-      case KeyedEvent(orderId, OrderDetached) ⇒
-        // Master posts its own OrderDetached so we can forget the order's events here
-        removeEventsFor(orderId)
-      case _ ⇒
-        add(stamped)
-        if (requestors.nonEmpty) {
-          if (firstResponse == NoFirstResponse) {
-            firstResponse = stamped.eventId
-          }
-          self ! Internal.OnAdded(stamped.eventId)
-        }
-    }
 
   private def add(stampedEvent: Stamped[KeyedEvent[OrderEvent]]): Unit = {
     val boxedEventId = Long.box(stampedEvent.eventId)

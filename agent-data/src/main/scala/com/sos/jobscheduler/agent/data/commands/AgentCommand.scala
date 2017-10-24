@@ -34,13 +34,13 @@ object AgentCommand {
     override def toString = s"Batch(${commands.size} commands: ${commands take 3 map { _.getClass.getSimpleName } mkString ", "} ...)"
   }
   object Batch {
+    sealed trait SingleResponse
+
     final case class Succeeded(response: AgentCommand.Response)
     extends SingleResponse
 
     /** Failed commands let the web service succeed and are returns as Failed. */
     final case class Failed(message: String) extends SingleResponse
-
-    sealed trait SingleResponse
 
     object SingleResponse {
       implicit val jsonFormat = TypedJsonFormat[SingleResponse](name = "SingleResponse")(

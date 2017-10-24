@@ -15,8 +15,10 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, Ke
 import com.sos.jobscheduler.data.jobnet.Jobnet
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.order.agent.AgentDriver._
+import com.sos.jobscheduler.master.order.agent.CommandQueue.QueuedInputResponse
 import com.typesafe.config.Config
 import java.time.Instant.now
+import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
@@ -40,8 +42,16 @@ with Stash {
   become(disconnected)
   self ! Internal.Connect
 
-  private val commandQueue = new CommandQueue(client, self, logger,
-    batchSize = config.getInt("jobscheduler.master.agent-driver.command-batch-size"))
+  private val commandQueue = new CommandQueue(logger, batchSize = config.getInt("jobscheduler.master.agent-driver.command-batch-size")) {
+    protected def executeCommand(command: AgentCommand.Batch) =
+      client.executeCommand(command)
+
+    protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
+      self ! Internal.BatchSucceeded(queuedInputResponses)
+
+    protected def asyncOnBatchFailed(inputs: Vector[Input.QueueableInput], throwable: Throwable) =
+      self ! Internal.BatchFailed(inputs, throwable)
+  }
 
   override def postStop() = {
     if (eventFetcher != null) {
@@ -156,21 +166,23 @@ with Stash {
   }
 
   private def handleOtherMessage: Receive = {
-    case input: Input if sender() == context.parent ⇒
-      handleInput(input)
+    case input: Input.QueueableInput if sender() == context.parent ⇒
+      commandQueue.enqueue(input)
+      self ! Internal.CommandQueueReady  // Delay maySend() such that QueuableInput pending in actor's mailbox can be queued
 
     case msg @ Internal.EventFetcherTerminated(Success(Completed)) ⇒
       logger.debug(msg.toString)
 
-    case msg: CommandQueue.Message.BatchResponse ⇒
-      val detachedOrderIds = commandQueue.handleBatchResponse(msg)
+    case Internal.BatchSucceeded(responses) ⇒
+      val succeededInputs = commandQueue.handleBatchSucceeded(responses)
+      val detachedOrderIds = succeededInputs collect { case Input.DetachOrder(orderId) ⇒ orderId }
       if (detachedOrderIds.nonEmpty) {
-        context.parent ! Output.OrdersDetached(detachedOrderIds)
+        context.parent ! Output.OrdersDetached(detachedOrderIds.toSet)
       }
 
-    case failed: CommandQueue.Message.BatchFailed ⇒
-      commandQueue.handleBatchFailed(failed)
-      failed.throwable match {
+    case Internal.BatchFailed(inputs, throwable) ⇒
+      commandQueue.handleBatchFailed(inputs)
+      throwable match {
         case t: AgentClient.HttpException ⇒
           onConnectionError(t.toStringWithCauses)
 
@@ -196,12 +208,6 @@ with Stash {
       lastEventId = stamped.eventId
   }
 
-  private def handleInput(input: Input): Unit = input match {
-    case cmd: Input.QueueableInput ⇒
-      commandQueue.enqueue(sender(), cmd)
-      self ! Internal.CommandQueueReady
-  }
-
   override def toString = s"AgentDriver($agentPath: $uri)"
 }
 
@@ -222,14 +228,17 @@ private[master] object AgentDriver {
   sealed trait Input
   object Input {
     final case class Start(lastAgentEventId: EventId)
+
     sealed trait QueueableInput extends Input {
       def orderId: OrderId
       def toShortString: String
     }
+
     final case class AttachOrder(order: Order[Order.Idle], jobnet: Jobnet) extends QueueableInput {
       def orderId = order.id
       def toShortString = s"AttachOrder($orderId, ${jobnet.path})"
     }
+
     final case class DetachOrder(orderId: OrderId) extends QueueableInput {
       def toShortString = s"DetachOrder($orderId)"
     }
@@ -249,5 +258,7 @@ private[master] object AgentDriver {
     final case object CommandQueueReady
     final case class AgentEvent(stamped: Stamped[KeyedEvent[OrderEvent]])
     final case class EventFetcherTerminated(completed: Try[Completed]) extends DeadLetterSuppression
+    final case class BatchSucceeded(responses: Seq[QueuedInputResponse])
+    final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable)
   }
 }

@@ -53,8 +53,7 @@ extends Actor {
     totalCounter += 1
     val id = idGenerator.next()
     val run = CommandRun(id, batchId, now, command)
-    logger.info(run.toString)
-    if (command.toStringIsLonger) logger.debug(s"${run.idString} $command")  // Complete string
+    logCommand(run)
     idToCommand += id → run
     val myResponse = Promise[Response]()
     executeCommand2(batchId, id, command, meta, myResponse)
@@ -62,6 +61,14 @@ extends Actor {
       self ! Internal.Respond(run, promise, tried)
     }
   }
+
+  private def logCommand(run: CommandRun): Unit =
+    run.command match {
+      case Batch(Seq(_)) ⇒
+      case _ ⇒
+        logger.info(run.toString)
+        //if (run.command.toStringIsLonger) logger.debug(s"${run.idString} ${run.command}")  // Complete string
+    }
 
   private def executeCommand2(batchId: Option[InternalCommandId], id: InternalCommandId, command: AgentCommand, meta: CommandMeta, response: Promise[Response]): Unit = {
     command match {
