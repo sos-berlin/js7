@@ -99,10 +99,24 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderStepFailed" in {
-    check(OrderStepFailed("ERROR", NodeId("NEXT")),
+    check(OrderStepFailed(OrderStepFailed.Other("ERROR"), NodeId("NEXT")),
       """{
         "TYPE": "OrderStepFailed",
-        "error": "ERROR",
+        "reason": {
+          "TYPE": "Other",
+          "message": "ERROR"
+        },
+        "nextNodeId": "NEXT"
+      }""")
+  }
+
+  "OrderStepFailed(AgentAborted)" in {
+    check(OrderStepFailed(OrderStepFailed.AgentAborted, NodeId("NEXT")),
+      """{
+        "TYPE": "OrderStepFailed",
+        "reason": {
+          "TYPE": "AgentAborted"
+        },
         "nextNodeId": "NEXT"
       }""")
   }

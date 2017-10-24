@@ -63,7 +63,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case Order.InProcess ⇒
         context.become(waiting)
-        persist(OrderStepFailed(s"Agent aborted while order was InProcess", nextNodeId = order.nodeId))(update)
+        persist(OrderStepFailed(OrderStepFailed.AgentAborted, nextNodeId = order.nodeId))(update)  // isRecoveryGeneratedEvent
 
       case Order.StartNow | _: Order.Scheduled | Order.Ready | Order.Detached | Order.Finished ⇒
         context.become(waiting)
@@ -155,14 +155,14 @@ extends KeyedJournalingActor[OrderEvent] {
           case TaskStepSucceeded(variablesDiff, good) ⇒
             OrderStepSucceeded(variablesDiff, good.returnValue, nextNodeId(node, good))
           case TaskStepFailed(bad) ⇒
-            OrderStepFailed(bad.error, nextNodeId(node, bad))
+            OrderStepFailed(OrderStepFailed.Other(bad.error), nextNodeId(node, bad))
         }
         endOrderStep(event, node, stdoutStderrStatistics)
         context.unwatch(jobActor)
 
       case Terminated(`jobActor`) ⇒
         val bad = Order.Bad(s"Job Actor '${node.jobPath.string}' terminated unexpectedly")
-        endOrderStep(OrderStepFailed(bad.error, nextNodeId = node.id/*nextNodeId(node, bad)*/), node, stdoutStderrStatistics)
+        endOrderStep(OrderStepFailed(OrderStepFailed.Other(bad.error), nextNodeId = node.id/*nextNodeId(node, bad)*/), node, stdoutStderrStatistics)
 
       case command: Command ⇒
         executeOtherCommand(command)
@@ -282,4 +282,10 @@ object OrderActor {
     protected def onBufferingStarted() =
       self ! Internal.BufferingStarted
   }
+
+  def isRecoveryGeneratedEvent(event: OrderEvent): Boolean =
+    event match {
+      case OrderStepFailed(OrderStepFailed.AgentAborted, _) ⇒ true
+      case _ ⇒ false
+    }
 }

@@ -77,8 +77,24 @@ object OrderEvent {
     nextNodeId: NodeId)
   extends OrderStepEnded
 
-  final case class OrderStepFailed(error: String, nextNodeId: NodeId)
+  final case class OrderStepFailed(reason: OrderStepFailed.Reason, nextNodeId: NodeId)
   extends OrderStepEnded
+
+  object OrderStepFailed {
+    sealed trait Reason {
+      def message: String
+    }
+    final case object AgentAborted extends Reason {
+      def message = "Agent aborted while order was InProcess"
+    }
+    final case class Other(message: String) extends Reason
+
+    object Reason {
+      implicit val jsonFormat = TypedJsonFormat[Reason](
+        Subtype(jsonFormat0(() ⇒ AgentAborted)),
+        Subtype(jsonFormat1(Other)))
+    }
+  }
 
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
@@ -109,6 +125,6 @@ object OrderEvent {
     Subtype(jsonFormat0(() ⇒ OrderReady)),
     Subtype(jsonFormat0(() ⇒ OrderStepStarted)),
     Subtype(jsonFormat3(OrderStepSucceeded)),
-    Subtype(jsonFormat2(OrderStepFailed)),
+    Subtype(jsonFormat2(OrderStepFailed.apply)),
     Subtype(jsonFormat0(() ⇒ OrderFinished)))
 }

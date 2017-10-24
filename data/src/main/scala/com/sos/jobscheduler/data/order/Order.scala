@@ -53,9 +53,9 @@ final case class Order[+S <: Order.State](
         outcome = Good(returnValue),
         nodeKey = NodeKey(jobnetPath,  nextNodeId))
 
-      case OrderStepFailed(error, nextNodeId) ⇒ copy(
+      case OrderStepFailed(reason, nextNodeId) ⇒ copy(
         state = Waiting,
-        outcome = Bad(error),
+        outcome = Bad(reason.message),
         nodeKey = NodeKey(jobnetPath,  nextNodeId))
 
       case OrderReady ⇒ copy(
