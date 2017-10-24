@@ -23,11 +23,12 @@ import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.Jobnet.EndNode
 import com.sos.jobscheduler.data.jobnet.JobnetEvent.JobnetAttached
 import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetEvent}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderStepEnded}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderStepEnded, OrderStepFailed}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
@@ -79,12 +80,16 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster)(askTimeout)
     recoverer.recoverAll()
     for (jobnet ← recoverer.jobnets)
-      jobnetRegister.recover(jobnet)
-    for (order ← recoverer.orders) {
-      val actor = newOrderActor(order.id)
-      orderRegister.recover(order, actor)
-      actor ! KeyedJournalingActor.Input.Recover(order)
-    }
+      wrapException(s"Error when recovering ${jobnet.path}") {
+        jobnetRegister.recover(jobnet)
+      }
+    for (recoveredOrder ← recoverer.orders)
+      wrapException(s"Error when recovering ${recoveredOrder.id}") {
+        val order = jobnetRegister.reuseMemory(recoveredOrder)
+        val actor = newOrderActor(order.id)
+        orderRegister.recover(order, actor)
+        actor ! KeyedJournalingActor.Input.Recover(order)
+      }
     startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors)
   }
 
@@ -162,7 +167,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
             logger.debug(s"Ignoring duplicate $cmd")
             Future.successful(Accepted)
           } else
-            attachOrder(order) map { case Completed ⇒ Accepted }
+            attachOrder(jobnetRegister.reuseMemory(order)) map { case Completed ⇒ Accepted }
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
@@ -260,9 +265,11 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       case e: OrderStepEnded ⇒
         assert(order.nodeId == e.nextNodeId)
         assert(order.state == Order.Waiting)
-        val fromNode = jobnetRegister.nodeKeyToJobNodeOption(orderEntry.order.nodeKey).get
-        for (jobEntry ← jobRegister.get(fromNode.jobPath))  // JobActor may be stopped
-          jobEntry.queue -= order.id
+        if (!OrderActor.isRecoveryGeneratedEvent(event)) {
+          val fromNode = jobnetRegister.nodeKeyToJobNodeOption(orderEntry.order.nodeKey).get
+          for (jobEntry ← jobRegister.get(fromNode.jobPath))  // JobActor may be stopped
+            jobEntry.queue -= order.id
+        }
         orderEntry.order = order
         onOrderAvailable(orderEntry)
 
