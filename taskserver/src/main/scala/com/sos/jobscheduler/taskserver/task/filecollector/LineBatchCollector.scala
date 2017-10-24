@@ -4,7 +4,7 @@ import com.google.common.collect.{AbstractIterator ⇒ GuavaAbstractIterator}
 import java.io.BufferedReader
 import org.scalactic.Requirements._
 import scala.annotation.tailrec
-import scala.collection.JavaConversions.asScalaIterator
+import scala.collection.JavaConverters._
 import scala.collection.{immutable, mutable}
 
 /**

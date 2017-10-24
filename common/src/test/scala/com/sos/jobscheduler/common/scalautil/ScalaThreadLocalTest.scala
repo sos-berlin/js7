@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.scalautil
 
 import com.sos.jobscheduler.common.scalautil.ScalaThreadLocal.threadLocal
 import org.scalatest.FreeSpec
-import org.scalatest.concurrent.AsyncAssertions.Waiter
+import org.scalatest.concurrent.Waiters.Waiter
 
 /**
  * @author Joacim Zschimmer

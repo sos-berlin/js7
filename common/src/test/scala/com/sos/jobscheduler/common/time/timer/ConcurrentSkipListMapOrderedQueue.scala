@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.common.time.timer
 
 import java.util.concurrent.atomic.AtomicReference
-import java.util.function.BiFunction
-import scala.collection.JavaConversions.collectionAsScalaIterable
+import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
 /**
@@ -15,38 +14,33 @@ extends OrderedQueue.Implement[K, V] {
 
   def isEmpty = keyToValues.isEmpty
 
-  def size = (keyToValues.values map { _.size }).sum
+  def size = (keyToValues.values.asScala map { _.size }).sum
 
   def clear(): Unit = keyToValues.clear()
 
   def add(value: V): Unit = {
     val key = toKey(value)
-    keyToValues.compute(key, new BiFunction[K, Vector[V], Vector[V]] {
-      def apply(k: K, values: Vector[V]) = (if (values != null) values else Vector[V]()) :+ value
-    })
+    keyToValues.compute(key, (_, values: Vector[V]) ⇒ (if (values != null) values else Vector[V]()) :+ value)
   }
 
   def remove(value: V): Boolean = {
     val key = toKey(value)
     var removed = false
-    keyToValues.compute(key, new BiFunction[K, Vector[V], Vector[V]] {
-      def apply(k: K, values: Vector[V]) = {
-        if (values != null) {
-          values indexOf value match {
-            case -1 ⇒
-              removed = false
-              values
-            case i ⇒
-              removed = true
-              if (values.size == 1) null
-              else values.slice(0, i) ++ values.slice(i + 1, values.size)  // Slow ???
-          }
-        } else {
-          removed = false
-          null
+    keyToValues.compute(key, (_, values: Vector[V]) ⇒
+      if (values != null) {
+        values indexOf value match {
+          case -1 ⇒
+            removed = false
+            values
+          case i ⇒
+            removed = true
+            if (values.size == 1) null
+            else values.slice(0, i) ++ values.slice(i + 1, values.size) // Slow ???
         }
-      }
-    })
+      } else {
+        removed = false
+        null
+      })
     removed
   }
 
@@ -60,11 +54,9 @@ extends OrderedQueue.Implement[K, V] {
 
   protected def removeHead(): V = {
     val result = new AtomicReference[V]  // Does not compile: val result: V = _
-    keyToValues.compute(keyToValues.firstKey, new BiFunction[K, Vector[V], Vector[V]] {
-      def apply(k: K, values: Vector[V]) = {
-        result.set(values.head)
-        if (values.size == 1) null else values.tail
-      }
+    keyToValues.compute(keyToValues.firstKey, (_, values) ⇒ {
+      result.set(values.head)
+      if (values.size == 1) null else values.tail
     })
     result.get
   }

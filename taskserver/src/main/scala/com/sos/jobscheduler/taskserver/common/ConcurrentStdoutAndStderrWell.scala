@@ -15,7 +15,7 @@ extends HasCloser with ClosedFuture {
   private val well = new StdoutStderrWell(stdFiles.stdFileMap, stdFiles.encoding, batchThreshold = logBatchThreshold, stdFiles.output).closeWithCloser
   private val concurrentCaller = new ConcurrentCaller(
     pauses = Iterator continually pollPeriod,
-    function = well.apply,
+    function = () ⇒ well.apply(),
     name = List("JobScheduler stdout/stderr well", name) filter { _.nonEmpty } mkString " - ")
   .closeWithCloser
 

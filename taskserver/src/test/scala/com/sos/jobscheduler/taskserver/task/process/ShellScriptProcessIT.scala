@@ -6,8 +6,8 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
+import java.util.concurrent.ForkJoinPool
 import org.scalatest.FreeSpec
-import scala.concurrent.forkjoin.ForkJoinPool
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.taskserver.task.filecollector
 
 import com.google.common.collect.{AbstractIterator ⇒ GuavaAbstractIterator}
 import java.io.BufferedReader
-import scala.collection.JavaConversions.asScalaIterator
+import scala.collection.JavaConverters._
 
 /**
  * @author Joacim Zschimmer

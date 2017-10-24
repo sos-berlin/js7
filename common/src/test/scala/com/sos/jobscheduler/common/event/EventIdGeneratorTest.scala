@@ -21,7 +21,7 @@ final class EventIdGeneratorTest extends FreeSpec {
     val n = 10000 * sys.runtime.availableProcessors
     (for (_ ← 1 to n) yield
       Future {
-        eventIds += uniqueTimestampedIdIterator.next() → ()
+        eventIds += ((uniqueTimestampedIdIterator.next(), ()))
       }) await 20.s
     assert(eventIds.size == n)  // All EventIds are distinct
   }

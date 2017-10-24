@@ -11,8 +11,8 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import java.nio.file.Files.delete
 import java.nio.file.Path
+import java.util.concurrent.ForkJoinPool
 import org.scalatest.FreeSpec
-import scala.concurrent.forkjoin.ForkJoinPool
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
