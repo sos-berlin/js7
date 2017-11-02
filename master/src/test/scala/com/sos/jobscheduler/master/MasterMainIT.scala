@@ -21,13 +21,14 @@ final class MasterMainIT extends FreeSpec {
 
   "Simplistic test of start" in {
     autoClosing(new TestEnvironment(Nil, temporaryDirectory / "MasterMainIT")) { env ⇒
-      for (runningMaster ← MasterMain.start(MasterConfiguration.fromCommandLine(List(
+      (for (runningMaster ← MasterMain.start(MasterConfiguration.fromCommandLine(List(
         "-data-directory=" + env.masterDir,
-        "-http-port=" + httpPort)))) yield {
-      runningMaster.executeCommand(MasterCommand.Terminate) await 99.s
-      runningMaster.terminated await 99.s
-      runningMaster.close()
-      }
+        "-http-port=" + httpPort))))
+      yield {
+        runningMaster.executeCommand(MasterCommand.Terminate) await 99.s
+        runningMaster.terminated await 99.s
+        runningMaster.close()
+      }) await 99.s
     }
   }
 }

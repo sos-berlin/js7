@@ -120,6 +120,8 @@ final class RunningMasterIT extends FreeSpec {
         val addedOrderIds = eventGatherer.orderIdsOf[OrderEvent.OrderAdded] filter orderIds.toSet
         assert(addedOrderIds.size == orderIds.size)
         assert(eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type] == addedOrderIds)
+        agent0.close()
+        agent1.close()
         master.close()
       }
     }
