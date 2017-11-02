@@ -1,7 +1,5 @@
 #! /bin/bash
 set -e
 
-cd "$(dirname "$0")"
-export SBT_OPTS="-Dlog4j.configurationFile=project/log4j2.xml $SBT_OPTS"
-export JAVA_OPTS="-XX:+CMSClassUnloadingEnabled -XX:MaxMetaspaceSize=512M -XX:MetaspaceSize=256M -Xms2G -Xmx2G"
+cd "$(dirname -- "$0")"
 FAST_SBT=1 sbt -batch "universal:packageZipTarball"
