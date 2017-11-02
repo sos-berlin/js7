@@ -7,6 +7,7 @@
 
 import BuildUtils._
 import sbt.Keys.testOptions
+import sbt.librarymanagement.DependencyFilter.artifactFilter
 
 val fastSbt = sys.env contains "FAST_SBT"
 
@@ -15,7 +16,7 @@ javaOptions += BuildUtils.JavaOptions
 
 addCommandAlias("compile-all", "; project engine-job-api; compile; project /; compile")
 addCommandAlias("test-all", "; test:compile; test; ForkedTest:test")
-addCommandAlias("build", "; compile-all; test-all; pack; publish-m2")
+addCommandAlias("build", "; compile-all; test-all; pack; publishM2")
 addCommandAlias("build-quickly", "; compile-all; pack")
 addCommandAlias("pack", "universal:packageZipTarball")
 
@@ -420,10 +421,20 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
   }
   .settings(
     sourceGenerators in Compile += Def.task {
+      def extractProxygen() = IO.unzip(
+        from = (update in Compile).value.select(artifactFilter()).filter { _.name contains "jni4net-bin-0.8.8.0.jar" }.head,
+        toDirectory = (target in Compile).value / "jni4net",
+        filter = { name: String ⇒ name.startsWith("bin/proxygen.exe") || name.startsWith("lib/") })
+
+      def extractDll() = IO.unzip(
+        from = (update in Compile).value.select(artifactFilter()).filter { _.name contains "jni4net.n-sos-0.8.8.0.jar" }.head,
+        toDirectory = (target in Compile).value / "jni4net_forked")
+
       if (!isWindows) Nil
       else {
         import java.lang.ProcessBuilder.Redirect.PIPE
         import java.nio.file.Files.createDirectories
+        import sbt.librarymanagement.DependencyFilter.artifactFilter
         // engine-job-api must have been compiled before running this code !!!
         val jobApiClassesDir = baseDirectory.value / "../engine-job-api/target/classes/sos/spooler"  // How to do this right with a TaskKey???
 
@@ -436,15 +447,6 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
           createDirectories(dest.toPath)
           for (classFile ← classes) IO.copyFile(classFile, dest / classFile.getName)
         }
-
-        def extractProxygen() = IO.unzip(
-          from = (update in Compile).value.select().filter { _.name contains "jni4net-bin-0.8.8.0.jar" }.head,
-          toDirectory = (target in Compile).value / "jni4net",
-          filter = { name: String ⇒ name.startsWith("bin/proxygen.exe") || name.startsWith("lib/") })
-
-        def extractDll() = IO.unzip(
-          from = (update in Compile).value.select().filter { _.name contains "jni4net.n-sos-0.8.8.0.jar" }.head,
-          toDirectory = (target in Compile).value / "jni4net_forked")
 
         def callPowershellScript(): Unit = {
           val scriptFile = baseDirectory.value / "src/main/scripts/Generate-Jni4Net.ps1"
