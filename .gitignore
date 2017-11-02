@@ -1,8 +1,7 @@
 # SBT
 /target/
-/project/target/
 /*/target/
-/*/project/target/
+/project/project/target/
 
 # INTELLIJ IDEA
 /.idea/
