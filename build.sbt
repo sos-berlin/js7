@@ -11,12 +11,17 @@ import sbt.librarymanagement.DependencyFilter.artifactFilter
 
 val fastSbt = sys.env contains "FAST_SBT"
 
+val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o ⇒ new File(o))
+val publishRepositoryName            = sys.props.get("publishRepository.name")
+val publishRepositoryUri             = sys.props.get("publishRepository.uri")
+
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 javaOptions += BuildUtils.JavaOptions
 
 addCommandAlias("compile-all", "; project engine-job-api; compile; project /; compile")
 addCommandAlias("test-all", "; test:compile; test; ForkedTest:test")
-addCommandAlias("build", "; compile-all; test-all; pack; publishM2")
+addCommandAlias("clean-build", "; clean; build")
+addCommandAlias("build", "; compile-all; test-all; pack")
 addCommandAlias("build-quickly", "; compile-all; pack")
 addCommandAlias("pack", "universal:packageZipTarball")
 
@@ -33,22 +38,18 @@ val commonSettings = List(
   logBuffered in Test := false,  // Recommended for ScalaTest
   testForkedParallel in Test := fastSbt,  // Experimental in sbt 0.13.13
   sources in (Compile, doc) := Nil, // No ScalaDoc
-  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials_snapshot"),
-  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials_release"),
-  publishTo := {
-      val archiva = "http://archiva.sos:8080/archiva/"
-      if (isSnapshot.value)
-        Some("Repository Archiva Managed snapshots Repository" at archiva + "repository/snapshots")
-      else
-        Some("Repository Archiva Managed sos-release Repository"  at archiva + "repository/sos-release")
-    },
   test in publishM2 := {})
+
+val publishSettings = List(
+  publishArtifact in (Compile, packageDoc) := false,
+  credentials += publishRepositoryCredentialsFile map (o ⇒ Credentials(o)),
+  publishTo := publishRepositoryUri map (uri ⇒ publishRepositoryName getOrElse uri at uri))
 
 val universalPluginSettings = List(
   universalArchiveOptions in (Universal, packageZipTarball) :=
     (List("--force-local") filter { _ ⇒ !isMac }) ++ (universalArchiveOptions in (Universal, packageZipTarball)).value,  // Under cygwin, tar shall not interpret C:
   universalArchiveOptions in (Universal, packageXzTarball) :=
-    (List("--force-local") filter { _ ⇒ !isMac }) ++  (universalArchiveOptions in (Universal, packageXzTarball)).value)  // Under cygwin, tar shall not interpret C:
+    (List("--force-local") filter { _ ⇒ !isMac }) ++ (universalArchiveOptions in (Universal, packageXzTarball)).value)  // Under cygwin, tar shall not interpret C:
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
   max = if (fastSbt) math.max(1, sys.runtime.availableProcessors * 3/8) else 1)
@@ -78,11 +79,13 @@ lazy val jobscheduler = (project in file("."))
     tests,
     tunnel,
     `tunnel-data`)
-  .settings(
-    commonSettings)
-    //publishM2 := {})  // This project is only a build wrapper
   .dependsOn(master, agent)
-  .enablePlugins(JavaAppPackaging)
+  .settings(
+    commonSettings,
+    publish := {},
+    publishSettings)
+    //(publish in Universal) := {}) // "Broken pipe" with universal:publish to Nexus 3
+  .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings(
     universalPluginSettings,
     (mappings in Universal) :=
@@ -92,13 +95,15 @@ lazy val jobscheduler = (project in file("."))
         recursiveFileMapping(baseDirectory.value / "shared/src/main/resources/com/sos/jobscheduler/shared/installation"))
 
 lazy val `jobscheduler-docker` = project
-  .settings(commonSettings)
-  .enablePlugins(JavaAppPackaging)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
       log4j
   }
+  .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings(
     universalPluginSettings,
     (topLevelDirectory in Universal) := None,
@@ -106,7 +111,9 @@ lazy val `jobscheduler-docker` = project
       recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/docker", to = "build/"))
 
 lazy val base = project
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -117,13 +124,17 @@ lazy val base = project
   }
 
 lazy val data = project.dependsOn(base)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings(
     libraryDependencies +=
       Dependencies.scalaTest % "test")
 
 lazy val common = project.dependsOn(base, data)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -162,7 +173,9 @@ lazy val common = project.dependsOn(base, data)
 
 lazy val master = project.dependsOn(shared, common, `agent-client`)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -176,7 +189,9 @@ lazy val master = project.dependsOn(shared, common, `agent-client`)
 
 lazy val shared = project.dependsOn(common)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -186,7 +201,9 @@ lazy val shared = project.dependsOn(common)
 
 lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserver, tunnel)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -218,7 +235,9 @@ lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserve
 
 lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-test` % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings(description := "JobScheduler Agent - Client")
   .settings {
     import Dependencies._
@@ -234,7 +253,9 @@ lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-
 
 lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings(description := "JobScheduler Agent - Value Classes")
   .settings {
     import Dependencies._
@@ -250,7 +271,9 @@ lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
 
 lazy val `agent-test` = project.dependsOn(agent, common)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publish := {})
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -262,6 +285,7 @@ lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client
   .configs(ForkedTest).settings(forkedSettings)
   .settings(
     commonSettings,
+    publish := {},
     description := "JobScheduler Agent Tests")
   .settings {
     import Dependencies._
@@ -273,7 +297,9 @@ lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client
 
 lazy val `http-client` = project.dependsOn(common, data)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -292,7 +318,9 @@ lazy val `http-client` = project.dependsOn(common, data)
 
 lazy val `http-server` = project.dependsOn(`http-client`, common, data)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -309,7 +337,9 @@ lazy val `http-server` = project.dependsOn(`http-client`, common, data)
 
 lazy val `engine-job-api` = project.dependsOn(common)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings(
     description := "JobScheduler Java Job API",
     crossPaths := false)  // No Scala binary "_2.11" version in artifact name
@@ -327,7 +357,9 @@ lazy val `engine-job-api` = project.dependsOn(common)
 
 lazy val minicom = project.dependsOn(common, `engine-job-api`)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -342,7 +374,9 @@ lazy val minicom = project.dependsOn(common, `engine-job-api`)
 
 lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC")
   .settings {
     import Dependencies._
@@ -362,7 +396,9 @@ lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data)
 
 lazy val `tunnel-data` = project.dependsOn(common, data, `http-server`/*HeartbeatView is here*/)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC - value classes")
   .settings {
     import Dependencies._
@@ -381,7 +417,9 @@ lazy val taskserver = project
     common,
     data)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -397,7 +435,9 @@ lazy val taskserver = project
 
 lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -407,7 +447,9 @@ lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common)
 
 lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common)
   .configs(ForkedTest).settings(forkedSettings)
-  .settings(commonSettings)
+  .settings(
+    commonSettings,
+    publishSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -434,7 +476,6 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
       else {
         import java.lang.ProcessBuilder.Redirect.PIPE
         import java.nio.file.Files.createDirectories
-        import sbt.librarymanagement.DependencyFilter.artifactFilter
         // engine-job-api must have been compiled before running this code !!!
         val jobApiClassesDir = baseDirectory.value / "../engine-job-api/target/classes/sos/spooler"  // How to do this right with a TaskKey???
 
@@ -479,6 +520,7 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(
     commonSettings,
+    publish := {},
     description := "JobScheduler Tests")
   .settings {
     import Dependencies._

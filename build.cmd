@@ -8,5 +8,5 @@ if "%WINDOWS_NET_SDK_HOME%" == "" (
   rem echo Using WINDOWS_NET_SDK_HOME=%WINDOWS_NET_SDK_HOME%
 )
 
-sbt "; clean; build"
+sbt clean-build
 endlocal
