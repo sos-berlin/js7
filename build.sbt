@@ -5,8 +5,8 @@
   * To build locally, without publishing:
   *   sbt clean-build
   *
-  * To compile quickly, without running tests again:
-  *   sbt "; clean ;compile-all"
+  * To build quickly, without running tests again:
+  *   sbt "; clean ;build-quickly"
   *
   * Under Windows, Microsoft SDK is required to compile taskserver-dotnet.
   *   set WINDOWS_NET_SDK_HOME=%windir%\Microsoft.NET\Framework\v4.0.30319
@@ -25,9 +25,6 @@ val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credenti
 val publishRepositoryName            = sys.props.get("publishRepository.name")
 val publishRepositoryUri             = sys.props.get("publishRepository.uri")
 
-scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
-javaOptions += BuildUtils.JavaOptions
-
 // Under Windows, compile engine-job-api first, to allow taskserver-dotnet accessing the class files of engine-job-api.
 addCommandAlias("clean-publish"  , "; clean ;build; publish-all")
 addCommandAlias("clean-build"    , "; clean; build")
@@ -38,6 +35,9 @@ addCommandAlias("test-all"       , "; test:compile; test; ForkedTest:test")
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish ;install-docker:universal:publish")
+
+scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
+javaOptions += BuildUtils.JavaOptions
 
 val publishSettings = List(
   publishArtifact in (Compile, packageDoc) := false,
@@ -516,7 +516,7 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`)
 lazy val ForkedTest = config("ForkedTest") extend Test
 lazy val forkedSettings = inConfig(ForkedTest)(Defaults.testTasks) ++ List(
   testOptions in ForkedTest := Seq(Tests.Filter(isIT)),
-  (fork in ForkedTest) := true,
+  fork in ForkedTest := true,
   testOptions in Test := Seq(Tests.Filter(name ⇒ !isIT(name))))
 
 def isIT(name: String): Boolean = name endsWith "IT"
