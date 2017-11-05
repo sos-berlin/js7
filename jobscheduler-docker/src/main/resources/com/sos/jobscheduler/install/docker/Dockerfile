@@ -4,7 +4,7 @@ EXPOSE 4444
 CMD "/bin/bash"
 
 ADD files /
-ADD jobscheduler-[1-9]*.tgz /opt/
+ADD jobscheduler-install-[1-9]*.tgz /opt/
 
 RUN chown root:root -R /opt/jobscheduler-[1-9]* && \
     chmod o-w -R /opt/jobscheduler-[1-9]* && \

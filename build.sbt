@@ -132,9 +132,9 @@ lazy val `jobscheduler-docker` = project
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings(
     universalPluginSettings,
-    (topLevelDirectory in Universal) := None,
-    (mappings in Universal) :=
-      recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/docker", to = "build/"))
+    topLevelDirectory in Universal := None,
+    mappings in Universal :=
+      recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker", to = "build/"))
 
 lazy val base = project
   .settings(commonSettings)
