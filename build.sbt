@@ -34,7 +34,7 @@ addCommandAlias("compile-all"    , "; engine-job-api/compile; compile")
 addCommandAlias("test-all"       , "; test:compile; test; ForkedTest:test")
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
-addCommandAlias("publish-install", "; install/universal:publish ;install-docker:universal:publish")
+addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 javaOptions += BuildUtils.JavaOptions
@@ -59,6 +59,7 @@ val commonSettings = List(
   scalaVersion := Dependencies.scalaVersion,
   javacOptions in Compile ++= List("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= List("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
+  javaOptions += s"-Dlog4j.configurationFile=../project/log4j2.xml",  // Forked only  // TODO Is there a SettingKey for project directory???
   logBuffered in Test := false,
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFG"),  // D: Durations, F: Print full stack strace
   testOptions in ForkedTest += Tests.Argument(TestFrameworks.ScalaTest, "-oFG"),  // D: Durations, F: Print full stack strace
