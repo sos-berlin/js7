@@ -1,4 +1,6 @@
 /**
+  * Install sbt from http://www.scala-sbt.org/.
+  *
   * Recommended usage for CI server:
   *   sbt clean-publish
   *
@@ -12,8 +14,14 @@
   *   set WINDOWS_NET_SDK_HOME=%windir%\Microsoft.NET\Framework\v4.0.30319
   *
   * To build and publish to a repository use
-  *   sbt -DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=... "; clean-build; publish-jobscheduler"
+  *   sbt -DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=... clean-publish
   *   (publishRepository.name defaults to publishRepository.uri)
+  *
+  *   Under Windows, if system properties are not accepted, set a environment variable:
+  *   set SBT_OPTS=-DpublishRepository.credentialsFile=... -DpublishRepository.name=... -DpublishRepository.uri=...
+  *   sbt clean-publish
+  *
+  * sbt allows to preset these command line options in the environment variable SBT_OPTS. Use one line per option.
   */
 import BuildUtils._
 import sbt.Keys.testOptions
