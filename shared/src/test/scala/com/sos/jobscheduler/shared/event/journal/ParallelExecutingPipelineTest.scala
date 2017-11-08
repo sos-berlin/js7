@@ -11,18 +11,20 @@ import scala.collection.mutable
   */
 final class ParallelExecutingPipelineTest extends FreeSpec {
 
+  private val sleepDuration = 10.ms
+
   "ParallelExecutionPipeline" in {
     val result = mutable.Buffer[Int]()
     val pipeline = new ParallelExecutingPipeline[Int](result.+=)
     val count = new ParallelismCounter
     def f(i: Int) = count {
-      Thread.sleep(1)
+      sleep(sleepDuration)
       i
     }
     pipeline.blockingAdd {  // Warm-up
       f(0)
     }
-    val n = 1000
+    val n = 20 * sys.runtime.availableProcessors
     val t = now
     for (i ← 1 to n) {
        pipeline.blockingAdd {
@@ -32,7 +34,7 @@ final class ParallelExecutingPipelineTest extends FreeSpec {
     pipeline.flush()
     assert(count.maximum == sys.runtime.availableProcessors)
     val duration = now - t
-    assert(duration < 2 * n * 1.ms / sys.runtime.availableProcessors)
+    assert(duration < n * sleepDuration * 3 / sys.runtime.availableProcessors)
     assert(result == (0 to n))
   }
 }
