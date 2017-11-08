@@ -45,7 +45,6 @@ addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts 
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
-javaOptions += BuildUtils.JavaOptions
 
 val publishSettings = List(
   publishArtifact in (Compile, packageDoc) := false,

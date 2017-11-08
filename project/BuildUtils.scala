@@ -7,8 +7,6 @@ object BuildUtils {
   lazy val isWindows = sys.props("os.name") startsWith "Windows"
   lazy val isMac = sys.props("os.name") startsWith "Mac OS"
 
-  val JavaOptions = "-Dlog4j.configurationFile=project/log4j2.xml"
-
   def recursiveFileMapping(directory: File, to: String = ""): Seq[(File, String)] = {
     val to_ = (to stripSuffix "/") + "/"
     for (file ← listFilesRecursively(directory)) yield
