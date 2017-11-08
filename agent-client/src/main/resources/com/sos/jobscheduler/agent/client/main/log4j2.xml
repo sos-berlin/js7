@@ -3,7 +3,7 @@
   <appenders>
     <console name="console" target="SYSTEM_ERR">
       <!-- Simple, readable format for agent client stderr output -->
-      <patternLayout pattern="%highlight{%-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}%n"/>
+      <patternLayout pattern="%highlight{%-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{WARN=magenta}%n"/>
     </console>
   </appenders>
   <loggers>
