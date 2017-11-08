@@ -2,15 +2,15 @@
 set -e
 
 export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
-. "$JOBSCHEDULER_HOME/bin/set-context.sh"
+. "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpath pathSeparator JAVA_HOME java
 
 javaOptions=()
 agentOptions=()
+httpPort=4445
 config=/var/opt/jobscheduler/agent/config
 data=/var/opt/jobscheduler/agent/data
 
-httpPort=
 log4jLmax=false
 
 for arg in "$@"; do

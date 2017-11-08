@@ -1,6 +1,6 @@
 FROM openjdk:9-jre-slim
 
-EXPOSE 4444
+EXPOSE 4444 4445
 CMD "/bin/bash"
 
 ADD files /

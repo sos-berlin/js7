@@ -2,7 +2,7 @@
 set -e
 
 export JOBSCHEDULER_HOME=/opt/jobscheduler
-. "$JOBSCHEDULER_HOME"/bin/set-context.sh
+. "$JOBSCHEDULER_HOME"/bin/internal/set-context.sh
 declare classpath pathSeparator JAVA_HOME java
 
 directory=/var/opt/jobscheduler/testMasterAgent

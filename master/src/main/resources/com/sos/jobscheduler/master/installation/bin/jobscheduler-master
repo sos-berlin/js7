@@ -8,10 +8,10 @@ set -e
 #   rm -rf engine
 #   tar xfz .../master/target/jobscheduler-master-bin.tar.gz
 #   export SCHEDULER_DATA=data (containing config/, config/live/ and log/)
-#   master-x.y.z/bin/master
+#   jobscheduler-x.y.z/bin/jobscheduler-master
 
 export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
-. "$JOBSCHEDULER_HOME/bin/set-context.sh"
+. "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpath pathSeparator JAVA_HOME java
 
 config=/var/opt/jobscheduler/master/config
