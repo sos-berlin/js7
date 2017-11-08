@@ -146,7 +146,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
   "Massive parallel parallel timer enqueuing" in {
     autoClosing(TimerService()) { timerService ⇒
       timerService.delayed(20.ms) await 1.s  // Start clock thread
-      for (_ ← 1 to 20) {
+      for (i ← 1 to 20) {
         val m = 10000
         val n = m * availableProcessors
         val latch = new CountDownLatch(n)
@@ -159,7 +159,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
           }
         }
         latch.await(1, MINUTES)
-        info("Parallel: " + stopwatch.itemsPerSecondString(n, "Timers"))
+        if (i % 10 == 0) info("Parallel: " + stopwatch.itemsPerSecondString(n, "Timers"))
       }
     }
   }

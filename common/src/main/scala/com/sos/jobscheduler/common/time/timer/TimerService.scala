@@ -95,8 +95,8 @@ final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) e
           case Right(timer) ⇒
             assert(timer ne NeverTimer, "NeverTimer")
             waitUntil.hot = false
-            timer.complete()
             timerCompleteCounter += 1
+            timer.complete()
         }
       }
       if (stopped) logger.debug("Stopped")
