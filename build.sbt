@@ -66,7 +66,7 @@ val commonSettings = List(
   scalaVersion := Dependencies.scalaVersion,
   javacOptions in Compile ++= List("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= List("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
-  javaOptions += s"-Dlog4j.configurationFile=../project/log4j2.xml",  // Forked only  // TODO Is there a SettingKey for project directory???
+  javaOptions in ForkedTest += s"-Dlog4j.configurationFile=../project/log4j2.xml",  // TODO Is there a SettingKey for project directory???
   logBuffered in Test := false,
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFG"),  // D: Durations, F: Print full stack strace
   testOptions in ForkedTest += Tests.Argument(TestFrameworks.ScalaTest, "-oFG"),  // D: Durations, F: Print full stack strace
