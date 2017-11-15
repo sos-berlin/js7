@@ -3,6 +3,8 @@ package com.sos.jobscheduler.master.web.api
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
+import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.akkahttp.SprayJsonOrYamlSupport._
@@ -30,25 +32,29 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
   protected def eventIdGenerator: EventIdGenerator
   protected implicit def webServiceContext: MasterWebServiceContext
 
-  def orderRoute: Route =
-    pathSingleSlash {
-      parameter("return".?) {
-        case Some("OrderOverview") | None ⇒
-          completeTryHtml(orderClient.orderOverviews)
-        case Some("Order") | None ⇒
-          complete(orderClient.orders)
-        case Some("OrderEvent") ⇒
-          orderEvents
-        case _ ⇒
-          reject
+  val orderRoute: Route =
+    get {
+      pathSingleSlash {
+        respondWithHeader(`Cache-Control`(`max-age`(0))) {
+          parameter("return".?) {
+            case Some("OrderOverview") | None ⇒
+              completeTryHtml(orderClient.orderOverviews)
+            case Some("Order") | None ⇒
+              complete(orderClient.orders)
+            case Some("OrderEvent") ⇒
+              orderEvents
+            case _ ⇒
+              reject
+          }
+        }
+      } ~
+      path(Segment) { orderIdString ⇒
+        singleOrder(OrderId(orderIdString))
+      } ~
+      extractUnmatchedPath {
+        case path: Uri.Path.Slash ⇒ singleOrder(OrderId(path.tail.toString))  // Slashes not escaped
+        case _ ⇒ reject
       }
-    } ~
-    path(Segment) { orderIdString ⇒
-      singleOrder(OrderId(orderIdString))
-    } ~
-    extractUnmatchedPath {
-      case path: Uri.Path.Slash ⇒ singleOrder(OrderId(path.tail.toString))  // Slashes not escaped
-      case _ ⇒ reject
     }
 
   private def singleOrder(orderId: OrderId): Route =
@@ -61,7 +67,7 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
       }
     }
 
-  private def orderEvents: Route =
+  private val orderEvents: Route =
     eventRequest[OrderEvent]().apply {
       case request: SomeEventRequest[OrderEvent] ⇒
         complete {

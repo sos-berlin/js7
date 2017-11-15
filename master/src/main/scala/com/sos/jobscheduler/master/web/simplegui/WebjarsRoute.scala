@@ -20,7 +20,7 @@ trait WebjarsRoute {
   protected implicit def actorRefFactory: ActorRefFactory
   protected lazy val webjarsExists = checkWebjars(NeededWebjars)
 
-  protected final def webjarsRoute: Route =
+  protected final val webjarsRoute: Route =
     get {
       respondWithHeader(LongTimeCaching) {  // WebJar resources are immutable versioned and can be cached forever
         getFromResourceDirectory(WebjarsResourceDirectory.path)    // Artifacts of Maven groupId 'org.webjars'

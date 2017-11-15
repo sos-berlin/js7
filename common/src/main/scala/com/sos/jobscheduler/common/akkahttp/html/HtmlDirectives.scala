@@ -39,7 +39,7 @@ trait HtmlDirectives[C <: WebServiceContext] {
   /**
     * If HTML is requested, path ends with slash and request has no query, then redirect to path without slash, in case of typo.
     */
-  def pathEndRedirectToSlash: Route =
+  val pathEndRedirectToSlash: Route =
     pathEnd {
       redirectEmptyQueryBy(path ⇒ Uri.Path(path.toString + "/"))
     }
@@ -87,7 +87,7 @@ trait HtmlDirectives[C <: WebServiceContext] {
   /**
     * If HTML is requested, trailing slash is missing and request has no query, then redirect to trailing slash, in case of typo.
     */
-  def redirectToSlash: Route =
+  val redirectToSlash: Route =
     pathEnd {
       htmlPreferred {  // The browser user may type "api/"
         extractRequest { request ⇒

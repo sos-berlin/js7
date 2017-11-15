@@ -13,19 +13,17 @@ import com.sos.jobscheduler.master.web.simplegui.FrontEndRoute._
   */
 trait FrontEndRoute extends WebjarsRoute {
 
-  final def frontEndRoute: Route =
-    //"Route responses other than HttpResponse or Rejections cannot be cached ": cache(routeCache()) {  // Cache slow Jar reads
+  final val frontEndRoute: Route =
+    get {
       pathSegments("webjars") {
         webjarsRoute
       } ~
-      get {
-        parameter("SHA-224".?) { hashOption ⇒
-          respondWithHeader(if (hashOption.isDefined) LongTimeCaching else ShortTimeCaching) {
-            getFromResourceDirectory(FrontendResourceDirectory.path)
-          }
+      parameter("SHA-224".?) { hashOption ⇒
+        respondWithHeader(if (hashOption.isDefined) LongTimeCaching else ShortTimeCaching) {
+          getFromResourceDirectory(FrontendResourceDirectory.path)
         }
       }
-    //}
+    }
 }
 
 object FrontEndRoute {
