@@ -135,7 +135,7 @@ with Stash {
 
   private def handleRecoveredOrder(order: Order[Order.State]): Unit =
     order.state match {
-      case Order.Ready ⇒ detachOrderFromAgent(order.id)
+      case Order.Detachable ⇒ detachOrderFromAgent(order.id)
       case Order.Detached ⇒ tryAttachOrderToAgent(order.castState[Order.Detached.type])
       case _ ⇒
     }
@@ -292,10 +292,10 @@ with Stash {
             logger.info(s"$orderId $t: ${chunk.trim}")
         }
         event match {
-          case _: OrderEvent.OrderReady.type if detachingSuspended ⇒
+          case _: OrderEvent.OrderDetachable.type if detachingSuspended ⇒
             stash()
 
-          case OrderEvent.OrderReady ⇒
+          case OrderEvent.OrderDetachable ⇒
             detachOrderFromAgent(orderId)
 
           case OrderEvent.OrderMovedToAgent(agentPath) ⇒

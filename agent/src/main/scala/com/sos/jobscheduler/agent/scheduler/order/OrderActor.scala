@@ -65,7 +65,7 @@ extends KeyedJournalingActor[OrderEvent] {
         context.become(waiting)
         persist(OrderStepFailed(OrderStepFailed.AgentAborted, nextNodeId = order.nodeId))(update)  // isRecoveryGeneratedEvent
 
-      case Order.StartNow | _: Order.Scheduled | Order.Ready | Order.Detached | Order.Finished ⇒
+      case Order.StartNow | _: Order.Scheduled | Order.Detachable | Order.Detached | Order.Finished ⇒
         context.become(waiting)
 
       case _ ⇒
@@ -126,8 +126,8 @@ extends KeyedJournalingActor[OrderEvent] {
             stderrWriter = stderrWriter))
       }
 
-    case Input.SetReady ⇒
-      persist(OrderReady)(update)
+    case Input.MakeDetachable ⇒
+      persist(OrderDetachable)(update)
 
     case Input.Terminate ⇒
       context.stop(self)
@@ -246,7 +246,7 @@ object OrderActor {
 
   sealed trait Input
   object Input {
-    final case object SetReady extends Input
+    final case object MakeDetachable extends Input
     final case class  StartStep(node: Jobnet.JobNode, jobActor: ActorRef) extends Input
     final case object Terminate extends Input
   }

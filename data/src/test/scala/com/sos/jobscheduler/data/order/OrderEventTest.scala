@@ -121,10 +121,10 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  "OrderReady" in {
-    check(OrderReady,
+  "OrderDetachable" in {
+    check(OrderDetachable,
       """{
-        "TYPE": "OrderReady"
+        "TYPE": "OrderDetachable"
       }""")
   }
 

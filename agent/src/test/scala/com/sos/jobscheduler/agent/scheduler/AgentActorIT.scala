@@ -56,7 +56,7 @@ final class AgentActorIT extends FreeSpec {
               AJobnet))
           ) await 99.s
           for (orderId ← orderIds)
-            eventCollector.whenKeyedEvent[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
+            eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable.type](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
           info(stopwatch.itemsPerSecondString(n, "Orders"))
           (for (orderId ← orderIds) yield executeCommand(DetachOrder(orderId))) await 99.s
         }

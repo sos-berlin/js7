@@ -19,7 +19,7 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
-import com.sos.jobscheduler.data.order.OrderEvent.OrderReady
+import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -47,7 +47,7 @@ final class OrderAgentIT extends FreeSpec {
 
           while (
             agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.s)) await 99.s match {
-              case EventSeq.NonEmpty(stampeds) if stampeds map { _.value } contains KeyedEvent(OrderReady)(order.id) ⇒
+              case EventSeq.NonEmpty(stampeds) if stampeds map { _.value } contains KeyedEvent(OrderDetachable)(order.id) ⇒
                 false
               case _ ⇒
                 true
@@ -90,7 +90,7 @@ final class OrderAgentIT extends FreeSpec {
           while (
             agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = timeout)) await 99.s match {
               case EventSeq.NonEmpty(stampeds) ⇒
-                ready ++= stampeds map { _.value } collect { case KeyedEvent(orderId: OrderId, OrderReady) ⇒ orderId }
+                ready ++= stampeds map { _.value } collect { case KeyedEvent(orderId: OrderId, OrderDetachable) ⇒ orderId }
                 ready != awaitedOrderIds
               case _ ⇒
                 true
@@ -158,7 +158,7 @@ private object OrderAgentIT {
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
       nodeKey = order.nodeKey.copy(nodeId = EndNodeId),
-      state = Order.Ready,
+      state = Order.Detachable,
       outcome = Order.Good(true),
       variables = Map("x" → "X", "result" → "TEST-RESULT-BBB"))
 }

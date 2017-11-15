@@ -95,7 +95,7 @@ final class RunningMasterIT extends FreeSpec {
         val agent1 = RunningAgent(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
         master.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
 
-        master.eventCollector.when[OrderEvent.OrderReady.type](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
+        master.eventCollector.when[OrderEvent.OrderDetachable.type](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
         val agentClients = for (a ← List(agent0, agent1)) yield AgentClient(a.localUri.toString)(actorSystem)
         assert(agentClients(0).orders() await 99.s map { _.id } contains TestOrderId)
         master.orderKeeper ! MasterOrderKeeper.Input.ContinueDetaching

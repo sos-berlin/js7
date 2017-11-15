@@ -22,7 +22,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.Order.Scheduled
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderMovedToAgent, OrderMovedToMaster, OrderReady, OrderStdoutWritten, OrderStepFailed, OrderStepStarted, OrderStepSucceeded}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMovedToAgent, OrderMovedToMaster, OrderStdoutWritten, OrderStepFailed, OrderStepStarted, OrderStepSucceeded}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
@@ -180,7 +180,7 @@ private object RecoveryIT {
     //OrderStepStarted,
     //OrderStdoutWritten("TEST\n"),
     OrderStepSucceeded(MapDiff(Map(), Set()), true, NodeId("200")),
-    OrderReady,
+    OrderDetachable,
     OrderMovedToMaster,
     OrderMovedToAgent(AgentPath("/test-agent-222")),
     //OrderStepStarted,
@@ -189,7 +189,7 @@ private object RecoveryIT {
     //OrderStepStarted,
     //OrderStdoutWritten("TEST\n"),
     OrderStepSucceeded(MapDiff(Map(), Set()), true, NodeId("END")),
-    OrderReady,
+    OrderDetachable,
     OrderMovedToMaster,
     OrderFinished)
   private def isIgnoredEvent(event: OrderEvent) =

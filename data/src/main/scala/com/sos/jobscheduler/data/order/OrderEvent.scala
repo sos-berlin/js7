@@ -99,7 +99,7 @@ object OrderEvent {
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
-  case object OrderReady extends OrderCoreEvent
+  case object OrderDetachable extends OrderCoreEvent
 
   /**
     * Order has been removed from the Agent and is held by the Master.
@@ -122,7 +122,7 @@ object OrderEvent {
     Subtype(jsonFormat1(OrderStdoutWritten)),
     Subtype(jsonFormat1(OrderStderrWritten)),
     Subtype(jsonFormat0(() ⇒ OrderDetached)),
-    Subtype(jsonFormat0(() ⇒ OrderReady)),
+    Subtype(jsonFormat0(() ⇒ OrderDetachable)),
     Subtype(jsonFormat0(() ⇒ OrderStepStarted)),
     Subtype(jsonFormat3(OrderStepSucceeded)),
     Subtype(jsonFormat2(OrderStepFailed.apply)),

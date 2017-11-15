@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderFinished, OrderReady}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetachable, OrderDetached, OrderFinished}
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import java.time.Duration
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -39,7 +39,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
     assert((requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s) == EventSeq.Empty(EventId.BeforeFirst))
     assert((requestEvents(after = EventId.BeforeFirst, timeout = 10.ms) await 99.s) == EventSeq.Empty(EventId.BeforeFirst))
 
-    val aKeyedEvent = KeyedEvent(OrderReady)(OrderId("1"))
+    val aKeyedEvent = KeyedEvent(OrderDetachable)(OrderId("1"))
     actor ! Stamped(111, aKeyedEvent)
     val aEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
     assert((aEventSeq.stampeds map { _.value }) == List(aKeyedEvent))
@@ -48,7 +48,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
 
     val whenBEventSeq = requestEvents(after = aEventId, timeout = 99.s).mapTo[EventSeq.NonEmpty[Seq, KeyedEvent[OrderEvent]]]
     sleep(50.ms)
-    val bKeyedEvent = KeyedEvent(OrderReady)(OrderId("1"))
+    val bKeyedEvent = KeyedEvent(OrderDetachable)(OrderId("1"))
     actor ! Stamped(222, bKeyedEvent)
     val bEventSeq = whenBEventSeq await 99.s
     assert((bEventSeq.stampeds map { _.value }) == List(bKeyedEvent))
@@ -68,7 +68,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
   "Many events" in {
     for (_ ← 1 to 100) {
       val whenAEventSeq = requestEvents(after = lastEventId, timeout = 99.s)
-      val keyedEvent = KeyedEvent(OrderReady)(OrderId("2"))
+      val keyedEvent = KeyedEvent(OrderDetachable)(OrderId("2"))
       val sent = for (i ← 1 to 1000) yield Stamped(lastEventId + i, keyedEvent)
       sent foreach actor.!
       val received = mutable.Buffer[Stamped[KeyedEvent[OrderEvent]]]()

@@ -88,10 +88,10 @@ final class OrderTest extends FreeSpec {
         }""")
     }
 
-    "Ready" in {
-      check(Ready,
+    "Detachable" in {
+      check(Detachable,
         """{
-           "TYPE": "Ready"
+           "TYPE": "Detachable"
         }""")
     }
 

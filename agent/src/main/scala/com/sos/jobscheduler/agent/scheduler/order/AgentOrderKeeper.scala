@@ -205,8 +205,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     case DetachOrder(orderId) ⇒
       orderRegister.get(orderId) match {
         case Some(orderEntry) ⇒
-          if (orderEntry.order.state != Order.Ready)
-            Future.failed(new IllegalStateException(s"DetachOrder $orderId: Not in state 'Ready': ${orderEntry.order.state}") with NoStackTrace)
+          if (orderEntry.order.state != Order.Detachable)
+            Future.failed(new IllegalStateException(s"DetachOrder $orderId: Not in state 'Detachable': ${orderEntry.order.state}") with NoStackTrace)
           else {
             orderEntry.detaching = true  // OrderActor is terminating
             (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }
@@ -308,8 +308,8 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
       case Some(_: EndNode) | None ⇒
         if (!terminating) {  // When terminating, the order actors are terminating now
-          logger.trace(s"${orderEntry.order.id} is ready to be retrieved by the Master")
-          orderRegister(orderEntry.order.id).actor ! OrderActor.Input.SetReady
+          logger.trace(s"${orderEntry.order.id} is detachble, ready to be retrieved by the Master")
+          orderRegister(orderEntry.order.id).actor ! OrderActor.Input.MakeDetachable
         }
     }
 
