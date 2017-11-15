@@ -53,7 +53,7 @@ object MasterMain {
         .flatMap { _.terminated }
         .onComplete {
           case Success(Completed) ⇒
-            println("JobScheduler Agent terminated")
+            println("JobScheduler Master terminated")
             logger.debug("Terminated")
             Log4j.shutdown()
             sys.runtime.exit(0)
