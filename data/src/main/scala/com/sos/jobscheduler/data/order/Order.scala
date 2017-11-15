@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.order
 
-import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentPath
@@ -37,8 +37,8 @@ final case class Order[+S <: Order.State](
       case OrderAttached(nodeKey_, state_, variables_, outcome_) ⇒
         copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
 
-      case OrderMovedToAgent(agentPath) ⇒ copy(
-        agentPath = Some(agentPath))
+      case OrderMovedToAgent(o) ⇒ copy(
+        agentPath = Some(o))
 
       case OrderMovedToMaster ⇒ copy(
         state = Detached,
@@ -79,6 +79,8 @@ final case class Order[+S <: Order.State](
 }
 
 object Order {
+  private implicit def InstantJsonFormat = JavaTimeJsonFormats.NumericInstantJsonFormat  // Override default
+
   val InitialOutcome = Good(true)
 
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Idle] =

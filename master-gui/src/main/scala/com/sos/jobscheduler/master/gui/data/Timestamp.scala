@@ -46,5 +46,10 @@ object Timestamp {
 
   def apply(string: String) = fromEpochMilli((js.Date.parse(string)).toLong)
 
-  implicit val jsonDecoder: circe.Decoder[Timestamp] = _.as[String] map apply
+  implicit val jsonDecoder: circe.Decoder[Timestamp] =
+    cursor ⇒
+      cursor.as[Long] match {
+        case Right(milli) ⇒ Right(fromEpochMilli(milli))
+        case _ ⇒ cursor.as[String].map(apply)
+      }
 }

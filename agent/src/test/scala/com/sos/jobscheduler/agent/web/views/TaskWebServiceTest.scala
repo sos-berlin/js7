@@ -63,7 +63,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
         JsObject(
           "taskId" → JsString("1-123"),
           "pid" → JsNumber(123),
-          "startedAt" → JsString("2015-06-10T12:00:00Z"),
+          "startedAt" → JsNumber(1433937600000L),  //JsString("2015-06-10T12:00:00Z"),
           "jobPath" → JsString("/FOLDER/JOB"))))
     }
   }
@@ -74,7 +74,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
       assert(responseAs[JsObject] == JsObject(
           "taskId" → JsString("1-123"),
           "pid" → JsNumber(123),
-          "startedAt" → JsString("2015-06-10T12:00:00Z"),
+          "startedAt" → JsNumber(1433937600000L),  //JsString("2015-06-10T12:00:00Z"),
           "jobPath" → JsString("/FOLDER/JOB")))
     }
   }
