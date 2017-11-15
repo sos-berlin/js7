@@ -23,8 +23,8 @@ object Dependencies {
 
   val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
   val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
-  val scalaTest           = "org.scalatest" %% "scalatest" % "3.0.1"
-  val scalactic           = "org.scalactic" %% "scalactic" % "3.0.1"
+  val scalaTest           = "org.scalatest" %% "scalatest" % "3.0.4"
+  val scalactic           = "org.scalactic" %% "scalactic" % "3.0.4"
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0" :: slf4j :: Nil
 
   val tagging             = "com.softwaremill.common" %% "tagging" % "2.2.0"
