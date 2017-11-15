@@ -21,7 +21,7 @@ final case class Order[+S <: Order.State](
   state: S,
   variables: Map[String, String] = Map(),
   outcome: Outcome = InitialOutcome,
-  agentPathOption: Option[AgentPath] = None)
+  agentPath: Option[AgentPath] = None)
 {
   def jobnetPath: JobnetPath =
     nodeKey.jobnetPath
@@ -38,11 +38,11 @@ final case class Order[+S <: Order.State](
         copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
 
       case OrderMovedToAgent(agentPath) ⇒ copy(
-        agentPathOption = Some(agentPath))
+        agentPath = Some(agentPath))
 
       case OrderMovedToMaster ⇒ copy(
         state = Detached,
-        agentPathOption = None)
+        agentPath = None)
 
       case OrderStepStarted ⇒ copy(
         state = InProcess)

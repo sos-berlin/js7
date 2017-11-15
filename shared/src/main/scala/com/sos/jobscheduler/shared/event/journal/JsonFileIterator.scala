@@ -37,7 +37,7 @@ extends AutoCloseable with Iterator[JsValue] {
         throw new RuntimeException(s"Not a valid JobScheduler journal file: $file. Expected header ${headerJson.compactPrint}", t)
       }
     if (header.version != expectedHeader.version) {
-      sys.error(s"Version '${header.version}' of journal file '$file' is not the expected '${expectedHeader.version}'")
+      sys.error(s"Journal has version ${header.version} but ${expectedHeader.version} is expected. Incompatible journal file: $file")
     }
   }
 }

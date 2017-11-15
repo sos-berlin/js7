@@ -179,7 +179,7 @@ with Stash {
             sender() ! Done
           else {
             orderEntry.toBeRemoved = true
-            orderEntry.order.agentPathOption match {
+            orderEntry.order.agentPath match {
               case Some(agentPath) ⇒
                 sender() ! Status.Failure(new IllegalStateException(s"Order cannot be removed because it is attached to Agent '$agentPath'"))  // ???
                 //(agents(agentPath) ? AgentDriver.Input.DetachOrder(orderId)).mapTo[Accepted.type]
@@ -333,7 +333,7 @@ with Stash {
     }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
-    for (agentPath ← orderRegister(orderId).order.agentPathOption)
+    for (agentPath ← orderRegister(orderId).order.agentPath)
       agentRegister(agentPath).actor ! AgentDriver.Input.DetachOrder(orderId)
 }
 

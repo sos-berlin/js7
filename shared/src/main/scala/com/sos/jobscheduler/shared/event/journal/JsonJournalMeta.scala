@@ -14,6 +14,6 @@ extends StreamConversion
 
 object JsonJournalMeta {
   val Header = JsonJournalHeader(
-    version = "0.0",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+    version = "0.1",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
     softwareVersion = BuildInfo.version)
 }

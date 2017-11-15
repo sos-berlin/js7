@@ -13,7 +13,7 @@ final class JsonJournalHeaderTest extends FreeSpec {
     check(JsonJournalMeta.Header,
       s"""{
         "TYPE": "JobScheduler.Journal",
-        "version": "0.0",
+        "version": "0.1",
         "softwareVersion": "${BuildInfo.version}"
         }""")
   }
