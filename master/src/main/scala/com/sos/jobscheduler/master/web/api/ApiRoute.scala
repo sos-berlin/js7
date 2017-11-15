@@ -6,12 +6,12 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.master.web.api.root.RootRoute
-import com.sos.jobscheduler.master.web.simplegui.FrontEndRoute
+import com.sos.jobscheduler.master.web.simplegui.{FrontEndRoute, GuiRoute}
 
 /**
   * @author Joacim Zschimmer
   */
-trait ApiRoute extends RootRoute with OrderRoute with FrontEndRoute {
+trait ApiRoute extends RootRoute with OrderRoute with FrontEndRoute with GuiRoute {
 
   val apiRoute: Route =
     respondWithHeader(RawHeader("X-JobScheduler-Version-UUID", BuildInfo.uuid.toString)) {

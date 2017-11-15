@@ -1,0 +1,80 @@
+html {
+  font-size: 12px;
+}
+
+td, th {
+  padding: 1px 5px;
+}
+/*
+.table.no-padding thead th,
+.table.no-padding tbody td {
+  padding: 0
+}
+*/
+.side-nav {
+  padding-top: 5px;
+  width: 120px;
+}
+
+@media only screen and (min-width: 993px) {
+  .container {
+    padding-left: 125px;
+    max-width: none;
+  }
+}
+
+.container {
+  width: 99%;
+}
+/*
+header, main, footer {
+  padding-left: 150px;
+}
+
+@media only screen and (max-width : 992px) {
+  header, main, footer {
+    padding-left: 0;
+  }
+}
+*/
+
+.page-top-line {
+  border-bottom: lightgray 0 solid;
+  margin-bottom: 3em;
+  color: gray;
+  font-size: 10px;
+}
+
+.disconnected {
+  color: orangered;
+}
+
+.order-count {
+  margin-bottom: 1em;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.unimportant {
+  color: lightgrey;
+}
+
+.order-row-enter {
+    background-color: green;
+    transition: background-color 1s ease;
+}
+
+.order-row-enter.order-row-enter-active {
+    background-color: transparent;
+}
+
+.order-row-leave {
+    background-color: transparent;
+    transition: background-color 1s ease;
+}
+
+.order-row-leave.order-row-leave-active {
+    background-color: yellow;
+}

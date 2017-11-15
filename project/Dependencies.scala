@@ -57,6 +57,7 @@ object Dependencies {
   object webjars {
     val bootstrap = "org.webjars" % "bootstrap" % "3.3.6"
     val jQuery    = "org.webjars" % "jquery" % "2.2.4"
+    val materializeCss = "org.webjars" % "materializecss" % "0.100.2"
   }
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil

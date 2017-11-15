@@ -27,15 +27,18 @@
   * sbt allows to preset these command line options in the environment variable SBT_OPTS. Use one line per option.
   */
 import BuildUtils._
+import java.nio.file.Paths
 import java.util.UUID
 import sbt.Keys.testOptions
 import sbt.librarymanagement.DependencyFilter.artifactFilter
+import sbt.{CrossVersion, Def}
 
 val fastSbt = sys.env contains "FAST_SBT"
 
 val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o ⇒ new File(o))
 val publishRepositoryName            = sys.props.get("publishRepository.name")
 val publishRepositoryUri             = sys.props.get("publishRepository.uri")
+def isForDevelopment                 = sys.props contains "dev"
 
 // Under Windows, compile engine-job-api first, to allow taskserver-dotnet accessing the class files of engine-job-api.
 addCommandAlias("clean-publish"  , "; clean ;build; publish-all")
@@ -69,6 +72,7 @@ val commonSettings = List(
       </developer>
     </developers>,
   scalaVersion := Dependencies.scalaVersion,
+  addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
   javacOptions in Compile ++= List("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= List("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   javaOptions in ForkedTest += s"-Dlog4j.configurationFile=../project/log4j2.xml",  // TODO Is there a SettingKey for project directory???
@@ -86,9 +90,9 @@ val commonSettings = List(
 
 val universalPluginSettings = List(
   universalArchiveOptions in (Universal, packageZipTarball) :=
-    (List("--force-local") filter { _ ⇒ !isMac }) ++ (universalArchiveOptions in (Universal, packageZipTarball)).value,  // Under cygwin, tar shall not interpret C:
-  universalArchiveOptions in (Universal, packageXzTarball) :=
-    (List("--force-local") filter { _ ⇒ !isMac }) ++ (universalArchiveOptions in (Universal, packageXzTarball)).value)  // Under cygwin, tar shall not interpret C:
+    List("--force-local") .filter { _ ⇒ !isMac } ++
+      List("--exclude=lib/org.scala-js.scalajs-library_*.japubr", "--exclude=lib/*_sjs*.jar") ++  // These big Scala.js jars are not for JVM - https://github.com/scala-js/scala-js/issues/1472
+      (universalArchiveOptions in (Universal, packageZipTarball)).value)  // Under cygwin, tar shall not interpret C:
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
   max = if (fastSbt) math.max(1, sys.runtime.availableProcessors * 3/8) else 1)
@@ -204,19 +208,71 @@ lazy val common = project.dependsOn(base, data)
       BuildInfoKey.action("uuid") { UUID.randomUUID }),
     buildInfoPackage := "com.sos.jobscheduler.common")
 
-lazy val master = project.dependsOn(shared, common, `agent-client`)
+val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
+val masterGuiJs = s"$masterGuiPath/master-gui.js"
+
+lazy val master = project.dependsOn(`master-gui`, shared, common, `agent-client`)
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
+  // Provide master-gui JavaScript code as resources placed in master-gui package
+  .settings(
+    resources in Compile ++= List(
+      new File((scalaJSLinkedFile in Compile in `master-gui`).value.path),            // master-gui-fastopt.js or master-gui-opt.js
+      new File((scalaJSLinkedFile in Compile in `master-gui`).value.path + ".map"),   // master-gui-...opt.js.map
+      (packageMinifiedJSDependencies in Compile in `master-gui`).value),              // master-gui-...opt-jsdeps.min.js
+    mappings in (Compile, packageBin) :=
+      (mappings in (Compile, packageBin)).value map { case (file, path) ⇒
+        val generatedJsName = Paths.get((scalaJSLinkedFile in Compile in `master-gui`).value.path).toFile.getName
+        val jsMapName = s"$generatedJsName.map"  // Keep original .js.map name
+        val minJsDepName = (packageMinifiedJSDependencies in Compile in `master-gui`).value.getName
+        path match {
+          case `generatedJsName` ⇒
+            println(s"$generatedJsName -> $masterGuiJs")  // Show ...-fastopt.js or ...-opt.js
+            (file, masterGuiJs)  // Move to package and use the same name for fastOptJS and fullOptJS generated JavaScript file
+          case `jsMapName` | `minJsDepName`  ⇒
+            (file, s"$masterGuiPath/$path")
+          case _ ⇒
+            (file, path)
+        }
+      })
   .settings {
     import Dependencies._
     libraryDependencies ++=
       webjars.bootstrap ++
       webjars.jQuery ++
+      webjars.materializeCss ++
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++
       akkaHttp/*force version?*/ % "test" ++
       log4j % "test"
   }
+
+lazy val `master-gui` = project
+  .enablePlugins(ScalaJSPlugin)
+  .settings(
+    commonSettings,
+    scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html
+    jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
+    scalaJSUseMainModuleInitializer := true,
+    scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
+    libraryDependencies ++= List(
+      "org.scala-js" %%% "scalajs-dom" % "0.9.1",
+      "com.github.japgolly.scalajs-react" %%% "core" % "1.1.1",
+      "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "1.1.1",
+      "com.github.japgolly.scalacss" %%% "core" % "0.5.3",
+      "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.3",
+      "com.github.julien-truffaut" %%%  "monocle-core"  % "1.4.0",
+      "com.github.julien-truffaut" %%%  "monocle-macro" % "1.4.0",
+      "org.scalatest" %%% "scalatest" % "3.0.4" % "test",
+      "io.circe" %%% "circe-core" % "0.8.0",
+      "io.circe" %%% "circe-parser" % "0.8.0",
+      "io.circe" %%% "circe-generic" % "0.8.0"),
+    jsDependencies ++= List(
+      "org.webjars.bower" % "jquery" % "3.2.1"           / "dist/jquery.js" minified "dist/jquery.min.js",
+      "org.webjars"       % "materializecss" % "0.100.2" / "materialize.js" minified "materialize.min.js" dependsOn "dist/jquery.js",
+      "org.webjars.bower" % "react" % "15.6.1"     / "react-with-addons.js" minified "react-with-addons.min.js" commonJSName "React",
+      "org.webjars.bower" % "react" % "15.6.1"     / "react-dom.js"         minified "react-dom.min.js"         commonJSName "ReactDOM"       dependsOn "react-with-addons.js",
+      "org.webjars.bower" % "react" % "15.6.1"     / "react-dom-server.js"  minified "react-dom-server.min.js"  commonJSName "ReactDOMServer" dependsOn "react-dom.js"))
 
 lazy val shared = project.dependsOn(common)
   .configs(ForkedTest).settings(forkedSettings)

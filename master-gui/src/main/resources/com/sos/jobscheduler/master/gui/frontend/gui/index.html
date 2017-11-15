@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JobScheduler Master</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" sizes="64x64" type="image/vnd.microsoft.icon" href="gui/images/jobscheduler.ico">
+  <link rel="stylesheet" href="api/frontend/webjars/materializecss/0.100.2/css/materialize.min.css">
+  <link rel="stylesheet" href="gui/gui.css">
+</head>
+<body>
+  <div id="GUI">
+    <pre>
+      JobScheduler Master...
+    </pre>
+  </div>
+  <script type="text/javascript" src="gui/master-gui-jsdeps.min.js"></script>
+  <script type="text/javascript">
+    // Materialize CSS
+    $('.button-collapse').sideNav();
+
+    var jobschedulerVersionUuid = "{JobSchedulerVersionUuid}";  // Replaced by GuiRoute
+  </script>
+  <script type="text/javascript" src="gui/master-gui.js"></script>
+</body>
+</html>
