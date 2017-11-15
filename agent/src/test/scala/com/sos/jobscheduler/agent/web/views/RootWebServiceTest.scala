@@ -49,14 +49,14 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
 
   "overview" - {
     "Accept: application/json returns compact JSON" in {
-      Get("/jobscheduler/agent/api") ~> Accept(`application/json`) ~> route ~> check {
+      Get("/agent/api") ~> Accept(`application/json`) ~> route ~> check {
         assert(responseAs[JsObject] == expectedOverviewJsObject)
         assert(!(responseAs[String] contains " ")) // Compact JSON
       }
     }
 
     "Accept: text/plain returns pretty YAML" in {
-      Get("/jobscheduler/agent/api") ~> Accept(`text/plain`) ~> route ~> check {
+      Get("/agent/api") ~> Accept(`text/plain`) ~> route ~> check {
         assert(responseAs[String] contains " ") // YAML
       }
     }

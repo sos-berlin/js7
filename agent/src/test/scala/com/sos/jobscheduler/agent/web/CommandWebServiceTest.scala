@@ -53,12 +53,12 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   }
 
   private def postJsonCommand(json: String): RouteTestResult =
-    Post("/test/jobscheduler/agent/api/command", JsonString(json)) ~>
+    Post("/test/agent/api/command", JsonString(json)) ~>
       Accept(`application/json`) ~>
       route
 
   "commandHandler returns overview" in {
-    Get("/test/jobscheduler/agent/api/command") ~> Accept(`application/json`) ~> route ~> check {
+    Get("/test/agent/api/command") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[JsObject] == JsObject(
         "currentCommandCount" → JsNumber(111),
         "totalCommandCount" → JsNumber(222)))
@@ -66,7 +66,7 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
   }
 
   "commandHandler/ returns array of running command" in {
-    Get("/test/jobscheduler/agent/api/command/") ~> Accept(`application/json`) ~> route ~> check {
+    Get("/test/agent/api/command/") ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
       assert(responseAs[JsArray] == JsArray(
         JsObject(

@@ -14,15 +14,16 @@ trait AllRoute extends ApiRoute {
 
   protected implicit def actorRefFactory: ActorRefFactory
 
-  def allRoutes: Route =
+  val allRoutes: Route =
     (decodeRequest & encodeResponse) {
-      pathSegments("jobscheduler") {
-        pathSegments("master") {
-          masterRoute
-        }
+      pathSegments("master") {
+        masterRoute
       } ~
       pathEndOrSingleSlash {
-        redirect("/jobscheduler/master/api", TemporaryRedirect)  // TODO Only if htmlPreferred
+        htmlPreferred {
+          redirect("/master/", TemporaryRedirect)
+        } ~
+        redirect("/master/api", TemporaryRedirect)
       }
     }
 

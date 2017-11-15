@@ -181,7 +181,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
 }
 
 private object AgentWebServerIT {
-  private val Api = "jobscheduler/agent/api"
+  private val Api = "agent/api"
   private val ClientKeystoreRef = KeystoreReference(
     TestAgentDirectoryProvider.PublicHttpJksResource.url,
     Some(SecretString("jobscheduler")))

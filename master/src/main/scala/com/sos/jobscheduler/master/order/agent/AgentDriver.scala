@@ -32,7 +32,7 @@ final class AgentDriver(agentPath: AgentPath, uri: Uri, config: Config)
 extends Actor
 with Stash {
 
-  private val logger = Logger.withPrefix[AgentDriver](agentPath.string)
+  private val logger = Logger.withPrefix[AgentDriver](agentPath.string + " " + uri)
   private val client = AgentClient(uri)(context.system)
   private var startInputReceived = false
   private var eventFetcher: EventFetcher[OrderEvent] = null

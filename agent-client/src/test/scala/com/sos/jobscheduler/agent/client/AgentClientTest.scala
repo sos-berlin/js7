@@ -41,28 +41,28 @@ object AgentClientTest {
   private val Setting = List[(Uri, Option[Uri])](
     Uri("http://example.com:9999") →
       None,
-    Uri("http://example.com:9999/jobscheduler/agent/api") →
+    Uri("http://example.com:9999/agent/api") →
       None,
-    Uri("https://example.net:9999/jobscheduler/agent/api") →
+    Uri("https://example.net:9999/agent/api") →
       None,
-    Uri("https://example.com:7777/jobscheduler/agent/api") →
+    Uri("https://example.com:7777/agent/api") →
       None,
     Uri("https://example.com:9999/jobscheduler/invalid") →
       None,
     Uri("https://example.com:9999/jobscheduler/invalid/api") →
       None,
-    Uri("//example.com:9999/jobscheduler/agent/api") →
+    Uri("//example.com:9999/agent/api") →
       None,
-    Uri("https:/jobscheduler/agent/api") →
+    Uri("https:/agent/api") →
       None,
     Uri("/jobscheduler/invalid") →
       None,
-    Uri("https://example.com:9999/jobscheduler/agent") →
-      Some(Uri("https://example.com:9999/jobscheduler/agent")),
-    Uri("https://example.com:9999/jobscheduler/agent/api?q=1") →
-      Some(Uri("https://example.com:9999/jobscheduler/agent/api?q=1")),
-    Uri("/jobscheduler/agent") →
-      Some(Uri("https://example.com:9999/jobscheduler/agent")),
-    Uri("/jobscheduler/agent/api?q=1") →
-      Some(Uri("https://example.com:9999/jobscheduler/agent/api?q=1")))
+    Uri("https://example.com:9999/agent") →
+      Some(Uri("https://example.com:9999/agent")),
+    Uri("https://example.com:9999/agent/api?q=1") →
+      Some(Uri("https://example.com:9999/agent/api?q=1")),
+    Uri("/agent") →
+      Some(Uri("https://example.com:9999/agent")),
+    Uri("/agent/api?q=1") →
+      Some(Uri("https://example.com:9999/agent/api?q=1")))
 }

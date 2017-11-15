@@ -85,13 +85,11 @@ final class RouteBuilder(sessionRegister: SessionRegister[LoginSession]) extends
 
     (decodeRequest & encodeResponse) {
       possiblyEmptyPathPrefix(uriPathPrefix) {
-        pathSegments("jobscheduler") {
-          pathSegments("agent/api") {
-            apiRoute
-          } ~
-            toRoute(jobschedulerStandardRoutes, Anonymous)
+        pathSegments("agent/api") {
+          apiRoute
         } ~
-          toRoute(prefixedRoutes, Anonymous)
+        toRoute(jobschedulerStandardRoutes, Anonymous) ~
+        toRoute(prefixedRoutes, Anonymous)
       } ~
         toRoute(otherRoutes, Anonymous)
     }

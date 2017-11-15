@@ -48,7 +48,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
   }
 
   "task" in {
-    Get("/jobscheduler/agent/api/task") ~> Accept(`application/json`) ~> route ~> check {
+    Get("/agent/api/task") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TaskRegisterOverview] == TestOverview)
       assert(responseAs[JsObject] == JsObject(
         "currentTaskCount" → JsNumber(1),
@@ -57,7 +57,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
   }
 
   "task/" in {
-    Get("/jobscheduler/agent/api/task/") ~> Accept(`application/json`) ~> route ~> check {
+    Get("/agent/api/task/") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[immutable.Seq[TaskOverview]] == TestTaskOverviews)
       assert(responseAs[JsArray] == JsArray(
         JsObject(
@@ -69,7 +69,7 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
   }
 
   "task/1-123" in {
-    Get("/jobscheduler/agent/api/task/1-123") ~> Accept(`application/json`) ~> route ~> check {
+    Get("/agent/api/task/1-123") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TaskOverview] == testTaskOverview(TestAgentTaskId))
       assert(responseAs[JsObject] == JsObject(
           "taskId" → JsString("1-123"),

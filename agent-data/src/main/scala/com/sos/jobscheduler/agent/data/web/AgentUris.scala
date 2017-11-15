@@ -63,7 +63,7 @@ final class AgentUris private(agentUri: AgentAddress) {
 }
 
 object AgentUris {
-  private val AgentUriConstantPrefix = "jobscheduler/agent"
+  private val AgentUriConstantPrefix = "agent"
   private val Api = "api"
   val LicenseKeyHeaderName = "X-JobScheduler-LicenseKey"
 

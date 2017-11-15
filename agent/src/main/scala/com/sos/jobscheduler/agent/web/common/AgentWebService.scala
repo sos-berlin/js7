@@ -23,8 +23,7 @@ trait AgentWebService {
   protected def config: Config
 
   protected final def prefixPath = Path(if (uriPathPrefix.isEmpty) "" else s"/$uriPathPrefix")
-  protected final def jobschedulerPath = Path(s"$prefixPath/jobscheduler")
-  protected final def agentPath = Path(s"$prefixPath/jobscheduler/agent")
+  protected final def agentPath = Path(s"$prefixPath/agent")
   protected final lazy val routeBuilder = new RouteBuilder(sessionRegister)
 
   final def buildRoute(gateKeeper: GateKeeper)(implicit actorRefFactory: ActorRefFactory): Route =

@@ -11,7 +11,7 @@ import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext._
 final class MasterWebServiceContext(val htmlEnabled: Boolean = false)
 extends WebServiceContext {
 
-  private val baseUri = "/jobscheduler/master"
+  private val baseUri = "/master"
 
   def toWebjarUri(path: String): Uri = uri(s"api/frontend/webjars/$path")
 
