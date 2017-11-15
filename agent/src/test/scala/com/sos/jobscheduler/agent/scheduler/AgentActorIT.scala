@@ -51,7 +51,7 @@ final class AgentActorIT extends FreeSpec {
               Order(
                 orderId,
                 NodeKey(AJobnet.path, NodeId("100")),
-                Order.Waiting,
+                Order.Ready,
                 Map("a" → "A")),
               AJobnet))
           ) await 99.s

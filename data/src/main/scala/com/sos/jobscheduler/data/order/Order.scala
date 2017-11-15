@@ -48,13 +48,13 @@ final case class Order[+S <: Order.State](
         state = InProcess)
 
       case OrderStepSucceeded(diff, returnValue, nextNodeId) ⇒ copy(
-        state = Waiting,
+        state = Ready,
         variables = diff.applyTo(variables),
         outcome = Good(returnValue),
         nodeKey = NodeKey(jobnetPath,  nextNodeId))
 
       case OrderStepFailed(reason, nextNodeId) ⇒ copy(
-        state = Waiting,
+        state = Ready,
         outcome = Bad(reason.message),
         nodeKey = NodeKey(jobnetPath,  nextNodeId))
 
@@ -126,7 +126,7 @@ object Order {
     Subtype(jsonFormat1(Scheduled)),
     Subtype(jsonFormat0(() ⇒ StartNow)),
     Subtype(jsonFormat0(() ⇒ Detached)),
-    Subtype(jsonFormat0(() ⇒ Waiting)))
+    Subtype(jsonFormat0(() ⇒ Ready)))
 
   implicit val StateJsonFormat: TypedJsonFormat[State] = TypedJsonFormat(
     Subtype[Idle],
@@ -151,7 +151,7 @@ object Order {
   final case object StartNow extends NotStarted  // == Scheduled(None) ???
   //final case class Postponed(until: Option[Instant]) extends Started with Idle
   //case object Suspended extends Started with Idle
-  case object Waiting extends Started with Idle
+  case object Ready extends Started with Idle
   case object Detachable extends Started
   case object InProcess extends Started
   case object Detached extends Started with Idle

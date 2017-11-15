@@ -98,11 +98,11 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 
 private object OrderActorTest {
   private val TestNodeId = NodeId("NODE-ID")
-  private val TestOrder = Order(OrderId("TEST-ORDER"), NodeKey(JobnetPath("/JOBNET"), TestNodeId), Order.Waiting)
+  private val TestOrder = Order(OrderId("TEST-ORDER"), NodeKey(JobnetPath("/JOBNET"), TestNodeId), Order.Ready)
   private val TestJobPath = JobPath("/test")
   private val TestJobNode = Jobnet.JobNode(TestNodeId, AgentPath("/TEST-AGENT"), TestJobPath, onSuccess = NodeId("SUCCESS"), onFailure = NodeId("FAILURE"))
   private val ExpectedOrderEvents = List(
-    OrderAttached(TestOrder.nodeKey, Order.Waiting, Map(), Order.Good(true)),
+    OrderAttached(TestOrder.nodeKey, Order.Ready, Map(), Order.Good(true)),
     OrderStepStarted,
     OrderStepSucceeded(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), returnValue = true, TestJobNode.onSuccess),
     OrderDetached)

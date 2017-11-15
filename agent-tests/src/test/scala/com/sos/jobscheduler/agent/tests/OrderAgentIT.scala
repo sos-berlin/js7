@@ -42,7 +42,7 @@ final class OrderAgentIT extends FreeSpec {
 
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
-          val order = Order(OrderId("TEST-ORDER"), NodeKey(TestJobnet.path, StartNodeId), Order.Waiting, Map("x" → "X"))
+          val order = Order(OrderId("TEST-ORDER"), NodeKey(TestJobnet.path, StartNodeId), Order.Ready, Map("x" → "X"))
           agentClient.executeCommand(AttachOrder(order, TestJobnet)) await 99.s shouldEqual AgentCommand.Accepted
 
           while (
@@ -80,7 +80,7 @@ final class OrderAgentIT extends FreeSpec {
           agentClient.executeCommand(RegisterAsMaster) await 99.s
 
           val orders = for (i ← 1 to n) yield
-            Order(OrderId(s"TEST-ORDER-$i"), NodeKey(TestJobnet.path, StartNodeId), Order.Waiting, Map("x" → "X"))
+            Order(OrderId(s"TEST-ORDER-$i"), NodeKey(TestJobnet.path, StartNodeId), Order.Ready, Map("x" → "X"))
 
           val stopwatch = new Stopwatch
           agentClient.executeCommand(Batch(orders map { AttachOrder(_, TestJobnet) })) await 99.s

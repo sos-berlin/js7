@@ -144,7 +144,7 @@ private object RecoveryIT {
   private val FastJobnetPath = JobnetPath("/fast")
 
   private val FastOrderId = OrderId("FAST-ORDER")
-  private val FastOrder = Order(FastOrderId, NodeKey(FastJobnetPath, NodeId("100")), Order.Waiting)
+  private val FastOrder = Order(FastOrderId, NodeKey(FastJobnetPath, NodeId("100")), Order.Ready)
   private val SomeInstant = Instant.parse("2017-07-23T12:00:00Z")
 
   private val TestJobChainElem =

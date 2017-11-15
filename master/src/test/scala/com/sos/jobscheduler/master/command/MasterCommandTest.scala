@@ -18,7 +18,7 @@ final class MasterCommandTest extends FreeSpec {
   }
 
   "AddOrderIfNew" in {
-    check(AddOrderIfNew(Order(OrderId("ORDER-ID"), NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Waiting, Map("VAR" → "VALUE"), Order.Good(true))),
+    check(AddOrderIfNew(Order(OrderId("ORDER-ID"), NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true))),
       """{
         "TYPE": "AddOrderIfNew",
         "order": {
@@ -28,7 +28,7 @@ final class MasterCommandTest extends FreeSpec {
              "nodeId": "NODE-ID"
            },
            "state": {
-             "TYPE": "Waiting"
+             "TYPE": "Ready"
            },
            "variables": {
              "VAR": "VALUE"

@@ -88,7 +88,7 @@ final class RunningMasterIT extends FreeSpec {
         val adHocOrder = Order(
           TestOrderId,
           NodeKey(TestJobnetPath, NodeId("100")),
-          Order.Waiting)
+          Order.Ready)
 
         sleep(3.s)
         master.orderKeeper ! MasterOrderKeeper.Input.SuspendDetaching

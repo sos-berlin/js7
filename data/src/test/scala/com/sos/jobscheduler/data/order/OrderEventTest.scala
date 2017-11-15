@@ -13,7 +13,7 @@ import spray.json._
 final class OrderEventTest extends FreeSpec {
 
   "OrderAdded" in {
-    check(OrderAdded(NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Waiting, Map("VAR" → "VALUE"), Order.Good(true)),
+    check(OrderAdded(NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
       """{
         "TYPE":"OrderAdded",
         "nodeKey": {
@@ -21,7 +21,7 @@ final class OrderEventTest extends FreeSpec {
           "nodeId": "NODE-ID"
         },
         "state": {
-          "TYPE":"Waiting"
+          "TYPE":"Ready"
         },
         "variables": {
           "VAR": "VALUE"
@@ -33,7 +33,7 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderAttached" in {
-    check(OrderAttached(NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Waiting, Map("VAR" → "VALUE"), Order.Good(true)),
+    check(OrderAttached(NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
       """{
         "TYPE": "OrderAttached",
         "nodeKey": {
@@ -41,7 +41,7 @@ final class OrderEventTest extends FreeSpec {
           "nodeId": "NODE-ID"
         },
         "state": {
-          "TYPE":"Waiting"
+          "TYPE":"Ready"
         },
         "variables": {
           "VAR": "VALUE"

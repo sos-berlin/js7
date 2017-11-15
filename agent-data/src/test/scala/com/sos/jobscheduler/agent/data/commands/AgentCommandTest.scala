@@ -82,7 +82,7 @@ final class AgentCommandTest extends FreeSpec {
         Order(
           OrderId("ORDER-ID"),
           NodeKey(JobnetPath("/JOBNET"),NodeId("INPUT")),
-          Order.Waiting),
+          Order.Ready),
         Jobnet(
           JobnetPath("/JOBNET"),
           NodeId("START"),
@@ -94,7 +94,7 @@ final class AgentCommandTest extends FreeSpec {
           "order": {
             "state": {
               "TYPE":
-              "Waiting"
+              "Ready"
             },
             "outcome": {
               "returnValue": true

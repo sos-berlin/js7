@@ -58,7 +58,7 @@ object OrdersHtmlPage {
 
   private def orderToTrClass(order: OrderOverview): Option[String] =
     order.state match {
-      case Order.Waiting ⇒ Some("Order-Waiting")
+      case Order.Ready ⇒ Some("Order-Ready")
       case _: Order.Started ⇒ Some("Order-Started")
       case Order.Finished ⇒ Some(s"Order-Finished")
       case _ ⇒ None

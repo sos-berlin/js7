@@ -44,7 +44,7 @@ final class OrderTest extends FreeSpec {
       Order(
         OrderId("ID"),
         NodeKey(JobnetPath("/JOBNET"), NodeId("NODE")),
-        Order.Waiting,
+        Order.Ready,
         Map(),
         Order.Bad("MESSAGE")),
       """{
@@ -54,7 +54,7 @@ final class OrderTest extends FreeSpec {
           "nodeId": "NODE"
         },
         "state": {
-          "TYPE": "Waiting"
+          "TYPE": "Ready"
         },
         "variables": {},
         "outcome": {
@@ -81,10 +81,10 @@ final class OrderTest extends FreeSpec {
         }""")
     }
 
-    "Waiting" in {
-      check(Waiting,
+    "Ready" in {
+      check(Ready,
         """{
-           "TYPE": "Waiting"
+           "TYPE": "Ready"
         }""")
     }
 

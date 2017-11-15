@@ -58,7 +58,7 @@ extends KeyedJournalingActor[OrderEvent] {
   override protected def finishRecovery() = {
     assert(order != null, "No Order")
     order.state match {
-      case Order.Waiting ⇒
+      case Order.Ready ⇒
         context.become(waiting)
 
       case Order.InProcess ⇒

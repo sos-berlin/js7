@@ -264,7 +264,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
       case e: OrderStepEnded ⇒
         assert(order.nodeId == e.nextNodeId)
-        assert(order.state == Order.Waiting)
+        assert(order.state == Order.Ready)
         if (!OrderActor.isRecoveryGeneratedEvent(event)) {
           val fromNode = jobnetRegister.nodeKeyToJobNodeOption(orderEntry.order.nodeKey).get
           for (jobEntry ← jobRegister.get(fromNode.jobPath))  // JobActor may be stopped
@@ -286,7 +286,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
           self ! Internal.Due(orderId)
         }
 
-      case Order.Scheduled(_) | Order.StartNow | Order.Waiting | Order.Detached/*???*/ ⇒
+      case Order.Scheduled(_) | Order.StartNow | Order.Ready | Order.Detached/*???*/ ⇒
         onOrderAvailable(orderEntry)
 
       case _ ⇒
