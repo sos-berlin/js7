@@ -5,13 +5,15 @@ import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
+import com.sos.jobscheduler.common.scalautil.FileUtils
+import com.sos.jobscheduler.common.scalautil.FileUtils.{deleteDirectoryContentRecursively, deleteDirectoryRecursively}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
@@ -56,7 +58,7 @@ object TestMasterAgent {
           createDirectory(directory)
         else {
           println(s"Deleting $directory")
-          deleteDirectoryRecursively(directory)
+          deleteDirectoryContentRecursively(directory)
         }
       }
     val conf = Conf.parse(args, () ⇒ directory)
@@ -168,7 +170,9 @@ object TestMasterAgent {
           }
         }
       })
-      sleep(365 * 24.h)
+      master.terminated await 365 * 24.h
+      for (agent ← agents) agent.commandHandler.execute(AgentCommand.Terminate())
+      agents map (_.terminated) await 60.s
     }
   }
 
