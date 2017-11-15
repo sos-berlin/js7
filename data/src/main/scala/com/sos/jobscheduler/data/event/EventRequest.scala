@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.data.event.EventRequest._
 import java.time.Duration
 import scala.reflect.ClassTag
 
@@ -11,6 +12,7 @@ final case class EventRequest[E <: Event](
   eventClasses: Set[Class[_ <: E]],
   after: EventId,
   timeout: Duration,
+  delay: Duration = DefaultDelay,
   limit: Int)
 extends SomeEventRequest[E] {
   require(eventClasses.nonEmpty, "Missing Event class")
@@ -20,6 +22,7 @@ extends SomeEventRequest[E] {
     val builder = Vector.newBuilder[(String, String)]
     builder += returnQueryParameter
     if (timeout != Duration.ZERO) builder += "timeout" → timeout.toString
+    builder += "delay" → delay.toString
     if (limit != Int.MaxValue) builder += "limit" → limit.toString
     builder += "after" → after.toString
     builder.result()
@@ -27,11 +30,13 @@ extends SomeEventRequest[E] {
 }
 
 object EventRequest {
+  val DefaultDelay = Duration.ZERO
+
   /**
     * Convenience for only one Event class.
     */
-  def singleClass[E <: Event: ClassTag](after: EventId, timeout: Duration, limit: Int = Int.MaxValue): EventRequest[E] =
-    new EventRequest[E](Set(implicitClass[E]), after, timeout, limit)
+  def singleClass[E <: Event: ClassTag](after: EventId, timeout: Duration, delay: Duration = DefaultDelay, limit: Int = Int.MaxValue): EventRequest[E] =
+    new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit)
 }
 
 final case class ReverseEventRequest[E <: Event](

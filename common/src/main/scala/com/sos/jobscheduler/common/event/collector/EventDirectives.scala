@@ -17,6 +17,7 @@ import scala.reflect.ClassTag
   */
 object EventDirectives {
 
+  private val DefaultEventRequestDelay = 500.ms
   private val ReturnSplitter = Splitter.on(',')
 
   def eventRequest[E <: Event: KeyedTypedEventJsonFormat: ClassTag]: Directive1[SomeEventRequest[E]] =
@@ -55,7 +56,9 @@ object EventDirectives {
       case limit if limit > 0 ⇒
         parameter("after".as[EventId]) { after ⇒
           parameter("timeout" ? 0.s) { timeout ⇒
-            inner(Tuple1(EventRequest[E](eventClasses, after = after, timeout, limit = limit)))
+            parameter("delay" ? DefaultEventRequestDelay) { delay ⇒
+              inner(Tuple1(EventRequest[E](eventClasses, after = after, timeout = timeout, delay = delay, limit = limit)))
+            }
           }
         }
       case limit if limit < 0 ⇒

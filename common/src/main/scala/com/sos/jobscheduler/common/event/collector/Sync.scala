@@ -26,10 +26,10 @@ private[collector] final class Sync(initialLastEventId: EventId, timerService: T
       }
     }
 
-  def whenEventIsAvailable(after: EventId, duration: Duration)(implicit ec: ExecutionContext): Future[Boolean] =
-    whenEventIsAvailable(after, now + duration)
-
-  def whenEventIsAvailable(after: EventId, until: Instant)(implicit ec: ExecutionContext): Future[Boolean] =
+  /**
+    * @param delay When waiting for events, don't succeed after the first event but wait for further events
+    */
+  def whenEventIsAvailable(after: EventId, until: Instant, delay: Duration = Duration.ZERO)(implicit ec: ExecutionContext): Future[Boolean] =
     if (after < lastEventId)
       Future.successful(true)
     else
@@ -49,6 +49,8 @@ private[collector] final class Sync(initialLastEventId: EventId, timerService: T
       if (future.isCompleted)
         future
       else
-        future.timeoutAt(until, Success(false), getClass.getName)(timerService, ec)
+        future
+          .thenDelay(delay min (until - now))(timerService, ec)
+          .timeoutAt(until, Success(false), getClass.getName)(timerService, ec)
     }
 }

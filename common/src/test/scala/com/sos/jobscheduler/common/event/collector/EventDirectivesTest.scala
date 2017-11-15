@@ -27,7 +27,7 @@ final class EventDirectivesTest extends FreeSpec with ScalatestRouteTest {
     def route =
       path("test") {
         eventRequest[MyEvent].apply { eventRequest ⇒
-          if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(7), 60.s, limit = 999))
+          if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(7), timeout = 60.s, limit = 999))
             complete("A")
           else
           if (eventRequest == EventRequest[MyEvent](Set(classOf[AEvent], classOf[BEvent]), after = EventId(777), 60.s, limit = 999))
@@ -36,10 +36,10 @@ final class EventDirectivesTest extends FreeSpec with ScalatestRouteTest {
             reject
         }
       }
-    Get("/test?return=AEvent&timeout=60&limit=999&after=7") ~> route ~> check {
+    Get("/test?return=AEvent&timeout=60&delay=0&limit=999&after=7") ~> route ~> check {
       assert(responseAs[String] == "A")
     }
-    Get("/test?return=AEvent,BEvent&timeout=60&limit=999&after=777") ~> route ~> check {
+    Get("/test?return=AEvent,BEvent&timeout=60&delay=0&limit=999&after=777") ~> route ~> check {
       assert(responseAs[String] == "B")
     }
   }

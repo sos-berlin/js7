@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.event.collector
 
 import com.sos.jobscheduler.common.event.collector.EventCollector._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutureFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -97,15 +96,15 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
       })
 
   private def whenAnyKeyedEvents[E <: Event, A](request: EventRequest[E], collect: PartialFunction[AnyKeyedEvent, A]): Future[TearableEventSeq[Iterator, A]] =
-    whenAnyKeyedEvents2(request.after, now + (request.timeout min configuration.timeoutLimit), collect, request.limit)
+    whenAnyKeyedEvents2(request.after, now + (request.timeout min configuration.timeoutLimit), request.delay, collect, request.limit)
 
-  private def whenAnyKeyedEvents2[A](after: EventId, until: Instant, collect: PartialFunction[AnyKeyedEvent, A], limit: Int): Future[TearableEventSeq[Iterator, A]] =
-    (for (_ ← sync.whenEventIsAvailable(after, until)) yield
+  private def whenAnyKeyedEvents2[A](after: EventId, until: Instant, delay: Duration, collect: PartialFunction[AnyKeyedEvent, A], limit: Int): Future[TearableEventSeq[Iterator, A]] =
+    (for (_ ← sync.whenEventIsAvailable(after, until, delay)) yield
       collectEventsSince(after, collect, limit) match {
         case o @ EventSeq.NonEmpty(_) ⇒
           Future.successful(o)
         case EventSeq.Empty(lastEventId) if now < until ⇒
-          whenAnyKeyedEvents2(lastEventId, until, collect, limit)
+          whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit)
         case EventSeq.Empty(lastEventId) ⇒
           Future.successful(EventSeq.Empty(lastEventId))
         case EventSeq.Torn ⇒

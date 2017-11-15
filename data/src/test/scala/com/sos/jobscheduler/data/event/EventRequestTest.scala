@@ -10,16 +10,24 @@ import org.scalatest.FreeSpec
 final class EventRequestTest extends FreeSpec {
 
   "toQueryParameters" in {
-    assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = Duration.ofSeconds(123), limit = 999).toQueryParameters ==
-      Vector(
-        "return" → "AEvent",
-        "timeout" → "PT2M3S",
-        "limit" → "999",
-        "after" → "3"))
-    assert(EventRequest[Event](Set[Class[_ <: Event]](classOf[AEvent], classOf[BEvent]), after = EventId(3), timeout = Duration.ZERO, limit = Int.MaxValue).toQueryParameters ==
-      Vector(
-        "return" → "AEvent,BEvent",
-        "after" → "3"))
+    assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = Duration.ofSeconds(123), delay = Duration.ofMillis(500), limit = 999)
+      .toQueryParameters ==
+        Vector(
+          "return" → "AEvent",
+          "timeout" → "PT2M3S",
+          "delay" → "PT0.5S",
+          "limit" → "999",
+          "after" → "3"))
+    assert(EventRequest[Event](
+      Set[Class[_ <: Event]](classOf[AEvent], classOf[BEvent]),
+      after = EventId(3),
+      timeout = Duration.ZERO,
+      limit = Int.MaxValue)
+      .toQueryParameters ==
+        Vector(
+          "return" → "AEvent,BEvent",
+          "delay" → "PT0S",
+          "after" → "3"))
     assert(ReverseEventRequest[AEvent](after = EventId(3), limit = 999).toQueryParameters ==
       Vector(
         "return" → "AEvent",
