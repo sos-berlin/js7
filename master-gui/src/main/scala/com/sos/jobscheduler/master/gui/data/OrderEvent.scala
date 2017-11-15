@@ -102,7 +102,7 @@ object OrderEvent {
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
-  case object OrderReady extends OrderCoreEvent
+  case object OrderDetachable extends OrderCoreEvent
 
   /**
     * Order has been removed from the Agent and is held by the Master.
@@ -125,7 +125,7 @@ object OrderEvent {
           case "OrderStdoutWritten" ⇒ implicitly[Decoder[OrderStdoutWritten]]
           case "OrderStepFailed" ⇒ implicitly[Decoder[OrderStepFailed]]
           case "OrderStepSucceeded" ⇒ implicitly[Decoder[OrderStepSucceeded]]
-          case "OrderReady" ⇒ Decoder.const(OrderReady)
+          case "OrderDetachable" ⇒ Decoder.const(OrderDetachable)
           case "OrderDetached" ⇒ Decoder.const(OrderDetached)
           case "OrderFinished" ⇒ Decoder.const(OrderFinished)
         }) apply cursor

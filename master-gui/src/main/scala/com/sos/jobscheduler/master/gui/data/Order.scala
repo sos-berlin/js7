@@ -41,18 +41,18 @@ final case class Order[+S <: Order.State](
         state = InProcess)
 
       case OrderStepSucceeded(diff, returnValue, nextNodeId) ⇒ copy(
-        state = Waiting,
+        state = Ready,
         variables = diff.applyTo(variables),
         outcome = Good(returnValue),
         nodeKey = NodeKey(jobnetPath,  nextNodeId))
 
       case OrderStepFailed(reason, nextNodeId) ⇒ copy(
-        state = Waiting,
+        state = Ready,
         outcome = Bad(reason.message),
         nodeKey = NodeKey(jobnetPath,  nextNodeId))
 
-      case OrderReady ⇒ copy(
-        state = Ready)
+      case OrderDetachable ⇒ copy(
+        state = Detachable)
 
       case OrderDetached ⇒ copy(
         state = Detached)
@@ -88,15 +88,15 @@ object Order {
   sealed trait Started extends State
   final case class Scheduled(at: Timestamp) extends NotStarted
   final case object StartNow extends NotStarted
-  case object Waiting extends Started with Idle
-  case object Ready extends Started
+  case object Ready extends Started with Idle
+  case object Detachable extends Started
   case object InProcess extends Started
   case object Detached extends Started with Idle
   case object Finished extends State
 
   private implicit val scheduledJsonDecoder = deriveDecoder[Scheduled]
   private implicit val startNowJsonDecoder = Decoder.const(StartNow)
-  private implicit val waitingJsonDecoder = Decoder.const(Waiting)
+  private implicit val waitingJsonDecoder = Decoder.const(Ready)
   private implicit val detachedJsonDecoder = Decoder.const(Detached)
 
   object Idle {
@@ -107,7 +107,7 @@ object Order {
           state ← typ match {
             case "Scheduled" ⇒ scheduledJsonDecoder(cursor)
             case "StartNow" ⇒ startNowJsonDecoder(cursor)
-            case "Waiting" ⇒ waitingJsonDecoder(cursor)
+            case "Ready" ⇒ waitingJsonDecoder(cursor)
             case "Detached" ⇒ detachedJsonDecoder(cursor)
             case _ ⇒ sys.error(s"Unknown TYPE=$typ")  // throw ???
           }
@@ -121,8 +121,8 @@ object Order {
         for {
           typ ← cursor.downField("TYPE").as[String]
           state ← typ match {
-            case "Scheduled" | "StartNow" | "Waiting" | "Detached" ⇒ Idle.jsonDecoder(cursor)
-            case "Ready" ⇒ Decoder.const(Ready)(cursor)
+            case "Scheduled" | "StartNow" | "Ready" | "Detached" ⇒ Idle.jsonDecoder(cursor)
+            case "Detachable" ⇒ Decoder.const(Detachable)(cursor)
             case "InProcess" ⇒ Decoder.const(InProcess)(cursor)
             case "Finished" ⇒ Decoder.const(Finished)(cursor)
           }
