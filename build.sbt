@@ -1,14 +1,17 @@
 /**
   * Install sbt from http://www.scala-sbt.org/.
+  * Install Node.js from https://nodejs.org/.
+  *   Run "npm install jsdom" in a parent directory.
+  *   This command creates a directory "node_modules" and a file "package-lock.json".
   *
   * Recommended usage for CI server:
   *   sbt clean-publish
   *
-  * To build locally, without publishing:
+  * To build only, without publishing:
   *   sbt clean-build
   *
   * To build quickly, without running tests again:
-  *   sbt "; clean ;build-quickly"
+  *   sbt "; clean; build-quickly"
   *
   * Under Windows, Microsoft SDK is required to compile taskserver-dotnet.
   *   set WINDOWS_NET_SDK_HOME=%windir%\Microsoft.NET\Framework\v4.0.30319
@@ -24,6 +27,7 @@
   * sbt allows to preset these command line options in the environment variable SBT_OPTS. Use one line per option.
   */
 import BuildUtils._
+import java.util.UUID
 import sbt.Keys.testOptions
 import sbt.librarymanagement.DependencyFilter.artifactFilter
 
@@ -43,6 +47,7 @@ addCommandAlias("test-all"       , "; test:compile; test; ForkedTest:test")
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
+addCommandAlias("TestMasterAgent", "master/runMain com.sos.jobscheduler.master.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=5.s")
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 
@@ -190,13 +195,13 @@ lazy val common = project.dependsOn(base, data)
   .enablePlugins(GitVersioning)
   .enablePlugins(BuildInfoPlugin)
   .settings(
-    buildInfoKeys := List[BuildInfoKey](version),
     buildInfoKeys := List[BuildInfoKey](
       "buildVersion" → VersionFormatter.buildVersion(
         version = version.value,
         versionCommitHash = git.gitHeadCommit.value,
         branch = git.gitCurrentBranch.value),
-      "version" → version.value),
+      "version" → version.value,
+      BuildInfoKey.action("uuid") { UUID.randomUUID }),
     buildInfoPackage := "com.sos.jobscheduler.common")
 
 lazy val master = project.dependsOn(shared, common, `agent-client`)
