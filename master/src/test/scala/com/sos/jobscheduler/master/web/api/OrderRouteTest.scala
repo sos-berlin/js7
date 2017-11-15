@@ -36,6 +36,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
     def executionContext = OrderRouteTest.this.executionContext
     def order(orderId: OrderId) = Future.successful(TestOrders.get(orderId))
     def orders = Future.successful(eventIdGenerator.stamp(TestOrders.values.toVector))
+    def orderCount = Future.successful(TestOrders.values.size)
   }
   protected val webServiceContext = new MasterWebServiceContext
 

@@ -108,6 +108,7 @@ final class RunningMasterIT extends FreeSpec {
             Order.Finished,
             Map("result" → "TEST-RESULT-VALUE-agent-222"),
             Order.Good(true)))
+        assert(orderClient.orderCount.await(99.s) >= 1)
 
         master.executeCommand(MasterCommand.ScheduleOrdersEvery(TestDuration / 2)) await 99.s  // Needing 2 consecutive order generations
         val expectedOrderCount = 1 + TestDuration.getSeconds.toInt  // Expecting one finished order per second

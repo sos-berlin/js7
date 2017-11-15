@@ -10,11 +10,12 @@ import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.master.OrderClient
+import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
@@ -50,9 +51,11 @@ object RouteProvider {
     executionContext: ExecutionContext,
     injector: Injector)
   {
-    def toRoute(gateKeeper: GateKeeper, getOrderClient: () ⇒ OrderClient): Route =
+    def toRoute(gateKeeper: GateKeeper, getOrderClient: () ⇒ OrderClient, execCmd: () ⇒ MasterCommand ⇒ Future[MasterCommand.Response]): Route =
       new RouteProvider(gateKeeper, injector) {
         protected val orderClient = getOrderClient()
+        protected def orderCountFuture = orderClient.orderCount
+        protected def executeCommand(command: MasterCommand) = execCmd()(command)
       }.route(actorSystem)
   }
 }

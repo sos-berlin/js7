@@ -25,7 +25,7 @@ import com.sos.jobscheduler.master.order.{MasterOrderKeeper, ScheduledOrderGener
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.Files.{createDirectory, exists}
-import java.time.Duration
+import java.time.{Duration, Instant}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, blocking}
@@ -38,7 +38,7 @@ import scala.util.Success
  *
  * @author Joacim Zschimmer
  */
-final class RunningMaster private(
+abstract class RunningMaster private(
   val webServer: MasterWebServer,
   val orderClient: OrderClient,
   val orderKeeper: ActorRef,
@@ -47,20 +47,18 @@ final class RunningMaster private(
   @TestOnly val injector: Injector)
 extends AutoCloseable
 {
+  def executeCommand(command: MasterCommand): Future[command.MyResponse]
+
   val localUri: Uri = webServer.localUri
-  private val masterConfiguration = injector.instance[MasterConfiguration]
   val eventCollector = injector.instance[EventCollector]
   private implicit val executionContext = injector.instance[ExecutionContext]
 
-  import masterConfiguration.akkaAskTimeout
-
   def close() = closer.close()
-
-  def executeCommand(command: MasterCommand): Future[command.MyResponse] =
-    (orderKeeper ? command) map { _.asInstanceOf[command.MyResponse] }
 }
 
 object RunningMaster {
+  val StartedAt = Instant.now()
+  val VersionString = BuildInfo.buildVersion
   private val logger = Logger(getClass)
 
   def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit): Unit = {
@@ -117,6 +115,9 @@ object RunningMaster {
 
         def orders: Future[Stamped[Seq[Order[Order.State]]]] =
           (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]]
+
+        def orderCount =
+          (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int]
       }
     }
 
@@ -130,7 +131,16 @@ object RunningMaster {
       }
       closer.close()  // Close automatically after termination
     }
-    for (_ ← webServerReady) yield
-      new RunningMaster(webServer, orderClient, orderKeeper, terminated, closer, injector)
+    for (_ ← webServerReady) yield {
+      def execCmd(command: MasterCommand): Future[command.MyResponse] = {
+        import masterConfiguration.akkaAskTimeout
+        (orderKeeper ? command) map { _.asInstanceOf[command.MyResponse] }
+      }
+      val master = new RunningMaster(webServer, orderClient, orderKeeper, terminated, closer, injector) {
+        def executeCommand(command: MasterCommand) = execCmd(command)
+      }
+      webServer.setExecuteCommand(command ⇒ master.executeCommand(command))
+      master
+    }
   }
 }

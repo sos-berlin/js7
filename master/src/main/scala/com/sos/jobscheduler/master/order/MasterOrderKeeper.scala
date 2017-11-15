@@ -168,6 +168,9 @@ with Stash {
     case Command.GetOrders ⇒
       sender() ! eventIdGenerator.stamp((orderRegister.values map { _.order }).toVector: Vector[Order[Order.State]])
 
+    case Command.GetOrderCount ⇒
+      sender() ! (orderRegister.size: Int)
+
     case Command.Remove(orderId) ⇒
       orderRegister.get(orderId) match {
         case None ⇒ sender() ! Status.Failure(new NoSuchElementException(s"Unknown $orderId"))
@@ -356,6 +359,7 @@ object MasterOrderKeeper {
     final case class AddOrderSchedule(orders: Seq[Order[Order.Scheduled]]) extends Command
     final case class GetOrder(orderId: OrderId) extends Command
     final case object GetOrders extends Command
+    final case object GetOrderCount extends Command
     final case class Remove(orderId: OrderId) extends Command
   }
 

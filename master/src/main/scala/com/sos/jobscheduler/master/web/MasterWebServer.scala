@@ -9,9 +9,10 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.master.OrderClient
+import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import javax.inject.{Inject, Singleton}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
@@ -31,13 +32,18 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
   protected def uriPathPrefix = ""
   protected val bindings = masterConfiguration.webServerBindings
   private val orderClientOnce = new SetOnce[OrderClient]("OrderClient")
+  private val executeCommandOnce = new SetOnce[MasterCommand ⇒ Future[MasterCommand.Response]]
 
   def setOrderClient(orderClient: OrderClient): Unit = {
     orderClientOnce := orderClient
   }
 
+  def setExecuteCommand(executeCommand: MasterCommand ⇒ Future[MasterCommand.Response]) =
+    executeCommandOnce := executeCommand
+
   protected def newRoute(binding: WebServerBinding) =
     injector.instance[RouteProvider.Factory].toRoute(
       new GateKeeper(gateKeeperConfiguration, csrf, timerService, isUnsecuredHttp = binding.isUnsecuredHttp),
-      () ⇒ orderClientOnce())
+      () ⇒ orderClientOnce(),
+      () ⇒ executeCommandOnce())
 }

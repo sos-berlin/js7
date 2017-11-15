@@ -19,4 +19,6 @@ trait OrderClient {
   def orderOverviews: Future[Stamped[Seq[OrderOverview]]] =
     for (oo ← orders) yield
       oo map { _ map OrderOverview.fromOrder }
+
+  def orderCount: Future[Int]
 }

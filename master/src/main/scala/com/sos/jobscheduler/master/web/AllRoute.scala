@@ -5,12 +5,11 @@ import akka.http.scaladsl.model.StatusCodes.TemporaryRedirect
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
-import com.sos.jobscheduler.master.web.api.ApiRoute
 
 /**
   * @author Joacim Zschimmer
   */
-trait AllRoute extends ApiRoute {
+trait AllRoute extends MasterRoute {
 
   protected implicit def actorRefFactory: ActorRefFactory
 
@@ -25,10 +24,5 @@ trait AllRoute extends ApiRoute {
         } ~
         redirect("/master/api", TemporaryRedirect)
       }
-    }
-
-  private def masterRoute: Route =
-    pathSegments("api") {
-      apiRoute
     }
 }
