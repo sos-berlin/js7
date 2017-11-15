@@ -1,14 +1,15 @@
 package com.sos.jobscheduler.master.tests
 
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.master.tests.TestEnvironment._
-import java.nio.file.Files.{createDirectories, createDirectory, exists}
-import java.nio.file.Path
+import java.io.IOException
+import java.nio.file.Files.{createDirectories, createDirectory, deleteIfExists, exists}
+import java.nio.file.{Files, Path}
 import scala.collection.immutable._
 
 /**
@@ -18,8 +19,8 @@ final class TestEnvironment(agentPaths: Seq[AgentPath], temporaryDirectory: Path
 extends AutoCloseable {
 
   if (exists(temporaryDirectory)) {
-    logger.warn(s"Delting $temporaryDirectory")
-    deleteDirectoryRecursively(temporaryDirectory)
+    logger.warn(s"Deleting $temporaryDirectory")
+    deleteDirectoryContentRecursively(temporaryDirectory)
   }
 
   createDirectories(masterDir / "config/live")
@@ -29,7 +30,9 @@ extends AutoCloseable {
   }
 
   def close(): Unit = {
-    deleteDirectoryRecursively(temporaryDirectory)
+    deleteDirectoryContentRecursively(temporaryDirectory)
+    try deleteIfExists(temporaryDirectory)
+    catch { case t: IOException ⇒ logger.debug(s"Delete $temporaryDirectory: $t", t)}
   }
 
   def xmlFile(path: TypedPath): Path =
