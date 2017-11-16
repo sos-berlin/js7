@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.utils
 
-import com.sos.jobscheduler.base.utils.HasKey
-import com.sos.jobscheduler.common.scalautil.DuplicateKeyException
+import com.sos.jobscheduler.base.utils.{DuplicateKeyException, HasKey}
 import org.scalatest.FreeSpec
 import scala.collection.mutable
 

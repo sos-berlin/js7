@@ -4,7 +4,7 @@ import akka.actor.{Actor, Status}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
-import com.sos.jobscheduler.common.scalautil.Collections.RichGenericCompanion
+import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}

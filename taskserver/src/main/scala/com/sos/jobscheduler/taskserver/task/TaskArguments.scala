@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.taskserver.task
 
 import com.sos.jobscheduler.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils._
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.xml.VariableSets
 import com.sos.jobscheduler.data.job.TaskId

@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.scalautil
+package com.sos.jobscheduler.base.utils
 
 import javax.annotation.Nullable
 import scala.annotation.tailrec

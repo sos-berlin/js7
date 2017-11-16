@@ -2,8 +2,9 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.ActorRef
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister._
+import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.scalautil.{DuplicateKeyException, Logger}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.shared.common.ActorRegister

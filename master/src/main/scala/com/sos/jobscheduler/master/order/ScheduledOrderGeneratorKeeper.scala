@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.order
 
+import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Collections._
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration

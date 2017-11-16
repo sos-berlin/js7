@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.jobnet.{Jobnet, JobnetEvent, JobnetPath, NodeKey}
 import com.sos.jobscheduler.data.order.Order

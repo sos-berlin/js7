@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.taskserver.spoolerapi
 
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichPairTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichPairTraversable
 import com.sos.jobscheduler.minicom.idispatch.IDispatch
 import com.sos.jobscheduler.taskserver.moduleapi.NamedIDispatches
 import com.sos.jobscheduler.taskserver.moduleapi.NamedIDispatches._

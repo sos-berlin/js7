@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{ActorContext, ActorRef}
+import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
-import com.sos.jobscheduler.common.scalautil.DuplicateKeyException
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
 import scala.collection.mutable

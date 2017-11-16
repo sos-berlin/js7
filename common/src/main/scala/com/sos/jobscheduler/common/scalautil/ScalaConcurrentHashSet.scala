@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
+import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.runtime.BoxedUnit

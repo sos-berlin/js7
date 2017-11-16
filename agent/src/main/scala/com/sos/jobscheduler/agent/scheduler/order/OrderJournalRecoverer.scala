@@ -5,7 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.tagging.@@
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}

@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.oldruntime
 
 import com.google.common.collect.{AbstractIterator ⇒ GuavaIterator}
-import com.sos.jobscheduler.common.scalautil.Collections._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.master.oldruntime.OldSchedule._
 import java.time._

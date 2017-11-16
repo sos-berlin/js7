@@ -3,14 +3,14 @@ package com.sos.jobscheduler.shared.event.journal.tests
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
+import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.Collections.RichGenericCompanion
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch

@@ -5,10 +5,10 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}

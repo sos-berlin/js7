@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.shared.common
 
 import akka.actor.ActorRef
-import com.sos.jobscheduler.common.scalautil.DuplicateKeyException
+import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.shared.event.journal.RecoveredJournalingActors
 import java.util.NoSuchElementException
 import scala.collection.mutable

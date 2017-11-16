@@ -2,9 +2,8 @@ package com.sos.jobscheduler.minicom.remoting
 
 import akka.util.ByteString
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.{RichTraversable, RichTraversableOnce}
-import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits.RichIDispatch
 import com.sos.jobscheduler.minicom.idispatch.{DISPID, DispatchType, IDispatch, IUnknownFactory}

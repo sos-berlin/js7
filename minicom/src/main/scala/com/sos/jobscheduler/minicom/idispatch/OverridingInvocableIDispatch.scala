@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.minicom.idispatch
 
-import com.sos.jobscheduler.common.scalautil.Collections.implicits._
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.minicom.idispatch.OverridingInvocableIDispatch._
 import com.sos.jobscheduler.minicom.types.HRESULT._
 import com.sos.jobscheduler.minicom.types.{COMException, VariantArray}

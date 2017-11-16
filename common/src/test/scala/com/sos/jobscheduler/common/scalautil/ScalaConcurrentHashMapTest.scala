@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
+import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import org.scalatest.FreeSpec
 
 /**

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import com.sos.jobscheduler.common.scalautil.DuplicateKeyException
+import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.data.order.OrderId
 import org.scalatest.FreeSpec
 

@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.common.scalautil
+package com.sos.jobscheduler.base.utils
 
-import com.sos.jobscheduler.common.scalautil.Collections._
-import com.sos.jobscheduler.common.scalautil.Collections.implicits._
-import com.sos.jobscheduler.common.scalautil.CollectionsTest._
+import com.sos.jobscheduler.base.utils.Collections._
+import com.sos.jobscheduler.base.utils.Collections.implicits._
+import com.sos.jobscheduler.base.utils.CollectionsTest._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.{immutable, mutable}

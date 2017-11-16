@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.order
 
 import akka.actor.ActorRef
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey

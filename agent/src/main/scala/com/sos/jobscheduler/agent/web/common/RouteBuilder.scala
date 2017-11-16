@@ -4,12 +4,12 @@ import akka.actor.ActorRefFactory
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.web.common.RouteBuilder._
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichSeq
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.sos.jobscheduler.common.auth.User
 import com.sos.jobscheduler.common.auth.User.Anonymous
-import com.sos.jobscheduler.common.scalautil.Collections.implicits.RichSeq
 import com.sos.jobscheduler.common.scalautil.Logger
 import scala.collection.mutable
 
