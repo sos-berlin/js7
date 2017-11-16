@@ -78,8 +78,17 @@ final class CollectionsTest extends FreeSpec {
     intercept[DuplicateKeyException] { List(1 → "eins", 1 → "ett") toKeyedMap { _._1 } }
   }
 
+  "duplicate" in {
+    assert(Seq[A]().duplicates.isEmpty)
+    assert(Seq("a").duplicates.isEmpty)
+    assert(Seq("a", "b").duplicates.isEmpty)
+    assert(Seq("a", "b", "c").duplicates.isEmpty)
+    assert(Seq("a", "b", "a").duplicates.toSet == Set("a"))
+    assert(Seq("a", "b", "c", "c", "b" ).duplicates.toSet == Set("b", "c"))
+  }
+
   "duplicateKeys" in {
-    def dup(o: Seq[A]) = o duplicates { _.i }
+    def dup(o: Seq[A]) = o duplicateKeys { _.i }
 
     dup(Seq[A]()) shouldBe 'empty
     dup(Seq(a1)) shouldBe 'empty

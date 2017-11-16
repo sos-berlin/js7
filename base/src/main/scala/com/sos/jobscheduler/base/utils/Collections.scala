@@ -64,15 +64,18 @@ object Collections {
         requireUniqueness(identity[A])
 
       def requireUniqueness[K](key: A ⇒ K): Traversable[A] = {
-        duplicates(key) match {
+        duplicateKeys(key) match {
           case o if o.nonEmpty ⇒ throw new DuplicateKeyException(s"Unexpected duplicates: ${o.keys mkString ", "}")
           case _ ⇒
         }
         delegate
       }
 
+      def duplicates: Traversable[A] =
+        delegate groupBy identity collect { case (k, v) if v.size > 1 ⇒ k }
+
       /** Liefert die Duplikate, also Listenelemente, deren Schlüssel mehr als einmal vorkommt. */
-      def duplicates[K](key: A ⇒ K) =
+      def duplicateKeys[K](key: A ⇒ K): Map[K, Traversable[A]] =
         delegate groupBy key filter { _._2.size > 1 }
 
       /**
