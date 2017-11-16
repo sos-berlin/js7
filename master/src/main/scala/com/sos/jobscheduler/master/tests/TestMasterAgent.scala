@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
+import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
@@ -42,6 +43,7 @@ import java.time.{Duration, Instant}
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
@@ -49,6 +51,9 @@ import scala.concurrent.duration.DurationInt
 object TestMasterAgent {
   private val TestJobnetPath = JobnetPath("/test")
   private val TestJobPath = JobPath("/test")
+
+  /** Für &lt;elememt attribute={stringValue}/>. */
+  private implicit def toXmlText(o: IsString): xml.Text = if (o == null) null else xml.Text(o.string)
 
   def main(args: Array[String]): Unit = {
     lazy val directory =

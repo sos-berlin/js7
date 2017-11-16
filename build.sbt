@@ -158,7 +158,6 @@ lazy val base = project
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      scalaXml ++
       sprayJson ++
       javaxAnnotations % "compile" ++
       scalaTest % "test"
