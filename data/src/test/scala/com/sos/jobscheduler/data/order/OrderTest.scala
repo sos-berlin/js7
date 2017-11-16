@@ -10,6 +10,13 @@ import spray.json._
   */
 final class OrderTest extends FreeSpec {
 
+  "Outcome" in {
+    assert(Order.Good(returnValue = true).isSuccess)
+    assert(!Order.Good(returnValue = false).isSuccess)
+    assert(!Order.Bad("error").isSuccess)
+  }
+
+
   "JSON InitialOutcome" in {
     check(
       Order(
@@ -116,6 +123,8 @@ final class OrderTest extends FreeSpec {
         }""")
     }
   }
+
+  // TODO JSON tests for Order.State, Order.Outcome
 
   private def check(o: Order[Order.State], json: String): Unit = {
     assert(o.toJson == json.parseJson)

@@ -68,6 +68,8 @@ final case class Order[+S <: Order.State](
         state = Finished)
     }
 
+  def payload = Payload(variables, outcome)
+
   def castAfterEvent(event: OrderStepStarted.type): Order[Order.InProcess.type] =
     castState[Order.InProcess.type]
 
@@ -89,7 +91,13 @@ object Order {
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[Idle] =
     Order(id, event.nodeKey, event.state, event.variables, event.outcome)
 
-  sealed trait Outcome
+  final case class Payload(variables: Map[String, String], outcome: Order.Outcome = InitialOutcome) {
+    override def toString = s"Payload($outcome ${(for (k ← variables.keys.toVector.sorted) yield s"$k=${variables(k)}") mkString ", "}".trim + ")"
+  }
+
+  sealed trait Outcome {
+    def isSuccess: Boolean
+  }
 
   object Outcome {
     private implicit val succeededJsonFormat: RootJsonFormat[Good] = jsonFormat1(Good.apply)
@@ -112,7 +120,10 @@ object Order {
       }
   }
 
-  final case class Good private(returnValue: Boolean) extends Outcome
+  final case class Good private(returnValue: Boolean) extends Outcome {
+    def isSuccess = returnValue
+  }
+
   object Good {
     private val False = new Good(false)
     private val True = new Good(true)
@@ -120,7 +131,9 @@ object Order {
     def apply(returnValue: Boolean) = if (returnValue) True else False
   }
 
-  final case class Bad(error: String) extends Outcome
+  final case class Bad(error: String) extends Outcome {
+    def isSuccess = false
+  }
 
   implicit val IdleJsonFormat: TypedJsonFormat[Idle] = TypedJsonFormat(
     Subtype(jsonFormat1(Scheduled)),
