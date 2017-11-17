@@ -120,7 +120,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   private def awaitJournalIsReady: Receive = journaling orElse {
     case OrderActor.Output.RecoveryFinished(order) ⇒
       orderRegister(order.id).order = order
-      handleAddedOrder(order.id)
+      handleAttachedOrder(order.id)
 
     case JsonJournalRecoverer.Output.JournalIsReady ⇒
       logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
@@ -260,7 +260,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     event match {
       case _: OrderAttached ⇒
         orderEntry.order = order
-        handleAddedOrder(order.id)
+        handleAttachedOrder(order.id)
 
       case e: OrderStepEnded ⇒
         assert(order.nodeId == e.nextNodeId)
@@ -278,7 +278,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     }
   }
 
-  private def handleAddedOrder(orderId: OrderId): Unit = {
+  private def handleAttachedOrder(orderId: OrderId): Unit = {
     val orderEntry = orderRegister(orderId)
     orderEntry.order.state match {
       case Order.Scheduled(instant) if now < instant ⇒
@@ -308,7 +308,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
       case Some(_: EndNode) | None ⇒
         if (!terminating) {  // When terminating, the order actors are terminating now
-          logger.trace(s"${orderEntry.order.id} is detachble, ready to be retrieved by the Master")
+          logger.trace(s"${orderEntry.order.id} is detachable, ready to be retrieved by the Master")
           orderRegister(orderEntry.order.id).actor ! OrderActor.Input.MakeDetachable
         }
     }
