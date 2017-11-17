@@ -17,6 +17,18 @@ final case class OrdersState(
   content: Content,
   step: Int,
   error: Option[MasterApi.Error])
+{
+  def updateOrders(stamped: Stamped[Seq[Order[Order.State]]]): OrdersState = {
+    val orders = stamped.value
+    copy(
+      content = OrdersState.FetchedContent(
+        idToOrder = orders.map(v ⇒ v.id → v).toMap,
+        sequence = orders.map(_.id).sorted.reverse.toList,
+        eventId = stamped.eventId, eventCount = 0),
+      error = None,
+      step = step + 1)
+  }
+}
 
 object OrdersState {
   val Empty = OrdersState(StillFetchingContent, step = 0, error = None)

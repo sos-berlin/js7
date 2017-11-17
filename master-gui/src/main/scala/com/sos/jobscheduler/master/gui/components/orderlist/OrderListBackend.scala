@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListBackend._
+import com.sos.jobscheduler.master.gui.components.react
 import com.sos.jobscheduler.master.gui.components.state.OrdersState
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
 import com.sos.jobscheduler.master.gui.data.Order
@@ -28,9 +29,10 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
             state.error map (err ⇒ VdomArray(" – ", <.span(^.cls := "error")(s"$err"))) getOrElse ""),
           <.table(^.cls := "bordered highlight")(
             theadHtml,
-            <.tbody(  // use TransitionGroup and CSSTransitionGroup from 'react-transition-group' ???
-              sequence.map(idToOrder).toVdomArray(o ⇒
-                OrderTr.withKey(o.id)(o)))))
+              react.CssTransitionGroup(component = "tbody", transitionName = "orderTr",
+                transitionEnterTimeout = 5000)(
+                  sequence.map(idToOrder).toVdomArray(o ⇒
+                    OrderTr.withKey(o.id)(o)))))
     }
 }
 
@@ -49,15 +51,16 @@ object OrderListBackend {
   private val OrderTr = ScalaComponent.builder[Order[Order.State]]("Row")
     .render_P { order ⇒
       <.tr(
-        <.td(^.cls := "nowrap")(order.id),
-        <.td(^.cls := "nowrap")(order.nodeKey.jobnetPath),
-        <.td(^.cls := "nowrap")(order.nodeKey.nodeId),
-        <.td(^.cls := "nowrap")(order.outcome.toString),
-        <.td(^.cls := "nowrap")(order.agentPath getOrElse "–": String),
+        <.td(^.cls := "orderTd")(order.id),
+        <.td(^.cls := "orderTd")(order.nodeKey.jobnetPath),
+        <.td(^.cls := "orderTd")(order.nodeKey.nodeId),
+        <.td(^.cls := "orderTd")(order.outcome.toString),
+        <.td(^.cls := "orderTd")(order.agentPath getOrElse "–": String),
         <.td(order.state.toString))
     }
     .configure(Reusability.shouldComponentUpdate)
     .build
+
 
   //<editor-fold defaultstate="collapsed" desc="// (No code here - does not make first rendering quicker)">
   ////OrderId = String - private implicit val OrderIdReuse = Reusability.derive[OrderId]

@@ -61,20 +61,15 @@ header, main, footer {
   color: lightgrey;
 }
 
-.order-row-enter {
-    background-color: green;
-    transition: background-color 1s ease;
+.orderTd {
+  white-space: nowrap;
 }
 
-.order-row-enter.order-row-enter-active {
-    background-color: transparent;
-}
+/*.orderTr-enter {
+  background-color: transparent;
+  transition: background-color 1s ease;
+}*/
 
-.order-row-leave {
-    background-color: transparent;
-    transition: background-color 1s ease;
-}
-
-.order-row-leave.order-row-leave-active {
-    background-color: yellow;
+.orderTr-enter.orderTr-enter-active {
+  background-color: #edffdf;
 }

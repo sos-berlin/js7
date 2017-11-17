@@ -8,7 +8,7 @@ import com.sos.jobscheduler.master.gui.services.MasterApi
   */
 final case class GuiState(
   overview: Option[Either[MasterApi.Error, MasterOverview]],
-  orderState: OrdersState,
+  ordersState: OrdersState,
   isConnected: Boolean)
 
 object GuiState {

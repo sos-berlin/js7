@@ -258,6 +258,7 @@ lazy val `master-gui` = project
       "org.scala-js" %%% "scalajs-dom" % "0.9.1",
       "com.github.japgolly.scalajs-react" %%% "core" % "1.1.1",
       "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "1.1.1",
+    //"com.github.japgolly.scalajs-react" %%% "extra" % "1.1.1",
       "com.github.japgolly.scalacss" %%% "core" % "0.5.3",
       "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.3",
       "com.github.julien-truffaut" %%%  "monocle-core"  % "1.4.0",
@@ -271,7 +272,8 @@ lazy val `master-gui` = project
       "org.webjars"       % "materializecss" % "0.100.2" / "materialize.js" minified "materialize.min.js" dependsOn "dist/jquery.js",
       "org.webjars.bower" % "react" % "15.6.1"     / "react-with-addons.js" minified "react-with-addons.min.js" commonJSName "React",
       "org.webjars.bower" % "react" % "15.6.1"     / "react-dom.js"         minified "react-dom.min.js"         commonJSName "ReactDOM"       dependsOn "react-with-addons.js",
-      "org.webjars.bower" % "react" % "15.6.1"     / "react-dom-server.js"  minified "react-dom-server.min.js"  commonJSName "ReactDOMServer" dependsOn "react-dom.js"))
+      "org.webjars.bower" % "react" % "15.6.1"     / "react-dom-server.js"  minified "react-dom-server.min.js"  commonJSName "ReactDOMServer" dependsOn "react-dom.js",
+      "org.webjars.npm"   % "react-transition-group" % "2.2.1" / "dist/react-transition-group.js" minified "dist/react-transition-group.min.js" dependsOn "react-dom.js"))
 
 lazy val shared = project.dependsOn(common)
   .configs(ForkedTest).settings(forkedSettings)

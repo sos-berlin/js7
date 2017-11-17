@@ -13,7 +13,7 @@ object GuiComponent {
   private val reactComponent = ScalaComponent.builder[Unit]("GUI")
     .initialState[GuiState](GuiState.Initial)
     .renderBackend[GuiBackend]
-    .componentDidMount(_.backend.mount())
-    .componentWillUnmount(_.backend.unmount())
+    .componentDidMount(_.backend.componentDidMount())
+    .componentWillUnmount(_.backend.componentWillUnmount())
     .build
 }

@@ -28,7 +28,7 @@ final class GuiRenderer(state: GuiState) {
       <.div(^.cls := "row")(
         <.div(^.cls := "col s12")(
           topLineHtml,
-          OrderListComponent(state.orderState))))
+          OrderListComponent(state.ordersState))))
 
   private def topLineHtml =
     <.table(^.cls := "page-top-line")(
@@ -41,29 +41,30 @@ final class GuiRenderer(state: GuiState) {
       <.span(^.cls := "nowrap")("JobScheduler Master "),
       <.span(^.cls := "nowrap")(
         version,
-        <.span(^.cls := "unimportant")(s" $versionExt") when versionExt.nonEmpty,
-         " ∙ "),
-      if (state.isConnected)
-        "connected"
-      else
-        <.span(^.cls := "disconnected")("disconnected")
+        <.span(^.cls := "unimportant")(s" $versionExt") when versionExt.nonEmpty),
+      " ",
+      <.span(^.cls := "nowrap", ^.letterSpacing := 1.px)(
+        "EXPERIMENTAL VIEWER")
     )
   }
 
   private val topLineRightHtml =
     <.td(^.cls := "no-padding nowrap", ^.textAlign.right)(
-      state.orderState.content match {
+      if (state.isConnected)
+        "connected"
+      else
+        <.span(^.cls := "disconnected")("disconnected"),
+      " ∙ ",
+      state.ordersState.content match {
         case OrdersState.FetchedContent(_, _, eventId, eventCount) ⇒
           val (dt, millis) = EventId.toTimestamp(eventId).toLocaleIsoStringWithoutOffset splitAt 19
           VdomArray(
+            <.span(^.cls := "nowrap unimportant")(s"$eventCount events ∙ "),
             <.span(^.cls := "nowrap")(dt.replace("T", " ")),
-            <.span(^.cls := "nowrap unimportant")(s"$millis ∙ $eventCount events"))
+            <.span(^.cls := "nowrap unimportant")(s"$millis"))
         case OrdersState.StillFetchingContent ⇒
           "fetching..."
-      },
-      " ∙ ",
-      <.span(^.cls := "nowrap", ^.letterSpacing := 1.px)(
-        "EXPERIMENTAL VIEWER"))
+      })
 
   private def ofOverview[A](f: MasterOverview ⇒ A, default: A) =
     state.overview match {
