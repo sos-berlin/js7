@@ -38,11 +38,44 @@ header, main, footer {
 }
 */
 
+.top-left {
+  padding: 0;
+}
+
+.top-right {
+  padding: 0;
+  text-align: right;
+}
+
 .page-top-line {
   border-bottom: lightgray 0 solid;
   margin-bottom: 3em;
   color: gray;
   font-size: 10px;
+}
+
+.top-left-segment {
+  white-space: nowrap;
+  padding-right: 12px;
+}
+
+.top-right-segment {
+  white-space: nowrap;
+  padding-left: 12px;
+}
+
+.experimental-viewer {
+  letter-spacing: 1px;
+}
+
+.freeze-toggle:hover {
+  padding: 1px;
+  background-color: lightgrey;
+  cursor: pointer;
+}
+
+.freezed {
+  color: #7ccefd;
 }
 
 .disconnected {
@@ -65,11 +98,11 @@ header, main, footer {
   white-space: nowrap;
 }
 
-/*.orderTr-enter {
-  background-color: transparent;
-  transition: background-color 1s ease;
-}*/
+.orderTr-enter {
+  background-color: lightblue; /*#c8ffc8;*/
+}
 
 .orderTr-enter.orderTr-enter-active {
-  background-color: #edffdf;
+  background-color: transparent;
+  transition: background-color 5s ease-in;
 }

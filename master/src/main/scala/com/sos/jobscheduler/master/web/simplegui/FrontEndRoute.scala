@@ -13,6 +13,9 @@ import com.sos.jobscheduler.master.web.simplegui.FrontEndRoute._
   */
 trait FrontEndRoute extends WebjarsRoute {
 
+  // Lazy and not in object to avoid ExceptionInInitializerError
+  private lazy val FrontendResourceDirectory = JavaResource("com/sos/jobscheduler/master/web/simplegui/frontend")
+
   final val frontEndRoute: Route =
     get {
       pathSegments("webjars") {
@@ -28,5 +31,4 @@ trait FrontEndRoute extends WebjarsRoute {
 
 object FrontEndRoute {
   private val LongTimeCaching = `Cache-Control`(`max-age`(24*60*60))
-  private val FrontendResourceDirectory = JavaResource("com/sos/jobscheduler/master/web/simplegui/frontend")
 }

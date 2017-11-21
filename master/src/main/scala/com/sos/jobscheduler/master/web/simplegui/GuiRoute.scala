@@ -18,9 +18,14 @@ import com.sos.jobscheduler.master.web.simplegui.GuiRoute._
   */
 trait GuiRoute extends WebjarsRoute {
 
+  // Lazy and not in object to avoid ExceptionInInitializerError
+  private lazy val ResourceDirectory = JavaResource("com/sos/jobscheduler/master/gui/frontend/gui")
+  private lazy val IndexHtmlResource = JavaResource("com/sos/jobscheduler/master/gui/frontend/gui/index.html")
+  private lazy val IndexHtml = IndexHtmlResource.asUTF8String.replace("{JobSchedulerVersionUuid}", BuildInfo.uuid)
+
   final def indexHtmlRoute =
     get {
-      conditional(EntityTag(BuildInfo.uuid, weak = BuildInfo.buildVersion.contains("-SNAPSHOT")), StartDateTime) {
+      conditional(EntityTag(BuildInfo.uuid, weak = ETagIsWeak), StartDateTime) {
         respondWithHeader(Caching) {
           complete {
             HttpEntity(`text/html` withCharset `UTF-8`, IndexHtml)
@@ -46,10 +51,8 @@ trait GuiRoute extends WebjarsRoute {
 
 object GuiRoute {
   private val logger = Logger(getClass)
+  private val ETagIsWeak = BuildInfo.buildVersion.contains("-SNAPSHOT")
   private val MaxAge = if (BuildInfo.version contains "-SNAPSHOT") 30 else 24*3600
   private val Caching = `Cache-Control`(`max-age`(MaxAge))
-  private val ResourceDirectory = JavaResource("com/sos/jobscheduler/master/gui/frontend/gui")
-  private val IndexHtmlResource = JavaResource("com/sos/jobscheduler/master/gui/frontend/gui/index.html")
-  private val IndexHtml = IndexHtmlResource.asUTF8String.replace("{JobSchedulerVersionUuid}", BuildInfo.uuid)
   private val StartDateTime = DateTime.now
 }

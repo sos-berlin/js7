@@ -11,10 +11,9 @@ import com.sos.jobscheduler.master.web.api.ApiRoute
 trait MasterRoute extends ApiRoute {
 
   final val masterRoute: Route =
-    pathSingleSlash {
+    pathEndElseRedirect {
       indexHtmlRoute
     } ~
-    pathEndRedirectToSlash ~  // master -> master/
     pathSegments("gui") {
       guiRoute
     } ~

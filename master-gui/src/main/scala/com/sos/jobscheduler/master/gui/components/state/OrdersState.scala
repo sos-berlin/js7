@@ -22,7 +22,7 @@ final case class OrdersState(
     val orders = stamped.value
     copy(
       content = OrdersState.FetchedContent(
-        idToOrder = orders.map(v ⇒ v.id → v).toMap,
+        idToOrder = orders.map(v ⇒ v.id → Entry(v)).toMap,
         sequence = orders.map(_.id).sorted.reverse.toList,
         eventId = stamped.eventId, eventCount = 0),
       error = None,
@@ -37,26 +37,26 @@ object OrdersState {
   object StillFetchingContent extends Content
 
   final case class FetchedContent(
-    idToOrder: Map[OrderId, Order[Order.State]],
+    idToOrder: Map[OrderId, Entry],
     sequence: List[OrderId],
     eventId: EventId,
     eventCount: Int)
   extends Content
   {
     def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[OrderEvent]]]): FetchedContent = {
-      val updatedOrders = mutable.Map[OrderId, Order[Order.State]]()
+      val updatedOrders = mutable.Map[OrderId, Entry]()
       val addedOrders = mutable.Buffer[OrderId]()
       var evtCount = 0
       stampedEvents foreach {
         case Stamped(_, KeyedEvent(orderId, event: OrderAdded)) ⇒
-          updatedOrders += orderId → Order.fromOrderAdded(orderId, event)
+          updatedOrders += orderId → Entry(Order.fromOrderAdded(orderId, event), isUpdated = true)
           addedOrders += orderId
           evtCount += 1
 
         case Stamped(eId, KeyedEvent(orderId, event: OrderCoreEvent)) ⇒
           updatedOrders.get(orderId) orElse idToOrder.get(orderId) match {
-            case Some(order) ⇒
-              updatedOrders += orderId → order.update(event)
+            case Some(entry) ⇒
+              updatedOrders += orderId → Entry(entry.order.update(event), isUpdated = true)
               evtCount += 1
             case None ⇒
               dom.console.error("Unknown OrderId: " + eventToLog(eId, orderId, event))
@@ -73,6 +73,10 @@ object OrdersState {
         eventId = stampedEvents.last.eventId,
         eventCount = eventCount + evtCount)
     }
+  }
+
+  final case class Entry(order: Order[Order.State], isUpdated: Boolean = false) {
+    def id = order.id
   }
 }
 

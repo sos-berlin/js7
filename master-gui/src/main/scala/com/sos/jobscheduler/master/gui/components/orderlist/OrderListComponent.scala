@@ -12,5 +12,6 @@ object OrderListComponent {
 
   private val scalaComponent = ScalaComponent.builder[OrdersState]("OrderList")
     .renderBackend[OrderListBackend]
+    .componentDidUpdate(o ⇒ o.backend.componentDidUpdate(o))
     .build
 }

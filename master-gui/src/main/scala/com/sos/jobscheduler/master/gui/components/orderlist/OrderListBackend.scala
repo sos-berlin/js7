@@ -1,18 +1,25 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListBackend._
-import com.sos.jobscheduler.master.gui.components.react
 import com.sos.jobscheduler.master.gui.components.state.OrdersState
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
-import com.sos.jobscheduler.master.gui.data.Order
+import japgolly.scalajs.react.component.builder.Lifecycle.ComponentDidUpdate
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, ScalaComponent}
+import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
+import org.scalajs.dom.html
+import scala.collection.mutable
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
 private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState, Unit]) {
+
+  private val highligtTrs = mutable.Buffer[html.TableRow]()
+
+  def componentDidUpdate: (ComponentDidUpdate[OrdersState, Unit, OrderListBackend]) ⇒ Callback =
+    _ ⇒ highlightChangedRows()
 
   def render(state: OrdersState): VdomElement =
     render2(state)
@@ -27,13 +34,47 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
           <.div(^.cls := "order-count")(
             s"${idToOrder.size} orders",
             state.error map (err ⇒ VdomArray(" – ", <.span(^.cls := "error")(s"$err"))) getOrElse ""),
-          <.table(^.cls := "bordered highlight")(
+          <.table(^.cls := "bordered")(
             theadHtml,
-              react.CssTransitionGroup(component = "tbody", transitionName = "orderTr",
-                transitionEnterTimeout = 5000)(
-                  sequence.map(idToOrder).toVdomArray(o ⇒
-                    OrderTr.withKey(o.id)(o)))))
+              <.tbody(//Slow: react.CssTransitionGroup(component = "tbody", transitionName = "orderTr",
+                //enterTimeout = 5000)(
+                  sequence.map(idToOrder).toVdomArray(entry ⇒
+                    OrderTr.withKey(entry.id)(entry)))))
     }
+
+  private implicit def orderEntryReuse = OrderEntryReuse
+
+  private val OrderTr = ScalaComponent.builder[OrdersState.Entry]("Row")
+    .render_P {
+      case OrdersState.Entry(order, isUpdated) ⇒
+        <.tr(
+          <.td(^.cls := "orderTd")(order.id),
+          <.td(^.cls := "orderTd")(order.nodeKey.jobnetPath),
+          <.td(^.cls := "orderTd")(order.nodeKey.nodeId),
+          <.td(^.cls := "orderTd")(order.outcome.toString),
+          <.td(^.cls := "orderTd")(order.agentPath getOrElse "–": String),
+          <.td(order.state.toString))
+        .ref { tr ⇒
+          if (isUpdated) highligtTrs += tr
+        }
+    }
+    .configure(Reusability.shouldComponentUpdate)
+    .build
+
+  private def highlightChangedRows(): Callback = {
+    Callback {
+      val trs = highligtTrs.toVector filter (_ != null)
+      highligtTrs.clear()
+      for (tr ← trs) {
+        tr.className = s" ${tr.className} ".replace(" orderTr-enter ", "").replace(" orderTr-enter-active ", "").trim + " orderTr-enter"
+      }
+      Callback {
+        for (tr ← trs) {
+          tr.className = s"${tr.className} orderTr-enter-active"
+        }
+      }.delay(100.milliseconds).runNow()
+    }
+  }
 }
 
 object OrderListBackend {
@@ -46,21 +87,8 @@ object OrderListBackend {
       <.th(^.width := 15.ex)("Agent"),
       <.th("State")))
 
-  private implicit val OrderReuse = Reusability.byRef[Order[Order.State]]
-
-  private val OrderTr = ScalaComponent.builder[Order[Order.State]]("Row")
-    .render_P { order ⇒
-      <.tr(
-        <.td(^.cls := "orderTd")(order.id),
-        <.td(^.cls := "orderTd")(order.nodeKey.jobnetPath),
-        <.td(^.cls := "orderTd")(order.nodeKey.nodeId),
-        <.td(^.cls := "orderTd")(order.outcome.toString),
-        <.td(^.cls := "orderTd")(order.agentPath getOrElse "–": String),
-        <.td(order.state.toString))
-    }
-    .configure(Reusability.shouldComponentUpdate)
-    .build
-
+  private val OrderEntryReuse = Reusability.byRef[OrdersState.Entry]
+  //private val OrderReuse = Reusability.byRef[Order[Order.State]]
 
   //<editor-fold defaultstate="collapsed" desc="// (No code here - does not make first rendering quicker)">
   ////OrderId = String - private implicit val OrderIdReuse = Reusability.derive[OrderId]

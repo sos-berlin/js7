@@ -15,14 +15,13 @@ trait AllRoute extends MasterRoute {
 
   val allRoutes: Route =
     (decodeRequest & encodeResponse) {
-      pathSegments("master") {
-        masterRoute
-      } ~
       pathEndOrSingleSlash {
         htmlPreferred {
-          redirect("/master/", TemporaryRedirect)
-        } ~
-        redirect("/master/api", TemporaryRedirect)
+          redirect("/master", TemporaryRedirect)
+        }
+      } ~
+      pathSegments("master") {
+        masterRoute
       }
     }
 }

@@ -91,7 +91,7 @@ val commonSettings = List(
 val universalPluginSettings = List(
   universalArchiveOptions in (Universal, packageZipTarball) :=
     List("--force-local") .filter { _ ⇒ !isMac } ++
-      List("--exclude=lib/org.scala-js.scalajs-library_*.japubr", "--exclude=lib/*_sjs*.jar") ++  // These big Scala.js jars are not for JVM - https://github.com/scala-js/scala-js/issues/1472
+      List("--exclude=lib/org.scala-js.scalajs-library_*.jar", "--exclude=lib/*_sjs*.jar") ++  // These big Scala.js jars are not for JVM - https://github.com/scala-js/scala-js/issues/1472
       (universalArchiveOptions in (Universal, packageZipTarball)).value)  // Under cygwin, tar shall not interpret C:
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
@@ -208,7 +208,7 @@ lazy val common = project.dependsOn(base, data)
     buildInfoPackage := "com.sos.jobscheduler.common")
 
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
-val masterGuiJs = s"$masterGuiPath/master-gui.js"
+val masterGuiJs = "master-gui.js"
 
 lazy val master = project.dependsOn(`master-gui`, shared, common, `agent-client`)
   .configs(ForkedTest).settings(forkedSettings)
@@ -226,14 +226,18 @@ lazy val master = project.dependsOn(`master-gui`, shared, common, `agent-client`
         val minJsDepName = (packageMinifiedJSDependencies in Compile in `master-gui`).value.getName
         path match {
           case `generatedJsName` ⇒
-            println(s"$generatedJsName -> $masterGuiJs")  // Show ...-fastopt.js or ...-opt.js
-            (file, masterGuiJs)  // Move to package and use the same name for fastOptJS and fullOptJS generated JavaScript file
+            println(s"$generatedJsName -> $masterGuiPath/$masterGuiJs")  // Show ...-fastopt.js or ...-opt.js
+            (file, s"$masterGuiPath/$masterGuiJs")  // Move to package and use the same name for fastOptJS and fullOptJS generated JavaScript file
           case `jsMapName` | `minJsDepName`  ⇒
             (file, s"$masterGuiPath/$path")
           case _ ⇒
             (file, path)
         }
-      })
+      },
+    mappings in (Compile, packageBin) := {  // All assets from master-gui/$masterGuiPath: index.html, .css, .ico etc.
+      val m = recursiveFileMapping((classDirectory in Compile in `master-gui`).value / masterGuiPath, to = masterGuiPath).toMap
+      ((mappings in (Compile, packageBin)).value filterNot { case (file, _) ⇒ m contains file }) ++ m
+    })
   .settings {
     import Dependencies._
     libraryDependencies ++=

@@ -32,7 +32,7 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
   protected def eventIdGenerator: EventIdGenerator
   protected implicit def webServiceContext: MasterWebServiceContext
 
-  val orderRoute: Route =
+  def orderRoute: Route =
     get {
       pathSingleSlash {
         respondWithHeader(`Cache-Control`(`max-age`(0))) {

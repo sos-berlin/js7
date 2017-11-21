@@ -11,37 +11,39 @@ import scala.scalajs.js.|
 object CssTransitionGroup {
   @JSImport("react-addons-css-transition-group", JSImport.Namespace, "React.addons.CSSTransitionGroup")
   @js.native
-  object RawComponent extends js.Object
+  private object RawComponent extends js.Object
 
-  @js.native
-  trait Props extends js.Object {
-    var component: String = js.native
-    var transitionName         : js.UndefOr[String | ReactCSSTransitionGroupNames]
-    var transitionAppear       : js.UndefOr[Boolean]
-    var transitionEnter        : js.UndefOr[Boolean]
-    var transitionLeave        : js.UndefOr[Boolean]
-    var transitionAppearTimeout: js.UndefOr[JsNumber]
-    var transitionEnterTimeout : js.UndefOr[JsNumber]
-    var transitionLeaveTimeout : js.UndefOr[JsNumber]
-  }
+  private val Component = react.JsComponent[Props, Children.Varargs, Null](RawComponent)
 
+  // Current version is here: https://github.com/reactjs/react-transition-group
+  @deprecated("ReactTransitionGroup and ReactCSSTransitionGroup are both deprecated as of React v15.5.0. The recommendation is to use TransitionGroup and CSSTransitionGroup from 'react-transition-group' instead.", "1.0.1")
   def apply(component: String,
     transitionName: String,
-    transitionAppear: js.UndefOr[Boolean] = js.undefined,
-    transitionAppearTimeout: js.UndefOr[JsNumber] = js.undefined,
-    transitionEnter: js.UndefOr[Boolean] = js.undefined,
-    transitionEnterTimeout: js.UndefOr[JsNumber] = js.undefined)
+    //appear: js.UndefOr[Boolean] = js.undefined,
+    //appearTimeout: js.UndefOr[JsNumber] = js.undefined,
+    enter: js.UndefOr[Boolean] = js.undefined,
+    enterTimeout: js.UndefOr[JsNumber] = js.undefined)
     (children: VdomNode*)
   = {
     val p = (new js.Object).asInstanceOf[Props]
     p.component = component
     p.transitionName = transitionName
-    p.transitionAppear = transitionAppear
-    p.transitionAppearTimeout = transitionAppearTimeout
-    p.transitionEnter = transitionEnter
-    p.transitionEnterTimeout = transitionEnterTimeout
-    this.component(p)(children: _*)
+    //p.transitionAppear = appear
+    //p.transitionAppearTimeout = appearTimeout
+    p.transitionEnter = enter
+    p.transitionEnterTimeout = enterTimeout
+    Component(p)(children: _*)
   }
 
-  val component = react.JsComponent[Props, Children.Varargs, Null](RawComponent)
+  @js.native
+  trait Props extends js.Object {
+    var component: String = js.native
+    var transitionName         : js.UndefOr[String | ReactCSSTransitionGroupNames]
+    //var transitionAppear       : js.UndefOr[Boolean]
+    var transitionEnter        : js.UndefOr[Boolean]
+    //var transitionLeave        : js.UndefOr[Boolean]
+    //var transitionAppearTimeout: js.UndefOr[JsNumber]
+    var transitionEnterTimeout : js.UndefOr[JsNumber]
+    //var transitionLeaveTimeout : js.UndefOr[JsNumber]
+  }
 }

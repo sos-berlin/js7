@@ -9,8 +9,9 @@ import com.sos.jobscheduler.master.gui.services.MasterApi
 final case class GuiState(
   overview: Option[Either[MasterApi.Error, MasterOverview]],
   ordersState: OrdersState,
+  isFreezed: Boolean,
   isConnected: Boolean)
 
 object GuiState {
-  val Initial = GuiState(None, OrdersState.Empty, isConnected = false)
+  val Initial = GuiState(None, OrdersState.Empty, isFreezed = false, isConnected = false)
 }

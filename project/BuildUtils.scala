@@ -10,7 +10,7 @@ object BuildUtils {
   def recursiveFileMapping(directory: File, to: String = ""): Seq[(File, String)] = {
     val to_ = (to stripSuffix "/") + "/"
     for (file ← listFilesRecursively(directory)) yield
-      file → (to_ + (file.toString stripPrefix directory.toString))
+      file → (to_ + (file.toString stripPrefix directory.toString stripPrefix "/"))
   }
 
   def listFiles(directory: File): Vector[File] =
