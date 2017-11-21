@@ -92,6 +92,10 @@ object ScalaTime {
   }
 
   implicit val StringAsDuration: As[String, Duration] = As(parseDuration)
+  implicit val StringAsOptionDuration: As[String, Option[Duration]] = {
+    case "never" | "eternal" | "" ⇒ None
+    case string ⇒ Some(parseDuration(string))
+  }
 
   /**
     * Parses a duration according to ISO-8601 with optional first letters PT.
@@ -112,9 +116,8 @@ object ScalaTime {
       else
       if (string endsWith "µs")
         string.dropRight(2).toLong.µs
-      else {
+      else
         Duration parse s"PT$string"
-      }
     else
       Duration parse string
 

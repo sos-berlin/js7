@@ -240,9 +240,24 @@ final class ScalaTimeTest extends FreeSpec {
       val conv = implicitly[As[String, Duration]]
       intercept[DateTimeParseException] { conv("") }
       intercept[DateTimeParseException] { conv("1 s") }
+      intercept[DateTimeParseException] { conv("3 minutes") }  // HOCON format is not supported
+      assert(conv("1.234") == 1234.ms)  // This is in contrast to HOCON which assumes a bare number means milliseconds
       assert(conv("1s") == 1.s)
+      assert(conv("3m") == 3*60.s)
       assert(conv("123.456789s") == 123456789.µs)
       assert(conv("PT1H1S") == 3601.s)
+    }
+
+    "StringAsDurationOption" in {
+      val conv = implicitly[As[String, Option[Duration]]]
+      intercept[DateTimeParseException] { conv("1 s") }
+      intercept[DateTimeParseException] { conv("something") }
+      assert(conv("") == None)
+      assert(conv("never") == None)
+      assert(conv("eternal") == None)
+      assert(conv("1s") == Some(1.s))
+      assert(conv("123.456789s") == Some(123456789.µs))
+      assert(conv("PT1H1S") == Some(3601.s))
     }
   }
 
