@@ -23,13 +23,13 @@ import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEve
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.base.utils.Strings.TruncatedString
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.decodeResponse
 import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.soslicense.LicenseKeyString
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
-import com.sos.jobscheduler.common.utils.Strings.TruncatedString
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken

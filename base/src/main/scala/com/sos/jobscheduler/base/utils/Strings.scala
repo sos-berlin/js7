@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.common.utils
+package com.sos.jobscheduler.base.utils
 
 import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import scala.math.max

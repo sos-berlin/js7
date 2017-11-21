@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.taskserver.moduleapi
 
-import com.sos.jobscheduler.common.utils.Strings.TruncatedString
+import com.sos.jobscheduler.base.utils.Strings.TruncatedString
 import java.nio.file.Path
 
 /**
