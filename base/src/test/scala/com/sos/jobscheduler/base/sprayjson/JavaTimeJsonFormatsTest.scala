@@ -26,7 +26,8 @@ final class JavaTimeJsonFormatsTest extends FreeSpec {
         for (_ ← 1 to 100000) instant.toJson.convertTo[Instant]  // Warm-up
         val t = System.currentTimeMillis
         for (_ ← 1 to n) instant.toJson.convertTo[Instant]
-        info(s"Instant as $what: ${1000*n / (System.currentTimeMillis - t)} conversions/s")
+        val duration = System.currentTimeMillis - t
+        info(s"Instant as $what: ${if (duration > 0) 1000*n / duration else "∞"} conversions/s")
       }
     }
 
