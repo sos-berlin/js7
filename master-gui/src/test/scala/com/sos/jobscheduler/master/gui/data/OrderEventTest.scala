@@ -24,6 +24,7 @@ final class OrderEventTest extends FreeSpec {
           "VAR": "VALUE"
         },
         "outcome": {
+          "TYPE": "Good",
           "returnValue": true
         }
       }""")
@@ -44,6 +45,7 @@ final class OrderEventTest extends FreeSpec {
           "VAR": "VALUE"
         },
         "outcome": {
+          "TYPE": "Good",
           "returnValue": true
         }
       }""")
@@ -57,10 +59,10 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  "OrderStepStarted" in {
-    check(OrderStepStarted,
+  "OrderProcessingStarted" in {
+    check(OrderProcessingStarted,
       """{
-        "TYPE": "OrderStepStarted"
+        "TYPE": "OrderProcessingStarted"
       }""")
   }
 
@@ -80,41 +82,29 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  "OrderStepSucceeded" in {
-    check(OrderStepSucceeded(MapDiff(addedOrUpdated = Map("VAR" → "VALUE"), removed = Set("REMOVED")), true, NodeId("NEXT")),
+  "OrderProcessed" in {
+    check(OrderProcessed(MapDiff(addedOrUpdated = Map("VAR" → "VALUE"), removed = Set("REMOVED")), Order.Good(true)),
       """{
-        "TYPE": "OrderStepSucceeded",
+        "TYPE": "OrderProcessed",
         "variablesDiff": {
           "addedOrUpdated": {
             "VAR": "VALUE"
           },
           "removed": ["REMOVED"]
         },
-        "returnValue": true,
-        "nextNodeId": "NEXT"
-      }""")
-  }
-
-  "OrderStepFailed" in {
-    check(OrderStepFailed(OrderStepFailed.Other("ERROR"), NodeId("NEXT")),
-      """{
-        "TYPE": "OrderStepFailed",
-        "reason": {
-          "TYPE": "Other",
-          "message": "ERROR"
+        "outcome": {
+          "TYPE": "Good",
+          "returnValue": true
         },
         "nextNodeId": "NEXT"
       }""")
   }
 
-  "OrderStepFailed(AgentAborted)" in {
-    check(OrderStepFailed(OrderStepFailed.AgentAborted, NodeId("NEXT")),
+  "OrderTransitioned" in {
+    check(OrderTransitioned(NodeId("NEXT")),
       """{
-        "TYPE": "OrderStepFailed",
-        "reason": {
-          "TYPE": "AgentAborted"
-        },
-        "nextNodeId": "NEXT"
+        "TYPE": "OrderTransitioned",
+        "toNodeId": "NEXT"
       }""")
   }
 

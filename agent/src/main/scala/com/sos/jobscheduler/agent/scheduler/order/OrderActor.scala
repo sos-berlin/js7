@@ -5,14 +5,14 @@ import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.jobnet.Jobnet
-import com.sos.jobscheduler.data.jobnet.Jobnet.JobNode
+import com.sos.jobscheduler.data.jobnet.{Jobnet, NodeId}
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
@@ -26,7 +26,7 @@ import scala.math.min
 /**
   * @author Joacim Zschimmer
   */
-private final class OrderActor(orderId: OrderId, protected val journalActor: ActorRef, config: Config)
+final class OrderActor(orderId: OrderId, protected val journalActor: ActorRef, config: Config)
 extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
@@ -62,8 +62,11 @@ extends KeyedJournalingActor[OrderEvent] {
         context.become(waiting)
 
       case Order.InProcess ⇒
-        context.become(waiting)
-        persist(OrderStepFailed(OrderStepFailed.AgentAborted, nextNodeId = order.nodeId))(update)  // isRecoveryGeneratedEvent
+        context.become(processed)
+        persist(OrderProcessed(MapDiff.empty, Order.Bad(Order.Bad.AgentAborted)))(update)  // isRecoveryGeneratedEvent
+
+      case Order.Processed ⇒
+        // Required event 'OrderTransitioned' is initialized by AgentOrderKeeper
 
       case Order.StartNow | _: Order.Scheduled | Order.Detachable | Order.Detached | Order.Finished ⇒
         context.become(waiting)
@@ -110,13 +113,13 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   private def executeInput(input: Input) = input match {
-    case Input.StartStep(node, jobActor) ⇒
+    case Input.StartProcessing(jobNode, jobActor) ⇒
       val stdoutWriter = new StatisticalWriter(stdWriters(Stdout))
       val stderrWriter = new StatisticalWriter(stdWriters(Stderr))
-      context.become(processing(node, jobActor,
+      context.become(processing(jobNode, jobActor,
         () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
       context.watch(jobActor)
-      persist(OrderStepStarted) { event ⇒
+      persist(OrderProcessingStarted) { event ⇒
         update(event)
         jobActor ! JobActor.Command.ProcessOrder(
           order.castAfterEvent(event),
@@ -150,19 +153,20 @@ extends KeyedJournalingActor[OrderEvent] {
         flushStdoutAndStderr()
         stdoutStderrTimer = null
 
-      case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) if node != null ⇒
+      case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) ⇒
         val event = moduleStepEnded match {
           case TaskStepSucceeded(variablesDiff, good) ⇒
-            OrderStepSucceeded(variablesDiff, good.returnValue, nextNodeId(node, good))
+            OrderProcessed(variablesDiff, good)
+
           case TaskStepFailed(bad) ⇒
-            OrderStepFailed(OrderStepFailed.Other(bad.error), nextNodeId(node, bad))
+            OrderProcessed(MapDiff.empty, bad)
         }
-        endOrderStep(event, node, stdoutStderrStatistics)
+        finishProcessing(event, node, stdoutStderrStatistics)
         context.unwatch(jobActor)
 
       case Terminated(`jobActor`) ⇒
-        val bad = Order.Bad(s"Job Actor '${node.jobPath.string}' terminated unexpectedly")
-        endOrderStep(OrderStepFailed(OrderStepFailed.Other(bad.error), nextNodeId = node.id/*nextNodeId(node, bad)*/), node, stdoutStderrStatistics)
+        val bad = Order.Bad(Order.Bad.Other(s"Job Actor '${node.jobPath.string}' terminated unexpectedly"))
+        finishProcessing(OrderProcessed(MapDiff.empty, bad), node, stdoutStderrStatistics)
 
       case command: Command ⇒
         executeOtherCommand(command)
@@ -171,11 +175,11 @@ extends KeyedJournalingActor[OrderEvent] {
         terminating = true
     }
 
-  private def endOrderStep(event: OrderStepEnded, node: Jobnet.JobNode, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
+  private def finishProcessing(event: OrderProcessed, node: Jobnet.JobNode, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
     flushStdoutAndStderr()
     cancelStdoutStderrTimer()
     for (o ← stdoutStderrStatistics()) logger.debug(o)
-    context.become(waiting)
+    context.become(processed)
     persist(event) { event ⇒
       update(event)
       if (terminating) {
@@ -192,6 +196,15 @@ extends KeyedJournalingActor[OrderEvent] {
       stdoutStderrTimer.cancel()
       stdoutStderrTimer = null
     }
+  }
+
+  private def processed: Receive = journaling orElse {
+    case Input.Transition(toNodeId) ⇒
+      context.become(waiting)
+      persist(OrderTransitioned(toNodeId))(update)
+
+    case command: Command ⇒
+      executeOtherCommand(command)
   }
 
   private def update(event: OrderEvent) = {
@@ -247,8 +260,9 @@ object OrderActor {
   sealed trait Input
   object Input {
     final case object MakeDetachable extends Input
-    final case class  StartStep(node: Jobnet.JobNode, jobActor: ActorRef) extends Input
+    final case class  StartProcessing(node: Jobnet.JobNode, jobActor: ActorRef) extends Input
     final case object Terminate extends Input
+    final case class Transition(toNodeId: NodeId)
   }
 
   object Output {
@@ -261,12 +275,6 @@ object OrderActor {
     final case class StdoutStderrWritten(typ: StdoutStderrType, chunk: String, completed: Promise[Completed])
     final case object FlushStdoutStderr
   }
-
-  private def nextNodeId(node: JobNode, outcome: Order.Outcome) =
-    outcome match {
-      case Order.Good(returnValue) ⇒ if (returnValue) node.onSuccess else node.onFailure
-      case Order.Bad(_) ⇒ node.onFailure
-    }
 
   private class StdWriter(stdoutOrStderr: StdoutStderrType, self: ActorRef, protected val size: Int, protected val passThroughSize: Int, delay: Duration)
   extends BufferedStringWriter {
@@ -285,7 +293,7 @@ object OrderActor {
 
   def isRecoveryGeneratedEvent(event: OrderEvent): Boolean =
     event match {
-      case OrderStepFailed(OrderStepFailed.AgentAborted, _) ⇒ true
+      case OrderProcessed(_, Order.Bad(Order.Bad.AgentAborted)) ⇒ true
       case _ ⇒ false
     }
 }

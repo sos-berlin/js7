@@ -30,10 +30,15 @@ final case class Jobnet(path: JobnetPath, inputNodeId: NodeId, idToNode: Map[Nod
 
   def isDefinedAt(nodeId: NodeId) = idToNode isDefinedAt nodeId
 
-  def agentPathOption(nodeId: NodeId): Option[AgentPath] =
-    idToNode.get(nodeId) collect { case o: Jobnet.JobNode ⇒ o.agentPath }
+  def jobNodeOption(nodeId: NodeId): Option[JobNode] =
+    idToNode.get(nodeId) collect { case o: JobNode ⇒ o }
+
+  def jobNode(nodeId: NodeId) = idToNode(nodeId).asInstanceOf[JobNode]
 
   def jobNodeCount = idToNode.values count { _.isInstanceOf[JobNode] }
+
+  def agentPathOption(nodeId: NodeId): Option[AgentPath] =
+    idToNode.get(nodeId) collect { case o: Jobnet.JobNode ⇒ o.agentPath }
 
   def inputNodeKey = NodeKey(path, inputNodeId)
 }

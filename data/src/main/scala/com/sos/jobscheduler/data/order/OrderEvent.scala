@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.jobnet.{NodeId, NodeKey}
+import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.StdoutStderr._
 import spray.json.DefaultJsonProtocol._
 
@@ -13,6 +14,7 @@ import spray.json.DefaultJsonProtocol._
   */
 sealed trait OrderEvent extends Event {
   type Key = OrderId
+  //type State <: Order.State
 }
 
 object OrderEvent {
@@ -20,29 +22,40 @@ object OrderEvent {
 
   final case class OrderAdded(
     nodeKey: NodeKey,
-    state: Order.Idle,
+    state: Idle,
     variables: Map[String, String],
-    outcome: Order.Outcome)
-  extends OrderCoreEvent
+    outcome: Outcome)
+  extends OrderCoreEvent {
+    //type State = Idle
+  }
 
   final case class OrderAttached(
     nodeKey: NodeKey,
-    state: Order.Idle,
+    state: Idle,
     variables: Map[String, String],
-    outcome: Order.Outcome)
-  extends OrderCoreEvent
+    outcome: Outcome)
+  extends OrderCoreEvent {
+    //type State = Idle
+  }
 
   final case class OrderMovedToAgent(agentPath: AgentPath)
-  extends OrderCoreEvent
+  extends OrderCoreEvent {
+    //type State = Idle
+  }
 
   final case object OrderMovedToMaster
-  extends OrderCoreEvent
+  extends OrderCoreEvent {
+    //type State = Detached.type
+  }
 
-  case object OrderStepStarted extends OrderCoreEvent
+  case object OrderProcessingStarted extends OrderCoreEvent {
+    //type State = InProcess.type
+  }
 
 
   sealed trait OrderStdWritten extends OrderEvent {
     def stdoutStderrType: StdoutStderrType
+    //type State = InProcess.type
   }
 
   object OrderStdWritten {
@@ -67,52 +80,32 @@ object OrderEvent {
   }
 
 
-  sealed trait OrderStepEnded extends OrderCoreEvent {
-    def nextNodeId: NodeId
+  final case class OrderProcessed(variablesDiff: MapDiff[String, String], outcome: Outcome) extends OrderCoreEvent {
+    //type State = Processed.type
   }
 
-  final case class OrderStepSucceeded(
-    variablesDiff: MapDiff[String, String],
-    returnValue: Boolean,
-    nextNodeId: NodeId)
-  extends OrderStepEnded
-
-  final case class OrderStepFailed(reason: OrderStepFailed.Reason, nextNodeId: NodeId)
-  extends OrderStepEnded
-
-  object OrderStepFailed {
-    sealed trait Reason {
-      def message: String
-    }
-    final case object AgentAborted extends Reason {
-      def message = "Agent aborted while order was InProcess"
-    }
-    final case class Other(message: String) extends Reason
-
-    object Reason {
-      implicit val jsonFormat = TypedJsonFormat[Reason](
-        Subtype(jsonFormat0(() ⇒ AgentAborted)),
-        Subtype(jsonFormat1(Other)))
-    }
+  final case class OrderTransitioned(toNodeId: NodeId)
+  extends OrderCoreEvent {
+    //type State = Ready.type
   }
 
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
-  case object OrderDetachable extends OrderCoreEvent
+  case object OrderDetachable extends OrderCoreEvent {
+    //type State = Detachable.type
+  }
 
   /**
     * Order has been removed from the Agent and is held by the Master.
     */
-  case object OrderDetached extends OrderCoreEvent
+  case object OrderDetached extends OrderCoreEvent {
+    //type State = Detached.type
+  }
 
-  case object OrderFinished extends OrderCoreEvent
-
-  //final case class Scheduled(at: Option[Instant]) extends Event
-  //case object Started extends Event
-  //final case class StepPostponed(variables: Map[String, String], until: Instant) extends StepProcessed
-  //final case class NodeChanged(nodeId: NodeId) extends Event
-  //case object Removed extends Event
+  case object OrderFinished extends OrderCoreEvent {
+    //type State = Finished.type
+  }
 
   implicit val OrderEventJsonFormat = TypedJsonFormat[OrderEvent](
     Subtype(jsonFormat4(OrderAdded)),
@@ -121,10 +114,10 @@ object OrderEvent {
     Subtype(jsonFormat0(() ⇒ OrderMovedToMaster)),
     Subtype(jsonFormat1(OrderStdoutWritten)),
     Subtype(jsonFormat1(OrderStderrWritten)),
+    Subtype(jsonFormat2(OrderProcessed)),
     Subtype(jsonFormat0(() ⇒ OrderDetached)),
     Subtype(jsonFormat0(() ⇒ OrderDetachable)),
-    Subtype(jsonFormat0(() ⇒ OrderStepStarted)),
-    Subtype(jsonFormat3(OrderStepSucceeded)),
-    Subtype(jsonFormat2(OrderStepFailed.apply)),
+    Subtype(jsonFormat0(() ⇒ OrderProcessingStarted)),
+    Subtype(jsonFormat1(OrderTransitioned)),
     Subtype(jsonFormat0(() ⇒ OrderFinished)))
 }

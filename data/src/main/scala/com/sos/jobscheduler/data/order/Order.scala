@@ -44,19 +44,17 @@ final case class Order[+S <: Order.State](
         state = Detached,
         agentPath = None)
 
-      case OrderStepStarted ⇒ copy(
+      case OrderProcessingStarted ⇒ copy(
         state = InProcess)
 
-      case OrderStepSucceeded(diff, returnValue, nextNodeId) ⇒ copy(
-        state = Ready,
+      case OrderProcessed(diff, outcome_) ⇒ copy(
+        state = Processed,
         variables = diff.applyTo(variables),
-        outcome = Good(returnValue),
-        nodeKey = NodeKey(jobnetPath,  nextNodeId))
+        outcome = outcome_)
 
-      case OrderStepFailed(reason, nextNodeId) ⇒ copy(
+      case OrderTransitioned(toNodeId) ⇒ copy(
         state = Ready,
-        outcome = Bad(reason.message),
-        nodeKey = NodeKey(jobnetPath,  nextNodeId))
+        nodeKey = NodeKey(jobnetPath, toNodeId))
 
       case OrderDetachable ⇒ copy(
         state = Detachable)
@@ -70,8 +68,11 @@ final case class Order[+S <: Order.State](
 
   def payload = Payload(variables, outcome)
 
-  def castAfterEvent(event: OrderStepStarted.type): Order[Order.InProcess.type] =
+  def castAfterEvent(event: OrderProcessingStarted.type): Order[Order.InProcess.type] =
     castState[Order.InProcess.type]
+
+  def castAfterEvent(event: OrderProcessed.type): Order[Order.Processed.type] =
+    castState[Order.Processed.type]
 
   def castState[T <: State: ClassTag]: Order[T] = {
     if (!implicitClass[T].isAssignableFrom(state.getClass))
@@ -95,35 +96,6 @@ object Order {
     override def toString = s"Payload($outcome ${(for (k ← variables.keys.toVector.sorted) yield s"$k=${variables(k)}") mkString ", "}".trim + ")"
   }
 
-  sealed trait Outcome {
-    def isSuccess: Boolean
-  }
-
-  object Outcome {
-    private implicit val succeededJsonFormat: RootJsonFormat[Good] = jsonFormat1(Good.apply)
-    private implicit val failedJsonFormat: RootJsonFormat[Bad] = jsonFormat1(Bad)
-
-    implicit val outcomeJsonFormat =
-      new RootJsonFormat[Outcome] {
-        def write(o: Outcome) =
-          o match {
-            case o: Good ⇒ o.toJson
-            case o: Bad ⇒ o.toJson
-          }
-
-        def read(json: JsValue) = {
-          if (json.asJsObject.fields contains "error")
-            json.convertTo[Bad]
-          else
-            json.convertTo[Good]
-        }
-      }
-  }
-
-  final case class Good private(returnValue: Boolean) extends Outcome {
-    def isSuccess = returnValue
-  }
-
   object Good {
     private val False = new Good(false)
     private val True = new Good(true)
@@ -131,8 +103,41 @@ object Order {
     def apply(returnValue: Boolean) = if (returnValue) True else False
   }
 
-  final case class Bad(error: String) extends Outcome {
+  final case class Bad(reason: Bad.Reason) extends Outcome {
     def isSuccess = false
+  }
+
+  object Bad {
+    def apply(message: String): Bad =
+      Bad(Other(message))
+
+    sealed trait Reason {
+      def message: String
+    }
+    final case object AgentAborted extends Reason {
+      def message = "Agent aborted while order was InProcess"
+    }
+    final case class Other(message: String) extends Reason
+
+    object Reason {
+      implicit val jsonFormat = TypedJsonFormat[Reason](
+        Subtype(jsonFormat0(() ⇒ AgentAborted)),
+        Subtype(jsonFormat1(Other)))
+    }
+  }
+
+  sealed trait Outcome {
+    def isSuccess: Boolean
+  }
+
+  object Outcome {
+    implicit val outcomeJsonFormat = TypedJsonFormat[Outcome](
+      Subtype(jsonFormat1(Good.apply)),
+      Subtype(jsonFormat1((o: Bad.Reason) ⇒ Bad(o))))
+  }
+
+  final case class Good private(returnValue: Boolean) extends Outcome {
+    def isSuccess = returnValue
   }
 
   implicit val IdleJsonFormat: TypedJsonFormat[Idle] = TypedJsonFormat(
@@ -146,6 +151,7 @@ object Order {
     Subtype(jsonFormat1(Scheduled)),
     Subtype(jsonFormat0(() ⇒ StartNow)),
     Subtype(jsonFormat0(() ⇒ InProcess)),
+    Subtype(jsonFormat0(() ⇒ Processed)),
     Subtype(jsonFormat0(() ⇒ Detachable)),
     Subtype(jsonFormat0(() ⇒ Finished)))
 
@@ -161,12 +167,11 @@ object Order {
   sealed trait NotStarted extends Idle
   sealed trait Started extends State
   final case class Scheduled(at: Instant) extends NotStarted
-  final case object StartNow extends NotStarted  // == Scheduled(None) ???
-  //final case class Postponed(until: Option[Instant]) extends Started with Idle
-  //case object Suspended extends Started with Idle
+  final case object StartNow extends NotStarted
   case object Ready extends Started with Idle
-  case object Detachable extends Started
   case object InProcess extends Started
+  case object Processed extends Started
+  case object Detachable extends Started
   case object Detached extends Started with Idle
   case object Finished extends State
 }

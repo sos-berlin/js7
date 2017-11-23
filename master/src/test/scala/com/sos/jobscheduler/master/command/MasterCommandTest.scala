@@ -34,6 +34,7 @@ final class MasterCommandTest extends FreeSpec {
              "VAR": "VALUE"
            },
            "outcome": {
+             "TYPE": "Good",
              "returnValue": true
            }
          }

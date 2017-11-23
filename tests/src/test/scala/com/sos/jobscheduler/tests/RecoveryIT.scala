@@ -22,7 +22,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.Order.Scheduled
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMovedToAgent, OrderMovedToMaster, OrderStdoutWritten, OrderStepFailed, OrderStepStarted, OrderStepSucceeded}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransitioned}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
@@ -39,6 +39,7 @@ import java.util.zip.GZIPInputStream
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import spray.json.JsObject
 
@@ -70,14 +71,14 @@ final class RecoveryIT extends FreeSpec {
           runAgents(agentConfs) { _ ⇒
             master.executeCommand(MasterCommand.AddOrderIfNew(FastOrder)) await 99.s
             lastEventId = lastEventIdOf(eventCollector.when[OrderFinished.type](EventRequest.singleClass(after = lastEventId, 99.s), _.key == FastOrderId) await 99.s)
-            lastEventId = lastEventIdOf(eventCollector.when[OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
-            lastEventId = lastEventIdOf(eventCollector.when[OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
           }
           assert((readEvents(directory / "agent-111/data/state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
             Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId.Anonymous)))
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(agentConfs) { _ ⇒
-            lastEventId = lastEventIdOf(eventCollector.when[OrderStepSucceeded](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestJobnetPath.string) await 99.s)
           }
         }
 
@@ -101,9 +102,9 @@ final class RecoveryIT extends FreeSpec {
               val EventSeq.NonEmpty(eventSeq) = eventCollector.when[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, 0.s), _.key == orderId) await 99.s
               withClue(s"$orderId") {
                 assertResult(ExpectedEvents) {
-                  (eventSeq map { _.value.event } collect {
+                  (deleteRestartedJobEvents(eventSeq map { _.value.event }) collect {
                     case o @ OrderAdded(_, Order.Scheduled(_), _, _) ⇒ o.copy(state = Order.Scheduled(SomeInstant))
-                    case o if !isIgnoredEvent(o) ⇒ o
+                    case o ⇒ o
                   }).toVector
                 }
               }
@@ -139,6 +140,8 @@ final class RecoveryIT extends FreeSpec {
 }
 
 private object RecoveryIT {
+  private val logger = Logger(getClass)
+
   private val AgentNames = List("agent-111", "agent-222")
   private val TestJobnetPath = JobnetPath("/test")
   private val FastJobnetPath = JobnetPath("/fast")
@@ -171,34 +174,50 @@ private object RecoveryIT {
   private val ExpectedEvents = Vector(
     OrderAdded(NodeKey(TestJobnetPath, NodeId("100")), Scheduled(SomeInstant),Map(),Order.Good(true)),
     OrderMovedToAgent(AgentPath("/test-agent-111")),
-    //OrderStepStarted,
-    //OrderStdoutWritten("TEST\n"),
-    OrderStepSucceeded(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-111"), Set()), true, NodeId("110")),
-    //OrderStepStarted,
-    //OrderStdoutWritten("TEST\n"),
-    OrderStepSucceeded(MapDiff(Map(), Set()), true, NodeId("120")),
-    //OrderStepStarted,
-    //OrderStdoutWritten("TEST\n"),
-    OrderStepSucceeded(MapDiff(Map(), Set()), true, NodeId("200")),
+    OrderProcessingStarted,
+    OrderStdoutWritten("TEST\n"),
+    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-111"), Set()), Order.Good(true)),
+    OrderTransitioned(NodeId("110")),
+    OrderProcessingStarted,
+    OrderStdoutWritten("TEST\n"),
+    OrderProcessed(MapDiff(Map(), Set()), Order.Good(true)),
+    OrderTransitioned(NodeId("120")),
+    OrderProcessingStarted,
+    OrderStdoutWritten("TEST\n"),
+    OrderProcessed(MapDiff(Map(), Set()), Order.Good(true)),
+    OrderTransitioned(NodeId("200")),
     OrderDetachable,
     OrderMovedToMaster,
     OrderMovedToAgent(AgentPath("/test-agent-222")),
-    //OrderStepStarted,
-    //OrderStdoutWritten("TEST\n"),
-    OrderStepSucceeded(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-222"), Set()), true, NodeId("210")),
-    //OrderStepStarted,
-    //OrderStdoutWritten("TEST\n"),
-    OrderStepSucceeded(MapDiff(Map(), Set()), true, NodeId("END")),
+    OrderProcessingStarted,
+    OrderStdoutWritten("TEST\n"),
+    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-222"), Set()), Order.Good(true)),
+    OrderTransitioned(NodeId("210")),
+    OrderProcessingStarted,
+    OrderStdoutWritten("TEST\n"),
+    OrderProcessed(MapDiff(Map(), Set()), Order.Good(true)),
+    OrderTransitioned(NodeId("END")),
     OrderDetachable,
     OrderMovedToMaster,
     OrderFinished)
-  private def isIgnoredEvent(event: OrderEvent) =
-    event.isInstanceOf[OrderStepFailed] || // May occur or not in this test
-    event == OrderStepStarted ||  // May occur duplicate after job restart
-    event.isInstanceOf[OrderStdoutWritten]  // May occur duplicate after job restart
 
+  /** Deletes restart sequences to make event sequence comparable with ExpectedEvents. */
+  private def deleteRestartedJobEvents(events: Iterator[OrderEvent]): Seq[OrderEvent] = {
+    val result = mutable.Buffer[OrderEvent]()
+    while (events.hasNext) {
+      events.next() match {
+        case OrderProcessed(_, Order.Bad(Order.Bad.AgentAborted)) ⇒
+          while (result.last != OrderEvent.OrderProcessingStarted) {
+            result.remove(result.size - 1)
+          }
+          result.remove(result.size - 1)
+          assert(events.next.isInstanceOf[OrderEvent.OrderTransitioned])  // Not if Agent restartet immediately after recovery (not expected)
 
-  private val logger = Logger(getClass)
+        case event ⇒ result += event
+      }
+    }
+    result.toVector
+  }
 
   private class DirectoryProvider extends HasCloser {
     val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively

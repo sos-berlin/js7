@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
-import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, JobActor, JobScript}
+import com.sos.jobscheduler.agent.scheduler.job.{JobActor, JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.base.generic.Completed
@@ -28,7 +28,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderStdWritten, OrderStepEnded, OrderStepStarted, OrderStepSucceeded}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderTransitioned}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
@@ -100,11 +100,15 @@ private object OrderActorTest {
   private val TestNodeId = NodeId("NODE-ID")
   private val TestOrder = Order(OrderId("TEST-ORDER"), NodeKey(JobnetPath("/JOBNET"), TestNodeId), Order.Ready)
   private val TestJobPath = JobPath("/test")
-  private val TestJobNode = Jobnet.JobNode(TestNodeId, AgentPath("/TEST-AGENT"), TestJobPath, onSuccess = NodeId("SUCCESS"), onFailure = NodeId("FAILURE"))
+  private val SuccessNode = Jobnet.EndNode(NodeId("SUCCESS"))
+  private val FailureNode = Jobnet.EndNode(NodeId("FAILURE"))
+  private val TestJobNode = Jobnet.JobNode(TestNodeId, AgentPath("/TEST-AGENT"), TestJobPath, onSuccess = SuccessNode.id, onFailure = FailureNode.id)
+  private val TestJobnet = Jobnet(JobnetPath("/JOBNET"), TestNodeId, List(TestJobNode, SuccessNode, FailureNode))
   private val ExpectedOrderEvents = List(
     OrderAttached(TestOrder.nodeKey, Order.Ready, Map(), Order.Good(true)),
-    OrderStepStarted,
-    OrderStepSucceeded(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), returnValue = true, TestJobNode.onSuccess),
+    OrderProcessingStarted,
+    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Order.Good(true)),
+    OrderTransitioned(SuccessNode.id),
     OrderDetached)
   private val Nl = System.lineSeparator
 
@@ -182,7 +186,7 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed ⇒
-        orderActor ! OrderActor.Input.StartStep(TestJobNode, jobActor = jobActor)
+        orderActor ! OrderActor.Input.StartProcessing(TestJobNode, jobActor = jobActor)
         become(ready)
     }
 
@@ -212,10 +216,14 @@ private object OrderActorTest {
       case Stamped(_, KeyedEvent(TestOrder.id, event: OrderEvent)) ⇒  // Duplicate to OrderChanged, in unknown order
         event match {
           case OrderStdWritten(t, chunk) ⇒
-            assert(events.last == OrderStepStarted)
+            assert(events.last == OrderProcessingStarted)
             stdoutStderr(t) ++= chunk
 
-          case _: OrderStepEnded ⇒
+          case _: OrderProcessed ⇒
+            events += event
+            orderActor ! OrderActor.Input.Transition(SuccessNode.id)
+
+          case _: OrderTransitioned ⇒
             events += event
             orderActor ! OrderActor.Command.Detach
             become(detaching)

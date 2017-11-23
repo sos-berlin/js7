@@ -10,12 +10,51 @@ import spray.json._
   */
 final class OrderTest extends FreeSpec {
 
-  "Outcome" in {
-    assert(Order.Good(returnValue = true).isSuccess)
-    assert(!Order.Good(returnValue = false).isSuccess)
-    assert(!Order.Bad("error").isSuccess)
-  }
+  "Outcome" - {
+    "Outcome" in {
+      assert(Order.Good(returnValue = true).isSuccess)
+      assert(!Order.Good(returnValue = false).isSuccess)
+      assert(!Order.Bad(Order.Bad.Other("error")).isSuccess)
+      assert(Order.Bad(Order.Bad.Other("error")) == Order.Bad("error"))
+      assert(!Order.Bad(Order.Bad.AgentAborted).isSuccess)
+    }
 
+    "JSON" - {
+      "Good" in {
+         check(Order.Good(true), """
+            {
+              "TYPE": "Good",
+              "returnValue": true
+            }""".stripMargin)
+      }
+
+      "Bad AgentAborted" in {
+         check(Order.Bad(Order.Bad.AgentAborted), """
+            {
+              "TYPE": "Bad",
+              "reason": {
+                "TYPE": "AgentAborted"
+              }
+            }""".stripMargin)
+      }
+
+      "Bad Other" in {
+         check(Order.Bad("OTHER REASON"), """
+            {
+              "TYPE": "Bad",
+              "reason": {
+                "TYPE": "Other",
+                "message": "OTHER REASON"
+              }
+            }""".stripMargin)
+      }
+
+      def check(o: Order.Outcome, json: String): Unit = {
+        assert(o.toJson == json.parseJson)
+        assert(json.parseJson.convertTo[Order.Outcome] == o)
+      }
+    }
+  }
 
   "JSON InitialOutcome" in {
     check(
@@ -41,31 +80,8 @@ final class OrderTest extends FreeSpec {
           "var2": "value2"
         },
         "outcome": {
+          "TYPE": "Good",
           "returnValue": true
-        }
-      }""")
-  }
-
-  "JSON Bad" in {
-    check(
-      Order(
-        OrderId("ID"),
-        NodeKey(JobnetPath("/JOBNET"), NodeId("NODE")),
-        Order.Ready,
-        Map(),
-        Order.Bad("MESSAGE")),
-      """{
-        "id": "ID",
-        "nodeKey": {
-          "jobnetPath": "/JOBNET",
-          "nodeId": "NODE"
-        },
-        "state": {
-          "TYPE": "Ready"
-        },
-        "variables": {},
-        "outcome": {
-          "error": "MESSAGE"
         }
       }""")
   }
@@ -95,17 +111,24 @@ final class OrderTest extends FreeSpec {
         }""")
     }
 
-    "Detachable" in {
-      check(Detachable,
-        """{
-           "TYPE": "Detachable"
-        }""")
-    }
-
     "InProcess" in {
       check(InProcess,
         """{
            "TYPE": "InProcess"
+        }""")
+    }
+
+    "Processed" in {
+      check(Processed,
+        """{
+           "TYPE": "Processed"
+        }""")
+    }
+
+    "Detachable" in {
+      check(Detachable,
+        """{
+           "TYPE": "Detachable"
         }""")
     }
 
@@ -123,8 +146,6 @@ final class OrderTest extends FreeSpec {
         }""")
     }
   }
-
-  // TODO JSON tests for Order.State, Order.Outcome
 
   private def check(o: Order[Order.State], json: String): Unit = {
     assert(o.toJson == json.parseJson)

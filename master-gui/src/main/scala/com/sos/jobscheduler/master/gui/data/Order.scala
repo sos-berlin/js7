@@ -37,19 +37,17 @@ final case class Order[+S <: Order.State](
         state = Detached,
         agentPath = None)
 
-      case OrderStepStarted ⇒ copy(
+      case OrderProcessingStarted ⇒ copy(
         state = InProcess)
 
-      case OrderStepSucceeded(diff, returnValue, nextNodeId) ⇒ copy(
-        state = Ready,
+      case OrderProcessed(diff, outcome_) ⇒ copy(
+        state = Processed,
         variables = diff.applyTo(variables),
-        outcome = Good(returnValue),
-        nodeKey = NodeKey(jobnetPath,  nextNodeId))
+        outcome = outcome_)
 
-      case OrderStepFailed(reason, nextNodeId) ⇒ copy(
+      case OrderTransitioned(toNodeId) ⇒ copy(
         state = Ready,
-        outcome = Bad(reason.message),
-        nodeKey = NodeKey(jobnetPath,  nextNodeId))
+        nodeKey = NodeKey(jobnetPath,  toNodeId))
 
       case OrderDetachable ⇒ copy(
         state = Detachable)
@@ -74,6 +72,7 @@ object Order {
   sealed trait Outcome
   final case class Good private(returnValue: Boolean) extends Outcome
   object Good {
+    implicit val jsonDecoder: Decoder[Good] = deriveDecoder[Good]
     private val False = new Good(false)
     private val True = new Good(true)
 
@@ -81,6 +80,9 @@ object Order {
   }
 
   final case class Bad(error: String) extends Outcome
+  object Bad {
+    implicit val jsonDecoder: Decoder[Bad] = deriveDecoder[Bad]
+  }
 
   sealed trait State
   sealed trait Idle extends State
@@ -91,6 +93,7 @@ object Order {
   case object Ready extends Started with Idle
   case object Detachable extends Started
   case object InProcess extends Started
+  case object Processed extends Started
   case object Detached extends Started with Idle
   case object Finished extends State
 
@@ -98,6 +101,7 @@ object Order {
   private implicit val startNowJsonDecoder = Decoder.const(StartNow)
   private implicit val waitingJsonDecoder = Decoder.const(Ready)
   private implicit val detachedJsonDecoder = Decoder.const(Detached)
+
 
   object Idle {
     implicit  val jsonDecoder: Decoder[Idle] = {
@@ -124,6 +128,7 @@ object Order {
             case "Scheduled" | "StartNow" | "Ready" | "Detached" ⇒ Idle.jsonDecoder(cursor)
             case "Detachable" ⇒ Decoder.const(Detachable)(cursor)
             case "InProcess" ⇒ Decoder.const(InProcess)(cursor)
+            case "Processed" ⇒ Decoder.const(Processed)(cursor)
             case "Finished" ⇒ Decoder.const(Finished)(cursor)
           }
         } yield state
@@ -131,10 +136,13 @@ object Order {
 
   implicit val outcomeDecoder: Decoder[Outcome] =
     cursor ⇒
-      cursor.downField("error").success match {
-        case Some(errorCursor) ⇒ for (error ← errorCursor.as[String]) yield Bad(error)
-        case None ⇒ for (returnValue ← cursor.downField("returnValue").as[Boolean]) yield Good(returnValue)
-      }
+      for {
+        typ ← cursor.downField("TYPE").as[String]
+        outcome ← typ match {
+          case "Good" ⇒ implicitly[Decoder[Good]].apply(cursor)
+          case "Bad" ⇒ implicitly[Decoder[Bad]].apply(cursor)
+        }
+      } yield outcome
 
   implicit val jsonDecoder: Decoder[Order[State]] = deriveDecoder[Order[State]]
 }

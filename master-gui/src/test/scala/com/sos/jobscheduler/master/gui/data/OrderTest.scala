@@ -32,6 +32,7 @@ final class OrderTest extends FreeSpec {
           "var2": "value2"
         },
         "outcome": {
+          "TYPE": "Good",
           "returnValue": true
         }
       }""")
@@ -56,6 +57,7 @@ final class OrderTest extends FreeSpec {
         },
         "variables": {},
         "outcome": {
+          "TYPE": "Bad",
           "error": "MESSAGE"
         }
       }""")

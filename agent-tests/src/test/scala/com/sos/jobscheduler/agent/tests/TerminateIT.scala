@@ -54,16 +54,16 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
             AJobnet))
         ) await 99.s
 
-        val whenStepEnded: Future[Seq[OrderEvent.OrderStepEnded]] =
+        val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
           Future.sequence(
             for (orderId ← orderIds) yield
-              eventCollector.whenKeyedEvent[OrderEvent.OrderStepEnded](EventRequest.singleClass(after = lastEventId, 90.s), orderId))
+              eventCollector.whenKeyedEvent[OrderEvent.OrderProcessed](EventRequest.singleClass(after = lastEventId, 90.s), orderId))
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)
 
         client.executeCommand(Terminate(sigkillProcessesAfter = Some(0.s))) await 99.s
         val stepEnded = whenStepEnded await 99.s
-        assert(stepEnded forall { e ⇒ !e.asInstanceOf[OrderEvent.OrderStepSucceeded].returnValue })
+        assert(stepEnded forall { e ⇒ !e.outcome.asInstanceOf[Order.Good].returnValue })
         agent.terminated await 99.s
       }
     }
