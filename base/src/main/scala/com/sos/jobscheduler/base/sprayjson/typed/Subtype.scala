@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.base.sprayjson.typed
 
 import com.sos.jobscheduler.base.utils.ScalaUtils._
-import scala.language.existentials
 import scala.reflect.ClassTag
 import spray.json.{JsString, RootJsonFormat, RootJsonReader, RootJsonWriter}
 
