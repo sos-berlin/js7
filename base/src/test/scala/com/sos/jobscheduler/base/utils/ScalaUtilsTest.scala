@@ -4,6 +4,7 @@ import com.sos.jobscheduler.base.exceptions.StandardPublicException
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicits._
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.lang.model.SourceVersion
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.reflect.ClassTag
@@ -15,7 +16,31 @@ final class ScalaUtilsTest extends FreeSpec {
     f[String] shouldEqual classOf[String]
   }
 
+  "scalaName" in {
+    assert(ScalaUtilsTest.getClass.getName == "com.sos.jobscheduler.base.utils.ScalaUtilsTest$")
+    assert(ScalaUtilsTest.getClass.scalaName == "com.sos.jobscheduler.base.utils.ScalaUtilsTest")
+  }
+
+  "scalaSimpleName" in {
+    assert(ScalaUtilsTest.getClass.getSimpleName == "ScalaUtilsTest$")
+    assert(ScalaUtilsTest.getClass.simpleScalaName == "ScalaUtilsTest")
+  }
+
   "simpleClassName" in {
+    object A {
+      object B {
+        def getSimpleName = getClass.getSimpleName
+        def simpleName = getClass.simpleName
+      }
+    }
+
+    if (SourceVersion.values map (_.toString) contains "RELEASE_9")
+      assert(A.B.getSimpleName == "B$")
+    else
+      intercept[java.lang.InternalError] {  // Until Java 8: https://bugs.openjdk.java.net/browse/JDK-8057919
+        A.B.getSimpleName
+      }
+    assert(A.B.simpleName == "B$")
     assert(simpleClassName("C") == "C")
     assert(simpleClassName("a.C") == "C")
     assert(simpleClassName("a.C$") == "C$")
@@ -126,3 +151,5 @@ final class ScalaUtilsTest extends FreeSpec {
     assert(x == 1)
   }
 }
+
+object ScalaUtilsTest

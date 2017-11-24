@@ -13,9 +13,14 @@ object ScalaUtils {
 
 
   implicit class RichJavaClass[A](val underlying: Class[A]) {
+    def scalaName: String = underlying.getName stripSuffix "$"
+
+    def simpleScalaName: String = simpleName stripSuffix "$"
+
     /**
       * Workaround for JDK-8057919 Class#getSimpleName (resolved in Java 9).
       * @see https://bugs.openjdk.java.net/browse/JDK-8057919
+      * @see https://issues.scala-lang.org/browse/SI-2034
       */
     def simpleName: String =
       simpleClassName(underlying.getName)
@@ -52,11 +57,6 @@ object ScalaUtils {
         override def toString() = string
       }
     }
-
-    implicit def toJavaFunction[A, B](function: A ⇒ B): java.util.function.Function[A, B] =
-      new java.util.function.Function[A, B] {
-        def apply(a: A) = function(a)
-      }
   }
 
   def namedIdentity[A] = new (A ⇒ A) {
