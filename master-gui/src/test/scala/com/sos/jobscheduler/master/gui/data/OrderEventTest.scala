@@ -10,11 +10,11 @@ import org.scalatest.FreeSpec
 final class OrderEventTest extends FreeSpec {
 
   "OrderAdded" in {
-    check(OrderAdded(NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
+    check(OrderAdded(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
       """{
         "TYPE":"OrderAdded",
         "nodeKey": {
-          "jobnetPath": "/JOBNET",
+          "workflowPath": "/JOBNET",
           "nodeId": "NODE-ID"
         },
         "state": {
@@ -31,11 +31,11 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderAttached" in {
-    check(OrderAttached(NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
+    check(OrderAttached(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
       """{
         "TYPE": "OrderAttached",
         "nodeKey": {
-          "jobnetPath": "/JOBNET",
+          "workflowPath": "/JOBNET",
           "nodeId": "NODE-ID"
         },
         "state": {

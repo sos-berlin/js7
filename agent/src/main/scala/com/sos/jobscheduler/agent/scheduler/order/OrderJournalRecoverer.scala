@@ -9,9 +9,9 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMa
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.jobnet.{Jobnet, JobnetEvent, JobnetPath}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderDetached, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowPath}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer
 import java.nio.file.Path
 import scala.collection.mutable
@@ -24,12 +24,12 @@ private[order] final class OrderJournalRecoverer(protected val journalFile: Path
 extends JsonJournalRecoverer[Event] {
 
   protected val jsonJournalMeta = AgentOrderKeeper.MyJournalMeta
-  private val jobnetRegister = new JobnetRegister
+  private val workflowRegister = new WorkflowRegister
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
 
   protected def recoverSnapshot = {
-    case jobnet: Jobnet ⇒
-      jobnetRegister.recover(jobnet)
+    case workflow: Workflow ⇒
+      workflowRegister.recover(workflow)
 
     case order: Order[Order.State] ⇒
       idToOrder.insert(order.id → order)
@@ -39,8 +39,8 @@ extends JsonJournalRecoverer[Event] {
   }
 
   protected def recoverEvent = {
-    case Stamped(_, KeyedEvent(path: JobnetPath, event: JobnetEvent.JobnetAttached)) ⇒
-      jobnetRegister.handleEvent(KeyedEvent(event)(path))
+    case Stamped(_, KeyedEvent(path: WorkflowPath, event: WorkflowEvent.WorkflowAttached)) ⇒
+      workflowRegister.handleEvent(KeyedEvent(event)(path))
 
     case stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
       event match {
@@ -70,6 +70,6 @@ extends JsonJournalRecoverer[Event] {
         }
     }
 
-  def jobnets = jobnetRegister.jobnets
+  def workflows = workflowRegister.workflows
   def orders = idToOrder.values
 }

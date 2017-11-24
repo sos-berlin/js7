@@ -12,7 +12,7 @@ final class OrderTest extends FreeSpec {
     check(
       Order(
         OrderId("ID"),
-        NodeKey(JobnetPath("/JOBNET"), NodeId("NODE")),
+        NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")),
         Order.InProcess,
         Map(
           "var1" → "value1",
@@ -21,7 +21,7 @@ final class OrderTest extends FreeSpec {
       """{
         "id": "ID",
         "nodeKey": {
-          "jobnetPath": "/JOBNET",
+          "workflowPath": "/JOBNET",
           "nodeId": "NODE"
         },
         "state": {
@@ -42,14 +42,14 @@ final class OrderTest extends FreeSpec {
     check(
       Order(
         OrderId("ID"),
-        NodeKey(JobnetPath("/JOBNET"), NodeId("NODE")),
+        NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")),
         Order.Ready,
         Map(),
         Order.Bad("MESSAGE")),
       """{
         "id": "ID",
         "nodeKey": {
-          "jobnetPath": "/JOBNET",
+          "workflowPath": "/JOBNET",
           "nodeId": "NODE"
         },
         "state": {

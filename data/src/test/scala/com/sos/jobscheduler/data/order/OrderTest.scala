@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.order
 
-import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
+import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import java.time.Instant
 import org.scalatest.FreeSpec
 import spray.json._
@@ -60,7 +60,7 @@ final class OrderTest extends FreeSpec {
     check(
       Order(
         OrderId("ID"),
-        NodeKey(JobnetPath("/JOBNET"), NodeId("NODE")),
+        NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")),
         Order.InProcess,
         Map(
           "var1" → "value1",
@@ -69,7 +69,7 @@ final class OrderTest extends FreeSpec {
       """{
         "id": "ID",
         "nodeKey": {
-          "jobnetPath": "/JOBNET",
+          "workflowPath": "/JOBNET",
           "nodeId": "NODE"
         },
         "state": {

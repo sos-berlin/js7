@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.jobnet
+package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.base.generic.IsString
 

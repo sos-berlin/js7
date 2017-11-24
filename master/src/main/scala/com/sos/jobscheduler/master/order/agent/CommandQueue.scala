@@ -71,7 +71,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
   private def inputToAgentCommand(input: Input.QueueableInput): AgentCommand =
     input match {
-      case Input.AttachOrder(order, jobnet) ⇒ AgentCommand.AttachOrder(order, jobnet)
+      case Input.AttachOrder(order, workflow) ⇒ AgentCommand.AttachOrder(order, workflow)
       case Input.DetachOrder(orderId) ⇒ AgentCommand.DetachOrder(orderId)
     }
 

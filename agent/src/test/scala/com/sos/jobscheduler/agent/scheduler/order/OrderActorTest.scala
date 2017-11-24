@@ -27,10 +27,10 @@ import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderTransitioned}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JsonJournalActor, JsonJournalMeta}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
@@ -98,12 +98,12 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 
 private object OrderActorTest {
   private val TestNodeId = NodeId("NODE-ID")
-  private val TestOrder = Order(OrderId("TEST-ORDER"), NodeKey(JobnetPath("/JOBNET"), TestNodeId), Order.Ready)
+  private val TestOrder = Order(OrderId("TEST-ORDER"), NodeKey(WorkflowPath("/JOBNET"), TestNodeId), Order.Ready)
   private val TestJobPath = JobPath("/test")
-  private val SuccessNode = Jobnet.EndNode(NodeId("SUCCESS"))
-  private val FailureNode = Jobnet.EndNode(NodeId("FAILURE"))
-  private val TestJobNode = Jobnet.JobNode(TestNodeId, AgentPath("/TEST-AGENT"), TestJobPath, onSuccess = SuccessNode.id, onFailure = FailureNode.id)
-  private val TestJobnet = Jobnet(JobnetPath("/JOBNET"), TestNodeId, List(TestJobNode, SuccessNode, FailureNode))
+  private val SuccessNode = Workflow.EndNode(NodeId("SUCCESS"))
+  private val FailureNode = Workflow.EndNode(NodeId("FAILURE"))
+  private val TestJobNode = Workflow.JobNode(TestNodeId, AgentPath("/TEST-AGENT"), TestJobPath, onSuccess = SuccessNode.id, onFailure = FailureNode.id)
+  private val TestWorkflow = Workflow(WorkflowPath("/JOBNET"), TestNodeId, List(TestJobNode, SuccessNode, FailureNode))
   private val ExpectedOrderEvents = List(
     OrderAttached(TestOrder.nodeKey, Order.Ready, Map(), Order.Good(true)),
     OrderProcessingStarted,

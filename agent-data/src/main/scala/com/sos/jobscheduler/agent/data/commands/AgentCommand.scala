@@ -3,9 +3,9 @@ package com.sos.jobscheduler.agent.data.commands
 import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.jobnet.Jobnet
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken
+import com.sos.jobscheduler.data.workflow.Workflow
 import java.time.Duration
 import scala.collection.immutable.Seq
 import spray.json.DefaultJsonProtocol._
@@ -108,11 +108,11 @@ object AgentCommand {
 
   sealed trait AttachOrDetachOrder extends OrderCommand
 
-  final case class AttachOrder(order: Order[Order.Idle], jobnet: Jobnet)
+  final case class AttachOrder(order: Order[Order.Idle], workflow: Workflow)
   extends AttachOrDetachOrder {
     type Response = Accepted.type
 
-    override def toShortString = s"AttachOrder($order,${jobnet.path})"
+    override def toShortString = s"AttachOrder($order,${workflow.path})"
   }
 
   final case class DetachOrder(orderId: OrderId)

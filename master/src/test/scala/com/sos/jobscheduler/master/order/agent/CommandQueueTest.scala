@@ -5,9 +5,9 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, Batch}
 import com.sos.jobscheduler.common.scalautil.Futures.SynchronousExecutionContext
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.jobnet.Jobnet.{EndNode, JobNode}
-import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.order.agent.AgentDriver.Input
 import com.sos.jobscheduler.master.order.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.order.agent.CommandQueueTest._
@@ -44,26 +44,26 @@ final class CommandQueueTest extends FreeSpec {
 
     // The first Input is sent alone to the Agent regardless of batchSize.
     val aOrder = toOrder("A")
-    commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestJobnet))
+    commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestWorkflow))
     expected += toQueuedInputResponse(aOrder) :: Nil
     assert(commandQueue.succeeded == expected)
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
-    for (o ← twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestJobnet))
+    for (o ← twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestWorkflow))
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestJobnet))
+    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestWorkflow))
     expected += twoOrders map toQueuedInputResponse
     assert(commandQueue.succeeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
-    for (o ← fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestJobnet))
+    for (o ← fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestWorkflow))
     expected += fiveOrders take 1 map toQueuedInputResponse
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, three of the queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual fiveOrders.take(1).map(o ⇒ Input.AttachOrder(o, TestJobnet))
+    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual fiveOrders.take(1).map(o ⇒ Input.AttachOrder(o, TestWorkflow))
     expected += fiveOrders drop 1 take 3 map toQueuedInputResponse
     assert(commandQueue.succeeded == expected)
 
@@ -77,12 +77,12 @@ final class CommandQueueTest extends FreeSpec {
 
 object CommandQueueTest {
   private val logger = Logger(getClass)
-  private val TestJobnet = Jobnet(JobnetPath("/A"), NodeId("START"), List(
+  private val TestWorkflow = Workflow(WorkflowPath("/A"), NodeId("START"), List(
     JobNode(NodeId("START"), AgentPath("/AGENT"), JobPath("/JOB"), onSuccess = NodeId("END"), onFailure = NodeId("END")),
     EndNode(NodeId("END"))))
 
   private def toQueuedInputResponse(order: Order[Order.Idle]) =
-    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestJobnet), Batch.Succeeded(Accepted))
+    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestWorkflow), Batch.Succeeded(Accepted))
 
-  private def toOrder(name: String) = Order(OrderId(name), TestJobnet.inputNodeKey, Order.StartNow)
+  private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.inputNodeKey, Order.StartNow)
 }

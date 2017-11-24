@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.jobnet.JobPath
+import com.sos.jobscheduler.data.workflow.JobPath
 import org.scalatest.FreeSpec
 
 /**

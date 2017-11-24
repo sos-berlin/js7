@@ -5,8 +5,8 @@ import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
 import com.sos.jobscheduler.base.sprayjson.SprayJson.JsonFormats._
 import com.sos.jobscheduler.common.scalautil.FileUtils.EmptyPath
 import com.sos.jobscheduler.common.system.FileUtils._
-import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.data.workflow.JobPath
 import java.nio.file.Path
 import java.time.Duration
 import spray.json.DefaultJsonProtocol._

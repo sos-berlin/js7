@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.task
 
-import com.sos.jobscheduler.data.jobnet.JobPath
+import com.sos.jobscheduler.data.workflow.JobPath
 import spray.json.DefaultJsonProtocol._
 
 /**

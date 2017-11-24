@@ -19,8 +19,8 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.jobnet.JobPath
 import com.sos.jobscheduler.data.system.JavaInformation
+import com.sos.jobscheduler.data.workflow.JobPath
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery

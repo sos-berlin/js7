@@ -16,9 +16,9 @@ import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.xmlElemToSource
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
-import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.Order.Good
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.taskserver.task.process.{RichProcess, StdChannels}
 import java.io.Writer
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -57,7 +57,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
       info(measureTime(10, "TaskRunner") {
         val order = Order(
           OrderId("TEST"),
-          NodeKey(JobnetPath("/JOBCHAIN"), NodeId("NODE")),
+          NodeKey(WorkflowPath("/JOBCHAIN"), NodeId("NODE")),
           Order.InProcess,
           Map("a" → "A"))
         implicit val x = injector.instance[StandardAgentTaskFactory]

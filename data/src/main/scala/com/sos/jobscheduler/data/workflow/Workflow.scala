@@ -1,14 +1,14 @@
-package com.sos.jobscheduler.data.jobnet
+package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.jobnet.Jobnet._
+import com.sos.jobscheduler.data.workflow.Workflow._
 import spray.json.DefaultJsonProtocol._
 
 /**
   * @author Joacim Zschimmer
   */
-final case class Jobnet(path: JobnetPath, inputNodeId: NodeId, idToNode: Map[NodeId, Node]) {
+final case class Workflow(path: WorkflowPath, inputNodeId: NodeId, idToNode: Map[NodeId, Node]) {
   require(idToNode forall { case (k, v) ⇒ k == v.id })
 
   def requireCompleteness: this.type = {
@@ -20,7 +20,7 @@ final case class Jobnet(path: JobnetPath, inputNodeId: NodeId, idToNode: Map[Nod
     this
   }
 
-  def reduceForAgent(agentPath: AgentPath): Jobnet =
+  def reduceForAgent(agentPath: AgentPath): Workflow =
     copy(idToNode = idToNode filter {
       case (_, JobNode(_, `agentPath`, _, _, _))  ⇒ true
       case _ ⇒ false
@@ -38,21 +38,21 @@ final case class Jobnet(path: JobnetPath, inputNodeId: NodeId, idToNode: Map[Nod
   def jobNodeCount = idToNode.values count { _.isInstanceOf[JobNode] }
 
   def agentPathOption(nodeId: NodeId): Option[AgentPath] =
-    idToNode.get(nodeId) collect { case o: Jobnet.JobNode ⇒ o.agentPath }
+    idToNode.get(nodeId) collect { case o: Workflow.JobNode ⇒ o.agentPath }
 
   def inputNodeKey = NodeKey(path, inputNodeId)
 }
 
-object Jobnet {
+object Workflow {
 
-  def apply(path: JobnetPath, inputNodeId: NodeId, nodes: Iterable[Node]): Jobnet = {
+  def apply(path: WorkflowPath, inputNodeId: NodeId, nodes: Iterable[Node]): Workflow = {
     val map = (for (n ← nodes) yield n.id → n).toMap
     require(map.size == nodes.size, "Some nodes does not have unique NodeIds")
-    Jobnet(path, inputNodeId, map)
+    Workflow(path, inputNodeId, map)
   }
 
-  def fromJobnetAttached(path: JobnetPath, event: JobnetEvent.JobnetAttached): Jobnet =
-    Jobnet(path, event.inputNodeId, event.idToNode)
+  def fromWorkflowAttached(path: WorkflowPath, event: WorkflowEvent.WorkflowAttached): Workflow =
+    Workflow(path, event.inputNodeId, event.idToNode)
 
   sealed trait Node {
     def id: NodeId
@@ -68,5 +68,5 @@ object Jobnet {
 
   final case class JobNode(id: NodeId, agentPath: AgentPath, jobPath: JobPath, onSuccess: NodeId, onFailure: NodeId) extends Node
 
-  implicit val jsonFormat = jsonFormat3 { (path: JobnetPath, input: NodeId, o: Map[NodeId, Node]) ⇒ Jobnet(path, input, o) }
+  implicit val jsonFormat = jsonFormat3 { (path: WorkflowPath, input: NodeId, o: Map[NodeId, Node]) ⇒ Workflow(path, input, o) }
 }

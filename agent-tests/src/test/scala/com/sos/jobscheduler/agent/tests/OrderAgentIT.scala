@@ -18,9 +18,9 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent}
-import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.mutable
@@ -42,8 +42,8 @@ final class OrderAgentIT extends FreeSpec {
 
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
-          val order = Order(OrderId("TEST-ORDER"), NodeKey(TestJobnet.path, StartNodeId), Order.Ready, Map("x" → "X"))
-          agentClient.executeCommand(AttachOrder(order, TestJobnet)) await 99.s shouldEqual AgentCommand.Accepted
+          val order = Order(OrderId("TEST-ORDER"), NodeKey(TestWorkflow.path, StartNodeId), Order.Ready, Map("x" → "X"))
+          agentClient.executeCommand(AttachOrder(order, TestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
 
           while (
             agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.s)) await 99.s match {
@@ -64,7 +64,7 @@ final class OrderAgentIT extends FreeSpec {
     }
   }
 
-  for (testSpeed ← sys.props.get("test.speed")) s"Speed test $testSpeed orders × ${TestJobnet.jobNodeCount} jobs" in {
+  for (testSpeed ← sys.props.get("test.speed")) s"Speed test $testSpeed orders × ${TestWorkflow.jobNodeCount} jobs" in {
     val n = testSpeed.toInt
     provideAgentDirectory { directory ⇒
       val jobDir = directory / "config" / "live"
@@ -80,10 +80,10 @@ final class OrderAgentIT extends FreeSpec {
           agentClient.executeCommand(RegisterAsMaster) await 99.s
 
           val orders = for (i ← 1 to n) yield
-            Order(OrderId(s"TEST-ORDER-$i"), NodeKey(TestJobnet.path, StartNodeId), Order.Ready, Map("x" → "X"))
+            Order(OrderId(s"TEST-ORDER-$i"), NodeKey(TestWorkflow.path, StartNodeId), Order.Ready, Map("x" → "X"))
 
           val stopwatch = new Stopwatch
-          agentClient.executeCommand(Batch(orders map { AttachOrder(_, TestJobnet) })) await 99.s
+          agentClient.executeCommand(Batch(orders map { AttachOrder(_, TestWorkflow) })) await 99.s
 
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()
@@ -138,22 +138,22 @@ private object OrderAgentIT {
   private val StartNodeId = NodeId("0")
   private val EndNodeId = NodeId("END")
   private val FailedNodeId = NodeId("FAILED")
-  private val TestJobnet = Jobnet(
-    JobnetPath("/TEST"),
+  private val TestWorkflow = Workflow(
+    WorkflowPath("/TEST"),
     StartNodeId,
     List(
-      Jobnet.JobNode(StartNodeId, TestAgentId, AJobPath, onSuccess = NodeId("100"), onFailure = FailedNodeId),
-      Jobnet.JobNode(NodeId("100"), TestAgentId, BJobPath, onSuccess = NodeId("200"), onFailure = FailedNodeId),
-      Jobnet.JobNode(NodeId("200"), TestAgentId, BJobPath, onSuccess = NodeId("300"), onFailure = FailedNodeId),
-      Jobnet.JobNode(NodeId("300"), TestAgentId, BJobPath, onSuccess = NodeId("400"), onFailure = FailedNodeId),
-      Jobnet.JobNode(NodeId("400"), TestAgentId, BJobPath, onSuccess = NodeId("500"), onFailure = FailedNodeId),
-      Jobnet.JobNode(NodeId("500"), TestAgentId, BJobPath, onSuccess = NodeId("600"), onFailure = FailedNodeId),
-      Jobnet.JobNode(NodeId("600"), TestAgentId, BJobPath, onSuccess = NodeId("700"), onFailure = FailedNodeId),
-      Jobnet.JobNode(NodeId("700"), TestAgentId, BJobPath, onSuccess = NodeId("800"), onFailure = FailedNodeId),
-      Jobnet.JobNode(NodeId("800"), TestAgentId, BJobPath, onSuccess = NodeId("900"), onFailure = FailedNodeId),
-      Jobnet.JobNode(NodeId("900"), TestAgentId, BJobPath, onSuccess = EndNodeId, onFailure = FailedNodeId),
-      Jobnet.EndNode(EndNodeId),
-      Jobnet.EndNode(FailedNodeId)))
+      Workflow.JobNode(StartNodeId, TestAgentId, AJobPath, onSuccess = NodeId("100"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("100"), TestAgentId, BJobPath, onSuccess = NodeId("200"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("200"), TestAgentId, BJobPath, onSuccess = NodeId("300"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("300"), TestAgentId, BJobPath, onSuccess = NodeId("400"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("400"), TestAgentId, BJobPath, onSuccess = NodeId("500"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("500"), TestAgentId, BJobPath, onSuccess = NodeId("600"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("600"), TestAgentId, BJobPath, onSuccess = NodeId("700"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("700"), TestAgentId, BJobPath, onSuccess = NodeId("800"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("800"), TestAgentId, BJobPath, onSuccess = NodeId("900"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("900"), TestAgentId, BJobPath, onSuccess = EndNodeId, onFailure = FailedNodeId),
+      Workflow.EndNode(EndNodeId),
+      Workflow.EndNode(FailedNodeId)))
 
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(

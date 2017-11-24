@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.data
 
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.data.job.TaskId
-import com.sos.jobscheduler.data.jobnet.JobPath
+import com.sos.jobscheduler.data.workflow.JobPath
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 

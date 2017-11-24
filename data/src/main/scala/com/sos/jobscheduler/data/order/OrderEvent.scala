@@ -4,9 +4,9 @@ import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
-import com.sos.jobscheduler.data.jobnet.{NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.StdoutStderr._
+import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey}
 import spray.json.DefaultJsonProtocol._
 
 /**

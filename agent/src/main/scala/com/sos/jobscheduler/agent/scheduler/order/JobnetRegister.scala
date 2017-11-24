@@ -2,37 +2,37 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.jobnet.{Jobnet, JobnetEvent, JobnetPath, NodeKey}
 import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.workflow.{NodeKey, Workflow, WorkflowEvent, WorkflowPath}
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-private[order] final class JobnetRegister {
+private[order] final class WorkflowRegister {
 
-  private val pathToJobnet = mutable.Map[JobnetPath, Jobnet]()
-    .withDefault { jobnetPath ⇒ throw new NoSuchElementException(s"Unknown $jobnetPath") }
+  private val pathToWorkflow = mutable.Map[WorkflowPath, Workflow]()
+    .withDefault { workflowPath ⇒ throw new NoSuchElementException(s"Unknown $workflowPath") }
 
-  def recover(jobnet: Jobnet): Unit = {
-    pathToJobnet.insert(jobnet.path → jobnet)
+  def recover(workflow: Workflow): Unit = {
+    pathToWorkflow.insert(workflow.path → workflow)
   }
 
-  def handleEvent(keyedEvent: KeyedEvent[JobnetEvent]): Unit = {
+  def handleEvent(keyedEvent: KeyedEvent[WorkflowEvent]): Unit = {
     val path = keyedEvent.key
     keyedEvent.event match {
-      case event: JobnetEvent.JobnetAttached ⇒
-        pathToJobnet += path → Jobnet.fromJobnetAttached(path, event)   // Multiple orders with same Jobnet may occur. TODO Every Order becomes its own copy of its Jobnet? Jobnet will never be removed.
+      case event: WorkflowEvent.WorkflowAttached ⇒
+        pathToWorkflow += path → Workflow.fromWorkflowAttached(path, event)   // Multiple orders with same Workflow may occur. TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed.
     }
   }
 
-  /** Reuses string from jobnet to avoid duplicate strings */
+  /** Reuses string from workflow to avoid duplicate strings */
   def reuseMemory[S <: Order.State](order: Order[S]): Order[S] = {
     // A more general place for object identification may be the JSON deserializer: it needs access to an reusable object pool
-    val jobnet = pathToJobnet(order.jobnetPath)
-    val nk = jobnet.idToNode.get(order.nodeId) match {  // Agent gets a Jobnet fragment without node IDs for other agents
-      case Some(node) ⇒ NodeKey(jobnet.path, node.id)
-      case None ⇒ NodeKey(jobnet.path, order.nodeId)
+    val workflow = pathToWorkflow(order.workflowPath)
+    val nk = workflow.idToNode.get(order.nodeId) match {  // Agent gets a Workflow fragment without node IDs for other agents
+      case Some(node) ⇒ NodeKey(workflow.path, node.id)
+      case None ⇒ NodeKey(workflow.path, order.nodeId)
     }
     if (order.nodeKey eq nk)
       order
@@ -42,21 +42,21 @@ private[order] final class JobnetRegister {
     }
   }
 
-  def nodeKeyToJobNodeOption(nodeKey: NodeKey): Option[Jobnet.JobNode] =
-    nodeKeyToNodeOption(nodeKey) collect { case o: Jobnet.JobNode ⇒ o }
+  def nodeKeyToJobNodeOption(nodeKey: NodeKey): Option[Workflow.JobNode] =
+    nodeKeyToNodeOption(nodeKey) collect { case o: Workflow.JobNode ⇒ o }
 
-  def nodeKeyToNodeOption(nodeKey: NodeKey): Option[Jobnet.Node] =
-    pathToJobnet(nodeKey.jobnetPath).idToNode.get(nodeKey.nodeId)
+  def nodeKeyToNodeOption(nodeKey: NodeKey): Option[Workflow.Node] =
+    pathToWorkflow(nodeKey.workflowPath).idToNode.get(nodeKey.nodeId)
 
-  def get(path: JobnetPath): Option[Jobnet] =
-    pathToJobnet.get(path)
+  def get(path: WorkflowPath): Option[Workflow] =
+    pathToWorkflow.get(path)
 
-  def apply(path: JobnetPath): Jobnet =
-    pathToJobnet(path)
+  def apply(path: WorkflowPath): Workflow =
+    pathToWorkflow(path)
 
-  def jobnets: Vector[Jobnet] =
-    pathToJobnet.values.toVector
+  def workflows: Vector[Workflow] =
+    pathToWorkflow.values.toVector
 
   def size: Int =
-    pathToJobnet.size
+    pathToWorkflow.size
 }

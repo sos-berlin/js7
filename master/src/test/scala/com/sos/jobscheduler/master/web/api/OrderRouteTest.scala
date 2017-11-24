@@ -12,9 +12,9 @@ import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, OrderOverview}
+import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.OrderClient
 import com.sos.jobscheduler.master.web.api.OrderRouteTest._
 import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
@@ -87,12 +87,12 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
 object OrderRouteTest {
   private val OrderUri = "/api/order"
   private val TestOrders: Map[OrderId, Order[Order.State]] = List(
-    Order(OrderId("1"), NodeKey(JobnetPath("/test"), NodeId("100")), Order.StartNow),
-    Order(OrderId("2"), NodeKey(JobnetPath("/test"), NodeId("200")), Order.Finished))
+    Order(OrderId("1"), NodeKey(WorkflowPath("/test"), NodeId("100")), Order.StartNow),
+    Order(OrderId("2"), NodeKey(WorkflowPath("/test"), NodeId("200")), Order.Finished))
     .toKeyedMap { _.id }
   private val TestEvents = List(
     Stamped(EventId(111222),
       KeyedEvent(
-        OrderAdded(NodeKey(JobnetPath("/test"), NodeId("100")), Order.StartNow, Map(), Order.InitialOutcome))
+        OrderAdded(NodeKey(WorkflowPath("/test"), NodeId("100")), Order.StartNow, Map(), Order.InitialOutcome))
         (OrderId("1"))))
 }

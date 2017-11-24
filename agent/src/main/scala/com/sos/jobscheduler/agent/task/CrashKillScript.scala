@@ -10,7 +10,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.Exceptions.ignoreException
 import com.sos.jobscheduler.data.job.TaskId
-import com.sos.jobscheduler.data.jobnet.JobPath
+import com.sos.jobscheduler.data.workflow.JobPath
 import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter, Writer}
 import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}

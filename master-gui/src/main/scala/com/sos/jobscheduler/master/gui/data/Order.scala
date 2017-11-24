@@ -16,8 +16,8 @@ final case class Order[+S <: Order.State](
   outcome: Outcome = InitialOutcome,
   agentPath: Option[AgentPath] = None)
 {
-  def jobnetPath: JobnetPath =
-    nodeKey.jobnetPath
+  def workflowPath: WorkflowPath =
+    nodeKey.workflowPath
 
   def nodeId: NodeId =
     nodeKey.nodeId
@@ -47,7 +47,7 @@ final case class Order[+S <: Order.State](
 
       case OrderTransitioned(toNodeId) ⇒ copy(
         state = Ready,
-        nodeKey = NodeKey(jobnetPath,  toNodeId))
+        nodeKey = NodeKey(workflowPath,  toNodeId))
 
       case OrderDetachable ⇒ copy(
         state = Detachable)

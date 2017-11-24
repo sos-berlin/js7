@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.order
 
-import com.sos.jobscheduler.data.jobnet.NodeKey
+import com.sos.jobscheduler.data.workflow.NodeKey
 import spray.json.DefaultJsonProtocol._
 
 /**

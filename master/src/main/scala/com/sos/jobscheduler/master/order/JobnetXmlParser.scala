@@ -4,19 +4,19 @@ import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath}
 import javax.xml.transform.Source
 import scala.collection.immutable
 
 /**
   * @author Joacim Zschimmer
   */
-object JobnetXmlParser {
+object WorkflowXmlParser {
 
-  def parseXml(jobnetPath: JobnetPath, source: Source): Jobnet =
+  def parseXml(workflowPath: WorkflowPath, source: Source): Workflow =
     ScalaXMLEventReader.parseDocument(source) { eventReader ⇒
       import eventReader._
-      val folderPath = FolderPath.parentOf(jobnetPath)
+      val folderPath = FolderPath.parentOf(workflowPath)
 
       eventReader.parseElement("job_chain") {
         val items = forEachStartElement[NodeItem] {
@@ -32,29 +32,29 @@ object JobnetXmlParser {
                     next = attributeMap.optionAs[NodeId]("next_state"),
                     error = attributeMap.optionAs[NodeId]("error_state"))
                 case None ⇒
-                  Node(Jobnet.EndNode(nodeId))
+                  Node(Workflow.EndNode(nodeId))
               }
             }
           case "job_chain_node.end" ⇒
             parseElement() {
-              Node(Jobnet.EndNode(attributeMap.as[NodeId]("state")))
+              Node(Workflow.EndNode(attributeMap.as[NodeId]("state")))
             }
         }
         val nodes = completeNodes(items.byClass[NodeItem])
         val firstNodeId = nodes.headOption map { _.id } getOrElse {
           throw new IllegalArgumentException("JobChain has no nodes")
         }
-        Jobnet(jobnetPath, inputNodeId = firstNodeId, nodes).requireCompleteness
+        Workflow(workflowPath, inputNodeId = firstNodeId, nodes).requireCompleteness
       }
     }
 
-  private def completeNodes(items: immutable.Seq[NodeItem]): immutable.Seq[Jobnet.Node] = {
+  private def completeNodes(items: immutable.Seq[NodeItem]): immutable.Seq[Workflow.Node] = {
     var lastNodeId: Option[NodeId] = None
     (for (nodeItem ← items.reverse) yield
       (nodeItem match {
         case Node(node) ⇒ node
         case raw: RawJobNode ⇒
-          Jobnet.JobNode(
+          Workflow.JobNode(
             raw.nodeId,
             raw.agentPath,
             raw.jobPath,
@@ -77,7 +77,7 @@ object JobnetXmlParser {
   private case class RawJobNode(nodeId: NodeId, agentPath: AgentPath, jobPath: JobPath, next: Option[NodeId], error: Option[NodeId])
   extends NodeItem
 
-  private case class Node(node: Jobnet.Node) extends NodeItem {
+  private case class Node(node: Workflow.Node) extends NodeItem {
     def nodeId = node.id
   }
 }

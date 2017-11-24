@@ -2,8 +2,8 @@ package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.OrderEvent._
+import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.tester.JsonTester.testSprayJson
 import org.scalatest.FreeSpec
 
@@ -13,11 +13,11 @@ import org.scalatest.FreeSpec
 final class OrderEventTest extends FreeSpec {
 
   "OrderAdded" in {
-    check(OrderAdded(NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
+    check(OrderAdded(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
       """{
         "TYPE":"OrderAdded",
         "nodeKey": {
-          "jobnetPath": "/JOBNET",
+          "workflowPath": "/JOBNET",
           "nodeId": "NODE-ID"
         },
         "state": {
@@ -34,11 +34,11 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderAttached" in {
-    check(OrderAttached(NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
+    check(OrderAttached(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
       """{
         "TYPE": "OrderAttached",
         "nodeKey": {
-          "jobnetPath": "/JOBNET",
+          "workflowPath": "/JOBNET",
           "nodeId": "NODE-ID"
         },
         "state": {

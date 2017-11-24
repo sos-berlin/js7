@@ -13,8 +13,7 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.FileUtils
-import com.sos.jobscheduler.common.scalautil.FileUtils.{deleteDirectoryContentRecursively, deleteDirectoryRecursively}
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
@@ -26,9 +25,9 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.{JobPath, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -49,7 +48,7 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 object TestMasterAgent {
-  private val TestJobnetPath = JobnetPath("/test")
+  private val TestWorkflowPath = WorkflowPath("/test")
   private val TestJobPath = JobPath("/test")
 
   /** Für &lt;elememt attribute={stringValue}/>. */
@@ -67,7 +66,7 @@ object TestMasterAgent {
         }
       }
     val conf = Conf.parse(args, () ⇒ directory)
-    println(s"${conf.agentCount * conf.jobnetLength} nodes, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
+    println(s"${conf.agentCount * conf.workflowLength} nodes, ${conf.jobDuration.pretty} each, ${conf.tasksPerJob} tasks/agent, ${conf.agentCount} agents, ${conf.period.pretty}/order")
     run(conf)
   }
 
@@ -116,15 +115,15 @@ object TestMasterAgent {
         Log4j.shutdown()
       } .closeWithCloser
 
-      env.xmlFile(TestJobnetPath).xml =
+      env.xmlFile(TestWorkflowPath).xml =
         <job_chain>
           {for ((agentPath, i) ← conf.agentPaths.zipWithIndex;
-                j ← 1 to conf.jobnetLength)
+                j ← 1 to conf.workflowLength)
           yield <job_chain_node state={s"NODE-${ 1 + i }-$j"} agent={agentPath} job={TestJobPath}/>}<job_chain_node.end state="END"/>
         </job_chain>
       for (i ← 1 to conf.orderGeneratorCount) {
         env.xmlFile(OrderGeneratorPath(s"/test-$i")).xml =
-          <order job_chain={TestJobnetPath} state="NODE-1-1">
+          <order job_chain={TestWorkflowPath} state="NODE-1-1">
             <params>
               <param name="VARIABLE" value={i.toString}/>
             </params>
@@ -184,7 +183,7 @@ object TestMasterAgent {
   private case class Conf(
     directory: Path,
     agentCount: Int,
-    jobnetLength: Int,
+    workflowLength: Int,
     tasksPerJob: Int,
     jobDuration: Duration,
     period: Duration,
@@ -193,7 +192,7 @@ object TestMasterAgent {
     syncAgent: Boolean)
   {
     require(agentCount >= 1)
-    require(jobnetLength >= 1)
+    require(workflowLength >= 1)
     require(tasksPerJob >= 1)
     require(period > 0.s)
     require(orderGeneratorCount >= 1)
@@ -209,7 +208,7 @@ object TestMasterAgent {
         val conf = Conf(
           directory = a.as[Path]("-directory=", directory()),
           agentCount = agentCount,
-          jobnetLength = a.as[Int]("-nodes-per-agent=", 1),
+          workflowLength = a.as[Int]("-nodes-per-agent=", 1),
           tasksPerJob = a.as[Int]("-tasks=", (sys.runtime.availableProcessors + agentCount - 1) / agentCount),
           jobDuration = a.as[Duration]("-job-duration=", 0.s),
           period = a.as[Duration]("-period=", 1.s),
@@ -224,7 +223,7 @@ object TestMasterAgent {
 
     def usage(conf: Conf) =
       s"""Usage: -agents=${conf.agentCount}
-         |       -nodes-per-agent=${conf.jobnetLength}
+         |       -nodes-per-agent=${conf.workflowLength}
          |       -tasks=${conf.tasksPerJob}
          |       -job-duration=${conf.jobDuration}
          |       -period=${conf.period}

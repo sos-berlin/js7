@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.master.command
 
-import MasterCommand._
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
+import com.sos.jobscheduler.master.command.MasterCommand.Response._
+import com.sos.jobscheduler.master.command.MasterCommand._
 import org.scalatest.FreeSpec
 import spray.json._
-import Response._
-import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
-import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.common.time.ScalaTime._
 
 final class MasterCommandTest extends FreeSpec {
 
@@ -18,13 +18,13 @@ final class MasterCommandTest extends FreeSpec {
   }
 
   "AddOrderIfNew" in {
-    check(AddOrderIfNew(Order(OrderId("ORDER-ID"), NodeKey(JobnetPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true))),
+    check(AddOrderIfNew(Order(OrderId("ORDER-ID"), NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true))),
       """{
         "TYPE": "AddOrderIfNew",
         "order": {
           "id": "ORDER-ID",
            "nodeKey": {
-             "jobnetPath": "/JOBNET",
+             "workflowPath": "/JOBNET",
              "nodeId": "NODE-ID"
            },
            "state": {

@@ -25,11 +25,11 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.jobnet.Jobnet.{EndNode, JobNode}
-import com.sos.jobscheduler.data.jobnet.JobnetEvent.JobnetAttached
-import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderProcessed, OrderTransitioned}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
+import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
+import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowEvent}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
@@ -54,7 +54,7 @@ final class AgentOrderKeeper(
   eventIdGenerator: EventIdGenerator,
   config: Config,
   implicit private val timerService: TimerService)
-extends KeyedEventJournalingActor[JobnetEvent] with Stash {
+extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   import context.{actorOf, dispatcher, watch}
 
@@ -64,7 +64,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
   private val jobRegister = new JobRegister
-  private val jobnetRegister = new JobnetRegister
+  private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
   private val eventsForMaster = actorOf(Props { new EventQueueActor(timerService) }, "eventsForMaster").taggedWith[EventQueueActor]
 
@@ -79,16 +79,16 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   private def recover(): Unit = {
     val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster)(askTimeout)
     recoverer.recoverAll()
-    for (jobnet ← recoverer.jobnets)
-      wrapException(s"Error when recovering ${jobnet.path}") {
-        jobnetRegister.recover(jobnet)
+    for (workflow ← recoverer.workflows)
+      wrapException(s"Error when recovering ${workflow.path}") {
+        workflowRegister.recover(workflow)
       }
     for (recoveredOrder ← recoverer.orders)
       wrapException(s"Error when recovering ${recoveredOrder.id}") {
-        val order = jobnetRegister.reuseMemory(recoveredOrder)
-        val jobnet = jobnetRegister(order.jobnetPath)  // Jobnet must be recovered
+        val order = workflowRegister.reuseMemory(recoveredOrder)
+        val workflow = workflowRegister(order.workflowPath)  // Workflow must be recovered
         val actor = newOrderActor(order)
-        val orderEntry = orderRegister.recover(order, jobnet, actor)
+        val orderEntry = orderRegister.recover(order, workflow, actor)
         actor ! KeyedJournalingActor.Input.Recover(order)
         order.state match {
           case Order.Processed ⇒ handleProcessed(orderEntry)
@@ -104,9 +104,9 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   def snapshots = {
-    val jobnetSnapshots = jobnetRegister.jobnets
+    val workflowSnapshots = workflowRegister.workflows
     for (got ← (eventsForMaster ? EventQueueActor.Input.GetSnapshots).mapTo[EventQueueActor.Output.GotSnapshots])
-      yield jobnetSnapshots ++ got.snapshots  // Future: don't use mutable `this`
+      yield workflowSnapshots ++ got.snapshots  // Future: don't use mutable `this`
   }
 
   def receive = journaling orElse {
@@ -128,7 +128,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
       handleAttachedOrder(order.id)
 
     case JsonJournalRecoverer.Output.JournalIsReady ⇒
-      logger.info(s"${jobnetRegister.size} Jobnets recovered, ${orderRegister.size} Orders recovered")
+      logger.info(s"${workflowRegister.size} Workflows recovered, ${orderRegister.size} Orders recovered")
       context.become(ready)
       unstashAll()
       logger.info("Ready")
@@ -161,18 +161,18 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     case JobActor.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
       tryStartProcessing(jobRegister(sender()))
 
-    case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, jobnet), promise) ⇒
+    case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflow), promise) ⇒
       import order.nodeKey
       promise completeWith {
-        if (!jobnet.isDefinedAt(nodeKey.nodeId))
-          Future.failed(new IllegalArgumentException(s"Unknown NodeId ${nodeKey.nodeId} in ${nodeKey.jobnetPath}"))
+        if (!workflow.isDefinedAt(nodeKey.nodeId))
+          Future.failed(new IllegalArgumentException(s"Unknown NodeId ${nodeKey.nodeId} in ${nodeKey.workflowPath}"))
         else
           if (orderRegister contains order.id) {
             // May occur after Master restart when Master is not sure about order has been attached previously.
             logger.debug(s"Ignoring duplicate $cmd")
             Future.successful(Accepted)
           } else
-            attachOrder(jobnetRegister.reuseMemory(order), jobnet) map { case Completed ⇒ Accepted }
+            attachOrder(workflowRegister.reuseMemory(order), workflow) map { case Completed ⇒ Accepted }
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
@@ -189,19 +189,19 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
-    case cmd @ AttachOrder(_, jobnet) if !terminating ⇒
-      val jobnetResponse = jobnetRegister.get(jobnet.path) match {
+    case cmd @ AttachOrder(_, workflow) if !terminating ⇒
+      val workflowResponse = workflowRegister.get(workflow.path) match {
         case None ⇒
-          persistFuture(KeyedEvent(JobnetAttached(jobnet.inputNodeId, jobnet.idToNode))(jobnet.path)) { stampedEvent ⇒
-            jobnetRegister.handleEvent(stampedEvent.value)
+          persistFuture(KeyedEvent(WorkflowAttached(workflow.inputNodeId, workflow.idToNode))(workflow.path)) { stampedEvent ⇒
+            workflowRegister.handleEvent(stampedEvent.value)
             Accepted
           }
-        case Some(`jobnet`) ⇒
+        case Some(`workflow`) ⇒
           Future.successful(Accepted)
         case Some(_) ⇒
-          Future.failed(new IllegalStateException(s"Changed ${jobnet.path}"))
+          Future.failed(new IllegalStateException(s"Changed ${workflow.path}"))
       }
-      jobnetResponse flatMap { case Accepted ⇒
+      workflowResponse flatMap { case Accepted ⇒
         promiseFuture[Accepted.type] { promise ⇒
           self ! Internal.ContinueAttachOrder(cmd, promise)
         }
@@ -248,9 +248,9 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
         Future.failed(new IllegalArgumentException(s"Unknown $orderId"))
     }
 
-  private def attachOrder(order: Order[Order.Idle], jobnet: Jobnet): Future[Completed] = {
+  private def attachOrder(order: Order[Order.Idle], workflow: Workflow): Future[Completed] = {
     val actor = newOrderActor(order)
-    orderRegister.insert(order, jobnet, actor)
+    orderRegister.insert(order, workflow, actor)
     (actor ? OrderActor.Command.Attach(order)).mapTo[Completed]
     // Now expecting OrderEvent.OrderAttached
   }
@@ -301,7 +301,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
   private def onOrderAvailable(orderEntry: OrderEntry): Unit =
     orderEntry.nodeOption match {
-      case Some(node: Jobnet.JobNode) if !terminating ⇒
+      case Some(node: Workflow.JobNode) if !terminating ⇒
         jobRegister.get(node.jobPath) match {
           case Some(jobEntry) ⇒
             onOrderAvailableForJob(orderEntry.order.id, jobEntry)
@@ -309,7 +309,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
             logger.error(s"Missing '${node.jobPath}' for '${orderEntry.order.id}' at '${orderEntry.order.nodeKey}'")
         }
 
-      case Some(node: Jobnet.JobNode) if terminating ⇒
+      case Some(node: Workflow.JobNode) if terminating ⇒
         logger.info(s"Due to termination, processing of ${orderEntry.order.id} stops at ${node.id}")
 
       case Some(_: EndNode) | None ⇒
@@ -338,7 +338,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
 
           case Some(orderEntry) ⇒
             orderEntry.nodeOption match {
-              case Some(node: Jobnet.JobNode) ⇒
+              case Some(node: Workflow.JobNode) ⇒
                 startProcessing(orderEntry, node, jobEntry)
               case _ ⇒
                 logger.error(s"${orderEntry.order.id}: ${orderEntry.order.nodeKey} does not denote a JobNode")
@@ -351,7 +351,7 @@ extends KeyedEventJournalingActor[JobnetEvent] with Stash {
     }
   }
 
-  private def startProcessing(orderEntry: OrderEntry, node: Jobnet.JobNode, jobEntry: JobEntry): Unit = {
+  private def startProcessing(orderEntry: OrderEntry, node: Workflow.JobNode, jobEntry: JobEntry): Unit = {
     logger.trace(s"${orderEntry.order.id} is going to be processed by ${jobEntry.jobPath}")
     assert(node.jobPath == jobEntry.jobPath)
     jobEntry.waitingForOrder = false
@@ -408,7 +408,7 @@ object AgentOrderKeeper {
   private val logger = Logger(getClass)
 
   private val SnapshotJsonFormat = TypedJsonFormat[Any](
-    Subtype[Jobnet],
+    Subtype[Workflow],
     Subtype[Order[Order.State]],
     Subtype[EventQueueActor.Snapshot])
 

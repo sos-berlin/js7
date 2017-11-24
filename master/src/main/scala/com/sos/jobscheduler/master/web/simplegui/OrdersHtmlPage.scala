@@ -28,7 +28,7 @@ extends MasterHtmlPage {
           thead(
             tr(
               th("OrderId"),
-              th("Jobnet"),
+              th("Workflow"),
               th("Node"),
               th("State"))),
           tbody(
@@ -36,7 +36,7 @@ extends MasterHtmlPage {
               val rowCssClass = orderToTrClass(order) getOrElse  ""
               tr(cls := s"$rowCssClass clickable", data("href") := webServiceContext.uriString(Uri(path = Uri.Path("api/order") / order.id.string).toString))(
                 td(order.id.string),
-                td(order.nodeKey.jobnetPath.string),
+                td(order.nodeKey.workflowPath.string),
                 td(order.nodeKey.nodeId.string),
                 td(order.state.toString))
             }

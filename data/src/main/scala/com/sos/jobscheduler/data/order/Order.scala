@@ -4,9 +4,9 @@ import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats
 import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
+import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import java.time.Instant
 import scala.reflect.ClassTag
 import spray.json.DefaultJsonProtocol._
@@ -23,8 +23,8 @@ final case class Order[+S <: Order.State](
   outcome: Outcome = InitialOutcome,
   agentPath: Option[AgentPath] = None)
 {
-  def jobnetPath: JobnetPath =
-    nodeKey.jobnetPath
+  def workflowPath: WorkflowPath =
+    nodeKey.workflowPath
 
   def nodeId: NodeId =
     nodeKey.nodeId
@@ -54,7 +54,7 @@ final case class Order[+S <: Order.State](
 
       case OrderTransitioned(toNodeId) ⇒ copy(
         state = Ready,
-        nodeKey = NodeKey(jobnetPath, toNodeId))
+        nodeKey = NodeKey(workflowPath, toNodeId))
 
       case OrderDetachable ⇒ copy(
         state = Detachable)

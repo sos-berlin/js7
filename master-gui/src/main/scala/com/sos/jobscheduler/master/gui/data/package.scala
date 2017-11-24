@@ -12,13 +12,13 @@ package object data {
   val OrderId = (o: String) ⇒ o
   type NodeId = String
   val NodeId = (o: String) ⇒ o
-  type JobnetPath = String
-  val JobnetPath = (o: String) ⇒ o
+  type WorkflowPath = String
+  val WorkflowPath = (o: String) ⇒ o
   type AgentPath = String
   val AgentPath = (o: String) ⇒ o
 
   @JsonCodec
-  final case class NodeKey(jobnetPath: JobnetPath, nodeId: NodeId)
+  final case class NodeKey(workflowPath: WorkflowPath, nodeId: NodeId)
 
   final case class OrderOverview(id: String, nodeKey: NodeKey, state: Order.State)
   object OrderOverview {

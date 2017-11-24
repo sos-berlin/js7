@@ -2,8 +2,8 @@ package com.sos.jobscheduler.agent.scheduler.event
 
 import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat}
-import com.sos.jobscheduler.data.jobnet.JobnetEvent
 import com.sos.jobscheduler.data.order.OrderEvent
+import com.sos.jobscheduler.data.workflow.WorkflowEvent
 
 /**
   * @author Joacim Zschimmer
@@ -15,7 +15,7 @@ object KeyedEventJsonFormats {
   implicit val AgentKeyedEventJsonFormat: KeyedTypedEventJsonFormat[Event] =
     KeyedEvent.typedJsonFormat[Event](
       KeyedSubtype[OrderEvent],
-      KeyedSubtype[JobnetEvent])
+      KeyedSubtype[WorkflowEvent])
 
   /**
     * All subtypes of `Event` are serialized as `Event`.

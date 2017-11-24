@@ -4,7 +4,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursivel
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.data.filebased.TypedPath
-import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath}
+import com.sos.jobscheduler.data.workflow.{JobPath, WorkflowPath}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.{forEachTypedFile, matchesFile}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalkerTest._
 import java.nio.file.Files.{createDirectories, createTempDirectory}
@@ -21,12 +21,12 @@ final class TypedPathDirectoryWalkerTest extends FreeSpec {
     provideDataDirectory { dataDir ⇒
       val jobDir = dataDir / "config" / "live"
       val result = mutable.Buffer[(Path, TypedPath)]()
-      forEachTypedFile(jobDir, Set(JobPath, JobnetPath)) { (path, typedPath) ⇒
+      forEachTypedFile(jobDir, Set(JobPath, WorkflowPath)) { (path, typedPath) ⇒
         result += path → typedPath
       }
       assert(result.toSet == Set(
         (jobDir / "test.job.xml") → AJobPath,
-        (jobDir / "test.job_chain.xml") → AJobnetPath,
+        (jobDir / "test.job_chain.xml") → AWorkflowPath,
         (jobDir / "folder" / "test.job.xml") → BJobPath))
     }
   }
@@ -41,7 +41,7 @@ final class TypedPathDirectoryWalkerTest extends FreeSpec {
 object TypedPathDirectoryWalkerTest {
   val AJobPath = JobPath("/test")
   val BJobPath = JobPath("/folder/test")
-  val AJobnetPath = JobnetPath("/test")
+  val AWorkflowPath = WorkflowPath("/test")
 
   def provideDataDirectory[A](body: Path ⇒ A): A = {
     val dataDir = createTempDirectory("test-")

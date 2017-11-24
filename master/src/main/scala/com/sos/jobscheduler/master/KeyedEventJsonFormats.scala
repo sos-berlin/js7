@@ -2,8 +2,8 @@ package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, KeyedTypedEventJsonFormat}
-import com.sos.jobscheduler.data.jobnet.JobnetEvent
 import com.sos.jobscheduler.data.order.OrderEvent
+import com.sos.jobscheduler.data.workflow.WorkflowEvent
 import com.sos.jobscheduler.master.order.OrderScheduleEvent
 
 /**
@@ -16,7 +16,7 @@ object KeyedEventJsonFormats {
   implicit val MasterKeyedEventJsonFormat: KeyedTypedEventJsonFormat[Event] =
     KeyedEvent.typedJsonFormat[Event](
       KeyedSubtype[OrderEvent],
-      KeyedSubtype[JobnetEvent],
+      KeyedSubtype[WorkflowEvent],
       KeyedSubtype[AgentEventIdEvent],
       KeyedSubtype[OrderScheduleEvent])
 

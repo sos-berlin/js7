@@ -21,8 +21,8 @@ import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.jobnet.{JobPath, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterIT._
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -58,7 +58,7 @@ final class RunningMasterIT extends FreeSpec {
       }
 
       val agent0 = RunningAgent(agentConfigs(0)) await 10.s
-      env.xmlFile(JobnetPath("/test")).xml =
+      env.xmlFile(WorkflowPath("/test")).xml =
         <job_chain>
           <job_chain_node state="100" agent="test-agent-111" job="/test"/>
           <job_chain_node state="200" agent="test-agent-222" job="/test"/>
@@ -87,7 +87,7 @@ final class RunningMasterIT extends FreeSpec {
 
         val adHocOrder = Order(
           TestOrderId,
-          NodeKey(TestJobnetPath, NodeId("100")),
+          NodeKey(TestWorkflowPath, NodeId("100")),
           Order.Ready)
 
         sleep(3.s)
@@ -104,7 +104,7 @@ final class RunningMasterIT extends FreeSpec {
         orderClient.order(TestOrderId) await 10.s shouldEqual
           Some(Order(
             TestOrderId,
-            NodeKey(TestJobnetPath, NodeId("END")),
+            NodeKey(TestWorkflowPath, NodeId("END")),
             Order.Finished,
             Map("result" → "TEST-RESULT-VALUE-agent-222"),
             Order.Good(true)))
@@ -131,7 +131,7 @@ final class RunningMasterIT extends FreeSpec {
 
 private object RunningMasterIT {
   private val TestDuration = 10.s
-  private val TestJobnetPath = JobnetPath("/test")
+  private val TestWorkflowPath = WorkflowPath("/test")
   private val TestOrderId = OrderId("ORDER-ID")
   private val AgentPaths = List(AgentPath("/agent-111"), AgentPath("/agent-222"))
   private val logger = Logger(getClass)

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.order
 
-import com.sos.jobscheduler.data.jobnet.NodeKey
+import com.sos.jobscheduler.data.workflow.NodeKey
 import com.sos.jobscheduler.master.oldruntime.OldSchedule
 
 /**

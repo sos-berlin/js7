@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.data.jobnet.JobPath
+import com.sos.jobscheduler.data.workflow.JobPath
 import java.nio.file.Files.exists
 import org.scalatest.FreeSpec
 

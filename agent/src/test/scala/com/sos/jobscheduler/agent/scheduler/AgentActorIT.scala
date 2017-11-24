@@ -16,8 +16,8 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -50,10 +50,10 @@ final class AgentActorIT extends FreeSpec {
             executeCommand(AttachOrder(
               Order(
                 orderId,
-                NodeKey(AJobnet.path, NodeId("100")),
+                NodeKey(AWorkflow.path, NodeId("100")),
                 Order.Ready,
                 Map("a" → "A")),
-              AJobnet))
+              AWorkflow))
           ) await 99.s
           for (orderId ← orderIds)
             eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable.type](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
@@ -69,13 +69,13 @@ final class AgentActorIT extends FreeSpec {
 object AgentActorIT {
   private val TestAgentId = AgentPath("/TEST-AGENT")
   val AJobPath = JobPath("/test")
-  val AJobnet = Jobnet(
-    JobnetPath("/A"),
+  val AWorkflow = Workflow(
+    WorkflowPath("/A"),
     NodeId("100"),
     List(
-      Jobnet.JobNode(NodeId("100"), TestAgentId, AJobPath, onSuccess = NodeId("END"), onFailure = NodeId("FAILED")),
-      Jobnet.EndNode(NodeId("FAILED")),
-      Jobnet.EndNode(NodeId("END"))))
+      Workflow.JobNode(NodeId("100"), TestAgentId, AJobPath, onSuccess = NodeId("END"), onFailure = NodeId("FAILED")),
+      Workflow.EndNode(NodeId("FAILED")),
+      Workflow.EndNode(NodeId("END"))))
   private val AScript =
     if (isWindows) """
       |@echo off

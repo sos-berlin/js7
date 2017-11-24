@@ -49,7 +49,7 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
       case OrdersState.Entry(order, isUpdated) ⇒
         <.tr(
           <.td(^.cls := "orderTd")(order.id),
-          <.td(^.cls := "orderTd")(order.nodeKey.jobnetPath),
+          <.td(^.cls := "orderTd")(order.nodeKey.workflowPath),
           <.td(^.cls := "orderTd")(order.nodeKey.nodeId),
           <.td(^.cls := "orderTd")(order.outcome.toString),
           <.td(^.cls := "orderTd")(order.agentPath getOrElse "–": String),
@@ -81,7 +81,7 @@ object OrderListBackend {
   private val theadHtml =
     <.thead(<.tr(
       <.th(^.width := 10.ex)("OrderId"),
-      <.th(^.width := 10.ex)("Jobnet"),
+      <.th(^.width := 10.ex)("Workflow"),
       <.th(^.width := 10.ex)("Node"),
       <.th(^.width := 15.ex)("Outcome"),
       <.th(^.width := 15.ex)("Agent"),
@@ -92,7 +92,7 @@ object OrderListBackend {
 
   //<editor-fold defaultstate="collapsed" desc="// (No code here - does not make first rendering quicker)">
   ////OrderId = String - private implicit val OrderIdReuse = Reusability.derive[OrderId]
-  ////OrderId = String - private implicit val JobnetPathReuse = Reusability.derive[JobnetPath]
+  ////OrderId = String - private implicit val WorkflowPathReuse = Reusability.derive[WorkflowPath]
   ////OrderId = String - private implicit val NodeIdReuse = Reusability.derive[NodeId]
   //private implicit val GoodOutcomeReuse = Reusability.derive[Order.Good]
   //private implicit val BadOutcomeReuse = Reusability.derive[Order.Bad]
@@ -107,9 +107,9 @@ object OrderListBackend {
   //  }
   //  .build
   //
-  //private val JobnetPathTd = ScalaComponent.builder[JobnetPath]("JobnetPath")
-  //  .render_P { jobnetPath ⇒
-  //    <.td(^.cls := "nowrap")(jobnetPath)
+  //private val WorkflowPathTd = ScalaComponent.builder[WorkflowPath]("WorkflowPath")
+  //  .render_P { workflowPath ⇒
+  //    <.td(^.cls := "nowrap")(workflowPath)
   //  }
   //  .build
   //
@@ -141,7 +141,7 @@ object OrderListBackend {
   //  .render_P { order ⇒
   //    <.tr(
   //    OrderIdTd(order.id),
-  //    JobnetPathTd(order.nodeKey.jobnetPath),
+  //    WorkflowPathTd(order.nodeKey.workflowPath),
   //    NodeIdTd(order.nodeKey.nodeId),
   //    OutcomeTd(order.outcome),
   //    AgentPathTd(order.agentPath),

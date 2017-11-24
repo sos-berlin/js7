@@ -2,9 +2,9 @@ package com.sos.jobscheduler.agent.data.commands
 
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.jobnet.Jobnet.{EndNode, JobNode}
-import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 import spray.json._
 
@@ -81,10 +81,10 @@ final class AgentCommandTest extends FreeSpec {
       check(AgentCommand.AttachOrder(
         Order(
           OrderId("ORDER-ID"),
-          NodeKey(JobnetPath("/JOBNET"),NodeId("INPUT")),
+          NodeKey(WorkflowPath("/JOBNET"),NodeId("INPUT")),
           Order.Ready),
-        Jobnet(
-          JobnetPath("/JOBNET"),
+        Workflow(
+          WorkflowPath("/JOBNET"),
           NodeId("START"),
           List(
             JobNode(NodeId("START"), AgentPath("/AGENT"), JobPath("/JOB"), NodeId("END"), NodeId("END")),
@@ -103,11 +103,11 @@ final class AgentCommandTest extends FreeSpec {
             "variables": {},
             "id": "ORDER-ID",
             "nodeKey": {
-              "jobnetPath": "/JOBNET",
+              "workflowPath": "/JOBNET",
               "nodeId": "INPUT"
             }
           },
-          "jobnet": {
+          "workflow": {
             "path": "/JOBNET",
             "inputNodeId": "START",
             "idToNode": {

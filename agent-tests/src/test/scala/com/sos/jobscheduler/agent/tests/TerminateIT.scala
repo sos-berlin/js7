@@ -22,8 +22,8 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.jobnet.{JobPath, Jobnet, JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import com.sos.jobscheduler.shared.event.ActorEventCollector
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
@@ -48,10 +48,10 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
           client.executeCommand(AttachOrder(
             Order(
               orderId,
-              NodeKey(AJobnet.path, NodeId("100")),
+              NodeKey(AWorkflow.path, NodeId("100")),
               Order.Ready,
               Map("a" → "A")),
-            AJobnet))
+            AWorkflow))
         ) await 99.s
 
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
@@ -73,12 +73,12 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
 object TerminateIT {
   private val TestAgentId = AgentPath("/TEST-AGENT")
   private val AJobPath = JobPath("/test")
-  private val AJobnet = Jobnet(
-    JobnetPath("/A"),
+  private val AWorkflow = Workflow(
+    WorkflowPath("/A"),
     NodeId("100"),
     List(
-      Jobnet.JobNode(NodeId("100"), TestAgentId, AJobPath, onSuccess = NodeId("END"), onFailure = NodeId("END")),
-      Jobnet.EndNode(NodeId("END"))))
+      Workflow.JobNode(NodeId("100"), TestAgentId, AJobPath, onSuccess = NodeId("END"), onFailure = NodeId("END")),
+      Workflow.EndNode(NodeId("END"))))
   private val AScript =
     if (isWindows) """
       |@echo off
