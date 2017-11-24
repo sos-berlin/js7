@@ -4,8 +4,8 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.jobnet.{JobnetPath, NodeId, NodeKey}
 import com.sos.jobscheduler.data.order.OrderEvent._
+import com.sos.jobscheduler.tester.JsonTester.testSprayJson
 import org.scalatest.FreeSpec
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -131,9 +131,5 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  private def check(event: OrderEvent, json: String) = {
-    val jsValue = json.parseJson
-    assert(event.toJson == jsValue)
-    assert(event == jsValue.convertTo[OrderEvent])
-  }
+  private def check(event: OrderEvent, json: String) = testSprayJson(event, json)
 }

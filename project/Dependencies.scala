@@ -41,6 +41,9 @@ object Dependencies {
   val akkaHttpTestkit     = "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion
 
   val sprayJson           = "io.spray" %% "spray-json" % "1.3.3" :: scalaReflect :: Nil
+  val circe               = "io.circe" %% "circe-core" % "0.8.0" ::
+                            "io.circe" %% "circe-parser" % "0.8.0" ::
+                            "io.circe" %% "circe-generic" % "0.8.0" :: Nil
 
   val scalaTags           = "com.lihaoyi" %% "scalatags" % "0.6.5"
 

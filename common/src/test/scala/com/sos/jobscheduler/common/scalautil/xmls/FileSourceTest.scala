@@ -14,7 +14,7 @@ final class FileSourceTest extends FreeSpec {
     val file = createTempFile("test-", ".tmp")
     file.contentString = "<test/>"
     val source = new FileSource(file)
-    assert(io.Source.fromInputStream(source.getInputStream)(UTF_8).getLines().mkString == "<test/>")
+    assert(scala.io.Source.fromInputStream(source.getInputStream)(UTF_8).getLines().mkString == "<test/>")
     source.close()
     delete(file)  // Under Windows, file must be closed now
   }

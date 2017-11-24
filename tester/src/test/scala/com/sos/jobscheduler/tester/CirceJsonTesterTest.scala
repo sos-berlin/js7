@@ -1,0 +1,41 @@
+package com.sos.jobscheduler.tester
+
+import com.sos.jobscheduler.tester.CirceJsonTester.testCirceJson
+import com.sos.jobscheduler.tester.CirceJsonTesterTest._
+import org.scalatest.FreeSpec
+
+/**
+  * @author Joacim Zschimmer
+  */
+final class CirceJsonTesterTest extends FreeSpec {
+
+  "Case class" in {
+    testCirceJson(a, JsonString)
+  }
+}
+
+object CirceJsonTesterTest {
+  private[tester] val JsonString = """{
+      "boole": true,
+      "int": 2147483647,
+      "long": -9223372036854775808,
+      "double": 1.23456789E33,
+      "string": "STRING",
+      "some": 1,
+      "seq": [1, 2, 3],
+      "set": [ "a", "b" ]
+    }"""
+
+  private[tester] val a = A(true, Int.MaxValue, Long.MinValue, 1.23456789e33, "STRING", Some(1), None, List(1, 2, 3), Set("a", "b"))
+
+  private[tester] final case class A(
+    boole: Boolean,
+    int: Int,
+    long: Long,
+    double: Double,
+    string: String,
+    some: Option[Int],
+    none: Option[Int],
+    seq: Seq[Int],
+    set: Set[String])
+}

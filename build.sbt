@@ -153,23 +153,35 @@ lazy val `jobscheduler-docker` = project
     mappings in Universal :=
       recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker", to = "build/"))
 
-lazy val base = project
+lazy val tester = project
   .settings(commonSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      circe ++
+      sprayJson ++
+      javaxAnnotations % "compile" ++
+      scalaTest
+  }
+
+lazy val base = project.dependsOn(tester % "compile->test")
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      circe ++
       sprayJson ++
       javaxAnnotations % "compile" ++
       scalaTest % "test"
   }
 
-lazy val data = project.dependsOn(base)
+lazy val data = project.dependsOn(base, tester % "compile->test")
   .settings(commonSettings)
   .settings(
     libraryDependencies +=
       Dependencies.scalaTest % "test")
 
-lazy val common = project.dependsOn(base, data)
+lazy val common = project.dependsOn(base, data, tester % "compile->test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -210,7 +222,7 @@ lazy val common = project.dependsOn(base, data)
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
 val masterGuiJs = "master-gui.js"
 
-lazy val master = project.dependsOn(`master-gui`, shared, common, `agent-client`)
+lazy val master = project.dependsOn(`master-gui`, shared, common, `agent-client`, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   // Provide master-gui JavaScript code as resources placed in master-gui package
@@ -279,7 +291,7 @@ lazy val `master-gui` = project
       "org.webjars.bower" % "react" % "15.6.1"     / "react-dom-server.js"  minified "react-dom-server.min.js"  commonJSName "ReactDOMServer" dependsOn "react-dom.js",
       "org.webjars.npm"   % "react-transition-group" % "2.2.1" / "dist/react-transition-group.js" minified "dist/react-transition-group.min.js" dependsOn "react-dom.js"))
 
-lazy val shared = project.dependsOn(common)
+lazy val shared = project.dependsOn(common, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -289,7 +301,7 @@ lazy val shared = project.dependsOn(common)
       log4j % "test"
   }
 
-lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserver, tunnel)
+lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserver, tunnel, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -314,7 +326,7 @@ lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserve
       log4j % "test"
   }
 
-lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-test` % "compile->test")
+lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-test` % "compile->test", tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Client")
@@ -330,7 +342,7 @@ lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-
       log4j % "test"
   }
 
-lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
+lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Value Classes")
@@ -346,7 +358,7 @@ lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data)
       log4j % "test"
   }
 
-lazy val `agent-test` = project.dependsOn(agent, common)
+lazy val `agent-test` = project.dependsOn(agent, common, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -356,7 +368,7 @@ lazy val `agent-test` = project.dependsOn(agent, common)
       log4j % "test"
   }
 
-lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test")
+lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test", tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(
     commonSettings,
@@ -369,7 +381,7 @@ lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client
       log4j % "test"
   }
 
-lazy val `http-client` = project.dependsOn(common, data)
+lazy val `http-client` = project.dependsOn(common, data, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -388,7 +400,7 @@ lazy val `http-client` = project.dependsOn(common, data)
       log4j % "test"
   }
 
-lazy val `http-server` = project.dependsOn(`http-client`, common, data)
+lazy val `http-server` = project.dependsOn(`http-client`, common, data, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -405,7 +417,7 @@ lazy val `http-server` = project.dependsOn(`http-client`, common, data)
       log4j % "test"
   }
 
-lazy val `engine-job-api` = project.dependsOn(common)
+lazy val `engine-job-api` = project.dependsOn(common, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(
@@ -423,7 +435,7 @@ lazy val `engine-job-api` = project.dependsOn(common)
       log4j % "test"
   }
 
-lazy val minicom = project.dependsOn(common, `engine-job-api`)
+lazy val minicom = project.dependsOn(common, `engine-job-api`, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -438,7 +450,7 @@ lazy val minicom = project.dependsOn(common, `engine-job-api`)
       log4j % "test"
   }
 
-lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data)
+lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC")
@@ -458,7 +470,7 @@ lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data)
       log4j % "test"
   }
 
-lazy val `tunnel-data` = project.dependsOn(common, data, `http-server`/*HeartbeatView is here*/)
+lazy val `tunnel-data` = project.dependsOn(common, data, `http-server`/*HeartbeatView is here*/, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC - value classes")
@@ -477,7 +489,8 @@ lazy val taskserver = project
     minicom,
     `agent-data`,
     common,
-    data)
+    data,
+    tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -493,7 +506,7 @@ lazy val taskserver = project
       log4j % "test"
   }
 
-lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common)
+lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -503,7 +516,7 @@ lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common)
       log4j % "test"
   }
 
-lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common)
+lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {

@@ -104,5 +104,5 @@ private object ProcessKillScriptTest {
     logger.info("\n" + readLines(in, prefix).mkString("\n"))
 
   private def readLines(in: InputStream, prefix: String): Iterator[String] =
-    for (line ← io.Source.fromInputStream(in).getLines()) yield s"$prefix: $line"
+    for (line ← scala.io.Source.fromInputStream(in).getLines()) yield s"$prefix: $line"
 }

@@ -21,7 +21,7 @@ final class ShellReturnValuesProvider {
     ReturnValuesFileEnvironmentVariableName → file.toString
 
   def variables: Map[String, String] =
-    autoClosing(io.Source.fromFile(file)(Encoding)) { source ⇒
+    autoClosing(scala.io.Source.fromFile(file)(Encoding)) { source ⇒
       (source.getLines map lineToKeyValue).toMap
     }
 

@@ -37,7 +37,7 @@ object AgentClientMain {
       else {
         operations foreach {
           case StringCommand(command) ⇒ client.executeCommand(command)
-          case StdinCommand ⇒ client.executeCommand(io.Source.stdin.mkString)
+          case StdinCommand ⇒ client.executeCommand(scala.io.Source.stdin.mkString)
           case Get(uri) ⇒ client.get(uri)
         }
         0

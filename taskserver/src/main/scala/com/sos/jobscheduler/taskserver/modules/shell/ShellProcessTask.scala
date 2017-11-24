@@ -146,7 +146,7 @@ extends HasCloser with Task {
   }
 
   private def fetchReturnValues() =
-    autoClosing(io.Source.fromFile(orderParamsFile)(Encoding)) { source ⇒
+    autoClosing(scala.io.Source.fromFile(orderParamsFile)(Encoding)) { source ⇒
       (source.getLines map lineToKeyValue).toMap
     }
 

@@ -112,5 +112,5 @@ final class CrashKillScriptTest extends FreeSpec with HasCloser with BeforeAndAf
     assert(lines == s""""test-kill.sh" -kill-agent-task-id=LEFT -master-task-id=999 -job=/LEFT-JOB""" :: Nil)
   }
 
-  private def lines = autoClosing(io.Source.fromFile(file)) { _.getLines.toList }
+  private def lines = autoClosing(scala.io.Source.fromFile(file)) { _.getLines.toList }
 }
