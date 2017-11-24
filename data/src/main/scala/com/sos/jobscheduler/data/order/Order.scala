@@ -31,11 +31,11 @@ final case class Order[+S <: Order.State](
 
   def update(event: OrderEvent.OrderCoreEvent): Order[State] =
     event match {
-      case OrderAdded(nodeKey_, state_, variables_, outcome_) ⇒
-        copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
-
-      case OrderAttached(nodeKey_, state_, variables_, outcome_) ⇒
-        copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
+      //case OrderAdded(nodeKey_, state_, variables_, outcome_) ⇒
+      //  copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
+      //
+      //case OrderAttached(nodeKey_, state_, variables_, outcome_) ⇒
+      //  copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
 
       case OrderMovedToAgent(o) ⇒ copy(
         agentPath = Some(o))
