@@ -5,7 +5,6 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import java.io.{File, FileInputStream}
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.{Path, Paths}
-import scala.io
 import scala.io.Source.fromInputStream
 import scala.util.Try
 

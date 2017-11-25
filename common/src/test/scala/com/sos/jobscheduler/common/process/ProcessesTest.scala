@@ -13,7 +13,6 @@ import java.nio.file.Files.exists
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 import scala.collection.JavaConverters._
-import scala.io.Source.fromInputStream
 
 /**
  * @author Joacim Zschimmer
@@ -29,7 +28,7 @@ final class ProcessesTest extends FreeSpec {
       val args = directShellCommandArguments("echo $$")
       assert(args == List("/bin/sh", "-c", "echo $$"))
       val process = new ProcessBuilder(args.asJava).redirectInput(PIPE).start()
-      val echoLine = fromInputStream(process.getInputStream).getLines().next()
+      val echoLine = scala.io.Source.fromInputStream(process.getInputStream).getLines().next()
       assert(processToPidOption(process) contains Pid(echoLine.toLong))
       process.waitFor()
     }
@@ -48,7 +47,7 @@ final class ProcessesTest extends FreeSpec {
       assert(!(file.toString contains "--"))
       file.contentString = ShellScript
       val process = new ProcessBuilder(toShellCommandArguments(file, Args).asJava).redirectOutput(PIPE).start()
-      val echoLines = fromInputStream(process.getInputStream).getLines().toList
+      val echoLines = scala.io.Source.fromInputStream(process.getInputStream).getLines().toList
       val normalizedFirstEcho = if (isWindows) echoLines.head stripSuffix "\"" stripPrefix "\"" else echoLines.head  // Windows (with sbt?) may echo the quoted file path
       assert(normalizedFirstEcho == file.toString)
       for ((a, b) ← echoLines.tail zip Args) assert(a == b)
