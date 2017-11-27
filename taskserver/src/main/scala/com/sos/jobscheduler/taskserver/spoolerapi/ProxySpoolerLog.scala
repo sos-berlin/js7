@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.jobscheduler.data.log.SchedulerLogLevel
 import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits._
 import com.sos.jobscheduler.minicom.idispatch.annotation.invocable
 import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
@@ -8,6 +7,7 @@ import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
 import com.sos.jobscheduler.minicom.remoting.proxy.SpecializedProxyIDispatch.forEachProperty
 import com.sos.jobscheduler.minicom.remoting.proxy.{ProxyIDispatchFactory, ProxyRemoting, SpecializedProxyIDispatch}
 import com.sos.jobscheduler.minicom.types.CLSID
+import com.sos.jobscheduler.taskserver.data.SchedulerLogLevel
 import java.util.UUID
 
 /**

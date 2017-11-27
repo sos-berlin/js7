@@ -12,10 +12,10 @@ import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
-import com.sos.jobscheduler.data.log.SchedulerLogLevel
 import com.sos.jobscheduler.data.message.MessageCode
 import com.sos.jobscheduler.minicom.idispatch.{IDispatch, Invocable, InvocableIDispatch, PublicMethodsAreInvocable}
 import com.sos.jobscheduler.taskserver.common.StdFiles
+import com.sos.jobscheduler.taskserver.data.SchedulerLogLevel
 import com.sos.jobscheduler.taskserver.moduleapi.NamedIDispatches._
 import com.sos.jobscheduler.taskserver.moduleapi.Script
 import com.sos.jobscheduler.taskserver.modules.common.CommonArguments

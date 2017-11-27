@@ -3,9 +3,8 @@ package com.sos.jobscheduler.taskserver.task
 import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.data.job.TaskId
-import com.sos.jobscheduler.data.log.SchedulerLogLevel
 import com.sos.jobscheduler.minicom.types.VariantArray
-import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
+import com.sos.jobscheduler.taskserver.data.{SchedulerLogLevel, TaskServerMainTerminated}
 import com.sos.jobscheduler.taskserver.dotnet.api.{DotnetModuleInstanceFactory, DotnetModuleReference, TaskContext}
 import com.sos.jobscheduler.taskserver.moduleapi.{ModuleFactoryRegister, Script}
 import com.sos.jobscheduler.taskserver.modules.dotnet.DotnetModule

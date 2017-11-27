@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.jobscheduler.data.log.SchedulerLogger
 import com.sos.jobscheduler.minicom.idispatch.IDispatch
+import com.sos.jobscheduler.taskserver.data.SchedulerLogger
 
 /**
  * @author Joacim Zschimmer

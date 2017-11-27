@@ -6,8 +6,8 @@ import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.xml.VariableSets
 import com.sos.jobscheduler.data.job.TaskId
-import com.sos.jobscheduler.data.log.SchedulerLogLevel
 import com.sos.jobscheduler.minicom.types.{VariantArray, variant}
+import com.sos.jobscheduler.taskserver.data.SchedulerLogLevel
 import com.sos.jobscheduler.taskserver.moduleapi._
 import com.sos.jobscheduler.taskserver.modules.monitor.{Monitor, RawMonitorArguments}
 import com.sos.jobscheduler.taskserver.task.TaskArguments._

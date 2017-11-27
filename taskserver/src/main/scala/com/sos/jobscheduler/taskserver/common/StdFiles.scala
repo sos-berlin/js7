@@ -2,8 +2,8 @@ package com.sos.jobscheduler.taskserver.common
 
 import com.google.common.base.Splitter
 import com.sos.jobscheduler.data.system.StdoutStderr._
-import com.sos.jobscheduler.data.log.SchedulerLogLevel
 import com.sos.jobscheduler.taskserver.common.StdFiles._
+import com.sos.jobscheduler.taskserver.data.SchedulerLogLevel
 import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration._
 import java.nio.charset.Charset
 import java.nio.file.Path

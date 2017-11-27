@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.data.log;
+package com.sos.jobscheduler.taskserver.data;
 
 import com.sos.jobscheduler.base.sprayjson.JavaEnumJsonFormat;
 import spray.json.JsonFormat;

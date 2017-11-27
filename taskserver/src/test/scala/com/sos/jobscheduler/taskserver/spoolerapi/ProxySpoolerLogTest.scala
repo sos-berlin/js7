@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.taskserver.spoolerapi
 
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.data.log.SchedulerLogLevel
 import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits._
 import com.sos.jobscheduler.minicom.idispatch._
 import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyRemoting
+import com.sos.jobscheduler.taskserver.data.SchedulerLogLevel
 import com.sos.jobscheduler.taskserver.spoolerapi.ProxySpoolerLogTest._
 import org.scalatest.FreeSpec
 import scala.collection.mutable
