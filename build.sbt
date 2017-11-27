@@ -91,7 +91,6 @@ val commonSettings = List(
 val universalPluginSettings = List(
   universalArchiveOptions in (Universal, packageZipTarball) :=
     List("--force-local") .filter { _ ⇒ !isMac } ++
-      List("--exclude=lib/org.scala-js.scalajs-library_*.jar", "--exclude=lib/*_sjs*.jar") ++  // These big Scala.js jars are not for JVM - https://github.com/scala-js/scala-js/issues/1472
       (universalArchiveOptions in (Universal, packageZipTarball)).value)  // Under cygwin, tar shall not interpret C:
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
@@ -222,7 +221,7 @@ lazy val common = project.dependsOn(base, data, tester % "compile->test")
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
 val masterGuiJs = "master-gui.js"
 
-lazy val master = project.dependsOn(`master-gui`, shared, common, `agent-client`, tester % "compile->test")
+lazy val master = project.dependsOn(shared, common, `agent-client`, tester % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   // Provide master-gui JavaScript code as resources placed in master-gui package
