@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.base.circeutils
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import CirceUtils.RichCirceString
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 

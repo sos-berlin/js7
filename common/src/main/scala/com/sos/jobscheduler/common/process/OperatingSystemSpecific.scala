@@ -1,14 +1,14 @@
 package com.sos.jobscheduler.common.process
 
-import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.common.process.OperatingSystemSpecific._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem._
+import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
 import java.nio.file.Files._
-import java.nio.file.{FileAlreadyExistsException, Path}
 import java.nio.file.attribute.PosixFilePermissions._
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
+import java.nio.file.{FileAlreadyExistsException, Path}
 import scala.collection.immutable
-import OperatingSystemSpecific._
 
 /**
   * @author Joacim Zschimmer

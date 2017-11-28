@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalActor.{EventsHeader, SnapshotsHeader}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
-import io.circe.{HCursor, Json}
+import io.circe.Json
 import java.nio.file.{Files, Path}
 import scala.annotation.tailrec
 import scala.concurrent.blocking

@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.common.akkahttp.web.auth
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, OK, Unauthorized}
-import akka.http.scaladsl.model.{HttpEntity, RequestEntity, Uri}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
+import akka.http.scaladsl.model.{HttpEntity, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
@@ -16,7 +17,6 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import io.circe.Json
 import java.time.Instant.now
 import org.scalatest.FreeSpec
-import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import scala.concurrent.ExecutionContext
 
 /**

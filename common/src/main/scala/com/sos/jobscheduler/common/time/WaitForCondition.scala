@@ -2,8 +2,8 @@ package com.sos.jobscheduler.common.time
 
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.lang.System.currentTimeMillis
-import java.time.Instant.now
 import java.time.Duration
+import java.time.Instant.now
 import scala.util.control.NonFatal
 import scala.util.{Success, Try}
 

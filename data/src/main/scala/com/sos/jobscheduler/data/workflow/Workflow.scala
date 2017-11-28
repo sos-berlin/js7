@@ -5,9 +5,9 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Workflow._
-import io.circe.{Decoder, Encoder, Json, JsonObject}
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 
 /**
   * @author Joacim Zschimmer

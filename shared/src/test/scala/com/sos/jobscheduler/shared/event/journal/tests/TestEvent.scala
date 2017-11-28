@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.shared.event.journal.tests
 
-import com.sos.jobscheduler.base.circeutils.typed.Subtype
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.event.Event
 import io.circe.generic.JsonCodec
 

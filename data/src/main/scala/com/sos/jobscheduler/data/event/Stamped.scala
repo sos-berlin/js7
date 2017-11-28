@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
-import io.circe.{Decoder, Encoder, Json, JsonObject}
 import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json, JsonObject}
 
 /**
   * A value with an EventId.

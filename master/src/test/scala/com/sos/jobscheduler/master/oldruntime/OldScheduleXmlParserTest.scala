@@ -1,11 +1,10 @@
 package com.sos.jobscheduler.master.oldruntime
 
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.DayOfWeek._
-import java.time.{DayOfWeek, LocalTime, ZoneId}
+import java.time.{LocalTime, ZoneId}
 import org.scalatest.FreeSpec
 
 /**

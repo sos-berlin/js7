@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.common.time
 
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.time.Stopwatch._
 import java.lang.System.nanoTime
 import java.time.Duration
-import Stopwatch._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

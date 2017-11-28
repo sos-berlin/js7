@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.gui.components.gui
 
 import com.sos.jobscheduler.master.gui.components.SideBarComponent
-import com.sos.jobscheduler.master.gui.components.gui.GuiRenderer._
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListComponent
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.data.MasterOverview

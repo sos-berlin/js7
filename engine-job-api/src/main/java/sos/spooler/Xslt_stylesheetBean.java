@@ -1,7 +1,6 @@
 package sos.spooler;
 
 import java.io.File;
-
 import static sos.spooler.Beans.toBean;
 
 /** Ein Proxy von {@link Xslt_stylesheet}, mit Gettern und Settern für Skriptsprachen. */

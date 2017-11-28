@@ -4,9 +4,7 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger, SetOnce}
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.job.TaskId
 import com.sos.jobscheduler.data.jobapi.JavaJobSignatures.{SpoolerExitSignature, SpoolerOnErrorSignature}
 import com.sos.jobscheduler.minicom.idispatch.annotation.invocable

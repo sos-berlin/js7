@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.taskserver.data
 
+import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.PathJsonCodec
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import io.circe.generic.JsonCodec
 import java.nio.file.Path
-import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.PathJsonCodec
 
 /**
   * @author Joacim Zschimmer
@@ -13,5 +14,5 @@ final case class DotnetConfiguration(
   classDllDirectory: Option[Path] = None)
 
 object DotnetConfiguration {
-  PathJsonCodec  // For IntelliJ import
+  intelliJuseImport(PathJsonCodec)
 }

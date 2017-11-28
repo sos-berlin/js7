@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.sos.jobscheduler.base.utils.ScalaUtils
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import scala.reflect.ClassTag
 

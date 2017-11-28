@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.common.auth
 
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.auth.EncodedToHashedPassword.sha512Hasher
-import com.sos.jobscheduler.common.auth.EncodedToHashedPassword.identityHasher
+import com.sos.jobscheduler.common.auth.EncodedToHashedPassword.{identityHasher, sha512Hasher}
 import com.sos.jobscheduler.common.auth.EncodedToHashedPasswordTest._
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.typesafe.config.ConfigFactory

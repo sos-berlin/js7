@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.circeutils
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.Json
 import scala.collection.JavaConverters._
 
 /**

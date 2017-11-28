@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.taskserver.spoolerapi
 
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.message.MessageCode
+import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits._
 import com.sos.jobscheduler.minicom.idispatch.annotation.invocable
 import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}

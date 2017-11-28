@@ -9,7 +9,6 @@ import com.sos.jobscheduler.agent.tests.AgentClientMainIT._
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.HasCloser
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable

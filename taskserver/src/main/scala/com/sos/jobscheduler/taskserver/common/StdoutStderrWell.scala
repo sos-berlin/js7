@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.taskserver.common
 
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stdout, StdoutStderrType}
 import com.sos.jobscheduler.common.system.OperatingSystem._
+import com.sos.jobscheduler.data.system.StdoutStderr.{Stdout, StdoutStderrType}
 import com.sos.jobscheduler.taskserver.task.filecollector.MultipleFilesLineCollector
 import java.nio.charset.Charset
 import java.nio.file.Path

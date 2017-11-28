@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.taskserver.common
 
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout}
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files

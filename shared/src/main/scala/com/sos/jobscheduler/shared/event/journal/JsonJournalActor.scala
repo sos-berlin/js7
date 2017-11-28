@@ -2,6 +2,7 @@ package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor._
 import akka.util.ByteString
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -22,7 +23,6 @@ import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
 
 /**
   * @author Joacim Zschimmer

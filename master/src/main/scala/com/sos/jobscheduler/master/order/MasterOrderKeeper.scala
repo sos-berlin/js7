@@ -2,8 +2,7 @@ package com.sos.jobscheduler.master.order
 
 import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
-import com.sos.jobscheduler.base.circeutils.typed.Subtype
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName

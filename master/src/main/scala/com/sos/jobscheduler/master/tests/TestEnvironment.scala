@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.master.tests.TestEnvironment._
 import java.io.IOException
 import java.nio.file.Files.{createDirectories, createDirectory, deleteIfExists, exists}
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import scala.collection.immutable._
 
 /**

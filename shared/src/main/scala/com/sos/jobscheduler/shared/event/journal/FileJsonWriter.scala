@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.shared.event.journal
 
 import akka.util.ByteString
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.shared.common.jsonseq.OutputStreamJsonSeqWriter
+import io.circe.syntax.EncoderOps
 import java.io.{BufferedOutputStream, FileOutputStream, OutputStream}
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import io.circe.syntax.EncoderOps
 
 /**
   * @author Joacim Zschimmer

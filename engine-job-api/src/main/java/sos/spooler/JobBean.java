@@ -1,7 +1,6 @@
 package sos.spooler;
 
 import java.io.File;
-
 import static sos.spooler.Beans.toBean;
 import static sos.spooler.Beans.toDelegate;
 

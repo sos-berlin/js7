@@ -2,11 +2,11 @@ package com.sos.jobscheduler.shared.common.jsonseq
 
 import akka.util.ByteString
 import com.google.common.base.Ascii
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.shared.common.jsonseq.OutputStreamJsonSeqWriter._
+import io.circe.Json
 import java.io.{BufferedOutputStream, OutputStream}
 import org.jetbrains.annotations.TestOnly
-import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import io.circe.Json
 
 /**
   * MIME media type application/json-seq, RFC 7464 "JavaScript Object Notation (JSON) Text Sequences".

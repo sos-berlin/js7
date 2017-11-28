@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.master.command
 
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
-import com.sos.jobscheduler.base.circeutils.typed.Subtype
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.master.command.MasterCommand._
 import io.circe.generic.JsonCodec

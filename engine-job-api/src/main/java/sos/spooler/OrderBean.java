@@ -1,8 +1,8 @@
 package sos.spooler;
 
 import java.util.Date;
-
-import static sos.spooler.Beans.*;
+import static sos.spooler.Beans.toBean;
+import static sos.spooler.Beans.toDelegate;
 
 public class OrderBean implements Bean<Order> {
     private final Order delegate;

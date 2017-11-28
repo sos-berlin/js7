@@ -8,11 +8,10 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
-import com.sos.jobscheduler.common.akkahttp.JsonString
-import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.common.CirceJsonSupport._
+import com.sos.jobscheduler.common.akkahttp.JsonString
 import io.circe.Json
-import io.circe.parser.parse
 import io.circe.syntax.EncoderOps
 import java.time.Instant
 import org.scalatest.FreeSpec

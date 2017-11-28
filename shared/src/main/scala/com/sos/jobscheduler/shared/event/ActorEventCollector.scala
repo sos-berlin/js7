@@ -6,9 +6,9 @@ import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, Stamped}
+import com.sos.jobscheduler.shared.event.ActorEventCollector._
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
-import ActorEventCollector._
 
 /**
   * @author Joacim Zschimmer

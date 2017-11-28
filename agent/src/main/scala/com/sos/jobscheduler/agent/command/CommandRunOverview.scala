@@ -4,6 +4,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import io.circe.generic.JsonCodec
 import java.time.Instant
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.InstantJsonCodec
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 
 /**
  * @author Joacim Zschimmer
@@ -13,3 +14,7 @@ final case class CommandRunOverview(
   internalId: InternalCommandId,
   startedAt: Instant,
   command: AgentCommand)
+
+object CommandRunOverview {
+  intelliJuseImport(InstantJsonCodec)
+}

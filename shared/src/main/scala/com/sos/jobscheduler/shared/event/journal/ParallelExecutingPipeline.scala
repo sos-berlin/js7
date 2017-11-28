@@ -2,7 +2,7 @@ package com.sos.jobscheduler.shared.event.journal
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import java.util.concurrent.ArrayBlockingQueue
-import scala.concurrent.ExecutionContext.Implicits.global  // For (sys.runtime.availableProcessors + 1) Futures
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**

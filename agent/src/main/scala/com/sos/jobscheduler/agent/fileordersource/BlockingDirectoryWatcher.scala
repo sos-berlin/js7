@@ -7,8 +7,8 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isMac
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.nio.file.StandardWatchEventKinds._
 import java.nio.file.{FileSystems, Path, WatchEvent}
-import java.time.{Duration, Instant}
 import java.time.Instant.now
+import java.time.{Duration, Instant}
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import scala.collection.JavaConverters._
 import scala.concurrent._

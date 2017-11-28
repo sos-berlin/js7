@@ -1,8 +1,8 @@
 package sos.spooler.jobs
 
-import ScriptAdapterHelper._
 import org.scalatest.FunSuite
 import org.scalatest.Matchers._
+import sos.spooler.jobs.ScriptAdapterHelper._
 
 final class ScriptAdapterHelperTest extends FunSuite {
 

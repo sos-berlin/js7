@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.utils
 
 import com.google.common.base.Charsets._
 import com.google.common.io.ByteStreams.toByteArray
-import com.google.common.io.{ByteStreams, Resources}
+import com.google.common.io.Resources
 import com.google.common.io.Resources.getResource
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger

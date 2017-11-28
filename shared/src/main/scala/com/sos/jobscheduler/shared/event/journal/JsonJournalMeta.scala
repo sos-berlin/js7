@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}

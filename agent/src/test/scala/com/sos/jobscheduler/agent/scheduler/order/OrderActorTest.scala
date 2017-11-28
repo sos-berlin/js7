@@ -12,8 +12,7 @@ import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, Tas
 import com.sos.jobscheduler.agent.scheduler.job.{JobActor, JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
-import com.sos.jobscheduler.base.circeutils.typed.Subtype
-import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}

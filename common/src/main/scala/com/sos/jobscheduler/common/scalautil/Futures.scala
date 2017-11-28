@@ -3,13 +3,12 @@ package com.sos.jobscheduler.common.scalautil
 import com.sos.jobscheduler.base.utils.StackTraces._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
-import java.util.concurrent.ForkJoinPool
 import scala.collection.generic.CanBuildFrom
 import scala.concurrent._
 import scala.concurrent.duration.Duration.Inf
 import scala.language.higherKinds
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 /**
  * @author Joacim Zschimmer

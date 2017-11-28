@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.taskserver.dotnet;
 
 import java.util.Optional;
-
-import system.Type;
 import system.Object;
+import system.Type;
 import system.reflection.ConstructorInfo;
 import system.reflection.MethodInfo;
 

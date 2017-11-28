@@ -1,9 +1,6 @@
 package com.sos.jobscheduler.base
 
-import io.circe.generic.decoding.DerivedDecoder
-import io.circe.generic.encoding.DerivedObjectEncoder
-import io.circe.{Decoder, Encoder, HCursor, Json, JsonObject}
-import shapeless.Lazy
+import io.circe.{Decoder, Encoder}
 
 /**
   * @author Joacim Zschimmer

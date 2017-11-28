@@ -6,7 +6,6 @@ import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import com.google.common.base.Splitter
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event._
 import java.time.Duration

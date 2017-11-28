@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.utils
 
-import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
-import com.sos.jobscheduler.common.utils.ByteUnits.toMB
+import com.sos.jobscheduler.common.utils.ByteUnits.{toKBGB, toMB}
 import org.scalatest.FreeSpec
 
 /**

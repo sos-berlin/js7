@@ -1,6 +1,7 @@
 package sos.spooler;
 
-import static sos.spooler.Beans.*;
+import static sos.spooler.Beans.toBean;
+import static sos.spooler.Beans.toDelegate;
 
 public final class Process_classesBean implements Bean<Process_classes> {
     private final Process_classes delegate;
