@@ -66,7 +66,8 @@ extends KeyedJournalingActor[OrderEvent] {
         persist(OrderProcessed(MapDiff.empty, Order.Bad(Order.Bad.AgentAborted)))(update)  // isRecoveryGeneratedEvent
 
       case Order.Processed ⇒
-        // Required event 'OrderTransitioned' is initialized by AgentOrderKeeper
+        context.become(processed)
+        // Next event 'OrderTransitioned' is initiated by AgentOrderKeeper
 
       case Order.StartNow | _: Order.Scheduled | Order.Detachable | Order.Detached | Order.Finished ⇒
         context.become(waiting)
