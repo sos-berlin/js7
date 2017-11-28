@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.configuration
 
 import akka.util.Timeout
 import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.convert.As._
+import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
 import com.sos.jobscheduler.common.configutils.Configs

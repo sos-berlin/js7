@@ -101,13 +101,14 @@ resolvers += Resolver.mavenLocal
 lazy val jobscheduler = (project in file("."))
   .aggregate(
     agent,
-    base,
+    baseJVM,
     common,
     shared,
-    data,
+    dataJVM,
     `jobscheduler-docker`,
     `jobscheduler-install`,
     master,
+    masterDataJVM,
     `agent-client`,
     `agent-data`,
     `agent-test`,
@@ -152,34 +153,46 @@ lazy val `jobscheduler-docker` = project
     mappings in Universal :=
       recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker", to = "build/"))
 
-lazy val tester = project
+lazy val tester = crossProject
   .settings(commonSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      circe ++
-      javaxAnnotations % "compile" ++
-      scalaTest
+      "io.circe" %%% "circe-core" % circeVersion ++
+      "io.circe" %%% "circe-parser" % circeVersion ++
+      "io.circe" %%% "circe-generic" % circeVersion ++
+      "org.scalatest" %%% "scalatest" % scalaTestVersion
   }
+lazy val testerJVM = tester.jvm
+lazy val testerJs = tester.js
 
-lazy val base = project.dependsOn(tester % "compile->test")
+lazy val base = crossProject
+  .dependsOn(tester % "compile->test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      circe ++
-      sprayJson ++
+      "io.circe" %%% "circe-core" % circeVersion ++
+      "io.circe" %%% "circe-parser" % circeVersion ++
+      "io.circe" %%% "circe-generic" % circeVersion ++
       javaxAnnotations % "compile" ++
-      scalaTest % "test"
+      "org.scalatest" %%% "scalatest" % scalaTestVersion
   }
+lazy val baseJVM = base.jvm
+lazy val baseJs = base.js
 
-lazy val data = project.dependsOn(base, tester % "compile->test")
+lazy val data = crossProject
+  .dependsOn(base, tester % "compile->test")
   .settings(commonSettings)
   .settings(
-    libraryDependencies +=
-      Dependencies.scalaTest % "test")
+    libraryDependencies += {
+      import Dependencies._
+      "org.scalatest" %%% "scalatest" % scalaTestVersion
+    })
+lazy val dataJVM = data.jvm
+lazy val dataJs = data.js
 
-lazy val common = project.dependsOn(base, data, tester % "compile->test")
+lazy val common = project.dependsOn(baseJVM, dataJVM, testerJVM % "compile->test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -192,10 +205,8 @@ lazy val common = project.dependsOn(base, data, tester % "compile->test")
       typesafeConfig ++
       akkaHttpTestkit % "test" ++
       akkaHttp ++
-      akkaHttpJson ++
       akkaActor ++
       scalaTags ++
-      sprayJson ++
       snakeYaml ++
       guava ++
       intelliJAnnotations % "compile" ++
@@ -220,7 +231,7 @@ lazy val common = project.dependsOn(base, data, tester % "compile->test")
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
 val masterGuiJs = "master-gui.js"
 
-lazy val master = project.dependsOn(shared, common, `agent-client`, tester % "compile->test")
+lazy val master = project.dependsOn(masterDataJVM, shared, common, `agent-client`, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   // Provide master-gui JavaScript code as resources placed in master-gui package
@@ -260,27 +271,45 @@ lazy val master = project.dependsOn(shared, common, `agent-client`, tester % "co
       log4j % "test"
   }
 
+lazy val `master-data` = crossProject
+  .dependsOn(data, tester % "compile->test")
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= {
+      import Dependencies._
+      List(
+        "org.scalatest" %%% "scalatest" % scalaTestVersion,
+        "io.circe" %%% "circe-core" % circeVersion,
+        "io.circe" %%% "circe-parser" % circeVersion,
+        "io.circe" %%% "circe-generic" % circeVersion)
+    })
+lazy val masterDataJVM = `master-data`.jvm
+lazy val masterDataJs = `master-data`.js
+
 lazy val `master-gui` = project
   .enablePlugins(ScalaJSPlugin)
+  .dependsOn(dataJs, masterDataJs)
   .settings(
     commonSettings,
     scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html
     jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
     scalaJSUseMainModuleInitializer := true,
     scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
-    libraryDependencies ++= List(
-      "org.scala-js" %%% "scalajs-dom" % "0.9.1",
-      "com.github.japgolly.scalajs-react" %%% "core" % "1.1.1",
-      "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "1.1.1",
-    //"com.github.japgolly.scalajs-react" %%% "extra" % "1.1.1",
-      "com.github.japgolly.scalacss" %%% "core" % "0.5.3",
-      "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.3",
-      "com.github.julien-truffaut" %%%  "monocle-core"  % "1.4.0",
-      "com.github.julien-truffaut" %%%  "monocle-macro" % "1.4.0",
-      "org.scalatest" %%% "scalatest" % "3.0.4" % "test",
-      "io.circe" %%% "circe-core" % "0.8.0",
-      "io.circe" %%% "circe-parser" % "0.8.0",
-      "io.circe" %%% "circe-generic" % "0.8.0"),
+    libraryDependencies ++= {
+      import Dependencies._
+      List(
+        "org.scala-js" %%% "scalajs-dom" % "0.9.1",
+        "com.github.japgolly.scalajs-react" %%% "core" % "1.1.1",
+        "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "1.1.1",
+        "com.github.japgolly.scalacss" %%% "core" % "0.5.3",
+        "com.github.japgolly.scalacss" %%% "ext-react" % "0.5.3",
+        "com.github.julien-truffaut" %%%  "monocle-core"  % "1.4.0",
+        "com.github.julien-truffaut" %%%  "monocle-macro" % "1.4.0",
+        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test",
+        "io.circe" %%% "circe-core" % circeVersion,
+        "io.circe" %%% "circe-parser" % circeVersion,
+        "io.circe" %%% "circe-generic" % circeVersion)
+    },
     jsDependencies ++= List(
       "org.webjars.bower" % "jquery" % "3.2.1"           / "dist/jquery.js" minified "dist/jquery.min.js",
       "org.webjars"       % "materializecss" % "0.100.2" / "materialize.js" minified "materialize.min.js" dependsOn "dist/jquery.js",
@@ -289,7 +318,7 @@ lazy val `master-gui` = project
       "org.webjars.bower" % "react" % "15.6.1"     / "react-dom-server.js"  minified "react-dom-server.min.js"  commonJSName "ReactDOMServer" dependsOn "react-dom.js",
       "org.webjars.npm"   % "react-transition-group" % "2.2.1" / "dist/react-transition-group.js" minified "dist/react-transition-group.min.js" dependsOn "react-dom.js"))
 
-lazy val shared = project.dependsOn(common, tester % "compile->test")
+lazy val shared = project.dependsOn(common, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -299,7 +328,7 @@ lazy val shared = project.dependsOn(common, tester % "compile->test")
       log4j % "test"
   }
 
-lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserver, tunnel, tester % "compile->test")
+lazy val agent = project.dependsOn(`agent-data`, shared, common, dataJVM, taskserver, tunnel, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -308,13 +337,11 @@ lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserve
       scalaXml ++
       guava ++
       javaxAnnotations % "compile" ++
-      sprayJson ++
       akkaActor ++
       akkaStream ++
       akkaSlf4j ++
       akkaHttpTestkit % "test" ++
       akkaHttp ++
-      akkaHttpJson ++
       intelliJAnnotations % "compile" ++
       scalactic ++
       tagging ++
@@ -324,7 +351,7 @@ lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserve
       log4j % "test"
   }
 
-lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-test` % "compile->test", tester % "compile->test")
+lazy val `agent-client` = project.dependsOn(dataJVM, `tunnel-data`, common, `agent-test` % "compile->test", testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Client")
@@ -334,13 +361,11 @@ lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-
       guice ++
       akkaActor ++
       akkaHttp ++
-      akkaHttpJson ++
-      sprayJson ++
       scalaTest % "test" ++
       log4j % "test"
   }
 
-lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data, tester % "compile->test")
+lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, dataJVM, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Value Classes")
@@ -349,14 +374,13 @@ lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, data, tester % 
     libraryDependencies ++=
       scalaXml ++
       guava ++
-      sprayJson ++
       javaxAnnotations % "compile" ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
       log4j % "test"
   }
 
-lazy val `agent-test` = project.dependsOn(agent, common, tester % "compile->test")
+lazy val `agent-test` = project.dependsOn(agent, common, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -366,7 +390,7 @@ lazy val `agent-test` = project.dependsOn(agent, common, tester % "compile->test
       log4j % "test"
   }
 
-lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test", tester % "compile->test")
+lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test", testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(
     commonSettings,
@@ -379,26 +403,24 @@ lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client
       log4j % "test"
   }
 
-lazy val `http-client` = project.dependsOn(common, data, tester % "compile->test")
+lazy val `http-client` = project.dependsOn(common, dataJVM, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      sprayJson ++
       akkaActor ++
       akkaSlf4j ++
       akkaStream ++
       akkaHttpTestkit % "test" ++
       akkaHttp ++
-      akkaHttpJson ++
       scalactic ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
       log4j % "test"
   }
 
-lazy val `http-server` = project.dependsOn(`http-client`, common, data, tester % "compile->test")
+lazy val `http-server` = project.dependsOn(`http-client`, common, dataJVM, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -406,7 +428,6 @@ lazy val `http-server` = project.dependsOn(`http-client`, common, data, tester %
     libraryDependencies ++=
       akkaHttpTestkit % "test" ++
       akkaHttp ++
-      akkaHttpJson ++
       akkaActor ++
       akkaSlf4j ++
       scalactic ++
@@ -414,7 +435,7 @@ lazy val `http-server` = project.dependsOn(`http-client`, common, data, tester %
       log4j % "test"
   }
 
-lazy val `engine-job-api` = project.dependsOn(common, tester % "compile->test")
+lazy val `engine-job-api` = project.dependsOn(common, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(
@@ -432,7 +453,7 @@ lazy val `engine-job-api` = project.dependsOn(common, tester % "compile->test")
       log4j % "test"
   }
 
-lazy val minicom = project.dependsOn(common, `engine-job-api`, tester % "compile->test")
+lazy val minicom = project.dependsOn(common, `engine-job-api`, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -447,7 +468,7 @@ lazy val minicom = project.dependsOn(common, `engine-job-api`, tester % "compile
       log4j % "test"
   }
 
-lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data, tester % "compile->test")
+lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, dataJVM, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC")
@@ -455,7 +476,6 @@ lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data, 
     import Dependencies._
     libraryDependencies ++=
       akkaHttp ++
-      akkaHttpJson ++
       akkaStream ++
       akkaActor ++
       akkaAgent ++
@@ -466,7 +486,7 @@ lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data, 
       log4j % "test"
   }
 
-lazy val `tunnel-data` = project.dependsOn(common, data, `http-server`/*HeartbeatView is here*/, tester % "compile->test")
+lazy val `tunnel-data` = project.dependsOn(common, dataJVM, `http-server`/*HeartbeatView is here*/, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC - value classes")
@@ -485,8 +505,8 @@ lazy val taskserver = project
     minicom,
     `agent-data`,
     common,
-    data,
-    tester % "compile->test")
+    dataJVM,
+    testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -502,7 +522,7 @@ lazy val taskserver = project
       log4j % "test"
   }
 
-lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, tester % "compile->test")
+lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -512,7 +532,7 @@ lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, tester % "c
       log4j % "test"
   }
 
-lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common, tester % "compile->test")
+lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {

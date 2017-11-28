@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
+import com.sos.jobscheduler.master.gui.common.RenderUtils.implicits._
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListBackend._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
@@ -39,7 +40,7 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
               <.tbody(//Slow: react.CssTransitionGroup(component = "tbody", transitionName = "orderTr",
                 //enterTimeout = 5000)(
                   sequence.map(idToOrder).toVdomArray(entry ⇒
-                    OrderTr.withKey(entry.id)(entry)))))
+                    OrderTr.withKey(entry.id.string)(entry)))))
     }
 
   private implicit def orderEntryReuse = OrderEntryReuse
@@ -52,7 +53,7 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
           <.td(^.cls := "orderTd")(order.nodeKey.workflowPath),
           <.td(^.cls := "orderTd")(order.nodeKey.nodeId),
           <.td(^.cls := "orderTd")(order.outcome.toString),
-          <.td(^.cls := "orderTd")(order.agentPath getOrElse "–": String),
+          <.td(^.cls := "orderTd")(order.agentPath map (_.string) getOrElse "–": String),
           <.td(order.state.toString))
         .ref { tr ⇒
           if (isUpdated) highligtTrs += tr

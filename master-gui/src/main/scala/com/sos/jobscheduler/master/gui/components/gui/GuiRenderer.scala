@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.master.gui.components.gui
 
+import com.sos.jobscheduler.data.event.EventId
+import com.sos.jobscheduler.master.data.MasterOverview
 import com.sos.jobscheduler.master.gui.components.SideBarComponent
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListComponent
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
-import com.sos.jobscheduler.master.gui.data.MasterOverview
-import com.sos.jobscheduler.master.gui.data.event.EventId
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.vdom.html_<^._
 

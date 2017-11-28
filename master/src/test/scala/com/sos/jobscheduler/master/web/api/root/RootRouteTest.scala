@@ -8,6 +8,8 @@ import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
+import com.sos.jobscheduler.common.CirceJsonSupport._
+import com.sos.jobscheduler.master.data.MasterOverview
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
 

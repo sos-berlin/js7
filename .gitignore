@@ -1,8 +1,11 @@
 # SBT
 /target/
 /*/target/
-/project/project/target/
+/*/*/target/
 
 # INTELLIJ IDEA
 /.idea/
 /out
+
+# MacOS
+.DS_Store

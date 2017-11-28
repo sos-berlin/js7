@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.master.gui.services
 
-import com.sos.jobscheduler.master.gui.data.event.{EventId, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.master.gui.data.{MasterOverview, Order, OrderEvent}
+import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent}
+import com.sos.jobscheduler.master.data.MasterOverview
 import io.circe
 import io.circe.Decoder
 import org.scalajs.dom

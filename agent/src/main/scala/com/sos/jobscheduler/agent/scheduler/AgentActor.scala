@@ -16,10 +16,10 @@ import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.system.JavaInformation
 import com.sos.jobscheduler.data.workflow.JobPath
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
@@ -139,7 +139,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
         startedAt = AgentStartInformation.StartedAt,
         isTerminating = terminating,
         system = systemInformation(),
-        java = JavaInformation())
+        java = javaInformation)
   }
 
   private def executeExternalCommand(externalCommand: Input.ExternalCommand, jobs: Seq[(JobPath, ActorRef)]): Unit = {

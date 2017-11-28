@@ -10,6 +10,8 @@ object Dependencies {
   val akkaHttpVersion = "10.0.10"
   val slf4jVersion = "1.7.25"
   val log4jVersion = "2.9.0"
+  val circeVersion = "0.8.0"
+  val scalaTestVersion = "3.0.4"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
@@ -23,8 +25,8 @@ object Dependencies {
 
   val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
   val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
-  val scalaTest           = "org.scalatest" %% "scalatest" % "3.0.4"
-  val scalactic           = "org.scalactic" %% "scalactic" % "3.0.4"
+  val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion
+  val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0" :: slf4j :: Nil
 
   val tagging             = "com.softwaremill.common" %% "tagging" % "2.2.0"
@@ -42,9 +44,9 @@ object Dependencies {
   val akkaHttpJson        = akkaHttpSprayJson :: Nil
 
   val sprayJson           = "io.spray" %% "spray-json" % "1.3.3" :: scalaReflect :: Nil
-  val circe               = "io.circe" %% "circe-core" % "0.8.0" ::
-                            "io.circe" %% "circe-parser" % "0.8.0" ::
-                            "io.circe" %% "circe-generic" % "0.8.0" :: Nil
+  val circe               = "io.circe" %% "circe-core" % circeVersion ::
+                            "io.circe" %% "circe-parser" % circeVersion ::
+                            "io.circe" %% "circe-generic" % circeVersion :: Nil
 
   val scalaTags           = "com.lihaoyi" %% "scalatags" % "0.6.5"
 

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration._
 import com.sos.jobscheduler.agent.data.ProcessKillScript
 import com.sos.jobscheduler.agent.web.common.ExternalWebService
 import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.convert.As.asAbsolutePath
+import com.sos.jobscheduler.base.convert.AsJava.{StringAsPath, asAbsolutePath}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.KeystoreReference

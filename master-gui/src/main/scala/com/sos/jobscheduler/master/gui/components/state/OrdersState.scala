@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.master.gui.components.state
 
-import com.sos.jobscheduler.master.gui.components.Utils._
+import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.master.gui.common.Utils._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
-import com.sos.jobscheduler.master.gui.data.OrderEvent.{OrderAdded, OrderCoreEvent}
-import com.sos.jobscheduler.master.gui.data.event.{EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.master.gui.data.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.gui.services.MasterApi
 import org.scalajs.dom
 import scala.collection.immutable.Seq

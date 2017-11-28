@@ -146,7 +146,7 @@ private[simplegui] object MasterHtmlPage {
     Instant.ofEpochSecond(LocalDate.now(MasterHtmlPage.OurZoneId).toEpochDay * 24*3600)
 
   def eventIdToLocalHtml(eventId: EventId, withDateBefore: Instant = Instant.MAX, withSubseconds: Boolean = true): Frag = {
-    val instant = EventId.toInstant(eventId)
+    val instant = EventId.toTimestamp(eventId).toInstant
     seqFrag(
       instantToHtml(instant, if (instant >= withDateBefore) LocalTimeFormatter else LocalDateTimeFormatter),
       withSubseconds option subsecondsToHtml(instant))

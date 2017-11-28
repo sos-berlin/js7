@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.gui.components.state
 
-import com.sos.jobscheduler.master.gui.data.MasterOverview
+import com.sos.jobscheduler.master.data.MasterOverview
 import com.sos.jobscheduler.master.gui.services.MasterApi
 
 /**

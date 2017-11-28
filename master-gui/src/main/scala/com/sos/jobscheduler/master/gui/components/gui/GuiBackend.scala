@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.master.gui.components.gui
 
+import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent}
 import com.sos.jobscheduler.master.gui.components.gui.GuiBackend._
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
-import com.sos.jobscheduler.master.gui.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.master.gui.data.{Order, OrderEvent}
 import com.sos.jobscheduler.master.gui.services.MasterApi
 import com.sos.jobscheduler.master.gui.services.MasterApi.Response
 import japgolly.scalajs.react.vdom.html_<^._

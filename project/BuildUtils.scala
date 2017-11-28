@@ -1,11 +1,17 @@
 import java.nio.file.{FileVisitOption, Files}
-import sbt.File
+import sbt.{File, ModuleID}
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 
 object BuildUtils {
   lazy val isWindows = sys.props("os.name") startsWith "Windows"
   lazy val isMac = sys.props("os.name") startsWith "Mac OS"
+
+  implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
+
+  implicit class PercentModuleIDSeq(val delegate: Seq[sbt.ModuleID]) extends AnyVal {
+    def %(configurations: String) = delegate map { _ % configurations }
+  }
 
   def recursiveFileMapping(directory: File, to: String = ""): Seq[(File, String)] = {
     val to_ = (to stripSuffix "/") + "/"

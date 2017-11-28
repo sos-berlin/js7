@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp.https
 
+import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
