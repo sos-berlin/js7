@@ -1,31 +1,25 @@
 package com.sos.jobscheduler.tester
 
-import io.circe
-import io.circe.Json
-import io.circe.generic.decoding.DerivedDecoder
-import io.circe.generic.encoding.DerivedObjectEncoder
 import io.circe.parser.parse
 import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json, Printer}
 import java.lang.Character.isWhitespace
 import org.scalatest.Assertions._
-import shapeless.Lazy
 
 /**
   * @author Joacim Zschimmer
   */
 object CirceJsonTester {
-  private val printer = circe.Printer.noSpaces.copy(dropNullKeys = true/*drops None*/)
+  private val printer = Printer.noSpaces.copy(dropNullKeys = true/*drops None*/)
 
-  private[tester] def testCirceJson[A](a: A, jsonString: String)(implicit lazyEncoder: Lazy[DerivedObjectEncoder[A]], lazyDecoder: Lazy[DerivedDecoder[A]]): Unit = {
-    implicit val decoder = lazyDecoder.value
-    implicit val encoder = lazyEncoder.value
-
+  def testJson[A: Encoder: Decoder](a: A, jsonString: String): Unit = {
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullKeys = true)
-
-    assert(Right(asJson) == parse(jsonString))
-    assert(parse(jsonString).flatMap(_.as[A]) == Right(a))
-    assert(printer.pretty(asJson).length == jsonString.count(o ⇒ !isWhitespace(o)))
-    assert(parse(jsonString) == parse(printer.pretty(asJson)))
+    val compressedJsonString = jsonString filter (o ⇒ !isWhitespace(o))
+    val parsed = parse(jsonString).toTry.get
+    assert(asJson == parsed)
+    assert(parsed.as[A].toTry.get == a)
+    assert(printer.pretty(asJson).length == compressedJsonString.length, s", expected: $compressedJsonString")
+    assert(parsed == parse(printer.pretty(asJson)).toTry.get)
     assert(parse(printer.pretty(asJson)) == Right(asJson))
   }
 

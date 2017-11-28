@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.agent.scheduler
 
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.typed.Subtype
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.common.auth.UserId
-import spray.json.DefaultJsonProtocol.jsonFormat1
+import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
@@ -10,8 +11,9 @@ import spray.json.DefaultJsonProtocol.jsonFormat1
 private[scheduler] sealed trait AgentSnapshot
 
 private[scheduler] object AgentSnapshot {
+  @JsonCodec
   final case class Master(userId: UserId) extends AgentSnapshot
 
-  val jsonFormat = TypedJsonFormat[Any](
-    Subtype(jsonFormat1(Master.apply)))
+  val JsonCodec = TypedJsonCodec[Any](
+    Subtype[Master])
 }

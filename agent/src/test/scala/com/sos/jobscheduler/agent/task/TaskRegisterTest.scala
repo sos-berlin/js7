@@ -133,7 +133,7 @@ private object TaskRegisterTest {
 
     val jobPath = JobPath("/TEST")
     val pidOption = Some(Pid(123))
-    val overview = TaskOverview(jobPath, id, pidOption, now)
+    val overview = TaskOverview(jobPath, id, pidOption, now.toTimestamp)
     val terminatedPromise = Promise[Completed]()
     var signalled: ProcessSignal = null
 

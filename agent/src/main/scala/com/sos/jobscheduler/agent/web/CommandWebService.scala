@@ -7,10 +7,9 @@ import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.akkahttp.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.data.session.SessionToken
 import scala.concurrent.ExecutionContext
-import spray.json.DefaultJsonProtocol._
 
 /**
  * @author Joacim Zschimmer

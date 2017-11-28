@@ -5,7 +5,8 @@ import com.google.common.base.Ascii
 import com.sos.jobscheduler.shared.common.jsonseq.OutputStreamJsonSeqWriter._
 import java.io.{BufferedOutputStream, OutputStream}
 import org.jetbrains.annotations.TestOnly
-import spray.json.{CompactPrinter, JsValue}
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import io.circe.Json
 
 /**
   * MIME media type application/json-seq, RFC 7464 "JavaScript Object Notation (JSON) Text Sequences".
@@ -26,8 +27,8 @@ final class OutputStreamJsonSeqWriter(out: OutputStream) extends AutoCloseable {
   }
 
   @TestOnly
-  private[jsonseq] def writeJson(jsValue: JsValue): Unit =
-    writeJson(ByteString.fromString(CompactPrinter(jsValue)))
+  private[jsonseq] def writeJson(json: Json): Unit =
+    writeJson(ByteString.fromString(json.compactPrint))
 
   def writeJson(byteString: ByteString): Unit = {
     if (array == null || array.length < byteString.length) {

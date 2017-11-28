@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.agent.web
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
@@ -9,13 +8,16 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
-import com.sos.jobscheduler.common.akkahttp.JsObjectMarshallers._
 import com.sos.jobscheduler.common.akkahttp.JsonString
-import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.common.CirceJsonSupport._
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import io.circe.Json
+import io.circe.parser.parse
+import io.circe.syntax.EncoderOps
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
-import spray.json._
+import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -44,11 +46,13 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
     val json = """{
         "TYPE": "Terminate",
         "sigtermProcesses": false,
-        "sigkillProcessesAfter": "PT999S"
+        "sigkillProcessesAfter": 999
       }"""
     postJsonCommand(json) ~> check {
+      if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
       assert(responseAs[AgentCommand.Accepted.type] == AgentCommand.Accepted)
-      assert(responseAs[String].parseJson == """{ "TYPE": "Accepted" }""".parseJson)
+      assert(responseEntity.toStrict(9.seconds).value.get.get.data.utf8String.parseJson ==
+        """{ "TYPE": "Accepted" }""".parseJson)
     }
   }
 
@@ -59,24 +63,24 @@ final class CommandWebServiceTest extends FreeSpec with WebServiceTest with Comm
 
   "commandHandler returns overview" in {
     Get("/test/agent/api/command") ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[JsObject] == JsObject(
-        "currentCommandCount" → JsNumber(111),
-        "totalCommandCount" → JsNumber(222)))
+      assert(responseAs[Json] == Json.obj(
+        "currentCommandCount" → Json.fromInt(111),
+        "totalCommandCount" → Json.fromInt(222)))
     }
   }
 
   "commandHandler/ returns array of running command" in {
     Get("/test/agent/api/command/") ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
-      assert(responseAs[JsArray] == JsArray(
-        JsObject(
-          "internalId" → JsString("333"),
-          "startedAt" → JsString("2015-06-22T12:00:00Z"),
-          "command" → (TestCommand: AgentCommand).toJson)))
+      assert(responseAs[Json] == Json.fromValues(List(
+        Json.obj(
+          "internalId" → Json.fromString("333"),
+          "startedAt" → Json.fromString("2015-06-22T12:00:00Z"),
+          "command" → (TestCommand: AgentCommand).asJson))))
     }
   }
 }
 
 private object CommandWebServiceTest {
-  private val TestCommand = Terminate(sigkillProcessesAfter = Some(999.s))
+  private val TestCommand = Terminate(sigkillProcessesAfter = Some(999.seconds))
 }

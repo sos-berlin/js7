@@ -1,15 +1,16 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import com.sos.jobscheduler.base.sprayjson.typed.TypedJsonFormat
+import com.sos.jobscheduler.base.circeutils.CirceCodec
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.common.BuildInfo
-import com.sos.jobscheduler.data.event.{Event, KeyedTypedEventJsonFormat}
+import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 
 /**
   * @author Joacim Zschimmer
   */
 class JsonJournalMeta[E <: Event](
-  val snapshotJsonFormat: TypedJsonFormat[Any],
-  implicit val eventJsonFormat: KeyedTypedEventJsonFormat[E])
+  val snapshotJsonCodec: TypedJsonCodec[Any],
+  implicit val eventJsonCodec: KeyedEventTypedJsonCodec[E])
 extends StreamConversion
 
 object JsonJournalMeta {

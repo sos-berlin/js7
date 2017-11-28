@@ -1,18 +1,15 @@
 package com.sos.jobscheduler.agent.command
 
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import io.circe.generic.JsonCodec
 import java.time.Instant
-import spray.json.DefaultJsonProtocol._
+import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.InstantJsonCodec
 
 /**
  * @author Joacim Zschimmer
  */
+@JsonCodec
 final case class CommandRunOverview(
   internalId: InternalCommandId,
   startedAt: Instant,
   command: AgentCommand)
-
-object CommandRunOverview {
-  implicit val MyJsonFormat = jsonFormat3(apply)
-}

@@ -14,6 +14,7 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -70,6 +71,6 @@ final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCl
 }
 
 private object AgentClientMainIT {
-  private val ExpectedTerminate = Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.s))
+  private val ExpectedTerminate = Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
 }
 

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.task
 
 import com.sos.jobscheduler.data.workflow.JobPath
-import spray.json.DefaultJsonProtocol._
+import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
@@ -12,6 +12,7 @@ sealed trait StartTask{
 
 
 
+@JsonCodec
 final case class StartApiTask(
   jobPath: JobPath,
   javaOptions: String,
@@ -20,15 +21,14 @@ extends StartTask
 
 object StartApiTask {
   val SerialTypeName = "StartApiTask"
-  implicit val MyJsonFormat = jsonFormat3(apply)
 }
 
 
 
+@JsonCodec
 final case class StartNonApiTask(jobPath: JobPath)
 extends StartTask
 
 object StartNonApiTask {
   val SerialTypeName = "StartNonApiTask"
-  implicit val MyJsonFormat = jsonFormat1(apply)
 }

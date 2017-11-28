@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.agent.views
 
-import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.base.circeutils.CirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.InstantJsonCodec
 import com.sos.jobscheduler.base.system.SystemInformation
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.data.system.JavaInformation
 import java.time.Instant
-import spray.json.DefaultJsonProtocol._
 
 /**
  * @author Joacim Zschimmer
@@ -17,5 +19,7 @@ final case class AgentOverview(
   java: JavaInformation)
 
 object AgentOverview {
-  implicit val MyJsonFormat = jsonFormat5(apply)
+  intelliJuseImport(InstantJsonCodec)
+
+  implicit val JsonCodec: CirceCodec[AgentOverview] = deriveCirceCodec[AgentOverview]
 }

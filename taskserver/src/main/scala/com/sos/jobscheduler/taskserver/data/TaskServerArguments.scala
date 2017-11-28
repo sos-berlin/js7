@@ -1,20 +1,19 @@
 package com.sos.jobscheduler.taskserver.data
 
 import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
-import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.jobscheduler.base.sprayjson.SprayJson.JsonFormats._
+import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.{DurationDecoder, DurationEncoder, PathJsonCodec}
 import com.sos.jobscheduler.common.scalautil.FileUtils.EmptyPath
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
 import com.sos.jobscheduler.data.workflow.JobPath
+import io.circe.generic.JsonCodec
 import java.nio.file.Path
 import java.time.Duration
-import spray.json.DefaultJsonProtocol._
-import spray.json.RootJsonFormat
 
 /**
  * @author Joacim Zschimmer
  */
+@JsonCodec
 final case class TaskServerArguments(
   agentTaskId: AgentTaskId,
   jobPath: JobPath,
@@ -32,6 +31,8 @@ final case class TaskServerArguments(
 }
 
 object TaskServerArguments {
+  (DurationEncoder, DurationDecoder, PathJsonCodec)  // For IntelliJ import
+
   def forTest(
     tcpPort: Int = 999999999,
     directory: Path = EmptyPath,
@@ -43,6 +44,4 @@ object TaskServerArguments {
       logDirectory = temporaryDirectory,
       stdFileMap = stdFileMap,
       rpcKeepaliveDurationOption = None)
-
-  implicit val jsonFormat: RootJsonFormat[TaskServerArguments] = jsonFormat10(apply)
 }

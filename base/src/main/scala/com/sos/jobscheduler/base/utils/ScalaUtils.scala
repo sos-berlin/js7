@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.exceptions.PublicException
+import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -132,5 +133,13 @@ object ScalaUtils {
 
   implicit class SwitchStatement[A](val delegate: A) extends AnyVal {
     def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.callIfDefined(delegate)
+  }
+
+  implicit class RichEither[L <: Throwable, R](val underlying: Either[L, R]) extends AnyVal {
+    def force: R =
+      underlying match {
+        case Left(t) ⇒ throw t.appendCurrentStackTrace  // Stacktrace from Left may be empty
+        case Right(o) ⇒ o
+      }
   }
 }

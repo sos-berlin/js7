@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.common.system
 
 import com.sos.jobscheduler.base.system.SystemInformation
+import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -13,6 +13,6 @@ final class SystemInformationsTest extends FreeSpec {
 
   "JSON" in {
     val o = SystemInformations.systemInformation()
-    assert(o.toJson.convertTo[SystemInformation] == o)
+    assert(o.asJson.as[SystemInformation] == Right(o))
   }
 }

@@ -106,7 +106,7 @@ object TestMasterAgent {
       JavaShutdownHook.add("TestMasterAgent") {
         print('\n')
         (for (agent ← agents) yield {
-          agent.commandHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.s)))
+          agent.commandHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(3.seconds)))
           val r = agent.terminated
           agent.close()
           r
@@ -135,7 +135,7 @@ object TestMasterAgent {
 
       val master = RunningMaster(injector) await 99.s
       val startTime = now
-      master.executeCommand(MasterCommand.ScheduleOrdersEvery(10.s))
+      master.executeCommand(MasterCommand.ScheduleOrdersEvery(10.s.toFiniteDuration))
       injector.instance[ActorSystem].actorOf(Props {
         new Actor {
           injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])

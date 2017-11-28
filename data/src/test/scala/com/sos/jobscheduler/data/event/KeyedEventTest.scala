@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.data.event
 
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.event.KeyedEventTest._
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import spray.json.DefaultJsonProtocol._
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -49,14 +49,12 @@ final class KeyedEventTest extends FreeSpec {
       }""")
   }
 
-  private def check(event: KeyedEvent[TestEvent], json: String): Unit = {
-    implicit val testEventJsonFormat = TypedJsonFormat[TestEvent](
-      Subtype(jsonFormat1(StringEvent)),
-      Subtype(jsonFormat1(IntEvent)),
-      Subtype(jsonFormat0(() ⇒ SimpleEvent)))
-    val jsValue = json.parseJson
-    assert (event.toJson == jsValue)
-    assert (event == jsValue.convertTo[KeyedEvent[TestEvent]] )
+  private def check(event: KeyedEvent[TestEvent], jsonString: String): Unit = {
+    implicit val testEventJsonFormat = TypedJsonCodec[TestEvent](
+      Subtype(deriveCirceCodec[StringEvent]),
+      Subtype(deriveCirceCodec[IntEvent]),
+      Subtype(SimpleEvent))
+    testJson(event, jsonString)
   }
 
   "SimpleEvent with NoKey" in {
@@ -66,12 +64,10 @@ final class KeyedEventTest extends FreeSpec {
       }""")
   }
 
-  private def checkSingletonKey(event: KeyedEvent[AEvent.type], json: String): Unit = {
-    implicit val testEventJsonFormat = TypedJsonFormat[AEvent.type](
-      Subtype(jsonFormat0(() ⇒ AEvent)))
-    val jsValue = json.parseJson
-    assert (event.toJson == jsValue)
-    assert (event == jsValue.convertTo[KeyedEvent[AEvent.type]] )
+  private def checkSingletonKey(event: KeyedEvent[AEvent.type], jsonString: String): Unit = {
+    implicit val testEventJsonFormat = TypedJsonCodec[AEvent.type](
+      Subtype(AEvent))
+    testJson(event, jsonString)
   }
 }
 

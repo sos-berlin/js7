@@ -1,18 +1,17 @@
 package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.data.workflow.NodeKey
-import spray.json.DefaultJsonProtocol._
+import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
+@JsonCodec
 final case class OrderOverview(
   id: OrderId,
   nodeKey: NodeKey,
   state: Order.State)
 
 object OrderOverview {
-  implicit val jsonFormat = jsonFormat3(apply)
-
   def fromOrder(order: Order[Order.State]) = OrderOverview(order.id, order.nodeKey, order.state)
 }

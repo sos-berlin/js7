@@ -8,14 +8,14 @@ import akka.http.scaladsl.model.MediaTypes._
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, Authorization, BasicHttpCredentials, `Cache-Control`}
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, StatusCode}
-import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import com.sos.jobscheduler.agent.client.TextAgentClient._
 import com.sos.jobscheduler.agent.data.web.AgentUris
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.decodeResponse
-import com.sos.jobscheduler.common.akkahttp.SimpleTypeSprayJsonSupport.jsValueMarshaller
-import com.sos.jobscheduler.common.akkahttp.YamlJsonConversion.yamlToJsValue
+import com.sos.jobscheduler.common.akkahttp.CirceToYaml.yamlToJson
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.common.configutils.Configs
@@ -23,9 +23,9 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.data.agent.AgentAddress
+import io.circe.Json
 import scala.concurrent.Future
 import scala.util.Try
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -75,9 +75,9 @@ extends AutoCloseable {
       httpResponse ← http.singleRequest(Gzip.encodeMessage(myRequest), httpsConnectionContext)
       string ←
         if (httpResponse.status.isSuccess)
-          Unmarshal(decodeResponse(httpResponse)).to[String]
+          decodeResponse(httpResponse).utf8StringFuture
         else
-          for (message ← Unmarshal(decodeResponse(httpResponse)).to[String]) yield
+          for (message ← decodeResponse(httpResponse).utf8StringFuture) yield
             throw new HttpException(httpResponse.status, message)
     } yield string
   }
@@ -92,10 +92,8 @@ extends AutoCloseable {
 object TextAgentClient {
   private val ConfigurationResource = JavaResource("com/sos/jobscheduler/agent/client/main/akka.conf")
 
-  implicit val JsValueMarshaller = jsValueMarshaller[JsValue]
-
-  private def forceToJson(jsonOrYaml: String): JsValue =
-    Try { JsonParser(jsonOrYaml) } getOrElse yamlToJsValue(jsonOrYaml)
+  private def forceToJson(jsonOrYaml: String): Json =
+    Try { jsonOrYaml.parseJson } getOrElse yamlToJson(jsonOrYaml)
 
   final class HttpException(val status: StatusCode, message: String) extends RuntimeException(s"$status: $message".trim)
 }

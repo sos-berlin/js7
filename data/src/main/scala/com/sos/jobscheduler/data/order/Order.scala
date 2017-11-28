@@ -1,16 +1,16 @@
 package com.sos.jobscheduler.data.order
 
-import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.CirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
-import java.time.Instant
+import io.circe.generic.JsonCodec
 import scala.reflect.ClassTag
-import spray.json.DefaultJsonProtocol._
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -82,8 +82,6 @@ final case class Order[+S <: Order.State](
 }
 
 object Order {
-  private implicit def InstantJsonFormat = JavaTimeJsonFormats.NumericInstantJsonFormat  // Override default
-
   val InitialOutcome = Good(true)
 
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Idle] =
@@ -103,6 +101,7 @@ object Order {
     def apply(returnValue: Boolean) = if (returnValue) True else False
   }
 
+  @JsonCodec
   final case class Bad(reason: Bad.Reason) extends Outcome {
     def isSuccess = false
   }
@@ -117,12 +116,14 @@ object Order {
     final case object AgentAborted extends Reason {
       def message = "Agent aborted while order was InProcess"
     }
+
+    @JsonCodec
     final case class Other(message: String) extends Reason
 
     object Reason {
-      implicit val jsonFormat = TypedJsonFormat[Reason](
-        Subtype(jsonFormat0(() ⇒ AgentAborted)),
-        Subtype(jsonFormat1(Other)))
+      implicit val JsonCodec = TypedJsonCodec[Reason](
+        Subtype(AgentAborted),
+        Subtype[Other])
     }
   }
 
@@ -131,42 +132,21 @@ object Order {
   }
 
   object Outcome {
-    implicit val outcomeJsonFormat = TypedJsonFormat[Outcome](
-      Subtype(jsonFormat1(Good.apply)),
-      Subtype(jsonFormat1((o: Bad.Reason) ⇒ Bad(o))))
+    implicit val JsonCodec = TypedJsonCodec[Outcome](
+      Subtype[Good],
+      Subtype[Bad])
   }
 
+  @JsonCodec
   final case class Good private(returnValue: Boolean) extends Outcome {
     def isSuccess = returnValue
   }
-
-  implicit val IdleJsonFormat: TypedJsonFormat[Idle] = TypedJsonFormat(
-    Subtype(jsonFormat1(Scheduled)),
-    Subtype(jsonFormat0(() ⇒ StartNow)),
-    Subtype(jsonFormat0(() ⇒ Detached)),
-    Subtype(jsonFormat0(() ⇒ Ready)))
-
-  implicit val StateJsonFormat: TypedJsonFormat[State] = TypedJsonFormat(
-    Subtype[Idle],
-    Subtype(jsonFormat1(Scheduled)),
-    Subtype(jsonFormat0(() ⇒ StartNow)),
-    Subtype(jsonFormat0(() ⇒ InProcess)),
-    Subtype(jsonFormat0(() ⇒ Processed)),
-    Subtype(jsonFormat0(() ⇒ Detachable)),
-    Subtype(jsonFormat0(() ⇒ Finished)))
-
-  private implicit val rootJsonFormat: RootJsonFormat[Order[State]] =
-    jsonFormat6((a: OrderId, b: NodeKey, c: State, d: Map[String, String], e: Order.Outcome, f: Option[AgentPath]) ⇒
-      Order(a, b, c, d, e, f))
-
-  implicit def jsonFormat[S <: Order.State]: RootJsonFormat[Order[S]] =
-    rootJsonFormat.asInstanceOf[RootJsonFormat[Order[S]]]
 
   sealed trait State
   sealed trait Idle extends State
   sealed trait NotStarted extends Idle
   sealed trait Started extends State
-  final case class Scheduled(at: Instant) extends NotStarted
+  final case class Scheduled(at: Timestamp) extends NotStarted
   final case object StartNow extends NotStarted
   case object Ready extends Started with Idle
   case object InProcess extends Started
@@ -174,4 +154,21 @@ object Order {
   case object Detachable extends Started
   case object Detached extends Started with Idle
   case object Finished extends State
+
+  implicit val IdleJsonCodec: CirceCodec[Idle] = TypedJsonCodec[Idle](
+    Subtype(deriveCirceCodec[Scheduled]),
+    Subtype(StartNow),
+    Subtype(Detached),
+    Subtype(Ready))
+
+  implicit val StateJsonCodec: CirceCodec[State] = TypedJsonCodec(
+    Subtype[Idle],
+    Subtype(InProcess),
+    Subtype(Processed),
+    Subtype(Detachable),
+    Subtype(Finished))
+
+  implicit val JsonCodec: CirceCodec[Order[State]] = deriveCirceCodec[Order[State]]
+
+  implicit val IdleOrderJsonCodec: CirceCodec[Order[Idle]] = deriveCirceCodec[Order[Idle]]
 }

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.system
 
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -9,11 +9,10 @@ import spray.json._
 final class SystemInformationTest extends FreeSpec {
 
   "JSON 1" in {
-    val obj = SystemInformation.ForTest
-    val json = s"""{
-      "hostname": "HOSTNAME",
-      "mxBeans": {}
-    }""".parseJson
-    assert(obj.toJson == json)
+    testJson(SystemInformation.ForTest,
+      s"""{
+        "hostname": "HOSTNAME",
+        "mxBeans": {}
+      }""")
   }
 }

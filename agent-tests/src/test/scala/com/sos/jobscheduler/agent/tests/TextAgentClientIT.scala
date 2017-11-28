@@ -14,13 +14,13 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.OurAuthenticator
 import com.sos.jobscheduler.common.auth.{HashedPassword, User, UserAndPassword, UserId}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.HasCloser
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.data.agent.AgentAddress
 import javax.inject.Singleton
 import org.scalatest.Assertions._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -110,7 +110,7 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
 }
 
 private object TextAgentClientIT {
-  private val ExpectedTerminate = AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.s))
+  private val ExpectedTerminate = AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
   private val TestUserId = UserId("SHA512-USER")
   private val Password = SecretString("SHA512-PASSWORD")
 

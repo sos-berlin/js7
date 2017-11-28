@@ -13,6 +13,8 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stampe
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalActor._
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
+import io.circe.Json
+import io.circe.syntax.EncoderOps
 import java.nio.file.Files.move
 import java.nio.file.StandardCopyOption.{ATOMIC_MOVE, REPLACE_EXISTING}
 import java.nio.file.{Files, Path, Paths}
@@ -20,7 +22,7 @@ import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
-import spray.json._
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 
 /**
   * @author Joacim Zschimmer
@@ -33,7 +35,7 @@ final class JsonJournalActor[E <: Event](
   keyedEventBus: StampedKeyedEventBus)
 extends Actor with Stash {
 
-  import meta.{convertOutputStream, eventJsonFormat, snapshotJsonFormat}
+  import meta.{convertOutputStream, eventJsonCodec, snapshotJsonCodec}
 
   private val logger = Logger.withPrefix[JsonJournalActor[_]](file.getFileName.toString)
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -88,7 +90,7 @@ extends Actor with Stash {
   private def becomeReady(): Unit = {
     context.become(ready)
     logger.info(s"Ready, writing ${if (syncOnCommit) "(with sync)" else "(without sync)"} journal file '${jsonWriter.file}'")
-    jsonWriter.writeJson(ByteString(CompactPrinter(EventsHeader)))
+    jsonWriter.writeJson(ByteString(EventsHeader.compactPrint))
   }
 
   private def ready: Receive = {
@@ -98,17 +100,17 @@ extends Actor with Stash {
     case Input.Store(keyedEvents, replyTo, noSync) ⇒
       val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]]) }}
       Try {
-        stampedOptions.flatten map { _.toJson }
+        stampedOptions.flatten map { _.asJson }
       } match {
-        case Success(jsValues) ⇒
-          writeToDisk(jsValues, replyTo)
+        case Success(jsons) ⇒
+          writeToDisk(jsons, replyTo)
           writtenBuffer += Written(stampedOptions, replyTo, sender())
           dontSync &= noSync
-          statistics.countCommit(jsValues.size)
+          statistics.countCommit(jsons.size)
           self.forward(Internal.Commit(writtenBuffer.length))  // Commit after possibly outstanding Input.Store messages
 
         case Failure(t) ⇒
-          logger.error(s"$t")
+          logger.error(s"$t", t)
           replyTo.forward(Output.SerializationFailure(t))  // TODO Handle message in JournaledActor
       }
 
@@ -175,10 +177,10 @@ extends Actor with Stash {
       jsonWriter.close()
     }
     temporaryJsonWriter = newJsonWriter(Paths.get(s"$file.tmp"), append = false)
-    temporaryJsonWriter.writeJson(ByteString(CompactPrinter(SnapshotsHeader)))
+    temporaryJsonWriter.writeJson(ByteString(SnapshotsHeader.compactPrint))
     val journalingActors = keyToJournalingActor.values.toSet ++ keylessJournalingActors
     context.actorOf(
-      Props { new SnapshotWriter(temporaryJsonWriter.writeJson, journalingActors, snapshotJsonFormat) },
+      Props { new SnapshotWriter(temporaryJsonWriter.writeJson, journalingActors, snapshotJsonCodec) },
       "SnapshotWriter")
     context.become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
   }
@@ -209,12 +211,12 @@ extends Actor with Stash {
   private def newJsonWriter(file: Path, append: Boolean) =
     new FileJsonWriter(Header, convertOutputStream, file, append = append)
 
-  private def writeToDisk(jsValues: Seq[JsValue], errorReplyTo: ActorRef): Unit =
+  private def writeToDisk(jsons: Seq[Json], errorReplyTo: ActorRef): Unit =
     try {
-      for (jsValue ← jsValues) jsonWriter.writeJson(ByteString(CompactPrinter(jsValue)))
+      for (jsValue ← jsons) jsonWriter.writeJson(ByteString(jsValue.compactPrint))
     } catch { case NonFatal(t) ⇒
       val tt = t.appendCurrentStackTrace
-      logger.error(s"$t")
+      logger.error(s"$t", t)
       errorReplyTo.forward(Output.StoreFailure(tt))  // TODO Handle message in JournaledActor
       throw tt  // Stop Actor
     }
@@ -240,8 +242,8 @@ extends Actor with Stash {
 }
 
 object JsonJournalActor {
-  val SnapshotsHeader = JsString("SNAPSHOTS")
-  val EventsHeader = JsString("EVENTS")
+  val SnapshotsHeader = Json.fromString("SNAPSHOTS")
+  val EventsHeader = Json.fromString("EVENTS")
 
   object Input {
     private[journal] final case class Start(recoveredJournalingActors: RecoveredJournalingActors)

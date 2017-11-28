@@ -1,14 +1,11 @@
 package com.sos.jobscheduler.agent.command
 
-import spray.json.DefaultJsonProtocol._
+import io.circe.generic.JsonCodec
 
 /**
  * @author Joacim Zschimmer
  */
+@JsonCodec
 final case class CommandHandlerOverview(
   currentCommandCount: Int,
   totalCommandCount: Long)
-
-object CommandHandlerOverview {
-  implicit val jsonFormat = jsonFormat2(apply)
-}

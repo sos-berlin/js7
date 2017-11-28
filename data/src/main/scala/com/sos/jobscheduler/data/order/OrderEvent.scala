@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.data.order
 
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.StdoutStderr._
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey}
-import spray.json.DefaultJsonProtocol._
 
 /**
   * @author Joacim Zschimmer
@@ -107,17 +107,17 @@ object OrderEvent {
     //type State = Finished.type
   }
 
-  implicit val OrderEventJsonFormat = TypedJsonFormat[OrderEvent](
-    Subtype(jsonFormat4(OrderAdded)),
-    Subtype(jsonFormat4(OrderAttached)),
-    Subtype(jsonFormat1(OrderMovedToAgent)),
-    Subtype(jsonFormat0(() ⇒ OrderMovedToMaster)),
-    Subtype(jsonFormat1(OrderStdoutWritten)),
-    Subtype(jsonFormat1(OrderStderrWritten)),
-    Subtype(jsonFormat2(OrderProcessed)),
-    Subtype(jsonFormat0(() ⇒ OrderDetached)),
-    Subtype(jsonFormat0(() ⇒ OrderDetachable)),
-    Subtype(jsonFormat0(() ⇒ OrderProcessingStarted)),
-    Subtype(jsonFormat1(OrderTransitioned)),
-    Subtype(jsonFormat0(() ⇒ OrderFinished)))
+  implicit val OrderEventJsonCodec = TypedJsonCodec[OrderEvent](
+    Subtype(deriveCirceCodec[OrderAdded]),
+    Subtype(deriveCirceCodec[OrderAttached]),
+    Subtype(deriveCirceCodec[OrderMovedToAgent]),
+    Subtype(OrderMovedToMaster),
+    Subtype(deriveCirceCodec[OrderStdoutWritten]),
+    Subtype(deriveCirceCodec[OrderStderrWritten]),
+    Subtype(deriveCirceCodec[OrderProcessed]),
+    Subtype(OrderDetached),
+    Subtype(OrderDetachable),
+    Subtype(OrderProcessingStarted),
+    Subtype(deriveCirceCodec[OrderTransitioned]),
+    Subtype(OrderFinished))
 }

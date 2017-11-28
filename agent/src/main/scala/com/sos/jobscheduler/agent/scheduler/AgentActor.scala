@@ -234,7 +234,7 @@ object AgentActor {
     case object Ready
   }
 
-  val MyJournalMeta = new JsonJournalMeta(AgentSnapshot.jsonFormat, AgentEvent.KeyedEventJsonFormat) with GzipCompression
+  val MyJournalMeta = new JsonJournalMeta(AgentSnapshot.JsonCodec, AgentEvent.KeyedEventJsonCodec) with GzipCompression
 
   private final class MasterRegister extends ActorRegister[UserId, ActorRef](identity) {
     override def onUnknownKey(userId: UserId) =

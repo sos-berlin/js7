@@ -7,13 +7,14 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
+import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.job.task.{SimpleShellTaskRunner, TaskRunner}
 import com.sos.jobscheduler.agent.scheduler.job.{JobActor, JobConfiguration, JobScript}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActorTest._
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
+import com.sos.jobscheduler.base.circeutils.typed.Subtype
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.akkautils.{CatchingActor, SupervisorStrategies}
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -25,7 +26,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
+import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderTransitioned}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
@@ -130,8 +131,8 @@ private object OrderActorTest {
     Map("VAR1" → "FROM-JOB"))
 
   private val TestJournalMeta = new JsonJournalMeta[OrderEvent](
-    snapshotJsonFormat = TypedJsonFormat[Any](Subtype[Order[Order.State]]),
-    eventJsonFormat = KeyedEvent.typedJsonFormat[OrderEvent](KeyedSubtype[OrderEvent]))
+    snapshotJsonCodec = TypedJsonCodec[Any](Subtype[Order[Order.State]]),
+    eventJsonCodec = KeyedEvent.typedJsonCodec[OrderEvent](KeyedSubtype[OrderEvent]))
   private implicit val TestAkkaTimeout = Timeout(99.seconds)
 
   private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutStderrType, String])
@@ -196,7 +197,7 @@ private object OrderActorTest {
 
     private def detaching: Receive = receiveOrderEvent orElse {
       case Completed ⇒
-        jobActor ! AgentCommand.Terminate(sigkillProcessesAfter = Some(0.s))
+        jobActor ! AgentCommand.Terminate(sigkillProcessesAfter = Some(0.seconds))
         become(terminatingJobActor)
 
       case JobActor.Output.ReadyForOrder ⇒  // Ready for next order

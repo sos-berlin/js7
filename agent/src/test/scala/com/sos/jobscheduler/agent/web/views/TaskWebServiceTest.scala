@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.agent.web.views
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
@@ -10,18 +9,18 @@ import com.sos.jobscheduler.agent.task.{BaseAgentTask, TaskRegister, TaskRegiste
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.agent.web.views.TaskWebServiceTest._
 import com.sos.jobscheduler.base.process.ProcessSignal
+import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.workflow.JobPath
+import io.circe.Json
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.collection.immutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
-import spray.json.DefaultJsonProtocol._
-import spray.json._
 
 /**
  * @author Joacim Zschimmer
@@ -50,32 +49,32 @@ final class TaskWebServiceTest extends FreeSpec with WebServiceTest with TaskWeb
   "task" in {
     Get("/agent/api/task") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TaskRegisterOverview] == TestOverview)
-      assert(responseAs[JsObject] == JsObject(
-        "currentTaskCount" → JsNumber(1),
-        "totalTaskCount" -> JsNumber(1)))
+      assert(responseAs[Json] == Json.obj(
+        "currentTaskCount" → Json.fromInt(1),
+        "totalTaskCount" → Json.fromInt(1)))
     }
   }
 
   "task/" in {
     Get("/agent/api/task/") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[immutable.Seq[TaskOverview]] == TestTaskOverviews)
-      assert(responseAs[JsArray] == JsArray(
-        JsObject(
-          "taskId" → JsString("1-123"),
-          "pid" → JsNumber(123),
-          "startedAt" → JsNumber(1433937600000L),  //JsString("2015-06-10T12:00:00Z"),
-          "jobPath" → JsString("/FOLDER/JOB"))))
+      assert(responseAs[Json] == Json.fromValues(List(
+        Json.obj(
+          "taskId" → Json.fromString("1-123"),
+          "pid" → Json.fromInt(123),
+          "startedAt" → Json.fromLong(1433937600000L),  //Json.fromString("2015-06-10T12:00:00Z"),
+          "jobPath" → Json.fromString("/FOLDER/JOB")))))
     }
   }
 
   "task/1-123" in {
     Get("/agent/api/task/1-123") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TaskOverview] == testTaskOverview(TestAgentTaskId))
-      assert(responseAs[JsObject] == JsObject(
-          "taskId" → JsString("1-123"),
-          "pid" → JsNumber(123),
-          "startedAt" → JsNumber(1433937600000L),  //JsString("2015-06-10T12:00:00Z"),
-          "jobPath" → JsString("/FOLDER/JOB")))
+      assert(responseAs[Json] == Json.obj(
+          "taskId" → Json.fromString("1-123"),
+          "pid" → Json.fromInt(123),
+          "startedAt" → Json.fromLong(1433937600000L),  //Json.fromString("2015-06-10T12:00:00Z"),
+          "jobPath" → Json.fromString("/FOLDER/JOB")))
     }
   }
 }
@@ -93,5 +92,5 @@ private object TaskWebServiceTest {
     jobPath = JobPath("/FOLDER/JOB"),
     TestAgentTaskId,
     pid = Some(Pid(123)),
-    Instant.parse("2015-06-10T12:00:00Z"))
+    Instant.parse("2015-06-10T12:00:00Z").toTimestamp)
 }

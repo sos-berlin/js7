@@ -74,7 +74,7 @@ object MasterMain {
         // TODO Interfers with Akkas CoordinatedShutdown shutdown hook
         onJavaShutdown(master)
       }
-      master.executeCommand(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration)) // Will block on recovery until Agents are started: await 99.s
+      master.executeCommand(MasterCommand.ScheduleOrdersEvery(OrderScheduleDuration.toFiniteDuration)) // Will block on recovery until Agents are started: await 99.s
       master.terminated andThen { case _ ⇒
         hook.remove()
       }

@@ -29,6 +29,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
@@ -61,7 +62,7 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
         sleep(2.s)
         assert(!whenStepEnded.isCompleted)
 
-        client.executeCommand(Terminate(sigkillProcessesAfter = Some(0.s))) await 99.s
+        client.executeCommand(Terminate(sigkillProcessesAfter = Some(0.seconds))) await 99.s
         val stepEnded = whenStepEnded await 99.s
         assert(stepEnded forall { e ⇒ !e.outcome.asInstanceOf[Order.Good].returnValue })
         agent.terminated await 99.s

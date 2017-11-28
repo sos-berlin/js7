@@ -1,14 +1,11 @@
 package com.sos.jobscheduler.data.workflow
 
-import spray.json.DefaultJsonProtocol._
+import io.circe.generic.JsonCodec
 
 /**
  * @author Joacim Zschimmer
  */
+@JsonCodec
 final case class NodeKey(workflowPath: WorkflowPath, nodeId: NodeId) {
   override def toString = s"${workflowPath.string}:${nodeId.string}"
-}
-
-object NodeKey {
-  implicit val MyJsonFormat = jsonFormat2(apply)
 }

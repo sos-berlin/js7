@@ -2,8 +2,10 @@ package com.sos.jobscheduler.master.order
 
 import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.typed.Subtype
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -12,14 +14,14 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.KeyedEventJsonFormats.MasterKeyedEventJsonFormat
+import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.order.MasterOrderKeeper._
@@ -52,7 +54,7 @@ with Stash {
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   import context.{become, dispatcher}
-  intelliJuseImports(dispatcher)
+  intelliJuseImport(dispatcher)
 
   private val journalFile = masterConfiguration.stateDirectory / "journal"
   private val agentRegister = new AgentRegister
@@ -254,7 +256,7 @@ with Stash {
 
   def executeMasterCommand(command: MasterCommand): Unit = command match {
     case MasterCommand.ScheduleOrdersEvery(every) ⇒
-      orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every)
+      orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every.toJavaDuration)
       sender() ! MasterCommand.Response.Accepted
 
     case MasterCommand.AddOrderIfNew(order) ⇒
@@ -338,13 +340,13 @@ with Stash {
 }
 
 object MasterOrderKeeper {
-  private val SnapshotJsonFormat = TypedJsonFormat[Any](
+  private val SnapshotJsonCodec = TypedJsonCodec[Any](
     Subtype[OrderScheduleEndedAt],
     Subtype[Order[Order.State]],
     Subtype[AgentEventId])
   //Subtype[Workflow])
 
-  private[order] val MyJournalMeta = new JsonJournalMeta(SnapshotJsonFormat, MasterKeyedEventJsonFormat) with GzipCompression
+  private[order] val MyJournalMeta = new JsonJournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec) with GzipCompression
 
   private val logger = Logger(getClass)
 

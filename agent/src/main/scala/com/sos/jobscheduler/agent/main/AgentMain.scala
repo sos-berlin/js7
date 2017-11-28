@@ -15,6 +15,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.taskserver.dotnet.DotnetEnvironment
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -25,8 +26,8 @@ import scala.util.{Failure, Success}
  */
 object AgentMain {
   private val logger = Logger(getClass)
-  private val OnJavaShutdownSigkillProcessesAfter = 5.s
-  private val ShutdownTimeout = OnJavaShutdownSigkillProcessesAfter + 2.s
+  private val OnJavaShutdownSigkillProcessesAfter = 5.seconds
+  private val ShutdownTimeout = OnJavaShutdownSigkillProcessesAfter + 2.seconds
 
   def main(args: Array[String]): Unit =
     try {
@@ -78,7 +79,7 @@ object AgentMain {
   private def onJavaShutdown(agent: RunningAgent): Unit = {
     logger.info("Terminating Agent due to Java shutdown")
     agent.commandHandler.execute(Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(OnJavaShutdownSigkillProcessesAfter)))
-    agent.terminated await ShutdownTimeout
+    agent.terminated await ShutdownTimeout.toJavaDuration
     agent.close()
     Log4j.shutdown()
   }

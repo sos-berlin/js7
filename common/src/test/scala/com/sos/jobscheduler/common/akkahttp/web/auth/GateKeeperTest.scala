@@ -2,21 +2,22 @@ package com.sos.jobscheduler.common.akkahttp.web.auth
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, OK, Unauthorized}
-import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.{HttpEntity, RequestEntity, Uri}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.testkit.TestDuration
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.akkahttp.JsObjectMarshallers.JsObjectMarshaller
+import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.auth.{HashedPassword, UserId}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
+import io.circe.Json
 import java.time.Instant.now
 import org.scalatest.FreeSpec
+import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import scala.concurrent.ExecutionContext
-import spray.json.JsObject
 
 /**
   * @author Joacim Zschimmer
@@ -58,7 +59,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
       }
 
       "POST JSON without authentication is rejected" in {
-        Post(uri, JsObject()) ~> route(newGateKeeper(conf, isUnsecuredHttp = false)) ~> check {
+        Post(uri, Json.obj()) ~> route(newGateKeeper(conf, isUnsecuredHttp = false)) ~> check {
           assert(!handled)
           assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
         }
@@ -75,7 +76,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
       }
 
       "POST JSON without authentication is accepted" in {
-        Post(uri, JsObject()) ~> route(newGateKeeper(conf, isUnsecuredHttp = true)) ~> check {
+        Post(uri, Json.obj()) ~> route(newGateKeeper(conf, isUnsecuredHttp = true)) ~> check {
           assert(responseAs[String] == "Anonymous")
         }
       }
@@ -94,7 +95,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
     }
 
     "POST JSON" in {
-      Post(uri, JsObject()) ~> route(conf) ~> check {
+      Post(uri, Json.obj()) ~> route(conf) ~> check {
         assert(!handled)
         assert(rejections.head.isInstanceOf[AuthenticationFailedRejection])
       }
@@ -159,7 +160,7 @@ final class GateKeeperTest extends FreeSpec with ScalatestRouteTest {
 
   private def addPostTextPlainText(conf: GateKeeper.Configuration): Unit = {
     "POST text/plain is rejected due to CSRF" in {
-      Post(uri, "TEXT") ~> route(newGateKeeper(conf, isUnsecuredHttp = true)) ~> check {
+      Post(uri, HttpEntity(`text/plain(UTF-8)`, "TEXT")) ~> route(newGateKeeper(conf, isUnsecuredHttp = true)) ~> check {
         assert(status == Forbidden)
       }
     }

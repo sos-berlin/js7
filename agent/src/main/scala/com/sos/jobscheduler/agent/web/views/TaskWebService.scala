@@ -6,18 +6,15 @@ import akka.http.scaladsl.server.Directives._
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.agent.task.TaskRegister
 import com.sos.jobscheduler.agent.web.common.AgentWebService
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.SprayJsonOrYamlSupport._
-import com.sos.jobscheduler.common.utils.IntelliJUtils._
+import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import scala.concurrent.ExecutionContext
-import spray.json.DefaultJsonProtocol._
 
 /**
  * @author Joacim Zschimmer
  */
 trait TaskWebService extends AgentWebService {
-
-  intelliJuseImports(rootFormat _)
 
   protected val taskRegister: TaskRegister
   protected implicit def executionContext: ExecutionContext
@@ -50,4 +47,8 @@ trait TaskWebService extends AgentWebService {
       }
     }
   }
+}
+
+object TaskWebService {
+  intelliJuseImport(() ⇒ jsonOrYamlMarshaller(null))
 }

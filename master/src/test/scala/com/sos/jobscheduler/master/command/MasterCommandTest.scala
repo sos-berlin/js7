@@ -5,20 +5,21 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.command.MasterCommand.Response._
 import com.sos.jobscheduler.master.command.MasterCommand._
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import spray.json._
 
 final class MasterCommandTest extends FreeSpec {
 
   "Terminate" in {
-    check(Terminate,
+    testJson[MasterCommand](Terminate,
       """{
         "TYPE": "Terminate"
-      }""".parseJson)
+      }""")
   }
 
   "AddOrderIfNew" in {
-    check(AddOrderIfNew(Order(OrderId("ORDER-ID"), NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true))),
+    testJson[MasterCommand](
+      AddOrderIfNew(Order(OrderId("ORDER-ID"), NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true))),
       """{
         "TYPE": "AddOrderIfNew",
         "order": {
@@ -38,31 +39,23 @@ final class MasterCommandTest extends FreeSpec {
              "returnValue": true
            }
          }
-       }""".parseJson)
+       }""")
   }
 
   "ScheduleOrdersEvery" in {
-    check(ScheduleOrdersEvery(12345.ms),
+    testJson[MasterCommand](
+      ScheduleOrdersEvery(12345.ms.toFiniteDuration),
       """{
         "TYPE": "ScheduleOrdersEvery",
         "every": 12.345
-       }""".parseJson)
+       }""")
   }
 
   "Response.Accepted" in {
-    check(Accepted,
+    testJson[MasterCommand.Response](
+      Accepted,
       """{
         "TYPE": "Accepted"
-      }""".parseJson)
-  }
-
-  private def check(command: MasterCommand, json: JsValue): Unit = {
-    assert(command.toJson == json)
-    assert(command == json.convertTo[MasterCommand])
-  }
-
-  private def check(response: Response, json: JsValue): Unit = {
-    assert(response.toJson == json)
-    assert(response == json.convertTo[Response])
+      }""")
   }
 }

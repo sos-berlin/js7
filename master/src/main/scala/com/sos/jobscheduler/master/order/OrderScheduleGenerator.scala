@@ -45,7 +45,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
 
   protected def recoverFromEvent(event: OrderScheduleEvent) = event match {
     case OrderScheduleEvent.GeneratedUntil(until) ⇒
-      generatedUntil = until
+      generatedUntil = until.toInstant
       recovered = true
   }
 
@@ -88,7 +88,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
   private def onOrdersAdded(until: Instant, every: Duration): Unit = {
     context.become(receive)
     unstashAll()
-    persist(OrderScheduleEvent.GeneratedUntil(until)) { e ⇒
+    persist(OrderScheduleEvent.GeneratedUntil(until.toTimestamp)) { e ⇒
       update(e)
       self ! Internal.ScheduleNextGeneration(every)
     }
@@ -96,7 +96,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
 
   private def update(event: OrderScheduleEvent): Unit = event match {
     case OrderScheduleEvent.GeneratedUntil(until) ⇒
-      generatedUntil = until
+      generatedUntil = until.toInstant
   }
 
   override def toString = "OrderScheduleGenerator"

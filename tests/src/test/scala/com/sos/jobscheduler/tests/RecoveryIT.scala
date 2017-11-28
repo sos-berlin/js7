@@ -6,6 +6,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentEvent}
 import com.sos.jobscheduler.base.utils.MapDiff
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
@@ -41,7 +42,6 @@ import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import spray.json.JsObject
 
 /**
   * @author Joacim Zschimmer
@@ -103,7 +103,7 @@ final class RecoveryIT extends FreeSpec {
               withClue(s"$orderId") {
                 assertResult(ExpectedEvents) {
                   (deleteRestartedJobEvents(eventSeq map { _.value.event }) collect {
-                    case o @ OrderAdded(_, Order.Scheduled(_), _, _) ⇒ o.copy(state = Order.Scheduled(SomeInstant))
+                    case o @ OrderAdded(_, Order.Scheduled(_), _, _) ⇒ o.copy(state = Order.Scheduled(SomeTimestamp))
                     case o ⇒ o
                   }).toVector
                 }
@@ -119,7 +119,7 @@ final class RecoveryIT extends FreeSpec {
     val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
     eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
     val master = RunningMaster(injector) await 99.s
-    master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s))  // Will block on recovery until Agents are started: await 99.s
+    master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
     body(master)
     master.executeCommand(MasterCommand.Terminate) await 99.s
     master.terminated await 99.s
@@ -129,11 +129,11 @@ final class RecoveryIT extends FreeSpec {
     multipleAutoClosing(confs map { o ⇒ RunningAgent(o) } await 10.s)(body)
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
-    import AgentActor.MyJournalMeta.eventJsonFormat
+    import AgentActor.MyJournalMeta.eventJsonCodec
     autoClosing(new JsonFileIterator(JsonJournalMeta.Header, in ⇒ new GZIPInputStream(in), journalFile)) {
       _.toVector collect {
-        case o: JsObject if eventJsonFormat.canDeserialize(o) ⇒
-          o.convertTo[Stamped[KeyedEvent[AgentEvent]]]
+        case o if eventJsonCodec.canDeserialize(o) ⇒
+          o.as[Stamped[KeyedEvent[AgentEvent]]].force
       }
     }
   }
@@ -148,7 +148,7 @@ private object RecoveryIT {
 
   private val FastOrderId = OrderId("FAST-ORDER")
   private val FastOrder = Order(FastOrderId, NodeKey(FastWorkflowPath, NodeId("100")), Order.Ready)
-  private val SomeInstant = Instant.parse("2017-07-23T12:00:00Z")
+  private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
 
   private val TestJobChainElem =
     <job_chain>
@@ -172,7 +172,7 @@ private object RecoveryIT {
     </job_chain>
 
   private val ExpectedEvents = Vector(
-    OrderAdded(NodeKey(TestWorkflowPath, NodeId("100")), Scheduled(SomeInstant),Map(),Order.Good(true)),
+    OrderAdded(NodeKey(TestWorkflowPath, NodeId("100")), Scheduled(SomeTimestamp),Map(),Order.Good(true)),
     OrderMovedToAgent(AgentPath("/test-agent-111")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),

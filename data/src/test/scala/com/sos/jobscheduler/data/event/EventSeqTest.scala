@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.data.event
 
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.{Decoder, Encoder}
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.language.higherKinds
-import spray.json.DefaultJsonProtocol._
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -14,9 +14,9 @@ final class EventSeqTest extends FreeSpec {
 
   private object TestEvent extends Event {
     type Key = String
-    implicit val jsonFormat = TypedJsonFormat[TestEvent.type](
-      Subtype(jsonFormat0(() ⇒ TestEvent)))
   }
+  private implicit val JsonCodec = TypedJsonCodec[TestEvent.type](
+    Subtype(TestEvent))
 
   "JSON EventSeq.NonEmpty" in {
     checkTearableEventSeq(
@@ -50,17 +50,11 @@ final class EventSeqTest extends FreeSpec {
       }""")
   }
 
-  private def checkTearableEventSeq[E: RootJsonFormat](eventSeq: TearableEventSeq[Seq, E], json: String) = {
-    assert(eventSeq.toJson == json.parseJson)
-    assert(json.parseJson.convertTo[TearableEventSeq[Seq, E]] == eventSeq)
+  private def checkTearableEventSeq[E: Encoder: Decoder](eventSeq: TearableEventSeq[Seq, E], json: String) = {
+    testJson(eventSeq, json)
     eventSeq match {
-      case eventSeq: EventSeq[Seq, E] ⇒ checkEventSeq(eventSeq, json)
+      case eventSeq: EventSeq[Seq, E] ⇒ testJson(eventSeq, json)
       case _ ⇒
     }
-  }
-
-  private def checkEventSeq[E: RootJsonFormat](eventSeq: EventSeq[Seq, E], json: String) = {
-    assert(eventSeq.toJson == json.parseJson)
-    assert(json.parseJson.convertTo[EventSeq[Seq, E]] == eventSeq)
   }
 }

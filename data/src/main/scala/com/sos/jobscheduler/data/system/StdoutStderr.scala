@@ -14,7 +14,7 @@ object StdoutStderr {
     override def toString = string
   }
 
-  object StdoutStderrType extends IsString.HasJsonFormat[StdoutStderrType] {
+  object StdoutStderrType extends IsString.HasJsonCodec[StdoutStderrType] {
     val values = Vector(Stdout, Stderr)
   }
 }

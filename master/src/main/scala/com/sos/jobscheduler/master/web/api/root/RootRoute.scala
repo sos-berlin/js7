@@ -2,8 +2,9 @@ package com.sos.jobscheduler.master.web.api.root
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.common.akkahttp.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.system.JavaInformation
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
@@ -25,7 +26,7 @@ trait RootRoute {
           for (orderCount ← orderCountFuture) yield
             MasterOverview(
               version = RunningMaster.VersionString,
-              startedAt = RunningMaster.StartedAt,
+              startedAt = RunningMaster.StartedAt.toTimestamp,
               orderCount = orderCount,
               system = systemInformation(),
               java = JavaInformation()))

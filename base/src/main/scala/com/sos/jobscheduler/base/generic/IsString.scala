@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.base.generic
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.As
+import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import javax.annotation.Nullable
 import scala.language.implicitConversions
-import spray.json.{JsString, JsValue, JsonFormat, JsonWriter}
 
 trait IsString {
   def string: String
@@ -24,27 +25,19 @@ object IsString {
     case None ⇒ null
   }
 
-  val UnsupportedJsonDeserialization = (o: String) ⇒
-    throw new UnsupportedOperationException("JSON deserialization not supported for this (abstract?) IsString")
+  implicit def jsonEncoder[A <: IsString]: Encoder[A] =
+    o ⇒ Json.fromString(o.string)
 
-  class MyJsonWriter[A <: IsString] extends JsonWriter[A] {
-    final def write(o: A) = JsString(o.string)
-  }
-
-  final class MyJsonFormat[A <: IsString](construct: String => A) extends MyJsonWriter[A] with JsonFormat[A] {
-    def read(jsValue: JsValue): A = jsValue match {
-      case JsString(string) ⇒ construct(string)
-      case _ ⇒ sys.error(s"String expected instead of ${jsValue.getClass.getSimpleName}")
-    }
-  }
-
-  trait HasJsonFormat[A <: IsString] {
+  trait HasJsonCodec[A <: IsString] {
     def apply(o: String): A
 
-    implicit val MyJsonFormat = new IsString.MyJsonFormat(apply)
+    implicit val JsonEncoder: Encoder[A] = jsonEncoder[A]
+    implicit val JsonDecoder: Decoder[A] = o ⇒ Right(apply(o.value.forceString))
+    implicit val keyEncoder: KeyEncoder[A] = _.string
+    implicit val keyDecoder: KeyDecoder[A] = o ⇒ Some(apply(o))
   }
 
-  trait Companion[A <: IsString] extends HasJsonFormat[A] {
+  trait Companion[A <: IsString] extends HasJsonCodec[A] {
     implicit val ordering: Ordering[A] = Ordering by { _.string }
     implicit val IsStringAsString: As[String, A] = As(apply)
   }

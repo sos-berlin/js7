@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.base.utils
 
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import spray.json.DefaultJsonProtocol._
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -39,13 +38,13 @@ final class MapDiffTest extends FreeSpec {
   }
 
   "JSON" in {
-    check(MapDiff[String, String](),
+    testJson(MapDiff[String, String](),
       """{
         "addedOrUpdated": {},
         "removed": []
       }""")
 
-    check(MapDiff(Map("a" → "A", "b" → "B"), Set("x", "y")),
+    testJson(MapDiff(Map("a" → "A", "b" → "B"), Set("x", "y")),
       """{
         "addedOrUpdated": {
           "a": "A",
@@ -56,10 +55,5 @@ final class MapDiffTest extends FreeSpec {
           "y"
         ]
       }""")
-
-    def check[K: JsonFormat, V: JsonFormat](o: MapDiff[K, V], json: String): Unit = {
-      assert(o.toJson == json.parseJson)
-      assert(json.parseJson.convertTo[MapDiff[K, V]] == o)
-    }
   }
 }

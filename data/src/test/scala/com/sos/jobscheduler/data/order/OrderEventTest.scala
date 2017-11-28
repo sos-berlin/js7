@@ -1,10 +1,14 @@
 package com.sos.jobscheduler.data.order
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.MapDiff
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
-import com.sos.jobscheduler.tester.JsonTester.testSprayJson
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 
 /**
@@ -131,5 +135,23 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  private def check(event: OrderEvent, json: String) = testSprayJson(event, json)
+  private def check(event: OrderEvent, json: String) = testJson(event, json)
+
+  if (sys.props contains "test.speed") "Speed" in {
+    val n = 10000
+    val event = Stamped(12345678, KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true))))
+    val jsonString = event.asJson.compactPrint
+    println(f"${"Serialize"}%-20s Deserialize")
+    for (_ ← 1 to 10) {
+      val circeSerialize = measure(event.asJson.compactPrint)
+      val circeDeserialize = measure(jsonString.parseJson.as[OrderEvent].force: OrderEvent)
+      println(f"$circeSerialize%-20s $circeDeserialize%-20s")
+    }
+    def measure[A](serialize: ⇒ Unit) = {
+      val t = System.currentTimeMillis
+      for (_ ← 1 to n) serialize
+      val d = System.currentTimeMillis - t
+      s"${d}ms ${n*1000/d}/s"
+    }
+  }
 }

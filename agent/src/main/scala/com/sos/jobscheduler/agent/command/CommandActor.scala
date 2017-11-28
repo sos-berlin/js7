@@ -8,16 +8,16 @@ import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
-import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
+import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs._
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
+import io.circe.generic.JsonCodec
 import java.time.Instant
 import java.time.Instant.now
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Success, Try}
-import spray.json.DefaultJsonProtocol._
 
 /**
  * Executes public Agent commands.
@@ -115,6 +115,7 @@ object CommandActor {
     final case class Respond(run: CommandRun, promise: Promise[Response], response: Try[Response])
   }
 
+  @JsonCodec
   final case class CommandRun(internalId: InternalCommandId, batchInternalId: Option[InternalCommandId], startedAt: Instant, command: AgentCommand) {
 
     override def toString = s"$idString ${command.toShortString}"
@@ -125,10 +126,6 @@ object CommandActor {
     }
 
     def overview = new CommandRunOverview(internalId, startedAt, command)
-  }
-
-  object CommandRun {
-    implicit def MyJsonFormat = jsonFormat4(apply)
   }
 
   final class Handle(actor: ActorRef)(implicit askTimeout: Timeout) extends CommandHandler {

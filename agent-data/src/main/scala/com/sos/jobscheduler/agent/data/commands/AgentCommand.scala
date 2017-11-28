@@ -1,14 +1,17 @@
 package com.sos.jobscheduler.agent.data.commands
 
-import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.CirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.objectCodec
+import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken
 import com.sos.jobscheduler.data.workflow.Workflow
-import java.time.Duration
+import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
-import spray.json.DefaultJsonProtocol._
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * @author Joacim Zschimmer
@@ -25,8 +28,11 @@ sealed trait AgentCommand {
 }
 
 object AgentCommand {
+  intelliJuseImport(FiniteDurationJsonDecoder)
+
   trait Response
 
+  @JsonCodec
   final case class Batch(commands: Seq[AgentCommand])
   extends AgentCommand {
     type Response = Batch.Response
@@ -36,18 +42,21 @@ object AgentCommand {
   object Batch {
     sealed trait SingleResponse
 
+    @JsonCodec
     final case class Succeeded(response: AgentCommand.Response)
     extends SingleResponse
 
     /** Failed commands let the web service succeed and are returns as Failed. */
+    @JsonCodec
     final case class Failed(message: String) extends SingleResponse
 
     object SingleResponse {
-      implicit val jsonFormat = TypedJsonFormat[SingleResponse](name = "SingleResponse")(
-        Subtype(jsonFormat1(Succeeded.apply), "Succeeded"),
-        Subtype(jsonFormat1(Failed.apply), "Failed"))
+      implicit val jsonFormat = TypedJsonCodec[SingleResponse](
+        Subtype[Succeeded],
+        Subtype[Failed])
     }
 
+    @JsonCodec
     final case class Response(responses: Seq[SingleResponse])
     extends AgentCommand.Response {
       override def toString = {
@@ -55,14 +64,10 @@ object AgentCommand {
         s"Batch($succeeded succeeded and ${responses.size - succeeded} failed)"
       }
     }
-
-    object Response {
-      implicit val jsonFormat = jsonFormat1(apply)
-    }
   }
 
   case object Accepted extends AgentCommand.Response {
-    implicit val jsonFormat = jsonFormat0(() ⇒ Accepted)
+    implicit val JsonCodec: CirceCodec[Accepted.type] = objectCodec(Accepted)
   }
 
   case object AbortImmediately extends TerminateOrAbort {
@@ -73,10 +78,8 @@ object AgentCommand {
   sealed trait SessionCommand extends AgentCommand
 
   case object Login extends SessionCommand {
+    @JsonCodec
     final case class Response(sessionToken: SessionToken) extends AgentCommand.Response
-    object Response {
-      implicit val jsonFormat = jsonFormat1(apply)
-    }
   }
 
   case object Logout extends SessionCommand {
@@ -93,9 +96,10 @@ object AgentCommand {
 
   sealed trait TerminateOrAbort extends AgentCommand
 
+  @JsonCodec
   final case class Terminate(
     sigtermProcesses: Boolean = false,
-    sigkillProcessesAfter: Option[Duration] = None)
+    sigkillProcessesAfter: Option[FiniteDuration] = None)
   extends TerminateOrAbort {
     type Response = Accepted.type
   }
@@ -108,6 +112,7 @@ object AgentCommand {
 
   sealed trait AttachOrDetachOrder extends OrderCommand
 
+  @JsonCodec
   final case class AttachOrder(order: Order[Order.Idle], workflow: Workflow)
   extends AttachOrDetachOrder {
     type Response = Accepted.type
@@ -115,16 +120,19 @@ object AgentCommand {
     override def toShortString = s"AttachOrder($order,${workflow.path})"
   }
 
+  @JsonCodec
   final case class DetachOrder(orderId: OrderId)
   extends AttachOrDetachOrder {
     type Response = Accepted.type
   }
 
+  @JsonCodec
   final case class GetOrder(orderId: OrderId)
   extends OrderCommand {
     type Response = GetOrder.Response
   }
   object GetOrder {
+    @JsonCodec
     final case class Response(order: Order[Order.State]) extends AgentCommand.Response
   }
 
@@ -136,25 +144,23 @@ object AgentCommand {
     final case class Response(order: Seq[Order[Order.State]]) extends AgentCommand.Response
   }
 
-  implicit val CommandJsonFormat: TypedJsonFormat[AgentCommand] =
-    TypedJsonFormat.asLazy(
-      TypedJsonFormat[AgentCommand](
-        Subtype(jsonFormat1(Batch.apply)),
-        Subtype(jsonFormat0(() ⇒ AbortImmediately)),
-        Subtype(jsonFormat0(() ⇒ Login)),
-        Subtype(jsonFormat0(() ⇒ Logout)),
-        Subtype(jsonFormat0(() ⇒ NoOperation)),
-        Subtype(jsonFormat0(() ⇒ RegisterAsMaster)),
-        Subtype(jsonFormat2(Terminate.apply)),
-        Subtype(jsonFormat2(AttachOrder.apply)),
-        Subtype(jsonFormat1(DetachOrder.apply)),
-        Subtype(jsonFormat1(GetOrder.apply)),
-        Subtype(jsonFormat0(() ⇒ GetOrderIds))))
+  implicit val CommandJsonFormat: TypedJsonCodec[AgentCommand] =
+    TypedJsonCodec[AgentCommand](
+      Subtype[Batch],
+      Subtype(AbortImmediately),
+      Subtype(Login),
+      Subtype(Logout),
+      Subtype(NoOperation),
+      Subtype(RegisterAsMaster),
+      Subtype[Terminate],
+      Subtype[AttachOrder],
+      Subtype[DetachOrder],
+      Subtype[GetOrder],
+      Subtype(GetOrderIds))
 
-  implicit val ResponseJsonFormat: TypedJsonFormat[AgentCommand.Response] =
-    TypedJsonFormat.asLazy(
-      TypedJsonFormat[AgentCommand.Response]()(
-        Subtype[Batch.Response]("BatchResponse"),
-        Subtype[Accepted.type]("Accepted"),
-        Subtype[Login.Response]("LoginResponse")))
+  implicit val ResponseJsonFormat: TypedJsonCodec[AgentCommand.Response] =
+    TypedJsonCodec[AgentCommand.Response](
+      Subtype.named[Batch.Response]("BatchResponse"),
+      Subtype(Accepted),
+      Subtype.named[Login.Response]("LoginResponse"))
 }

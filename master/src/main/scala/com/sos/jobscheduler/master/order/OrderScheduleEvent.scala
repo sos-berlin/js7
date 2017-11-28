@@ -1,10 +1,9 @@
 package com.sos.jobscheduler.master.order
 
-import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.NoKeyEvent
-import java.time.Instant
-import spray.json.DefaultJsonProtocol._
+import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
@@ -12,9 +11,10 @@ import spray.json.DefaultJsonProtocol._
 sealed trait OrderScheduleEvent extends NoKeyEvent
 
 object OrderScheduleEvent {
-  final case class GeneratedUntil(until: Instant)
+  @JsonCodec
+  final case class GeneratedUntil(until: Timestamp)
   extends OrderScheduleEvent
 
-  implicit val jsonFormat = TypedJsonFormat[OrderScheduleEvent](
-    Subtype(jsonFormat1(GeneratedUntil), "OrderScheduleEvent.GeneratedUntil"))
+  implicit val JsonCodec = TypedJsonCodec[OrderScheduleEvent](
+    Subtype.named[GeneratedUntil]("OrderScheduleEvent.GeneratedUntil"))
 }

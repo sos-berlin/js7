@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.data.system
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -9,10 +11,10 @@ import spray.json._
 final class JavaInformationTest extends FreeSpec {
 
   "JSON 1" in {
-    val obj = JavaInformation(
+    testJson(JavaInformation(
       systemProperties = Map("test" → "TEST"),
-      JavaInformation.Memory(maximum = 3, total = 2, free = 1))
-    val json = s"""{
+      JavaInformation.Memory(maximum = 3, total = 2, free = 1)),
+    s"""{
       "systemProperties": {
         "test": "TEST"
       },
@@ -21,15 +23,14 @@ final class JavaInformationTest extends FreeSpec {
         "total": 2,
         "free": 1
       }
-    }""".parseJson
-    assert(obj.toJson == json)
+    }""")
   }
 
   "JSON 2" in {
-    val obj = JavaInformation()
-    val json = obj.toJson.asJsObject
-    assert(json.convertTo[JavaInformation] == obj)
-    assert(json.fields("systemProperties").asJsObject.fields contains "java.version")
-    assert(json.fields("systemProperties").asJsObject.fields contains "os.arch")
+    val javaInformation = JavaInformation()
+    val json = javaInformation.asJson
+    assert(json.as[JavaInformation] == Right(javaInformation))
+    assert(json.forceObject.toMap("systemProperties").forceObject.toMap contains "java.version")
+    assert(json.forceObject.toMap("systemProperties").forceObject.toMap contains "os.arch")
   }
 }

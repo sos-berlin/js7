@@ -2,8 +2,8 @@ package com.sos.jobscheduler.agent.scheduler.event
 
 import akka.actor.{Actor, Status}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor._
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
 import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -11,12 +11,12 @@ import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
+import io.circe.generic.JsonCodec
 import java.time.Duration
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Promise
-import spray.json.DefaultJsonProtocol._
 
 /**
   * @author Joacim Zschimmer
@@ -93,7 +93,7 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
       sender() ! Output.GotSnapshots(Vector.build[Snapshot] { b ⇒
         b.sizeHint(1 + eventQueue.values.size)
         b += Snapshot.HeaderSnapshot(oldestKnownEventId)
-        b ++= eventQueue.values.asScala map Snapshot.EventSnapshot
+        b ++= eventQueue.values.asScala map Snapshot.EventSnapshot.apply
       })
 
     case Snapshot.HeaderSnapshot(eventId) ⇒
@@ -147,12 +147,12 @@ object EventQueueActor {
 
   sealed trait Snapshot
   object Snapshot {
-    final case class HeaderSnapshot(oldestKnownEventId: EventId) extends Snapshot
-    final case class EventSnapshot(stamped: StampedEvent) extends Snapshot
+    @JsonCodec final case class HeaderSnapshot(oldestKnownEventId: EventId) extends Snapshot
+    @JsonCodec final case class EventSnapshot(stamped: StampedEvent) extends Snapshot
 
-    implicit val jsonFormat = TypedJsonFormat[Snapshot](
-      Subtype(jsonFormat1(HeaderSnapshot.apply), "EventQueue.Header"),
-      Subtype(jsonFormat1(EventSnapshot.apply), "EventQueue.Event"))
+    implicit val JsonCodec = TypedJsonCodec[Snapshot](
+      Subtype.named[HeaderSnapshot]("EventQueue.Header"),
+      Subtype.named[EventSnapshot]("EventQueue.Event"))
   }
 
   private object Internal {

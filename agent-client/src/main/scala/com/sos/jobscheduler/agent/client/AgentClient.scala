@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.agent.client
 import akka.actor.ActorSystem
 import akka.http.scaladsl.coding.Gzip
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes._
@@ -19,17 +18,18 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview}
 import com.sos.jobscheduler.agent.data.web.AgentUris
-import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonFormat
+import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonCodec
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.base.utils.Strings.TruncatedString
+import com.sos.jobscheduler.common.CirceJsonSupport._
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.decodeResponse
 import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.soslicense.LicenseKeyString
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken
@@ -37,7 +37,6 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.collection.immutable
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
-import spray.json.DefaultJsonProtocol._
 
 /**
  * Client for JobScheduler Agent.
@@ -146,7 +145,7 @@ trait AgentClient extends AutoCloseable {
         if (httpResponse.status.isSuccess)
           Unmarshal(decodeResponse(httpResponse)).to[A]
         else
-          for (message ← Unmarshal(decodeResponse(httpResponse)).to[String]/*TODO Possible OutOfMemoryError*/) yield
+          for (message ← decodeResponse(httpResponse).utf8StringFuture) yield
             throw new HttpException(httpResponse.status, message truncateWithEllipsis ErrorMessageLengthMaximum)
       }
     }
@@ -213,8 +212,6 @@ trait AgentClient extends AutoCloseable {
 }
 
 object AgentClient {
-  intelliJuseImports(StringJsonFormat)  // for import spray.json.DefaultJsonProtocol._
-
   val RequestTimeout = 60.s
   val ErrorMessageLengthMaximum = 10000
 

@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.event.collector
 
+import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
@@ -20,26 +21,29 @@ object EventDirectives {
   private val DefaultEventRequestDelay = 500.ms
   private val ReturnSplitter = Splitter.on(',')
 
-  def eventRequest[E <: Event: KeyedTypedEventJsonFormat: ClassTag]: Directive1[SomeEventRequest[E]] =
+  def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag]: Directive1[SomeEventRequest[E]] =
     eventRequest[E](None)
 
-  def eventRequest[E <: Event: KeyedTypedEventJsonFormat: ClassTag](defaultReturnType: Option[String] = None): Directive1[SomeEventRequest[E]] =
+  def eventRequest[E <: Event: KeyedEventTypedJsonCodec: ClassTag](defaultReturnType: Option[String] = None): Directive1[SomeEventRequest[E]] =
     new Directive1[SomeEventRequest[E]] {
       def tapply(inner: Tuple1[SomeEventRequest[E]] ⇒ Route) =
         parameter("return".?) {
           _ orElse defaultReturnType match {
+
             case Some(returnType) ⇒
               val eventSuperclass = implicitClass[E]
               val returnTypeNames = ReturnSplitter.split(returnType).asScala.toSet
               val eventClasses = returnTypeNames flatMap { t ⇒
-                implicitly[KeyedTypedEventJsonFormat[E]].typeNameToClass.get(t)
+                implicitly[KeyedEventTypedJsonCodec[E]].typenameToClassOption(t)
               } collect {
                 case eventClass_ if eventSuperclass isAssignableFrom eventClass_ ⇒ eventClass_
                 case eventClass_ if eventClass_ isAssignableFrom eventSuperclass ⇒ eventSuperclass
               }
-              passIf(eventClasses.size == returnTypeNames.size) {  // if every return type is recognized
+              if (eventClasses.size != returnTypeNames.size)
+                complete(BadRequest → "Unrecognized event type")
+              else
                 eventRequestRoute[E](eventClasses, inner)
-              }
+
             case None ⇒
               reject
           }
@@ -51,8 +55,10 @@ object EventDirectives {
 
   private def eventRequestRoute[E <: Event](eventClasses: Set[Class[_ <: E]], inner: Tuple1[SomeEventRequest[E]] ⇒ Route): Route = {
     parameter("limit" ? Int.MaxValue) {
+
       case 0 ⇒
         reject(ValidationRejection(s"Invalid limit=0"))
+
       case limit if limit > 0 ⇒
         parameter("after".as[EventId]) { after ⇒
           parameter("timeout" ? 0.s) { timeout ⇒
@@ -61,6 +67,7 @@ object EventDirectives {
             }
           }
         }
+
       case limit if limit < 0 ⇒
         parameter("after" ? EventId.BeforeFirst) { after ⇒
           inner(Tuple1(ReverseEventRequest[E](eventClasses, after = after, limit = -limit)))

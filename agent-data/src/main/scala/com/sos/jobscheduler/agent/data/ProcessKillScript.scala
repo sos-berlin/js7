@@ -20,6 +20,6 @@ final case class ProcessKillScript(file: Path) extends IsString {
     Vector(file.toString, s"-kill-agent-task-id=${id.string}") ++ (pid map { o ⇒ s"-pid=${o.string}" })
 }
 
-object ProcessKillScript extends IsString.HasJsonFormat[ProcessKillScript] {
+object ProcessKillScript extends IsString.HasJsonCodec[ProcessKillScript] {
   override def apply(o: String) = new ProcessKillScript(Paths.get(o))
 }

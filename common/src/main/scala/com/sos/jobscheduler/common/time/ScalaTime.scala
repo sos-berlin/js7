@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.time
 
 import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Ascii.isAsciiDigit
 import java.time.Instant.now
 import java.time._
@@ -202,6 +203,8 @@ object ScalaTime {
       Instant.ofEpochMilli(delegate.toEpochMilli / durationMillis * durationMillis)
     }
 
+    def toTimestamp = Timestamp.ofEpochMilli(delegate.toEpochMilli)
+
     override def toString = delegate.toString  // For ScalaTest
   }
 
@@ -284,5 +287,9 @@ object ScalaTime {
 
   implicit final class RichConcurrentDuration(val underlying: FiniteDuration) extends AnyVal {
     def toJavaDuration = Duration.ofNanos(underlying.toNanos)
+  }
+
+  implicit final class RichTimestamp(val underlying: Timestamp) extends AnyVal {
+    def toInstant = Instant.ofEpochMilli(underlying.toEpochMilli)
   }
 }

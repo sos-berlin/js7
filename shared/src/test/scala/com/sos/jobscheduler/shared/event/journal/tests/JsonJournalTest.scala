@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -18,7 +19,8 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator
 import com.sos.jobscheduler.shared.event.journal.JsonJournalActor
 import com.sos.jobscheduler.shared.event.journal.tests.JsonJournalTest._
-import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
+import com.sos.jobscheduler.shared.event.journal.tests.TestJsonCodecs.TestKeyedEventJsonCodec
+import io.circe.Json
 import java.io.{EOFException, FileInputStream}
 import java.nio.file.Files.{createTempDirectory, delete, deleteIfExists}
 import java.util.zip.GZIPInputStream
@@ -26,7 +28,6 @@ import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
-import spray.json.{JsObject, JsString, JsValue}
 
 /**
   * @author Joacim Zschimmer
@@ -160,28 +161,28 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
     actor ? TestActor.Input.Forward(key, command)
 
   private def journalKeyedEvents =
-    journalJsValues collect {
-      case o: JsObject if TestKeyedEventJsonFormat canDeserialize o ⇒
-        o.convertTo[Stamped[KeyedEvent[TestEvent]]].value
+    journalJsons collect {
+      case o if TestKeyedEventJsonCodec canDeserialize o ⇒
+        o.as[Stamped[KeyedEvent[TestEvent]]].map(_.value).force
     }
 
   private def journalAggregates =
-    (journalJsValues collect {
-      case o: JsObject if TestActor.SnapshotJsonFormat canDeserialize o ⇒
-        o.convertTo[TestAggregate]
+    (journalJsons collect {
+      case o if TestActor.SnapshotJsonFormat canDeserialize o ⇒
+        o.as[TestAggregate].force
     }).toSet
 
-  private def journalJsValues: Vector[JsValue] =
+  private def journalJsons: Vector[Json] =
     autoClosing(new FileInputStream(journalFile)) { in ⇒
       val iterator = new InputStreamJsonSeqIterator(new GZIPInputStream(in))
       if (iterator.hasNext) {
         val header = iterator.next()
-        assert(header == JsObject(
-          "TYPE" → JsString("JobScheduler.Journal"),
-          "version" → JsString("0.1"),
-          "softwareVersion" → JsString(BuildInfo.version)))
+        assert(header == Json.obj(
+          "TYPE" → Json.fromString("JobScheduler.Journal"),
+          "version" → Json.fromString("0.1"),
+          "softwareVersion" → Json.fromString(BuildInfo.version)))
       }
-      Vector.build[JsValue] { builder ⇒
+      Vector.build[Json] { builder ⇒
         try iterator foreach builder.+=
         catch {
           case _: EOFException ⇒ None

@@ -2,18 +2,19 @@ package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{Actor, ActorRef, Terminated}
 import akka.util.ByteString
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.shared.event.journal.SnapshotWriter._
+import io.circe.Encoder
 import scala.collection.immutable
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
   */
-private[journal] final class SnapshotWriter(write: ByteString ⇒ Unit, journalingActors: immutable.Iterable[ActorRef], jsonFormat: JsonFormat[Any])
+private[journal] final class SnapshotWriter(write: ByteString ⇒ Unit, journalingActors: immutable.Iterable[ActorRef], jsonEncoder: Encoder[Any])
 extends Actor {
 
   private var remaining = journalingActors.size
@@ -41,7 +42,7 @@ extends Actor {
       context.unwatch(sender())
       abortOnError {
         for (snapshot ← snapshots) {
-          pipeline.blockingAdd { ByteString(CompactPrinter(jsonFormat.write(snapshot))) }
+          pipeline.blockingAdd { ByteString(jsonEncoder(snapshot).compactPrint) }
           logger.trace(s"Stored $snapshot")  // Without sync
           snapshotCount += 1
         }

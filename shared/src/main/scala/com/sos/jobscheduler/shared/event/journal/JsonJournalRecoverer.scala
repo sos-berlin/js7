@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props}
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -11,11 +11,11 @@ import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalActor.{EventsHeader, SnapshotsHeader}
 import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
+import io.circe.{HCursor, Json}
 import java.nio.file.{Files, Path}
 import scala.annotation.tailrec
 import scala.concurrent.blocking
 import scala.util.control.NonFatal
-import spray.json.{JsObject, JsValue}
 
 /**
   * @author Joacim Zschimmer
@@ -27,7 +27,7 @@ trait JsonJournalRecoverer[E <: Event] {
   protected def recoverSnapshot: PartialFunction[Any, Unit]
   protected def recoverEvent: PartialFunction[Stamped[AnyKeyedEvent], Unit]
 
-  import jsonJournalMeta.{convertInputStream, eventJsonFormat, snapshotJsonFormat}
+  import jsonJournalMeta.{convertInputStream, eventJsonCodec, snapshotJsonCodec}
 
   private val stopwatch = new Stopwatch
   private var lastEventId: EventId = EventId.BeforeFirst
@@ -39,12 +39,12 @@ trait JsonJournalRecoverer[E <: Event] {
     try
       blocking {  // May take a long time
         autoClosing(newJsonIterator()) { jsonIterator ⇒
-          var separator: Option[JsValue] = jsonIterator.hasNext option jsonIterator.next()
+          var separator: Option[Json] = jsonIterator.hasNext option jsonIterator.next()
           if (separator contains SnapshotsHeader) {
-            separator = recoverJsValues(jsonIterator, recoverSnapshotJsValue)
+            separator = recoverJsonsUntilSeparator(jsonIterator, recoverSnapshotJson)
           }
           if (separator contains EventsHeader) {
-            separator = recoverJsValues(jsonIterator, recoverEventJsValue)
+            separator = recoverJsonsUntilSeparator(jsonIterator, recoverEventJson)
           }
           for (jsValue ← separator) {
             sys.error(s"Unexpected JSON value in '$journalFile': $jsValue")
@@ -60,7 +60,7 @@ trait JsonJournalRecoverer[E <: Event] {
     logSomething()
   }
 
-  private def newJsonIterator(): AutoCloseable with Iterator[JsValue] =
+  private def newJsonIterator(): AutoCloseable with Iterator[Json] =
     if (Files.exists(journalFile)) {
       logger.info(s"Recovering from journal journalFile '$journalFile' (${toMB(Files.size(journalFile))})")
       new JsonFileIterator(Header, convertInputStream, journalFile)
@@ -70,28 +70,27 @@ trait JsonJournalRecoverer[E <: Event] {
     }
 
   @tailrec
-  private def recoverJsValues(jsonIterator: Iterator[JsValue], recover: JsValue ⇒ Unit): Option[JsValue] =
-    if (jsonIterator.hasNext)
-      jsonIterator.next() match {
-        case o: JsObject ⇒
-          recover(o)
-          recoverJsValues(jsonIterator, recover)
-        case o ⇒
-          Some(o)
-      }
-    else
+  private def recoverJsonsUntilSeparator(jsonIterator: Iterator[Json], recover: Json ⇒ Unit): Option[Json] =
+    if (jsonIterator.hasNext) {
+      val json = jsonIterator.next()
+      if (json.isObject) {
+        recover(json)
+        recoverJsonsUntilSeparator(jsonIterator, recover)
+      } else
+        Some(json)
+    } else
       None
 
-  private def recoverSnapshotJsValue(jsValue: JsValue): Unit = {
+  private def recoverSnapshotJson(json: Json): Unit = {
     snapshotCount += 1
-    val snapshot = snapshotJsonFormat.read(jsValue)
+    val snapshot = snapshotJsonCodec.decodeJson(json).force
     recoverSnapshot.getOrElse(snapshot,
       sys.error(s"Unrecoverable snapshot in journal journalFile '$journalFile': $snapshot"))
   }
 
-  private def recoverEventJsValue(jsValue: JsValue): Unit = {
+  private def recoverEventJson(json: Json): Unit = {
     eventCount += 1
-    val stamped = jsValue.convertTo[Stamped[KeyedEvent[E]]]
+    val stamped = json.as[Stamped[KeyedEvent[E]]].toTry.get
     if (stamped.eventId <= lastEventId)
       sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stamped.eventId)} follows ${EventId.toString(lastEventId)}")
     lastEventId = stamped.eventId

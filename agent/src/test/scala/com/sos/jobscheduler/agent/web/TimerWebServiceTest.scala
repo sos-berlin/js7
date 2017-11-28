@@ -1,17 +1,16 @@
 package com.sos.jobscheduler.agent.web
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.MediaTypes._
 import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{TimerOverview, TimerService, TimerServiceOverview}
+import io.circe.Json
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.collection.immutable
-import spray.json.DefaultJsonProtocol._
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -24,10 +23,10 @@ final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerW
   "timerService (empty)" in {
     Get("/agent/api/timer") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TimerServiceOverview] == timerService.overview)
-      assert(responseAs[JsObject] == JsObject(
-        "count" → JsNumber(0),
-        "completeCount" → JsNumber(0),
-        "wakeCount" → JsNumber(0)
+      assert(responseAs[Json] == Json.obj(
+        "count" → Json.fromInt(0),
+        "completeCount" → Json.fromInt(0),
+        "wakeCount" → Json.fromInt(0)
       ))
     }
   }
@@ -35,7 +34,7 @@ final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerW
   "timerService/ (empty)" in {
     Get("/agent/api/timer/") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[immutable.Seq[TimerOverview]] == timerService.timerOverviews)
-      assert(responseAs[JsArray] == JsArray())
+      assert(responseAs[Json] == Json.fromValues(Nil))
     }
   }
 
@@ -45,32 +44,32 @@ final class TimerWebServiceTest extends FreeSpec with WebServiceTest with TimerW
     timerService.at(Instant.parse("2333-01-03T12:33:33Z"), name = "TEST-C")
     Get("/agent/api/timer") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[TimerServiceOverview] == timerService.overview)
-      assert(responseAs[JsObject] == JsObject(
-        "count" → JsNumber(3),
-        "completeCount" → JsNumber(0),
-        "wakeCount" → JsNumber(0),
-        "first" → JsObject(
-          "at" → JsString("2111-01-01T12:11:11Z"),
-          "name" → JsString("TEST-A")),
-        "last" → JsObject(
-          "at" → JsString("2333-01-03T12:33:33Z"),
-          "name" → JsString("TEST-C"))))
+      assert(responseAs[Json] == Json.obj(
+        "count" → Json.fromInt(3),
+        "completeCount" → Json.fromInt(0),
+        "wakeCount" → Json.fromInt(0),
+        "first" → Json.obj(
+          "at" → Json.fromString("2111-01-01T12:11:11Z"),
+          "name" → Json.fromString("TEST-A")),
+        "last" → Json.obj(
+          "at" → Json.fromString("2333-01-03T12:33:33Z"),
+          "name" → Json.fromString("TEST-C"))))
     }
   }
 
   "timerService/ (3 timers)" in {
     Get("/agent/api/timer/") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[immutable.Seq[TimerOverview]] == timerService.timerOverviews)
-      assert(responseAs[JsArray] == JsArray(
-        JsObject(
-          "at" → JsString("2111-01-01T12:11:11Z"),
-          "name" → JsString("TEST-A")),
-        JsObject(
-          "at" → JsString("2222-01-02T12:22:22Z"),
-          "name" → JsString("TEST-B")),
-        JsObject(
-          "at" → JsString("2333-01-03T12:33:33Z"),
-          "name" → JsString("TEST-C"))))
+      assert(responseAs[Json] == Json.fromValues(List(
+        Json.obj(
+          "at" → Json.fromString("2111-01-01T12:11:11Z"),
+          "name" → Json.fromString("TEST-A")),
+        Json.obj(
+          "at" → Json.fromString("2222-01-02T12:22:22Z"),
+          "name" → Json.fromString("TEST-B")),
+        Json.obj(
+          "at" → Json.fromString("2333-01-03T12:33:33Z"),
+          "name" → Json.fromString("TEST-C")))))
     }
   }
 }

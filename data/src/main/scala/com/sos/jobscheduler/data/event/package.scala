@@ -3,7 +3,6 @@ package com.sos.jobscheduler.data
 import java.time.format.DateTimeFormatter._
 import java.time.format.DateTimeFormatterBuilder
 import java.time.{Instant, ZoneId}
-import spray.json.{JsNumber, JsValue}
 
 /**
   * @author Joacim Zschimmer
@@ -39,10 +38,6 @@ package object event {
     def apply(eventId: Long) = eventId
 
     def toInstant(id: EventId) = Instant ofEpochMilli id / 1000 plusNanos id % 1000 * 1000
-
-    def toJsValue(eventId: EventId) = JsNumber(eventId)
-
-    def fromJsValue(o: JsValue) = o.asInstanceOf[JsNumber].value.toLongExact
 
     private val UTC = ZoneId of "UTC"
     private val dateTimeFormatter =

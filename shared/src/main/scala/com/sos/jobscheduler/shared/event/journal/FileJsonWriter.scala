@@ -6,7 +6,8 @@ import com.sos.jobscheduler.shared.common.jsonseq.OutputStreamJsonSeqWriter
 import java.io.{BufferedOutputStream, FileOutputStream, OutputStream}
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
-import spray.json._
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import io.circe.syntax.EncoderOps
 
 /**
   * @author Joacim Zschimmer
@@ -27,7 +28,7 @@ extends AutoCloseable {
   private var synced = false
 
   if (!append) {
-    writer.writeJson(ByteString.fromString(header.toJson.compactPrint))
+    writer.writeJson(ByteString.fromString(header.asJson.compactPrint))
     flush()
   }
 

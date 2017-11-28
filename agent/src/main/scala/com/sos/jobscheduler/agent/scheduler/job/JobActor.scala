@@ -14,6 +14,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
+import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.order.Order.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
@@ -119,7 +120,7 @@ extends Actor with Stash {
       }
       sigkillProcessesAfter match {
         case Some(duration) if taskCount > 0 ⇒
-          timerService.delayedFuture(duration) {
+          timerService.delayedFuture(duration.toJavaDuration) {
             self ! Internal.KillAll
           }
         case _ ⇒

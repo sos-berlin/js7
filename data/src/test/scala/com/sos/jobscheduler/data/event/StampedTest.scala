@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.data.event
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import scala.collection.immutable
-import spray.json.DefaultJsonProtocol._
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -25,23 +24,19 @@ final class StampedTest extends FreeSpec {
 
   "JSON with object" in {
     case class A(number: Int)
-    implicit val aJsonFormat = jsonFormat1(A)
-    val o = Stamped(EventId(777), A(111))
-    val json = """{
-      "eventId": 777,
-      "number": 111
-    }""".parseJson
-    assert(o.toJson == json)
-    assert(o == json.convertTo[Stamped[A]])
+    implicit val codec = deriveCirceCodec[A]
+    testJson(Stamped(EventId(777), A(111)),
+      """{
+        "eventId": 777,
+        "number": 111
+      }""")
   }
 
   "JSON with array" in {
-    val o = Stamped(EventId(777), List(111, 222))
-    val json = """{
-      "eventId": 777,
-      "elements": [111, 222]
-    }""".parseJson
-    assert(o.toJson == json)
-    assert(o == json.convertTo[Stamped[immutable.Seq[Int]]])
+    testJson(Stamped(EventId(777), List(111, 222)),
+      """{
+        "eventId": 777,
+        "elements": [111, 222]
+      }""")
   }
 }

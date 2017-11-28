@@ -158,7 +158,6 @@ lazy val tester = project
     import Dependencies._
     libraryDependencies ++=
       circe ++
-      sprayJson ++
       javaxAnnotations % "compile" ++
       scalaTest
   }
@@ -193,7 +192,7 @@ lazy val common = project.dependsOn(base, data, tester % "compile->test")
       typesafeConfig ++
       akkaHttpTestkit % "test" ++
       akkaHttp ++
-      akkaHttpSprayJson ++
+      akkaHttpJson ++
       akkaActor ++
       scalaTags ++
       sprayJson ++
@@ -315,7 +314,7 @@ lazy val agent = project.dependsOn(`agent-data`, shared, common, data, taskserve
       akkaSlf4j ++
       akkaHttpTestkit % "test" ++
       akkaHttp ++
-      akkaHttpSprayJson ++
+      akkaHttpJson ++
       intelliJAnnotations % "compile" ++
       scalactic ++
       tagging ++
@@ -335,7 +334,7 @@ lazy val `agent-client` = project.dependsOn(data, `tunnel-data`, common, `agent-
       guice ++
       akkaActor ++
       akkaHttp ++
-      akkaHttpSprayJson ++
+      akkaHttpJson ++
       sprayJson ++
       scalaTest % "test" ++
       log4j % "test"
@@ -392,7 +391,7 @@ lazy val `http-client` = project.dependsOn(common, data, tester % "compile->test
       akkaStream ++
       akkaHttpTestkit % "test" ++
       akkaHttp ++
-      akkaHttpSprayJson ++
+      akkaHttpJson ++
       scalactic ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
@@ -405,10 +404,9 @@ lazy val `http-server` = project.dependsOn(`http-client`, common, data, tester %
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      sprayJson ++
       akkaHttpTestkit % "test" ++
       akkaHttp ++
-      akkaHttpSprayJson ++
+      akkaHttpJson ++
       akkaActor ++
       akkaSlf4j ++
       scalactic ++
@@ -457,12 +455,11 @@ lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, data, 
     import Dependencies._
     libraryDependencies ++=
       akkaHttp ++
-      akkaHttpSprayJson ++
+      akkaHttpJson ++
       akkaStream ++
       akkaActor ++
       akkaAgent ++
       akkaSlf4j ++
-      sprayJson ++
       scalactic ++
       intelliJAnnotations % "compile" ++
       scalaTest % "test" ++

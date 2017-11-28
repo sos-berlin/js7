@@ -39,6 +39,7 @@ object Dependencies {
   val akkaHttp            = "com.typesafe.akka" %% "akka-http" % akkaHttpVersion :: akkaStream :: akkaActor/*force version*/ :: Nil
   val akkaHttpSprayJson   = "com.typesafe.akka" %% "akka-http-spray-json" % akkaHttpVersion
   val akkaHttpTestkit     = "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion
+  val akkaHttpJson        = akkaHttpSprayJson :: Nil
 
   val sprayJson           = "io.spray" %% "spray-json" % "1.3.3" :: scalaReflect :: Nil
   val circe               = "io.circe" %% "circe-core" % "0.8.0" ::

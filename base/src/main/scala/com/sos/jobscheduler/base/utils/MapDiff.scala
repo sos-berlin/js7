@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.base.utils
 
-import spray.json.DefaultJsonProtocol._
-import spray.json.{JsonFormat, RootJsonFormat}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+import io.circe.{Decoder, Encoder}
 
 /**
   * @author Joacim Zschimmer
@@ -19,9 +19,6 @@ object MapDiff {
   def empty[K, V]: MapDiff[K, V] =
     Empty.asInstanceOf[MapDiff[K, V]]
 
-  implicit val VariablesDiffJsonFormat: RootJsonFormat[MapDiff[String, String]] =
-    jsonFormat[String, String]
-
   def apply[K, V](addedOrUpdated: Map[K, V] = Map[K, V]()) =
     new MapDiff[K, V](addedOrUpdated, removed = Set[K]())
 
@@ -31,9 +28,6 @@ object MapDiff {
     else
       new MapDiff(addedOrUpdated, removed)
 
-  implicit def jsonFormat[K: JsonFormat, V: JsonFormat]: RootJsonFormat[MapDiff[K, V]] =
-    jsonFormat2((addedOrUpdated: Map[K, V], removed: Set[K]) ⇒ new MapDiff(addedOrUpdated, removed))
-
   def addedOrUpdated[K, V](added: Map[K, V]): MapDiff[K, V] =
     MapDiff(added, Set())
 
@@ -41,4 +35,7 @@ object MapDiff {
     MapDiff(
       addedOrUpdated = to filter { case (k, v) ⇒ from.get(k) forall v.!= },
       removed = from.keySet -- to.keySet)
+
+  implicit val StringDiffJsonEncoder: Encoder[MapDiff[String, String]] = deriveEncoder[MapDiff[String, String]]
+  implicit val StringDiffJsonDecoder: Decoder[MapDiff[String, String]] = deriveDecoder[MapDiff[String, String]]
 }

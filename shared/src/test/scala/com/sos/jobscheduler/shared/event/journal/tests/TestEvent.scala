@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.shared.event.journal.tests
 
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.typed.Subtype
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.data.event.Event
-import spray.json.DefaultJsonProtocol._
+import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
@@ -12,6 +13,7 @@ private[tests] sealed trait TestEvent extends Event {
 }
 
 private[tests] object TestEvent {
+  @JsonCodec
   final case class Added(
     string: String,
     a: String = "X",   // Many arguments for speed test
@@ -34,15 +36,16 @@ private[tests] object TestEvent {
     r: String = "X")
   extends TestEvent
 
+  @JsonCodec
   final case class Appended(char: Char) extends TestEvent
 
   final case object Reversed extends TestEvent
 
   final case object Removed extends TestEvent
 
-  implicit val OrderEventJsonFormat = TypedJsonFormat[TestEvent](
-    Subtype(jsonFormat19(Added)),
-    Subtype(jsonFormat1(Appended)),
-    Subtype(jsonFormat0(() ⇒ Reversed)),
-    Subtype(jsonFormat0(() ⇒ Removed)))
+  implicit val OrderEventJsonFormat = TypedJsonCodec[TestEvent](
+    Subtype[Added],
+    Subtype[Appended],
+    Subtype(Reversed),
+    Subtype(Removed))
 }

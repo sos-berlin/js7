@@ -1,16 +1,17 @@
 package com.sos.jobscheduler.taskserver.data
 
-import com.sos.jobscheduler.base.sprayjson.SprayJson.JsonFormats._
+import io.circe.generic.JsonCodec
 import java.nio.file.Path
-import spray.json.DefaultJsonProtocol._
+import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.PathJsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
+@JsonCodec
 final case class DotnetConfiguration(
   adapterDllDirectory: Option[Path] = None,
   classDllDirectory: Option[Path] = None)
 
 object DotnetConfiguration {
-  implicit val MyJsonFormat = jsonFormat2(apply)
+  PathJsonCodec  // For IntelliJ import
 }

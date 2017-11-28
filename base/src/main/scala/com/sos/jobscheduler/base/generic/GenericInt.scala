@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.base.generic
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.As
-import spray.json._
+import io.circe.{Decoder, Encoder, Json}
 
 /**
   * @author Joacim Zschimmer
@@ -19,9 +20,7 @@ object GenericInt {
     implicit def stringAsGenericInt: As[String, A] =
       As(o ⇒ apply(o.toInt))
 
-    implicit object genericIntJsonFormat extends JsonFormat[A] {
-      def write(o: A) = JsNumber(o.number)   // JavaScript uses only 53 bits due to conversion to Double !!!
-      def read(json: JsValue) = apply(json.asInstanceOf[JsNumber].value.toIntExact)
-    }
+    implicit val JsonEncoder: Encoder[A] = o ⇒ Json.fromInt(o.number)
+    implicit val JsonDecoder: Decoder[A] = o ⇒ Right(apply(o.value.forceInt))
   }
 }

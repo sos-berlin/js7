@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.generic
 
-import spray.json.{JsNumber, JsValue, JsonFormat, JsonWriter}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import io.circe.{Decoder, Encoder, Json}
 
 /**
  * @author Joacim Zschimmer
@@ -10,22 +11,11 @@ trait GenericLong {
 }
 
 object GenericLong {
-//  val UnsupportedJsonDeserialization = (o: Long) ⇒
-//    throw new UnsupportedOperationException("JSON deserialization not supported for this (abstract?) GenericLong")
 
-  class MyJsonWriter[A <: GenericLong] extends JsonWriter[A] {
-    final def write(o: A) = JsNumber(o.number)
-  }
-
-  final class MyJsonFormat[A <: GenericLong](construct: Long ⇒ A) extends MyJsonWriter[A] with JsonFormat[A] {
-    def read(jsValue: JsValue): A = jsValue match {
-      case JsNumber(o) ⇒ construct(o.toLongExact)
-      case _ => sys.error(s"Number (64bit) expected instead of ${jsValue.getClass.getSimpleName}")
-    }
-  }
-
-  trait HasJsonFormat[A <: GenericLong] {
+  trait Companion[A <: GenericLong] {
     def apply(o: Long): A
-    implicit val MyJsonFormat = new GenericLong.MyJsonFormat(apply)
+
+    implicit val JsonEncoder: Encoder[A] = o ⇒ Json.fromLong(o.number)
+    implicit val JsonDecoder: Decoder[A] = o ⇒ Right(apply(o.value.forceLong))
   }
 }

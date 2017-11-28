@@ -5,10 +5,10 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.common.event.collector.EventDirectivesTest._
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
+import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, KeyedEvent}
+import io.circe.generic.JsonCodec
 import org.scalatest.FreeSpec
-import spray.json.DefaultJsonProtocol._
 
 /**
   * @author Joacim Zschimmer
@@ -16,11 +16,9 @@ import spray.json.DefaultJsonProtocol._
 final class EventDirectivesTest extends FreeSpec with ScalatestRouteTest {
 
   private implicit val myKeyedEventJsonFormat = {
-    implicit val a = jsonFormat0(AEvent)
-    implicit val b = jsonFormat0(BEvent)
-    KeyedEvent.typedJsonFormat[MyEvent](
-      KeyedSubtype[AEvent],
-      KeyedSubtype[BEvent])
+    KeyedEvent.typedJsonCodec[MyEvent](
+      KeyedSubtype.singleEvent[AEvent],
+      KeyedSubtype.singleEvent[BEvent])
   }
 
   "eventRequest" in {
@@ -46,9 +44,9 @@ final class EventDirectivesTest extends FreeSpec with ScalatestRouteTest {
 }
 
 object EventDirectivesTest {
-  private sealed trait MyEvent extends Event {
+  sealed trait MyEvent extends Event {
     type Key = String
   }
-  private case class AEvent() extends MyEvent
-  private case class BEvent() extends MyEvent
+  @JsonCodec final case class AEvent() extends MyEvent
+  @JsonCodec final case class BEvent() extends MyEvent
 }

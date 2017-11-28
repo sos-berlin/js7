@@ -2,14 +2,13 @@ package com.sos.jobscheduler.agent.web
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.coding.Gzip
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes._
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, Authorization, BasicHttpCredentials, `Cache-Control`}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCode, Uri}
-import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
+import akka.http.scaladsl.unmarshalling.FromResponseUnmarshaller
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
 import com.google.inject.Guice
@@ -22,6 +21,8 @@ import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
 import com.sos.jobscheduler.agent.web.AgentWebServerIT._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.common.CirceJsonSupport._
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
@@ -77,7 +78,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
     "Unauthorized request is rejected" - {
       "due to missing credentials" in {
         intercept[HttpException] {
-          executeRequest[HttpResponse](HttpRequest(GET, s"$uri/task"), password = None) await 10.s
+          executeRequest[HttpResponse](HttpRequest(GET, s"$uri/task"), password = None) await 99.s
         }
         .status shouldEqual Unauthorized
       }
@@ -174,8 +175,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
       if (response.status.isSuccess)
         implicitly[FromResponseUnmarshaller[A]].apply(response)
       else
-        for (message ← Unmarshal(Gzip.decodeMessage(response)).to[String]) yield
-          throw new HttpException(response.status, message)
+        throw new HttpException(response.status, response.utf8StringFuture await 99.s)
     }
   }
 }

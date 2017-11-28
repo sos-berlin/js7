@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.common.time.timer
 
-import spray.json.DefaultJsonProtocol._
+import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
+@JsonCodec
 final case class TimerServiceOverview(
   count: Int,
   completeCount: Int,
@@ -13,7 +14,3 @@ final case class TimerServiceOverview(
   first: Option[TimerOverview] = None,
   last: Option[TimerOverview] = None
 )
-
-object TimerServiceOverview {
-  implicit val MyJsonFormat = jsonFormat6(apply)
-}

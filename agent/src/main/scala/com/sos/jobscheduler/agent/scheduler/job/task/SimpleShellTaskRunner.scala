@@ -40,7 +40,7 @@ extends TaskRunner {
     def jobPath = conf.jobPath
     def pidOption = richProcessOnce flatMap { _.pidOption }
     def terminated = terminatedPromise.future
-    def overview = TaskOverview(jobPath, id, pidOption, startedAt)
+    def overview = TaskOverview(jobPath, id, pidOption, startedAt.toTimestamp)
 
     def sendProcessSignal(signal: ProcessSignal) =
       for (o ← richProcessOnce) o.sendProcessSignal(signal)

@@ -4,13 +4,17 @@ import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.system.SystemInformation
-import com.sos.jobscheduler.common.akkahttp.JsObjectMarshallers._
+import com.sos.jobscheduler.common.CirceJsonSupport._
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.system.JavaInformation
+import io.circe.Json
 import java.time.Instant
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
-import spray.json._
 
 /**
  * @author Joacim Zschimmer
@@ -50,14 +54,14 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
   "overview" - {
     "Accept: application/json returns compact JSON" in {
       Get("/agent/api") ~> Accept(`application/json`) ~> route ~> check {
-        assert(responseAs[JsObject] == expectedOverviewJsObject)
-        assert(!(responseAs[String] contains " ")) // Compact JSON
+        assert(responseAs[Json] == expectedOverviewJsObject)
+        assert(!(response.utf8StringFuture.await(99.s) contains " ")) // Compact JSON
       }
     }
 
     "Accept: text/plain returns pretty YAML" in {
       Get("/agent/api") ~> Accept(`text/plain`) ~> route ~> check {
-        assert(responseAs[String] contains " ") // YAML
+        assert(response.utf8StringFuture.await(99.s) contains " ") // YAML
       }
     }
   }

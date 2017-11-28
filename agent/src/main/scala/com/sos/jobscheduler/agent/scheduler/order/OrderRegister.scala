@@ -2,6 +2,8 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.ActorRef
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister._
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
@@ -9,7 +11,6 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.Workflow.{JobNode, Node}
 import com.sos.jobscheduler.shared.common.ActorRegister
-import java.time.Instant
 import scala.concurrent.ExecutionContext
 
 /**
@@ -66,8 +67,8 @@ private[order] object OrderRegister {
     def nodeOption: Option[Node] =
       workflow.idToNode.get(order.nodeId)
 
-    def at(instant: Instant)(body: ⇒ Unit)(implicit timerService: TimerService, ec: ExecutionContext): Unit = {
-      val t = timerService.at(instant, name = order.id.string)
+    def at(timestamp: Timestamp)(body: ⇒ Unit)(implicit timerService: TimerService, ec: ExecutionContext): Unit = {
+      val t = timerService.at(timestamp.toInstant, name = order.id.string)
       t onElapsed {
         timer = None
         body

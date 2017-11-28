@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.shared.event.journal.tests
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.shared.event.journal.tests.TestEvent._
-import spray.json.DefaultJsonProtocol._
 
 /**
   * @author Joacim Zschimmer
   */
-private[tests] case class TestAggregate(key: String, string: String,
+private[tests] final case class TestAggregate(key: String, string: String,
   a: String = "X",
   b: String = "X",
   c: String = "X",
@@ -33,5 +33,5 @@ private[tests] case class TestAggregate(key: String, string: String,
 }
 
 private[tests] object TestAggregate {
-  implicit val jsonFormat = jsonFormat20(apply)
+  implicit val JsonCodec = deriveCirceCodec[TestAggregate]
 }

@@ -4,17 +4,17 @@ import akka.Done
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.common.utils.IntelliJUtils.intelliJuseImports
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.tests.TestActor._
-import com.sos.jobscheduler.shared.event.journal.tests.TestJsonFormats.TestKeyedEventJsonFormat
+import com.sos.jobscheduler.shared.event.journal.tests.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalActorRecoverer, JsonJournalMeta, JsonJournalRecoverer}
 import java.nio.file.Path
 import scala.collection.mutable
@@ -112,11 +112,11 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
 }
 
 private[tests] object TestActor {
-  intelliJuseImports(TestKeyedEventJsonFormat)
+  intelliJuseImport(TestKeyedEventJsonCodec)
 
-  val SnapshotJsonFormat = TypedJsonFormat[Any](
+  val SnapshotJsonFormat = TypedJsonCodec[Any](
     Subtype[TestAggregate])
-  private val TestJsonJournalMeta = new JsonJournalMeta[TestEvent](SnapshotJsonFormat, TestKeyedEventJsonFormat) with GzipCompression
+  private val TestJsonJournalMeta = new JsonJournalMeta[TestEvent](SnapshotJsonFormat, TestKeyedEventJsonCodec) with GzipCompression
   private val logger = Logger(getClass)
 
   object Input {

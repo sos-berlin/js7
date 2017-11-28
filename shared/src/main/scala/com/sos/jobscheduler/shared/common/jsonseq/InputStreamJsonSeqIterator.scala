@@ -1,12 +1,12 @@
 package com.sos.jobscheduler.shared.common.jsonseq
 
 import com.google.common.base.Ascii
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import io.circe.Json
 import java.io.{BufferedReader, EOFException, InputStream, InputStreamReader}
 import java.nio.charset.StandardCharsets.UTF_8
 import scala.collection.AbstractIterator
-import scala.io
 import scala.util.Try
-import spray.json._
 
 /**
   * MIME media type application/json-seq, RFC 7464 "JavaScript Object Notation (JSON) Text Sequences".
@@ -19,12 +19,12 @@ import spray.json._
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
   */
-final class InputStreamJsonSeqIterator(in: InputStream) extends AbstractIterator[JsValue] {
+final class InputStreamJsonSeqIterator(in: InputStream) extends AbstractIterator[Json] {
 
   private val reader = new BufferedReader(new InputStreamReader(in, UTF_8))
 
   private var lineNumber = 0
-  private var nextJsValue: Try[Option[JsValue]] = readJsValue()
+  private var nextJsValue: Try[Option[Json]] = readJsValue()
 
   def hasNext = nextJsValue.get.nonEmpty
 
@@ -34,7 +34,7 @@ final class InputStreamJsonSeqIterator(in: InputStream) extends AbstractIterator
     result
   }
 
-  private def readJsValue(): Try[Option[JsValue]] = Try {
+  private def readJsValue(): Try[Option[Json]] = Try {
     lineNumber += 1
     reader.read() match {
       case Ascii.RS ⇒

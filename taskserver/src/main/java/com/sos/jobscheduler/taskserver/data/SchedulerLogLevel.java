@@ -1,8 +1,5 @@
 package com.sos.jobscheduler.taskserver.data;
 
-import com.sos.jobscheduler.base.sprayjson.JavaEnumJsonFormat;
-import spray.json.JsonFormat;
-
 public enum SchedulerLogLevel {
     none(-10, "none"),
     debug9(-9, "debug9"),
@@ -51,6 +48,4 @@ public enum SchedulerLogLevel {
     public static SchedulerLogLevel ofCpp(int cppLogLevel) {
         return values()[cppLogLevel - none.cppNumber];
     }
-
-    public static final JsonFormat<SchedulerLogLevel> MyJsonFormat = new JavaEnumJsonFormat<>(SchedulerLogLevel.class);
 }

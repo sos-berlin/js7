@@ -1,9 +1,13 @@
 package com.sos.jobscheduler.data.workflow
 
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.CirceCodec
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Workflow._
-import spray.json.DefaultJsonProtocol._
+import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.generic.JsonCodec
+import io.circe.syntax.EncoderOps
 
 /**
   * @author Joacim Zschimmer
@@ -52,21 +56,35 @@ object Workflow {
   }
 
   def fromWorkflowAttached(path: WorkflowPath, event: WorkflowEvent.WorkflowAttached): Workflow =
-    Workflow(path, event.inputNodeId, event.idToNode)
+    Workflow(path, event.inputNodeId, event.nodes.toKeyedMap(_.id))
 
   sealed trait Node {
     def id: NodeId
   }
 
   object Node {
-    implicit val jsonFormat = TypedJsonFormat[Node](
-      Subtype(jsonFormat5(JobNode)),
-      Subtype(jsonFormat1(EndNode)))
+    implicit val JsonCodec: CirceCodec[Node] = TypedJsonCodec[Node](
+      Subtype[JobNode],
+      Subtype[EndNode])
   }
 
+  @JsonCodec
   final case class EndNode(id: NodeId) extends Node
 
+  @JsonCodec
   final case class JobNode(id: NodeId, agentPath: AgentPath, jobPath: JobPath, onSuccess: NodeId, onFailure: NodeId) extends Node
 
-  implicit val jsonFormat = jsonFormat3 { (path: WorkflowPath, input: NodeId, o: Map[NodeId, Node]) ⇒ Workflow(path, input, o) }
+  implicit val JsonEncoder: Encoder[Workflow] =
+    workflow ⇒ Json.fromJsonObject(JsonObject.fromMap(Map(
+      "path" → workflow.path.asJson,
+      "inputNodeId" → workflow.inputNodeId.asJson,
+      "nodes" → workflow.idToNode.values.asJson)))
+
+  implicit val JsonDecoder: Decoder[Workflow] =
+    cursor ⇒
+      for {
+        path ← cursor.get[WorkflowPath]("path")
+        inputNodeId ← cursor.get[NodeId]("inputNodeId")
+        nodes ← cursor.get[Vector[Node]]("nodes")
+      } yield Workflow(path, inputNodeId, nodes toKeyedMap (_.id))
 }

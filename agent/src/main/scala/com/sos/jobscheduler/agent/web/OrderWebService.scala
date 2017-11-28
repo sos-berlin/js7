@@ -5,11 +5,10 @@ import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils._
-import com.sos.jobscheduler.common.akkahttp.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.data.order.OrderId
 import scala.concurrent.ExecutionContext
-import spray.json.DefaultJsonProtocol._
 
 /**
   * @author Joacim Zschimmer
@@ -42,18 +41,6 @@ trait OrderWebService extends AgentWebService {
       }
     }
   }
-
-  //private def eventRoute[E <: Event: KeyedTypedEventJsonFormat]: Route =
-  //  pathEnd {
-  //    eventRequest[Event](defaultReturnType = Some("Event")).apply { request ⇒
-  //      complete {
-  //        eventIdGenerator.stampTearableEventSeq {
-  //          eventCollector.byPredicate(request, (e: AnyKeyedEvent) ⇒
-  //            implicitly[KeyedTypedEventJsonFormat[E]].canSerialize(e.event))
-  //        }
-  //      }
-  //    }
-  //  }
 }
 
 

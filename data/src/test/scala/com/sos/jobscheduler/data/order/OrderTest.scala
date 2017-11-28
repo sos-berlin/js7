@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.data.order
 
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
-import java.time.Instant
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
-import spray.json._
 
 /**
   * @author Joacim Zschimmer
@@ -21,7 +21,7 @@ final class OrderTest extends FreeSpec {
 
     "JSON" - {
       "Good" in {
-         check(Order.Good(true), """
+         testJson[Order.Outcome](Order.Good(true), """
             {
               "TYPE": "Good",
               "returnValue": true
@@ -29,7 +29,7 @@ final class OrderTest extends FreeSpec {
       }
 
       "Bad AgentAborted" in {
-         check(Order.Bad(Order.Bad.AgentAborted), """
+         testJson[Order.Outcome](Order.Bad(Order.Bad.AgentAborted), """
             {
               "TYPE": "Bad",
               "reason": {
@@ -39,19 +39,14 @@ final class OrderTest extends FreeSpec {
       }
 
       "Bad Other" in {
-         check(Order.Bad("OTHER REASON"), """
+         testJson[Order.Outcome](Order.Bad("OTHER-REASON"), """
             {
               "TYPE": "Bad",
               "reason": {
                 "TYPE": "Other",
-                "message": "OTHER REASON"
+                "message": "OTHER-REASON"
               }
             }""".stripMargin)
-      }
-
-      def check(o: Order.Outcome, json: String): Unit = {
-        assert(o.toJson == json.parseJson)
-        assert(json.parseJson.convertTo[Order.Outcome] == o)
       }
     }
   }
@@ -90,7 +85,7 @@ final class OrderTest extends FreeSpec {
     import Order._
 
     "Scheduled" in {
-      check(Scheduled(Instant.parse("2017-11-15T12:33:44.789Z")),
+      check(Scheduled(Timestamp.parse("2017-11-15T12:33:44.789Z")),
         """{
            "TYPE": "Scheduled",
            "at": 1510749224789
@@ -147,13 +142,9 @@ final class OrderTest extends FreeSpec {
     }
   }
 
-  private def check(o: Order[Order.State], json: String): Unit = {
-    assert(o.toJson == json.parseJson)
-    assert(json.parseJson.convertTo[Order[Order.State]] == o)
-  }
+  private def check(o: Order[Order.State], json: String): Unit =
+    testJson(o, json)
 
-  private def check(o: Order.State, json: String): Unit = {
-    assert(o.toJson == json.parseJson)
-    assert(json.parseJson.convertTo[Order.State] == o)
-  }
+  private def check(o: Order.State, json: String): Unit =
+    testJson(o, json)
 }

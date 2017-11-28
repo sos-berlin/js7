@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.data.event
 
-import com.sos.jobscheduler.base.sprayjson.typed.{CanSerialize, HasOwnTypeField, TypedJsonFormat}
-import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, Encoder, Json}
 import scala.reflect.ClassTag
-import spray.json._
 
 /**
   * A [[Event]] enriched with a `key` designating the respective object.
@@ -17,10 +17,8 @@ object KeyedEvent {
 
   sealed trait NoKey
   case object NoKey extends NoKey {
-    implicit val NoKeyJsonFormat = new JsonFormat[NoKey] {
-      def read(json: JsValue) = sys.error("NoKey")
-      def write(obj: NoKey) = sys.error("NoKey")
-    }
+    implicit val JsonEncoder: Encoder[NoKey] = _ ⇒ sys.error("NoKey Encoder")
+    implicit val JsonDecoder: Decoder[NoKey] = _ ⇒ sys.error("NoKey Decoder")
 
     override def toString = "NoKey"
   }
@@ -31,45 +29,25 @@ object KeyedEvent {
 
   def of[E <: Event { type Key = NoKey }](event: E) = new KeyedEvent[E](NoKey, event)
 
-  def typedJsonFormat[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*) =
-    new KeyedTypedEventJsonFormat[E](subtypes.toVector)
-
-  implicit def jsonFormat[E <: Event: TypedJsonFormat](implicit keyJsonFormat: JsonFormat[E#Key]) =
-    new KeyedEventJsonFormat[E]
-
-  final class KeyedEventJsonFormat[E <: Event: TypedJsonFormat](implicit keyJsonFormat: JsonFormat[E#Key])
-  extends RootJsonFormat[KeyedEvent[E]] with CanSerialize[KeyedEvent[E]] with HasOwnTypeField[E] {
-
-    private val eJsonFormat = implicitly[TypedJsonFormat[E]].asJsObjectJsonFormat
-
-    def classToJsonWriter = Map[Class[_], RootJsonWriter[_]](classOf[KeyedEvent[_]] → this)
-
-    def subtypeNames = eJsonFormat.subtypeNames
-
-    def typeNameToJsonReader = eJsonFormat.typeNameToJsonReader
-
-    def typeNameToClass = eJsonFormat.typeNameToClass
-
-    def canSerialize(o: KeyedEvent[E]) = eJsonFormat canSerialize o.event
-
-    def write(keyedEvent: KeyedEvent[E]) = {
-      val jsValue = keyedEvent.event.toJson(eJsonFormat)
-      if (NoKey == keyedEvent.key)
-        jsValue
-      else {
-        val fields = jsValue.asJsObject.fields
-        require(!fields.contains(KeyFieldName), s"Serialized ${keyedEvent.getClass} must not contain a field '$KeyFieldName'")
-        JsObject(fields + (KeyFieldName → keyedEvent.key.toJson))
+  implicit def jsonEncoder[E <: Event](implicit eventEncoder: Encoder[E], keyEncoder: Encoder[E#Key]): Encoder[KeyedEvent[E]] =
+    keyedEvent ⇒ {
+      val json = keyedEvent.event.asJson
+      keyedEvent.key match {
+        case _: NoKey.type ⇒ json
+        case key ⇒
+          val jsonObject = json.forceObject
+          require(!jsonObject.contains(KeyFieldName), s"Serialized ${keyedEvent.getClass} must not contain a field '$KeyFieldName'")
+          Json.fromJsonObject(jsonObject.add(KeyFieldName, key.asJson))
       }
     }
 
-    def read(json: JsValue) = {
-      val jsObject = json.asJsObject
-      val event = jsObject.convertTo[E](eJsonFormat)
-      if (keyJsonFormat eq NoKey.NoKeyJsonFormat)
-        KeyedEvent[E](NoKey.asInstanceOf[E#Key], event)
-      else
-        KeyedEvent[E](jsObject.fields(KeyFieldName).convertTo[E#Key], event)
+  implicit def jsonDecoder[E <: Event](implicit decoder: Decoder[E], keyDecoder: Decoder[E#Key]): Decoder[KeyedEvent[E]] =
+    cursor ⇒ {
+      val key = cursor.get[E#Key]("key") getOrElse NoKey.asInstanceOf[E#Key]
+      for (event ← cursor.as[E]) yield
+        KeyedEvent(key, event)
     }
-  }
+
+  def typedJsonCodec[E <: Event: ClassTag](subtypes: KeyedEventTypedJsonCodec.KeyedSubtype[_ <: E]*) =
+    KeyedEventTypedJsonCodec[E](subtypes: _*)
 }

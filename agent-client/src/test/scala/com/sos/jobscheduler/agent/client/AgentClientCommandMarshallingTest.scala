@@ -15,6 +15,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 /**
  * @author Joacim Zschimmer
@@ -57,5 +58,5 @@ extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with Ag
 }
 
 private object AgentClientCommandMarshallingTest {
-  private val ExpectedTerminate = Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.s))
+  private val ExpectedTerminate = Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
 }

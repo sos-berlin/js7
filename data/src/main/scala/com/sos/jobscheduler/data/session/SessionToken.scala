@@ -1,17 +1,19 @@
 package com.sos.jobscheduler.data.session
 
 import com.sos.jobscheduler.base.generic.SecretString
-import spray.json.DefaultJsonProtocol._
+import com.sos.jobscheduler.base.generic.SecretString.implicits.{JsonDecoder, JsonEncoder}
+import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
+@JsonCodec
 final case class SessionToken(secret: SecretString) {
   override def toString = "SessionToken"
 }
 
 object SessionToken {
-  private implicit val x = SecretString.implicits.jsonFormat
-  implicit val jsonFormat = jsonFormat1(apply)
+  (JsonEncoder, JsonDecoder)  // For IntelliJ import
+
   val HeaderName = "X-JobScheduler-Session"
 }

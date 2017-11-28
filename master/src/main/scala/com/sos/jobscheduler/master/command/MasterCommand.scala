@@ -1,11 +1,12 @@
 package com.sos.jobscheduler.master.command
 
-import com.sos.jobscheduler.base.sprayjson.JavaTimeJsonFormats.implicits._
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
+import com.sos.jobscheduler.base.circeutils.typed.Subtype
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.master.command.MasterCommand._
-import java.time.Duration
-import spray.json.DefaultJsonProtocol._
+import io.circe.generic.JsonCodec
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -15,11 +16,13 @@ sealed trait MasterCommand {
 }
 
 object MasterCommand {
+  @JsonCodec
   final case class AddOrderIfNew(order: Order[Order.Idle]) extends MasterCommand {
     type MyResponse = Response.Accepted.type
   }
 
-  final case class ScheduleOrdersEvery(every: Duration) extends MasterCommand
+  @JsonCodec
+  final case class ScheduleOrdersEvery(every: FiniteDuration) extends MasterCommand
 
   case object Terminate extends MasterCommand {
     type MyResponse = Response.Accepted.type
@@ -30,13 +33,12 @@ object MasterCommand {
   object Response {
     case object Accepted extends Response
 
-    implicit val ResponseJsonFormat = TypedJsonFormat[Response](
-      Subtype(jsonFormat0(() ⇒ Response.Accepted))
-    )
+    implicit val ResponseJsonCodec = TypedJsonCodec[Response](
+      Subtype(Accepted))
   }
 
-  implicit val jsonFormat = TypedJsonFormat[MasterCommand](
-    Subtype(jsonFormat1(AddOrderIfNew)),
-    Subtype(jsonFormat1(ScheduleOrdersEvery)),
-    Subtype(jsonFormat0(() ⇒ Terminate)))
+  implicit val JsonCodec = TypedJsonCodec[MasterCommand](
+    Subtype[AddOrderIfNew],
+    Subtype[ScheduleOrdersEvery],
+    Subtype(Terminate))
 }

@@ -23,7 +23,7 @@ final case class AgentTaskId(string: String) extends IsString {
   override def toString = s"AgentTaskId($string)"
 }
 
-object AgentTaskId extends IsString.HasJsonFormat[AgentTaskId] {
+object AgentTaskId extends IsString.HasJsonCodec[AgentTaskId] {
 
   private val pattern = "[A-Za-z0-9-][A-Za-z0-9._-]*".r.pattern  // Try to exclude any meta characters
 

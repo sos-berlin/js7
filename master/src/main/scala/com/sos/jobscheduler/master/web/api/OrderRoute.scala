@@ -7,19 +7,19 @@ import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.common.akkahttp.SprayJsonOrYamlSupport._
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.html.{HtmlDirectives, WebServiceContext}
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.event.collector.EventDirectives.eventRequest
 import com.sos.jobscheduler.data.event.SomeEventRequest
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.master.KeyedEventJsonFormats.keyedEventJsonFormat
+import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import com.sos.jobscheduler.master.OrderClient
 import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
 import com.sos.jobscheduler.master.web.simplegui.OrdersHtmlPage._
 import scala.concurrent.ExecutionContext
-import spray.json.DefaultJsonProtocol._
 
 /**
   * @author Joacim Zschimmer
@@ -52,7 +52,7 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
         singleOrder(OrderId(orderIdString))
       } ~
       extractUnmatchedPath {
-        case path: Uri.Path.Slash ⇒ singleOrder(OrderId(path.tail.toString))  // Slashes not escaped
+        case Uri.Path.Slash(tail) if !tail.isEmpty ⇒ singleOrder(OrderId(tail.toString))  // Slashes not escaped
         case _ ⇒ reject
       }
     }
@@ -78,4 +78,8 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
       case _ ⇒
         reject
     }
+}
+
+object OrderRoute {
+  intelliJuseImport(keyedEventJsonCodec)
 }

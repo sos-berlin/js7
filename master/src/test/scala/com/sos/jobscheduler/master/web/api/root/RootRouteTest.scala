@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.web.api.root
 
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
@@ -8,6 +7,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
+import com.sos.jobscheduler.common.CirceJsonSupport._
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
 

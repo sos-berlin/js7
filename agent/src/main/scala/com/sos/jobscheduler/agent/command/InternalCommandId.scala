@@ -10,7 +10,7 @@ final case class InternalCommandId(number: Long) extends IsString {
   override def toString = s"#$number"
 }
 
-object InternalCommandId extends IsString.HasJsonFormat[InternalCommandId] {
+object InternalCommandId extends IsString.HasJsonCodec[InternalCommandId] {
   def apply(o: String) = InternalCommandId(o.toLong)
 
   def newGenerator(): Iterator[InternalCommandId] =

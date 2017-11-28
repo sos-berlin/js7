@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.base.generic
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.As
-import com.sos.jobscheduler.base.sprayjson.SprayJson.implicits.RichJsValue
+import io.circe.{Decoder, Encoder, Json}
 import scala.annotation.tailrec
-import spray.json.{JsString, JsValue, RootJsonFormat}
 
 /**
   * @author Joacim Zschimmer
@@ -27,10 +27,9 @@ object SecretString {
 
   object implicits {
     // Import explicitly, it's secret.
-    implicit object jsonFormat extends RootJsonFormat[SecretString] {
-      def write(o: SecretString) = JsString(o.string)
-      def read(jsValue: JsValue) = SecretString(jsValue.asString)
-    }
+
+    implicit val JsonEncoder: Encoder[SecretString] = o ⇒ Json.fromString(o.string)
+    implicit val JsonDecoder: Decoder[SecretString] = o ⇒ Right(SecretString(o.value.forceString))
   }
 
   implicit val StringAsSecretString: As[String, SecretString] =

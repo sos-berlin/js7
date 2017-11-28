@@ -8,13 +8,16 @@ import com.softwaremill.tagging.Tagger
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActor
-import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonFormat
+import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.AgentKeyedEventJsonCodec
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper._
 import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
+import com.sos.jobscheduler.base.circeutils.typed.Subtype
+import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.sprayjson.typed.{Subtype, TypedJsonFormat}
+import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -36,7 +39,6 @@ import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalAc
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Duration
-import java.time.Instant.now
 import scala.collection.immutable.Seq
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NoStackTrace
@@ -192,7 +194,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     case cmd @ AttachOrder(_, workflow) if !terminating ⇒
       val workflowResponse = workflowRegister.get(workflow.path) match {
         case None ⇒
-          persistFuture(KeyedEvent(WorkflowAttached(workflow.inputNodeId, workflow.idToNode))(workflow.path)) { stampedEvent ⇒
+          persistFuture(KeyedEvent(WorkflowAttached(workflow.inputNodeId, workflow.idToNode.values.toImmutableSeq))(workflow.path)) { stampedEvent ⇒
             workflowRegister.handleEvent(stampedEvent.value)
             Accepted
           }
@@ -407,12 +409,12 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 object AgentOrderKeeper {
   private val logger = Logger(getClass)
 
-  private val SnapshotJsonFormat = TypedJsonFormat[Any](
+  private val SnapshotJsonFormat = TypedJsonCodec[Any](
     Subtype[Workflow],
     Subtype[Order[Order.State]],
     Subtype[EventQueueActor.Snapshot])
 
-  private[order] val MyJournalMeta = new JsonJournalMeta[Event](SnapshotJsonFormat, AgentKeyedEventJsonFormat) with GzipCompression
+  private[order] val MyJournalMeta = new JsonJournalMeta[Event](SnapshotJsonFormat, AgentKeyedEventJsonCodec) with GzipCompression
 
   sealed trait Input
   object Input {

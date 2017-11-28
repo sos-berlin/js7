@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.agent.scheduler
 
 import com.sos.jobscheduler.common.auth.UserId
-import com.sos.jobscheduler.data.event.KeyedTypedEventJsonFormat.KeyedSubtype
-import com.sos.jobscheduler.data.event.{Event, KeyedEvent}
-import spray.json.DefaultJsonProtocol.jsonFormat0
+import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
+import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 
 /**
   * @author Joacim Zschimmer
@@ -16,10 +15,8 @@ object AgentEvent {
     type Key = UserId
   }
 
-  final case object MasterAdded extends MasterEvent {
-    implicit val jsonFormat = jsonFormat0(() ⇒ MasterAdded)
-  }
+  final case object MasterAdded extends MasterEvent
 
-  implicit val KeyedEventJsonFormat = KeyedEvent.typedJsonFormat[AgentEvent](
-    KeyedSubtype[MasterAdded.type])
+  implicit val KeyedEventJsonCodec = KeyedEventTypedJsonCodec[AgentEvent](
+    KeyedSubtype(MasterAdded))
 }
