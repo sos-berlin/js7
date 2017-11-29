@@ -9,9 +9,9 @@ import org.scalatest.Matchers._
 final class ProxyIdTest extends FreeSpec {
 
   "newGenerator" in {
-    val generate = ProxyId.newGenerator().next _
+    val generator = ProxyId.newGenerator()
     for (i ← 0x40000001 to 0x40000001 + 10000) {
-      generate().index shouldEqual i
+      generator.next().index shouldEqual i
     }
   }
 
