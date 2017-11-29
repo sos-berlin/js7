@@ -15,13 +15,23 @@ object CirceJsonTester {
   def testJson[A: Encoder: Decoder](a: A, jsonString: String): Unit = {
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullKeys = true)
     val compressedJsonString = jsonString filter (o ⇒ !isWhitespace(o))
-    val parsed = parse(jsonString).toTry.get
+    val parsed = parseJson(jsonString)
     assert(asJson == parsed)
-    assert(parsed.as[A].toTry.get == a)
+    assert(forceLeft(parsed.as[A]) == a)
     assert(printer.pretty(asJson).length == compressedJsonString.length, s", expected: $compressedJsonString")
-    assert(parsed == parse(printer.pretty(asJson)).toTry.get)
-    assert(parse(printer.pretty(asJson)) == Right(asJson))
+    assert(parsed == parseJson(printer.pretty(asJson)))
+    assert(parseJson(printer.pretty(asJson)) == asJson)
   }
+
+  private def parseJson(string: String): Json =
+    forceLeft(parse(string)
+    )
+
+  private def forceLeft[R](either: Either[Throwable, R]): R =
+    either match {
+      case Right(o) ⇒ o
+      case Left(t) ⇒ throw new RuntimeException(t.toString, t)   // Add stacktrace
+    }
 
   def removeJNull(json: Json): Json =
     json.asObject match {
