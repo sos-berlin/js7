@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.data.workflow.{NodeId, Workflow}
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
@@ -63,7 +63,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case Order.InProcess ⇒
         context.become(processed)
-        persist(OrderProcessed(MapDiff.empty, Order.Bad(Order.Bad.AgentAborted)))(update)  // isRecoveryGeneratedEvent
+        persist(OrderProcessed(MapDiff.empty, Outcome.Bad(Outcome.Bad.AgentAborted)))(update)  // isRecoveryGeneratedEvent
 
       case Order.Processed ⇒
         context.become(processed)
@@ -80,9 +80,9 @@ extends KeyedJournalingActor[OrderEvent] {
 
   def receive = journaling orElse {
     case command: Command ⇒ command match {
-      case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, variables, outcome, _: Option[AgentPath])) ⇒
+      case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, _: Option[AgentPath], payload)) ⇒
         context.become(waiting)
-        persist(OrderAttached(nodeKey, state, variables, outcome)) { event ⇒
+        persist(OrderAttached(nodeKey, state, payload)) { event ⇒
           sender() ! Completed
           update(event)
         }
@@ -166,7 +166,7 @@ extends KeyedJournalingActor[OrderEvent] {
         context.unwatch(jobActor)
 
       case Terminated(`jobActor`) ⇒
-        val bad = Order.Bad(Order.Bad.Other(s"Job Actor '${node.jobPath.string}' terminated unexpectedly"))
+        val bad = Outcome.Bad(Outcome.Bad.Other(s"Job Actor '${node.jobPath.string}' terminated unexpectedly"))
         finishProcessing(OrderProcessed(MapDiff.empty, bad), node, stdoutStderrStatistics)
 
       case command: Command ⇒
@@ -294,7 +294,7 @@ object OrderActor {
 
   def isRecoveryGeneratedEvent(event: OrderEvent): Boolean =
     event match {
-      case OrderProcessed(_, Order.Bad(Order.Bad.AgentAborted)) ⇒ true
+      case OrderProcessed(_, Outcome.Bad(Outcome.Bad.AgentAborted)) ⇒ true
       case _ ⇒ false
     }
 }

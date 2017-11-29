@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorKeeper._
@@ -39,7 +39,7 @@ final class ScheduledOrderGeneratorKeeper @Inject private(masterConfiguration: M
         toOrderId(orderGenerator.path, instant),
         orderGenerator.nodeKey,
         Order.Scheduled(instant.toTimestamp),
-        orderGenerator.variables))
+        payload = Payload(orderGenerator.variables)))
     .toVector.sortBy { _.state.at }
 }
 

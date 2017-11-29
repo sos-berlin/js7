@@ -20,20 +20,12 @@ sealed trait OrderEvent extends Event {
 object OrderEvent {
   sealed trait OrderCoreEvent extends OrderEvent
 
-  final case class OrderAdded(
-    nodeKey: NodeKey,
-    state: Idle,
-    variables: Map[String, String],
-    outcome: Outcome)
+  final case class OrderAdded(nodeKey: NodeKey, state: Idle, payload: Payload)
   extends OrderCoreEvent {
     //type State = Idle
   }
 
-  final case class OrderAttached(
-    nodeKey: NodeKey,
-    state: Idle,
-    variables: Map[String, String],
-    outcome: Outcome)
+  final case class OrderAttached(nodeKey: NodeKey, state: Idle, payload: Payload)
   extends OrderCoreEvent {
     //type State = Idle
   }

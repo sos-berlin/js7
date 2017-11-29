@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
 import com.sos.jobscheduler.data.job.{ReturnCode, TaskId}
-import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.order.{Order, Outcome}
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyIDispatch
 import com.sos.jobscheduler.taskserver.task.TaskArguments
 import scala.concurrent.{ExecutionContext, Future}
@@ -50,10 +50,10 @@ final class ModuleInstanceRunner(jobConfiguration: JobConfiguration, taskId: Tas
       .map { stepResult ⇒
         TaskStepSucceeded(
           MapDiff.diff(order.variables, orderIDispatch.variables),
-          Order.Good(StepResult.fromXml(stepResult.asInstanceOf[String]).result))
+          Outcome.Good(StepResult.fromXml(stepResult.asInstanceOf[String]).result))
       }
       .recover {
-        case t: Throwable ⇒ TaskStepFailed(Order.Bad(t.toString))  // We are exposing the exception message !!!
+        case t: Throwable ⇒ TaskStepFailed(Outcome.Bad(t.toString))  // We are exposing the exception message !!!
       }
   }
 

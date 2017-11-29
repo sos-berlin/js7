@@ -154,7 +154,7 @@ with Stash {
           case None if !pathToWorkflow.isDefinedAt(order.nodeKey.workflowPath) ⇒
             logger.error(s"$logMsg: Unknown '${order.nodeKey.workflowPath}'")
           case _ ⇒
-            persistAsync(KeyedEvent(OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
+            persistAsync(KeyedEvent(OrderAdded(order.nodeKey, order.state, order.payload))(order.id)) { _ ⇒
               logger.info(logMsg)
             }
         }
@@ -261,7 +261,7 @@ with Stash {
     case MasterCommand.AddOrderIfNew(order) ⇒
       orderRegister.get(order.id) match {
         case None if pathToWorkflow.isDefinedAt(order.nodeKey.workflowPath) ⇒
-          persistAsync(KeyedEvent(OrderAdded(order.nodeKey, order.state, order.variables, order.outcome))(order.id)) { _ ⇒
+          persistAsync(KeyedEvent(OrderAdded(order.nodeKey, order.state, order.payload))(order.id)) { _ ⇒
             sender() ! MasterCommand.Response.Accepted
           }
         case None if !pathToWorkflow.isDefinedAt(order.nodeKey.workflowPath) ⇒

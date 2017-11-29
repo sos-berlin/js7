@@ -28,7 +28,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderProcessed, OrderTransitioned}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowEvent}
@@ -362,16 +362,16 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private def handleProcessed(orderEntry: OrderEntry): Unit = {
     val fromNode = orderEntry.jobNode
     val toNodeId = orderEntry.order.outcome match {
-      case _: Order.Good ⇒ nextNodeId(fromNode, orderEntry.order.outcome)
-      case _: Order.Bad ⇒ fromNode.id
+      case _: Outcome.Good ⇒ nextNodeId(fromNode, orderEntry.order.outcome)
+      case _: Outcome.Bad ⇒ fromNode.id
     }
     orderEntry.actor ! OrderActor.Input.Transition(toNodeId)
   }
 
-  private def nextNodeId(node: JobNode, outcome: Order.Outcome) =
+  private def nextNodeId(node: JobNode, outcome: Outcome) =
     outcome match {
-      case Order.Good(returnValue) ⇒ if (returnValue) node.onSuccess else node.onFailure
-      case Order.Bad(_) ⇒ node.onFailure
+      case Outcome.Good(returnValue) ⇒ if (returnValue) node.onSuccess else node.onFailure
+      case Outcome.Bad(_) ⇒ node.onFailure
     }
 
   override def unhandled(message: Any) =

@@ -21,7 +21,7 @@ import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterIT._
 import com.sos.jobscheduler.master.command.MasterCommand
@@ -88,7 +88,7 @@ final class RunningMasterIT extends FreeSpec {
         val adHocOrder = Order(
           TestOrderId,
           NodeKey(TestWorkflowPath, NodeId("100")),
-          Order.Ready)
+          Order.StartNow)
 
         sleep(3.s)
         master.orderKeeper ! MasterOrderKeeper.Input.SuspendDetaching
@@ -106,8 +106,9 @@ final class RunningMasterIT extends FreeSpec {
             TestOrderId,
             NodeKey(TestWorkflowPath, NodeId("END")),
             Order.Finished,
-            Map("result" → "TEST-RESULT-VALUE-agent-222"),
-            Order.Good(true)))
+            payload = Payload(
+              Map("result" → "TEST-RESULT-VALUE-agent-222"),
+              Outcome.Good(true))))
         assert(orderClient.orderCount.await(99.s) >= 1)
 
         master.executeCommand(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations

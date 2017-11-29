@@ -17,7 +17,7 @@ import org.scalatest.FreeSpec
 final class OrderEventTest extends FreeSpec {
 
   "OrderAdded" in {
-    check(OrderAdded(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
+    check(OrderAdded(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Payload(Map("VAR" → "VALUE"))),
       """{
         "TYPE":"OrderAdded",
         "nodeKey": {
@@ -27,18 +27,20 @@ final class OrderEventTest extends FreeSpec {
         "state": {
           "TYPE":"Ready"
         },
-        "variables": {
-          "VAR": "VALUE"
-        },
-        "outcome": {
-          "TYPE": "Good",
-          "returnValue": true
+        "payload": {
+          "variables": {
+            "VAR": "VALUE"
+          },
+          "outcome": {
+            "TYPE": "Good",
+            "returnValue": true
+          }
         }
       }""")
   }
 
   "OrderAttached" in {
-    check(OrderAttached(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true)),
+    check(OrderAttached(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Payload(Map("VAR" → "VALUE"))),
       """{
         "TYPE": "OrderAttached",
         "nodeKey": {
@@ -48,12 +50,14 @@ final class OrderEventTest extends FreeSpec {
         "state": {
           "TYPE":"Ready"
         },
-        "variables": {
-          "VAR": "VALUE"
-        },
-        "outcome": {
-          "TYPE": "Good",
-          "returnValue": true
+        "payload": {
+          "variables": {
+            "VAR": "VALUE"
+          },
+          "outcome": {
+            "TYPE": "Good",
+            "returnValue": true
+          }
         }
       }""")
   }
@@ -90,7 +94,7 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderProcessed" in {
-    check(OrderProcessed(MapDiff(addedOrUpdated = Map("VAR" → "VALUE"), removed = Set("REMOVED")), Order.Good(true)),
+    check(OrderProcessed(MapDiff(addedOrUpdated = Map("VAR" → "VALUE"), removed = Set("REMOVED")), Outcome.Good(true)),
       """{
         "TYPE": "OrderProcessed",
         "variablesDiff": {
@@ -139,7 +143,7 @@ final class OrderEventTest extends FreeSpec {
 
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
-    val event = Stamped(12345678, KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true))))
+    val event = Stamped(12345678, KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Payload(Map("VAR" → "VALUE")))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
     for (_ ← 1 to 10) {

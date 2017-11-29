@@ -95,9 +95,9 @@ object OrderListBackend {
   ////OrderId = String - private implicit val OrderIdReuse = Reusability.derive[OrderId]
   ////OrderId = String - private implicit val WorkflowPathReuse = Reusability.derive[WorkflowPath]
   ////OrderId = String - private implicit val NodeIdReuse = Reusability.derive[NodeId]
-  //private implicit val GoodOutcomeReuse = Reusability.derive[Order.Good]
-  //private implicit val BadOutcomeReuse = Reusability.derive[Order.Bad]
-  //private implicit val OutcomeReuse = Reusability.derive[Order.Outcome]
+  //private implicit val GoodOutcomeReuse = Reusability.derive[Outcome.Good]
+  //private implicit val BadOutcomeReuse = Reusability.derive[Outcome.Bad]
+  //private implicit val OutcomeReuse = Reusability.derive[Outcome]
   //private implicit val SomeAgentPathReuse = Reusability.derive[Some[AgentPath]]
   ////private implicit val MaybeAgentPathReuse = Reusability.derive[Option[AgentPath]]
   //private implicit val orderStateReuse = Reusability.byRef[Order.State]
@@ -120,7 +120,7 @@ object OrderListBackend {
   //  }
   //  .build
   //
-  //private val OutcomeTd = ScalaComponent.builder[Order.Outcome]("Outcome")
+  //private val OutcomeTd = ScalaComponent.builder[Outcome]("Outcome")
   //  .render_P { outcome ⇒
   //    <.td(^.cls := "nowrap")(outcome.toString)
   //  }

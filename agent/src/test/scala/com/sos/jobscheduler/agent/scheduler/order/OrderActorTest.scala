@@ -28,7 +28,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderTransitioned}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
@@ -105,9 +105,9 @@ private object OrderActorTest {
   private val TestJobNode = Workflow.JobNode(TestNodeId, AgentPath("/TEST-AGENT"), TestJobPath, onSuccess = SuccessNode.id, onFailure = FailureNode.id)
   private val TestWorkflow = Workflow(WorkflowPath("/JOBNET"), TestNodeId, List(TestJobNode, SuccessNode, FailureNode))
   private val ExpectedOrderEvents = List(
-    OrderAttached(TestOrder.nodeKey, Order.Ready, Map(), Order.Good(true)),
+    OrderAttached(TestOrder.nodeKey, Order.Ready, Payload.empty),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Order.Good(true)),
+    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.Good(true)),
     OrderTransitioned(SuccessNode.id),
     OrderDetached)
   private val Nl = System.lineSeparator

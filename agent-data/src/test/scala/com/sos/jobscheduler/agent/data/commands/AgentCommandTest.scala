@@ -92,19 +92,21 @@ final class AgentCommandTest extends FreeSpec {
         """{
           "TYPE": "AttachOrder",
           "order": {
-            "state": {
-              "TYPE":
-              "Ready"
-            },
-            "outcome": {
-              "TYPE": "Good",
-              "returnValue": true
-            },
-            "variables": {},
             "id": "ORDER-ID",
             "nodeKey": {
               "workflowPath": "/JOBNET",
               "nodeId": "INPUT"
+            },
+            "state": {
+              "TYPE":
+              "Ready"
+            },
+            "payload": {
+              "variables": {},
+              "outcome": {
+                "TYPE": "Good",
+                "returnValue": true
+              }
             }
           },
           "workflow": {

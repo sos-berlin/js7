@@ -16,7 +16,7 @@ sealed trait MasterCommand {
 
 object MasterCommand {
   @JsonCodec
-  final case class AddOrderIfNew(order: Order[Order.Idle]) extends MasterCommand {
+  final case class AddOrderIfNew(order: Order[Order.NotStarted]) extends MasterCommand {
     type MyResponse = Response.Accepted.type
   }
 

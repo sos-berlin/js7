@@ -19,7 +19,7 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -42,7 +42,7 @@ final class OrderAgentIT extends FreeSpec {
 
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
-          val order = Order(OrderId("TEST-ORDER"), NodeKey(TestWorkflow.path, StartNodeId), Order.Ready, Map("x" → "X"))
+          val order = Order(OrderId("TEST-ORDER"), NodeKey(TestWorkflow.path, StartNodeId), Order.Ready, payload = Payload(Map("x" → "X")))
           agentClient.executeCommand(AttachOrder(order, TestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
 
           while (
@@ -80,7 +80,7 @@ final class OrderAgentIT extends FreeSpec {
           agentClient.executeCommand(RegisterAsMaster) await 99.s
 
           val orders = for (i ← 1 to n) yield
-            Order(OrderId(s"TEST-ORDER-$i"), NodeKey(TestWorkflow.path, StartNodeId), Order.Ready, Map("x" → "X"))
+            Order(OrderId(s"TEST-ORDER-$i"), NodeKey(TestWorkflow.path, StartNodeId), Order.Ready, payload = Payload(Map("x" → "X")))
 
           val stopwatch = new Stopwatch
           agentClient.executeCommand(Batch(orders map { AttachOrder(_, TestWorkflow) })) await 99.s
@@ -159,6 +159,7 @@ private object OrderAgentIT {
     order.copy(
       nodeKey = order.nodeKey.copy(nodeId = EndNodeId),
       state = Order.Detachable,
-      outcome = Order.Good(true),
-      variables = Map("x" → "X", "result" → "TEST-RESULT-BBB"))
+      payload = Payload(
+        variables = Map("x" → "X", "result" → "TEST-RESULT-BBB"),
+        outcome = Outcome.Good(true)))
 }

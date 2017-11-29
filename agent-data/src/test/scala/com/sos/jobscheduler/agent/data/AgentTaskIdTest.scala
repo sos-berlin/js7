@@ -24,9 +24,9 @@ final class AgentTaskIdTest extends FreeSpec {
   }
 
   "AgentTaskIdGenerator" in {
-    val next = AgentTaskId.newGenerator().next _
+    val generator = AgentTaskId.newGenerator()
     for (i ← 1 to 10000) {
-      val id = next()
+      val id = generator.next()
       assert(id.index == i)
     }
   }

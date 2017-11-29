@@ -90,7 +90,7 @@ trait JsonJournalRecoverer[E <: Event] {
 
   private def recoverEventJson(json: Json): Unit = {
     eventCount += 1
-    val stamped = json.as[Stamped[KeyedEvent[E]]].toTry.get
+    val stamped = json.as[Stamped[KeyedEvent[E]]].force
     if (stamped.eventId <= lastEventId)
       sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stamped.eventId)} follows ${EventId.toString(lastEventId)}")
     lastEventId = stamped.eventId

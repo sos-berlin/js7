@@ -22,7 +22,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import com.sos.jobscheduler.shared.event.ActorEventCollector
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -51,7 +51,7 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
               orderId,
               NodeKey(AWorkflow.path, NodeId("100")),
               Order.Ready,
-              Map("a" → "A")),
+              payload = Payload(Map("a" → "A"))),
             AWorkflow))
         ) await 99.s
 
@@ -64,7 +64,7 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
 
         client.executeCommand(Terminate(sigkillProcessesAfter = Some(0.seconds))) await 99.s
         val stepEnded = whenStepEnded await 99.s
-        assert(stepEnded forall { e ⇒ !e.outcome.asInstanceOf[Order.Good].returnValue })
+        assert(stepEnded forall { e ⇒ !e.outcome.asInstanceOf[Outcome.Good].returnValue })
         agent.terminated await 99.s
       }
     }

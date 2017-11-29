@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.EventRequest
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -52,7 +52,7 @@ final class AgentActorIT extends FreeSpec {
                 orderId,
                 NodeKey(AWorkflow.path, NodeId("100")),
                 Order.Ready,
-                Map("a" → "A")),
+                payload = Payload(Map("a" → "A"))),
               AWorkflow))
           ) await 99.s
           for (orderId ← orderIds)

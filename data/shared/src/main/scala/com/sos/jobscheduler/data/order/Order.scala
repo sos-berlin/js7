@@ -19,9 +19,8 @@ final case class Order[+S <: Order.State](
   id: OrderId,
   nodeKey: NodeKey,
   state: S,
-  variables: Map[String, String] = Map(),
-  outcome: Outcome = InitialOutcome,
-  agentPath: Option[AgentPath] = None)
+  agentPath: Option[AgentPath] = None,
+  payload: Payload = Payload.empty)
 {
   def workflowPath: WorkflowPath =
     nodeKey.workflowPath
@@ -49,8 +48,7 @@ final case class Order[+S <: Order.State](
 
       case OrderProcessed(diff, outcome_) ⇒ copy(
         state = Processed,
-        variables = diff.applyTo(variables),
-        outcome = outcome_)
+        payload = Payload(variables = diff.applyTo(variables), outcome = outcome_))
 
       case OrderTransitioned(toNodeId) ⇒ copy(
         state = Ready,
@@ -66,7 +64,9 @@ final case class Order[+S <: Order.State](
         state = Finished)
     }
 
-  def payload = Payload(variables, outcome)
+  def variables = payload.variables
+
+  def outcome = payload.outcome
 
   def castAfterEvent(event: OrderProcessingStarted.type): Order[Order.InProcess.type] =
     castState[Order.InProcess.type]
@@ -82,65 +82,11 @@ final case class Order[+S <: Order.State](
 }
 
 object Order {
-  val InitialOutcome = Good(true)
-
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Idle] =
-    Order(id, event.nodeKey, event.state, event.variables, event.outcome)
+    Order(id, event.nodeKey, event.state, payload = event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[Idle] =
-    Order(id, event.nodeKey, event.state, event.variables, event.outcome)
-
-  final case class Payload(variables: Map[String, String], outcome: Order.Outcome = InitialOutcome) {
-    override def toString = s"Payload($outcome ${(for (k ← variables.keys.toVector.sorted) yield s"$k=${variables(k)}") mkString ", "}".trim + ")"
-  }
-
-  object Good {
-    private val False = new Good(false)
-    private val True = new Good(true)
-
-    def apply(returnValue: Boolean) = if (returnValue) True else False
-  }
-
-  @JsonCodec
-  final case class Bad(reason: Bad.Reason) extends Outcome {
-    def isSuccess = false
-  }
-
-  object Bad {
-    def apply(message: String): Bad =
-      Bad(Other(message))
-
-    sealed trait Reason {
-      def message: String
-    }
-    final case object AgentAborted extends Reason {
-      def message = "Agent aborted while order was InProcess"
-    }
-
-    @JsonCodec
-    final case class Other(message: String) extends Reason
-
-    object Reason {
-      implicit val JsonCodec = TypedJsonCodec[Reason](
-        Subtype(AgentAborted),
-        Subtype[Other])
-    }
-  }
-
-  sealed trait Outcome {
-    def isSuccess: Boolean
-  }
-
-  object Outcome {
-    implicit val JsonCodec = TypedJsonCodec[Outcome](
-      Subtype[Good],
-      Subtype[Bad])
-  }
-
-  @JsonCodec
-  final case class Good private(returnValue: Boolean) extends Outcome {
-    def isSuccess = returnValue
-  }
+    Order(id, event.nodeKey, event.state, payload = event.payload)
 
   sealed trait State
   sealed trait Idle extends State
@@ -155,20 +101,22 @@ object Order {
   case object Detached extends Started with Idle
   case object Finished extends State
 
-  implicit val IdleJsonCodec: CirceCodec[Idle] = TypedJsonCodec[Idle](
+  implicit val NotStartedJsonCodec: TypedJsonCodec[NotStarted] = TypedJsonCodec[NotStarted](
     Subtype(deriveCirceCodec[Scheduled]),
-    Subtype(StartNow),
-    Subtype(Detached),
-    Subtype(Ready))
+    Subtype(StartNow))
+  implicit val NotStartedOrderJsonCodec: CirceCodec[Order[NotStarted]] = deriveCirceCodec[Order[NotStarted]]
 
-  implicit val StateJsonCodec: CirceCodec[State] = TypedJsonCodec(
+  implicit val IdleJsonCodec: TypedJsonCodec[Idle] = TypedJsonCodec[Idle](
+    Subtype[NotStarted],
+    Subtype(Ready),
+    Subtype(Detached))
+  implicit val IdleOrderJsonCodec: CirceCodec[Order[Idle]] = deriveCirceCodec[Order[Idle]]
+
+  implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
     Subtype[Idle],
     Subtype(InProcess),
     Subtype(Processed),
     Subtype(Detachable),
     Subtype(Finished))
-
   implicit val JsonCodec: CirceCodec[Order[State]] = deriveCirceCodec[Order[State]]
-
-  implicit val IdleOrderJsonCodec: CirceCodec[Order[Idle]] = deriveCirceCodec[Order[Idle]]
 }

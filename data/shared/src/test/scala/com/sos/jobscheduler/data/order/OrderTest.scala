@@ -10,57 +10,15 @@ import org.scalatest.FreeSpec
   */
 final class OrderTest extends FreeSpec {
 
-  "Outcome" - {
-    "Outcome" in {
-      assert(Order.Good(returnValue = true).isSuccess)
-      assert(!Order.Good(returnValue = false).isSuccess)
-      assert(!Order.Bad(Order.Bad.Other("error")).isSuccess)
-      assert(Order.Bad(Order.Bad.Other("error")) == Order.Bad("error"))
-      assert(!Order.Bad(Order.Bad.AgentAborted).isSuccess)
-    }
-
-    "JSON" - {
-      "Good" in {
-         testJson[Order.Outcome](Order.Good(true), """
-            {
-              "TYPE": "Good",
-              "returnValue": true
-            }""".stripMargin)
-      }
-
-      "Bad AgentAborted" in {
-         testJson[Order.Outcome](Order.Bad(Order.Bad.AgentAborted), """
-            {
-              "TYPE": "Bad",
-              "reason": {
-                "TYPE": "AgentAborted"
-              }
-            }""".stripMargin)
-      }
-
-      "Bad Other" in {
-         testJson[Order.Outcome](Order.Bad("OTHER-REASON"), """
-            {
-              "TYPE": "Bad",
-              "reason": {
-                "TYPE": "Other",
-                "message": "OTHER-REASON"
-              }
-            }""".stripMargin)
-      }
-    }
-  }
-
   "JSON InitialOutcome" in {
     check(
       Order(
         OrderId("ID"),
         NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")),
         Order.InProcess,
-        Map(
+        payload = Payload(Map(
           "var1" → "value1",
-          "var2" → "value2"),
-        Order.InitialOutcome),
+          "var2" → "value2"))),
       """{
         "id": "ID",
         "nodeKey": {
@@ -70,13 +28,15 @@ final class OrderTest extends FreeSpec {
         "state": {
           "TYPE": "InProcess"
         },
-        "variables": {
-          "var1": "value1",
-          "var2": "value2"
-        },
-        "outcome": {
-          "TYPE": "Good",
-          "returnValue": true
+        "payload": {
+          "variables": {
+            "var1": "value1",
+            "var2": "value2"
+          },
+          "outcome": {
+            "TYPE": "Good",
+            "returnValue": true
+          }
         }
       }""")
   }

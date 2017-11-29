@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, OrderOverview}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, OrderOverview, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.OrderClient
 import com.sos.jobscheduler.master.web.api.OrderRouteTest._
@@ -95,6 +95,6 @@ object OrderRouteTest {
   private val TestEvents = List(
     Stamped(EventId(111222),
       KeyedEvent(
-        OrderAdded(NodeKey(WorkflowPath("/test"), NodeId("100")), Order.StartNow, Map(), Order.InitialOutcome))
+        OrderAdded(NodeKey(WorkflowPath("/test"), NodeId("100")), Order.StartNow, Payload.empty))
         (OrderId("1"))))
 }

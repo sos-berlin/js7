@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.command
 
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.command.MasterCommand.Response._
 import com.sos.jobscheduler.master.command.MasterCommand._
@@ -19,27 +19,30 @@ final class MasterCommandTest extends FreeSpec {
 
   "AddOrderIfNew" in {
     testJson[MasterCommand](
-      AddOrderIfNew(Order(OrderId("ORDER-ID"), NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Map("VAR" → "VALUE"), Order.Good(true))),
+      AddOrderIfNew(Order(OrderId("ORDER-ID"), NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.StartNow,
+        payload = Payload(Map("VAR" → "VALUE"), Outcome.Good(true)))),
       """{
         "TYPE": "AddOrderIfNew",
         "order": {
           "id": "ORDER-ID",
-           "nodeKey": {
-             "workflowPath": "/JOBNET",
-             "nodeId": "NODE-ID"
-           },
-           "state": {
-             "TYPE": "Ready"
-           },
-           "variables": {
-             "VAR": "VALUE"
-           },
-           "outcome": {
-             "TYPE": "Good",
-             "returnValue": true
-           }
-         }
-       }""")
+          "nodeKey": {
+            "workflowPath": "/JOBNET",
+            "nodeId": "NODE-ID"
+          },
+          "state": {
+            "TYPE": "StartNow"
+          },
+          "payload": {
+            "variables": {
+              "VAR": "VALUE"
+            },
+            "outcome": {
+              "TYPE": "Good",
+              "returnValue": true
+            }
+          }
+        }
+      }""")
   }
 
   "ScheduleOrdersEvery" in {

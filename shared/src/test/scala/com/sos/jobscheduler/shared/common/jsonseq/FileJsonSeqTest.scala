@@ -3,6 +3,7 @@ package com.sos.jobscheduler.shared.common.jsonseq
 import com.google.common.base.Ascii
 import com.google.common.io.Files.touch
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.withTemporaryFile
@@ -54,7 +55,7 @@ final class FileJsonSeqTest extends FreeSpec {
       assert(file.contentString endsWith "\n")
       autoClosing(new FileInputStream(file)) { in ⇒
         val iterator = new InputStreamJsonSeqIterator(in)
-        assert((iterator map { _.as[A].toTry.get }).toList == List(
+        assert((iterator map { _.as[A].force }).toList == List(
           A(1, "a"),
           A(2, "b"),
           A(3, "c")))

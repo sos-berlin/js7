@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.scalautil.{Logger, SetOnce}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.Exceptions.logException
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.order.{Order, Outcome}
 import com.sos.jobscheduler.taskserver.modules.shell.RichProcessStartSynchronizer
 import com.sos.jobscheduler.taskserver.task.TaskArguments
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startPipedShellScript
@@ -67,7 +67,7 @@ extends TaskRunner {
     for (returnCode ← runProcess(order, stdChannels)) yield
       TaskStepSucceeded(
         MapDiff.diff(order.variables, order.variables ++ fetchReturnValuesThenDeleteFile()),
-        Order.Good(returnCode.isSuccess))
+        Outcome.Good(returnCode.isSuccess))
 
   private def runProcess(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[ReturnCode] =
     for {

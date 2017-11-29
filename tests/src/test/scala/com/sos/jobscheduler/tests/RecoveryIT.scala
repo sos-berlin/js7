@@ -23,7 +23,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransitioned}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
@@ -97,13 +97,13 @@ final class RecoveryIT extends FreeSpec {
                   orderId,
                   NodeKey(TestWorkflowPath, NodeId("END")),
                   Order.Finished,
-                  Map("result" → "TEST-RESULT-VALUE-agent-222"),
-                  Order.Good(true)))
+                  payload = Payload(
+                    Map("result" → "TEST-RESULT-VALUE-agent-222"))))
               val EventSeq.NonEmpty(eventSeq) = eventCollector.when[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, 0.s), _.key == orderId) await 99.s
               withClue(s"$orderId") {
                 assertResult(ExpectedEvents) {
                   (deleteRestartedJobEvents(eventSeq map { _.value.event }) collect {
-                    case o @ OrderAdded(_, Order.Scheduled(_), _, _) ⇒ o.copy(state = Order.Scheduled(SomeTimestamp))
+                    case o @ OrderAdded(_, Order.Scheduled(_), _) ⇒ o.copy(state = Order.Scheduled(SomeTimestamp))
                     case o ⇒ o
                   }).toVector
                 }
@@ -147,7 +147,7 @@ private object RecoveryIT {
   private val FastWorkflowPath = WorkflowPath("/fast")
 
   private val FastOrderId = OrderId("FAST-ORDER")
-  private val FastOrder = Order(FastOrderId, NodeKey(FastWorkflowPath, NodeId("100")), Order.Ready)
+  private val FastOrder = Order(FastOrderId, NodeKey(FastWorkflowPath, NodeId("100")), Order.StartNow)
   private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
 
   private val TestJobChainElem =
@@ -172,30 +172,30 @@ private object RecoveryIT {
     </job_chain>
 
   private val ExpectedEvents = Vector(
-    OrderAdded(NodeKey(TestWorkflowPath, NodeId("100")), Scheduled(SomeTimestamp),Map(),Order.Good(true)),
+    OrderAdded(NodeKey(TestWorkflowPath, NodeId("100")), Scheduled(SomeTimestamp), Payload(Map())),
     OrderMovedToAgent(AgentPath("/test-agent-111")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
-    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-111"), Set()), Order.Good(true)),
+    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-111"), Set()), Outcome.Good(true)),
     OrderTransitioned(NodeId("110")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
-    OrderProcessed(MapDiff(Map(), Set()), Order.Good(true)),
+    OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
     OrderTransitioned(NodeId("120")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
-    OrderProcessed(MapDiff(Map(), Set()), Order.Good(true)),
+    OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
     OrderTransitioned(NodeId("200")),
     OrderDetachable,
     OrderMovedToMaster,
     OrderMovedToAgent(AgentPath("/test-agent-222")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
-    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-222"), Set()), Order.Good(true)),
+    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-222"), Set()), Outcome.Good(true)),
     OrderTransitioned(NodeId("210")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
-    OrderProcessed(MapDiff(Map(), Set()), Order.Good(true)),
+    OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
     OrderTransitioned(NodeId("END")),
     OrderDetachable,
     OrderMovedToMaster,
@@ -206,7 +206,7 @@ private object RecoveryIT {
     val result = mutable.Buffer[OrderEvent]()
     while (events.hasNext) {
       events.next() match {
-        case OrderProcessed(_, Order.Bad(Order.Bad.AgentAborted)) ⇒
+        case OrderProcessed(_, Outcome.Bad(Outcome.Bad.AgentAborted)) ⇒
           while (result.last != OrderEvent.OrderProcessingStarted) {
             result.remove(result.size - 1)
           }

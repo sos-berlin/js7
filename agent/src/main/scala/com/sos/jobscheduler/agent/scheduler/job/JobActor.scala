@@ -16,7 +16,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.order.Order.Bad
+import com.sos.jobscheduler.data.order.Outcome.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.JobPath
 import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration.Encoding
