@@ -176,7 +176,7 @@ lazy val base = crossProject
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
       javaxAnnotations % "compile" ++
-      "org.scalatest" %%% "scalatest" % scalaTestVersion
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
 lazy val baseJVM = base.jvm
 lazy val baseJs = base.js
@@ -187,7 +187,7 @@ lazy val data = crossProject
   .settings(
     libraryDependencies += {
       import Dependencies._
-      "org.scalatest" %%% "scalatest" % scalaTestVersion
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
     })
 lazy val dataJVM = data.jvm
 lazy val dataJs = data.js
@@ -278,7 +278,7 @@ lazy val `master-data` = crossProject
     libraryDependencies ++= {
       import Dependencies._
       List(
-        "org.scalatest" %%% "scalatest" % scalaTestVersion,
+        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test",
         "io.circe" %%% "circe-core" % circeVersion,
         "io.circe" %%% "circe-parser" % circeVersion,
         "io.circe" %%% "circe-generic" % circeVersion)
