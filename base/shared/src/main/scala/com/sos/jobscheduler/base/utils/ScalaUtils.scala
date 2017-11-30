@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.exceptions.PublicException
-import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.math.max
 import scala.reflect.ClassTag
 
@@ -136,10 +136,29 @@ object ScalaUtils {
   }
 
   implicit class RichEither[L <: Throwable, R](val underlying: Either[L, R]) extends AnyVal {
+    def toImmediateFuture: Future[R] =
+      withStackTrace.underlying match {
+        case Left(t) ⇒ Future.failed(t)
+        case Right(o) ⇒ Future.successful(o)
+      }
+
     def force: R =
-      underlying match {
-        case Left(t) ⇒ throw t.appendCurrentStackTrace  // Stacktrace from Left may be empty
+      withStackTrace.underlying match {
+        case Left(t) ⇒ throw t
         case Right(o) ⇒ o
+      }
+
+    def withStackTrace: Either[Throwable, R] =
+      underlying match {
+        case o: Right[L, R] ⇒
+          o
+
+        case Left(t) if t.getStackTrace.nonEmpty ⇒
+          Left(t)
+
+        case Left(t) ⇒
+          t.fillInStackTrace()
+          Left(if (t.getStackTrace.nonEmpty) t else new IllegalStateException(s"$t", t))
       }
   }
 }
