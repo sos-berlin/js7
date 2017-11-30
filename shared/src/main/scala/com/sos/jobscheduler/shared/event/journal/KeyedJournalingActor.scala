@@ -24,8 +24,8 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
 
   protected final def persist[EE <: E](event: EE, noSync: Boolean = false, async: Boolean = false)(callback: EE ⇒ Unit): Unit = {
     registerMe()
-    super.persistKeyedEvent(KeyedEvent(key, event), noSync = noSync,  async = async) { snapshotEvent ⇒
-      callback(snapshotEvent.value.event.asInstanceOf[EE])
+    super.persistKeyedEvent(KeyedEvent(key, event), noSync = noSync,  async = async) { stampedEvent ⇒
+      callback(stampedEvent.value.event.asInstanceOf[EE])
     }
   }
 
