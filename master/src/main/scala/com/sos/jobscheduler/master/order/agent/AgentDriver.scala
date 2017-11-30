@@ -234,7 +234,7 @@ private[master] object AgentDriver {
       def toShortString: String
     }
 
-    final case class AttachOrder(order: Order[Order.Idle], workflow: Workflow) extends QueueableInput {
+    final case class AttachOrder(order: Order[Order.Idle], agentPath: AgentPath,  workflow: Workflow) extends QueueableInput {
       def orderId = order.id
       def toShortString = s"AttachOrder($orderId, ${workflow.path})"
     }

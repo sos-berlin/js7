@@ -53,6 +53,7 @@ final class AgentActorIT extends FreeSpec {
                 NodeKey(AWorkflow.path, NodeId("100")),
                 Order.Ready,
                 payload = Payload(Map("a" → "A"))),
+              TestAgentPath,
               AWorkflow))
           ) await 99.s
           for (orderId ← orderIds)
@@ -67,13 +68,13 @@ final class AgentActorIT extends FreeSpec {
 }
 
 object AgentActorIT {
-  private val TestAgentId = AgentPath("/TEST-AGENT")
+  private val TestAgentPath = AgentPath("/TEST-AGENT")
   val AJobPath = JobPath("/test")
   val AWorkflow = Workflow(
     WorkflowPath("/A"),
     NodeId("100"),
     List(
-      Workflow.JobNode(NodeId("100"), TestAgentId, AJobPath, onSuccess = NodeId("END"), onFailure = NodeId("FAILED")),
+      Workflow.JobNode(NodeId("100"), TestAgentPath, AJobPath, onSuccess = NodeId("END"), onFailure = NodeId("FAILED")),
       Workflow.EndNode(NodeId("FAILED")),
       Workflow.EndNode(NodeId("END"))))
   private val AScript =

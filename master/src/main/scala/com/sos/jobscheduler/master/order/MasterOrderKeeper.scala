@@ -136,8 +136,12 @@ with Stash {
 
   private def handleRecoveredOrder(order: Order[Order.State]): Unit =
     order.state match {
-      case Order.Detachable ⇒ detachOrderFromAgent(order.id)
-      case Order.Detached ⇒ tryAttachOrderToAgent(order.castState[Order.Detached.type])
+      case _: Order.Idle ⇒
+        order.attachedTo match {
+          case None ⇒ tryAttachOrderToAgent(order.castState[Order.Idle])
+          case Some(_: Order.AttachedTo.Agent) ⇒
+          case Some(_: Order.AttachedTo.Detachable) ⇒ detachOrderFromAgent(order.id)
+        }
       case _ ⇒
     }
 
@@ -180,14 +184,13 @@ with Stash {
             sender() ! Done
           else {
             orderEntry.toBeRemoved = true
-            orderEntry.order.agentPath match {
-              case Some(agentPath) ⇒
-                sender() ! Status.Failure(new IllegalStateException(s"Order cannot be removed because it is attached to Agent '$agentPath'"))  // ???
-                //(agents(agentPath) ? AgentDriver.Input.DetachOrder(orderId)).mapTo[Accepted.type]
-                //  .pipeTo(sender())
+            orderEntry.order.attachedTo match {
               case None ⇒
                 //orderEntry.order = orderEntry.order.update(OrderRemoved)  // TODO Persist
                 sender() ! Done
+
+              case Some(Order.AttachedTo.AgentOrDetachable(agentPath)) ⇒
+                sender() ! Status.Failure(new IllegalStateException(s"Order cannot be removed because it is attached to Agent '$agentPath'"))
             }
           }
       }
@@ -330,12 +333,16 @@ with Stash {
          agentPath ← workflow.agentPathOption(order.nodeKey.nodeId);
          agentEntry ← agentRegister.get(agentPath))
     {
-      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, workflow.reduceForAgent(agentPath))
+      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentPath, workflow.reduceForAgent(agentPath))
     }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
-    for (agentPath ← orderRegister(orderId).order.agentPath)
-      agentRegister(agentPath).actor ! AgentDriver.Input.DetachOrder(orderId)
+    orderRegister(orderId).order.detachableFromAgent match {
+      case Left(t) ⇒
+        logger.error(s"detachOrderFromAgent '$orderId': not AttachedTo.Detachable: $t")
+      case Right(agentPath) ⇒
+        agentRegister(agentPath).actor ! AgentDriver.Input.DetachOrder(orderId)
+    }
 }
 
 object MasterOrderKeeper {

@@ -19,7 +19,7 @@ final case class Order[+S <: Order.State](
   id: OrderId,
   nodeKey: NodeKey,
   state: S,
-  agentPath: Option[AgentPath] = None,
+  attachedTo: Option[AttachedTo] = None,
   payload: Payload = Payload.empty)
 {
   def workflowPath: WorkflowPath =
@@ -37,11 +37,10 @@ final case class Order[+S <: Order.State](
       //  copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
 
       case OrderMovedToAgent(o) ⇒ copy(
-        agentPath = Some(o))
+        attachedTo = Some(AttachedTo.Agent(o)))
 
       case OrderMovedToMaster ⇒ copy(
-        state = Detached,
-        agentPath = None)
+        attachedTo = None)
 
       case OrderProcessingStarted ⇒ copy(
         state = InProcess)
@@ -54,11 +53,18 @@ final case class Order[+S <: Order.State](
         state = Ready,
         nodeKey = NodeKey(workflowPath, toNodeId))
 
-      case OrderDetachable ⇒ copy(
-        state = Detachable)
+      case OrderDetachable ⇒
+        attachedTo match {
+          case None ⇒
+            throw new IllegalStateException(s"Event OrderDetachable but '$id' is AttachedTo.$attachedTo")
+          case Some(AttachedTo.Agent(agentPath)) ⇒
+            copy(attachedTo = Some(AttachedTo.Detachable(agentPath)))
+          case Some(AttachedTo.Detachable(_)) ⇒
+            this
+        }
 
       case OrderDetached ⇒ copy(
-        state = Detached)
+        attachedTo = None)
 
       case OrderFinished ⇒ copy(
         state = Finished)
@@ -79,14 +85,50 @@ final case class Order[+S <: Order.State](
       throw new ClassCastException(s"Order '$id': Order[${state.getClass.getSimpleName stripSuffix "$"}] cannot be cast to Order[${implicitClass[T].getSimpleName stripSuffix "$"}]")
     this.asInstanceOf[Order[T]]
   }
+
+  def attachedToAgent: Either[IllegalStateException, AgentPath] =
+    attachedTo match {
+      case Some(AttachedTo.Agent(agentPath)) ⇒ Right(agentPath)
+      case o ⇒ Left(new IllegalStateException(s"'$id' is expected to be AttachedTo.Agent, but not: $o"))
+    }
+
+  def detachableFromAgent: Either[IllegalStateException, AgentPath] =
+    attachedTo match {
+      case Some(AttachedTo.Detachable(agentPath)) ⇒ Right(agentPath)
+      case o ⇒ Left(new IllegalStateException(s"'$id' is expected to be AttachedTo.Detachable, but not: $o"))
+    }
 }
 
 object Order {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Idle] =
-    Order(id, event.nodeKey, event.state, payload = event.payload)
+    Order(id, event.nodeKey, event.state, None, event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[Idle] =
-    Order(id, event.nodeKey, event.state, payload = event.payload)
+    Order(id, event.nodeKey, event.state, Some(AttachedTo.Agent(event.agentPath)), event.payload)
+
+  sealed trait AttachedTo
+  object AttachedTo {
+    sealed trait AgentOrDetachable extends AttachedTo {
+      val agentPath: AgentPath
+    }
+    object AgentOrDetachable {
+      def unapply(o: AttachedTo): Option[AgentPath] =
+        o match {
+          case o: AgentOrDetachable ⇒ Some(o.agentPath)
+          case _ ⇒ None
+        }
+    }
+
+    @JsonCodec
+    final case class Agent(agentPath: AgentPath) extends AttachedTo
+
+    @JsonCodec
+    final case class Detachable(agentPath: AgentPath) extends AgentOrDetachable
+
+    implicit val JsonCodec = TypedJsonCodec[AttachedTo](
+      Subtype[Agent],
+      Subtype[Detachable])
+  }
 
   sealed trait State
   sealed trait Idle extends State
@@ -97,8 +139,6 @@ object Order {
   case object Ready extends Started with Idle
   case object InProcess extends Started
   case object Processed extends Started
-  case object Detachable extends Started
-  case object Detached extends Started with Idle
   case object Finished extends State
 
   implicit val NotStartedJsonCodec: TypedJsonCodec[NotStarted] = TypedJsonCodec[NotStarted](
@@ -108,15 +148,13 @@ object Order {
 
   implicit val IdleJsonCodec: TypedJsonCodec[Idle] = TypedJsonCodec[Idle](
     Subtype[NotStarted],
-    Subtype(Ready),
-    Subtype(Detached))
+    Subtype(Ready))
   implicit val IdleOrderJsonCodec: CirceCodec[Order[Idle]] = deriveCirceCodec[Order[Idle]]
 
   implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
     Subtype[Idle],
     Subtype(InProcess),
     Subtype(Processed),
-    Subtype(Detachable),
     Subtype(Finished))
   implicit val JsonCodec: CirceCodec[Order[State]] = deriveCirceCodec[Order[State]]
 }

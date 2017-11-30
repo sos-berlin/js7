@@ -24,6 +24,7 @@ import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, W
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.mutable
+
 /**
   * @author Joacim Zschimmer
   */
@@ -43,16 +44,12 @@ final class OrderAgentIT extends FreeSpec {
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
           val order = Order(OrderId("TEST-ORDER"), NodeKey(TestWorkflow.path, StartNodeId), Order.Ready, payload = Payload(Map("x" → "X")))
-          agentClient.executeCommand(AttachOrder(order, TestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
+          agentClient.executeCommand(AttachOrder(order.copy(attachedTo = Some(Order.AttachedTo.Agent(TestAgentPath))), TestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
 
-          while (
-            agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.s)) await 99.s match {
-              case EventSeq.NonEmpty(stampeds) if stampeds map { _.value } contains KeyedEvent(OrderDetachable)(order.id) ⇒
-                false
-              case _ ⇒
-                true
-            }
-          ) {}
+          while (agentClient.mastersEvents(EventRequest.singleClass[OrderEvent](after = EventId.BeforeFirst, timeout = 10.s)) await 99.s match {
+            case EventSeq.NonEmpty(stampeds) if stampeds map { _.value } contains KeyedEvent(OrderDetachable)(order.id) ⇒ false
+            case _ ⇒ true
+          }) {}
 
           val processedOrder = agentClient.order(order.id) await 99.s
           assert(processedOrder == toExpectedOrder(order))
@@ -107,7 +104,7 @@ final class OrderAgentIT extends FreeSpec {
 }
 
 private object OrderAgentIT {
-  private val TestAgentId = AgentPath("/TEST-AGENT")
+  private val TestAgentPath = AgentPath("/TEST-AGENT")
   private val TestScript =
     if (isWindows) """
       |@echo off
@@ -142,23 +139,23 @@ private object OrderAgentIT {
     WorkflowPath("/TEST"),
     StartNodeId,
     List(
-      Workflow.JobNode(StartNodeId, TestAgentId, AJobPath, onSuccess = NodeId("100"), onFailure = FailedNodeId),
-      Workflow.JobNode(NodeId("100"), TestAgentId, BJobPath, onSuccess = NodeId("200"), onFailure = FailedNodeId),
-      Workflow.JobNode(NodeId("200"), TestAgentId, BJobPath, onSuccess = NodeId("300"), onFailure = FailedNodeId),
-      Workflow.JobNode(NodeId("300"), TestAgentId, BJobPath, onSuccess = NodeId("400"), onFailure = FailedNodeId),
-      Workflow.JobNode(NodeId("400"), TestAgentId, BJobPath, onSuccess = NodeId("500"), onFailure = FailedNodeId),
-      Workflow.JobNode(NodeId("500"), TestAgentId, BJobPath, onSuccess = NodeId("600"), onFailure = FailedNodeId),
-      Workflow.JobNode(NodeId("600"), TestAgentId, BJobPath, onSuccess = NodeId("700"), onFailure = FailedNodeId),
-      Workflow.JobNode(NodeId("700"), TestAgentId, BJobPath, onSuccess = NodeId("800"), onFailure = FailedNodeId),
-      Workflow.JobNode(NodeId("800"), TestAgentId, BJobPath, onSuccess = NodeId("900"), onFailure = FailedNodeId),
-      Workflow.JobNode(NodeId("900"), TestAgentId, BJobPath, onSuccess = EndNodeId, onFailure = FailedNodeId),
+      Workflow.JobNode(StartNodeId, TestAgentPath, AJobPath, onSuccess = NodeId("100"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("100"), TestAgentPath, BJobPath, onSuccess = NodeId("200"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("200"), TestAgentPath, BJobPath, onSuccess = NodeId("300"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("300"), TestAgentPath, BJobPath, onSuccess = NodeId("400"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("400"), TestAgentPath, BJobPath, onSuccess = NodeId("500"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("500"), TestAgentPath, BJobPath, onSuccess = NodeId("600"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("600"), TestAgentPath, BJobPath, onSuccess = NodeId("700"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("700"), TestAgentPath, BJobPath, onSuccess = NodeId("800"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("800"), TestAgentPath, BJobPath, onSuccess = NodeId("900"), onFailure = FailedNodeId),
+      Workflow.JobNode(NodeId("900"), TestAgentPath, BJobPath, onSuccess = EndNodeId, onFailure = FailedNodeId),
       Workflow.EndNode(EndNodeId),
       Workflow.EndNode(FailedNodeId)))
 
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
       nodeKey = order.nodeKey.copy(nodeId = EndNodeId),
-      state = Order.Detachable,
+      attachedTo = Some(Order.AttachedTo.Detachable(TestAgentPath)),
       payload = Payload(
         variables = Map("x" → "X", "result" → "TEST-RESULT-BBB"),
         outcome = Outcome.Good(true)))

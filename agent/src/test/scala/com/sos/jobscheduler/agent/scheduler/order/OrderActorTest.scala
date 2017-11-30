@@ -102,10 +102,11 @@ private object OrderActorTest {
   private val TestJobPath = JobPath("/test")
   private val SuccessNode = Workflow.EndNode(NodeId("SUCCESS"))
   private val FailureNode = Workflow.EndNode(NodeId("FAILURE"))
-  private val TestJobNode = Workflow.JobNode(TestNodeId, AgentPath("/TEST-AGENT"), TestJobPath, onSuccess = SuccessNode.id, onFailure = FailureNode.id)
+  private val TestAgentPath = AgentPath("/TEST-AGENT")
+  private val TestJobNode = Workflow.JobNode(TestNodeId, TestAgentPath, TestJobPath, onSuccess = SuccessNode.id, onFailure = FailureNode.id)
   private val TestWorkflow = Workflow(WorkflowPath("/JOBNET"), TestNodeId, List(TestJobNode, SuccessNode, FailureNode))
   private val ExpectedOrderEvents = List(
-    OrderAttached(TestOrder.nodeKey, Order.Ready, Payload.empty),
+    OrderAttached(TestOrder.nodeKey, Order.Ready, AgentPath("/TEST-AGENT"), Payload.empty),
     OrderProcessingStarted,
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.Good(true)),
     OrderTransitioned(SuccessNode.id),
@@ -180,7 +181,7 @@ private object OrderActorTest {
 
     private def jobActorReady: Receive = {
       case JobActor.Output.ReadyForOrder ⇒  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
-        orderActor ! OrderActor.Command.Attach(TestOrder)
+        orderActor ! OrderActor.Command.Attach(TestOrder.copy(attachedTo = Some(Order.AttachedTo.Agent(TestAgentPath))))
         become(attaching)
     }
 

@@ -82,7 +82,8 @@ final class AgentCommandTest extends FreeSpec {
         Order(
           OrderId("ORDER-ID"),
           NodeKey(WorkflowPath("/JOBNET"),NodeId("INPUT")),
-          Order.Ready),
+          Order.Ready,
+          Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
         Workflow(
           WorkflowPath("/JOBNET"),
           NodeId("START"),
@@ -100,6 +101,10 @@ final class AgentCommandTest extends FreeSpec {
             "state": {
               "TYPE":
               "Ready"
+            },
+            "attachedTo": {
+              "TYPE": "Agent",
+              "agentPath": "/AGENT"
             },
             "payload": {
               "variables": {},

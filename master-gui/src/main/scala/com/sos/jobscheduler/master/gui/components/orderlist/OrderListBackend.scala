@@ -53,7 +53,7 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
           <.td(^.cls := "orderTd")(order.nodeKey.workflowPath),
           <.td(^.cls := "orderTd")(order.nodeKey.nodeId),
           <.td(^.cls := "orderTd")(order.outcome.toString),
-          <.td(^.cls := "orderTd")(order.agentPath map (_.string) getOrElse "–": String),
+          <.td(^.cls := "orderTd")(order.attachedTo.toString),
           <.td(order.state.toString))
         .ref { tr ⇒
           if (isUpdated) highligtTrs += tr
@@ -85,7 +85,7 @@ object OrderListBackend {
       <.th(^.width := 10.ex)("Workflow"),
       <.th(^.width := 10.ex)("Node"),
       <.th(^.width := 15.ex)("Outcome"),
-      <.th(^.width := 15.ex)("Agent"),
+      <.th(^.width := 15.ex)("AttachedTo"),
       <.th("State")))
 
   private val OrderEntryReuse = Reusability.byRef[OrdersState.Entry]

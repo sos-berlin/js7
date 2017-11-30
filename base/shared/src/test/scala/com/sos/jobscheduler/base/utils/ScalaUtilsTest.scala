@@ -7,7 +7,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.lang.model.SourceVersion
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import scala.concurrent.Future
 import scala.reflect.ClassTag
+import scala.util.control.NoStackTrace
 
 final class ScalaUtilsTest extends FreeSpec {
 
@@ -149,6 +151,37 @@ final class ScalaUtilsTest extends FreeSpec {
     assert(x == 0)
     pf.callIfDefined(1)
     assert(x == 1)
+  }
+
+  "Either.toImmediateFuture" in {
+    assert(Right[Throwable, Int](7).toImmediateFuture.value.get.get == 7)
+    val t = new IllegalArgumentException
+    assert(Left[Throwable, Int](t).toImmediateFuture.failed.value.get.get eq t)
+  }
+
+  "Either.force" in {
+    assert(Right[Throwable, Int](7).force == 7)
+    val t = new IllegalArgumentException
+    intercept[IllegalArgumentException] {
+      Left[Throwable, Int](t).force
+    } should be theSameInstanceAs (t)
+  }
+
+  "Either.withStackTrace" - {
+    "with stacktrace provided" in {
+      assert(Right[Throwable, Int](7).withStackTrace == Right[Throwable, Int](7))
+      val t = new IllegalArgumentException
+      assert(t.getStackTrace.nonEmpty)
+      assert(Left[Throwable, Int](t).withStackTrace.left.get eq t)
+    }
+
+    "without stacktrace provided" in {
+      val u = new IllegalArgumentException with NoStackTrace
+      assert(u.getStackTrace.isEmpty)
+      Left[Throwable, Int](u).withStackTrace.left.get match {
+        case uu: IllegalStateException => assert(uu.getStackTrace.nonEmpty)
+      }
+    }
   }
 }
 

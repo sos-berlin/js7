@@ -25,7 +25,7 @@ object OrderEvent {
     //type State = Idle
   }
 
-  final case class OrderAttached(nodeKey: NodeKey, state: Idle, payload: Payload)
+  final case class OrderAttached(nodeKey: NodeKey, state: Idle, agentPath: AgentPath, payload: Payload)
   extends OrderCoreEvent {
     //type State = Idle
   }

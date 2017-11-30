@@ -11,9 +11,8 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.data.workflow.{NodeId, Workflow}
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
@@ -69,7 +68,7 @@ extends KeyedJournalingActor[OrderEvent] {
         context.become(processed)
         // Next event 'OrderTransitioned' is initiated by AgentOrderKeeper
 
-      case Order.StartNow | _: Order.Scheduled | Order.Detachable | Order.Detached | Order.Finished ⇒
+      case Order.StartNow | _: Order.Scheduled | Order.Finished ⇒
         context.become(waiting)
 
       case _ ⇒
@@ -80,9 +79,9 @@ extends KeyedJournalingActor[OrderEvent] {
 
   def receive = journaling orElse {
     case command: Command ⇒ command match {
-      case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, _: Option[AgentPath], payload)) ⇒
+      case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), payload)) ⇒
         context.become(waiting)
-        persist(OrderAttached(nodeKey, state, payload)) { event ⇒
+        persist(OrderAttached(nodeKey, state, agentPath, payload)) { event ⇒
           sender() ! Completed
           update(event)
         }
@@ -108,7 +107,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private def executeOtherCommand(command: Command): Unit = command match {
     case _ ⇒
-      val msg = s"Improper command $command while in state ${order.state}"
+      val msg = s"Improper command $command while in state ${Option(order) map (_.state) getOrElse "(no order)"}"
       logger.error(msg)
       sender() ! Status.Failure(new IllegalStateException(msg))
   }

@@ -5,7 +5,9 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.objectCodec
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -117,7 +119,15 @@ object AgentCommand {
   extends AttachOrDetachOrder {
     type Response = Accepted.type
 
+    order.attachedToAgent.force
+
     override def toShortString = s"AttachOrder($order,${workflow.path})"
+  }
+  object AttachOrder {
+    def apply(order: Order[Order.Idle], agentPath: AgentPath, workflow: Workflow) =
+      new AttachOrder(
+        order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath))),
+        workflow)
   }
 
   @JsonCodec

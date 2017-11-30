@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -10,40 +12,64 @@ import org.scalatest.FreeSpec
   */
 final class OrderTest extends FreeSpec {
 
-  "JSON InitialOutcome" in {
-    check(
-      Order(
-        OrderId("ID"),
-        NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")),
-        Order.InProcess,
-        payload = Payload(Map(
-          "var1" → "value1",
-          "var2" → "value2"))),
-      """{
-        "id": "ID",
-        "nodeKey": {
-          "workflowPath": "/JOBNET",
-          "nodeId": "NODE"
-        },
-        "state": {
-          "TYPE": "InProcess"
-        },
-        "payload": {
-          "variables": {
-            "var1": "value1",
-            "var2": "value2"
+  "Order" - {
+    val order = Order(
+      OrderId("ID"),
+      NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")),
+      Order.InProcess,
+      payload = Payload(Map(
+        "var1" → "value1",
+        "var2" → "value2")))
+
+    "OrderDetachable" in {
+      intercept[IllegalStateException] {
+        order.update(OrderEvent.OrderDetachable)
+      }
+    }
+
+    "attachedToAgent" in {
+      val agentPath = AgentPath("/A")
+      assert(order.attachedToAgent.isLeft)
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath)))     .attachedToAgent == Right(agentPath))
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentPath))).attachedToAgent.isLeft)
+    }
+
+    "detachableFromAgent" in {
+      val agentPath = AgentPath("/A")
+      assert(order.detachableFromAgent.isLeft)
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath)))     .detachableFromAgent.isLeft)
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentPath))).detachableFromAgent == Right(agentPath))
+    }
+
+    "JSON" in {
+      check(
+        order,
+        """{
+          "id": "ID",
+          "nodeKey": {
+            "workflowPath": "/JOBNET",
+            "nodeId": "NODE"
           },
-          "outcome": {
-            "TYPE": "Good",
-            "returnValue": true
+          "state": {
+            "TYPE": "InProcess"
+          },
+          "payload": {
+            "variables": {
+              "var1": "value1",
+              "var2": "value2"
+            },
+            "outcome": {
+              "TYPE": "Good",
+              "returnValue": true
+            }
           }
-        }
-      }""")
+        }""")
+
+      def check(o: Order[Order.State], json: String) = testJson(o, json)
+    }
   }
 
-  "Order.State" - {
-    import Order._
-
+  "State" - {
     "Scheduled" in {
       check(Scheduled(Timestamp.parse("2017-11-15T12:33:44.789Z")),
         """{
@@ -80,31 +106,45 @@ final class OrderTest extends FreeSpec {
         }""")
     }
 
-    "Detachable" in {
-      check(Detachable,
-        """{
-           "TYPE": "Detachable"
-        }""")
-    }
-
-    "Detached" in {
-      check(Detached,
-        """{
-           "TYPE": "Detached"
-        }""")
-    }
-
     "Finished" in {
       check(Finished,
         """{
            "TYPE": "Finished"
         }""")
     }
+
+    def check(o: Order.State, json: String) = testJson(o, json)
   }
 
-  private def check(o: Order[Order.State], json: String): Unit =
-    testJson(o, json)
+  "isAttachable" in {
+    val order = Order(OrderId("ORDER-ID"), NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")), Order.Ready, Some(AttachedTo.Detachable(AgentPath("/AGENT"))))
+    assert(order.detachableFromAgent == Right(AgentPath("/AGENT")))
 
-  private def check(o: Order.State, json: String): Unit =
-    testJson(o, json)
+    for (o ← Array(
+          order.copy(attachedTo = Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
+          order.copy(attachedTo = None))) {
+      val e: IllegalStateException = o.detachableFromAgent.left.get
+      assert(e.getMessage contains "ORDER-ID")
+    }
+  }
+
+  "AttachedTo" - {
+    "Agent" in {
+      check(AttachedTo.Agent(AgentPath("/AGENT")),
+        """{
+          "TYPE": "Agent",
+          "agentPath": "/AGENT"
+        }""")
+    }
+
+    "Detachable" in {
+      check(AttachedTo.Detachable(AgentPath("/AGENT")),
+        """{
+          "TYPE": "Detachable",
+          "agentPath": "/AGENT"
+        }""")
+    }
+
+    def check(o: Order.AttachedTo, j: String) = testJson(o, j)
+  }
 }

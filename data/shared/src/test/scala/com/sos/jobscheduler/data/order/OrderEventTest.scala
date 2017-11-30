@@ -40,7 +40,7 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderAttached" in {
-    check(OrderAttached(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Payload(Map("VAR" → "VALUE"))),
+    check(OrderAttached(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))),
       """{
         "TYPE": "OrderAttached",
         "nodeKey": {
@@ -50,6 +50,7 @@ final class OrderEventTest extends FreeSpec {
         "state": {
           "TYPE":"Ready"
         },
+        "agentPath": "/AGENT",
         "payload": {
           "variables": {
             "VAR": "VALUE"

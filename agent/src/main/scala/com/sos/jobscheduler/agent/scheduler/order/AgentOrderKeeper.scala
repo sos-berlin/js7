@@ -40,7 +40,6 @@ import java.nio.file.Path
 import java.time.Duration
 import scala.collection.immutable.Seq
 import scala.concurrent.{Future, Promise}
-import scala.util.control.NoStackTrace
 
 /**
   * Keeper of one Master's orders.
@@ -190,32 +189,36 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
-    case cmd @ AttachOrder(_, workflow) if !terminating ⇒
-      val workflowResponse = workflowRegister.get(workflow.path) match {
-        case None ⇒
-          persistFuture(KeyedEvent(WorkflowAttached(workflow.inputNodeId, workflow.idToNode.values.toImmutableSeq))(workflow.path)) { stampedEvent ⇒
-            workflowRegister.handleEvent(stampedEvent.value)
-            Accepted
+    case cmd @ AttachOrder(order, workflow) if !terminating ⇒
+      order.attachedToAgent match {
+        case Left(throwable) ⇒ Future.failed(throwable)
+        case Right(_) ⇒
+          val workflowResponse = workflowRegister.get(workflow.path) match {
+            case None ⇒
+              persistFuture(KeyedEvent(WorkflowAttached(workflow.inputNodeId, workflow.idToNode.values.toImmutableSeq))(workflow.path)) { stampedEvent ⇒
+                workflowRegister.handleEvent(stampedEvent.value)
+                Accepted
+              }
+            case Some(`workflow`) ⇒
+              Future.successful(Accepted)
+            case Some(_) ⇒
+              Future.failed(new IllegalStateException(s"Changed ${workflow.path}"))
           }
-        case Some(`workflow`) ⇒
-          Future.successful(Accepted)
-        case Some(_) ⇒
-          Future.failed(new IllegalStateException(s"Changed ${workflow.path}"))
-      }
-      workflowResponse flatMap { case Accepted ⇒
-        promiseFuture[Accepted.type] { promise ⇒
-          self ! Internal.ContinueAttachOrder(cmd, promise)
-        }
+          workflowResponse flatMap { case Accepted ⇒
+            promiseFuture[Accepted.type] { promise ⇒
+              self ! Internal.ContinueAttachOrder(cmd, promise)
+            }
+          }
       }
 
     case DetachOrder(orderId) ⇒
       orderRegister.get(orderId) match {
         case Some(orderEntry) ⇒
-          if (orderEntry.order.state != Order.Detachable)
-            Future.failed(new IllegalStateException(s"DetachOrder $orderId: Not in state 'Detachable': ${orderEntry.order.state}") with NoStackTrace)
-          else {
-            orderEntry.detaching = true  // OrderActor is terminating
-            (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }
+          orderEntry.order.detachableFromAgent match {
+            case Left(throwable) ⇒ Future.failed(throwable)
+            case Right(_) ⇒
+              orderEntry.detaching = true  // OrderActor is terminating
+              (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }
           }
         case None ⇒
           // May occur after Master restart when Master is not sure about order has been detached previously.
@@ -293,7 +296,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
           self ! Internal.Due(orderId)
         }
 
-      case Order.Scheduled(_) | Order.StartNow | Order.Ready | Order.Detached/*???*/ ⇒
+      case Order.Scheduled(_) | Order.StartNow | Order.Ready ⇒
         onOrderAvailable(orderEntry)
 
       case _ ⇒
@@ -301,22 +304,26 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   }
 
   private def onOrderAvailable(orderEntry: OrderEntry): Unit =
-    orderEntry.nodeOption match {
-      case Some(node: Workflow.JobNode) if !terminating ⇒
-        jobRegister.get(node.jobPath) match {
-          case Some(jobEntry) ⇒
-            onOrderAvailableForJob(orderEntry.order.id, jobEntry)
-          case None ⇒
-            logger.error(s"Missing '${node.jobPath}' for '${orderEntry.order.id}' at '${orderEntry.order.nodeKey}'")
-        }
+    orderEntry.order.attachedToAgent match {
+      case Left(throwable) ⇒ logger.error(s"onOrderAvailable: $throwable")
+      case Right(_) ⇒
+        orderEntry.nodeOption match {
+          case Some(node: Workflow.JobNode) if !terminating ⇒
+            jobRegister.get(node.jobPath) match {
+              case Some(jobEntry) ⇒
+                onOrderAvailableForJob(orderEntry.order.id, jobEntry)
+              case None ⇒
+                logger.error(s"Missing '${node.jobPath}' for '${orderEntry.order.id}' at '${orderEntry.order.nodeKey}'")
+            }
 
-      case Some(node: Workflow.JobNode) if terminating ⇒
-        logger.info(s"Due to termination, processing of ${orderEntry.order.id} stops at ${node.id}")
+          case Some(node: Workflow.JobNode) if terminating ⇒
+            logger.info(s"Due to termination, processing of ${orderEntry.order.id} stops at ${node.id}")
 
-      case Some(_: EndNode) | None ⇒
-        if (!terminating) {  // When terminating, the order actors are terminating now
-          logger.trace(s"${orderEntry.order.id} is detachable, ready to be retrieved by the Master")
-          orderRegister(orderEntry.order.id).actor ! OrderActor.Input.MakeDetachable
+          case Some(_: EndNode) | None ⇒
+            if (!terminating) {  // When terminating, the order actors are terminating now
+              logger.trace(s"${orderEntry.order.id} is detachable, ready to be retrieved by the Master")
+              orderRegister(orderEntry.order.id).actor ! OrderActor.Input.MakeDetachable
+            }
         }
     }
 
