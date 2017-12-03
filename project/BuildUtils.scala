@@ -1,4 +1,6 @@
+import java.nio.ByteBuffer
 import java.nio.file.{FileVisitOption, Files}
+import java.util.{Base64, UUID}
 import sbt.{File, ModuleID}
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
@@ -6,6 +8,14 @@ import scala.collection.immutable.Seq
 object BuildUtils {
   lazy val isWindows = sys.props("os.name") startsWith "Windows"
   lazy val isMac = sys.props("os.name") startsWith "Mac OS"
+
+  def newBuildId: String = {
+    val uuid = UUID.randomUUID
+    val buffer = ByteBuffer.wrap(new Array[Byte](16))
+    buffer.putLong(uuid.getMostSignificantBits)
+    buffer.putLong(uuid.getLeastSignificantBits)
+    Base64.getUrlEncoder.encodeToString(buffer.array) stripSuffix "=="
+  }
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
 

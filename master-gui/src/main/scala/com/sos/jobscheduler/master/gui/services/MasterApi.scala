@@ -78,7 +78,7 @@ object MasterApi {
         logLeft(OtherError(s"Problem while accessing JobScheduler Master: $t"))
 
       case Success(xhr) ⇒
-        if (Option(xhr.getResponseHeader("X-JobScheduler-Version-UUID")).exists(_ != JavascriptGlobal.indexHtmlJobschedulerVersionUuid)) {
+        if (Option(xhr.getResponseHeader("X-JobScheduler-Build-ID")).exists(_ != JavascriptGlobal.indexHtmlJobschedulerVersionUuid)) {
           dom.window.setTimeout(() ⇒ dom.window.location.reload(), ReloadDelay.toMillis)  // Delay in case of reload-loop
           logLeft(OtherError(s"JobScheduler Master version changed — Reloading page..."))
         } else

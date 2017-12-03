@@ -21,11 +21,11 @@ trait GuiRoute extends WebjarsRoute {
   // Lazy and not in object to avoid ExceptionInInitializerError
   private lazy val ResourceDirectory = JavaResource("com/sos/jobscheduler/master/gui/frontend/gui")
   private lazy val IndexHtmlResource = JavaResource("com/sos/jobscheduler/master/gui/frontend/gui/index.html")
-  private lazy val IndexHtml = IndexHtmlResource.asUTF8String.replace("{JobSchedulerVersionUuid}", BuildInfo.uuid)
+  private lazy val IndexHtml = IndexHtmlResource.asUTF8String.replace("{JobSchedulerBuildId}", BuildInfo.buildId)
 
   final def indexHtmlRoute =
     get {
-      conditional(EntityTag(BuildInfo.uuid)) {
+      conditional(EntityTag(BuildInfo.buildId)) {
         complete {
           // Do not cache because index.html includes build UUID.
           HttpEntity(`text/html` withCharset `UTF-8`, IndexHtml)
@@ -38,7 +38,7 @@ trait GuiRoute extends WebjarsRoute {
       complete(NotFound)
     } ~
     parameter("v".?) {
-      case Some(BuildInfo.uuid) ⇒
+      case Some(BuildInfo.buildId) ⇒
         respondWithHeader(Caching) {
           getFromResourceDirectory(ResourceDirectory.path)
         } ~

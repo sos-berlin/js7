@@ -14,7 +14,7 @@ import com.sos.jobscheduler.master.web.simplegui.{FrontEndRoute, GuiRoute}
 trait ApiRoute extends RootRoute with OrderRoute with FrontEndRoute with GuiRoute {
 
   val apiRoute: Route =
-    respondWithHeader(RawHeader("X-JobScheduler-Version-UUID", BuildInfo.uuid.toString)) {
+    respondWithHeader(RawHeader("X-JobScheduler-Build-ID", BuildInfo.buildId)) {
       pathEnd {
         rootRoute
       } ~

@@ -225,7 +225,7 @@ lazy val common = project.dependsOn(baseJVM, dataJVM, testerJVM % "compile->test
         versionCommitHash = git.gitHeadCommit.value,
         branch = git.gitCurrentBranch.value),
       "version" → version.value,
-      BuildInfoKey.action("uuid") { UUID.randomUUID }),
+      BuildInfoKey.action("buildId")(newBuildId)),
     buildInfoPackage := "com.sos.jobscheduler.common")
 
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"

@@ -4,9 +4,9 @@
   <title>JobScheduler Master</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <base href="master/"/>
-  <link rel="icon" sizes="64x64" type="image/vnd.microsoft.icon" href="gui/images/jobscheduler.ico?v={JobSchedulerVersionUuid}">
+  <link rel="icon" sizes="64x64" type="image/vnd.microsoft.icon" href="gui/images/jobscheduler.ico?v={JobSchedulerBuildId}">
   <link rel="stylesheet" href="api/frontend/webjars/materializecss/0.100.2/css/materialize.min.css">
-  <link rel="stylesheet" href="gui/gui.css?v={JobSchedulerVersionUuid}">
+  <link rel="stylesheet" href="gui/gui.css?v={JobSchedulerBuildId}">
 </head>
 <body>
   <div id="GUI">
@@ -14,13 +14,13 @@
       JobScheduler Master...
     </pre>
   </div>
-  <script type="text/javascript" src="gui/master-gui-jsdeps.min.js?v={JobSchedulerVersionUuid}"></script>
+  <script type="text/javascript" src="gui/master-gui-jsdeps.min.js?v={JobSchedulerBuildId}"></script>
   <script type="text/javascript">
     // Materialize CSS
     $('.button-collapse').sideNav();
 
-    indexHtmlJobschedulerVersionUuid = "{JobSchedulerVersionUuid}";  // Replaced by GuiRoute
+    indexHtmlJobschedulerVersionUuid = "{JobSchedulerBuildId}";  // Replaced by GuiRoute
   </script>
-  <script type="text/javascript" src="gui/master-gui.js?v={JobSchedulerVersionUuid}"></script>
+  <script type="text/javascript" src="gui/master-gui.js?v={JobSchedulerBuildId}"></script>
 </body>
 </html>
