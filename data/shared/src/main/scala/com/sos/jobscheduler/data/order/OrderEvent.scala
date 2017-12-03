@@ -3,6 +3,8 @@ package com.sos.jobscheduler.data.order
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.MapDiff
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import com.sos.jobscheduler.base.utils.Strings.TruncatedString
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
@@ -46,15 +48,19 @@ object OrderEvent {
 
 
   sealed trait OrderStdWritten extends OrderEvent {
-    def stdoutStderrType: StdoutStderrType
     //type State = InProcess.type
+
+    def stdoutStderrType: StdoutStderrType
+    protected def chunk: String
+
+    override def toString = s"${getClass.simpleScalaName}(${chunk.trim truncateWithEllipsis 80})"
   }
 
   object OrderStdWritten {
     def apply(t: StdoutStderrType): String ⇒ OrderStdWritten =
       t match {
-        case Stdout ⇒ OrderStdoutWritten
-        case Stderr ⇒ OrderStderrWritten
+        case Stdout ⇒ OrderStdoutWritten.apply
+        case Stderr ⇒ OrderStderrWritten.apply
       }
 
     def unapply(o: OrderStdWritten) = o match {
@@ -65,10 +71,12 @@ object OrderEvent {
 
   final case class OrderStdoutWritten(chunk: String) extends OrderStdWritten {
     def stdoutStderrType = Stdout
+    override def toString = super.toString
   }
 
   final case class OrderStderrWritten(chunk: String) extends OrderStdWritten {
     def stdoutStderrType = Stderr
+    override def toString = super.toString
   }
 
 
