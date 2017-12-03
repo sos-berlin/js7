@@ -49,15 +49,17 @@ private[journal] final class StatisticsCounter {
   def timingString =
     if (flushes == 0)
       ""
-    else
+    else {
+      val factorFormat = NumberFormat.getInstance(Locale.ROOT)  // Not thread-safe
+      factorFormat.setMaximumFractionDigits(1)
       (t(flushNanos, flushes, "flush") ++ t(syncNanos, syncs, "sync")).mkString(", ") +
-        ", " + FactorFormat.format(commits.toDouble / flushes) + " commits/flush)"
+        ", " + factorFormat.format(commits.toDouble / flushes) + " commits/flush)"
+    }
 
   def flushCount = flushes
 }
 
 object StatisticsCounter {
-  private val FactorFormat = NumberFormat.getInstance(Locale.ROOT) sideEffect { _.setMaximumFractionDigits(1) }
 
   private def t(nanos: Long, n: Int, name: String): Option[String] =
     if (n == 0) None
