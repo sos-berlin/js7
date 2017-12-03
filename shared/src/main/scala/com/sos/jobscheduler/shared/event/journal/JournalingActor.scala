@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
@@ -26,12 +27,17 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
   private[event] final def persistAsyncKeyedEvent[EE <: E](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ Unit): Unit =
     persistKeyedEvent(keyedEvent, async = true)(callback)
 
-  private[event] final def persistKeyedEvent[EE <: E](keyedEvent: KeyedEvent[EE], noSync: Boolean = false, async: Boolean = false)(callback: Stamped[KeyedEvent[EE]] ⇒ Unit): Unit = {
+  private[event] final def persistKeyedEvent[EE <: E](
+    keyedEvent: KeyedEvent[EE],
+    noSync: Boolean = false,
+    async: Boolean = false)(
+    callback: Stamped[KeyedEvent[EE]] ⇒ Unit)
+  : Unit = {
     if (!isStashing && !async) {
       isStashing = true
       context.become(journaling, discardOld = false)
     }
-    logger.trace(s"($toString) Store ${keyedEvent.key} ${keyedEvent.event.getClass.getSimpleName stripSuffix "$"}")
+    logger.trace(s"“$toString” Store ${keyedEvent.key} ${keyedEvent.event.getClass.getSimpleName stripSuffix "$"}")
     journalActor.forward(JsonJournalActor.Input.Store(Some(keyedEvent) :: Nil, self, noSync = noSync))
     callbacks += EventCallback(callback.asInstanceOf[Stamped[KeyedEvent[E]] ⇒ Unit])
   }
@@ -45,9 +51,14 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
     case JsonJournalActor.Output.Stored(stampedOptions) ⇒
       // sender() is from persistKeyedEvent or deferAsync
       for (stampedOption ← stampedOptions) {
+        if (callbacks.isEmpty) {
+          val msg = s"Journal Stored message received (duplicate? stash in callback?) without corresponding callback: $stampedOption"
+          logger.error(s"“$toString” $msg")
+          throw new RuntimeException(msg)
+        }
         (stampedOption, callbacks.remove(0)) match {
           case (Some(stamped), EventCallback(callback)) ⇒
-            logger.trace(s"($toString) Stored ${EventId.toString(stamped.eventId)} ${stamped.value.key} -> $callback")
+            logger.trace(s"“$toString” Stored ${EventId.toString(stamped.eventId)} ${stamped.value.key} ${stamped.value.event.getClass.simpleScalaName} -> $callback")
             callback(stamped.asInstanceOf[Stamped[KeyedEvent[E]]])
           case (None, Deferred(callback)) ⇒
             callback()
@@ -55,7 +66,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
             sys.error(s"Bad actor state: $x")
         }
       }
-      logger.trace(s"($toString) *** callbacks=${callbacks.size}")
+      logger.trace(s"“$toString” callbacks=${callbacks.size}")
       if (isStashing) {
         isStashing = false
         context.unbecome()
@@ -69,7 +80,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
           sender ! Output.GotSnapshot(o)
         case Failure(t) ⇒
           val tt = t.appendCurrentStackTrace
-          logger.error(s"($toString) $t", tt)
+          logger.error(s"“$toString” $t", tt)
           throw tt  // ???
       }
 
