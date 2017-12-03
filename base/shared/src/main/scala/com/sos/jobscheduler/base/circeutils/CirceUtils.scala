@@ -29,8 +29,8 @@ object CirceUtils {
       def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
     }
 
-  val CompactPrinter = Printer.noSpaces.copy(dropNullKeys = true/*Suppress None*/, preserveOrder = false)
-  val PrettyPrinter = Printer.spaces2.copy(dropNullKeys = true/*Suppress None*/)
+  val CompactPrinter = Printer.noSpaces.copy(dropNullKeys = true/*Suppress None*/, preserveOrder = true/*maybe slow but readable*/)
+  val PrettyPrinter = Printer.spaces2.copy(dropNullKeys = true/*Suppress None*/, colonLeft = "", lrbracketsEmpty = "")
 
   object implicits {
     implicit val CompactPrinter = CirceUtils.CompactPrinter
@@ -38,7 +38,7 @@ object CirceUtils {
 
   implicit class RichJson(val underlying: Json) extends AnyVal {
 
-    def pretty: String =
+    def toPrettyString: String =
       PrettyPrinter.pretty(underlying)
 
     def compactPrint: String =
