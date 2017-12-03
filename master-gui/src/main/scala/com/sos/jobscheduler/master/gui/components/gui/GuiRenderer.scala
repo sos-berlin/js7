@@ -52,7 +52,7 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
           else if (state.isConnected)
             "connected"
           else
-            <.span(^.cls := "disconnected")("disconnected")),
+            <.span(^.cls := "disconnected")("⚠️ disconnected")),
         state.ordersState.content match {
           case OrdersState.FetchedContent(_, _, eventId, eventCount) ⇒
             val (dt, millis) = EventId.toTimestamp(eventId).toLocaleIsoStringWithoutOffset splitAt 19

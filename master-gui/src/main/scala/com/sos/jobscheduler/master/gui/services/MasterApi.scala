@@ -11,7 +11,7 @@ import org.scalajs.dom.ext.{Ajax, AjaxException}
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobalScope
 import scala.util.{Failure, Success, Try}
@@ -21,10 +21,11 @@ import scala.util.{Failure, Success, Try}
   */
 object MasterApi {
   type Response[A] = Either[Error, A]
+  private val ReloadDelay = 1.second
 
   @js.native @JSGlobalScope
   object JavascriptGlobal extends js.Object {
-    var jobschedulerVersionUuid: String = js.native
+    var indexHtmlJobschedulerVersionUuid: String = js.native
   }
 
   def executeCommand(command: String): Future[Response[Unit]] =
@@ -64,19 +65,22 @@ object MasterApi {
 
   private def checkResponse(tried: Try[dom.XMLHttpRequest]): Response[dom.XMLHttpRequest] =
     tried match {
-      case Failure(t: AjaxException) if t.xhr.statusText.isEmpty ⇒
-        Left(HostUnreachable(t.toString))
+      case Failure(t: AjaxException) if t.xhr.statusText.nonEmpty ⇒
+        logLeft(OtherError(s"Problem while accessing JobScheduler Master: $t ${t.xhr.statusText}\n${t.xhr.responseText}"))
+
+      case Failure(t: AjaxException) if t.getMessage == null || t.getMessage.isEmpty ⇒
+        Left(HostUnreachable(""))
 
       case Failure(t: AjaxException) ⇒
-        logLeft(OtherError(s"Problem while accessing JobScheduler Master: $t ${t.xhr.statusText}\n${t.xhr.responseText}"))
+        Left(HostUnreachable(t.toString))
 
       case Failure(t) ⇒
         logLeft(OtherError(s"Problem while accessing JobScheduler Master: $t"))
 
       case Success(xhr) ⇒
-        if (Option(xhr.getResponseHeader("X-JobScheduler-Version-UUID")).exists(_ != JavascriptGlobal.jobschedulerVersionUuid)) {
-          dom.window.location.reload()
-          logLeft(OtherError(s"JobScheduler Master version changed - Reloading page"))
+        if (Option(xhr.getResponseHeader("X-JobScheduler-Version-UUID")).exists(_ != JavascriptGlobal.indexHtmlJobschedulerVersionUuid)) {
+          dom.window.setTimeout(() ⇒ dom.window.location.reload(), ReloadDelay.toMillis)  // Delay in case of reload-loop
+          logLeft(OtherError(s"JobScheduler Master version changed — Reloading page..."))
         } else
           Right(xhr)
     }
@@ -89,7 +93,7 @@ object MasterApi {
   sealed trait Error
 
   final case class HostUnreachable(reason: String) extends Error {
-    override def toString = s"JobScheduler Master is not reachable. $reason" stripSuffix ". "
+    override def toString = s"⚠️ JobScheduler Master is not reachable — $reason".trim stripSuffix " —"
   }
 
   final case class OtherError(reason: String) extends Error {

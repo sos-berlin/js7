@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.master.web.simplegui
 
 import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
+import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.MediaTypes.`text/html`
-import akka.http.scaladsl.model.StatusCodes.NotFound
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, NotFound}
 import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.{EntityTag, `Cache-Control`}
-import akka.http.scaladsl.model.{DateTime, HttpEntity}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
@@ -25,11 +25,10 @@ trait GuiRoute extends WebjarsRoute {
 
   final def indexHtmlRoute =
     get {
-      conditional(EntityTag(BuildInfo.uuid, weak = ETagIsWeak), StartDateTime) {
-        respondWithHeader(Caching) {
-          complete {
-            HttpEntity(`text/html` withCharset `UTF-8`, IndexHtml)
-          }
+      conditional(EntityTag(BuildInfo.uuid)) {
+        complete {
+          // Do not cache because index.html includes build UUID.
+          HttpEntity(`text/html` withCharset `UTF-8`, IndexHtml)
         }
       }
     }
@@ -38,21 +37,23 @@ trait GuiRoute extends WebjarsRoute {
     path("index.html") {
       complete(NotFound)
     } ~
-    conditional(EntityTag(BuildInfo.uuid)) {
-      respondWithHeader(Caching) {
-        getFromResourceDirectory(ResourceDirectory.path)
-      }
-    }
-    extractUnmatchedPath { path ⇒
-      logger.warn(s"Not found: .../gui$path (resource ${ResourceDirectory.path}$path)")
-      complete(NotFound)
+    parameter("v".?) {
+      case Some(BuildInfo.uuid) ⇒
+        respondWithHeader(Caching) {
+          getFromResourceDirectory(ResourceDirectory.path)
+        } ~
+        extractUnmatchedPath { path ⇒
+          logger.warn(s"Not found: .../gui$path (resource ${ResourceDirectory.path}$path)")
+          complete(NotFound)
+        }
+      case Some(_) ⇒
+        complete((NotFound, "Version changed"))
+      case None ⇒
+        complete((BadRequest, "Missing parameter v"))
     }
 }
 
 object GuiRoute {
   private val logger = Logger(getClass)
-  private val ETagIsWeak = BuildInfo.buildVersion.contains("-SNAPSHOT")
-  private val MaxAge = if (BuildInfo.version contains "-SNAPSHOT") 30 else 24*3600
-  private val Caching = `Cache-Control`(`max-age`(MaxAge))
-  private val StartDateTime = DateTime.now
+  private val Caching = `Cache-Control`(`max-age`(30*24*3600))
 }

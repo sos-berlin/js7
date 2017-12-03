@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent}
 import com.sos.jobscheduler.master.gui.components.gui.GuiBackend._
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.services.MasterApi
-import com.sos.jobscheduler.master.gui.services.MasterApi.Response
+import com.sos.jobscheduler.master.gui.services.MasterApi.{HostUnreachable, Response}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback}
 import org.scalajs.dom
@@ -26,13 +26,19 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
     Callback {
       dom.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
     } >>
+      fetchOverview()
+
+  private def fetchOverview(): Callback =
     Callback.future {
       for (overviewResponse ← MasterApi.overview) yield
         scope.modState(_.copy(
           isConnected = overviewResponse.isRight,
           overview = Some(overviewResponse))
         ) >>
-        fetchOrders()
+          (overviewResponse match {
+            case Left(_) ⇒ Callback.empty  // Stop. User has to reload page
+            case Right(_) ⇒ fetchOrders()
+          })
     }
 
   def componentWillUnmount() = Callback {
