@@ -54,7 +54,12 @@ extends Actor {
 object CatchingActor {
   private def defaultOnStopped(child: ActorRef) = Failure(new StoppedException(child))
 
-  def actorOf[A](props: Promise[A] ⇒ Props, name: String = "", decider: Decider = CatchingSupervisorStrategy.defaultDecider, onStopped: ActorRef ⇒ Try[A] = defaultOnStopped _, loggingEnabled: Boolean = false)
+  def actorOf[A](
+    props: Promise[A] ⇒ Props,
+    name: String = "",
+    decider: Decider = CatchingSupervisorStrategy.defaultDecider,
+    onStopped: ActorRef ⇒ Try[A] = defaultOnStopped _,
+    loggingEnabled: Boolean = false)
     (implicit actorRefFactory: ActorRefFactory)
   : (ActorRef, Future[A]) = {
     val terminated = Promise[A]()

@@ -44,7 +44,6 @@ final class CatchingActorTest extends FreeSpec with BeforeAndAfterAll {
     assert(gotThrowable.isInstanceOf[CatchingSupervisorStrategy.ActorCrashedException])
     assert(gotThrowable.getCause eq throwable)
   }
-
 }
 
 object CatchingActorTest {

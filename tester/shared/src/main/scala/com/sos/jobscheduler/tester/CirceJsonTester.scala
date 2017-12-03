@@ -24,8 +24,7 @@ object CirceJsonTester {
   }
 
   private def parseJson(string: String): Json =
-    forceLeft(parse(string)
-    )
+    forceLeft(parse(string))
 
   private def forceLeft[R](either: Either[Throwable, R]): R =
     either match {

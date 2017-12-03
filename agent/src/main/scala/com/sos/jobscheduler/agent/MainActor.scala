@@ -55,7 +55,7 @@ extends Actor {
     if (!stoppedPromise.isCompleted) {
       stoppedPromise.tryFailure(new RuntimeException("MainActor has stopped unexpectedly") with NoStackTrace)
     }
-    logger.info("Terminated")
+    logger.info("Stopped")
     super.postStop()
   }
 
