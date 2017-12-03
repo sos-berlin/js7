@@ -20,16 +20,21 @@ object Strings {
     }
   }
 
-  def requireIdentifier(string: String): String = {
-    if (!isIdentifier(string)) throw new IllegalArgumentException(s"Not a valid identifier: $string")
+  def requireExtendedIdentifier(string: String): String = {
+    if (!isExtendedIdentifier(string)) throw new IllegalArgumentException(s"Not a valid identifier: $string")
     string
   }
 
-  def isIdentifier(string: String): Boolean =
+  /**
+    * Like a Java identifier with minus character.
+    * Minus character is not allowed as last or first character.
+    */
+  def isExtendedIdentifier(string: String): Boolean =
     string.nonEmpty &&
+      string.last != '-' &&
       isUnicodeIdentifierStart(string charAt 0) &&
       (1 until string.length forall { i ⇒
         val c = string charAt i
-        isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c)
+        isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) || c == '-'
       })
 }
