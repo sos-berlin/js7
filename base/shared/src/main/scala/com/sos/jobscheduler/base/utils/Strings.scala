@@ -9,14 +9,17 @@ import scala.math.max
 object Strings {
 
   private val Ellipsis = "..."
+  private val CharCountThreshold = 50  // truncateWithEllipsis adds character count if string is not shorter
 
-  implicit class TruncatedString(val delegate: String) extends AnyVal {
+  implicit class TruncatedString(val underlying: String) extends AnyVal {
+    /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
     def truncateWithEllipsis(n: Int): String = {
-      val nn = max(Ellipsis.length, n)
-      if (delegate.length <= nn)
-        delegate
+      val suffix = if (n < CharCountThreshold) Ellipsis else s"$Ellipsis(length ${underlying.length})"
+      val nn = max(suffix.length, n)
+      if (underlying.length <= nn)
+        underlying
       else
-        delegate.take(nn - Ellipsis.length) + "..."
+        underlying.take(nn - suffix.length) + suffix
     }
   }
 
