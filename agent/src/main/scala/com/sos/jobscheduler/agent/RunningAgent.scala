@@ -13,6 +13,7 @@ import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.agent.web.common.LoginSession
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
@@ -50,6 +51,8 @@ object RunningAgent {
 
   def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ A): A =
     autoClosing(apply(configuration) await timeout) { agent ⇒
+      implicit val executionContext = agent.injector.instance[ExecutionContext]
+      for (t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
       val a = body(agent)
       agent.terminated await 99.s
       a

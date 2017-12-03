@@ -7,6 +7,7 @@ import com.google.common.io.Closer
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -63,6 +64,8 @@ object RunningMaster {
 
   def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit): Unit = {
     val master = apply(configuration) await timeout
+    implicit val executionContext = master.injector.instance[ExecutionContext]
+    for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
     body(master)
     master.terminated await timeout
   }
