@@ -58,7 +58,7 @@ final class RunningMasterIT extends FreeSpec {
       }
 
       val agent0 = RunningAgent(agentConfigs(0)) await 10.s
-      env.xmlFile(WorkflowPath("/test")).xml =
+      env.xmlFile(TestWorkflowPath).xml =
         <job_chain>
           <job_chain_node state="100" agent="test-agent-111" job="/test"/>
           <job_chain_node state="200" agent="test-agent-222" job="/test"/>
@@ -84,19 +84,16 @@ final class RunningMasterIT extends FreeSpec {
         val lastEventId = injector.instance[EventCollector].lastEventId
         val actorSystem = injector.instance[ActorSystem]
         val eventGatherer = new TestEventGatherer(injector)
+        val adHocOrder = Order(TestOrderId, NodeKey(TestWorkflowPath, NodeId("100")), Order.StartNow)
 
-        val adHocOrder = Order(
-          TestOrderId,
-          NodeKey(TestWorkflowPath, NodeId("100")),
-          Order.StartNow)
-
-        sleep(3.s)
+        sleep(3.s)  // Let OrderGenerator generate some orders
         master.orderKeeper ! MasterOrderKeeper.Input.SuspendDetaching
         val agent1 = RunningAgent(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
         master.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
 
         master.eventCollector.when[OrderEvent.OrderDetachable.type](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
         val agentClients = for (a ← List(agent0, agent1)) yield AgentClient(a.localUri.toString)(actorSystem)
+        //sleep(500.ms)  // MasterOrderKeeper allows GetOrders while journaling events (persistAsync). Wait until events are stored and orders are up-to-date. Time-dependend !!!
         assert(agentClients(0).orders() await 99.s map { _.id } contains TestOrderId)
         master.orderKeeper ! MasterOrderKeeper.Input.ContinueDetaching
 

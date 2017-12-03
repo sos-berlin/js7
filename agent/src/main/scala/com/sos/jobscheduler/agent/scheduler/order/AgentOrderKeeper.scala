@@ -16,7 +16,6 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -28,13 +27,15 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderProcessed, OrderTransitioned}
+import com.sos.jobscheduler.data.order.Outcome.Bad.AgentAborted
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
+import com.sos.jobscheduler.data.workflow.Workflow.EndNode
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowEvent}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
+import com.sos.jobscheduler.shared.workflow.Transitions
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Duration
@@ -195,7 +196,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         case Right(_) ⇒
           val workflowResponse = workflowRegister.get(workflow.path) match {
             case None ⇒
-              persistFuture(KeyedEvent(WorkflowAttached(workflow.inputNodeId, workflow.idToNode.values.toImmutableSeq))(workflow.path)) { stampedEvent ⇒
+              persistFuture(KeyedEvent(WorkflowAttached(workflow))(workflow.path)) { stampedEvent ⇒
                 workflowRegister.handleEvent(stampedEvent.value)
                 Accepted
               }
@@ -322,7 +323,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
           case Some(_: EndNode) | None ⇒
             if (!terminating) {  // When terminating, the order actors are terminating now
               logger.trace(s"${orderEntry.order.id} is detachable, ready to be retrieved by the Master")
-              orderRegister(orderEntry.order.id).actor ! OrderActor.Input.MakeDetachable
+              orderRegister(orderEntry.order.id).actor ! OrderActor.Input.HandleEvent(OrderEvent.OrderDetachable)
             }
         }
     }
@@ -367,19 +368,16 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   }
 
   private def handleProcessed(orderEntry: OrderEntry): Unit = {
-    val fromNode = orderEntry.jobNode
-    val toNodeId = orderEntry.order.outcome match {
-      case _: Outcome.Good ⇒ nextNodeId(fromNode, orderEntry.order.outcome)
-      case _: Outcome.Bad ⇒ fromNode.id
+    val order = orderEntry.order.castState[Order.Processed.type]
+    order.outcome match {
+      case Outcome.Bad(AgentAborted) ⇒
+        orderEntry.actor ! OrderActor.Input.HandleEvent(OrderEvent.OrderTransitioned(order.nodeId))  // Repeat
+      case _ ⇒
+        val switched = Transitions.switch(order, orderEntry.workflow)
+        val event = switched getOrElse OrderEvent.OrderDetachable
+        orderEntry.actor ! OrderActor.Input.HandleEvent(event)
     }
-    orderEntry.actor ! OrderActor.Input.Transition(toNodeId)
   }
-
-  private def nextNodeId(node: JobNode, outcome: Outcome) =
-    outcome match {
-      case Outcome.Good(returnValue) ⇒ if (returnValue) node.onSuccess else node.onFailure
-      case Outcome.Bad(_) ⇒ node.onFailure
-    }
 
   override def unhandled(message: Any) =
     message match {
@@ -391,7 +389,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
           logger.error(s"Actor '$jobPath' has stopped unexpectedly")
         }
         jobRegister.onActorTerminated(actorRef)
-          checkActorStop()
+        checkActorStop()
 
       case Terminated(actorRef) if orderRegister contains actorRef ⇒
         val orderId = orderRegister(actorRef).order.id

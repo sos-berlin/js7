@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
+import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.order.agent.AgentDriver.Input
 import com.sos.jobscheduler.master.order.agent.CommandQueue.QueuedInputResponse
@@ -79,8 +80,9 @@ object CommandQueueTest {
   private val logger = Logger(getClass)
   private val TestAgentPath = AgentPath("/AGENT")
   private val TestWorkflow = Workflow(WorkflowPath("/A"), NodeId("START"), List(
-    JobNode(NodeId("START"), TestAgentPath, JobPath("/JOB"), onSuccess = NodeId("END"), onFailure = NodeId("END")),
-    EndNode(NodeId("END"))))
+    Transition(
+      JobNode(NodeId("START"), TestAgentPath, JobPath("/JOB")),
+      EndNode(NodeId("END")))))
 
   private def toQueuedInputResponse(order: Order[Order.Idle]) =
     QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath, TestWorkflow), Batch.Succeeded(Accepted))

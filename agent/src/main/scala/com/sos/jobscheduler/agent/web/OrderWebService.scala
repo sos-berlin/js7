@@ -31,11 +31,11 @@ trait OrderWebService extends AgentWebService {
         parameter("return" ? "Order") {
           case "OrderId" ⇒
             complete {
-              commandHandler.typedExecute(AgentCommand.GetOrderIds, CommandMeta(user)) map { _.orders }
+              commandHandler.typedExecute(AgentCommand.GetOrderIds, CommandMeta(user)) map { _.orderIds }
             }
           case "Order" ⇒
             complete {
-              commandHandler.typedExecute(AgentCommand.GetOrders, CommandMeta(user)) map { _.order }
+              commandHandler.typedExecute(AgentCommand.GetOrders, CommandMeta(user)) map { _.orders }
             }
         }
       }

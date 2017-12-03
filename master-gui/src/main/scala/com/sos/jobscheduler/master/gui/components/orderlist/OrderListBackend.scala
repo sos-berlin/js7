@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
-import com.sos.jobscheduler.master.gui.common.RenderUtils.implicits._
+import com.sos.jobscheduler.master.gui.common.RenderUtils._
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListBackend._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
@@ -53,7 +53,7 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
           <.td(^.cls := "orderTd")(order.nodeKey.workflowPath),
           <.td(^.cls := "orderTd")(order.nodeKey.nodeId),
           <.td(^.cls := "orderTd")(order.outcome.toString),
-          <.td(^.cls := "orderTd")(order.attachedTo.toString),
+          <.td(^.cls := "orderTd")(order.attachedTo),
           <.td(order.state.toString))
         .ref { tr ⇒
           if (isUpdated) highligtTrs += tr

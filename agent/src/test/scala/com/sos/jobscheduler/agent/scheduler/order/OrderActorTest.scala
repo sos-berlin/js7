@@ -30,6 +30,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderTransitioned}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
+import com.sos.jobscheduler.data.workflow.Workflow.EndNode
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JsonJournalActor, JsonJournalMeta}
@@ -100,16 +101,14 @@ private object OrderActorTest {
   private val TestNodeId = NodeId("NODE-ID")
   private val TestOrder = Order(OrderId("TEST-ORDER"), NodeKey(WorkflowPath("/JOBNET"), TestNodeId), Order.Ready)
   private val TestJobPath = JobPath("/test")
-  private val SuccessNode = Workflow.EndNode(NodeId("SUCCESS"))
-  private val FailureNode = Workflow.EndNode(NodeId("FAILURE"))
+  private val LastNode = EndNode(NodeId("END"))
   private val TestAgentPath = AgentPath("/TEST-AGENT")
-  private val TestJobNode = Workflow.JobNode(TestNodeId, TestAgentPath, TestJobPath, onSuccess = SuccessNode.id, onFailure = FailureNode.id)
-  private val TestWorkflow = Workflow(WorkflowPath("/JOBNET"), TestNodeId, List(TestJobNode, SuccessNode, FailureNode))
+  private val TestJobNode = Workflow.JobNode(TestNodeId, TestAgentPath, TestJobPath)
   private val ExpectedOrderEvents = List(
     OrderAttached(TestOrder.nodeKey, Order.Ready, AgentPath("/TEST-AGENT"), Payload.empty),
     OrderProcessingStarted,
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.Good(true)),
-    OrderTransitioned(SuccessNode.id),
+    OrderTransitioned(LastNode.id),
     OrderDetached)
   private val Nl = System.lineSeparator
 
@@ -222,7 +221,7 @@ private object OrderActorTest {
 
           case _: OrderProcessed ⇒
             events += event
-            orderActor ! OrderActor.Input.Transition(SuccessNode.id)
+            orderActor ! OrderActor.Input.HandleEvent(OrderEvent.OrderTransitioned(LastNode.id))
 
           case _: OrderTransitioned ⇒
             events += event

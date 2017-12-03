@@ -6,7 +6,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentEvent}
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichThrowable}
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
@@ -42,6 +42,7 @@ import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -82,7 +83,7 @@ final class RecoveryIT extends FreeSpec {
           }
         }
 
-        for (i ← 1 to 2) withClue(s"Run #$i") {
+        for (i ← 1 to 2) withClue(s"Run #$i:") {
           val myLastEventId = lastEventId
           sys.runtime.gc()  // For a clean memory view
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
@@ -92,21 +93,20 @@ final class RecoveryIT extends FreeSpec {
               val orderId = (finishedEventSeq: @unchecked) match {
                 case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderFinished.type]] ⇒ eventSeq.stampeds.toVector.last.value.key
               }
-              master.orderClient.order(orderId) await 99.s shouldEqual
+              assert(master.orderClient.order(orderId).await(99.s) ==
                 Some(Order(
                   orderId,
                   NodeKey(TestWorkflowPath, NodeId("END")),
                   Order.Finished,
                   payload = Payload(
-                    Map("result" → "TEST-RESULT-VALUE-agent-222"))))
+                    Map("result" → "TEST-RESULT-VALUE-agent-222")))))
               val EventSeq.NonEmpty(eventSeq) = eventCollector.when[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, 0.s), _.key == orderId) await 99.s
               withClue(s"$orderId") {
-                assertResult(ExpectedEvents) {
-                  (deleteRestartedJobEvents(eventSeq map { _.value.event }) collect {
+                assert((deleteRestartedJobEvents(eventSeq map { _.value.event }) collect {
                     case o @ OrderAdded(_, Order.Scheduled(_), _) ⇒ o.copy(state = Order.Scheduled(SomeTimestamp))
                     case o ⇒ o
                   }).toVector
-                }
+                  == ExpectedEvents)
               }
             }
           }
@@ -119,14 +119,24 @@ final class RecoveryIT extends FreeSpec {
     val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
     eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
     val master = RunningMaster(injector) await 99.s
-    master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
-    body(master)
-    master.executeCommand(MasterCommand.Terminate) await 99.s
-    master.terminated await 99.s
+    try {
+      for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
+      master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
+      body(master)
+      master.executeCommand(MasterCommand.Terminate) await 99.s
+      master.terminated await 99.s
+    } catch { case NonFatal(t) if master.terminated.failed.isCompleted ⇒
+      t.addSuppressed(master.terminated.failed.successValue)
+      throw t
+    }
   }
 
   private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[RunningAgent] ⇒ Unit): Unit =
-    multipleAutoClosing(confs map { o ⇒ RunningAgent(o) } await 10.s)(body)
+    multipleAutoClosing(confs map { o ⇒
+      val whenAgent = RunningAgent(o)
+      for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
+      whenAgent
+    } await 10.s)(body)
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
     import AgentActor.MyJournalMeta.eventJsonCodec
@@ -176,29 +186,29 @@ private object RecoveryIT {
     OrderMovedToAgent(AgentPath("/test-agent-111")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
-    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-111"), Set()), Outcome.Good(true)),
+    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-111")), Outcome.Good(true)),
     OrderTransitioned(NodeId("110")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
-    OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
     OrderTransitioned(NodeId("120")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
-    OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
-    OrderTransitioned(NodeId("200")),
+    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
     OrderDetachable,
     OrderMovedToMaster,
+    OrderTransitioned(NodeId("200")),
     OrderMovedToAgent(AgentPath("/test-agent-222")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
-    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-222"), Set()), Outcome.Good(true)),
+    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-222")), Outcome.Good(true)),
     OrderTransitioned(NodeId("210")),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
     OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
-    OrderTransitioned(NodeId("END")),
     OrderDetachable,
     OrderMovedToMaster,
+    OrderTransitioned(NodeId("END")),
     OrderFinished)
 
   /** Deletes restart sequences to make event sequence comparable with ExpectedEvents. */
@@ -211,7 +221,7 @@ private object RecoveryIT {
             result.remove(result.size - 1)
           }
           result.remove(result.size - 1)
-          assert(events.next.isInstanceOf[OrderEvent.OrderTransitioned])  // Not if Agent restartet immediately after recovery (not expected)
+          assert(events.next.isInstanceOf[OrderEvent.OrderTransitioned])  // Not if Agent restarted immediately after recovery (not expected)
 
         case event ⇒ result += event
       }

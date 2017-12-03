@@ -9,8 +9,10 @@ import io.circe.generic.JsonCodec
 final case class Payload(variables: Map[String, String], outcome: Outcome = Outcome.Default) {
 
   override def toString = {
-    val variableString = variables.keys.toVector.sorted.map(k ⇒ s"$k=$variables(k)").mkString(", ").trim
-    s"Payload($outcome $variableString)"
+    val variableString = variables.keys.toVector.sorted.map(k ⇒ s"$k=${variables(k)}").mkString(", ").trim
+    "Payload(" +
+      Array(outcome, variableString).mkString(" ").trim +
+      ")"
   }
 }
 

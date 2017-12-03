@@ -65,7 +65,7 @@ header, main, footer {
 }
 
 .experimental-viewer {
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
 }
 
 .freeze-toggle:hover {
@@ -105,4 +105,8 @@ header, main, footer {
 .orderTr-enter.orderTr-enter-active {
   background-color: transparent;
   transition: background-color 5s ease-in;
+}
+
+.AttachedTo-Detachable {
+  color: darkgreen;
 }

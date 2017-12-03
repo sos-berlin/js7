@@ -9,3 +9,8 @@ import io.circe.generic.JsonCodec
 final case class NodeKey(workflowPath: WorkflowPath, nodeId: NodeId) {
   override def toString = s"${workflowPath.string}:${nodeId.string}"
 }
+
+object NodeKey {
+  def apply(workflowPath: String, nodeId: String) =
+    new NodeKey(WorkflowPath(workflowPath), NodeId(nodeId))
+}

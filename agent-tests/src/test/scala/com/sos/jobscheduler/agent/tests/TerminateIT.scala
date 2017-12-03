@@ -30,6 +30,7 @@ import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import com.sos.jobscheduler.data.workflow.test.TestSetting._
 
 /**
   * @author Joacim Zschimmer
@@ -49,11 +50,11 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
           client.executeCommand(AttachOrder(
             Order(
               orderId,
-              NodeKey(AWorkflow.path, NodeId("100")),
+              NodeKey(TestWorkflow.path, A.id),
               Order.Ready,
               payload = Payload(Map("a" → "A"))),
             TestAgentPath,
-            AWorkflow))
+            TestWorkflow))
         ) await 99.s
 
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
@@ -73,14 +74,6 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
 }
 
 object TerminateIT {
-  private val TestAgentPath = AgentPath("/TEST-AGENT")
-  private val AJobPath = JobPath("/test")
-  private val AWorkflow = Workflow(
-    WorkflowPath("/A"),
-    NodeId("100"),
-    List(
-      Workflow.JobNode(NodeId("100"), TestAgentPath, AJobPath, onSuccess = NodeId("END"), onFailure = NodeId("END")),
-      Workflow.EndNode(NodeId("END"))))
   private val AScript =
     if (isWindows) """
       |@echo off
@@ -92,7 +85,7 @@ object TerminateIT {
 
   private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit actorSystem: ActorSystem, closer: Closer): Unit = {
     TestAgentDirectoryProvider.provideAgentDirectory { agentDirectory ⇒
-      (agentDirectory / "config" / "live" / "test.job.xml").xml =
+      (agentDirectory / "config" / "live" / AJobPath.toXmlFile).xml =
         <job tasks="10">
           <script language="shell">{AScript}</script>
         </job>

@@ -16,7 +16,7 @@ final class OrderTest extends FreeSpec {
     val order = Order(
       OrderId("ID"),
       NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")),
-      Order.InProcess,
+      Order.Ready,
       payload = Payload(Map(
         "var1" → "value1",
         "var2" → "value2")))
@@ -41,6 +41,15 @@ final class OrderTest extends FreeSpec {
       assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentPath))).detachableFromAgent == Right(agentPath))
     }
 
+    "castState" in {
+      assert(order.castState[Order.Ready.type] eq order)
+      assert(order.castState[Order.Idle] eq order)
+      assert(order.castState[Order.State] eq order)
+      intercept[IllegalStateException] {
+        order.castState[Order.Processed.type]
+      }
+    }
+
     "JSON" in {
       check(
         order,
@@ -51,7 +60,7 @@ final class OrderTest extends FreeSpec {
             "nodeId": "NODE"
           },
           "state": {
-            "TYPE": "InProcess"
+            "TYPE": "Ready"
           },
           "payload": {
             "variables": {

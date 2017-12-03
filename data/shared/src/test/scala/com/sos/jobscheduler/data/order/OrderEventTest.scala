@@ -78,6 +78,11 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
+  "OrderStdoutWritten toString" in {
+    assert(OrderStderrWritten("*" * 100).toString ==
+      "OrderStderrWritten(*****************************************************************...(length 100))")
+  }
+
   "OrderStdoutWritten" in {
     check(OrderStdoutWritten("STDOUT\n"),
       """{

@@ -6,7 +6,7 @@ import io.circe.{Decoder, Encoder}
 /**
   * @author Joacim Zschimmer
   */
-final case class MapDiff[K, V] private(addedOrUpdated: Map[K, V], removed: Set[K]) {
+final case class MapDiff[K, V](addedOrUpdated: Map[K, V], removed: Set[K] = Set.empty) {
   require((removed & addedOrUpdated.keySet).isEmpty, "MapDiff: addedOrUpdated and removed are not disjunct")
 
   def applyTo(variables: Map[K, V]): Map[K, V] =
@@ -28,6 +28,7 @@ object MapDiff {
     else
       new MapDiff(addedOrUpdated, removed)
 
+  @deprecated
   def addedOrUpdated[K, V](added: Map[K, V]): MapDiff[K, V] =
     MapDiff(added, Set())
 

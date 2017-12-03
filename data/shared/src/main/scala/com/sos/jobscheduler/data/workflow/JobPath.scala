@@ -8,6 +8,8 @@ extends TypedPath {
   validate()
 
   def companion = JobPath
+
+  def toXmlFile = withoutStartingSlash + ".job.xml"
 }
 
 object JobPath extends TypedPath.Companion[JobPath]

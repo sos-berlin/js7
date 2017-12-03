@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
@@ -22,6 +22,15 @@ final case class Order[+S <: Order.State](
   attachedTo: Option[AttachedTo] = None,
   payload: Payload = Payload.empty)
 {
+  def toLean = LeanOrder(id, payload)
+
+  def withLean(lean: LeanOrder): Order[Order.State] = {
+    val LeanOrder(id_, payload_) = lean
+    copy(
+      id = id_,
+      payload = payload_)
+  }
+
   def workflowPath: WorkflowPath =
     nodeKey.workflowPath
 
@@ -47,7 +56,9 @@ final case class Order[+S <: Order.State](
 
       case OrderProcessed(diff, outcome_) ⇒ copy(
         state = Processed,
-        payload = Payload(variables = diff.applyTo(variables), outcome = outcome_))
+        payload = Payload(
+          variables = diff.applyTo(payload.variables),
+          outcome = outcome_))
 
       case OrderTransitioned(toNodeId) ⇒ copy(
         state = Ready,
@@ -81,21 +92,26 @@ final case class Order[+S <: Order.State](
     castState[Order.Processed.type]
 
   def castState[T <: State: ClassTag]: Order[T] = {
-    if (!implicitClass[T].isAssignableFrom(state.getClass))
-      throw new ClassCastException(s"Order '$id': Order[${state.getClass.getSimpleName stripSuffix "$"}] cannot be cast to Order[${implicitClass[T].getSimpleName stripSuffix "$"}]")
+    val cls = implicitClass[T]
+    if (!cls.isAssignableFrom(state.getClass))
+      throw new IllegalStateException(s"'$id' is expected to be ${cls.simpleScalaName}, but is $state")
     this.asInstanceOf[Order[T]]
   }
 
   def attachedToAgent: Either[IllegalStateException, AgentPath] =
     attachedTo match {
-      case Some(AttachedTo.Agent(agentPath)) ⇒ Right(agentPath)
-      case o ⇒ Left(new IllegalStateException(s"'$id' is expected to be AttachedTo.Agent, but not: $o"))
+      case Some(AttachedTo.Agent(agentPath)) ⇒
+        Right(agentPath)
+      case o ⇒
+        Left(new IllegalStateException(s"'$id' is expected to be AttachedTo.Agent, but not: $o"))
     }
 
   def detachableFromAgent: Either[IllegalStateException, AgentPath] =
     attachedTo match {
-      case Some(AttachedTo.Detachable(agentPath)) ⇒ Right(agentPath)
-      case o ⇒ Left(new IllegalStateException(s"'$id' is expected to be AttachedTo.Detachable, but not: $o"))
+      case Some(AttachedTo.Detachable(agentPath)) ⇒
+        Right(agentPath)
+      case o ⇒
+        Left(new IllegalStateException(s"'$id' is expected to be AttachedTo.Detachable, but not: $o"))
     }
 }
 

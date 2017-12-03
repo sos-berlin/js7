@@ -2,8 +2,8 @@ package com.sos.jobscheduler.agent.data.commands
 
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.test.TestSetting.TestWorkflow
+import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 import scala.concurrent.duration.DurationInt
@@ -81,53 +81,72 @@ final class AgentCommandTest extends FreeSpec {
       check(AgentCommand.AttachOrder(
         Order(
           OrderId("ORDER-ID"),
-          NodeKey(WorkflowPath("/JOBNET"),NodeId("INPUT")),
+          NodeKey(TestWorkflow.path, NodeId("INPUT")),
           Order.Ready,
           Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
-        Workflow(
-          WorkflowPath("/JOBNET"),
-          NodeId("START"),
-          List(
-            JobNode(NodeId("START"), AgentPath("/AGENT"), JobPath("/JOB"), NodeId("END"), NodeId("END")),
-            EndNode(NodeId("END"))))),
+        AgentPath("/AGENT"),
+        TestWorkflow),
         """{
           "TYPE": "AttachOrder",
           "order": {
             "id": "ORDER-ID",
-            "nodeKey": {
-              "workflowPath": "/JOBNET",
-              "nodeId": "INPUT"
-            },
             "state": {
-              "TYPE":
-              "Ready"
+              "TYPE": "Ready"
+            },
+            "nodeKey": {
+              "nodeId": "INPUT",
+              "workflowPath": "/WORKFLOW"
             },
             "attachedTo": {
-              "TYPE": "Agent",
-              "agentPath": "/AGENT"
+              "agentPath": "/AGENT",
+              "TYPE": "Agent"
             },
             "payload": {
-              "variables": {},
               "outcome": {
-                "TYPE": "Good",
-                "returnValue": true
-              }
+                "returnValue": true,
+                "TYPE": "Good"
+              },
+              "variables": {}
             }
           },
           "workflow": {
-            "path": "/JOBNET",
-            "inputNodeId": "START",
-            "nodes": [{
-                "agentPath": "/AGENT",
-                "onSuccess": "END",
-                "id": "START",
-                "jobPath": "/JOB",
-                "onFailure": "END",
-                "TYPE": "JobNode"
+            "path": "/WORKFLOW",
+            "inputNodeId": "A",
+            "transitions": [{
+                "fromNodeIds": [ "A" ],
+                "toNodeIds": [ "B" ],
+                "nodes": [{
+                    "TYPE": "JobNode",
+                    "id": "A",
+                    "agentPath": "/AGENT",
+                    "jobPath": "/A"
+                  }, {
+                    "TYPE": "JobNode",
+                    "id": "B",
+                    "agentPath": "/AGENT",
+                    "jobPath": "/B"
+                  }],
+                "transitionType": {
+                  "TYPE": "ForwardTransition"
+                }
               }, {
-                "id": "END",
-                "TYPE": "EndNode"
-              }]
+                "fromNodeIds": [ "B" ],
+                "toNodeIds": [ "END" ],
+                "nodes": [{
+                    "TYPE": "JobNode",
+                    "id": "B",
+                    "agentPath": "/AGENT",
+                    "jobPath": "/B"
+                  }, {
+                    "TYPE": "EndNode",
+                    "id": "END"
+                  }],
+                "transitionType": {
+                  "TYPE": "ForwardTransition"
+                }
+              }
+            ],
+            "unconnectedNodes": []
           }
         }""")
     }

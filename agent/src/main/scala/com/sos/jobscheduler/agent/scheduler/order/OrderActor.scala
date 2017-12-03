@@ -93,26 +93,11 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private val waiting: Receive = journaling orElse {
     case Command.Detach ⇒
-      persist(OrderDetached) { event ⇒
-        sender() ! Completed
-        update(event)
-      }
+      detach()
 
     case command: Command ⇒
       executeOtherCommand(command)
 
-    case input: Input ⇒
-      executeInput(input)
-  }
-
-  private def executeOtherCommand(command: Command): Unit = command match {
-    case _ ⇒
-      val msg = s"Improper command $command while in state ${Option(order) map (_.state) getOrElse "(no order)"}"
-      logger.error(msg)
-      sender() ! Status.Failure(new IllegalStateException(msg))
-  }
-
-  private def executeInput(input: Input) = input match {
     case Input.StartProcessing(jobNode, jobActor) ⇒
       val stdoutWriter = new StatisticalWriter(stdWriters(Stdout))
       val stderrWriter = new StatisticalWriter(stdWriters(Stderr))
@@ -129,8 +114,8 @@ extends KeyedJournalingActor[OrderEvent] {
             stderrWriter = stderrWriter))
       }
 
-    case Input.MakeDetachable ⇒
-      persist(OrderDetachable)(update)
+    case Input.HandleEvent(event: OrderEvent.OrderDetachable.type) ⇒
+      persist(event)(update)
 
     case Input.Terminate ⇒
       context.stop(self)
@@ -199,13 +184,35 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   private def processed: Receive = journaling orElse {
-    case Input.Transition(toNodeId) ⇒
+    case Input.HandleEvent(OrderEvent.OrderTransitioned(toNodeId)) ⇒
       context.become(waiting)
       persist(OrderTransitioned(toNodeId))(update)
+
+    case Input.HandleEvent(event: OrderEvent.OrderDetachable.type) ⇒
+      persist(event)(update)
+
+    case Input.Terminate ⇒
+      context.stop(self)
+
+    case Command.Detach ⇒
+      detach()
 
     case command: Command ⇒
       executeOtherCommand(command)
   }
+
+  private def executeOtherCommand(command: Command): Unit = command match {
+    case _ ⇒
+      val msg = s"Improper command $command while in state ${Option(order) map (_.state) getOrElse "(no order)"}"
+      logger.error(msg)
+      sender() ! Status.Failure(new IllegalStateException(msg))
+  }
+
+  private def detach(): Unit =
+    persist(OrderDetached) { event ⇒
+      sender() ! Completed
+      update(event)
+    }
 
   private def update(event: OrderEvent) = {
     updateOrder(event)
@@ -248,7 +255,7 @@ extends KeyedJournalingActor[OrderEvent] {
   override def toString = s"OrderActor(${orderId.string})"
 }
 
-object OrderActor {
+private[order] object OrderActor {
   private val StdPipeCharBufferSize = 500  // Even a size of 1 character is not slow
 
   sealed trait Command
@@ -259,10 +266,9 @@ object OrderActor {
 
   sealed trait Input
   object Input {
-    final case object MakeDetachable extends Input
-    final case class  StartProcessing(node: Workflow.JobNode, jobActor: ActorRef) extends Input
+    final case class StartProcessing(node: Workflow.JobNode, jobActor: ActorRef) extends Input
     final case object Terminate extends Input
-    final case class Transition(toNodeId: NodeId)
+    final case class HandleEvent(event: OrderEvent) extends Input
   }
 
   object Output {

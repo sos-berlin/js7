@@ -42,7 +42,7 @@ private[order] object OrderRegister {
 
   final class OrderEntry(
     private var _order: Order[Order.State],
-    private val workflow: Workflow,
+    val workflow: Workflow,
     val actor: ActorRef)
   {
     assert(workflow.path == _order.workflowPath)

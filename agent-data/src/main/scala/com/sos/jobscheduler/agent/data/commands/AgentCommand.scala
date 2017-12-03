@@ -12,6 +12,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken
 import com.sos.jobscheduler.data.workflow.Workflow
 import io.circe.generic.JsonCodec
+import org.scalactic.Requirements._
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
@@ -119,7 +120,8 @@ object AgentCommand {
   extends AttachOrDetachOrder {
     type Response = Accepted.type
 
-    order.attachedToAgent.force
+    require(order.workflowPath == workflow.path)
+    order.attachedToAgent.force  // throws
 
     override def toShortString = s"AttachOrder($order,${workflow.path})"
   }
@@ -147,11 +149,11 @@ object AgentCommand {
   }
 
   case object GetOrderIds extends OrderCommand {
-    final case class Response(orders: Seq[OrderId]) extends AgentCommand.Response
+    final case class Response(orderIds: Seq[OrderId]) extends AgentCommand.Response
   }
 
   case object GetOrders extends OrderCommand {
-    final case class Response(order: Seq[Order[Order.State]]) extends AgentCommand.Response
+    final case class Response(orders: Seq[Order[Order.State]]) extends AgentCommand.Response
   }
 
   implicit val CommandJsonFormat: TypedJsonCodec[AgentCommand] =
