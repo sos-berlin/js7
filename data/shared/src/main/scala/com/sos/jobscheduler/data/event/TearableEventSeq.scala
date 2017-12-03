@@ -33,7 +33,7 @@ object EventSeq {
   }
 
   implicit def nonEmptyJsonEncoder[E: Encoder]: Encoder[NonEmpty[Seq, E]] =
-    eventSeq ⇒ Json.fromJsonObject(JsonObject.fromMap(Map("eventSnapshots" → eventSeq.stampeds.asJson)))
+    eventSeq ⇒ Json.fromJsonObject(JsonObject.singleton("eventSnapshots", eventSeq.stampeds.asJson))
 
   implicit def nonEmptyJsonDecoder[E: Decoder]: Decoder[NonEmpty[Seq, E]] =
     _.get[Seq[Stamped[E]]]("eventSnapshots") map NonEmpty.apply

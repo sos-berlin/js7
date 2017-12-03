@@ -69,23 +69,25 @@ object Subtype {
   private def fromClassName[A](cls: Class[_], encoder: Encoder[A], decoder: Decoder[A]) =
     of(cls, typeName(cls), encoder, decoder)
 
-  private def of[A](cls: Class[_], typeName: String, encoder: Encoder[A], decoder: Decoder[A]) =
+  private def of[A](cls: Class[_], typeName: String, encoder: Encoder[A], decoder: Decoder[A]) = {
+    val typeField = TypeFieldName → Json.fromString(typeName)
+    val myNameToDecoder = Map(typeName → decoder)
+    val myNameClass = typeName → cls.asInstanceOf[Class[_ <: A]]
+    val myNameToClass = Map(myNameClass)
     new Subtype[A](
       classToEncoder = encoder match {
         case encoder: TypedJsonCodec[A] ⇒ encoder.classToEncoder
-        case _ ⇒
-          val typ = TypeFieldName → Json.fromString(typeName)
-          Map(cls → encoder.mapJson(o ⇒ Json.fromJsonObject(typ +: o.forceObject)))
+        case _ ⇒ Map(cls → encoder.mapJson(o ⇒ Json.fromJsonObject(typeField +: o.forceObject)))
       },
       nameToDecoder = decoder match {
         case decoder: TypedJsonCodec[A] ⇒ decoder.nameToDecoder
-        case _ ⇒ Map(typeName → decoder)
+        case _ ⇒ myNameToDecoder
       },
       nameToClass = {
-        val a = typeName → cls.asInstanceOf[Class[_ <: A]]
         decoder match {
-          case decoder: TypedJsonCodec[A] ⇒ decoder.nameToClass + a
-          case _ ⇒ Map(a)
+          case decoder: TypedJsonCodec[A] ⇒ decoder.nameToClass + myNameClass
+          case _ ⇒ myNameToClass
         }
       })
+  }
 }

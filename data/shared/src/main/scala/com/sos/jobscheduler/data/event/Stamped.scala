@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.{Decoder, Encoder, Json}
 
 /**
   * A value with an EventId.
@@ -23,14 +23,11 @@ object Stamped {
   implicit def jsonEncoder[A: Encoder]: Encoder[Stamped[A]] =
     stamped ⇒ {
       val json = stamped.value.asJson
+      val eventIdField = EventIdJsonName → Json.fromLong(stamped.eventId)
       if (json.isArray)
-        Json.fromJsonObject(JsonObject.fromMap(Map(
-          EventIdJsonName → Json.fromLong(stamped.eventId),
-          ElementsJsonName → json)))
+        Json.obj(eventIdField, ElementsJsonName → json)
       else
-        Json.fromJsonObject(
-          json.forceObject
-            .add(EventIdJsonName, Json.fromLong(stamped.eventId)))
+        Json.fromJsonObject(eventIdField +: json.forceObject)  // slow field prepend
     }
 
   implicit def jsonDecoder[A: Decoder]: Decoder[Stamped[A]] =
