@@ -3,6 +3,9 @@ package com.sos.jobscheduler.data.event
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.event.EventRequest._
 import java.time.Duration
+import scala.annotation.tailrec
+import scala.collection.immutable.Seq
+import scala.concurrent.{Await, Future, duration}
 import scala.reflect.ClassTag
 
 /**
@@ -26,6 +29,24 @@ extends SomeEventRequest[E] {
     if (limit != Int.MaxValue) builder += "limit" → limit.toString
     builder += "after" → after.toString
     builder.result()
+  }
+
+  /**
+    * Helper to repeatedly fetch events until a condition (PartialFunction) is met.
+    * Blocking - for testing.
+    */
+  @tailrec
+  def repeat[A](fetchEvents: EventRequest[E] ⇒ Future[EventSeq[Seq, KeyedEvent[E]]])(collect: PartialFunction[Stamped[KeyedEvent[E]], A]): Seq[A] = {
+    val waitTimeout = duration.Duration(timeout.toMillis + 10000, duration.MILLISECONDS)
+    Await.result(fetchEvents(this), waitTimeout) match {
+      case EventSeq.NonEmpty(stampeds) ⇒
+        stampeds.collect(collect) match {
+          case Seq() ⇒ copy[E](after = stampeds.last.eventId).repeat(fetchEvents)(collect)
+          case o ⇒ o
+        }
+      case EventSeq.Empty(lastEventId) ⇒
+        copy[E](after = lastEventId).repeat(fetchEvents)(collect)
+    }
   }
 }
 
