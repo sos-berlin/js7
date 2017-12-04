@@ -91,10 +91,6 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         val actor = newOrderActor(order)
         val orderEntry = orderRegister.recover(order, workflow, actor)
         actor ! KeyedJournalingActor.Input.Recover(order)
-        order.state match {
-          case Order.Processed ⇒ handleProcessed(orderEntry)
-          case _ ⇒
-        }
       }
     startJournalAndFinishRecovery(journalActor = journalActor, orderRegister.recoveredJournalingActors)
   }
@@ -126,7 +122,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private def awaitJournalIsReady: Receive = journaling orElse {
     case OrderActor.Output.RecoveryFinished(order) ⇒
       orderRegister(order.id).order = order
-      handleAttachedOrder(order.id)
+      handleAttachedOrRecoveredOrder(order.id)
 
     case JsonJournalRecoverer.Output.JournalIsReady ⇒
       logger.info(s"${workflowRegister.size} Workflows recovered, ${orderRegister.size} Orders recovered")
@@ -270,7 +266,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     orderEntry.order = order
     event match {
       case _: OrderAttached ⇒
-        handleAttachedOrder(order.id)
+        handleAttachedOrRecoveredOrder(order.id)
 
       case event: OrderProcessed ⇒
         assert(order.state == Order.Processed)
@@ -289,7 +285,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     }
   }
 
-  private def handleAttachedOrder(orderId: OrderId): Unit = {
+  private def handleAttachedOrRecoveredOrder(orderId: OrderId): Unit = {
     val orderEntry = orderRegister(orderId)
     orderEntry.order.state match {
       case Order.Scheduled(instant) if now < instant ⇒
@@ -299,6 +295,9 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
       case Order.Scheduled(_) | Order.StartNow | Order.Ready ⇒
         onOrderAvailable(orderEntry)
+
+      case Order.Processed ⇒
+        handleProcessed(orderEntry)
 
       case _ ⇒
     }

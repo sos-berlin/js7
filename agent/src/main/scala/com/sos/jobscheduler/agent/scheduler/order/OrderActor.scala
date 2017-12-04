@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import com.sos.jobscheduler.data.workflow.{NodeId, Workflow}
+import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
@@ -57,21 +57,21 @@ extends KeyedJournalingActor[OrderEvent] {
   override protected def finishRecovery() = {
     assert(order != null, "No Order")
     order.state match {
-      case Order.Ready ⇒
-        context.become(waiting)
+      case _: Order.Idle ⇒
+        context.become(idle)
 
       case Order.InProcess ⇒
         context.become(processed)
-        persist(OrderProcessed(MapDiff.empty, Outcome.Bad(Outcome.Bad.AgentAborted)))(update)  // isRecoveryGeneratedEvent
+        val event = OrderProcessed(MapDiff.empty, Outcome.Bad(Outcome.Bad.AgentAborted))
+        assert(isRecoveryGeneratedEvent(event))
+        persist(event)(update)
 
       case Order.Processed ⇒
         context.become(processed)
         // Next event 'OrderTransitioned' is initiated by AgentOrderKeeper
 
-      case Order.StartNow | _: Order.Scheduled | Order.Finished ⇒
-        context.become(waiting)
-
-      case _ ⇒
+      case Order.Finished ⇒
+        sys.error(s"Unexpected order state: ${order.state}")   // A Finished order must be at Master
     }
     logger.debug(s"Recovered $order")
     sender() ! Output.RecoveryFinished(order)  // Sent via JsonJournalRecoverer to AgentOrderKeeper
@@ -80,7 +80,7 @@ extends KeyedJournalingActor[OrderEvent] {
   def receive = journaling orElse {
     case command: Command ⇒ command match {
       case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), payload)) ⇒
-        context.become(waiting)
+        context.become(idle)
         persist(OrderAttached(nodeKey, state, agentPath, payload)) { event ⇒
           sender() ! Completed
           update(event)
@@ -91,7 +91,7 @@ extends KeyedJournalingActor[OrderEvent] {
     }
   }
 
-  private val waiting: Receive = journaling orElse {
+  private val idle: Receive = journaling orElse {
     case Command.Detach ⇒
       detach()
 
@@ -185,7 +185,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private def processed: Receive = journaling orElse {
     case Input.HandleEvent(OrderEvent.OrderTransitioned(toNodeId)) ⇒
-      context.become(waiting)
+      context.become(idle)
       persist(OrderTransitioned(toNodeId))(update)
 
     case Input.HandleEvent(event: OrderEvent.OrderDetachable.type) ⇒
@@ -244,13 +244,13 @@ extends KeyedJournalingActor[OrderEvent] {
     }
   }
 
-  override def unhandled(msg: Any) = {
+  override def unhandled(msg: Any) =
     msg match {
-      case msg @ (_: Command | _: Input) ⇒ logger.warn(s"Unhandled message $msg in state ${order.state}")
+      case msg @ (_: Command | _: Input) ⇒
+        logger.warn(s"Unhandled message $msg in state ${order.state}")
       case _ ⇒
+        super.unhandled(msg)
     }
-    super.unhandled(msg)
-  }
 
   override def toString = s"OrderActor(${orderId.string})"
 }
