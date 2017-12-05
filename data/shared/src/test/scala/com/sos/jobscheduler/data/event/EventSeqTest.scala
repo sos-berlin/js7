@@ -24,7 +24,7 @@ final class EventSeqTest extends FreeSpec {
         Stamped(1, KeyedEvent(TestEvent)("KEY")))),
       """{
         "TYPE": "NonEmpty",
-        "eventSnapshots": [
+        "stampeds": [
           {
             "TYPE": "TestEvent",
             "key": "KEY",

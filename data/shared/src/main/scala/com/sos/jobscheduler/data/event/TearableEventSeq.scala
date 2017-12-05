@@ -33,10 +33,10 @@ object EventSeq {
   }
 
   implicit def nonEmptyJsonEncoder[E: Encoder]: Encoder[NonEmpty[Seq, E]] =
-    eventSeq ⇒ Json.fromJsonObject(JsonObject.singleton("eventSnapshots", eventSeq.stampeds.asJson))
+    eventSeq ⇒ Json.fromJsonObject(JsonObject.singleton("stampeds", eventSeq.stampeds.asJson))
 
   implicit def nonEmptyJsonDecoder[E: Decoder]: Decoder[NonEmpty[Seq, E]] =
-    _.get[Seq[Stamped[E]]]("eventSnapshots") map NonEmpty.apply
+    _.get[Seq[Stamped[E]]]("stampeds") map NonEmpty.apply
 
   implicit def jsonCodec[E: Encoder: Decoder]: CirceCodec[EventSeq[Seq, E]] =
     TypedJsonCodec[EventSeq[Seq, E]](

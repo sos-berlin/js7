@@ -125,7 +125,7 @@ extends Actor with Stash {
           for (w ← writtenBuffer) w.replyTo.!(Output.StoreFailure(tt))(sender)
           throw tt;
         }
-        //logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.eventSnapshots.size }).sum} events:")
+        //logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.stampeds.size }).sum} events:")
         for (Written(stampedOptions, replyTo, sender) ← writtenBuffer) {
           logStoredEvents(stampedOptions)
           replyTo.!(Output.Stored(stampedOptions))(sender)
@@ -270,6 +270,6 @@ object JsonJournalActor {
   }
 
   private case class Written(
-    eventSnapshots: Seq[Option[Stamped[AnyKeyedEvent]]],  // None means no-operation (for deferAsync)
+    stampeds: Seq[Option[Stamped[AnyKeyedEvent]]],  // None means no-operation (for deferAsync)
     replyTo: ActorRef, sender: ActorRef)
 }
