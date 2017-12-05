@@ -136,6 +136,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
     case Command.GetOverview ⇒
       sender() ! AgentOverview(
         version = AgentStartInformation.VersionString,
+        buildId = AgentStartInformation.BuildId,
         startedAt = AgentStartInformation.StartedAt,
         isTerminating = terminating,
         system = systemInformation(),

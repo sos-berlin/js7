@@ -59,7 +59,6 @@ extends AutoCloseable
 
 object RunningMaster {
   val StartedAt = Instant.now()
-  val VersionString = BuildInfo.buildVersion
   private val logger = Logger(getClass)
 
   def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit): Unit = {

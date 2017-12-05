@@ -16,6 +16,7 @@ final class AgentOverviewTest extends FreeSpec {
       AgentOverview(
         startedAt = Instant.parse("2015-06-01T12:00:00Z"),
         version = "TEST-VERSION",
+        buildId = "BUILD-ID",
         isTerminating = false,
         system = SystemInformation(hostname = "TEST-HOSTNAME"),
         java = JavaInformation(
@@ -24,6 +25,7 @@ final class AgentOverviewTest extends FreeSpec {
       s"""{
         "startedAt": "2015-06-01T12:00:00Z",
         "version": "TEST-VERSION",
+        "buildId": "BUILD-ID",
         "isTerminating": false,
         "java": {
           "systemProperties": {

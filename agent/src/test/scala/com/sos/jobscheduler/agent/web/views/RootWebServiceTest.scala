@@ -25,6 +25,7 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
   protected def agentOverview = Future.successful(AgentOverview(
     startedAt = Instant.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
+    buildId = "BUILD-ID",
     isTerminating = false,
     system = SystemInformation(hostname = "TEST-HOSTNAME"),
     java = JavaInformation(
@@ -34,6 +35,7 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
   private def expectedOverviewJsObject = """{
     "startedAt": "2015-06-01T12:00:00Z",
     "version": "TEST-VERSION",
+    "buildId": "BUILD-ID",
     "isTerminating": false,
     "system": {
       "hostname": "TEST-HOSTNAME",

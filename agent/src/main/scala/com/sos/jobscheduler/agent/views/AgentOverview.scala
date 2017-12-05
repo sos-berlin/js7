@@ -13,6 +13,7 @@ import java.time.Instant
  */
 final case class AgentOverview(
   version: String,
+  buildId: String,
   startedAt: Instant,
   isTerminating: Boolean,
   system: SystemInformation,

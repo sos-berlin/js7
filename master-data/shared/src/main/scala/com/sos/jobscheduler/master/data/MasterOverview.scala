@@ -11,6 +11,7 @@ import io.circe.generic.JsonCodec
 @JsonCodec
 final case class MasterOverview(
   version: String,
+  buildId: String,
   startedAt: Timestamp,
   orderCount: Int,
   system: SystemInformation,

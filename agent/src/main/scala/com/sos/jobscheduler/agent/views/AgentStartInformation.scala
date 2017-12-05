@@ -9,6 +9,7 @@ import java.time.Instant
 object AgentStartInformation {
   val StartedAt = Instant.now()
   val VersionString = BuildInfo.buildVersion
+  val BuildId = BuildInfo.buildId
 
   def initialize(): Unit = {}
 }

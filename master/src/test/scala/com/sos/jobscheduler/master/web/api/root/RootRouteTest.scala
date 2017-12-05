@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.master.command.MasterCommand
@@ -36,6 +37,8 @@ final class RootRouteTest extends FreeSpec with ScalatestRouteTest with RootRout
   "/api" in {
     Get("/api") ~> Accept(`application/json`) ~> route ~> check {
       val overview = responseAs[MasterOverview]
+      assert(overview.version == BuildInfo.buildVersion)
+      assert(overview.buildId == BuildInfo.buildId)
       assert(overview.java.systemProperties("java.version") == sys.props("java.version"))
       assert(overview.orderCount == 7)
     }
