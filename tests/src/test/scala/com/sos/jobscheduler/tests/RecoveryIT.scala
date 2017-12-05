@@ -42,6 +42,7 @@ import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 /**
@@ -123,6 +124,7 @@ final class RecoveryIT extends FreeSpec {
       for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
       body(master)
+      logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
       master.executeCommand(MasterCommand.Terminate) await 99.s
       master.terminated await 99.s
     } catch { case NonFatal(t) if master.terminated.failed.isCompleted ⇒
@@ -132,11 +134,16 @@ final class RecoveryIT extends FreeSpec {
   }
 
   private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[RunningAgent] ⇒ Unit): Unit =
-    multipleAutoClosing(confs map { o ⇒
-      val whenAgent = RunningAgent(o)
-      for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
-      whenAgent
-    } await 10.s)(body)
+    multipleAutoClosing(confs map startAgent await 10.s) { agents ⇒
+      body(agents)
+      logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
+    }
+
+  private def startAgent(conf: AgentConfiguration): Future[RunningAgent] = {
+    val whenAgent = RunningAgent(conf)
+    for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
+    whenAgent
+  }
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
     import AgentActor.MyJournalMeta.eventJsonCodec
