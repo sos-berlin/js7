@@ -10,7 +10,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-object RenderUtils {
+object Renderers {
 
   implicit def isStringToTagMod(o: IsString): TagMod =
     o.string
@@ -18,7 +18,12 @@ object RenderUtils {
   implicit def toTagMod[A: ToTagMod](a: A): TagMod =
     implicitly[ToTagMod[A]].toTagMod(a)
 
-  implicit val OrderAttachedToToHtml = ToTagMod.toTagMod[Option[Order.AttachedTo]] {
+  implicit val OrderStateSchedulerHtml = ToTagMod.toTagMod[Order.State] {
+    case Order.Scheduled(at) ⇒ s"Scheduled for " + at.toReadableLocaleIsoString
+    case o ⇒ o.toString
+  }
+
+  implicit val OrderStateAttachedToToHtml = ToTagMod.toTagMod[Option[Order.AttachedTo]] {
     case None ⇒ "—"
     case Some(Order.AttachedTo.Agent(agentPath)) ⇒ agentPath.toString
     case Some(Order.AttachedTo.Detachable(agentPath)) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentPath.toString)

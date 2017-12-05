@@ -7,11 +7,22 @@ import org.scalatest.FreeSpec
   */
 final class TimestampTest extends FreeSpec {
 
+  private val isoString = "2017-12-04T11:22:33.456Z"
+  private val millis = 1512386553456L
+  private val timestamp = Timestamp.parse(isoString)
+
   "ofEpochMilli" in {
-    assert(Timestamp.ofEpochMilli(123456).toEpochMilli == 123456)
+    assert(timestamp.toEpochMilli == millis)
+    assert(Timestamp.ofEpochMilli(millis) == timestamp)
   }
 
   "ofEpochSecond" in {
-    assert(Timestamp.ofEpochSecond(123).toEpochMilli == 123000)
+    val seconds = 1512386553L
+    assert(timestamp.toEpochSecond == seconds)
+    assert(Timestamp.ofEpochSecond(seconds) == Timestamp.parse("2017-12-04T11:22:33Z"))
+  }
+
+  "toIsoString" in {
+    assert(timestamp.toIsoString == isoString)
   }
 }

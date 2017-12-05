@@ -55,11 +55,10 @@ object OrdersState {
 
         case Stamped(eId, KeyedEvent(orderId, event: OrderCoreEvent)) ⇒
           updatedOrders.get(orderId) orElse idToOrder.get(orderId) match {
+            case None ⇒ dom.console.error("Unknown OrderId: " + eventToLog(eId, orderId, event))
             case Some(entry) ⇒
               updatedOrders += orderId → Entry(entry.order.update(event), isUpdated = true)
               evtCount += 1
-            case None ⇒
-              dom.console.error("Unknown OrderId: " + eventToLog(eId, orderId, event))
           }
 
         case Stamped(eId, KeyedEvent(orderId, event)) ⇒

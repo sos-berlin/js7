@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent}
 import com.sos.jobscheduler.master.gui.components.gui.GuiBackend._
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.services.MasterApi
-import com.sos.jobscheduler.master.gui.services.MasterApi.{HostUnreachable, Response}
+import com.sos.jobscheduler.master.gui.services.MasterApi.Response
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback}
 import org.scalajs.dom
@@ -26,9 +26,13 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
     Callback {
       dom.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
     } >>
-      fetchOverview()
+      requestOverview()
 
-  private def fetchOverview(): Callback =
+  def componentWillUnmount() = Callback {
+    dom.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged)
+  }
+
+  private def requestOverview(): Callback =
     Callback.future {
       for (overviewResponse ← MasterApi.overview) yield
         scope.modState(_.copy(
@@ -37,15 +41,11 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
         ) >>
           (overviewResponse match {
             case Left(_) ⇒ Callback.empty  // Stop. User has to reload page
-            case Right(_) ⇒ fetchOrders()
+            case Right(_) ⇒ requestOrders()
           })
     }
 
-  def componentWillUnmount() = Callback {
-    dom.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged)
-  }
-
-  def fetchOrders() = Callback.future {
+  def requestOrders() = Callback.future {
     for (response ← MasterApi.orders) yield
       response match {
         case Right(stamped: Stamped[Seq[Order[Order.State]]]) ⇒
@@ -79,7 +79,7 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
           isRequestingEvents = true
           MasterApi.events(after = after, timeout = timeout)
             .andThen { case _ ⇒
-              isRequestingEvents = false  // TODO Falls fetchOrders() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
+              isRequestingEvents = false  // TODO Falls requestOrders() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
             } map
               handleResponse
         }
@@ -123,7 +123,7 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
 
               case Right(EventSeq.Torn) ⇒
                 dom.console.warn("EventSeq.Torn")
-                fetchOrders().delay(TornDelay).void
+                requestOrders().delay(TornDelay).void
             }
       }
 
@@ -167,8 +167,8 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
 
     def start() = Callback {
       if (!isSleeping) {
-        dom.console.log("Sleeping...")
-        dom.document.title = originalTitle + SleepSuffix
+        dom.console.log(s"$Moon Sleeping...")
+        dom.document.title = originalTitle + Moon
         isSleeping = true
       }
     }
@@ -191,7 +191,7 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
         dom.console.log(s"mayReconnect: isFreezed=${state.isFreezed}")
         state.ordersState.content match {
           case content: OrdersState.FetchedContent if !state.isFreezed && !dom.document.hidden && !isRequestingEvents ⇒
-            dom.console.log("Continuing fetching events...")
+            dom.console.log("Continuing requesting events...")
             requestAndHandleEvents(after = content.eventId, forStep = state.ordersState.step)
           case _ ⇒
             Callback.empty
@@ -206,7 +206,7 @@ object GuiBackend {
   private val ContinueDelay     =  250.milliseconds
   private val AfterTimeoutDelay = 1000.milliseconds
   private val TornDelay         = 1000.milliseconds
-  private val SleepSuffix = "\uD83C\uDF19" // Moon
+  private val Moon = "\uD83C\uDF19"
   // ⚠✝☁☽☾. Official symbol for power sleep mode in UNICODE 9: "\u23FE"
 
   private def newAfterErrorDelayIterator = (Iterator(1, 2, 4, 6) ++ Iterator.continually(10) ) map (_.seconds)

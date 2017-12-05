@@ -40,8 +40,8 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
           version,
           <.span(^.cls := "unimportant")(s" $versionExt") when versionExt.nonEmpty),
         " ",
-        <.span(^.cls := "top-left-segment experimental-viewer")(
-          "EXPERIMENTAL VIEWER"))
+        <.span(^.cls := "top-left-segment experimental-monitor")(
+          "EXPERIMENTAL MONITOR"))
 
     val right =
       <.td(^.cls := "top-right")(

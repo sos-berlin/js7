@@ -36,10 +36,23 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
     new js.Date((date.getTime - offsetMinutes*60000)).toISOString.stripSuffix("Z") + offsetSuffix
   }
 
+  /** "2017-12-03T12:00:00.123" */
   def toLocaleIsoStringWithoutOffset = {
     val date = toJsDate
     val offsetMinutes = date.getTimezoneOffset
     new js.Date((date.getTime - offsetMinutes*60000)).toISOString.stripSuffix("Z")
+  }
+
+  /** "2017-12-03 12:00:00.123"
+    * 'T' is replaced by space.
+    * Trailing ".000" (zero millisecond) and ":00" (zero second) area stripped.
+    */
+  def toReadableLocaleIsoString = {
+    val date = toJsDate
+    val offsetMinutes = date.getTimezoneOffset
+    val iso = new js.Date((date.getTime - offsetMinutes*60000)).toISOString
+    iso.substring(0, 10) + " " + iso.substring(11)
+      .stripSuffix(".000Z").stripSuffix("Z").stripSuffix(".000").stripSuffix(":00")
   }
 
   def toLocaleString = toJsDate.toLocaleString

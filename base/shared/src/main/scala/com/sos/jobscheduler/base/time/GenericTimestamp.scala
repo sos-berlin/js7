@@ -9,6 +9,8 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
   def toEpochMilli: Long
 
+  def toEpochSecond = toEpochMilli / 1000
+
   def toIsoString: String
 
   //Problem with sbt: def toIsoStringBuilder: StringBuilder
