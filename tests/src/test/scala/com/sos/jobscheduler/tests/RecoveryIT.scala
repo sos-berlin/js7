@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
-import com.google.inject.Guice
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentEvent}
@@ -9,31 +8,26 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichThrowable}
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
+import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
-import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransitioned}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
-import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JsonFileIterator, JsonJournalMeta}
+import com.sos.jobscheduler.tests.DirectoryProvider.jobXml
 import com.sos.jobscheduler.tests.RecoveryIT._
-import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
 import java.nio.file.Path
 import java.time.Instant
 import java.util.zip.GZIPInputStream
@@ -43,7 +37,6 @@ import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -54,17 +47,17 @@ final class RecoveryIT extends FreeSpec {
 
   "test" in {
     var lastEventId = EventId.BeforeFirst
-    autoClosing(new DirectoryProvider) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(AgentPaths)) { directoryProvider ⇒
+      for ((agentPath, tree) ← directoryProvider.agentToTree)
+        tree.job(TestJobPath).xml = jobXml(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
       withCloser { implicit closer ⇒
         import directoryProvider.directory
 
-        val agentConfs = for (name ← AgentNames) yield AgentConfiguration.forTest(Some(directory / name)).copy(name = name)
+        (directoryProvider.master.live / "fast.job_chain.xml").xml = QuickJobChainElem
+        (directoryProvider.master.live / "test.job_chain.xml").xml = TestJobChainElem
+        (directoryProvider.master.live / "test.order.xml").xml = TestOrderGeneratorElem
 
-        (directory / "master/config/live/fast.job_chain.xml").xml = QuickJobChainElem
-        (directory / "master/config/live/test.job_chain.xml").xml = TestJobChainElem
-        (directory / "master/config/live/test.order.xml").xml = TestOrderGeneratorElem
-        (directory / "master/config/live/test-agent-111.agent.xml").xml = <agent uri={agentConfs(0).localUri.toString}/>
-        (directory / "master/config/live/test-agent-222.agent.xml").xml = <agent uri={agentConfs(1).localUri.toString}/>
+        val agentConfs = directoryProvider.agents map (_.conf)
 
         runMaster(directory) { master ⇒
           if (lastEventId == EventId.BeforeFirst) {
@@ -76,7 +69,7 @@ final class RecoveryIT extends FreeSpec {
             lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestWorkflowPath.string) await 99.s)
             lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestWorkflowPath.string) await 99.s)
           }
-          assert((readEvents(directory / "agent-111/data/state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
+          assert((readEvents(directoryProvider.agents(0).data / "state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
             Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId.Anonymous)))
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(agentConfs) { _ ⇒
@@ -100,7 +93,7 @@ final class RecoveryIT extends FreeSpec {
                   NodeKey(TestWorkflowPath, NodeId("END")),
                   Order.Finished,
                   payload = Payload(
-                    Map("result" → "TEST-RESULT-VALUE-agent-222")))))
+                    Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")))))
               val EventSeq.NonEmpty(eventSeq) = eventCollector.when[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, 0.s), _.key == orderId) await 99.s
               withClue(s"$orderId") {
                 assert((deleteRestartedJobEvents(eventSeq map { _.value.event }) collect {
@@ -116,22 +109,13 @@ final class RecoveryIT extends FreeSpec {
     }
   }
 
-  private def runMaster(directory: Path)(body: RunningMaster ⇒ Unit): Unit = {
-    val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
-    eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
-    val master = RunningMaster(injector) await 99.s
-    try {
-      for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
+  private def runMaster(directory: Path)(body: RunningMaster ⇒ Unit): Unit =
+    RunningMaster.runForTest(directory) { master ⇒
+      eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
-      master.executeCommand(MasterCommand.Terminate) await 99.s
-      master.terminated await 99.s
-    } catch { case NonFatal(t) if master.terminated.failed.isCompleted ⇒
-      t.addSuppressed(master.terminated.failed.successValue)
-      throw t
     }
-  }
 
   private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[RunningAgent] ⇒ Unit): Unit =
     multipleAutoClosing(confs map startAgent await 10.s) { agents ⇒
@@ -159,9 +143,10 @@ final class RecoveryIT extends FreeSpec {
 private object RecoveryIT {
   private val logger = Logger(getClass)
 
-  private val AgentNames = List("agent-111", "agent-222")
+  private val AgentPaths = List(AgentPath("/agent-111"), AgentPath("/agent-222"))
   private val TestWorkflowPath = WorkflowPath("/test")
   private val FastWorkflowPath = WorkflowPath("/fast")
+  private val TestJobPath = JobPath("/test")
 
   private val FastOrderId = OrderId("FAST-ORDER")
   private val FastOrder = Order(FastOrderId, NodeKey(FastWorkflowPath, NodeId("100")), Order.StartNow)
@@ -169,11 +154,11 @@ private object RecoveryIT {
 
   private val TestJobChainElem =
     <job_chain>
-      <job_chain_node state="100" agent="test-agent-111" job="/test"/>
-      <job_chain_node state="110" agent="test-agent-111" job="/test"/>
-      <job_chain_node state="120" agent="test-agent-111" job="/test"/>
-      <job_chain_node state="200" agent="test-agent-222" job="/test"/>
-      <job_chain_node state="210" agent="test-agent-222" job="/test"/>
+      <job_chain_node state="100" agent="agent-111" job="/test"/>
+      <job_chain_node state="110" agent="agent-111" job="/test"/>
+      <job_chain_node state="120" agent="agent-111" job="/test"/>
+      <job_chain_node state="200" agent="agent-222" job="/test"/>
+      <job_chain_node state="210" agent="agent-222" job="/test"/>
       <job_chain_node.end state="END"/>
     </job_chain>
 
@@ -184,13 +169,13 @@ private object RecoveryIT {
 
   private val QuickJobChainElem =
     <job_chain>
-      <job_chain_node state="100" agent="test-agent-111" job="/test"/>
+      <job_chain_node state="100" agent="agent-111" job="/test"/>
       <job_chain_node.end state="END"/>
     </job_chain>
 
   private val ExpectedEvents = Vector(
     OrderAdded(NodeKey(TestWorkflowPath, NodeId("100")), Scheduled(SomeTimestamp), Payload(Map())),
-    OrderMovedToAgent(AgentPath("/test-agent-111")),
+    OrderMovedToAgent(AgentPaths(0)),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-111")), Outcome.Good(true)),
@@ -205,7 +190,7 @@ private object RecoveryIT {
     OrderDetachable,
     OrderMovedToMaster,
     OrderTransitioned(NodeId("200")),
-    OrderMovedToAgent(AgentPath("/test-agent-222")),
+    OrderMovedToAgent(AgentPaths(1)),
     OrderProcessingStarted,
     OrderStdoutWritten("TEST\n"),
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-222")), Outcome.Good(true)),
@@ -234,41 +219,6 @@ private object RecoveryIT {
       }
     }
     result.toVector
-  }
-
-  private class DirectoryProvider extends HasCloser {
-    val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
-    closeOnError(closer) {
-      createDirectories(directory / "master/config/live")
-      createDirectory(directory / "master/data")
-      for (agentName ← AgentNames) {
-        createDirectories(directory / s"$agentName/config/live")
-        createDirectory(directory / s"$agentName/data")
-      }
-    }
-
-    private val testScript =
-      if (isWindows) """
-        |@echo off
-        |echo TEST
-        |ping -n 2 127.0.0.1 >nul
-        |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
-        |""".stripMargin
-      else """
-        |echo TEST
-        |sleep 1
-        |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
-        |""".stripMargin
-
-    for (agentName ← AgentNames) {
-      (directory / s"$agentName/config/live/test.job.xml").xml =
-        <job tasks="3">
-          <params>
-            <param name="var1" value={s"VALUE-$agentName"}/>
-          </params>
-          <script language="shell">{testScript}</script>
-        </job>
-    }
   }
 
   private def lastEventIdOf[E <: Event](eventSeq: TearableEventSeq[Iterator, KeyedEvent[E]]): EventId =

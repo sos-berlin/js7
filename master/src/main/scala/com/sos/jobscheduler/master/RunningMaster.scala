@@ -13,6 +13,7 @@ import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime.{sleep, _}
@@ -26,11 +27,13 @@ import com.sos.jobscheduler.master.order.{MasterOrderKeeper, ScheduledOrderGener
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.nio.file.Files.{createDirectory, exists}
+import java.nio.file.Path
 import java.time.{Duration, Instant}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.util.Success
+import scala.util.control.NonFatal
 
 /**
  * JobScheduler Agent.
@@ -67,6 +70,21 @@ object RunningMaster {
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
     body(master)
     master.terminated await timeout
+  }
+
+  def runForTest(directory: Path)(body: RunningMaster ⇒ Unit): Unit = {
+    val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
+    implicit val executionContext = injector.instance[ExecutionContext]
+    val master = RunningMaster(injector) await 99.s
+    try {
+      for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
+      body(master)
+      master.executeCommand(MasterCommand.Terminate) await 99.s
+      master.terminated await 99.s
+    } catch { case NonFatal(t) if master.terminated.failed.isCompleted ⇒
+      t.addSuppressed(master.terminated.failed.successValue)
+      throw t
+    }
   }
 
   def apply(configuration: MasterConfiguration): Future[RunningMaster] =

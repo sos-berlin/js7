@@ -1,0 +1,82 @@
+package com.sos.jobscheduler.tests
+
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.HasCloser
+import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
+import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.tests.DirectoryProvider._
+import java.nio.file.Files.createTempDirectory
+import java.nio.file.{Files, Path}
+import java.time.Duration
+import scala.collection.immutable.Seq
+
+/**
+  * @author Joacim Zschimmer
+  */
+private class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
+
+  val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
+  val master = new Tree(directory / "master")
+  val agentToTree: Map[AgentPath, AgentTree] = agentPaths.map { o ⇒ o → new AgentTree(directory, o) }.toMap
+  val agents = agentPaths map agentToTree
+  closeOnError(this) {
+    master.createDirectories()
+     for (a ← agentToTree.values) {
+      a.createDirectories()
+      (master.live / s"${a.name}.agent.xml").xml = <agent uri={a.conf.localUri.toString}/>
+    }
+  }
+
+  def agent(agentName: String) = new Tree(directory / agentName)
+}
+
+object DirectoryProvider {
+  sealed class Tree(val directory: Path) {
+    val config = directory / "config"
+    val live = config / "live"
+    val data = directory / "data"
+
+    def createDirectories(): Unit = {
+      Files.createDirectories(live)
+      Files.createDirectory(data)
+    }
+
+    def job(jobPath: JobPath): Path =
+      live / jobPath.toXmlFile
+  }
+
+  final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {
+    val name = agentPath.name
+    lazy val conf = AgentConfiguration.forTest(Some(directory)).copy(name = name)
+  }
+
+  def jobXml(sleep: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
+    <job tasks="3">
+      <params>{
+        for ((k, v) ← variables) yield <param name={k} value={v}/>
+      }</params>
+      <script language="shell">{script(sleep, resultVariable)}</script>
+    </job>
+
+  private def script(sleep: Duration, resultVariable: Option[String]) =
+    if (isWindows)
+      (s"""
+        |@echo off
+        |echo TEST
+        |ping -n ${sleep.toSecondsString} 127.0.0.1 >nul""" +
+        resultVariable.fold("")(o ⇒ s"""|echo result=SCRIPT-VARIABLE-%SCHEDULER_PARAM_${o.toUpperCase}% >>"%SCHEDULER_RETURN_VALUES%"""")
+      ).stripMargin
+    else
+      (s"""
+        |echo TEST
+        |sleep ${sleep.toSecondsString}""" +
+        resultVariable.fold("")(o ⇒ s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
+      ).stripMargin
+}
