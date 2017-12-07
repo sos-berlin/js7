@@ -13,8 +13,12 @@ object Strings {
 
   implicit class TruncatedString(val underlying: String) extends AnyVal {
     /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
-    def truncateWithEllipsis(n: Int): String = {
-      val suffix = if (n < CharCountThreshold) Ellipsis else s"$Ellipsis(length ${underlying.length})"
+    def truncateWithEllipsis(n: Int): String =
+      truncateWithEllipsis(n, showLength = n >= CharCountThreshold)
+
+    /** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
+    def truncateWithEllipsis(n: Int, showLength: Boolean): String = {
+      val suffix = if (showLength) s"$Ellipsis(length ${underlying.length})" else Ellipsis
       val nn = max(suffix.length, n)
       if (underlying.length <= nn)
         underlying
