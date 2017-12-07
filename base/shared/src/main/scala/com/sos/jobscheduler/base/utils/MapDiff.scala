@@ -28,10 +28,6 @@ object MapDiff {
     else
       new MapDiff(addedOrUpdated, removed)
 
-  @deprecated
-  def addedOrUpdated[K, V](added: Map[K, V]): MapDiff[K, V] =
-    MapDiff(added, Set())
-
   def diff[K, V](from: Map[K, V], to: Map[K, V]): MapDiff[K, V] =
     MapDiff(
       addedOrUpdated = to filter { case (k, v) ⇒ from.get(k) forall v.!= },

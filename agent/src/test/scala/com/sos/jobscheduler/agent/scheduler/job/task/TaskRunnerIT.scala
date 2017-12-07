@@ -67,7 +67,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
         val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
         val ended = taskRunner.processOrder(order, stdChannels) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
         assert(ended == TaskStepSucceeded(
-          variablesDiff = MapDiff.addedOrUpdated(Map("result" → "TEST-RESULT-VALUE1")),
+          variablesDiff = MapDiff(Map("result" → "TEST-RESULT-VALUE1")),
           Good(returnValue = true))
         )
         if (newTaskRunner.isInstanceOf[LegacyApiTaskRunner.Factory]) {  // TODO LegacyApiTaskRunner does not use StdoutStderrWriter
