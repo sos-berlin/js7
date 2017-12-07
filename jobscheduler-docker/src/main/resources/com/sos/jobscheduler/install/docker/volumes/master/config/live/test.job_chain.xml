@@ -4,13 +4,6 @@
   <job_chain_node state="100" agent="test-agent-1" job="/test"/>
   <job_chain_node state="101" agent="test-agent-1" job="/test"/>
   <job_chain_node state="102" agent="test-agent-1" job="/test"/>
-  <job_chain_node state="103" agent="test-agent-1" job="/test"/>
-  <job_chain_node state="104" agent="test-agent-1" job="/test"/>
-  <job_chain_node state="105" agent="test-agent-1" job="/test"/>
-  <job_chain_node state="106" agent="test-agent-1" job="/test"/>
-  <job_chain_node state="107" agent="test-agent-1" job="/test"/>
-  <job_chain_node state="108" agent="test-agent-1" job="/test"/>
-  <job_chain_node state="109" agent="test-agent-1" job="/test"/>
   <job_chain_node state="200" agent="test-agent-2" job="/test"/>
   <job_chain_node.end state="END"/>
 </job_chain>

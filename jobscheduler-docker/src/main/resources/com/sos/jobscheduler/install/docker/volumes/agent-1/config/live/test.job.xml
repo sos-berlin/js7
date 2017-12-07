@@ -4,6 +4,17 @@
      tasks="5"
 >
     <script language="shell">
+      :;if false; then
+      @goto WINDOWS
+      :;fi
+
+      echo Hello ☘️
+      sleep 3
       exit
+
+      :WINDOWS
+      @echo off
+      echo Hello
+      ping -n 3 127.0.0.1 >nul
     </script>
 </job>

@@ -5,7 +5,6 @@ hprof=/var/opt/jobscheduler/agent/data/logs/OutOfMemoryError.hprof
 rm -fv "$hprof"
 
 exec /opt/jobscheduler/bin/jobscheduler-agent \
-  -sync-journal- \
   -log4j-lmax \
   -java-option="-XX:+HeapDumpOnOutOfMemoryError" \
   -java-option="-XX:HeapDumpPath=$hprof" \
