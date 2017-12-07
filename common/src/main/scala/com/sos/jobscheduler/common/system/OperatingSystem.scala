@@ -35,6 +35,7 @@ object OperatingSystem {
   val isSolaris = name startsWith "SunOS"
   lazy val unix = new Unix
   lazy val windows = new Windows
+  val LineEnd = if (isWindows) "\r\n" else "\n"
   val operatingSystem: OperatingSystem = if (isWindows) windows else unix
   val javaLibraryPathPropertyName = "java.library.path"
   lazy val KernelSupportsNestedShebang = KernelVersion() >= KernelVersion("Linux", List(2, 6, 28))  // Exactly 2.6.27.9 - but what means the fourth number? http://www.in-ulm.de/~mascheck/various/shebang/#interpreter-script
