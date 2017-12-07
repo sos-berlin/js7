@@ -62,7 +62,8 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
                 <.span(^.cls := "nowrap")(dt.replace("T", " ")),
                 <.span(^.cls := "nowrap unimportant")(s"$millis")))
           case OrdersState.StillFetchingContent ⇒
-            "fetching..."
+            <.span(^.cls := "top-right-segment")(
+              "fetching...")
         })
 
     <.table(^.cls := "page-top-line")(

@@ -168,7 +168,7 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
     def start() = Callback {
       if (!isSleeping) {
         dom.console.log(s"$Moon Sleeping...")
-        dom.document.title = originalTitle + Moon
+        //dom.document.title = originalTitle + Moon
         isSleeping = true
       }
     }
@@ -177,7 +177,7 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
       if (!isSleeping)
         Callback.empty
       else {
-        dom.document.title = originalTitle
+        //dom.document.title = originalTitle
         isSleeping = false
         mayReconnect()
       }

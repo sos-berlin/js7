@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
+import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListBackend._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState
@@ -37,10 +38,9 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
             state.error map (err ⇒ VdomArray(" – ", <.span(^.cls := "error")(s"$err"))) getOrElse ""),
           <.table(^.cls := "bordered")(
             theadHtml,
-              <.tbody(//Slow: react.CssTransitionGroup(component = "tbody", transitionName = "orderTr",
-                //enterTimeout = 5000)(
-                  sequence.map(idToOrder).toVdomArray(entry ⇒
-                    OrderTr.withKey(entry.id.string)(entry)))))
+              <.tbody(
+                sequence.map(idToOrder).toVdomArray(entry ⇒
+                  OrderTr.withKey(entry.id.string)(entry)))))
     }
 
   private implicit def orderEntryReuse = OrderEntryReuse
@@ -48,19 +48,28 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
   private val OrderTr = ScalaComponent.builder[OrdersState.Entry]("Row")
     .render_P {
       case OrdersState.Entry(order, isUpdated) ⇒
+        val cls = orderToRowClass(order)
         <.tr(
-          <.td(^.cls := "orderTd")(order.id),
-          <.td(^.cls := "orderTd")(order.nodeKey.workflowPath),
-          <.td(^.cls := "orderTd")(order.nodeKey.nodeId),
-          <.td(^.cls := "orderTd")(order.outcome.toString),
-          <.td(^.cls := "orderTd")(order.attachedTo),
-          <.td(order.state))
+          <.td(^.cls := cls)(order.id),
+          <.td(^.cls := cls)(order.nodeKey.workflowPath),
+          <.td(^.cls := cls)(order.nodeKey.nodeId),
+          <.td(^.cls := cls)(order.outcome),
+          <.td(^.cls := cls)(order.attachedTo),
+          <.td(^.cls := cls)(order.state))
         .ref { tr ⇒
           if (isUpdated) highligtTrs += tr
         }
     }
     .configure(Reusability.shouldComponentUpdate)
     .build
+
+  private def orderToRowClass(order: Order[Order.State]): String =
+    order.state match {
+      case _: Order.NotStarted ⇒ "orderTd Order-NotStarted"
+      case Order.InProcess ⇒ "orderTd Order-InProcess"
+      case Order.Finished ⇒ "orderTd Order-Finished"
+      case _ ⇒ "orderTd"
+    }
 
   private def highlightChangedRows(): Callback = {
     Callback {
@@ -73,7 +82,7 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
         for (tr ← trs) {
           tr.className = s"${tr.className} orderTr-enter-active"
         }
-      }.delay(100.milliseconds).runNow()
+      }.delay(5.seconds).runNow()
     }
   }
 }

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.gui.common
 
 import com.sos.jobscheduler.base.generic.IsString
-import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.order.{Order, Outcome}
 import japgolly.scalajs.react.vdom.Implicits._
 import japgolly.scalajs.react.vdom.TagMod
 import japgolly.scalajs.react.vdom.html_<^.{<, ^}
@@ -18,14 +18,20 @@ object Renderers {
   implicit def toTagMod[A: ToTagMod](a: A): TagMod =
     implicitly[ToTagMod[A]].toTagMod(a)
 
-  implicit val OrderStateSchedulerHtml = ToTagMod.toTagMod[Order.State] {
+  implicit val OrderStateHtml = ToTagMod.toTagMod[Order.State] {
     case Order.Scheduled(at) ⇒ s"Scheduled for " + at.toReadableLocaleIsoString
     case o ⇒ o.toString
   }
 
   implicit val OrderStateAttachedToToHtml = ToTagMod.toTagMod[Option[Order.AttachedTo]] {
     case None ⇒ "—"
-    case Some(Order.AttachedTo.Agent(agentPath)) ⇒ agentPath.toString
-    case Some(Order.AttachedTo.Detachable(agentPath)) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentPath.toString)
+    case Some(Order.AttachedTo.Agent(agentPath)) ⇒ agentPath.string
+    case Some(Order.AttachedTo.Detachable(agentPath)) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentPath.string)
+  }
+
+  implicit val OutcomeHtml = ToTagMod.toTagMod[Outcome] {
+    //case Outcome.Good(true) ⇒ "✔"
+    case Outcome.Good(o) ⇒ o.toString
+    case o ⇒ o.toString
   }
 }

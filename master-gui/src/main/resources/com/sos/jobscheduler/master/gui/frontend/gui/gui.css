@@ -98,15 +98,28 @@ header, main, footer {
   white-space: nowrap;
 }
 
+.Order-NotStarted {
+  color: #070;
+}
+
+.Order-InProcess {
+  color: #02f;
+}
+
+.Order-Finished {
+  color: gray;
+}
+
 .orderTr-enter {
-  background-color: lightblue; /*#c8ffc8;*/
+  background-color: #fffce0;
 }
 
 .orderTr-enter.orderTr-enter-active {
   background-color: transparent;
-  transition: background-color 5s ease-in;
+  transition: background-color 1s ease-in;
 }
 
 .AttachedTo-Detachable {
   color: darkgreen;
+  text-decoration: line-through;
 }
