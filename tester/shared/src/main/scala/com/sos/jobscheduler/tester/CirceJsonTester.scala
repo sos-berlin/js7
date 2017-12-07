@@ -37,6 +37,10 @@ object CirceJsonTester {
       case Some(o) ⇒ Json.fromFields(o.toMap collect {
         case (k, v) if !v.isNull ⇒ k → removeJNull(v)
       })
-      case None ⇒ json
+      case None ⇒
+        json.asArray match {
+          case Some(elements) ⇒ Json.fromValues(elements map removeJNull)
+          case None ⇒ json
+        }
     }
 }
