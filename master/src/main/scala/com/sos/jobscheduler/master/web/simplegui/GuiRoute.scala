@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.web.simplegui
 import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.MediaTypes.`text/html`
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, NotFound}
+import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.{EntityTag, `Cache-Control`}
 import akka.http.scaladsl.server.Directives._
@@ -37,19 +37,17 @@ trait GuiRoute extends WebjarsRoute {
     path("index.html") {
       complete(NotFound)
     } ~
-    parameter("v".?) {
-      case Some(BuildInfo.buildId) ⇒
-        respondWithHeader(Caching) {
+    parameter("v".?) { v ⇒
+      if (v exists (_ != BuildInfo.buildId))
+        complete((NotFound, "Version changed"))
+      else
+        (if (v.isDefined) respondWithHeader(Caching) else /*when browser reads source map*/pass) {
           getFromResourceDirectory(ResourceDirectory.path)
         } ~
         extractUnmatchedPath { path ⇒
           logger.warn(s"Not found: .../gui$path (resource ${ResourceDirectory.path}$path)")
           complete(NotFound)
         }
-      case Some(_) ⇒
-        complete((NotFound, "Version changed"))
-      case None ⇒
-        complete((BadRequest, "Missing parameter v"))
     }
 }
 

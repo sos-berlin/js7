@@ -37,10 +37,9 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
       <.td(^.cls := "top-left")(
         <.span(^.cls := "top-left-segment")(
           "JobScheduler Master ",
-          version,
-          <.span(^.cls := "unimportant")(s" $versionExt") when versionExt.nonEmpty),
-        " ",
-        <.span(^.cls := "top-left-segment experimental-monitor")(
+          <.span(^.cls := "hide-on-phone")(version),
+          <.span(^.cls := "hide-on-mobile unimportant")(s" $versionExt") when versionExt.nonEmpty),
+        <.span(^.cls := "hide-on-phone top-left-segment experimental-monitor")(
           "EXPERIMENTAL MONITOR"))
 
     val right =

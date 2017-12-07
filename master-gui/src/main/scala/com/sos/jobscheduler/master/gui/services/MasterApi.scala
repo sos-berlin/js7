@@ -12,6 +12,7 @@ import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.math.min
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobalScope
 import scala.util.{Failure, Success, Try}
@@ -22,6 +23,7 @@ import scala.util.{Failure, Success, Try}
 object MasterApi {
   type Response[A] = Either[Error, A]
   private val ReloadDelay = 1.second
+  private val TimeoutExtra = 10.seconds
 
   @js.native @JSGlobalScope
   object JavascriptGlobal extends js.Object {
@@ -37,17 +39,22 @@ object MasterApi {
   def orders: Future[Response[Stamped[Seq[Order[Order.State]]]]] =
     get[Stamped[Seq[Order[Order.State]]]]("api/order/?return=Order")
 
-  def events(after: EventId, timeout: Duration): Future[Response[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]] =
+  def events(after: EventId, timeout: Duration): Future[Response[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]] = {
     get[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]](
-      s"api/order/?return=OrderEvent&timeout=${timeout.toMillis}ms&after=$after")
+      s"api/order/?return=OrderEvent&timeout=${timeout.toMillis}ms&after=$after",
+      timeout = timeout + 30.seconds)
+  }
 
   private def post[A](uri: String, data: InputData): Future[Response[Unit]] =
     checkResponse(
       Ajax.post(uri, data, headers = Map("Content-Type" → "application/json"))) map (_ ⇒ Right(()))
 
-  private def get[A: Decoder](uri: String): Future[Response[A]] =
+  private def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Future[Response[A]] =
     decodeResponse(
-      Ajax.get(uri, headers = Map("Accept" → "application/json")),
+      Ajax.get(
+        uri,
+        headers = Map("Accept" → "application/json"),
+        timeout = if (timeout == Duration.Inf) 0 else min(timeout.toMillis, Int.MaxValue).toInt),
       xhr ⇒ circe.parser.decode[A](xhr.responseText) match {
         case Right(o) ⇒ Right(o)
         case Left(t) ⇒ logLeft(OtherError(s"Error in JSON decoding: $t"))
@@ -79,7 +86,7 @@ object MasterApi {
 
       case Success(xhr) ⇒
         if (Option(xhr.getResponseHeader("X-JobScheduler-Build-ID")).exists(_ != JavascriptGlobal.indexHtmlJobschedulerVersionUuid)) {
-          dom.window.setTimeout(() ⇒ dom.window.location.reload(), ReloadDelay.toMillis)  // Delay in case of reload-loop
+          reloadPage()  // Server version has changed. We cannot continue.
           logLeft(OtherError(s"JobScheduler Master version changed — Reloading page..."))
         } else
           Right(xhr)
@@ -89,6 +96,11 @@ object MasterApi {
     dom.console.warn(error.toString)
     Left(error)
   }
+
+  private def reloadPage(): Unit =
+    dom.window.setTimeout(
+      () ⇒ dom.window.location.reload(),
+      ReloadDelay.toMillis)  // Delay in case of reload-loop
 
   sealed trait Error
 

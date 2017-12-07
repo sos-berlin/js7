@@ -47,15 +47,17 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
 
   private val OrderTr = ScalaComponent.builder[OrdersState.Entry]("Row")
     .render_P {
-      case OrdersState.Entry(order, isUpdated) ⇒
+      case OrdersState.Entry(order, output, isUpdated) ⇒
         val cls = orderToRowClass(order)
+        val hideOnPhone = s"$cls hide-on-phone"
         <.tr(
           <.td(^.cls := cls)(order.id),
-          <.td(^.cls := cls)(order.nodeKey.workflowPath),
+          <.td(^.cls := hideOnPhone)(order.nodeKey.workflowPath),
           <.td(^.cls := cls)(order.nodeKey.nodeId),
           <.td(^.cls := cls)(order.outcome),
-          <.td(^.cls := cls)(order.attachedTo),
-          <.td(^.cls := cls)(order.state))
+          <.td(^.cls := hideOnPhone)(order.attachedTo),
+          <.td(^.cls := cls)(order.state),
+          <.td(^.cls := hideOnPhone)(output))
         .ref { tr ⇒
           if (isUpdated) highligtTrs += tr
         }
@@ -76,7 +78,7 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
       val trs = highligtTrs.toVector filter (_ != null)
       highligtTrs.clear()
       for (tr ← trs) {
-        tr.className = s" ${tr.className} ".replace(" orderTr-enter ", "").replace(" orderTr-enter-active ", "").trim + " orderTr-enter"
+        tr.className = ClassRegex.replaceAllIn(tr.className, "").trim + " orderTr-enter"
       }
       Callback {
         for (tr ← trs) {
@@ -91,11 +93,14 @@ object OrderListBackend {
   private val theadHtml =
     <.thead(<.tr(
       <.th(^.width := 10.ex)("OrderId"),
-      <.th(^.width := 10.ex)("Workflow"),
+      <.th(^.width := 10.ex, ^.cls := "hide-on-phone")("Workflow"),
       <.th(^.width := 10.ex)("Node"),
       <.th(^.width := 15.ex)("Outcome"),
-      <.th(^.width := 15.ex)("AttachedTo"),
-      <.th("State")))
+      <.th(^.width := 15.ex, ^.cls := "hide-on-phone")("AttachedTo"),
+      <.th(^.width := 15.ex)("State"),
+      <.th(^.width := 15.ex, ^.cls := "hide-on-phone")("Last output")))
+
+  private val ClassRegex = """\b(orderTr-enter|orderTr-enter-active)\b|^ *| *$""".r
 
   private val OrderEntryReuse = Reusability.byRef[OrdersState.Entry]
   //private val OrderReuse = Reusability.byRef[Order[Order.State]]

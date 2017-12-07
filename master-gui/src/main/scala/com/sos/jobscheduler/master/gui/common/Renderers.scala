@@ -19,7 +19,10 @@ object Renderers {
     implicitly[ToTagMod[A]].toTagMod(a)
 
   implicit val OrderStateHtml = ToTagMod.toTagMod[Order.State] {
-    case Order.Scheduled(at) ⇒ s"Scheduled for " + at.toReadableLocaleIsoString
+    case Order.Scheduled(at) ⇒ Array[TagMod](
+      <.span(^.cls := "hide-on-phone")("Scheduled for "),
+      at.toReadableLocaleIsoString).toTagMod
+
     case o ⇒ o.toString
   }
 

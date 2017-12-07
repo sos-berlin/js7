@@ -23,6 +23,18 @@ td, th {
   }
 }
 
+@media only screen and (max-width: 992px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
+@media only screen and (max-width: 600px) {
+  .hide-on-phone {
+    display: none !important;
+  }
+}
+
 .container {
   width: 99%;
 }

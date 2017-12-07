@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.master.gui.components.state
 
+import com.sos.jobscheduler.base.utils.Strings.TruncatedString
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.gui.common.Utils._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
@@ -53,11 +54,17 @@ object OrdersState {
           addedOrders += orderId
           evtCount += 1
 
-        case Stamped(eId, KeyedEvent(orderId, event: OrderCoreEvent)) ⇒
+        case Stamped(eId, KeyedEvent(orderId, event: OrderEvent)) ⇒
           updatedOrders.get(orderId) orElse idToOrder.get(orderId) match {
             case None ⇒ dom.console.error("Unknown OrderId: " + eventToLog(eId, orderId, event))
             case Some(entry) ⇒
-              updatedOrders += orderId → Entry(entry.order.update(event), isUpdated = true)
+              updatedOrders += orderId → (event match {
+                case event: OrderCoreEvent ⇒
+                  entry.copy(isUpdated = true, order = entry.order.update(event))
+
+                case OrderStdWritten(t, chunk) ⇒
+                  entry.copy(isUpdated = true, output = s"$t: ${lastLineOfChunk(chunk)}")
+              })
               evtCount += 1
           }
 
@@ -74,7 +81,16 @@ object OrdersState {
     }
   }
 
-  final case class Entry(order: Order[Order.State], isUpdated: Boolean = false) {
+  private def lastLineOfChunk(chunk: String): String = {
+    val c = chunk.trim
+    val start = c.lastIndexOf("\n") match {
+      case -1 ⇒ 0
+      case i ⇒ i + 1
+    }
+    c.substring(start).truncateWithEllipsis(50, showLength = false)
+  }
+
+  final case class Entry(order: Order[Order.State], output: String = "", isUpdated: Boolean = false) {
     def id = order.id
   }
 }
