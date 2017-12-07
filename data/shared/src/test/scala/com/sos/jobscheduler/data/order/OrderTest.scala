@@ -50,9 +50,18 @@ final class OrderTest extends FreeSpec {
       }
     }
 
+    "ifState" in {
+      assert(order.ifState[Order.Ready.type] == Some(order))
+      assert(order.ifState[Order.Idle] == Some(order))
+      assert(order.ifState[Order.State] == Some(order))
+      assert(order.ifState[Order.Processed.type] == None)
+    }
+
     "JSON" in {
       check(
-        order,
+        order.copy(
+          attachedTo = Some(Order.AttachedTo.Agent(AgentPath("/AGENT"))),
+          parent = Some(OrderId("PARENT"))),
         """{
           "id": "ID",
           "nodeKey": {
@@ -62,6 +71,11 @@ final class OrderTest extends FreeSpec {
           "state": {
             "TYPE": "Ready"
           },
+          "attachedTo": {
+            "TYPE": "Agent",
+            "agentPath": "/AGENT"
+          },
+          "parent": "PARENT",
           "payload": {
             "variables": {
               "var1": "value1",
@@ -112,6 +126,14 @@ final class OrderTest extends FreeSpec {
       check(Processed,
         """{
            "TYPE": "Processed"
+        }""")
+    }
+
+    "Forked" in {
+      check(Forked(List(OrderId("A/1"), OrderId("A/2"))),
+        """{
+           "TYPE": "Forked",
+           "childOrderIds": [ "A/1", "A/2" ]
         }""")
     }
 

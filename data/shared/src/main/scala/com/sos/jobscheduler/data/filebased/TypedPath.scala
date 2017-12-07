@@ -43,6 +43,7 @@ object TypedPath {
     final lazy val lowerCaseCamelName = camelName.substring(0, 1).toLowerCase + camelName.substring(1)
     final lazy val cppName: String = lowerCaseCamelName map { c ⇒ if (c.isUpper) "_" + c.toLower else c } mkString ""
     lazy val xmlFilenameExtension: String = s".$cppName.xml"
+    lazy val jsonFilenameExtension: String = s".$lowerCaseCamelName.json"
 
     /**
      * Interprets a path as absolute.

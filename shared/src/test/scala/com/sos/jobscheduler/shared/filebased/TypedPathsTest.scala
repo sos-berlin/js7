@@ -2,8 +2,8 @@ package com.sos.jobscheduler.shared.filebased
 
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
-import com.sos.jobscheduler.data.workflow.JobPath
-import com.sos.jobscheduler.shared.filebased.TypedPaths.{relativeXmlFilePathToTypedPath, xmlFileToTypedPath}
+import com.sos.jobscheduler.data.workflow.{JobPath, WorkflowPath}
+import com.sos.jobscheduler.shared.filebased.TypedPaths._
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 
@@ -12,6 +12,12 @@ import org.scalatest.FreeSpec
   */
 final class TypedPathsTest extends FreeSpec {
 
+  "jsonFileToTypedPath" in {
+    val dir = Paths.get("/some/dir")
+    assert(jsonFileToTypedPath[WorkflowPath](dir / "folder/test.workflow.json", stripDirectory = dir) == WorkflowPath("/folder/test"))
+    assert(jsonFileToTypedPath[WorkflowPath](dir / "folder/test.workflow.json", stripDirectory = Paths.get(s"$dir/")) == WorkflowPath("/folder/test"))
+  }
+
   "xmlFileToTypedPath" in {
     val dir = Paths.get("/some/dir")
     assert(xmlFileToTypedPath[JobPath](dir / "folder/test.job.xml", stripDirectory = dir) == JobPath("/folder/test"))
@@ -19,10 +25,10 @@ final class TypedPathsTest extends FreeSpec {
   }
 
   "relativeXmlFilePathToTypedPath" in {
-    assert(relativeXmlFilePathToTypedPath[JobPath]("""folder\test.job.xml""") == JobPath("/folder/test"))
-    assert(relativeXmlFilePathToTypedPath[JobPath]("folder/test.job.xml") == JobPath("/folder/test"))
+    assert(relativeFilePathToTypedPath[JobPath](_.xmlFilenameExtension, """folder\test.job.xml""") == JobPath("/folder/test"))
+    assert(relativeFilePathToTypedPath[JobPath](_.xmlFilenameExtension, "folder/test.job.xml") == JobPath("/folder/test"))
     intercept[IllegalArgumentException] {
-      relativeXmlFilePathToTypedPath[JobPath]("/folder/test.job.xml")
+      relativeFilePathToTypedPath[JobPath](_.xmlFilenameExtension, "/folder/test.job.xml")
     }
   }
 

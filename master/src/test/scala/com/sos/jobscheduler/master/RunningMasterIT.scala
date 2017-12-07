@@ -20,7 +20,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterIT._
@@ -91,7 +91,7 @@ final class RunningMasterIT extends FreeSpec {
         val agent1 = RunningAgent(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
         master.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
 
-        master.eventCollector.when[OrderEvent.OrderDetachable.type](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
+        val EventSeq.NonEmpty(_) = master.eventCollector.when[OrderEvent.OrderDetachable.type](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
         val agentClients = for (a ← List(agent0, agent1)) yield AgentClient(a.localUri.toString)(actorSystem)
         //sleep(500.ms)  // MasterOrderKeeper allows GetOrders while journaling events (persistAsync). Wait until events are stored and orders are up-to-date. Time-dependend !!!
         assert(agentClients(0).orders() await 99.s map { _.id } contains TestOrderId)

@@ -72,7 +72,7 @@ object DirectoryProvider {
       (s"""
         |@echo off
         |echo $StdoutOutput
-        |ping -n ${sleep.toSecondsString} 127.0.0.1 >nul""" +
+        |ping -n ${(sleep + 999999.µs).toSecondsString} 127.0.0.1 >nul""" +
         resultVariable.fold("")(o ⇒ s"""|echo result=SCRIPT-VARIABLE-%SCHEDULER_PARAM_${o.toUpperCase}% >>"%SCHEDULER_RETURN_VALUES%"""")
       ).stripMargin
     else

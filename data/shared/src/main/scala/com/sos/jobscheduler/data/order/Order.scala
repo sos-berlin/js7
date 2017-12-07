@@ -5,11 +5,13 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import io.circe.generic.JsonCodec
+import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
 
 /**
@@ -20,16 +22,11 @@ final case class Order[+S <: Order.State](
   nodeKey: NodeKey,
   state: S,
   attachedTo: Option[AttachedTo] = None,
-  payload: Payload = Payload.empty)
+  payload: Payload = Payload.empty,
+  parent: Option[OrderId] = None)
 {
-  def toLean = LeanOrder(id, payload)
-
-  def withLean(lean: LeanOrder): Order[Order.State] = {
-    val LeanOrder(id_, payload_) = lean
-    copy(
-      id = id_,
-      payload = payload_)
-  }
+  def newChild(child: OrderForked.Child): Order[Order.Ready.type] =
+    Order(child.orderId, NodeKey(workflowPath, child.nodeId), Ready, attachedTo, child.payload, Some(id))
 
   def workflowPath: WorkflowPath =
     nodeKey.workflowPath
@@ -39,14 +36,9 @@ final case class Order[+S <: Order.State](
 
   def update(event: OrderEvent.OrderCoreEvent): Order[State] =
     event match {
-      //case OrderAdded(nodeKey_, state_, variables_, outcome_) ⇒
-      //  copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
-      //
-      //case OrderAttached(nodeKey_, state_, variables_, outcome_) ⇒
-      //  copy(nodeKey = nodeKey_, state = state_, variables = variables_, outcome = outcome_)
-
-      case OrderMovedToAgent(o) ⇒ copy(
-        attachedTo = Some(AttachedTo.Agent(o)))
+      case OrderMovedToAgent(o) ⇒
+        copy(
+          attachedTo = Some(AttachedTo.Agent(o)))
 
       case OrderMovedToMaster ⇒ copy(
         attachedTo = None)
@@ -60,7 +52,15 @@ final case class Order[+S <: Order.State](
           variables = diff.applyTo(payload.variables),
           outcome = outcome_))
 
-      case OrderTransitioned(toNodeId) ⇒ copy(
+      case OrderForked(children) ⇒ copy(
+        state = Forked(children map (_.orderId)))
+
+      case OrderJoined(toNodeId, variablesDiff, outcome_) ⇒ copy(
+        state = Ready,
+        nodeKey = NodeKey(workflowPath, toNodeId),
+        payload = Payload(variablesDiff applyTo variables, outcome_))
+
+      case OrderMoved(toNodeId) ⇒ copy(
         state = Ready,
         nodeKey = NodeKey(workflowPath, toNodeId))
 
@@ -91,12 +91,17 @@ final case class Order[+S <: Order.State](
   def castAfterEvent(event: OrderProcessed.type): Order[Order.Processed.type] =
     castState[Order.Processed.type]
 
-  def castState[T <: State: ClassTag]: Order[T] = {
-    val cls = implicitClass[T]
-    if (!cls.isAssignableFrom(state.getClass))
-      throw new IllegalStateException(s"'$id' is expected to be ${cls.simpleScalaName}, but is $state")
-    this.asInstanceOf[Order[T]]
+  def castState[A <: State: ClassTag]: Order[A] =
+    ifState[A] getOrElse (
+      throw new IllegalStateException(s"'$id' is expected to be ${implicitClass[A].simpleScalaName}, but is $state"))
+
+  def ifState[A <: State: ClassTag]: Option[Order[A]] = {
+    val cls = implicitClass[A]
+    cls.isAssignableFrom(state.getClass) option
+      this.asInstanceOf[Order[A]]
   }
+
+  def isAttachedToAgent = attachedToAgent.isRight
 
   def attachedToAgent: Either[IllegalStateException, AgentPath] =
     attachedTo match {
@@ -150,11 +155,21 @@ object Order {
   sealed trait Idle extends State
   sealed trait NotStarted extends Idle
   sealed trait Started extends State
+  sealed trait Transitionable extends Started
+
   final case class Scheduled(at: Timestamp) extends NotStarted
+
   final case object StartNow extends NotStarted
+
   case object Ready extends Started with Idle
+
   case object InProcess extends Started
-  case object Processed extends Started
+
+  case object Processed extends Transitionable
+
+  @JsonCodec
+  final case class Forked(childOrderIds: Seq[OrderId]) extends Transitionable
+
   case object Finished extends State
 
   implicit val NotStartedJsonCodec: TypedJsonCodec[NotStarted] = TypedJsonCodec[NotStarted](
@@ -171,6 +186,7 @@ object Order {
     Subtype[Idle],
     Subtype(InProcess),
     Subtype(Processed),
+    Subtype[Forked],
     Subtype(Finished))
   implicit val JsonCodec: CirceCodec[Order[State]] = deriveCirceCodec[Order[State]]
 }

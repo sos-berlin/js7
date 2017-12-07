@@ -28,7 +28,7 @@ final class WorkflowXmlParserTest extends FreeSpec {
     val FAILURE = Workflow.EndNode(NodeId("FAILURE"))
     assert(WorkflowXmlParser.parseXml(path, xml) ==
       Workflow(path, inputNodeId = A.id, List(
-        Transition(A :: Nil, B :: FAILURE :: Nil, SuccessFailureTransition),
+        Transition(Vector(A), Vector(B, FAILURE), SuccessFailureTransition),
         Transition(B, C),
         Transition(C, END))))
   }

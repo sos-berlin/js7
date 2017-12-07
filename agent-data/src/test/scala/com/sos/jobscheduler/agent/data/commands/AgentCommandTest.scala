@@ -112,10 +112,17 @@ final class AgentCommandTest extends FreeSpec {
           "workflow": {
             "path": "/WORKFLOW",
             "inputNodeId": "A",
-            "transitions": [{
-                "fromNodeIds": [ "A" ],
-                "toNodeIds": [ "B" ],
-                "nodes": [{
+            "transitions": [
+              {
+                "fromProcessedNodeIds": [ "A" ],
+                "outlets": [
+                   {
+                     "id": "B",
+                     "nodeId": "B"
+                   }
+                 ],
+                 "nodes": [
+                  {
                     "TYPE": "JobNode",
                     "id": "A",
                     "agentPath": "/AGENT",
@@ -125,14 +132,21 @@ final class AgentCommandTest extends FreeSpec {
                     "id": "B",
                     "agentPath": "/AGENT",
                     "jobPath": "/B"
-                  }],
+                  }
+                ],
                 "transitionType": {
                   "TYPE": "ForwardTransition"
                 }
               }, {
-                "fromNodeIds": [ "B" ],
-                "toNodeIds": [ "END" ],
-                "nodes": [{
+                "fromProcessedNodeIds": [ "B" ],
+                "outlets": [
+                   {
+                     "id": "END",
+                     "nodeId": "END"
+                   }
+                ],
+                "nodes": [
+                  {
                     "TYPE": "JobNode",
                     "id": "B",
                     "agentPath": "/AGENT",
@@ -140,7 +154,8 @@ final class AgentCommandTest extends FreeSpec {
                   }, {
                     "TYPE": "EndNode",
                     "id": "END"
-                  }],
+                  }
+                ],
                 "transitionType": {
                   "TYPE": "ForwardTransition"
                 }

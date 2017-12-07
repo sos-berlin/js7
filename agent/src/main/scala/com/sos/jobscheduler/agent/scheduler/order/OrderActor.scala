@@ -62,13 +62,12 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case Order.InProcess ⇒
         context.become(processed)
-        val event = OrderProcessed(MapDiff.empty, Outcome.Bad(Outcome.Bad.AgentAborted))
-        assert(isRecoveryGeneratedEvent(event))
+        val event = OrderProcessed(MapDiff.empty, RecoveryGeneratedOutcome)
         persist(event)(update)
 
       case Order.Processed ⇒
         context.become(processed)
-        // Next event 'OrderTransitioned' is initiated by AgentOrderKeeper
+        // Next event 'OrderMoved' is initiated by AgentOrderKeeper
 
       case Order.Finished ⇒
         sys.error(s"Unexpected order state: ${order.state}")   // A Finished order must be at Master
@@ -78,17 +77,22 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   def receive = journaling orElse {
-    case command: Command ⇒ command match {
-      case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), payload)) ⇒
-        context.become(idle)
-        persist(OrderAttached(nodeKey, state, agentPath, payload)) { event ⇒
-          sender() ! Completed
-          update(event)
-        }
+    case Input.AddChild(o) ⇒
+      order = o
+      context.become(idle)
 
-      case _ ⇒
-        executeOtherCommand(command)
-    }
+    case command: Command ⇒
+      command match {
+        case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), payload, parent)) ⇒
+          context.become(idle)
+          persist(OrderAttached(nodeKey, state, parent, agentPath, payload)) { event ⇒
+            sender() ! Completed
+            update(event)
+          }
+
+        case _ ⇒
+          executeOtherCommand(command)
+      }
   }
 
   private val idle: Receive = journaling orElse {
@@ -114,8 +118,8 @@ extends KeyedJournalingActor[OrderEvent] {
             stderrWriter = stderrWriter))
       }
 
-    case Input.HandleEvent(event: OrderEvent.OrderDetachable.type) ⇒
-      persist(event)(update)
+    case Input.MakeDetachable ⇒
+      persist(OrderDetachable)(update)
 
     case Input.Terminate ⇒
       context.stop(self)
@@ -184,14 +188,21 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   private def processed: Receive = journaling orElse {
-    case Input.HandleEvent(OrderEvent.OrderTransitioned(toNodeId)) ⇒
+    case Input.HandleTransitionEvent(event: OrderMoved) ⇒
       context.become(idle)
-      persist(OrderTransitioned(toNodeId))(update)
-
-    case Input.HandleEvent(event: OrderEvent.OrderDetachable.type) ⇒
       persist(event)(update)
 
+    case Input.HandleTransitionEvent(event: OrderForked) ⇒
+      context.become(forked)
+      persist(event)(update)
+
+    case Input.MakeDetachable ⇒
+      persist(OrderDetachable)(update)
+
     case Input.Terminate ⇒
+      context.stop(self)
+
+    case Input.DeleteChild ⇒
       context.stop(self)
 
     case Command.Detach ⇒
@@ -200,6 +211,16 @@ extends KeyedJournalingActor[OrderEvent] {
     case command: Command ⇒
       executeOtherCommand(command)
   }
+
+  private def forked: Receive =
+    journaling orElse {
+      case Input.HandleTransitionEvent(event: OrderJoined) ⇒
+        context.become(idle)
+        persist(event)(update)
+
+      case command: Command ⇒
+        executeOtherCommand(command)
+    }
 
   private def executeOtherCommand(command: Command): Unit = command match {
     case _ ⇒
@@ -229,9 +250,6 @@ extends KeyedJournalingActor[OrderEvent] {
         Order.fromOrderAttached(orderId, event)
         // Order.state = Attached / MovedToAgent ???
 
-      case OrderDetached ⇒
-        order
-
       case _: OrderStdWritten ⇒
         // Not collected
         order
@@ -257,6 +275,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
 private[order] object OrderActor {
   private val StdPipeCharBufferSize = 500  // Even a size of 1 character is not slow
+  val RecoveryGeneratedOutcome = Outcome.Bad(Outcome.Bad.AgentAborted)
 
   sealed trait Command
   object Command {
@@ -266,9 +285,12 @@ private[order] object OrderActor {
 
   sealed trait Input
   object Input {
+    final case class AddChild(order: Order[Order.Ready.type]) extends Input
+    final case object DeleteChild extends Input
     final case class StartProcessing(node: Workflow.JobNode, jobActor: ActorRef) extends Input
     final case object Terminate extends Input
-    final case class HandleEvent(event: OrderEvent) extends Input
+    final case object MakeDetachable
+    final case class HandleTransitionEvent(event: OrderTransitionedEvent) extends Input
   }
 
   object Output {
@@ -296,10 +318,4 @@ private[order] object OrderActor {
     protected def onBufferingStarted() =
       self ! Internal.BufferingStarted
   }
-
-  def isRecoveryGeneratedEvent(event: OrderEvent): Boolean =
-    event match {
-      case OrderProcessed(_, Outcome.Bad(Outcome.Bad.AgentAborted)) ⇒ true
-      case _ ⇒ false
-    }
 }

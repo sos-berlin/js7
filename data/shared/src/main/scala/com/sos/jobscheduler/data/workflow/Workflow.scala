@@ -1,22 +1,23 @@
 package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.base.circeutils.CirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichPairTraversable, RichTraversable}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Workflow._
 import com.sos.jobscheduler.data.workflow.transition.Transition
+import com.sos.jobscheduler.data.workflow.transitions.TransitionRegister
 import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
-@JsonCodec
 final case class Workflow(path: WorkflowPath, inputNodeId: NodeId, transitions: Seq[Transition], unconnectedNodes: Seq[Node] = Nil) {
 
   val nodes = (transitions.flatMap(_.nodes) ++ unconnectedNodes).toVector.distinct
   val idToNode = nodes toKeyedMap { _.id }
-  val nodeToTransition = (for (t ← transitions; nodeId ← t.fromNodeIds) yield nodeId → t).uniqueToMap  // throws
+  val nodeToTransition = (for (t ← transitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t).uniqueToMap  // throws
 
   require(idToNode.size == nodes.size, s"$path contains duplicate NodeIds")
   (for (t ← transitions; to ← t.toNodeIds) yield to → t).uniqueToMap  // throws if not unique
@@ -72,4 +73,9 @@ object Workflow {
 
   @JsonCodec
   final case class JobNode(id: NodeId, agentPath: AgentPath, jobPath: JobPath) extends Node
+
+  implicit val JsonCodec = {
+    implicit val TransitionRegisterCodec = TransitionRegister.JsonCodec
+    deriveCirceCodec[Workflow]
+  }
 }

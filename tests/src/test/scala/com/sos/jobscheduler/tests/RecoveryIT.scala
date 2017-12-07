@@ -18,7 +18,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.Order.Scheduled
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransitioned}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
@@ -179,28 +179,28 @@ private object RecoveryIT {
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.Good(true)),
-    OrderTransitioned(NodeId("110")),
+    OrderMoved(NodeId("110")),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff.empty, Outcome.Good(true)),
-    OrderTransitioned(NodeId("120")),
+    OrderMoved(NodeId("120")),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff.empty, Outcome.Good(true)),
     OrderDetachable,
     OrderMovedToMaster,
-    OrderTransitioned(NodeId("200")),
+    OrderMoved(NodeId("200")),
     OrderMovedToAgent(AgentPaths(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.Good(true)),
-    OrderTransitioned(NodeId("210")),
+    OrderMoved(NodeId("210")),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
     OrderDetachable,
     OrderMovedToMaster,
-    OrderTransitioned(NodeId("END")),
+    OrderMoved(NodeId("END")),
     OrderFinished)
 
   /** Deletes restart sequences to make event sequence comparable with ExpectedEvents. */
@@ -213,7 +213,7 @@ private object RecoveryIT {
             result.remove(result.size - 1)
           }
           result.remove(result.size - 1)
-          assert(events.next.isInstanceOf[OrderEvent.OrderTransitioned])  // Not if Agent restarted immediately after recovery (not expected)
+          assert(events.next.isInstanceOf[OrderEvent.OrderMoved])  // Not if Agent restarted immediately after recovery (not expected)
 
         case event ⇒ result += event
       }

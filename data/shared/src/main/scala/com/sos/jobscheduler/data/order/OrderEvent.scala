@@ -10,6 +10,8 @@ import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.StdoutStderr._
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey}
+import io.circe.generic.JsonCodec
+import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
@@ -21,13 +23,14 @@ sealed trait OrderEvent extends Event {
 
 object OrderEvent {
   sealed trait OrderCoreEvent extends OrderEvent
+  sealed trait OrderTransitionedEvent extends OrderCoreEvent
 
   final case class OrderAdded(nodeKey: NodeKey, state: Idle, payload: Payload)
   extends OrderCoreEvent {
     //type State = Idle
   }
 
-  final case class OrderAttached(nodeKey: NodeKey, state: Idle, agentPath: AgentPath, payload: Payload)
+  final case class OrderAttached(nodeKey: NodeKey, state: Idle, parent: Option[OrderId], agentPath: AgentPath, payload: Payload)
   extends OrderCoreEvent {
     //type State = Idle
   }
@@ -46,7 +49,6 @@ object OrderEvent {
     //type State = InProcess.type
   }
 
-
   sealed trait OrderStdWritten extends OrderEvent {
     //type State = InProcess.type
 
@@ -55,7 +57,6 @@ object OrderEvent {
 
     override def toString = s"${getClass.simpleScalaName}(${chunk.trim truncateWithEllipsis 80})"
   }
-
   object OrderStdWritten {
     def apply(t: StdoutStderrType): String ⇒ OrderStdWritten =
       t match {
@@ -84,8 +85,17 @@ object OrderEvent {
     //type State = Processed.type
   }
 
-  final case class OrderTransitioned(toNodeId: NodeId)
-  extends OrderCoreEvent {
+  final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderTransitionedEvent
+  object OrderForked {
+    @JsonCodec
+    final case class Child(orderId: OrderId, nodeId: NodeId, payload: Payload)
+  }
+
+  final case class OrderJoined(toNodeId: NodeId, variablesDiff: MapDiff[String, String], outcome: Outcome)
+  extends OrderTransitionedEvent
+
+  final case class OrderMoved(toNodeId: NodeId)
+  extends OrderTransitionedEvent {
     //type State = Ready.type
   }
 
@@ -115,9 +125,11 @@ object OrderEvent {
     Subtype(deriveCirceCodec[OrderStdoutWritten]),
     Subtype(deriveCirceCodec[OrderStderrWritten]),
     Subtype(deriveCirceCodec[OrderProcessed]),
+    Subtype(deriveCirceCodec[OrderForked]),
+    Subtype(deriveCirceCodec[OrderJoined]),
     Subtype(OrderDetached),
     Subtype(OrderDetachable),
     Subtype(OrderProcessingStarted),
-    Subtype(deriveCirceCodec[OrderTransitioned]),
+    Subtype(deriveCirceCodec[OrderMoved]),
     Subtype(OrderFinished))
 }

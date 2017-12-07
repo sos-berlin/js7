@@ -2,7 +2,7 @@ package com.sos.jobscheduler.shared.filebased
 
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.data.filebased.TypedPath
-import com.sos.jobscheduler.shared.filebased.TypedPaths.xmlFileToTypedPath
+import com.sos.jobscheduler.shared.filebased.TypedPaths.{jsonFileToTypedPath, xmlFileToTypedPath}
 import java.nio.file
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
@@ -27,13 +27,19 @@ object TypedPathDirectoryWalker {
   def forEachTypedFile(directory: Path, types: Set[TypedPath.AnyCompanion])(callback: (Path, TypedPath) ⇒ Unit): Unit =
     deepForEachPathAndAttributes(directory, nestingLimit = NestingLimit) { (path, attr) ⇒
       if (!attr.isDirectory) {
-        for (t ← types find { t ⇒ matchesFile(t, path) }) {
+        for (t ← types find { t ⇒ matchesJsonFile(t, path) }) {
+          callback(path, jsonFileToTypedPath(path, stripDirectory = directory)(t))
+        }
+        for (t ← types find { t ⇒ matchesXmlFile(t, path) }) {
           callback(path, xmlFileToTypedPath(path, stripDirectory = directory)(t))
         }
       }
     }
 
-  private[filebased] def matchesFile[P <: TypedPath](companion: TypedPath.Companion[P], path: file.Path): Boolean =
+  private[filebased] def matchesJsonFile[P <: TypedPath](companion: TypedPath.Companion[P], path: file.Path): Boolean =
+    path.toString endsWith companion.jsonFilenameExtension
+
+  private[filebased] def matchesXmlFile[P <: TypedPath](companion: TypedPath.Companion[P], path: file.Path): Boolean =
     path.toString endsWith companion.xmlFilenameExtension
 
   //def typedFileIterator(directory: Path, types: Set[TypedPath.AnyCompanion]): AutoCloseable with Iterator[(Path, TypedPath)] =

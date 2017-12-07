@@ -40,7 +40,7 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderAttached" in {
-    check(OrderAttached(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))),
+    check(OrderAttached(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Some(OrderId("PARENT")), AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))),
       """{
         "TYPE": "OrderAttached",
         "nodeKey": {
@@ -50,6 +50,7 @@ final class OrderEventTest extends FreeSpec {
         "state": {
           "TYPE":"Ready"
         },
+        "parent": "PARENT",
         "agentPath": "/AGENT",
         "payload": {
           "variables": {
@@ -116,10 +117,58 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  "OrderTransitioned" in {
-    check(OrderTransitioned(NodeId("NODE")),
+  "OrderForked" in {
+    check(OrderForked(List(
+      OrderForked.Child(OrderId("ORDER-ID/A"), NodeId("A"), Payload.empty),
+      OrderForked.Child(OrderId("ORDER-ID/B"), NodeId("B"), Payload.empty))),
       """{
-        "TYPE": "OrderTransitioned",
+        "TYPE": "OrderForked",
+        "children": [
+          {
+            "orderId": "ORDER-ID/A",
+            "nodeId": "A",
+            "payload": {
+              "variables": {},
+              "outcome": {
+                "TYPE": "Good",
+                "returnValue": true
+              }
+            }
+          }, {
+            "orderId": "ORDER-ID/B",
+            "nodeId": "B",
+            "payload": {
+              "variables": {},
+              "outcome": {
+                "TYPE": "Good",
+                "returnValue": true
+              }
+            }
+          }
+        ]
+      }""")
+  }
+
+  "OrderJoined" in {
+    check(OrderJoined(NodeId("JOINED"), MapDiff.empty, Outcome.Default),
+      """{
+        "TYPE": "OrderJoined",
+        "toNodeId": "JOINED",
+        "variablesDiff": {
+          "addedOrUpdated": {},
+          "removed": []
+        },
+        "outcome": {
+          "TYPE": "Good",
+          "returnValue": true
+        }
+      }""")
+  }
+
+  "OrderMoved" in {
+    check(OrderMoved(NodeId("NODE")),
+      """{
+        "TYPE": "OrderMoved",
         "toNodeId": "NODE"
       }""")
   }

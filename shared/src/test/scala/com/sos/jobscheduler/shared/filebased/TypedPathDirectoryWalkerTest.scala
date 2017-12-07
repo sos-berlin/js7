@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.workflow.{JobPath, WorkflowPath}
-import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.{forEachTypedFile, matchesFile}
+import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.{forEachTypedFile, matchesXmlFile}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalkerTest._
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.{Path, Paths}
@@ -31,10 +31,10 @@ final class TypedPathDirectoryWalkerTest extends FreeSpec {
     }
   }
 
-  "matchesFile" in {
-    assert(matchesFile(JobPath, Paths.get("/dir/TEST.job.xml")))
-    assert(!matchesFile(JobPath, Paths.get("/dir/TEST.JOB.XML")))
-    assert(!matchesFile(JobPath, Paths.get("/dir/TEST.job_chain.xml")))
+  "matchesXmlFile" in {
+    assert(matchesXmlFile(JobPath, Paths.get("/dir/TEST.job.xml")))
+    assert(!matchesXmlFile(JobPath, Paths.get("/dir/TEST.JOB.XML")))
+    assert(!matchesXmlFile(JobPath, Paths.get("/dir/TEST.job_chain.xml")))
   }
 }
 

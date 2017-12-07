@@ -88,11 +88,13 @@ object TestMasterAgent {
             <script language="shell">{
               if (isWindows) s"""
                  |@echo off
+                 |echo Hello
                  |${ if (conf.jobDuration.getSeconds > 0) s"ping -n ${ conf.jobDuration.getSeconds + 1 } 127.0.0.1 >nul" else "" }
                  |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
                  |""".stripMargin
               else s"""
-                 |sleep ${ BigDecimal(conf.jobDuration.toMillis, scale = 3).toString }
+                 |echo Hello ☘️
+                 |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
                  |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
                  |""".stripMargin
             }</script>

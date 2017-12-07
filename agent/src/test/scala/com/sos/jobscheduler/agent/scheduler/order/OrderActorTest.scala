@@ -27,7 +27,7 @@ import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderTransitioned}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.data.workflow.Workflow.EndNode
@@ -105,10 +105,10 @@ private object OrderActorTest {
   private val TestAgentPath = AgentPath("/TEST-AGENT")
   private val TestJobNode = Workflow.JobNode(TestNodeId, TestAgentPath, TestJobPath)
   private val ExpectedOrderEvents = List(
-    OrderAttached(TestOrder.nodeKey, Order.Ready, AgentPath("/TEST-AGENT"), Payload.empty),
+    OrderAttached(TestOrder.nodeKey, Order.Ready, None, AgentPath("/TEST-AGENT"), Payload.empty),
     OrderProcessingStarted,
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.Good(true)),
-    OrderTransitioned(LastNode.id),
+    OrderMoved(LastNode.id),
     OrderDetached)
   private val Nl = System.lineSeparator
 
@@ -221,9 +221,9 @@ private object OrderActorTest {
 
           case _: OrderProcessed ⇒
             events += event
-            orderActor ! OrderActor.Input.HandleEvent(OrderEvent.OrderTransitioned(LastNode.id))
+            orderActor ! OrderActor.Input.HandleTransitionEvent(OrderMoved(LastNode.id))
 
-          case _: OrderTransitioned ⇒
+          case _: OrderMoved ⇒
             events += event
             orderActor ! OrderActor.Command.Detach
             become(detaching)

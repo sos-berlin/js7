@@ -2,10 +2,10 @@ package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
-import org.scalatest.FreeSpec
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.data.workflow.transition.Transition
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
@@ -44,10 +44,17 @@ final class WorkflowTest extends FreeSpec {
       """{
         "path": "/WORKFLOW",
         "inputNodeId": "A",
-        "transitions": [{
-            "fromNodeIds": [ "A" ],
-            "toNodeIds": [ "B" ],
-            "nodes": [{
+        "transitions": [
+          {
+            "fromProcessedNodeIds": [ "A" ],
+            "outlets": [
+              {
+                "id": "B",
+                "nodeId": "B"
+              }
+            ],
+            "nodes": [
+              {
                 "TYPE": "JobNode",
                 "id": "A",
                 "jobPath": "/A",
@@ -57,14 +64,21 @@ final class WorkflowTest extends FreeSpec {
                 "id": "B",
                 "jobPath": "/B",
                 "agentPath": "/AGENT"
-              }],
+              }
+            ],
             "transitionType": {
               "TYPE": "ForwardTransition"
             }
           }, {
-            "fromNodeIds": [ "B" ],
-            "toNodeIds": [ "END" ],
-            "nodes": [ {
+            "fromProcessedNodeIds": [ "B" ],
+            "outlets": [
+              {
+                "id": "END",
+                "nodeId": "END"
+              }
+            ],
+             "nodes": [
+               {
                 "TYPE": "JobNode",
                 "id": "B",
                 "jobPath": "/B",

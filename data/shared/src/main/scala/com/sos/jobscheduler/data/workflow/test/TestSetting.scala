@@ -25,5 +25,5 @@ private[jobscheduler] object TestSetting {
 
   val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), A.id, List(a, b))
 
-  val TestOrder = Order(OrderId("/TEST"), TestWorkflow.inputNodeKey, Order.Ready, payload = Payload(Map("VARIABLE" → "VALUE")))
+  val TestOrder = Order(OrderId("TEST"), TestWorkflow.inputNodeKey, Order.Ready, payload = Payload(Map("VARIABLE" → "VALUE")))
 }

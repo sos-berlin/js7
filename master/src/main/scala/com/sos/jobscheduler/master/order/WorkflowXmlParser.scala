@@ -68,7 +68,7 @@ object WorkflowXmlParser {
       if (next == error)
         Transition(idToNode(rawNode.id), idToNode(next), ForwardTransition)
       else
-        Transition(idToNode(rawNode.id) :: Nil, idToNode(next) :: idToNode(error) :: Nil, SuccessFailureTransition)
+        Transition(Vector(idToNode(rawNode.id)), Vector(idToNode(next), idToNode(error)), SuccessFailureTransition)
     }
   }
 

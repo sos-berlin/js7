@@ -2,9 +2,11 @@ package com.sos.jobscheduler.master.order
 
 import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -17,7 +19,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
@@ -32,6 +34,8 @@ import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJourn
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.shared.workflow.Transitions
+import io.circe.Json
+import java.nio.file.Path
 import java.time.Duration
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -78,10 +82,7 @@ with Stash {
       forEachTypedFile(dir, Set(WorkflowPath, AgentPath)) {
         case (file, workflowPath: WorkflowPath) ⇒
           logger.info(s"Adding $workflowPath")
-          val workflow = autoClosing(new FileSource(file)) { src ⇒
-            WorkflowXmlParser.parseXml(workflowPath, src)
-          }
-          pathToWorkflow += workflowPath → workflow
+          pathToWorkflow.insert(workflowPath → readWorkflow(workflowPath, file))
 
         case (file, agentPath: AgentPath) ⇒
           logger.info(s"Adding $agentPath")
@@ -95,6 +96,18 @@ with Stash {
       }
     }
   }
+
+  private def readWorkflow(workflowPath: WorkflowPath, file: Path): Workflow =
+    if (file.getFileName.toString endsWith ".xml")
+      autoClosing(new FileSource(file)) { src ⇒
+        WorkflowXmlParser.parseXml(workflowPath, src)
+      }
+    else {
+      val json = file.contentString.parseJson
+      // Ignoring field "path" in file
+      val pathAdded = Json.fromJsonObject(json.forceObject.add("path", Json.fromString(workflowPath.string)))
+      pathAdded.as[Workflow].force
+    }
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
@@ -195,17 +208,26 @@ with Stash {
     case msg @ AgentDriver.Output.EventFromAgent(Stamped(agentEventId, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
       val agentEntry = agentRegister(sender())
       import agentEntry.agentPath
-      if (orderRegister contains orderId) {
-        val ownEvent = event match {
-          case _: OrderEvent.OrderAttached ⇒ OrderEvent.OrderMovedToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-          case _ ⇒ event
-        }
-        persistAsync(KeyedEvent(ownEvent)(orderId))(handleOrderEvent)
-        persistAsync(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)) { e ⇒
-          agentEntry.lastAgentEventId = e.eventId
-        }
-      } else {
-        logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
+      orderRegister.get(orderId) match {
+        case None ⇒ logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
+        case Some(orderEntry) ⇒
+          val ownEvent = event match {
+            case _: OrderEvent.OrderAttached ⇒ OrderEvent.OrderMovedToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+            case _ ⇒ event
+          }
+          ownEvent match {
+            case OrderForked(children) ⇒
+              // Handle now, before being journaled, to be sure children have been registered before the child events arrive.
+              for (child ← children) {
+                val childOrder = orderEntry.order.newChild(child)
+                orderRegister.insert(childOrder.id → OrderEntry(childOrder))
+              }
+            case _ ⇒
+          }
+          persistAsync(KeyedEvent(ownEvent)(orderId))(handleOrderEvent)
+          persistAsync(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)) { e ⇒
+            agentEntry.lastAgentEventId = e.eventId
+          }
       }
 
     case AgentDriver.Output.OrdersDetached(orderIds) ⇒
@@ -278,6 +300,26 @@ with Stash {
         orderRegister.insert(order.id → OrderEntry(order))
         tryAttachOrderToAgent(order)
 
+      case event: OrderForked ⇒
+        val orderEntry = orderRegister(orderId)
+        // Child orders have been registed already, when event arrived from agent via AgentDriver.Output.EventFromAgent, see above
+        orderEntry.update(event)
+        proceedWithOrder(orderEntry)
+
+      case event: OrderJoined ⇒
+        val orderEntry = orderRegister(orderId)
+        orderEntry.order.state match {
+          case Order.Forked(childOrderIds) ⇒
+            for (childOrderId ← childOrderIds) {
+              orderRegister -= childOrderId
+            }
+          case state ⇒
+            logger.error(s"Event $event, but Order is in state $state")
+        }
+
+        orderEntry.update(event)
+        proceedWithOrder(orderEntry)
+
       case event: OrderEvent ⇒
         val orderEntry = orderRegister(orderId)
         orderEntry.update(event)
@@ -303,8 +345,8 @@ with Stash {
 
       case (None, Order.Processed) ⇒
         for (workflow ← pathToWorkflow.get(orderEntry.order.workflowPath);
-             event ← Transitions.switch(order.castState[Order.Processed.type], workflow)) {
-          persistAsync(KeyedEvent(event)(order.id))(handleOrderEvent)
+             keyedEvent ← Transitions.switch(order.castState[Order.Processed.type], workflow)) {
+          persistAsync(keyedEvent)(handleOrderEvent)
         }
 
       case (Some(_: Order.AttachedTo.Detachable), _) ⇒
