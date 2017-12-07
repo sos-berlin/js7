@@ -133,6 +133,11 @@ object Collections {
     }
   }
 
+  implicit class RichMap[K, V](val underlying: Map[K, V]) extends AnyVal {
+    def withNoSuchKey(keyToString: K ⇒ String): Map[K, V] =
+      underlying withDefault (k ⇒ throw new NoSuchElementException(keyToString(k)))
+  }
+
   // To satisfy IntelliJ IDEA 2016.2.5
   //implicit class RichVector(delegate: Vector.type) extends RichGenericCompanion[Vector](delegate)
 

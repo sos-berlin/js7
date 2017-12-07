@@ -183,6 +183,12 @@ final class CollectionsTest extends FreeSpec {
     assert((Iterator(0, 2, 3) compareElementWise Iterator(1, 2, 3)) < 0)
   }
 
+  "Map withNoSuchKey" in {
+    val m = Map(1 → "A") withNoSuchKey (key ⇒ s"NO SUCH KEY: $key")
+    assert(m(1) == "A")
+    assert(intercept[NoSuchElementException] { m(2) }.getMessage == "NO SUCH KEY: 2")
+  }
+
   "Vector.build" in {
     assert(Vector.build[Int] { builder ⇒ builder += 7} == Vector(7))
   }
