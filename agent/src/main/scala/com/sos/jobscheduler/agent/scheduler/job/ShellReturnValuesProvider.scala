@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration.FileEncoding
 import com.sos.jobscheduler.agent.scheduler.job.ShellReturnValuesProvider._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.nio.file.Files.createTempFile
 import java.nio.file.Path
 
@@ -21,7 +21,7 @@ final class ShellReturnValuesProvider {
     ReturnValuesFileEnvironmentVariableName → file.toString
 
   def variables: Map[String, String] =
-    autoClosing(scala.io.Source.fromFile(file)(Encoding)) { source ⇒
+    autoClosing(scala.io.Source.fromFile(file)(FileEncoding)) { source ⇒
       (source.getLines map lineToKeyValue).toMap
     }
 
@@ -29,7 +29,6 @@ final class ShellReturnValuesProvider {
 }
 
 object ShellReturnValuesProvider {
-  private val Encoding = ISO_8859_1
   private val ReturnValuesFileEnvironmentVariableName = "SCHEDULER_RETURN_VALUES"
   private val ReturnValuesRegex = "([^=]+)=(.*)".r
 

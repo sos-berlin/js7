@@ -26,7 +26,7 @@ import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JsonFileIterator, JsonJournalMeta}
-import com.sos.jobscheduler.tests.DirectoryProvider.jobXml
+import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.RecoveryIT._
 import java.nio.file.Path
 import java.time.Instant
@@ -177,26 +177,26 @@ private object RecoveryIT {
     OrderAdded(NodeKey(TestWorkflowPath, NodeId("100")), Scheduled(SomeTimestamp), Payload(Map())),
     OrderMovedToAgent(AgentPaths(0)),
     OrderProcessingStarted,
-    OrderStdoutWritten("TEST\n"),
+    OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-111")), Outcome.Good(true)),
     OrderTransitioned(NodeId("110")),
     OrderProcessingStarted,
-    OrderStdoutWritten("TEST\n"),
+    OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff.empty, Outcome.Good(true)),
     OrderTransitioned(NodeId("120")),
     OrderProcessingStarted,
-    OrderStdoutWritten("TEST\n"),
+    OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff.empty, Outcome.Good(true)),
     OrderDetachable,
     OrderMovedToMaster,
     OrderTransitioned(NodeId("200")),
     OrderMovedToAgent(AgentPaths(1)),
     OrderProcessingStarted,
-    OrderStdoutWritten("TEST\n"),
+    OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-VALUE-agent-222")), Outcome.Good(true)),
     OrderTransitioned(NodeId("210")),
     OrderProcessingStarted,
-    OrderStdoutWritten("TEST\n"),
+    OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
     OrderDetachable,
     OrderMovedToMaster,

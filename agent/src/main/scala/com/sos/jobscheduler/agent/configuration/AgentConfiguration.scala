@@ -18,6 +18,7 @@ import com.sos.jobscheduler.common.process.Processes.ShellFileExtension
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.{EmptyPath, WorkingDirectory}
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
+import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.common.utils.JavaResource
@@ -25,6 +26,7 @@ import com.sos.jobscheduler.taskserver.data.DotnetConfiguration
 import com.sos.jobscheduler.taskserver.task.process.ProcessKillScriptProvider
 import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Files, Path, Paths}
 import java.time.Duration
@@ -156,6 +158,7 @@ final case class AgentConfiguration(
 }
 
 object AgentConfiguration {
+  val FileEncoding = if (isWindows) ISO_8859_1 else UTF_8
   val InvalidAuthenticationDelay = 1.s
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
   lazy val DefaultsConfig = Configs.loadResource(

@@ -88,6 +88,7 @@ extends HasCloser with Task {
       else (Some(agentTaskId), killScriptOption)  // No idString if this is an own process (due to a monitor), already started with idString
     val processConfiguration = ProcessConfiguration(
       processStdFileMap,
+      encoding = Encoding,
       additionalEnvironment = env,
       agentTaskIdOption = agentTaskIdOption,
       killScriptOption = killScriptFileOption)

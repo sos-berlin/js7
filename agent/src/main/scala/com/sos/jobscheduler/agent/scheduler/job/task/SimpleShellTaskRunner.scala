@@ -101,6 +101,7 @@ extends TaskRunner {
       }
       val processConfiguration = ProcessConfiguration(
         stdFileMap = Map(),
+        encoding = AgentConfiguration.FileEncoding,
         additionalEnvironment = env,
         agentTaskIdOption = Some(agentTaskId),
         killScriptOption = agentConfiguration.killScript)

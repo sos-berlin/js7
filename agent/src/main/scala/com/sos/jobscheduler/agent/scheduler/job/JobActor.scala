@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 
 import akka.actor.{Actor, DeadLetterSuppression, Props, Stash}
 import akka.pattern.pipe
+import com.sos.jobscheduler.agent.configuration.AgentConfiguration.FileEncoding
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobActor._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner, TaskStepEnded, TaskStepFailed}
@@ -19,7 +20,6 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.order.Outcome.Bad
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.JobPath
-import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration.Encoding
 import com.sos.jobscheduler.taskserver.task.process.RichProcess.tryDeleteFile
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import java.io.{FileOutputStream, OutputStreamWriter}
@@ -42,7 +42,7 @@ extends Actor with Stash {
   private var jobConfiguration: JobConfiguration = null
   private lazy val filePool = new FilePool(jobConfiguration)
   private lazy val shellFile = newTemporaryShellFile(jobConfiguration.path.name) sideEffect { file ⇒
-    autoClosing(new OutputStreamWriter(new FileOutputStream(file), Encoding)) { w ⇒
+    autoClosing(new OutputStreamWriter(new FileOutputStream(file), FileEncoding)) { w ⇒
       val content = jobConfiguration.script.string.trim
       if (content.nonEmpty) {
         w.write(jobConfiguration.script.string.trim)

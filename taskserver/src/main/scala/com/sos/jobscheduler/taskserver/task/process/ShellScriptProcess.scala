@@ -37,7 +37,7 @@ object ShellScriptProcess {
   : ShellScriptProcess = {
     val shellFile = newTemporaryShellFile(name)
     try {
-      shellFile.write(scriptString, Encoding)
+      shellFile.write(scriptString, processConfiguration.encoding)
       val process = startProcessBuilder(processConfiguration, shellFile, arguments = Nil) { _.startRobustly() }
       new ShellScriptProcess(processConfiguration, process, shellFile, argumentsForLogging = shellFile.toString :: Nil) {
         override val terminated = promiseFuture[ReturnCode] { p ⇒
@@ -64,8 +64,8 @@ object ShellScriptProcess {
     processBuilder.environment.putAll(processConfiguration.additionalEnvironment.asJava)
     val process = processBuilder.startRobustly()
     import stdChannels.{charBufferSize, stderrWriter, stdoutWriter}
-    val stdoutCompleted = readerTo(new InputStreamReader(process.getInputStream, Encoding), charBufferSize, stdoutWriter)
-    val stderrCompleted = readerTo(new InputStreamReader(process.getErrorStream, Encoding), charBufferSize, stderrWriter)
+    val stdoutCompleted = readerTo(new InputStreamReader(process.getInputStream, processConfiguration.encoding), charBufferSize, stdoutWriter)
+    val stderrCompleted = readerTo(new InputStreamReader(process.getErrorStream, processConfiguration.encoding), charBufferSize, stderrWriter)
 
     new ShellScriptProcess(processConfiguration, process, shellFile, argumentsForLogging = shellFile.toString :: Nil) {
       override def terminated = for {
