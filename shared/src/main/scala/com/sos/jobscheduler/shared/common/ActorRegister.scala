@@ -46,8 +46,11 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
     }
   }
 
-  final def apply(jobPath: K): V =
-    keyToValue(jobPath)
+  final def apply(key: K): V =
+    keyToValue(key)
+
+  final def apply(actorRef: ActorRef): V =
+    keyToValue(_actorToKey(actorRef))
 
   final def get(jobPath: K): Option[V] =
     keyToValue.get(jobPath)
@@ -68,9 +71,6 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
 
   final def contains(actorRef: ActorRef): Boolean =
     _actorToKey isDefinedAt actorRef
-
-  final def apply(actorRef: ActorRef): V =
-    keyToValue(_actorToKey(actorRef))
 
   override def toString = s"ActorRegister(${keyToValue.size} items)"
 
