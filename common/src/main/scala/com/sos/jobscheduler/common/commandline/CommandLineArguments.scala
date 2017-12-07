@@ -19,6 +19,7 @@ with ConvertibleMultiPartialFunction[String, String] {
     arguments(key) match {
       case Vector() ⇒ default
       case Vector(Switch(_, value)) ⇒ value
+      case Vector(Switch(_, _), Switch(_, value)) ⇒ value  // First switch is overriden by second switch
       case _ ⇒ throw new IllegalArgumentException(s"Multiple command line options '$key'")
     }
 

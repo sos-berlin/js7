@@ -18,6 +18,11 @@ final class CommandLineArgumentsTest extends FreeSpec {
       assert(parse(Nil) { _.boolean("-option", true) })
     }
 
+    "Second switch overrides first with same name" in {
+      assert(parse(Array("-option", "-option")) { _.boolean("-option") })
+      assert(parse(Array("-option-", "-option")) { _.boolean("-option") })
+    }
+
     "false" in {
       assert(!parse(Array("-option-")) { _.boolean("-option") })
     }
@@ -41,7 +46,7 @@ final class CommandLineArgumentsTest extends FreeSpec {
 
     "Multiple boolean option" in {
       intercept[IllegalArgumentException] {
-        parse(Array("-option", "-option")) { a ⇒
+        parse(Array("-option", "-option", "-option")) { a ⇒
           a.boolean("-option")
         }
       }
