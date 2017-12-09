@@ -28,7 +28,6 @@
   */
 import BuildUtils._
 import java.nio.file.Paths
-import java.util.UUID
 import sbt.Keys.testOptions
 import sbt.librarymanagement.DependencyFilter.artifactFilter
 import sbt.{CrossVersion, Def}
@@ -54,12 +53,12 @@ addCommandAlias("TestMasterAgent", "master/runMain com.sos.jobscheduler.master.t
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 
-val publishSettings = List(
+val publishSettings = Seq(
   publishArtifact in (Compile, packageDoc) := false,
   credentials ++= publishRepositoryCredentialsFile map (o ⇒ Credentials(o)),
   publishTo := publishRepositoryUri map (uri ⇒ publishRepositoryName getOrElse uri at uri))
 
-val commonSettings = List(
+val commonSettings = Seq(
   organization := "com.sos-berlin.jobscheduler.engine2",
   organizationName := "SOS Berlin",
   organizationHomepage := Some(url("https://www.sos-berlin.com")),
@@ -73,12 +72,14 @@ val commonSettings = List(
     </developers>,
   scalaVersion := Dependencies.scalaVersion,
   addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
-  javacOptions in Compile ++= List("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
-  javacOptions in (Compile, compile) ++= List("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
+  javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
+  javacOptions in (Compile, compile) ++= Seq("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   javaOptions in ForkedTest += s"-Dlog4j.configurationFile=../project/log4j2.xml",  // TODO Is there a SettingKey for project directory???
+  dependencyOverrides += Dependencies.guava, // Our Guava version should be okay
+  dependencyOverrides ++= Seq(Dependencies.akkaActor, Dependencies.akkaStream), // akka-http requests a slightly older version of Akka
   logBuffered in Test := false,
-  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFG"),  // D: Durations, F: Print full stack strace
-  testOptions in ForkedTest += Tests.Argument(TestFrameworks.ScalaTest, "-oFG"),  // D: Durations, F: Print full stack strace
+  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQ"),       // D: Durations, F: Print full stack strace, http://www.scalatest.org/user_guide/using_scalatest_with_sbt
+  testOptions in ForkedTest += Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQ"),  // D: Durations, F: Print full stack strace, http://www.scalatest.org/user_guide/using_scalatest_with_sbt
   logBuffered in Test := false,  // Recommended for ScalaTest
   testForkedParallel in Test := fastSbt,  // Experimental in sbt 0.13.13
   sources in (Compile, doc) := Nil, // No ScalaDoc
@@ -88,9 +89,9 @@ val commonSettings = List(
   credentials += publishRepositoryCredentialsFile map (o ⇒ Credentials(o)),
   publishTo := publishRepositoryUri map (uri ⇒ publishRepositoryName getOrElse uri at uri))
 
-val universalPluginSettings = List(
+val universalPluginSettings = Seq(
   universalArchiveOptions in (Universal, packageZipTarball) :=
-    List("--force-local") .filter { _ ⇒ !isMac } ++
+    Seq("--force-local") .filter { _ ⇒ !isMac } ++
       (universalArchiveOptions in (Universal, packageZipTarball)).value)  // Under cygwin, tar shall not interpret C:
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
@@ -236,7 +237,7 @@ lazy val master = project.dependsOn(masterDataJVM, shared, common, `agent-client
   .settings(commonSettings)
   // Provide master-gui JavaScript code as resources placed in master-gui package
   .settings(
-    resources in Compile ++= List(
+    resources in Compile ++= Seq(
       new File((scalaJSLinkedFile in Compile in `master-gui`).value.path),            // master-gui-fastopt.js or master-gui-opt.js
       new File((scalaJSLinkedFile in Compile in `master-gui`).value.path + ".map"),   // master-gui-...opt.js.map
       (packageMinifiedJSDependencies in Compile in `master-gui`).value),              // master-gui-...opt-jsdeps.min.js
@@ -258,7 +259,8 @@ lazy val master = project.dependsOn(masterDataJVM, shared, common, `agent-client
     mappings in (Compile, packageBin) := {  // All assets from master-gui/$masterGuiPath: index.html, .css, .ico etc.
       val m = recursiveFileMapping((classDirectory in Compile in `master-gui`).value / masterGuiPath, to = masterGuiPath).toMap
       ((mappings in (Compile, packageBin)).value filterNot { case (file, _) ⇒ m contains file }) ++ m
-    })
+    },
+    mappings in (Compile, packageDoc) := Seq())
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -277,7 +279,7 @@ lazy val `master-data` = crossProject
   .settings(
     libraryDependencies ++= {
       import Dependencies._
-      List(
+      Seq(
         "org.scalatest" %%% "scalatest" % scalaTestVersion % "test",
         "io.circe" %%% "circe-core" % circeVersion,
         "io.circe" %%% "circe-parser" % circeVersion,
@@ -297,7 +299,7 @@ lazy val `master-gui` = project
     scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
     libraryDependencies ++= {
       import Dependencies._
-      List(
+      Seq(
         "org.scala-js" %%% "scalajs-dom" % "0.9.1",
         "com.github.japgolly.scalajs-react" %%% "core" % "1.1.1",
         "com.github.japgolly.scalajs-react" %%% "ext-monocle" % "1.1.1",
@@ -310,7 +312,7 @@ lazy val `master-gui` = project
         "io.circe" %%% "circe-parser" % circeVersion,
         "io.circe" %%% "circe-generic" % circeVersion)
     },
-    jsDependencies ++= List(
+    jsDependencies ++= Seq(
       "org.webjars.bower" % "jquery" % "3.2.1"           / "dist/jquery.js" minified "dist/jquery.min.js",
       "org.webjars"       % "materializecss" % "0.100.2" / "materialize.js" minified "materialize.min.js" dependsOn "dist/jquery.js",
       "org.webjars.bower" % "react" % "15.6.1"     / "react-with-addons.js" minified "react-with-addons.min.js" commonJSName "React",
@@ -617,7 +619,7 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`)
   }
 
 lazy val ForkedTest = config("ForkedTest") extend Test
-lazy val forkedSettings = inConfig(ForkedTest)(Defaults.testTasks) ++ List(
+lazy val forkedSettings = inConfig(ForkedTest)(Defaults.testTasks) ++ Seq(
   testOptions in ForkedTest := Seq(Tests.Filter(isIT)),
   fork in ForkedTest := true,
   testOptions in Test := Seq(Tests.Filter(name ⇒ !isIT(name))))
