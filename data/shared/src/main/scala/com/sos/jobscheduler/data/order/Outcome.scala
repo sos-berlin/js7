@@ -35,8 +35,8 @@ object Outcome {
     sealed trait Reason {
       def message: String
     }
-    final case object AgentAborted extends Reason {
-      def message = "Agent aborted while order was InProcess"
+    final case object AgentRestarted extends Reason {
+      def message = "Agent has been restarted while order was processed"
     }
 
     @JsonCodec
@@ -44,7 +44,7 @@ object Outcome {
 
     object Reason {
       implicit val JsonCodec = TypedJsonCodec[Reason](
-        Subtype(AgentAborted),
+        Subtype(AgentRestarted),
         Subtype[Other])
     }
   }

@@ -13,7 +13,7 @@ final class OutcomeTest extends FreeSpec {
     assert(!Outcome.Good(returnValue = false).isSuccess)
     assert(!Outcome.Bad(Outcome.Bad.Other("error")).isSuccess)
     assert(Outcome.Bad(Outcome.Bad.Other("error")) == Outcome.Bad("error"))
-    assert(!Outcome.Bad(Outcome.Bad.AgentAborted).isSuccess)
+    assert(!Outcome.Bad(Outcome.Bad.AgentRestarted).isSuccess)
   }
 
   "JSON" - {
@@ -25,10 +25,10 @@ final class OutcomeTest extends FreeSpec {
     }
 
     "Bad(AgenAborted)" in {
-      testJson[Outcome](Outcome.Bad(Outcome.Bad.AgentAborted),"""{
+      testJson[Outcome](Outcome.Bad(Outcome.Bad.AgentRestarted),"""{
         "TYPE": "Bad",
         "reason": {
-          "TYPE": "AgentAborted"
+          "TYPE": "AgentRestarted"
         }
       }""")
     }

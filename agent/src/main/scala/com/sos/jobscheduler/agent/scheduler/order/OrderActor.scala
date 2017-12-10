@@ -281,7 +281,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
 private[order] object OrderActor {
   private val StdPipeCharBufferSize = 500  // Even a size of 1 character is not slow
-  val RecoveryGeneratedOutcome = Outcome.Bad(Outcome.Bad.AgentAborted)
+  val RecoveryGeneratedOutcome = Outcome.Bad(Outcome.Bad.AgentRestarted)
 
   sealed trait Command
   object Command {

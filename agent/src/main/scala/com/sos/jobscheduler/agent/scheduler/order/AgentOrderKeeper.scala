@@ -27,7 +27,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderForked, OrderJoined, OrderProcessed}
-import com.sos.jobscheduler.data.order.Outcome.Bad.AgentAborted
+import com.sos.jobscheduler.data.order.Outcome.Bad.AgentRestarted
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Workflow.EndNode
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
@@ -388,7 +388,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private def handleProcessed(orderEntry: OrderEntry): Unit = {
     val order = orderEntry.order.castState[Order.Processed.type]
     order.outcome match {
-      case Outcome.Bad(AgentAborted) ⇒
+      case Outcome.Bad(AgentRestarted) ⇒
         orderEntry.actor ! OrderActor.Input.HandleTransitionEvent(OrderEvent.OrderMoved(order.nodeId))  // Repeat
 
       case _ ⇒

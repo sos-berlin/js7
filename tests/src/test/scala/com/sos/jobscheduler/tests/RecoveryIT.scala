@@ -208,7 +208,7 @@ private object RecoveryIT {
     val result = mutable.Buffer[OrderEvent]()
     while (events.hasNext) {
       events.next() match {
-        case OrderProcessed(_, Outcome.Bad(Outcome.Bad.AgentAborted)) ⇒
+        case OrderProcessed(_, Outcome.Bad(Outcome.Bad.AgentRestarted)) ⇒
           while (result.last != OrderEvent.OrderProcessingStarted) {
             result.remove(result.size - 1)
           }
