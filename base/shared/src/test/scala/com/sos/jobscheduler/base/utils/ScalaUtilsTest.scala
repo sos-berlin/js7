@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.lang.model.SourceVersion
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.util.control.NoStackTrace
 
@@ -151,6 +150,26 @@ final class ScalaUtilsTest extends FreeSpec {
     assert(x == 0)
     pf.callIfDefined(1)
     assert(x == 1)
+  }
+
+  "PartialFunction map" in {
+    case class A(string: String)
+    val pf: PartialFunction[Int, A] = {
+      case 1 ⇒ A("one")
+    }
+
+    assert(pf(1) == A("one"))
+    assert(pf.isDefinedAt(1))
+    assert(!pf.isDefinedAt(2))
+    assert(pf.applyOrElse(1, (i: Int) ⇒ A(s"else $i")) == A("one"))
+    assert(pf.applyOrElse(2, (i: Int) ⇒ A(s"else $i")) == A("else 2"))
+
+    val mappedPf = pf map (_.string)
+    assert(mappedPf(1) == "one")
+    assert(mappedPf.isDefinedAt(1))
+    assert(!mappedPf.isDefinedAt(2))
+    assert(mappedPf.applyOrElse(1, (i: Int) ⇒ s"else $i") == "one")
+    assert(mappedPf.applyOrElse(2, (i: Int) ⇒ s"else $i") == "else 2")
   }
 
   "Either.toImmediateFuture" in {

@@ -123,8 +123,16 @@ object ScalaUtils {
     def switchOff(body: ⇒ Unit) = if (delegate.compareAndSet(true, false)) body
   }
 
-  implicit class RichPartialFunction[A, B](val delegate: PartialFunction[A, B]) extends AnyVal {
-    def getOrElse[BB >: B](key: A, default: ⇒ BB): BB = delegate.applyOrElse(key, (_: A) ⇒ default)
+  implicit class RichPartialFunction[A, B](val underlying: PartialFunction[A, B]) extends AnyVal {
+    def getOrElse[BB >: B](key: A, default: ⇒ BB): BB = underlying.applyOrElse(key, (_: A) ⇒ default)
+
+    /** applyOrElse calls isDefined, not optimized. */
+    def map[C](f: B ⇒ C): PartialFunction[A, C] = mapPartialFunction(f)
+
+    /** applyOrElse calls isDefined, not optimized. */
+    def mapPartialFunction[C](f: B ⇒ C): PartialFunction[A, C] = {
+      case o if underlying.isDefinedAt(o) ⇒ f(underlying(o))
+    }
   }
 
   implicit class RichUnitPartialFunction[A](val delegate: PartialFunction[A, Unit]) extends AnyVal {
