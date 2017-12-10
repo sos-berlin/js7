@@ -32,10 +32,11 @@ final case class OrdersState(
 }
 
 object OrdersState {
-  val Empty = OrdersState(StillFetchingContent, step = 0, error = None)
+  val Empty = OrdersState(Initial, step = 0, error = None)
   sealed trait Content
 
-  object StillFetchingContent extends Content
+  object Initial extends Content
+  object FetchingContent extends Content
 
   final case class FetchedContent(
     idToOrder: Map[OrderId, Entry],

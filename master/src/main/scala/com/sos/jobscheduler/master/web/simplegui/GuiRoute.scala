@@ -26,9 +26,11 @@ trait GuiRoute extends WebjarsRoute {
   final def indexHtmlRoute =
     get {
       conditional(EntityTag(BuildInfo.buildId)) {
-        complete {
-          // Do not cache because index.html includes build UUID.
-          HttpEntity(`text/html` withCharset `UTF-8`, IndexHtml)
+        respondWithHeader(`Cache-Control`(`max-age`(0))) {  // This allows Firefox and Safari (but not Chrome) to use the cache when hitting the back button - for good user experience.
+          // A simple page reload must fetch a fresh copy of index.html to get the up-to-date buildId matching the API's buildId
+          complete {
+            HttpEntity(`text/html` withCharset `UTF-8`, IndexHtml)
+          }
         }
       }
     }

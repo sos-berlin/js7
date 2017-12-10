@@ -105,7 +105,7 @@ object MasterApi {
   sealed trait Error
 
   final case class HostUnreachable(reason: String) extends Error {
-    override def toString = s"⚠️ JobScheduler Master is not reachable — $reason".trim stripSuffix " —"
+    override def toString = s"⚠️ JobScheduler Master was not reachable — $reason".trim stripSuffix " —"
   }
 
   final case class OtherError(reason: String) extends Error {

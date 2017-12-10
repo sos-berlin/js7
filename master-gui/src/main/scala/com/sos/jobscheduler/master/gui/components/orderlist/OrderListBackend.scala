@@ -26,9 +26,12 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
   def render(state: OrdersState): VdomElement =
     render2(state)
 
-  private def render2(state: OrdersState) =
+  private def render2(state: OrdersState): VdomElement =
     state.content match {
-      case StillFetchingContent ⇒
+      case Initial ⇒
+        <.div()
+
+      case FetchingContent ⇒
         <.div(<.i("Fetching orders..."))
 
       case FetchedContent(idToOrder, sequence, _, _) ⇒
@@ -37,7 +40,7 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
             s"${idToOrder.size} orders",
             state.error map (err ⇒ VdomArray(" – ", <.span(^.cls := "error")(s"$err"))) getOrElse ""),
           <.table(^.cls := "bordered")(
-            theadHtml,
+            theadVdom,
               <.tbody(
                 sequence.map(idToOrder).toVdomArray(entry ⇒
                   OrderTr.withKey(entry.id.string)(entry)))))
@@ -49,15 +52,14 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
     .render_P {
       case OrdersState.Entry(order, output, isUpdated) ⇒
         val cls = orderToRowClass(order)
-        val hideOnPhone = s"$cls hide-on-phone"
         <.tr(
-          <.td(^.cls := cls)(order.id),
-          <.td(^.cls := hideOnPhone)(order.nodeKey.workflowPath),
-          <.td(^.cls := cls)(order.nodeKey.nodeId),
-          <.td(^.cls := cls)(order.outcome),
-          <.td(^.cls := hideOnPhone)(order.attachedTo),
-          <.td(^.cls := cls)(order.state),
-          <.td(^.cls := hideOnPhone)(output))
+          <.td(^.cls := s"order-td-left $cls")(order.id),
+          <.td(^.cls := s"order-td hide-on-phone $cls")(order.nodeKey.workflowPath),
+          <.td(^.cls := s"order-td $cls")(order.nodeKey.nodeId),
+          <.td(^.cls := s"order-td $cls")(order.outcome),
+          <.td(^.cls := s"order-td hide-on-phone $cls")(order.attachedTo),
+          <.td(^.cls := s"order-td $cls")(order.state),
+          <.td(^.cls := s"order-td-right hide-on-phone $cls")(output))
         .ref { tr ⇒
           if (isUpdated) highligtTrs += tr
         }
@@ -67,10 +69,10 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
 
   private def orderToRowClass(order: Order[Order.State]): String =
     order.state match {
-      case _: Order.NotStarted ⇒ "orderTd Order-NotStarted"
-      case Order.InProcess ⇒ "orderTd Order-InProcess"
-      case Order.Finished ⇒ "orderTd Order-Finished"
-      case _ ⇒ "orderTd"
+      case _: Order.NotStarted ⇒ "Order-NotStarted"
+      case Order.InProcess ⇒ "Order-InProcess"
+      case Order.Finished ⇒ "Order-Finished"
+      case _ ⇒ ""
     }
 
   private def highlightChangedRows(): Callback = {
@@ -90,15 +92,15 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
 }
 
 object OrderListBackend {
-  private val theadHtml =
+  private val theadVdom =
     <.thead(<.tr(
-      <.th(^.width := 10.ex)("OrderId"),
-      <.th(^.width := 10.ex, ^.cls := "hide-on-phone")("Workflow"),
-      <.th(^.width := 10.ex)("Node"),
-      <.th(^.width := 15.ex)("Outcome"),
+      <.th(^.width := 10.ex, ^.cls := "order-td-left")("OrderId"),
+      <.th(^.width := 10.ex, ^.cls := "order-td hide-on-phone")("Workflow"),
+      <.th(^.width := 10.ex, ^.cls := "order-td")("Node"),
+      <.th(^.width := 15.ex, ^.cls := "order-td")("Outcome"),
       <.th(^.width := 15.ex, ^.cls := "hide-on-phone")("AttachedTo"),
-      <.th(^.width := 15.ex)("State"),
-      <.th(^.width := 15.ex, ^.cls := "hide-on-phone")("Last output")))
+      <.th(^.width := 15.ex, ^.cls := "order-td")("State"),
+      <.th(^.width := 15.ex, ^.cls := "order-td-right hide-on-phone")("Last output")))
 
   private val ClassRegex = """\b(orderTr-enter|orderTr-enter-active)\b|^ *| *$""".r
 

@@ -20,25 +20,33 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
         SideBarComponent()),
       //HtmlTag("main"),
       //<.div(^.cls := "section", ^.id :="index-banner"),
-      centerHtml)
+      centerVdom)
   }
 
-  private def centerHtml =
+  private def centerVdom =
     <.div(^.cls := "container")(
       <.div(^.cls := "row")(
         <.div(^.cls := "col s12")(
-          topLineHtml,
-          OrderListComponent(state.ordersState))))
+          topLineVdom,
+          state.overview match {
+            case None ⇒ <.div()
+            case Some(Left(error)) ⇒ <.p(^.fontSize := 20.px)(error.toString)
+            case Some(Right(_)) ⇒ OrderListComponent(state.ordersState)
+          })))
 
-  private def topLineHtml = {
-    val longVersion = ofOverview(_.version, "…")
-    val Array(version, versionExt) = (longVersion + " ").split(" ", 2)
+  private def topLineVdom = {
     val left =
       <.td(^.cls := "top-left")(
         <.span(^.cls := "top-left-segment")(
           "JobScheduler Master ",
-          <.span(^.cls := "hide-on-phone")(version),
-          <.span(^.cls := "hide-on-mobile unimportant")(s" $versionExt") when versionExt.nonEmpty),
+          ofOverview(_.version) match {
+            case Left(error) ⇒ error
+            case Right(longVersion) ⇒
+              val Array(version, versionExt) = (longVersion + " ").split(" ", 2)
+              TagMod(
+                <.span(^.cls := "hide-on-phone")(version),
+                <.span(^.cls := "hide-on-mobile unimportant")(s" $versionExt") when versionExt.nonEmpty)
+          }),
         <.span(^.cls := "hide-on-phone top-left-segment experimental-monitor")(
           "EXPERIMENTAL MONITOR"))
 
@@ -53,16 +61,18 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
           else
             <.span(^.cls := "disconnected")("⚠️ disconnected")),
         state.ordersState.content match {
+          case OrdersState.Initial ⇒
+            ""
+          case OrdersState.FetchingContent ⇒
+            <.span(^.cls := "top-right-segment")(
+              "...")
           case OrdersState.FetchedContent(_, _, eventId, eventCount) ⇒
             val (dt, millis) = EventId.toTimestamp(eventId).toLocaleIsoStringWithoutOffset splitAt 19
             VdomArray(
               <.span(^.cls := "top-right-segment unimportant")(s"$eventCount events"),
               <.span(^.cls := "top-right-segment")(
                 <.span(^.cls := "nowrap")(dt.replace("T", " ")),
-                <.span(^.cls := "nowrap unimportant")(s"$millis")))
-          case OrdersState.StillFetchingContent ⇒
-            <.span(^.cls := "top-right-segment")(
-              "fetching...")
+                <.span(^.cls := "nowrap hide-on-mobile unimportant")(s"$millis")))
         })
 
     <.table(^.cls := "page-top-line")(
@@ -70,16 +80,17 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
         <.tr(left, right)))
   }
 
-  private def ofOverview[A](f: MasterOverview ⇒ A, default: A) =
+  private def ofOverview[A](f: MasterOverview ⇒ A): Either[TagMod, A] =
     state.overview match {
-      case Some(Right(o)) ⇒ f(o)
-      case _ ⇒ default
+      case Some(Right(o)) ⇒ Right(f(o))
+      case Some(Left(t)) ⇒ Left(<.span(^.title := t.toString)("️⚠️"))
+      case None ⇒ Left("...")
     }
 }
 
 
 object GuiRenderer {
-  private def menuClickHtml =
+  private def menuClickVdom =
     <.div(^.cls := "container")(
       <.a(^.href := "#", VdomAttr("data-activates") := "nav-mobile", ^.cls := "button-collapse top-nav waves-effect waves-light circle hide-on-large-only")(
         <.i(^.cls := "material-icons")("menu")))

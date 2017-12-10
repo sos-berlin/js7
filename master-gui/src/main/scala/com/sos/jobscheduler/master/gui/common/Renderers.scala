@@ -18,7 +18,7 @@ object Renderers {
   implicit def toTagMod[A: ToTagMod](a: A): TagMod =
     implicitly[ToTagMod[A]].toTagMod(a)
 
-  implicit val OrderStateHtml = ToTagMod.toTagMod[Order.State] {
+  implicit val OrderStateVdom = ToTagMod.toTagMod[Order.State] {
     case Order.Scheduled(at) ⇒ Array[TagMod](
       <.span(^.cls := "hide-on-phone")("Scheduled for "),
       at.toReadableLocaleIsoString).toTagMod
@@ -26,15 +26,11 @@ object Renderers {
     case o ⇒ o.toString
   }
 
-  implicit val OrderStateAttachedToToHtml = ToTagMod.toTagMod[Option[Order.AttachedTo]] {
+  implicit val OrderStateAttachedToToTagMod = ToTagMod.toTagMod[Option[Order.AttachedTo]] {
     case None ⇒ "—"
     case Some(Order.AttachedTo.Agent(agentPath)) ⇒ agentPath.string
     case Some(Order.AttachedTo.Detachable(agentPath)) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentPath.string)
   }
 
-  implicit val OutcomeHtml = ToTagMod.toTagMod[Outcome] {
-    //case Outcome.Good(true) ⇒ "✔"
-    case Outcome.Good(o) ⇒ o.toString
-    case o ⇒ o.toString
-  }
+  implicit val OutcomeVdom = ToTagMod.toTagMod[Outcome](_.toString)
 }

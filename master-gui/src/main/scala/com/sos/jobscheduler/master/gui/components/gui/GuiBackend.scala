@@ -123,7 +123,7 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
 
               case Right(EventSeq.Torn) ⇒
                 dom.console.warn("EventSeq.Torn")
-                requestOrders().delay(TornDelay).void
+                requestOrders().delay(TornDelay).void  // Request all orders
             }
       }
 
