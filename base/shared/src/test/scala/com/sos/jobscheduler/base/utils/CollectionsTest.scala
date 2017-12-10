@@ -184,7 +184,7 @@ final class CollectionsTest extends FreeSpec {
   }
 
   "Map withNoSuchKey" in {
-    val m = Map(1 → "A") withNoSuchKey (key ⇒ s"NO SUCH KEY: $key")
+    val m = Map(1 → "A") withNoSuchKey (key ⇒ new NoSuchElementException(s"NO SUCH KEY: $key"))
     assert(m(1) == "A")
     assert(intercept[NoSuchElementException] { m(2) }.getMessage == "NO SUCH KEY: 2")
   }

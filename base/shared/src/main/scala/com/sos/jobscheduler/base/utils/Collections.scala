@@ -63,13 +63,17 @@ object Collections {
       def requireUniqueness: Traversable[A] =
         requireUniqueness(identity[A])
 
-      def requireUniqueness[K](key: A ⇒ K): Traversable[A] = {
+      def requireUniqueness[K](key: A ⇒ K): Traversable[A] =
+        ifNotUniqueThrow[K](key, keys ⇒ new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
+
+      def ifNotUniqueThrow[K](key: A ⇒ K, toException: Iterable[K] ⇒ Exception): Traversable[A] =
+        ifNotUnique[K, A](key, keys ⇒ throw toException(keys))
+
+      def ifNotUnique[K, B >: A](key: A ⇒ K, then_ : Iterable[K] ⇒ Traversable[B]): Traversable[B] =
         duplicateKeys(key) match {
-          case o if o.nonEmpty ⇒ throw new DuplicateKeyException(s"Unexpected duplicates: ${o.keys mkString ", "}")
-          case _ ⇒
+          case o if o.nonEmpty ⇒ then_(o.keys)
+          case _ ⇒ delegate
         }
-        delegate
-      }
 
       def duplicates: Traversable[A] =
         delegate groupBy identity collect { case (k, v) if v.size > 1 ⇒ k }
@@ -106,6 +110,11 @@ object Collections {
         delegate.toMap
       }
 
+      def uniqueToMap(ifNot: Iterable[A] ⇒ Exception) = {
+        delegate.ifNotUniqueThrow(_._1, ifNot)
+        delegate.toMap
+      }
+
       def toSeqMultiMap: Map[A, immutable.Seq[B]] =
         delegate groupBy { _._1 } map { case (key, seq) ⇒ key → (seq map { _._2 }).toImmutableSeq }
     }
@@ -134,8 +143,8 @@ object Collections {
   }
 
   implicit class RichMap[K, V](val underlying: Map[K, V]) extends AnyVal {
-    def withNoSuchKey(keyToString: K ⇒ String): Map[K, V] =
-      underlying withDefault (k ⇒ throw new NoSuchElementException(keyToString(k)))
+    def withNoSuchKey(keyToThrowable: K ⇒ Throwable): Map[K, V] =
+      underlying withDefault (k ⇒ throw keyToThrowable(k))
   }
 
   // To satisfy IntelliJ IDEA 2016.2.5
