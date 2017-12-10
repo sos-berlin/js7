@@ -69,5 +69,5 @@ extends AutoCloseable {
 
 object EventFetcher {
   private val logger = Logger(getClass)
-  private val EventTimeout = 60.s
+  private val EventTimeout = 50.s
 }
