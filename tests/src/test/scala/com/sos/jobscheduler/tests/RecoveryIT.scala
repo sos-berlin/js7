@@ -3,7 +3,7 @@ package com.sos.jobscheduler.tests
 import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentEvent}
+import com.sos.jobscheduler.agent.scheduler.AgentEvent
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichThrowable}
 import com.sos.jobscheduler.common.auth.UserId
@@ -25,12 +25,11 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.{JsonFileIterator, JsonJournalMeta}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonFileIterator, JsonJournalMeta}
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.RecoveryIT._
 import java.nio.file.Path
 import java.time.Instant
-import java.util.zip.GZIPInputStream
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
@@ -130,10 +129,10 @@ final class RecoveryIT extends FreeSpec {
   }
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
-    import AgentActor.MyJournalMeta.eventJsonCodec
-    autoClosing(new JsonFileIterator(JsonJournalMeta.Header, in ⇒ new GZIPInputStream(in), journalFile)) {
+    val conversion = new GzipCompression {}
+    autoClosing(new JsonFileIterator(JsonJournalMeta.Header, in ⇒ conversion.convertInputStream(in, journalFile), journalFile)) {
       _.toVector collect {
-        case o if eventJsonCodec.canDeserialize(o) ⇒
+        case o if AgentEvent.KeyedEventJsonCodec.canDeserialize(o) ⇒
           o.as[Stamped[KeyedEvent[AgentEvent]]].force
       }
     }

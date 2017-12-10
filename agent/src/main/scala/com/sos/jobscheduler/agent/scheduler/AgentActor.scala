@@ -46,9 +46,11 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
+  private val journalMeta = JsonJournalMeta.gzipped(AgentSnapshot.JsonCodec, AgentEvent.KeyedEventJsonCodec,
+    compressWithGzip = agentConfiguration.config.getBoolean("jobscheduler.agent.journal.gzip"))
   private val journalFile = stateDirectory / "journal"
   protected val journalActor = actorOf(
-    Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
+    Props { new JsonJournalActor(journalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
   private val jobKeeper = {
     val taskRegister = new TaskRegister(actorOf(TaskRegisterActor.props(agentConfiguration, timerService), "TaskRegister"))
@@ -72,7 +74,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   private class MyJournalRecoverer extends JsonJournalRecoverer[AgentEvent] {
     protected val sender = AgentActor.this.sender()
-    protected val jsonJournalMeta = MyJournalMeta
+    protected val jsonJournalMeta = journalMeta
     protected val journalFile = AgentActor.this.journalFile
 
     protected def isDeletedEvent = Set()
@@ -234,8 +236,6 @@ object AgentActor {
   object Output {
     case object Ready
   }
-
-  val MyJournalMeta = new JsonJournalMeta(AgentSnapshot.JsonCodec, AgentEvent.KeyedEventJsonCodec) with GzipCompression
 
   private final class MasterRegister extends ActorRegister[UserId, ActorRef](identity) {
     override def onUnknownKey(userId: UserId) =

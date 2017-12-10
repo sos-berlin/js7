@@ -23,7 +23,7 @@ private[order] final class OrderJournalRecoverer(protected val journalFile: Path
 (implicit askTimeout: Timeout)
 extends JsonJournalRecoverer[Event] {
 
-  protected val jsonJournalMeta = AgentOrderKeeper.MyJournalMeta
+  protected val jsonJournalMeta = AgentOrderKeeper.journalMeta(compressWithGzip = false/*irrelevant, we read*/)
   private val workflowRegister = new WorkflowRegister
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
 

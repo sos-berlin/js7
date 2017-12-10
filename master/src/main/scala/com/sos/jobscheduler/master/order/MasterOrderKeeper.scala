@@ -31,7 +31,7 @@ import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
+import com.sos.jobscheduler.shared.event.journal.{JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess
 import io.circe.Json
@@ -65,11 +65,12 @@ with Stash {
   private val pathToWorkflow = mutable.Map[WorkflowPath, Workflow]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private var detachingSuspended = false
-  protected val journalActor = context.watch(context.actorOf(
-    Props {
-      new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = masterConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus)
-    },
-    "Journal"))
+  protected val journalActor = {
+    val meta = journalMeta(compressWithGzip = masterConfiguration.config.getBoolean("jobscheduler.master.journal.gzip"))
+    context.watch(context.actorOf(
+      Props { new JsonJournalActor(meta, journalFile, syncOnCommit = masterConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
+      "Journal"))
+  }
   private val orderScheduleGenerator = context.actorOf(
     Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, scheduledOrderGeneratorKeeper)},
     "OrderScheduleGenerator"
@@ -386,7 +387,8 @@ object MasterOrderKeeper {
     Subtype[AgentEventId])
   //Subtype[Workflow])
 
-  private[order] val MyJournalMeta = new JsonJournalMeta(SnapshotJsonCodec, MasterKeyedEventJsonCodec) with GzipCompression
+  private[order] def journalMeta(compressWithGzip: Boolean) =
+    JsonJournalMeta.gzipped(SnapshotJsonCodec, MasterKeyedEventJsonCodec, compressWithGzip = compressWithGzip)
 
   private val logger = Logger(getClass)
 

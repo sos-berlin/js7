@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.shared.event.journal
 
 import java.io.{EOFException, InputStream, OutputStream}
+import java.nio.file.Path
 
 /**
   * @author Joacim Zschimmer
@@ -10,7 +11,10 @@ trait StreamConversion {
   def convertOutputStream(out: OutputStream): OutputStream =
     out
 
-  def convertInputStream(in: InputStream): InputStream =
+  /** Usable for GzipCompression.
+    * @param path for file type detection only
+    */
+  def convertInputStream(in: InputStream, path: Path): InputStream =
     in
 
   def isIncompleteException(exception: Exception): Boolean =

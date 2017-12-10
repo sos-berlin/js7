@@ -19,7 +19,7 @@ import scala.collection.mutable
   */
 private[order] class MasterJournalRecoverer(protected val journalFile: Path, orderScheduleGenerator: ActorRef)(implicit protected val sender: ActorRef)
 extends JsonJournalRecoverer[Event] {
-  protected val jsonJournalMeta = MasterOrderKeeper.MyJournalMeta
+  protected val jsonJournalMeta = MasterOrderKeeper.journalMeta(compressWithGzip = false/*irrelevant, we read*/)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val _agentToEventId = mutable.Map[AgentPath, EventId]()
 

@@ -16,4 +16,15 @@ object JsonJournalMeta {
   val Header = JsonJournalHeader(
     version = "0.1",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
     softwareVersion = BuildInfo.version)
+
+  def gzipped[E <: Event](
+    snapshotJsonCodec: TypedJsonCodec[Any],
+    eventJsonCodec: KeyedEventTypedJsonCodec[E],
+    compressWithGzip: Boolean = true)
+  : JsonJournalMeta[E] = {
+    val gz = compressWithGzip
+    new JsonJournalMeta(snapshotJsonCodec, eventJsonCodec) with GzipCompression {
+      override def compressWithGzip = gz
+    }
+  }
 }

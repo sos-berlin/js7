@@ -34,7 +34,7 @@ import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowEvent}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.{JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess
 import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
 import com.typesafe.config.Config
@@ -62,9 +62,12 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  protected val journalActor = actorOf(
-    Props { new JsonJournalActor(MyJournalMeta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
-    "Journal")
+  protected val journalActor = {
+    val meta = journalMeta(compressWithGzip = config.getBoolean("jobscheduler.agent.journal.gzip"))
+    actorOf(
+      Props { new JsonJournalActor(meta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
+      "Journal")
+  }
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
@@ -446,7 +449,8 @@ object AgentOrderKeeper {
     Subtype[Order[Order.State]],
     Subtype[EventQueueActor.Snapshot])
 
-  private[order] val MyJournalMeta = new JsonJournalMeta[Event](SnapshotJsonFormat, AgentKeyedEventJsonCodec) with GzipCompression
+  private[order] def journalMeta(compressWithGzip: Boolean) =
+    JsonJournalMeta.gzipped[Event](SnapshotJsonFormat, AgentKeyedEventJsonCodec, compressWithGzip = compressWithGzip)
 
   sealed trait Input
   object Input {

@@ -63,7 +63,7 @@ trait JsonJournalRecoverer[E <: Event] {
   private def newJsonIterator(): AutoCloseable with Iterator[Json] =
     if (Files.exists(journalFile)) {
       logger.info(s"Recovering from journal journalFile '$journalFile' (${toMB(Files.size(journalFile))})")
-      new JsonFileIterator(Header, convertInputStream, journalFile)
+      new JsonFileIterator(Header, convertInputStream(_, journalFile), journalFile)
     } else {
       logger.info(s"No journal journalFile '$journalFile' left")
       JsonFileIterator.Empty

@@ -23,7 +23,6 @@ import scala.util.{Failure, Success, Try}
 object MasterApi {
   type Response[A] = Either[Error, A]
   private val ReloadDelay = 1.second
-  private val TimeoutExtra = 10.seconds
 
   @js.native @JSGlobalScope
   object JavascriptGlobal extends js.Object {

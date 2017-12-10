@@ -202,12 +202,11 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
 
 object GuiBackend {
   private val FirstEventTimeout =  0.seconds   // Short timeout to check connection
-  private val EventTimeout      = 60.seconds
+  private val EventTimeout      = 50.seconds
   private val ContinueDelay     =  250.milliseconds
   private val AfterTimeoutDelay = 1000.milliseconds
   private val TornDelay         = 1000.milliseconds
   private val Moon = "\uD83C\uDF19"
-  // ⚠✝☁☽☾. Official symbol for power sleep mode in UNICODE 9: "\u23FE"
 
   private def newAfterErrorDelayIterator = (Iterator(1, 2, 4, 6) ++ Iterator.continually(10) ) map (_.seconds)
 
