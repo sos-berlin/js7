@@ -3,7 +3,9 @@ package com.sos.jobscheduler.data.workflow
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.Collections.RichMap
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichPairTraversable, RichTraversable}
+import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Workflow._
 import com.sos.jobscheduler.data.workflow.transition.Transition
@@ -17,7 +19,14 @@ final case class Workflow(path: WorkflowPath, inputNodeId: NodeId, transitions: 
 
   val nodes = (transitions.flatMap(_.nodes) ++ unconnectedNodes).toVector.distinct
   val idToNode = nodes toKeyedMap { _.id }
-  val nodeToTransition = (for (t ← transitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t).uniqueToMap  // throws
+  val forkNodeToJoiningTransition = transitions.map(o ⇒ o.forkNodeId → o).collect { case (Some(forkNodeId), t) ⇒ forkNodeId → t } .toMap
+    .withNoSuchKey(k ⇒ new NoSuchElementException(s"No joining transition for forking node '$k'"))
+  //private[workflow] val nodeToInputTransition = (for (t ← transitions; nodeId ← t.toNodeIds) yield nodeId → t)
+  //  .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Nodes with duplicate transitions: ${duplicates.mkString(", ")}"))
+  //  .withNoSuchKey(k ⇒ new NoSuchElementException(s"No input transition for Workflow.Node '$k'"))
+  val nodeToOutputTransition = (for (t ← transitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t)
+    .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Nodes with duplicate transitions: ${duplicates.mkString(", ")}"))
+    .withNoSuchKey(k ⇒ new NoSuchElementException(s"No output transition for Workflow.Node '$k'"))
 
   require(idToNode.size == nodes.size, s"$path contains duplicate NodeIds")
   (for (t ← transitions; to ← t.toNodeIds) yield to → t).uniqueToMap  // throws if not unique

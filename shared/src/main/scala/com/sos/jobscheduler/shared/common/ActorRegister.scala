@@ -52,8 +52,8 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
   final def apply(actorRef: ActorRef): V =
     keyToValue(_actorToKey(actorRef))
 
-  final def get(jobPath: K): Option[V] =
-    keyToValue.get(jobPath)
+  final def get(orderId: K): Option[V] =
+    keyToValue.get(orderId)
 
   final def get(actorRef: ActorRef): Option[V] =
     for (k ← _actorToKey.get(actorRef);

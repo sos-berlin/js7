@@ -16,9 +16,6 @@ import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.base.utils.Collections._
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -34,19 +31,17 @@ import com.sos.jobscheduler.data.order.Outcome.Bad.AgentAborted
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Workflow.EndNode
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
-import com.sos.jobscheduler.data.workflow.transition.Transition
-import com.sos.jobscheduler.data.workflow.transitions.JoinTransition
 import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowEvent}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
-import com.sos.jobscheduler.shared.workflow.Transitions.ExecutableTransition
+import com.sos.jobscheduler.shared.workflow.WorkflowProcess
+import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Duration
-import scala.collection.immutable.{Iterable, Seq}
+import scala.collection.immutable.Seq
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success, Try}
 
 /**
   * Keeper of one Master's orders.
@@ -304,8 +299,9 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   private def proceedWithOrder(orderId: OrderId): Unit = {
     val orderEntry = orderRegister(orderId)
-    if (orderEntry.order.isAttachedToAgent) {
-      orderEntry.order.state match {
+    val order = orderEntry.order
+    if (order.isAttachedToAgent) {
+      order.state match {
         case Order.Scheduled(instant) if now < instant ⇒
           orderEntry.at(instant) {  // TODO Register only the next order in TimerService ?
             self ! Internal.Due(orderId)
@@ -316,6 +312,11 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
         case Order.Processed ⇒
           handleProcessed(orderEntry)
+
+        case forked: Order.Forked ⇒
+          if (!orderEntry.workflow.isTransitionableOnAgent(order.nodeId, forked, orderEntry.workflow.jobNode(order.nodeId).agentPath)) {
+            orderEntry.actor ! OrderActor.Input.MakeDetachable
+          }
 
         case _ ⇒
       }
@@ -391,40 +392,20 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         orderEntry.actor ! OrderActor.Input.HandleTransitionEvent(OrderEvent.OrderMoved(order.nodeId))  // Repeat
 
       case _ ⇒
-        orderEntry.workflow.nodeToTransition.get(order.nodeId) match {
-          case None ⇒
-            orderEntry.actor ! OrderActor.Input.MakeDetachable
-
-          case Some(transition) ⇒
-            Try {
-              transition.switch(ordersForTransition(transition, order).toKeyedMap(_.nodeId) withNoSuchKey (k ⇒ s"Unknown NodeId '$k' for $transition, ${order.id}"))
-            } match {
-              case Failure(t) ⇒
-                logger.warn(s"Error when applying $transition to '${order.id}' ${t.toStringWithCauses}", t)
-              case Success(Some(keyedEvent)) ⇒
+        val ourAgentPath = orderEntry.workflow.jobNode(order.nodeId).agentPath
+        if (orderEntry.workflow.isTransitionableOnAgent(order.nodeId, order.state, ourAgentPath)) {
+            val process = new WorkflowProcess(orderEntry.workflow, orderRegister.idToOrder)
+            process.guardedSwitchTransition(order) match {
+              case Some(keyedEvent) ⇒
                 orderRegister(keyedEvent.key).actor ! OrderActor.Input.HandleTransitionEvent(keyedEvent.event)
-              case Success(None) ⇒
+              case None ⇒
                 // JoinTransition? Await for more input orders
             }
-        }
+          }
+        else
+          orderEntry.actor ! OrderActor.Input.MakeDetachable
     }
   }
-
-  private def ordersForTransition(transition: Transition, order: Order[Order.Processed.type]): Iterable[Order[Order.Transitionable]] =
-    transition.transitionType match {
-      case JoinTransition ⇒
-        val parentOrderId = order.parent.getOrElse(throw new RuntimeException("No parent"))
-        val parent = orderRegister(parentOrderId).order.castState[Order.Forked]
-        val siblings = for {
-          siblingOrderId ← parent.state.childOrderIds
-          sibling ← orderRegister(siblingOrderId).order.ifState[Order.Processed.type]
-          if transition.fromNodeIds contains sibling.nodeId
-        } yield sibling
-        parent +: siblings
-
-      case _ ⇒
-        order :: Nil
-    }
 
   override def unhandled(message: Any) =
     message match {

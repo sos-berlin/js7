@@ -218,6 +218,12 @@ extends KeyedJournalingActor[OrderEvent] {
         context.become(idle)
         persist(event)(update)
 
+      case Input.MakeDetachable ⇒
+        persist(OrderDetachable)(update)
+
+      case Command.Detach ⇒
+        detach()
+
       case command: Command ⇒
         executeOtherCommand(command)
     }

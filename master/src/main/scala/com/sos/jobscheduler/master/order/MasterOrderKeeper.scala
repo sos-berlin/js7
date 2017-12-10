@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, RichJso
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichPartialFunction}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -19,7 +19,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderMovedToMaster, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
@@ -33,10 +33,11 @@ import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
-import com.sos.jobscheduler.shared.workflow.Transitions
+import com.sos.jobscheduler.shared.workflow.WorkflowProcess
 import io.circe.Json
 import java.nio.file.Path
 import java.time.Duration
+import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Future
 
@@ -208,26 +209,19 @@ with Stash {
     case msg @ AgentDriver.Output.EventFromAgent(Stamped(agentEventId, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
       val agentEntry = agentRegister(sender())
       import agentEntry.agentPath
-      orderRegister.get(orderId) match {
-        case None ⇒ logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
-        case Some(orderEntry) ⇒
-          val ownEvent = event match {
-            case _: OrderEvent.OrderAttached ⇒ OrderEvent.OrderMovedToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-            case _ ⇒ event
-          }
-          ownEvent match {
-            case OrderForked(children) ⇒
-              // Handle now, before being journaled, to be sure children have been registered before the child events arrive.
-              for (child ← children) {
-                val childOrder = orderEntry.order.newChild(child)
-                orderRegister.insert(childOrder.id → OrderEntry(childOrder))
-              }
-            case _ ⇒
-          }
-          persistAsync(KeyedEvent(ownEvent)(orderId))(handleOrderEvent)
-          persistAsync(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)) { e ⇒
-            agentEntry.lastAgentEventId = e.eventId
-          }
+      if (!orderRegister.contains(orderId))
+        logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
+      else {
+        val ownEvent = event match {
+          case _: OrderEvent.OrderAttached ⇒ OrderEvent.OrderMovedToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+          case _ ⇒ event
+        }
+        // OrderForked: The children have to be registered before its events. We simply stash this actor's message input until OrderForked has been journaled and handled. Slow
+        val stashUntilJournaled = ownEvent.isInstanceOf[OrderForked]
+        persist(KeyedEvent(ownEvent)(orderId), async = !stashUntilJournaled)(handleOrderEvent)
+        persist(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath), async = !stashUntilJournaled) { e ⇒
+          agentEntry.lastAgentEventId = e.eventId
+        }
       }
 
     case AgentDriver.Output.OrdersDetached(orderIds) ⇒
@@ -297,31 +291,33 @@ with Stash {
     event match {
       case event: OrderAdded ⇒
         val order = Order.fromOrderAdded(orderId, event)
-        orderRegister.insert(order.id → OrderEntry(order))
-        tryAttachOrderToAgent(order)
-
-      case event: OrderForked ⇒
-        val orderEntry = orderRegister(orderId)
-        // Child orders have been registed already, when event arrived from agent via AgentDriver.Output.EventFromAgent, see above
-        orderEntry.update(event)
+        val orderEntry = OrderEntry(order)
+        orderRegister.insert(order.id → orderEntry)
         proceedWithOrder(orderEntry)
 
-      case event: OrderJoined ⇒
+      case _ ⇒
         val orderEntry = orderRegister(orderId)
-        orderEntry.order.state match {
-          case Order.Forked(childOrderIds) ⇒
-            for (childOrderId ← childOrderIds) {
-              orderRegister -= childOrderId
+        event match {
+          case OrderForked(children) ⇒
+            for (child ← children) {
+              val childOrder = orderEntry.order.newChild(child)
+              orderRegister.insert(childOrder.id → OrderEntry(childOrder))
             }
-          case state ⇒
-            logger.error(s"Event $event, but Order is in state $state")
+
+          case event: OrderJoined ⇒
+            orderEntry.order.state match {
+              case Order.Forked(childOrderIds) ⇒
+                for (childOrderId ← childOrderIds) {
+                  orderRegister -= childOrderId
+                }
+              case state ⇒
+                logger.error(s"Event $event, but $orderId is in state $state")
+            }
+
+          case OrderMovedToMaster ⇒
+
+          case _ ⇒
         }
-
-        orderEntry.update(event)
-        proceedWithOrder(orderEntry)
-
-      case event: OrderEvent ⇒
-        val orderEntry = orderRegister(orderId)
         orderEntry.update(event)
         proceedWithOrder(orderEntry)
     }
@@ -329,11 +325,23 @@ with Stash {
 
   private def proceedWithOrder(orderEntry: OrderEntry): Unit = {
     val order = orderEntry.order
-    (order.attachedTo, order.state) match {
-      case (None, _: Order.Idle) ⇒
+    order.attachedTo match {
+      case None ⇒
+        proceedWithOrderOnMaster(order)
+
+      case Some(_: Order.AttachedTo.Detachable) ⇒
+        detachOrderFromAgent(order.id)
+
+      case _ ⇒
+    }
+  }
+
+  private def proceedWithOrderOnMaster(order: Order[Order.State]): Unit =
+    order.state match {
+      case _: Order.Idle ⇒
         val idleOrder = order.castState[Order.Idle]
-        for (workflow ← pathToWorkflow.get(orderEntry.order.workflowPath);
-             node ← workflow.idToNode.get(orderEntry.order.nodeId)) {
+        for (workflow ← pathToWorkflow.get(order.workflowPath);
+             node ← workflow.idToNode.get(order.nodeId)) {
           node match {
             case _: Workflow.JobNode ⇒
               tryAttachOrderToAgent(idleOrder)
@@ -343,18 +351,14 @@ with Stash {
           }
         }
 
-      case (None, Order.Processed) ⇒
-        for (workflow ← pathToWorkflow.get(orderEntry.order.workflowPath);
-             keyedEvent ← Transitions.switch(order.castState[Order.Processed.type], workflow)) {
+      case _: Order.Transitionable ⇒
+        val process = new WorkflowProcess(pathToWorkflow(order.workflowPath), orderRegister mapPartialFunction (_.order))
+        for (keyedEvent ← process.guardedSwitchTransition(order.castState[Order.Transitionable])) {
           persistAsync(keyedEvent)(handleOrderEvent)
         }
 
-      case (Some(_: Order.AttachedTo.Detachable), _) ⇒
-        detachOrderFromAgent(order.id)
-
       case _ ⇒
     }
-  }
 
   private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit =
     for (workflow ← pathToWorkflow.get(order.nodeKey.workflowPath);

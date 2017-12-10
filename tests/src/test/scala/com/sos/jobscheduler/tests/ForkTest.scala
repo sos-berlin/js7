@@ -15,18 +15,16 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.LineEnd
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
-import com.sos.jobscheduler.data.workflow.transition.Transition
-import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition}
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.NodeKey
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
+import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.ForkTest._
 import io.circe.syntax.EncoderOps
@@ -40,12 +38,12 @@ final class ForkTest extends FreeSpec {
   "test" in {
     val eventCollector = new TestEventCollector
 
-    autoClosing(new DirectoryProvider(List(AgentPath("/AGENT")))) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { directoryProvider ⇒
       withCloser { implicit closer ⇒
         import directoryProvider.directory
 
         (directoryProvider.master.live / "WORKFLOW.workflow.json").contentString = TestWorkflow.asJson.toPrettyString
-        directoryProvider.agents(0).job(TestJobPath).xml = jobXml(100.ms)
+        for (a ← directoryProvider.agents) a.job(TestJobPath).xml = jobXml(100.ms)
 
         val agentConfs = directoryProvider.agents map (_.conf)
 
@@ -57,10 +55,10 @@ final class ForkTest extends FreeSpec {
               EventRequest.singleClass(after = EventId.BeforeFirst, 99.s), _.key.string startsWith TestOrder.id.string) await 99.s
             val EventSeq.NonEmpty(eventSeq) = eventCollector.byPredicate[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.s), _ ⇒ true) await 99.s
             val keyedEvents = eventSeq.map(_.value).toVector
-            assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
             for (orderId ← Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
               assert(keyedEvents.filter(_.key == orderId) == ExpectedEvents.filter(_.key == orderId))
             }
+            assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
           }
         }
       }
@@ -80,51 +78,54 @@ final class ForkTest extends FreeSpec {
 }
 
 object ForkTest {
-  private val TestAgentPath = AgentPath("/AGENT")
-  private val TestJobPath = JobPath("/JOB")
-
-  private val A  = JobNode(NodeId("A" ), TestAgentPath, TestJobPath)
-  private val Bx = JobNode(NodeId("Bx"), TestAgentPath, TestJobPath)
-  private val By = JobNode(NodeId("By"), TestAgentPath, TestJobPath)
-  private val Cx = JobNode(NodeId("Cx"), TestAgentPath, TestJobPath)
-  private val Cy = JobNode(NodeId("Cy"), TestAgentPath, TestJobPath)
-  private val D  = JobNode(NodeId("D" ), TestAgentPath, TestJobPath)
-  private val END = EndNode(NodeId("END"))
-
-  private val fork = Transition(Vector(A), Vector(Bx, By), ForkTransition)
-  private val bx = Transition(Bx, Cx)
-  private val by = Transition(By, Cy)
-  private val join = Transition.join(fromForked = A, fromProcessed = Vector(Cx, Cy), to = Vector(D), JoinTransition)
-  private val d = Transition(D, END)
-
-  private val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), A.id, Vector(fork, bx, by, join, d))
-  private val TestOrder = Order(OrderId("🍎"), TestWorkflow.inputNodeKey, Order.StartNow, Some(Order.AttachedTo.Agent(TestAgentPath)),
-    Payload(Map("VARIABLE" → "VALUE")))
-  private val XOrderId = OrderId("🍎/Bx")
-  private val YOrderId = OrderId("🍎/By")
+  private val TestOrder = TestWorkflow.order(OrderId("🔺"), state = Order.StartNow, attachedTo = Some(Order.AttachedTo.Agent(AAgentPath)),
+    payload = Payload(Map("VARIABLE" → "VALUE")))
+  private val XOrderId = OrderId(s"🔺/🥕")
+  private val YOrderId = OrderId(s"🔺/🍋")
   private val ExpectedEvents = Vector(
     KeyedEvent(OrderAdded(NodeKey(TestWorkflow.path, A.id), Order.StartNow, Payload(Map("VARIABLE" → "VALUE"))))(TestOrder.id),
-    KeyedEvent(OrderMovedToAgent(TestAgentPath))(TestOrder.id),
+    KeyedEvent(OrderMovedToAgent(AAgentPath))(TestOrder.id),
     KeyedEvent(OrderProcessingStarted)(TestOrder.id),
     KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))(TestOrder.id),
     KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))(TestOrder.id),
     KeyedEvent(OrderForked(Vector(
-      OrderForked.Child(XOrderId, Bx.id, Payload(Map("VARIABLE" → "VALUE"))),    OrderForked.Child(YOrderId, By.id, Payload(Map("VARIABLE" → "VALUE")))))) (TestOrder.id),
-      KeyedEvent(OrderProcessingStarted)(XOrderId),                              KeyedEvent(OrderProcessingStarted)(YOrderId),
-      KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))(XOrderId),        KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))(YOrderId),
-      KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))(XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))(YOrderId),
-      KeyedEvent(OrderMoved(Cx.id))(XOrderId),                                   KeyedEvent(OrderMoved(Cy.id))(YOrderId),
-      KeyedEvent(OrderProcessingStarted)(XOrderId),                              KeyedEvent(OrderProcessingStarted)(YOrderId),
-      KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))(XOrderId),        KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))(YOrderId),
-      KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))(XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))(YOrderId),
+      OrderForked.Child(XOrderId, Bx.id, Payload(Map("VARIABLE" → "VALUE"))),           OrderForked.Child(YOrderId, By.id, Payload(Map("VARIABLE" → "VALUE")))))) (TestOrder.id),
+      KeyedEvent(OrderDetachable)                                   (TestOrder.id),
+      KeyedEvent(OrderMovedToMaster)                                (TestOrder.id),
+      KeyedEvent(OrderProcessingStarted)                                  (XOrderId),   KeyedEvent(OrderProcessingStarted)                            (YOrderId),
+      KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))            (XOrderId),   KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (YOrderId),
+      KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))       (XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (YOrderId),
+      KeyedEvent(OrderMoved(Cx.id))                                       (XOrderId),   KeyedEvent(OrderDetachable)                                   (YOrderId),
+                                                                                        KeyedEvent(OrderMovedToMaster)                                (YOrderId),
+                                                                                        KeyedEvent(OrderMoved(Cy.id))                                 (YOrderId),
+                                                                                        KeyedEvent(OrderMovedToAgent(BAgentPath))                     (YOrderId),
+      KeyedEvent(OrderProcessingStarted)                                  (XOrderId),   KeyedEvent(OrderProcessingStarted)                            (YOrderId),
+      KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))            (XOrderId),   KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (YOrderId),
+      KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))       (XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (YOrderId),
+      KeyedEvent(OrderDetachable)                                         (XOrderId),   KeyedEvent(OrderDetachable)                                   (YOrderId),
+      KeyedEvent(OrderMovedToMaster)                                      (XOrderId),   KeyedEvent(OrderMovedToMaster)                                (YOrderId),
     KeyedEvent(OrderJoined(D.id, MapDiff.empty, Outcome.Good(true)))(TestOrder.id),
-    KeyedEvent(OrderProcessingStarted)(TestOrder.id),
-    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))(TestOrder.id),
-    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))(TestOrder.id),
-    KeyedEvent(OrderDetachable)(TestOrder.id),
-    KeyedEvent(OrderMovedToMaster)(TestOrder.id),
-    KeyedEvent(OrderMoved(END.id))(TestOrder.id),
-    KeyedEvent(OrderFinished)(TestOrder.id))
+    KeyedEvent(OrderMovedToAgent(AAgentPath))                       (TestOrder.id),
+    KeyedEvent(OrderProcessingStarted)                              (TestOrder.id),
+    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))        (TestOrder.id),
+    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
+    KeyedEvent(OrderForked(Vector(
+      OrderForked.Child(XOrderId, Ex.id, Payload(Map("VARIABLE" → "VALUE"))),           OrderForked.Child(YOrderId, Ey.id, Payload(Map("VARIABLE" → "VALUE")))))) (TestOrder.id),
+      KeyedEvent(OrderProcessingStarted)                                  (XOrderId),   KeyedEvent(OrderProcessingStarted)                            (YOrderId),
+      KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))            (XOrderId),   KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (YOrderId),
+      KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))       (XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (YOrderId),
+      KeyedEvent(OrderMoved(Fx.id))                                       (XOrderId),   KeyedEvent(OrderMoved(Fy.id))                                 (YOrderId),
+      KeyedEvent(OrderProcessingStarted)                                  (XOrderId),   KeyedEvent(OrderProcessingStarted)                            (YOrderId),
+      KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))            (XOrderId),   KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (YOrderId),
+      KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))       (XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (YOrderId),
+    KeyedEvent(OrderJoined(G.id, MapDiff.empty, Outcome.Good(true)))(TestOrder.id),
+    KeyedEvent(OrderProcessingStarted)                              (TestOrder.id),
+    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))        (TestOrder.id),
+    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
+    KeyedEvent(OrderDetachable)                                     (TestOrder.id),
+    KeyedEvent(OrderMovedToMaster)                                  (TestOrder.id),
+    KeyedEvent(OrderMoved(END.id))                                  (TestOrder.id),
+    KeyedEvent(OrderFinished)                                       (TestOrder.id))
 
   private val logger = Logger(getClass)
 }

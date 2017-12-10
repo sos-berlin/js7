@@ -15,7 +15,7 @@ import scala.collection.immutable.IndexedSeq
   * @author Joacim Zschimmer
   */
 final case class Transition private(
-  fromForkedNodeId: Option[NodeId] = None,
+  forkNodeId: Option[NodeId] = None,
   fromProcessedNodeIds: IndexedSeq[NodeId],
   outlets: IndexedSeq[Outlet],
   nodes: IndexedSeq[Node],
@@ -25,8 +25,8 @@ final case class Transition private(
   if (outlets.size < transitionType.outletsMinimum) throw new IllegalArgumentException(s"$transitionType requires ${transitionType.outletsMinimum} input nodes")
   if (transitionType.outletsMaximum exists (outlets.size > _)) throw new IllegalArgumentException(s"$transitionType supports not more than ${transitionType.outletsMinimum} output nodes")
 
-  val fromNodeIds: Set[NodeId] = fromProcessedNodeIds.toSet ++ fromForkedNodeId
-  val toNodeIds: IndexedSeq[NodeId] = outlets map (_.nodeId)
+  val fromNodeIds: Set[NodeId] = fromProcessedNodeIds.toSet ++ forkNodeId
+  val toNodeIds: IndexedSeq[NodeId] = outlets.map(_.nodeId)
   val nodeIds: Set[NodeId] = (nodes map (_.id)).toSet
 
   val id = Id(fromProcessedNodeIds.head.string)   // Unique, because every node is followed by exactly one transition
@@ -53,18 +53,36 @@ object Transition {
   def apply(from: Node, to: Node, transition: SingleInputTransition): Transition =
     apply(Vector(from), Vector(to), transition)
 
-  def apply(from: IndexedSeq[Node], to: IndexedSeq[Node], transitionType: TransitionType): Transition =
-    of(None, from, to, transitionType)
+  def apply(from: Iterable[Node], to: Iterable[Node], transitionType: TransitionType): Transition =
+    of(None, from.toIndexedSeq, to.toIndexedSeq, transitionType)
 
-  def join(fromForked: Node, fromProcessed: IndexedSeq[Node], to: IndexedSeq[Node], transitionType: TransitionType): Transition =
-    of(Some(fromForked), fromProcessed, to, transitionType)
+  def forkJoin(forkNode: Node, joinNode: Node, outlets: IndexedSeq[(Outlet.Id, Node)], childEndNodes: IndexedSeq[Node], forkTransitionType: TransitionType, joinTransitionType: TransitionType): (Transition, Transition) = {
+    val f = fork(from = forkNode, to = outlets, forkTransitionType)
+    val j = join(fromForked = forkNode.id, fromProcessed = childEndNodes, to = joinNode, joinTransitionType)
+    (f, j)
+  }
 
-  private def of(fromForked: Option[Node], fromProcessed: IndexedSeq[Node], to: IndexedSeq[Node], transitionType: TransitionType): Transition =
+  /** Forked orders get the IDs "{OrderId}/{Outlet.Id}". */
+  def fork(from: Node, to: IndexedSeq[(Outlet.Id, Node)], transitionType: TransitionType): Transition =
     new Transition(
-      fromForkedNodeId = fromForked map (_.id),
+      forkNodeId = None,
+      fromProcessedNodeIds = Vector(from.id),
+      outlets = for ((outletId, node) ← to) yield Outlet(outletId, node.id),
+      nodes = (from +: to.map(_._2)).distinct,
+      transitionType)
+
+  def join(fromForked: NodeId, fromProcessed: IndexedSeq[Node], to: Node, transitionType: TransitionType): Transition =
+    of(Some(fromForked), fromProcessed, Vector(to), transitionType)
+
+  private def of(fromForkedId: Option[NodeId], fromProcessed: IndexedSeq[Node], to: IndexedSeq[Node], transitionType: TransitionType): Transition =
+    new Transition(
+      forkNodeId = fromForkedId,
       fromProcessedNodeIds = fromProcessed map (_.id),
-      outlets = for (node ← to) yield Outlet(Outlet.Id(node.id.string), node.id),
-      nodes = (fromProcessed ++ to).distinct, transitionType)
+      outlets = for (node ← to) yield nodeToOutlet(node.id),
+      nodes = (fromProcessed ++ to).distinct,
+      transitionType)
+
+  private def nodeToOutlet(nodeId: NodeId) = Outlet(Outlet.Id(nodeId.string), nodeId)
 
   final case class Id(string: String)
 

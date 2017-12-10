@@ -36,6 +36,10 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
       orderEntry.timer foreach timerService.cancel
     }
   }
+
+  def idToOrder: PartialFunction[OrderId, Order[Order.State]] = {
+    case orderId if contains(orderId) ⇒ apply(orderId).order
+  }
 }
 
 private[order] object OrderRegister {

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.order.MasterJournalRecoverer._
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
@@ -42,8 +42,26 @@ extends JsonJournalRecoverer[Event] {
       event match {
         case event: OrderAdded ⇒
           idToOrder.insert(orderId → Order.fromOrderAdded(orderId, event))
+
+        case OrderForked(children) ⇒
+          for (child ← children) {
+            idToOrder.insert(child.orderId → idToOrder(orderId).newChild(child))
+          }
+
+        case event: OrderJoined ⇒
+          idToOrder(orderId).state match {
+            case Order.Forked(childOrderIds) ⇒
+              for (childOrderId ← childOrderIds) {
+                idToOrder -= childOrderId
+              }
+
+            case state ⇒
+              sys.error(s"Recovered event $event, but $orderId is in state $state")
+          }
+
         case event: OrderCoreEvent ⇒
           idToOrder(orderId) = idToOrder(orderId).update(event)
+
         case OrderStdWritten(t, chunk) ⇒
           // TODO What to do with Order output?
           logger.debug(s"$orderId recovered $t: ${chunk.trim}")
