@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.web.api
 
-import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `no-cache`, `no-store`}
+import akka.http.scaladsl.model.headers.{RawHeader, `Cache-Control`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
@@ -15,11 +16,13 @@ trait ApiRoute extends RootRoute with OrderRoute with FrontEndRoute with GuiRout
 
   val apiRoute: Route =
     respondWithHeader(RawHeader("X-JobScheduler-Build-ID", BuildInfo.buildId)) {
-      pathEnd {
-        rootRoute
-      } ~
-      pathSegments("order") {
-        orderRoute
+      respondWithHeader(`Cache-Control`(`max-age`(0), `no-store`, `no-cache`)) {
+        pathEnd {
+          rootRoute
+        } ~
+        pathSegments("order") {
+          orderRoute
+        }
       } ~
       pathSegments("frontend") {
         frontEndRoute
