@@ -13,6 +13,7 @@ private[tests] final class TestAggregateActor(protected val key: String, val jou
 extends KeyedJournalingActor[TestEvent] {
 
   private var aggregate: TestAggregate = null
+  private var disturbance = 0
 
   protected def snapshot = Option(aggregate)
 
@@ -24,9 +25,13 @@ extends KeyedJournalingActor[TestEvent] {
     update(event)
 
   def receive = journaling orElse {
+    case Input.Disturb(value) ⇒
+      disturbance = value
+
     case command: Command ⇒
       command match {
-        case Command.Disturb ⇒
+
+        case Command.DisturbAndRespond ⇒
           deferAsync {
             sender() ! "OK"
           }
@@ -40,7 +45,7 @@ extends KeyedJournalingActor[TestEvent] {
         case Command.Remove ⇒
           persist(TestEvent.Removed) { e ⇒
             update(e)
-            sender() ! Done
+            sender() ! Response.Completed(disturbance)
           }
 
         case Command.Append(string) ⇒
@@ -49,15 +54,15 @@ extends KeyedJournalingActor[TestEvent] {
               update(e)
             }
           }
-          deferAsync {
-            sender() ! Done
+          defer {
+            sender() ! Response.Completed(disturbance)
           }
 
         case Command.AppendNoSync(string) ⇒
           for (c ← string) {
             persist(TestEvent.Appended(c), noSync = true) { e ⇒
               update(e)
-              sender() ! Done
+              sender() ! Response.Completed(disturbance)
             }
           }
 
@@ -66,7 +71,7 @@ extends KeyedJournalingActor[TestEvent] {
             persistAsync(TestEvent.Appended(c))(update)
           }
           deferAsync {
-            sender() ! Done
+            sender() ! Response.Completed(disturbance)
           }
 
         case Command.AppendNested(string) ⇒
@@ -77,7 +82,7 @@ extends KeyedJournalingActor[TestEvent] {
                 append(tail)
               }
             case Nil ⇒
-              sender() ! Done
+              sender() ! Response.Completed(disturbance)
           }
           append(string.toList)
 
@@ -89,10 +94,10 @@ extends KeyedJournalingActor[TestEvent] {
                 append(tail)
               }
             case Nil ⇒
-              sender() ! Done
+              sender() ! Response.Completed(disturbance)
           }
           append(string.toList)
-    }
+      }
 
     case Input.Get ⇒
       assert(aggregate != null)
@@ -123,6 +128,7 @@ private[tests] object TestAggregateActor {
 
   object Input {
     final case object Get
+    final case class Disturb(int: Int) extends Command
   }
 
   object Output {
@@ -131,13 +137,19 @@ private[tests] object TestAggregateActor {
 
   sealed trait Command
   final object Command {
-    final case object Disturb extends Command
+    sealed trait IsAsync
+    sealed trait DoNotDisturb
+    final case object DisturbAndRespond extends Command
     final case class Add(string: String) extends Command
     final case class Append(string: String) extends Command
     final case class AppendNoSync(string: String) extends Command
-    final case class AppendAsync(string: String) extends Command
+    final case class AppendAsync(string: String) extends Command with IsAsync
     final case class AppendNested(string: String) extends Command
-    final case class AppendNestedAsync(string: String) extends Command
-    final case object Remove extends Command
+    final case class AppendNestedAsync(string: String) extends Command with IsAsync
+    final case object Remove extends Command with DoNotDisturb
+  }
+
+  object Response {
+    final case class Completed(disturbance: Int)
   }
 }

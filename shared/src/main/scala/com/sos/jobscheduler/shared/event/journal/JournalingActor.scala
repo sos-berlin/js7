@@ -33,19 +33,29 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
     async: Boolean = false)(
     callback: Stamped[KeyedEvent[EE]] ⇒ Unit)
   : Unit = {
-    if (!isStashing && !async) {
-      isStashing = true
-      context.become(journaling, discardOld = false)
+    if (!async) {
+      startCommit()
     }
-    logger.trace(s"“$toString” Store ${keyedEvent.key} ${keyedEvent.event.getClass.getSimpleName stripSuffix "$"}")
+    logger.trace(s"“$toString” Store ${keyedEvent.key} ${keyedEvent.event.getClass.simpleScalaName}")
     journalActor.forward(JsonJournalActor.Input.Store(Some(keyedEvent) :: Nil, self, noSync = noSync))
     callbacks += EventCallback(callback.asInstanceOf[Stamped[KeyedEvent[E]] ⇒ Unit])
+  }
+
+  protected final def defer(callback: ⇒ Unit): Unit = {
+    startCommit()
+    deferAsync(callback)
   }
 
   protected final def deferAsync(callback: ⇒ Unit): Unit = {
     journalActor.forward(JsonJournalActor.Input.Store(None :: Nil, self, noSync = false))
     callbacks += Deferred(() ⇒ callback)
   }
+
+  private def startCommit(): Unit =
+    if (!isStashing) {
+      isStashing = true
+      context.become(journaling, discardOld = false)
+    }
 
   final def journaling: Receive = {
     case JsonJournalActor.Output.Stored(stampedOptions) ⇒
@@ -67,7 +77,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
         }
       }
       logger.trace(s"“$toString” callbacks=${callbacks.size}")
-      if (isStashing) {
+      if (isStashing && callbacks.isEmpty) {
         isStashing = false
         context.unbecome()
         unstashAll()
