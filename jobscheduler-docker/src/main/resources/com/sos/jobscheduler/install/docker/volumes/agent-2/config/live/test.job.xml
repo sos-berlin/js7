@@ -4,6 +4,7 @@
      tasks="5"
 >
     <script language="shell">
+      echo はじめまして。
       exit
     </script>
 </job>
