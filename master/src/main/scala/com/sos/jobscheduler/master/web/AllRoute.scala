@@ -21,7 +21,7 @@ trait AllRoute extends MasterRoute {
           redirect("/master", TemporaryRedirect)
         } ~
         extractRequest { request ⇒
-          complete((NotFound, s"Try ${request.uri.copy(rawQueryString = None).withPath(Uri.Path("/master/api"))}"))
+          complete((NotFound, s"Try ${request.uri.copy(rawQueryString = None).withPath(Uri.Path("/master/api"))}\n"))
         }
       } ~
       pathSegments("master") {
