@@ -89,10 +89,13 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
     testActor ! PoisonPill
   }
 
+  private var actorCounter = 0
+
   private def runTestActor(jobConfiguration: JobConfiguration): (ActorRef, Result) = {
+    actorCounter += 1
     def props(promise: Promise[Result]) = Props { new TestActor(directoryProvider.agentDirectory, jobConfiguration, promise, config) }
-    val (testActor, terminated) = CatchingActor.actorOf(props, "TestActor")(actorSystem)
-    val result: Result = terminated await 99.s
+    val (testActor, terminated) = CatchingActor.actorOf(props, s"TestActor-$actorCounter")(actorSystem)
+    val result: Result = terminated await 99.s  // Continues when the nested actor has terminated. CatchingActor may still run for some microseconds.
     (testActor, result)
   }
 }
