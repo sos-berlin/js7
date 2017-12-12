@@ -17,8 +17,8 @@ final class WorkflowTest extends FreeSpec {
   "TestWorkflow" - {
     import ForkTestSetting._
 
-    "inputNodeId" in {
-      assert(TestWorkflow.inputNodeId == A.id)
+    "start" in {
+      assert(TestWorkflow.start == A.id)
     }
 
     "nodes" in {
@@ -73,74 +73,67 @@ final class WorkflowTest extends FreeSpec {
     val G = JobNode(NodeId("G"), w, jobPath)
     val END = EndNode(NodeId("END"))
 
-    val a = Transition(A, B)
-    val b = Transition(B, C)
-    val cd = Transition(List(C, D), List(E), JoinTransition/*Dummy*/)
-    val e = Transition(E, F)
-    val f = Transition(F, G)
-    val g = Transition(G, END)
+    val a = Transition(A.id, B.id)
+    val b = Transition(B.id, C.id)
+    val cd = Transition(List(C.id, D.id), List(E.id), JoinTransition/*Dummy*/)
+    val e = Transition(E.id, F.id)
+    val f = Transition(F.id, G.id)
+    val g = Transition(G.id, END.id)
 
-    val workflow = Workflow(WorkflowPath("/WORKFLOW"), A.id, List(a, b, cd, e, f, g))
-    assert(workflow.reduceForAgent(u) == Workflow(workflow.path, A.id, List(a, b)))
-    assert(workflow.reduceForAgent(v) == Workflow(workflow.path, A.id, List(e), List(D)))
-    assert(workflow.reduceForAgent(w) == Workflow(workflow.path, A.id, List(), List(G)))
+    val workflow = Workflow(WorkflowPath("/WORKFLOW"), A.id, END.id, List(A, B, C, D, E, F, G, END), List(a, b, cd, e, f, g))
+    assert(workflow.reduceForAgent(u) == Workflow(workflow.path, A.id, END.id, List(A, B, C), List(a, b)))
+    assert(workflow.reduceForAgent(v) == Workflow(workflow.path, A.id, END.id, List(D, E, F), List(e)))
+    assert(workflow.reduceForAgent(w) == Workflow(workflow.path, A.id, END.id, List(G)      , List()))
   }
 
   "JSON" in {
     testJson(TestWorkflow,
       """{
         "path": "/WORKFLOW",
-        "inputNodeId": "A",
-        "transitions": [
+         "end": "END",
+         "start": "A",
+         "nodes": [
+           {
+             "TYPE": "JobNode",
+             "id": "A",
+             "agentPath": "/AGENT",
+             "jobPath": "/A"
+           }, {
+             "TYPE": "JobNode",
+             "id": "B",
+             "agentPath": "/AGENT",
+             "jobPath": "/B"
+           }, {
+             "TYPE": "EndNode",
+             "id": "END"
+           }
+         ],
+         "transitions": [
           {
-            "fromProcessedNodeIds": [ "A" ],
             "outlets": [
               {
                 "id": "B",
                 "nodeId": "B"
               }
             ],
-            "nodes": [
-              {
-                "TYPE": "JobNode",
-                "id": "A",
-                "jobPath": "/A",
-                "agentPath": "/AGENT"
-              }, {
-                "TYPE": "JobNode",
-                "id": "B",
-                "jobPath": "/B",
-                "agentPath": "/AGENT"
-              }
-            ],
+            "fromProcessedNodeIds": [ "A" ],
             "transitionType": {
               "TYPE": "ForwardTransition"
             }
-          }, {
-            "fromProcessedNodeIds": [ "B" ],
+          },
+          {
             "outlets": [
               {
                 "id": "END",
                 "nodeId": "END"
               }
             ],
-             "nodes": [
-               {
-                "TYPE": "JobNode",
-                "id": "B",
-                "jobPath": "/B",
-                "agentPath": "/AGENT"
-              }, {
-                "TYPE": "EndNode",
-                "id": "END"
-              }
-            ],
+            "fromProcessedNodeIds": [ "B" ],
             "transitionType": {
               "TYPE": "ForwardTransition"
             }
           }
-        ],
-        "unconnectedNodes": []
+        ]
       }""")
   }
 }

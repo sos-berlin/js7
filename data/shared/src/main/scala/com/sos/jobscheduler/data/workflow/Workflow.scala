@@ -11,19 +11,16 @@ import com.sos.jobscheduler.data.workflow.Workflow._
 import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.transitions.TransitionRegister
 import io.circe.generic.JsonCodec
+import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
   */
-final case class Workflow(path: WorkflowPath, inputNodeId: NodeId, transitions: Seq[Transition], unconnectedNodes: Seq[Node] = Nil) {
+final case class Workflow(path: WorkflowPath, start: NodeId, end: NodeId, nodes: Seq[Node], transitions: Seq[Transition]) {
 
-  val nodes = (transitions.flatMap(_.nodes) ++ unconnectedNodes).toVector.distinct
   val idToNode = nodes toKeyedMap { _.id }
   val forkNodeToJoiningTransition = transitions.map(o ⇒ o.forkNodeId → o).collect { case (Some(forkNodeId), t) ⇒ forkNodeId → t } .toMap
     .withNoSuchKey(k ⇒ new NoSuchElementException(s"No joining transition for forking node '$k'"))
-  //private[workflow] val nodeToInputTransition = (for (t ← transitions; nodeId ← t.toNodeIds) yield nodeId → t)
-  //  .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Nodes with duplicate transitions: ${duplicates.mkString(", ")}"))
-  //  .withNoSuchKey(k ⇒ new NoSuchElementException(s"No input transition for Workflow.Node '$k'"))
   val nodeToOutputTransition = (for (t ← transitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t)
     .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Nodes with duplicate transitions: ${duplicates.mkString(", ")}"))
     .withNoSuchKey(k ⇒ new NoSuchElementException(s"No output transition for Workflow.Node '$k'"))
@@ -32,17 +29,15 @@ final case class Workflow(path: WorkflowPath, inputNodeId: NodeId, transitions: 
   (for (t ← transitions; to ← t.toNodeIds) yield to → t).uniqueToMap  // throws if not unique
 
   def requireCompleteness: this.type = {
-    require(idToNode isDefinedAt inputNodeId)
+    require(idToNode isDefinedAt start)
     this
   }
 
   def reduceForAgent(agentPath: AgentPath): Workflow = {
-    val agentNodes = nodes.collect { case JobNode(id, `agentPath`, _) ⇒ id }.toSet
-    val agentTransitions = transitions filter (_.nodeIds forall agentNodes)
-    val transitionNodes = agentTransitions flatMap (_.nodeIds)
+    val agentNodes = nodes.collect { case o: JobNode if o.agentPath == agentPath ⇒ o }
     copy(
-      transitions = agentTransitions,
-      unconnectedNodes = nodes.filter(o ⇒ agentNodes.contains(o.id) && !transitionNodes.contains(o.id)).distinct)
+      transitions = transitions filter (_.nodeIds forall (o ⇒ agentNodes.exists(_.id == o))),
+      nodes = agentNodes)
   }
 
   def apply(nodeId: NodeId) = idToNode(nodeId)
@@ -59,7 +54,7 @@ final case class Workflow(path: WorkflowPath, inputNodeId: NodeId, transitions: 
   def agentPathOption(nodeId: NodeId): Option[AgentPath] =
     idToNode.get(nodeId) collect { case o: Workflow.JobNode ⇒ o.agentPath }
 
-  def inputNodeKey = NodeKey(path, inputNodeId)
+  def startNodeKey = NodeKey(path, start)
 }
 
 object Workflow {

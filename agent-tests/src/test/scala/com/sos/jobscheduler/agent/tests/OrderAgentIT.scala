@@ -42,7 +42,7 @@ final class OrderAgentIT extends FreeSpec {
 
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
-          val order = Order(OrderId("TEST-ORDER"), TestWorkflow.inputNodeKey, Order.Ready, payload = Payload(Map("x" → "X")))
+          val order = Order(OrderId("TEST-ORDER"), TestWorkflow.startNodeKey, Order.Ready, payload = Payload(Map("x" → "X")))
           agentClient.executeCommand(AttachOrder(order, TestAgentPath, TestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
           EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 10.s).repeat(agentClient.mastersEvents) {
             case Stamped(_, KeyedEvent(order.id, OrderDetachable)) ⇒
@@ -73,7 +73,7 @@ final class OrderAgentIT extends FreeSpec {
           agentClient.executeCommand(RegisterAsMaster) await 99.s
 
           val orders = for (i ← 1 to n) yield
-            Order(OrderId(s"TEST-ORDER-$i"), TestWorkflow.inputNodeKey, Order.Ready, payload = Payload(Map("x" → "X")))
+            Order(OrderId(s"TEST-ORDER-$i"), TestWorkflow.startNodeKey, Order.Ready, payload = Payload(Map("x" → "X")))
 
           val stopwatch = new Stopwatch
           agentClient.executeCommand(Batch(orders map { AttachOrder(_, TestWorkflow) })) await 99.s

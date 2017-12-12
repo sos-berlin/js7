@@ -36,7 +36,7 @@ object Workflows {
 
     def order[S <: Order.State](
       id: OrderId,
-      nodeId: NodeId = workflow.inputNodeId,
+      nodeId: NodeId = workflow.start,
       state: S,
       attachedTo: Option[AttachedTo] = None,
       payload: Payload = Payload.empty,

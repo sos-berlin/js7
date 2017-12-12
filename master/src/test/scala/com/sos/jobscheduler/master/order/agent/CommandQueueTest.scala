@@ -7,8 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
-import com.sos.jobscheduler.data.workflow.transition.Transition
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, WorkflowBuilder, WorkflowPath}
 import com.sos.jobscheduler.master.order.agent.AgentDriver.Input
 import com.sos.jobscheduler.master.order.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.order.agent.CommandQueueTest._
@@ -79,13 +78,12 @@ final class CommandQueueTest extends FreeSpec {
 object CommandQueueTest {
   private val logger = Logger(getClass)
   private val TestAgentPath = AgentPath("/AGENT")
-  private val TestWorkflow = Workflow(WorkflowPath("/A"), NodeId("START"), List(
-    Transition(
-      JobNode(NodeId("START"), TestAgentPath, JobPath("/JOB")),
-      EndNode(NodeId("END")))))
-
+  private val TestWorkflow = WorkflowBuilder
+    .startWith(JobNode(NodeId("START"), TestAgentPath, JobPath("/JOB")))
+    .forwardTo(EndNode(NodeId("END")))
+    .toWorkflow(WorkflowPath("/A"))
   private def toQueuedInputResponse(order: Order[Order.Idle]) =
     QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath, TestWorkflow), Batch.Succeeded(Accepted))
 
-  private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.inputNodeKey, Order.StartNow)
+  private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.startNodeKey, Order.StartNow)
 }

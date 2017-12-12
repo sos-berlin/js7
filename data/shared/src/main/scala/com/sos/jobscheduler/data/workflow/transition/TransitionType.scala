@@ -47,6 +47,8 @@ object TransitionType {
   @JsonCodec
   final case class Outlet private(id: Outlet.Id, nodeId: NodeId)
   object Outlet {
+    def apply(nodeId: NodeId) = new Outlet(Id(nodeId.string), nodeId)
+
     final case class Id(string: String) extends IsString
     object Id extends IsString.Companion[Id]
   }

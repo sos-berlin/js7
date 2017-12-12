@@ -20,10 +20,10 @@ private[jobscheduler] object TestSetting {
   val B = JobNode(NodeId("B"), TestAgentPath, BJobPath)
   val END = EndNode(NodeId("END"))
 
-  val a = Transition(from = A, to = B)
-  val b = Transition(from = B, to = END)
+  val a = Transition(from = A.id, to = B.id)
+  val b = Transition(from = B.id, to = END.id)
 
-  val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), A.id, List(a, b))
+  val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), start = A.id, end = END.id, List(A, B, END), List(a, b))
 
-  val TestOrder = Order(OrderId("TEST"), TestWorkflow.inputNodeKey, Order.Ready, payload = Payload(Map("VARIABLE" → "VALUE")))
+  val TestOrder = Order(OrderId("TEST"), TestWorkflow.startNodeKey, Order.Ready, payload = Payload(Map("VARIABLE" → "VALUE")))
 }

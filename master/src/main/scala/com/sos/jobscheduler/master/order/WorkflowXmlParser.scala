@@ -49,7 +49,13 @@ object WorkflowXmlParser {
   private def toWorkflow(workflowPath: WorkflowPath, rawNodes: Seq[RawNode]): Workflow = {
     val firstNodeId = rawNodes.headOption map { _.id } getOrElse (
       throw new IllegalArgumentException("JobChain has no nodes"))
-    Workflow(workflowPath, inputNodeId = firstNodeId, toTransitions(rawNodes)).requireCompleteness
+    Workflow(
+        workflowPath,
+        start = firstNodeId,
+        end = rawNodes.last.id,  // Used only when (possibly?) used as nested workflow
+        rawNodes map (_.toNode),
+        toTransitions(rawNodes))
+      .requireCompleteness
   }
 
   private def toTransitions(rawNodes: Seq[RawNode]): Seq[Transition] = {
@@ -66,9 +72,9 @@ object WorkflowXmlParser {
       val next = rawNode.next orElse follower getOrElse sys.error(s"Missing attribute next= in JobNode ${rawNode.id}")
       val error = rawNode.error orElse follower getOrElse sys.error(s"Missing attribute error= in JobNode ${rawNode.id}")
       if (next == error)
-        Transition(idToNode(rawNode.id), idToNode(next), ForwardTransition)
+        Transition(rawNode.id, next, ForwardTransition)
       else
-        Transition(Vector(idToNode(rawNode.id)), Vector(idToNode(next), idToNode(error)), SuccessFailureTransition)
+        Transition(Vector(rawNode.id), Vector(next, error), SuccessFailureTransition)
     }
   }
 

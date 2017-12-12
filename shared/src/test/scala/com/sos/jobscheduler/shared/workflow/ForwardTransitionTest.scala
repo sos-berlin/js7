@@ -24,6 +24,6 @@ final class ForwardTransitionTest extends FreeSpec {
 }
 
 object ForwardTransitionTest {
-  private val TestTransition = Transition(from = A, to = B)
+  private val TestTransition = Transition(from = A.id, to = B.id)
   private val OtherOrder = Order(OrderId("OTHER"), NodeKey(TestWorkflow.path, B.id), Order.Processed)
 }

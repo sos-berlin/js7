@@ -111,57 +111,50 @@ final class AgentCommandTest extends FreeSpec {
           },
           "workflow": {
             "path": "/WORKFLOW",
-            "inputNodeId": "A",
+            "start": "A",
+            "end": "END",
+            "nodes": [
+              {
+                "agentPath": "/AGENT",
+                "jobPath": "/A",
+                "id": "A",
+                "TYPE": "JobNode"
+              }, {
+                "agentPath": "/AGENT",
+                "jobPath": "/B",
+                "id": "B",
+                "TYPE": "JobNode"
+              }, {
+                "id": "END",
+                "TYPE": "EndNode"
+              }
+            ],
             "transitions": [
               {
                 "fromProcessedNodeIds": [ "A" ],
                 "outlets": [
-                   {
-                     "id": "B",
-                     "nodeId": "B"
-                   }
-                 ],
-                 "nodes": [
                   {
-                    "TYPE": "JobNode",
-                    "id": "A",
-                    "agentPath": "/AGENT",
-                    "jobPath": "/A"
-                  }, {
-                    "TYPE": "JobNode",
                     "id": "B",
-                    "agentPath": "/AGENT",
-                    "jobPath": "/B"
+                    "nodeId": "B"
                   }
                 ],
                 "transitionType": {
                   "TYPE": "ForwardTransition"
                 }
-              }, {
+              },
+              {
                 "fromProcessedNodeIds": [ "B" ],
                 "outlets": [
-                   {
-                     "id": "END",
-                     "nodeId": "END"
-                   }
-                ],
-                "nodes": [
                   {
-                    "TYPE": "JobNode",
-                    "id": "B",
-                    "agentPath": "/AGENT",
-                    "jobPath": "/B"
-                  }, {
-                    "TYPE": "EndNode",
-                    "id": "END"
+                    "id": "END",
+                    "nodeId": "END"
                   }
                 ],
                 "transitionType": {
                   "TYPE": "ForwardTransition"
                 }
               }
-            ],
-            "unconnectedNodes": []
+            ]
           }
         }""")
     }

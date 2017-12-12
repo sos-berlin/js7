@@ -25,11 +25,14 @@ final class WorkflowXmlParserTest extends FreeSpec {
     val B = Workflow.JobNode(NodeId("B"), AgentPath("/AGENT"), JobPath("/JOB-B"))
     val C = Workflow.JobNode(NodeId("C"), AgentPath("/AGENT"), JobPath("/JOB-C"))
     val END = Workflow.EndNode(NodeId("END"))
-    val FAILURE = Workflow.EndNode(NodeId("FAILURE"))
+    val FAILURE = Workflow.EndNode(NodeId("FAILURE"))  // This last node becomes the workflow's end node
     assert(WorkflowXmlParser.parseXml(path, xml) ==
-      Workflow(path, inputNodeId = A.id, List(
-        Transition(Vector(A), Vector(B, FAILURE), SuccessFailureTransition),
-        Transition(B, C),
-        Transition(C, END))))
+      Workflow(path, start = A.id, end = FAILURE.id,
+        List(A, B, C, END, FAILURE),
+        List(
+          Transition(Vector(A.id), Vector(B.id, FAILURE.id), SuccessFailureTransition),
+          Transition(B.id, C.id),
+          Transition(C.id, END.id)))
+    )
   }
 }

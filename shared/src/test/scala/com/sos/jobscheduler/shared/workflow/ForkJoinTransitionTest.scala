@@ -19,12 +19,12 @@ import org.scalatest.FreeSpec
 final class ForkJoinTransitionTest extends FreeSpec {
 
   private val (fork, join) = Transition.forkJoin(
-    forkNode = A,
-    joinNode = C,
+    forkNodeId = A.id,
+    joinNodeId = C.id,
     outlets = Vector(
-      Outlet.Id("XXX") → Bx,
-      Outlet.Id("YYY") → By),
-    Vector(Bx, By),
+      Outlet(Outlet.Id("XXX"), Bx.id),
+      Outlet(Outlet.Id("YYY"), By.id)),
+    Vector(Bx.id, By.id),
     ForkTransition,
     JoinTransition)
 
