@@ -1,7 +1,18 @@
+# Environment variable UID is used for the container's user's UID.
+# If missing or empty, Dockerfile uses a default (probably 1000).
+# This is to let access the container to the host's volume ./volumes/.
+# Note that bash's UID is not exported. So you may build with
+#
+# (export UID && docker-compose build)
+
 version: '2'
+
 services:
   master:
-    build: build
+    build:
+      context: build
+      args:
+        - UID
     image: jobscheduler
     container_name: jobscheduler-master
     command: ["master", "-java-option=-Xmx500m"]
@@ -13,7 +24,6 @@ services:
     volumes:
       - ./volumes/master:/var/opt/jobscheduler/master
   agent-1:
-    build: build
     image: jobscheduler
     container_name: jobscheduler-agent-1
     command: ["agent", "-java-option=-Xmx100m"]
@@ -22,7 +32,6 @@ services:
     volumes:
       - ./volumes/agent-1:/var/opt/jobscheduler/agent
   agent-2:
-    build: build
     image: jobscheduler
     container_name: jobscheduler-agent-2
     command: ["agent", "-java-option=-Xmx100m"]
