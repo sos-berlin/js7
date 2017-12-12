@@ -21,26 +21,28 @@ object Transitions {
   private val logger = Logger(getClass)
 
   implicit class ExecutableTransition(val transition: Transition) extends AnyVal {
-    import transition.{forkNodeId, fromProcessedNodeIds, outlets, toNodeIds, transitionType}
+    import transition.{childRoutes, forkNodeId, fromProcessedNodeIds, toNodeIds, transitionType}
 
     def switch(nodeToOrder: NodeToTransitionableOrder): Option[KeyedEvent[OrderTransitionedEvent]] =
       canSwitch(nodeToOrder) option {
         val inputOrders = (forkNodeId ++: fromProcessedNodeIds) map nodeToOrder
-        transitionType.result(inputOrders, outlets) match {
-          case Move(outlet) ⇒
+        transitionType.result(inputOrders, childRoutes) match {
+          case Move(nodeIndex) ⇒
             require(inputOrders.size == 1)
             val orderId = inputOrders.head.id
-            require(outlets contains outlet)
-            KeyedEvent(OrderEvent.OrderMoved(outlet.nodeId))(orderId)
+            if (!toNodeIds.indices.contains(nodeIndex))
+              throw new NoSuchElementException(s"Transition $transition returned index of node is out of range: $nodeIndex")
+            KeyedEvent(OrderEvent.OrderMoved(toNodeIds(nodeIndex)))(orderId)
 
           case Fork(children) ⇒
             require(inputOrders.size == 1)
             require(children.nonEmpty)
             val orderId = inputOrders.head.id
             KeyedEvent(OrderEvent.OrderForked(
-              children.map { case Fork.Child(outlet, childOrderId, payload) ⇒
-                require(outlets contains outlet)
-                OrderForked.Child(childOrderId, outlet.nodeId, payload)
+              children.map { case Fork.Child(routeId, payload) ⇒
+                val route = childRoutes find (_.id == routeId) getOrElse (
+                  throw new NoSuchElementException(s"Transition $transition returns unknown route '$routeId'"))
+                OrderForked.Child(orderId.child(routeId.string), route.start, payload)
               })
             )(orderId)
 

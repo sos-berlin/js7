@@ -87,53 +87,173 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "JSON" in {
-    testJson(TestWorkflow,
+    testJson(ForkTestSetting.TestWorkflow,
       """{
-        "path": "/WORKFLOW",
-         "end": "END",
-         "start": "A",
-         "nodes": [
-           {
-             "TYPE": "JobNode",
-             "id": "A",
-             "agentPath": "/AGENT",
-             "jobPath": "/A"
-           }, {
-             "TYPE": "JobNode",
-             "id": "B",
-             "agentPath": "/AGENT",
-             "jobPath": "/B"
-           }, {
-             "TYPE": "EndNode",
-             "id": "END"
-           }
-         ],
-         "transitions": [
-          {
-            "outlets": [
-              {
-                "id": "B",
-                "nodeId": "B"
+        "route": {
+          "transitions": [
+            {
+              "childRoutes": [
+                {
+                  "transitions": [
+                    {
+                      "childRoutes": [],
+                      "fromProcessedNodeIds": [ "Bx" ],
+                      "toNodeIds": [ "Cx" ],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
+                    }
+                  ],
+                  "id": "🥕",
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "Bx", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                    { "TYPE": "JobNode", "id": "Cx", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
+                  ],
+                  "end": "Cx",
+                  "start": "Bx"
+                }, {
+                  "transitions": [
+                    {
+                      "childRoutes": [],
+                      "fromProcessedNodeIds": [ "By" ],
+                      "toNodeIds": [ "Cy" ],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
+                    }
+                  ],
+                  "id": "🍋",
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "By", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                    { "TYPE": "JobNode", "id": "Cy", "jobPath": "/JOB", "agentPath": "/AGENT-B" }
+                  ],
+                  "end": "Cy",
+                  "start": "By"
+                }
+              ],
+              "fromProcessedNodeIds": [ "A" ],
+              "toNodeIds": [ "Bx", "By" ],
+              "transitionType": {
+                "TYPE": "ForkTransition"
               }
-            ],
-            "fromProcessedNodeIds": [ "A" ],
-            "transitionType": {
-              "TYPE": "ForwardTransition"
-            }
-          },
-          {
-            "outlets": [
-              {
-                "id": "END",
-                "nodeId": "END"
+            }, {
+              "childRoutes": [],
+              "fromProcessedNodeIds": [ "Bx" ],
+              "toNodeIds": [ "Cx" ],
+              "transitionType": {
+                "TYPE": "ForwardTransition"
               }
-            ],
-            "fromProcessedNodeIds": [ "B" ],
-            "transitionType": {
-              "TYPE": "ForwardTransition"
+            }, {
+              "childRoutes": [],
+              "fromProcessedNodeIds": [ "By" ],
+              "toNodeIds": [ "Cy" ],
+              "transitionType": {
+                "TYPE": "ForwardTransition"
+              }
+            }, {
+              "childRoutes": [],
+              "fromProcessedNodeIds": [ "Cx", "Cy" ],
+              "toNodeIds": [ "D" ],
+              "transitionType": {
+                "TYPE": "JoinTransition"
+              },
+              "forkNodeId": "A"
+            }, {
+              "childRoutes": [
+                {
+                  "transitions": [
+                    {
+                      "childRoutes": [],
+                      "fromProcessedNodeIds": [ "Bx" ],
+                      "toNodeIds": [ "Cx" ],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
+                    }
+                  ],
+                  "id": "🥕",
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "Ex", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                    { "TYPE": "JobNode", "id": "Fx", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
+                  ],
+                  "end": "Fx",
+                  "start": "Ex"
+                }, {
+                  "transitions": [
+                    {
+                      "childRoutes": [],
+                      "fromProcessedNodeIds": [ "By" ],
+                      "toNodeIds": [ "Cy" ],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
+                    }
+                  ],
+                  "id": "🍋",
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "Ey", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                    { "TYPE": "JobNode", "id": "Fy", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
+                  ],
+                  "end": "Fy",
+                  "start": "Ey"
+                }
+              ],
+              "fromProcessedNodeIds": [ "D" ],
+              "toNodeIds": [ "Ex", "Ey" ],
+              "transitionType": {
+                "TYPE": "ForkTransition"
+              }
+            }, {
+              "childRoutes": [
+              ],
+              "fromProcessedNodeIds": [ "Ex" ],
+              "toNodeIds": [ "Fx" ],
+              "transitionType": {
+                "TYPE": "ForwardTransition"
+              }
+            }, {
+              "childRoutes": [],
+              "fromProcessedNodeIds": [ "Ey" ],
+              "toNodeIds": [ "Fy" ],
+              "transitionType": {
+                "TYPE": "ForwardTransition"
+              }
+            }, {
+              "childRoutes": [],
+              "fromProcessedNodeIds": [ "Fx", "Fy" ],
+              "toNodeIds": [ "G" ],
+              "transitionType": {
+                "TYPE": "JoinTransition"
+              },
+              "forkNodeId": "D"
+            }, {
+              "childRoutes": [],
+              "fromProcessedNodeIds": [ "G" ],
+              "toNodeIds": [ "END" ],
+              "transitionType": {
+                "TYPE": "ForwardTransition"
+              }
             }
-          }
-        ]
+          ],
+          "id": "/WORKFLOW",
+          "nodes": [
+            { "TYPE": "JobNode", "id": "A", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "Bx", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "By", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "Cx", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "Cy", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
+            { "TYPE": "JobNode", "id": "D", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "Ex", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "Ey", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "Fx", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "Fy", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "G", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "EndNode", "id": "END" }
+          ],
+          "end": "END",
+          "start": "A"
+        },
+        "path": "/WORKFLOW"
       }""")
   }
 }

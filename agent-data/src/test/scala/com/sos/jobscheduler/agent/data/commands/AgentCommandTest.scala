@@ -87,75 +87,72 @@ final class AgentCommandTest extends FreeSpec {
         AgentPath("/AGENT"),
         TestWorkflow),
         """{
-          "TYPE": "AttachOrder",
           "order": {
-            "id": "ORDER-ID",
             "state": {
               "TYPE": "Ready"
-            },
-            "nodeKey": {
-              "nodeId": "INPUT",
-              "workflowPath": "/WORKFLOW"
-            },
-            "attachedTo": {
-              "agentPath": "/AGENT",
-              "TYPE": "Agent"
             },
             "payload": {
               "outcome": {
                 "returnValue": true,
                 "TYPE": "Good"
               },
-              "variables": {}
+              "variables": { }
+            },
+            "attachedTo": {
+              "agentPath": "/AGENT",
+              "TYPE": "Agent"
+            },
+            "id": "ORDER-ID",
+            "nodeKey": {
+              "nodeId": "INPUT",
+              "workflowPath": "/WORKFLOW"
             }
           },
           "workflow": {
-            "path": "/WORKFLOW",
-            "start": "A",
-            "end": "END",
-            "nodes": [
-              {
-                "agentPath": "/AGENT",
-                "jobPath": "/A",
-                "id": "A",
-                "TYPE": "JobNode"
-              }, {
-                "agentPath": "/AGENT",
-                "jobPath": "/B",
-                "id": "B",
-                "TYPE": "JobNode"
-              }, {
-                "id": "END",
-                "TYPE": "EndNode"
-              }
-            ],
-            "transitions": [
-              {
-                "fromProcessedNodeIds": [ "A" ],
-                "outlets": [
-                  {
-                    "id": "B",
-                    "nodeId": "B"
+            "route": {
+              "transitions": [
+                {
+                  "childRoutes": [ ],
+                  "fromProcessedNodeIds": [ "A" ],
+                  "toNodeIds": [ "B" ],
+                  "transitionType": {
+                    "TYPE": "ForwardTransition"
                   }
-                ],
-                "transitionType": {
-                  "TYPE": "ForwardTransition"
-                }
-              },
-              {
-                "fromProcessedNodeIds": [ "B" ],
-                "outlets": [
-                  {
-                    "id": "END",
-                    "nodeId": "END"
+                },
+                {
+                  "childRoutes": [ ],
+                  "fromProcessedNodeIds": [ "B" ],
+                  "toNodeIds": [ "END" ],
+                  "transitionType": {
+                    "TYPE": "ForwardTransition"
                   }
-                ],
-                "transitionType": {
-                  "TYPE": "ForwardTransition"
                 }
-              }
-            ]
-          }
+              ],
+              "id": "/WORKFLOW",
+              "nodes": [
+                {
+                  "agentPath": "/AGENT",
+                  "jobPath": "/A",
+                  "id": "A",
+                  "TYPE": "JobNode"
+                },
+                {
+                  "agentPath": "/AGENT",
+                  "jobPath": "/B",
+                  "id": "B",
+                  "TYPE": "JobNode"
+                },
+                {
+                  "id": "END",
+                  "TYPE": "EndNode"
+                }
+              ],
+              "end": "END",
+              "start": "A"
+            },
+            "path": "/WORKFLOW"
+          },
+          "TYPE": "AttachOrder"
         }""")
     }
 

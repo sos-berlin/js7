@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.data.workflow.transitions
 
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.workflow.WorkflowRoute
 import com.sos.jobscheduler.data.workflow.transition.SingleInputTransition
-import com.sos.jobscheduler.data.workflow.transition.TransitionType.{Fork, Outlet}
+import com.sos.jobscheduler.data.workflow.transition.TransitionType.Fork
 import scala.collection.immutable.IndexedSeq
 
 /**
@@ -10,16 +10,13 @@ import scala.collection.immutable.IndexedSeq
   */
 case object ForkTransition extends SingleInputTransition {
 
-  val outletsMaximum = None
+  val routesMaximum = None
 
-  def result(order: InputOrder, outlets: IndexedSeq[Outlet]) =
+  def result(order: InputOrder, routes: IndexedSeq[WorkflowRoute]) =
     Fork(
-      for (outlet ← outlets) yield
-        Fork.Child(outlet, forkOrderId(order.id, outlet), order.payload))
+      for (route ← routes) yield
+        Fork.Child(route.id, order.payload))
 
-  // TODO Sicherstellen, dass Schrägstrich in einer OrderId nur hier verwendet wird, damit sie eindeutig ist.
-  private def forkOrderId(orderId: OrderId, outlet: Outlet) =
-    OrderId(s"${orderId.string}/${outlet.id.string}")
 
   override def toString = "ForkTransition"
 }

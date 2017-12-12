@@ -3,9 +3,8 @@ package com.sos.jobscheduler.data.workflow.test
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
 import com.sos.jobscheduler.data.workflow.transition.Transition
-import com.sos.jobscheduler.data.workflow.transition.TransitionType.Outlet
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition}
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowBuilder, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath, WorkflowRoute}
 
 /**
   * @author Joacim Zschimmer
@@ -29,15 +28,18 @@ object ForkTestSetting {
   val G  = JobNode(NodeId("G" ), AAgentPath, TestJobPath)
   val END = EndNode(NodeId("END"))
 
-  val XOutletId = Outlet.Id("🥕")
-  val YOutletId = Outlet.Id("🍋")
-
-  val (a, c) = Transition.forkJoin(forkNodeId = A.id, joinNodeId = D.id, Vector(Outlet(XOutletId, Bx.id), Outlet(YOutletId, By.id)), Vector(Cx.id, Cy.id), ForkTransition, JoinTransition)
   val bx = Transition(Bx.id, Cx.id)
   val by = Transition(By.id, Cy.id)
-  val (d, f) = Transition.forkJoin(forkNodeId = D.id, joinNodeId = G.id, Vector(Outlet(XOutletId, Ex.id), Outlet(YOutletId, Ey.id)), Vector(Fx.id, Fy.id), ForkTransition, JoinTransition)
+  val bxRoute = WorkflowRoute(WorkflowRoute.Id("🥕"), start = Bx.id, end = Cx.id, nodes = List(Bx, Cx), transitions = List(bx))
+  val byRoute = WorkflowRoute(WorkflowRoute.Id("🍋"), start = By.id, end = Cy.id, nodes = List(By, Cy), transitions = List(by))
+
   val ex = Transition(Ex.id, Fx.id)
   val ey = Transition(Ey.id, Fy.id)
+  val exRoute = WorkflowRoute(WorkflowRoute.Id("🥕"), start = Ex.id, end = Fx.id, nodes = List(Ex, Fx), transitions = List(bx))
+  val eyRoute = WorkflowRoute(WorkflowRoute.Id("🍋"), start = Ey.id, end = Fy.id, nodes = List(Ey, Fy), transitions = List(by))
+
+  val (a, c) = Transition.forkJoin(forkNodeId = A.id, joinNodeId = D.id, Vector(bxRoute, byRoute), Vector(Cx.id, Cy.id), ForkTransition, JoinTransition)
+  val (d, f) = Transition.forkJoin(forkNodeId = D.id, joinNodeId = G.id, Vector(exRoute, eyRoute), Vector(Fx.id, Fy.id), ForkTransition, JoinTransition)
   val g = Transition(G.id, END.id)
 
   val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), A.id, END.id,

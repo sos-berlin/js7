@@ -6,9 +6,8 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.Workflow.JobNode
 import com.sos.jobscheduler.data.workflow.transition.Transition
-import com.sos.jobscheduler.data.workflow.transition.TransitionType.Outlet
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition}
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath, WorkflowRoute}
 import com.sos.jobscheduler.shared.workflow.ForkJoinTransitionTest._
 import com.sos.jobscheduler.shared.workflow.Transitions.ExecutableTransition
 import org.scalatest.FreeSpec
@@ -21,9 +20,9 @@ final class ForkJoinTransitionTest extends FreeSpec {
   private val (fork, join) = Transition.forkJoin(
     forkNodeId = A.id,
     joinNodeId = C.id,
-    outlets = Vector(
-      Outlet(Outlet.Id("XXX"), Bx.id),
-      Outlet(Outlet.Id("YYY"), By.id)),
+    routes = Vector(
+      WorkflowRoute(WorkflowRoute.Id("⏰"), start = Bx.id, end = Bx.id, nodes = List(Bx), transitions = Nil),
+      WorkflowRoute(WorkflowRoute.Id("⚒"), start = By.id, end = By.id, nodes = List(By), transitions = Nil)),
     Vector(Bx.id, By.id),
     ForkTransition,
     JoinTransition)
@@ -34,8 +33,8 @@ final class ForkJoinTransitionTest extends FreeSpec {
     assert(fork.switch(nodeToOrder) == Some(
       KeyedEvent(
         OrderEvent.OrderForked(List(
-          OrderEvent.OrderForked.Child(OrderId("TEST/XXX"), Bx.id, order.payload),
-          OrderEvent.OrderForked.Child(OrderId("TEST/YYY"), By.id, order.payload)))
+          OrderEvent.OrderForked.Child(OrderId("TEST/⏰"), Bx.id, order.payload),
+          OrderEvent.OrderForked.Child(OrderId("TEST/⚒"), By.id, order.payload)))
       )(order.id)))
   }
 

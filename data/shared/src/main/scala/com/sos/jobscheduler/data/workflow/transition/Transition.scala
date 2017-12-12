@@ -4,9 +4,8 @@ import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.NodeId
 import com.sos.jobscheduler.data.workflow.transition.Transition._
-import com.sos.jobscheduler.data.workflow.transition.TransitionType.Outlet
+import com.sos.jobscheduler.data.workflow.{NodeId, Workflow, WorkflowRoute}
 import io.circe.{Decoder, Encoder}
 import scala.collection.immutable.IndexedSeq
 
@@ -14,17 +13,19 @@ import scala.collection.immutable.IndexedSeq
   * @author Joacim Zschimmer
   */
 final case class Transition private(
+  @deprecated("fork.toNodeIds genügt")
   forkNodeId: Option[NodeId] = None,
   fromProcessedNodeIds: IndexedSeq[NodeId],
-  outlets: IndexedSeq[Outlet],
+  toNodeIds: IndexedSeq[NodeId],
+  childRoutes: IndexedSeq[WorkflowRoute],
   transitionType: TransitionType) {
 
-  if (outlets.size < transitionType.outletsMinimum) throw new IllegalArgumentException(s"$transitionType requires ${transitionType.outletsMinimum} input nodes")
-  if (transitionType.outletsMaximum exists (outlets.size > _)) throw new IllegalArgumentException(s"$transitionType supports not more than ${transitionType.outletsMinimum} output nodes")
+  require(toNodeIds.size >= transitionType.routesMinimum, s"$transitionType requires ${transitionType.routesMinimum} input nodes")
+  require(transitionType.routesMaximum forall (childRoutes.size <= _), s"$transitionType supports not more than ${transitionType.routesMinimum} output nodes")
 
   val fromNodeIds: Set[NodeId] = fromProcessedNodeIds.toSet ++ forkNodeId
-  val toNodeIds: IndexedSeq[NodeId] = outlets.map(_.nodeId)
-  val nodeIds: Set[NodeId] = (fromProcessedNodeIds ++ toNodeIds).uniqueToSet
+  val endpoints: Set[NodeId] = (fromProcessedNodeIds ++ toNodeIds).uniqueToSet
+  val nodes: IndexedSeq[Workflow.Node] = childRoutes flatMap (_.nodes)
 
   val id = Id(fromProcessedNodeIds.head.string)   // Unique, because every node is followed by exactly one transition
 
@@ -53,28 +54,30 @@ object Transition {
   def apply(from: Iterable[NodeId], to: Iterable[NodeId], transitionType: TransitionType): Transition =
     of(None, from.toIndexedSeq, to.toIndexedSeq, transitionType)
 
-  def forkJoin(forkNodeId: NodeId, joinNodeId: NodeId, outlets: IndexedSeq[Outlet], childEndNodes: IndexedSeq[NodeId], forkTransitionType: TransitionType, joinTransitionType: TransitionType): (Transition, Transition) = {
-    val f = fork(from = forkNodeId, outlets = outlets, forkTransitionType)
+  def forkJoin(forkNodeId: NodeId, joinNodeId: NodeId, routes: IndexedSeq[WorkflowRoute], childEndNodes: IndexedSeq[NodeId], forkTransitionType: TransitionType, joinTransitionType: TransitionType): (Transition, Transition) = {
+    val f = fork(from = forkNodeId, routes = routes, forkTransitionType)
     val j = join(fromForked = forkNodeId, fromProcessed = childEndNodes, to = joinNodeId, joinTransitionType)
     (f, j)
   }
 
   /** Forked orders get the IDs "{OrderId}/{Outlet.Id}". */
-  def fork(from: NodeId, outlets: IndexedSeq[Outlet], transitionType: TransitionType): Transition =
+  def fork(from: NodeId, routes: IndexedSeq[WorkflowRoute], transitionType: TransitionType): Transition =
     new Transition(
       forkNodeId = None,
       fromProcessedNodeIds = Vector(from),
-      outlets,
+      toNodeIds = routes.map(_.start),
+      routes,
       transitionType)
 
   def join(fromForked: NodeId, fromProcessed: IndexedSeq[NodeId], to: NodeId, transitionType: TransitionType): Transition =
-    of(Some(fromForked), fromProcessed, Vector(to), transitionType)
+    of(Some(fromForked), fromProcessed = fromProcessed, Vector(to), transitionType)
 
   private def of(fromForkedId: Option[NodeId], fromProcessed: IndexedSeq[NodeId], to: IndexedSeq[NodeId], transitionType: TransitionType): Transition =
     new Transition(
       forkNodeId = fromForkedId,
       fromProcessedNodeIds = fromProcessed,
-      outlets = for (node ← to) yield Outlet(node),
+      to,
+      childRoutes = Vector.empty,
       transitionType)
 
   final case class Id(string: String)

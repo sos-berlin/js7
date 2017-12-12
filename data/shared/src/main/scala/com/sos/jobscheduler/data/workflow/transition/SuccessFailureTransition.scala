@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.workflow.transition
 
-import com.sos.jobscheduler.data.workflow.transition.TransitionType.{Move, Outlet}
+import com.sos.jobscheduler.data.workflow.WorkflowRoute
+import com.sos.jobscheduler.data.workflow.transition.TransitionType.Move
 import scala.collection.immutable.IndexedSeq
 
 /**
@@ -8,8 +9,8 @@ import scala.collection.immutable.IndexedSeq
   */
 case object SuccessFailureTransition extends SingleInputTransition {
 
-  def outletsMaximum = Some(2)
+  def routesMaximum = Some(2)
 
-  def result(order: InputOrder, outlets: IndexedSeq[Outlet]) =
-    Move(if (order.outcome.isSuccess) outlets(0) else outlets(1))
+  def result(order: InputOrder, routes: IndexedSeq[WorkflowRoute]) =
+    Move(if (order.outcome.isSuccess) 0 else 1)
 }
