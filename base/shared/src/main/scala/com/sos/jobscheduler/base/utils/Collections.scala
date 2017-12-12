@@ -60,6 +60,9 @@ object Collections {
     implicit class RichTraversable[A](val delegate: Traversable[A]) extends AnyVal {
       def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap
 
+      def uniqueToSet: Set[A] =
+        delegate.requireUniqueness.toSet
+
       def requireUniqueness: Traversable[A] =
         requireUniqueness(identity[A])
 

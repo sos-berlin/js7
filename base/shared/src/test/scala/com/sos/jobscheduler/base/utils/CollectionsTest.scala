@@ -66,6 +66,11 @@ final class CollectionsTest extends FreeSpec {
     intercept[DuplicateKeyException] { List(1 → "eins", 1 → "ett") toKeyedMap { _._1 } }
   }
 
+  "uniqueToSet" in {
+    List(1, 2, 3).uniqueToSet shouldEqual Set(1, 2, 3)
+    intercept[DuplicateKeyException] { List(1, 2, 1).uniqueToSet }
+  }
+
   "retainOrderGroupBy" in {
     case class A(name: String, i: Int)
     val list = List(A("eins", 1), A("zwei a", 2), A("drei", 3), A("vier", 4), A("fünf", 5), A("zwei b", 2))
