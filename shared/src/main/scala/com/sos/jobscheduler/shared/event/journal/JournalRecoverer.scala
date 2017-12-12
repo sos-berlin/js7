@@ -9,8 +9,8 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.shared.event.journal.JsonJournalActor.{EventsHeader, SnapshotsHeader}
-import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
+import com.sos.jobscheduler.shared.event.journal.JournalActor.{EventsHeader, SnapshotsHeader}
+import com.sos.jobscheduler.shared.event.journal.JournalMeta.Header
 import io.circe.Json
 import java.nio.file.{Files, Path}
 import scala.annotation.tailrec
@@ -20,20 +20,20 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-trait JsonJournalRecoverer[E <: Event] {
+trait JournalRecoverer[E <: Event] {
 
-  protected val jsonJournalMeta: JsonJournalMeta[E]
+  protected val journalMeta: JournalMeta[E]
   protected def journalFile: Path
   protected def recoverSnapshot: PartialFunction[Any, Unit]
   protected def recoverEvent: PartialFunction[Stamped[AnyKeyedEvent], Unit]
 
-  import jsonJournalMeta.{convertInputStream, eventJsonCodec, snapshotJsonCodec}
+  import journalMeta.{convertInputStream, eventJsonCodec, snapshotJsonCodec}
 
   private val stopwatch = new Stopwatch
   private var lastEventId: EventId = EventId.BeforeFirst
   private var snapshotCount = 0
   private var eventCount = 0
-  private lazy val logger = Logger.withPrefix[JsonJournalRecoverer[_]](journalFile.toString)
+  private lazy val logger = Logger.withPrefix[JournalRecoverer[_]](journalFile.toString)
 
   final def recoverAll(): Unit = {
     try
@@ -52,9 +52,9 @@ trait JsonJournalRecoverer[E <: Event] {
         }
       }
     catch {
-      case t: Exception if jsonJournalMeta.isIncompleteException(t) ⇒
+      case t: Exception if journalMeta.isIncompleteException(t) ⇒
         logger.info(s"Journal has not been completed. " + errorClause(t))
-      case t: Exception if jsonJournalMeta.isCorruptException(t) ⇒
+      case t: Exception if journalMeta.isCorruptException(t) ⇒
         logger.warn(s"Journal is corrupt or has not been completed. " + errorClause(t))
     }
     logSomething()
@@ -105,7 +105,7 @@ trait JsonJournalRecoverer[E <: Event] {
 
   private def logSomething(): Unit = {
     if (stopwatch.duration >= 1.s) {
-      logger.debug(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events") + " read")
+      logger.info(stopwatch.itemsPerSecondString(snapshotCount + eventCount, "snapshots+events") + " read")
     }
     if (eventCount > 0) {
       logger.info(s"Recovered last EventId is ${EventId.toString(lastEventId)} ($snapshotCount snapshots and $eventCount events read)")
@@ -113,7 +113,7 @@ trait JsonJournalRecoverer[E <: Event] {
   }
 }
 
-object JsonJournalRecoverer {
+object JournalRecoverer {
   private val logger = Logger(getClass)
 
   def startJournalAndFinishRecovery(
@@ -126,10 +126,10 @@ object JsonJournalRecoverer {
     actorRefFactory.actorOf(
       Props {
         new Actor {
-          journalActor ! JsonJournalActor.Input.Start(recoveredActors)
+          journalActor ! JournalActor.Input.Start(recoveredActors)
 
           def receive = {
-            case JsonJournalActor.Output.Ready ⇒
+            case JournalActor.Output.Ready ⇒
               for (a ← actors) {
                 a ! KeyedJournalingActor.Input.FinishRecovery
               }
@@ -155,7 +155,7 @@ object JsonJournalRecoverer {
           }
         }
       },
-      name = "JsonJournalActorRecoverer")
+      name = "JournalActorRecoverer")
   }
 
   object Output {

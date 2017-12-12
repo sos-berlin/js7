@@ -25,7 +25,7 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonFileIterator, JsonJournalMeta}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JournalMeta, JsonFileIterator}
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.RecoveryIT._
 import java.nio.file.Path
@@ -130,7 +130,7 @@ final class RecoveryIT extends FreeSpec {
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
     val conversion = new GzipCompression {}
-    autoClosing(new JsonFileIterator(JsonJournalMeta.Header, in ⇒ conversion.convertInputStream(in, journalFile), journalFile)) {
+    autoClosing(new JsonFileIterator(JournalMeta.Header, in ⇒ conversion.convertInputStream(in, journalFile), journalFile)) {
       _.toVector collect {
         case o if AgentEvent.KeyedEventJsonCodec.canDeserialize(o) ⇒
           o.as[Stamped[KeyedEvent[AgentEvent]]].force

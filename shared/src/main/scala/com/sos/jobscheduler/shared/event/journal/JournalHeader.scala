@@ -6,12 +6,12 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 /**
   * @author Joacim Zschimmer
   */
-final case class JsonJournalHeader(
+final case class JournalHeader(
   version: String,
   softwareVersion: String)
 
-object JsonJournalHeader {
+object JournalHeader {
 
-  implicit lazy val JsonCodec = TypedJsonCodec[JsonJournalHeader](
-    Subtype.named(deriveCirceCodec[JsonJournalHeader], "JobScheduler.Journal"))
+  implicit lazy val JsonCodec = TypedJsonCodec[JournalHeader](
+    Subtype.named(deriveCirceCodec[JournalHeader], "JobScheduler.Journal"))
 }

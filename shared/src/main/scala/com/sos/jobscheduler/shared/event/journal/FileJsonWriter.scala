@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean
   * @author Joacim Zschimmer
   */
 final class FileJsonWriter(
-  header: JsonJournalHeader,
+  header: JournalHeader,
   convertOutput: OutputStream ⇒ OutputStream,
   val file: Path,
   append: Boolean = false)

@@ -4,13 +4,13 @@ import akka.actor.{ActorContext, ActorRef}
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
+import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-trait JsonJournalActorRecoverer[E <: Event] extends JsonJournalRecoverer[E] {
+trait JournalActorRecoverer[E <: Event] extends JournalRecoverer[E] {
 
   protected implicit def sender: ActorRef
   protected def recoverNewKey: PartialFunction[Stamped[AnyKeyedEvent], Unit]

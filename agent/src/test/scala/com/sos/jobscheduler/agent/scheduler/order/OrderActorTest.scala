@@ -33,7 +33,7 @@ import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStde
 import com.sos.jobscheduler.data.workflow.Workflow.EndNode
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.{JsonJournalActor, JsonJournalMeta}
+import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import com.typesafe.config.Config
 import java.nio.file.Path
@@ -132,7 +132,7 @@ private object OrderActorTest {
         |""".stripMargin),
     Map("VAR1" → "FROM-JOB"))
 
-  private val TestJournalMeta = new JsonJournalMeta[OrderEvent](
+  private val TestJournalMeta = new JournalMeta[OrderEvent](
     snapshotJsonCodec = TypedJsonCodec[Any](Subtype[Order[Order.State]]),
     eventJsonCodec = KeyedEvent.typedJsonCodec[OrderEvent](KeyedSubtype[OrderEvent]))
   private implicit val TestAkkaTimeout = Timeout(99.seconds)
@@ -155,7 +155,7 @@ private object OrderActorTest {
 
     private val journalActor = actorOf(
       Props {
-        new JsonJournalActor[OrderEvent](TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, keyedEventBus)
+        new JournalActor[OrderEvent](TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, keyedEventBus)
       },
       "Journal")
     private val jobActor = context.watch(context.actorOf(JobActor.props(TestJobPath, taskRunnerFactory, timerService)))
@@ -167,10 +167,10 @@ private object OrderActorTest {
     private var jobActorTerminated = false
 
     keyedEventBus.subscribe(self, classOf[OrderEvent])
-    (journalActor ? JsonJournalActor.Input.StartWithoutRecovery) pipeTo self
+    (journalActor ? JournalActor.Input.StartWithoutRecovery) pipeTo self
 
     def receive = {
-      case JsonJournalActor.Output.Ready ⇒
+      case JournalActor.Output.Ready ⇒
         become(journalReady)
         (jobActor ? JobActor.Command.StartWithConfiguration(jobConfiguration)) pipeTo self
     }

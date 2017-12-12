@@ -30,8 +30,8 @@ import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentXmlParser}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
+import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
+import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess
 import io.circe.Json
@@ -68,7 +68,7 @@ with Stash {
   protected val journalActor = {
     val meta = journalMeta(compressWithGzip = masterConfiguration.config.getBoolean("jobscheduler.master.journal.gzip"))
     context.watch(context.actorOf(
-      Props { new JsonJournalActor(meta, journalFile, syncOnCommit = masterConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
+      Props { new JournalActor(meta, journalFile, syncOnCommit = masterConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
       "Journal"))
   }
   private val orderScheduleGenerator = context.actorOf(
@@ -142,7 +142,7 @@ with Stash {
   }
 
   def receive = journaling orElse {
-    case JsonJournalRecoverer.Output.JournalIsReady ⇒
+    case JournalRecoverer.Output.JournalIsReady ⇒
       for (agentEntry ← agentRegister.values) {
         agentEntry.actor ! AgentDriver.Input.Start(lastAgentEventId = agentEntry.lastAgentEventId)
       }
@@ -234,7 +234,7 @@ with Stash {
         persistAsync(KeyedEvent(OrderEvent.OrderMovedToMaster)(orderId))(handleOrderEvent)
       }
 
-    case msg @ JsonJournalActor.Output.SerializationFailure(throwable) ⇒
+    case msg @ JournalActor.Output.SerializationFailure(throwable) ⇒
       logger.error(msg.toString, throwable)
       // Ignore this ???
 
@@ -280,7 +280,7 @@ with Stash {
 
     case MasterCommand.Terminate ⇒
       terminating = true
-      journalActor ! JsonJournalActor.Input.Terminate
+      journalActor ! JournalActor.Input.Terminate
       sender() ! MasterCommand.Response.Accepted
   }
 
@@ -388,7 +388,7 @@ object MasterOrderKeeper {
   //Subtype[Workflow])
 
   private[order] def journalMeta(compressWithGzip: Boolean) =
-    JsonJournalMeta.gzipped(SnapshotJsonCodec, MasterKeyedEventJsonCodec, compressWithGzip = compressWithGzip)
+    JournalMeta.gzipped(SnapshotJsonCodec, MasterKeyedEventJsonCodec, compressWithGzip = compressWithGzip)
 
   private val logger = Logger(getClass)
 

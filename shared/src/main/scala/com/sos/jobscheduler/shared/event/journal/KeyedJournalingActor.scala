@@ -51,7 +51,7 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
 
   private def registerMe(): Unit = {
     if (!registered) {
-      journalActor ! JsonJournalActor.Input.RegisterMe(Some(key))
+      journalActor ! JournalActor.Input.RegisterMe(Some(key))
       registered = true
     }
   }

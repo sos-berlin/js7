@@ -12,8 +12,8 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.JsonJournalActor._
-import com.sos.jobscheduler.shared.event.journal.JsonJournalMeta.Header
+import com.sos.jobscheduler.shared.event.journal.JournalActor._
+import com.sos.jobscheduler.shared.event.journal.JournalMeta.Header
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.move
@@ -27,8 +27,8 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JsonJournalActor[E <: Event](
-  meta: JsonJournalMeta[E],
+final class JournalActor[E <: Event](
+  meta: JournalMeta[E],
   file: Path,
   syncOnCommit: Boolean,
   eventIdGenerator: EventIdGenerator,
@@ -37,7 +37,7 @@ extends Actor with Stash {
 
   import meta.{convertOutputStream, eventJsonCodec, snapshotJsonCodec}
 
-  private val logger = Logger.withPrefix[JsonJournalActor[_]](file.getFileName.toString)
+  private val logger = Logger.withPrefix[JournalActor[_]](file.getFileName.toString)
   override val supervisorStrategy = SupervisorStrategies.escalate
 
   private var jsonWriter: FileJsonWriter = null
@@ -241,7 +241,7 @@ extends Actor with Stash {
   }
 }
 
-object JsonJournalActor {
+object JournalActor {
   val SnapshotsHeader = Json.fromString("SNAPSHOTS")
   val EventsHeader = Json.fromString("EVENTS")
 

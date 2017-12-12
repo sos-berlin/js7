@@ -18,8 +18,8 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator
-import com.sos.jobscheduler.shared.event.journal.JsonJournalActor
-import com.sos.jobscheduler.shared.event.journal.tests.JsonJournalTest._
+import com.sos.jobscheduler.shared.event.journal.JournalActor
+import com.sos.jobscheduler.shared.event.journal.tests.JournalTest._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.typesafe.config.ConfigFactory
 import io.circe.Json
@@ -37,10 +37,10 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
+final class JournalTest extends FreeSpec with BeforeAndAfterAll {
 
   private implicit val askTimeout = Timeout(999.seconds)
-  private lazy val directory = createTempDirectory("JsonJournalTest-")
+  private lazy val directory = createTempDirectory("JournalTest-")
   private lazy val journalFile = directory / "journal"
 
   override def afterAll() = {
@@ -68,7 +68,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
 
       execute(actorSystem, actor, "TEST-D", TestAggregateActor.Command.Add("DDD")) await 99.s
 
-      (actor ? TestActor.Input.TakeSnapshot).mapTo[JsonJournalActor.Output.SnapshotTaken.type] await 99.s
+      (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
       assert(journalAggregates == Set(
         TestAggregate("TEST-A", "AAAabcdefghijkl"),
         TestAggregate("TEST-C", "CCC"),
@@ -89,13 +89,13 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
 
   "noSync" in {
     withTestActor { (actorSystem, actor) ⇒
-      def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JsonJournalActor.Output.State] await 99.s
+      def journalState = (actor ? TestActor.Input.GetJournalState).mapTo[JournalActor.Output.State] await 99.s
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Add("A"))  await 99.s
-      assert(journalState == JsonJournalActor.Output.State(isFlushed = true, isSynced = true))
+      assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.AppendNoSync("Bb")) await 99.s
-      assert(journalState == JsonJournalActor.Output.State(isFlushed = true, isSynced = false))
+      assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = false))
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("C")) await 99.s
-      assert(journalState == JsonJournalActor.Output.State(isFlushed = true, isSynced = true))
+      assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
         TestAggregate("TEST-C", "CCC"),
         TestAggregate("TEST-D", "DDD"),
@@ -154,7 +154,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   private def withTestActor(body: (ActorSystem, ActorRef) ⇒ Unit): Unit = {
-    val actorSystem = ActorSystem("JsonJournalTest", ConfigFactory.parseString("akka.scheduler.tick-duration: 1s"))
+    val actorSystem = ActorSystem("JournalTest", ConfigFactory.parseString("akka.scheduler.tick-duration: 1s"))
     try {
       DeadLetterActor.subscribe(actorSystem, o ⇒ logger.warn(o))
       val actor = actorSystem.actorOf(Props { new TestActor(journalFile) }, "TestActor")
@@ -240,7 +240,7 @@ final class JsonJournalTest extends FreeSpec with BeforeAndAfterAll {
     }
 }
 
-object JsonJournalTest {
+object JournalTest {
   private val logger = Logger(getClass)
   private val disturbanceCounter = new AtomicInteger
 

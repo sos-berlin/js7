@@ -33,8 +33,8 @@ import com.sos.jobscheduler.data.workflow.Workflow.EndNode
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowEvent}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
+import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess
 import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
 import com.typesafe.config.Config
@@ -65,7 +65,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   protected val journalActor = {
     val meta = journalMeta(compressWithGzip = config.getBoolean("jobscheduler.agent.journal.gzip"))
     actorOf(
-      Props { new JsonJournalActor(meta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
+      Props { new JournalActor(meta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
       "Journal")
   }
   private val jobRegister = new JobRegister
@@ -128,7 +128,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
       orderRegister(order.id).order = order
       proceedWithOrder(order.id)
 
-    case JsonJournalRecoverer.Output.JournalIsReady ⇒
+    case JournalRecoverer.Output.JournalIsReady ⇒
       logger.info(s"${workflowRegister.size} Workflows recovered, ${orderRegister.size} Orders recovered")
       context.become(ready)
       unstashAll()
@@ -450,7 +450,7 @@ object AgentOrderKeeper {
     Subtype[EventQueueActor.Snapshot])
 
   private[order] def journalMeta(compressWithGzip: Boolean) =
-    JsonJournalMeta.gzipped[Event](SnapshotJsonFormat, AgentKeyedEventJsonCodec, compressWithGzip = compressWithGzip)
+    JournalMeta.gzipped[Event](SnapshotJsonFormat, AgentKeyedEventJsonCodec, compressWithGzip = compressWithGzip)
 
   sealed trait Input
   object Input {

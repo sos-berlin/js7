@@ -10,7 +10,7 @@ import scala.concurrent.Future
 trait KeyedEventJournalingActor[E <: Event] extends JournalingActor[E] {
 
   override def preStart() = {
-    journalActor ! JsonJournalActor.Input.RegisterMe(None)
+    journalActor ! JournalActor.Input.RegisterMe(None)
     super.preStart()
   }
 

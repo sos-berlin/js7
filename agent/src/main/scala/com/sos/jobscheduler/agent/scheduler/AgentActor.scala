@@ -23,8 +23,8 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.workflow.JobPath
 import com.sos.jobscheduler.shared.common.ActorRegister
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalMeta, JsonJournalRecoverer, KeyedEventJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
+import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
 import javax.inject.Inject
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -46,11 +46,11 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val journalMeta = JsonJournalMeta.gzipped(AgentSnapshot.JsonCodec, AgentEvent.KeyedEventJsonCodec,
+  private val journalMeta = JournalMeta.gzipped(AgentSnapshot.JsonCodec, AgentEvent.KeyedEventJsonCodec,
     compressWithGzip = agentConfiguration.config.getBoolean("jobscheduler.agent.journal.gzip"))
   private val journalFile = stateDirectory / "journal"
   protected val journalActor = actorOf(
-    Props { new JsonJournalActor(journalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
+    Props { new JournalActor(journalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
     "Journal")
   private val jobKeeper = {
     val taskRegister = new TaskRegister(actorOf(TaskRegisterActor.props(agentConfiguration, timerService), "TaskRegister"))
@@ -72,9 +72,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
     logger.info("Stopped")
   }
 
-  private class MyJournalRecoverer extends JsonJournalRecoverer[AgentEvent] {
+  private class MyJournalRecoverer extends JournalRecoverer[AgentEvent] {
     protected val sender = AgentActor.this.sender()
-    protected val jsonJournalMeta = journalMeta
+    protected val journalMeta = AgentActor.this.journalMeta
     protected val journalFile = AgentActor.this.journalFile
 
     protected def isDeletedEvent = Set()
@@ -92,7 +92,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
   }
 
   def receive = journaling orElse {
-    case JsonJournalRecoverer.Output.JournalIsReady ⇒
+    case JournalRecoverer.Output.JournalIsReady ⇒
       if (masterToOrderKeeper.nonEmpty) {
         logger.info(s"${masterToOrderKeeper.size} recovered master registrations: ${masterToOrderKeeper.keys.mkString(", ")}")
       }

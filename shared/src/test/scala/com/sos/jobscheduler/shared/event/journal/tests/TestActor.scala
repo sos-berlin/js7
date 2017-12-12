@@ -15,7 +15,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.tests.TestActor._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonCodecs.TestKeyedEventJsonCodec
-import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JsonJournalActor, JsonJournalActorRecoverer, JsonJournalMeta, JsonJournalRecoverer}
+import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JournalActor, JournalActorRecoverer, JournalMeta, JournalRecoverer}
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.duration.DurationInt
@@ -30,7 +30,7 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(999.seconds)
   private val journalActor = context.actorOf(
-    Props { new JsonJournalActor(TestJsonJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new StampedKeyedEventBus) },
+    Props { new JournalActor(TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new StampedKeyedEventBus) },
     "Journal")
   private val keyToAggregate = mutable.Map[String, ActorRef]()
 
@@ -41,9 +41,9 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
     keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map { case (k: String @unchecked, a) ⇒ k → a }
   }
 
-  private class MyJournalRecoverer extends JsonJournalActorRecoverer[TestEvent] {
+  private class MyJournalRecoverer extends JournalActorRecoverer[TestEvent] {
     protected val sender = TestActor.this.sender()
-    protected val jsonJournalMeta = TestJsonJournalMeta
+    protected val journalMeta = TestJournalMeta
     protected val journalFile = TestActor.this.journalFile
 
     protected def snapshotToKey = {
@@ -66,7 +66,7 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
   }
 
   def receive = {
-    case JsonJournalRecoverer.Output.JournalIsReady ⇒
+    case JournalRecoverer.Output.JournalIsReady ⇒
       context.become(ready)
       unstashAll()
       logger.info("Ready")
@@ -99,10 +99,10 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
       sender() ! (keyToAggregate.values map { a ⇒ (a ? TestAggregateActor.Input.Get).mapTo[TestAggregate] await 99.s }).toVector
 
     case Input.TakeSnapshot ⇒
-      (journalActor ? JsonJournalActor.Input.TakeSnapshot).mapTo[JsonJournalActor.Output.SnapshotTaken.type] pipeTo sender()
+      (journalActor ? JournalActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] pipeTo sender()
 
     case Input.GetJournalState ⇒
-      journalActor.forward(JsonJournalActor.Input.GetState)
+      journalActor.forward(JournalActor.Input.GetState)
 
     case Terminated(actorRef) ⇒  // ???
       keyToAggregate --= keyToAggregate collectFirst { case (key, `actorRef`) ⇒ key }
@@ -119,7 +119,7 @@ private[tests] object TestActor {
 
   val SnapshotJsonFormat = TypedJsonCodec[Any](
     Subtype[TestAggregate])
-  private val TestJsonJournalMeta = new JsonJournalMeta[TestEvent](SnapshotJsonFormat, TestKeyedEventJsonCodec) with GzipCompression
+  private val TestJournalMeta = new JournalMeta[TestEvent](SnapshotJsonFormat, TestKeyedEventJsonCodec) with GzipCompression
   private val logger = Logger(getClass)
 
   object Input {

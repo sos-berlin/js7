@@ -7,10 +7,10 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class JsonJournalHeaderTest extends FreeSpec {
+final class JournalHeaderTest extends FreeSpec {
 
   "NamedJsonFormat" in {
-    testJson[JsonJournalHeader](JsonJournalMeta.Header,
+    testJson[JournalHeader](JournalMeta.Header,
       s"""{
         "TYPE": "JobScheduler.Journal",
         "version": "0.1",

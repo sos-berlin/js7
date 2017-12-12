@@ -73,7 +73,7 @@ extends KeyedJournalingActor[OrderEvent] {
         sys.error(s"Unexpected order state: ${order.state}")   // A Finished order must be at Master
     }
     logger.debug(s"Recovered $order")
-    sender() ! Output.RecoveryFinished(order)  // Sent via JsonJournalRecoverer to AgentOrderKeeper
+    sender() ! Output.RecoveryFinished(order)  // Sent via JournalRecoverer to AgentOrderKeeper
   }
 
   def receive = journaling orElse {

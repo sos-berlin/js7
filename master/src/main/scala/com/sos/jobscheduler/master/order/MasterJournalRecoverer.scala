@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, O
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.order.MasterJournalRecoverer._
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
-import com.sos.jobscheduler.shared.event.journal.{JsonJournalRecoverer, KeyedJournalingActor}
+import com.sos.jobscheduler.shared.event.journal.{JournalRecoverer, KeyedJournalingActor}
 import java.nio.file.Path
 import scala.collection.mutable
 
@@ -18,8 +18,8 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 private[order] class MasterJournalRecoverer(protected val journalFile: Path, orderScheduleGenerator: ActorRef)(implicit protected val sender: ActorRef)
-extends JsonJournalRecoverer[Event] {
-  protected val jsonJournalMeta = MasterOrderKeeper.journalMeta(compressWithGzip = false/*irrelevant, we read*/)
+extends JournalRecoverer[Event] {
+  protected val journalMeta = MasterOrderKeeper.journalMeta(compressWithGzip = false/*irrelevant, we read*/)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
   private val _agentToEventId = mutable.Map[AgentPath, EventId]()
 

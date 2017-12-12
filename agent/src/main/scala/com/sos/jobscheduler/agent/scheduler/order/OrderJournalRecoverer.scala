@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderDetached, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowPath}
-import com.sos.jobscheduler.shared.event.journal.JsonJournalRecoverer
+import com.sos.jobscheduler.shared.event.journal.JournalRecoverer
 import java.nio.file.Path
 import scala.collection.mutable
 
@@ -21,9 +21,9 @@ import scala.collection.mutable
   */
 private[order] final class OrderJournalRecoverer(protected val journalFile: Path, eventsForMaster: ActorRef @@ EventQueueActor)
 (implicit askTimeout: Timeout)
-extends JsonJournalRecoverer[Event] {
+extends JournalRecoverer[Event] {
 
-  protected val jsonJournalMeta = AgentOrderKeeper.journalMeta(compressWithGzip = false/*irrelevant, we read*/)
+  protected val journalMeta = AgentOrderKeeper.journalMeta(compressWithGzip = false/*irrelevant, we read*/)
   private val workflowRegister = new WorkflowRegister
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
 

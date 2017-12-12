@@ -11,7 +11,7 @@ import java.nio.file.Path
 /**
   * @author Joacim Zschimmer
   */
-final class JsonFileIterator(expectedHeader: JsonJournalHeader, convertInputStream: InputStream ⇒ InputStream, file: Path)
+final class JsonFileIterator(expectedHeader: JournalHeader, convertInputStream: InputStream ⇒ InputStream, file: Path)
 extends AutoCloseable with Iterator[Json] {
 
   private val in = new FileInputStream(file)
@@ -33,7 +33,7 @@ extends AutoCloseable with Iterator[Json] {
   }
 
   private def checkHeader(headerJson: Json): Unit = {
-    val header = headerJson.as[JsonJournalHeader] match {
+    val header = headerJson.as[JournalHeader] match {
       case Right(o) ⇒ o
       case Left(t) ⇒
         throw new RuntimeException(s"Not a valid JobScheduler journal file: $file. Expected header ${headerJson.compactPrint}", t)
