@@ -40,7 +40,7 @@ object MasterApi {
 
   def events(after: EventId, timeout: Duration): Future[Response[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]] = {
     get[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]](
-      s"api/order/?return=OrderEvent&timeout=${timeout.toMillis}ms&after=$after",
+      s"api/order?return=OrderEvent&timeout=${timeout.toMillis}ms&after=$after",
       timeout = timeout + 30.seconds)
   }
 

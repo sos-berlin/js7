@@ -3,8 +3,6 @@ package com.sos.jobscheduler.master.web.api
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.Uri
-import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
-import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -34,18 +32,24 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
 
   def orderRoute: Route =
     get {
+      pathEnd {
+        parameter("return".?) {
+          case Some("OrderEvent") ⇒
+            orderEvents
+          case None ⇒
+            complete(orderClient.ordersOverview)
+          case _ ⇒
+            reject
+        }
+      } ~
       pathSingleSlash {
-        respondWithHeader(`Cache-Control`(`max-age`(0))) {
-          parameter("return".?) {
-            case Some("OrderOverview") | None ⇒
-              completeTryHtml(orderClient.orderOverviews)
-            case Some("Order") | None ⇒
-              complete(orderClient.orders)
-            case Some("OrderEvent") ⇒
-              orderEvents
-            case _ ⇒
-              reject
-          }
+        parameter("return".?) {
+          case Some("OrderOverview") | None ⇒
+            completeTryHtml(orderClient.orderOverviews)
+          case Some("Order") | None ⇒
+            complete(orderClient.orders)
+          case _ ⇒
+            reject
         }
       } ~
       path(Segment) { orderIdString ⇒
