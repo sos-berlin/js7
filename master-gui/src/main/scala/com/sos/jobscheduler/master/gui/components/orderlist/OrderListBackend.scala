@@ -12,6 +12,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom.html
 import scala.collection.mutable
 import scala.concurrent.duration._
+import scala.scalajs.js.URIUtils.encodeURI
 
 /**
   * @author Joacim Zschimmer
@@ -53,7 +54,7 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
       case OrdersState.Entry(order, output, isUpdated) ⇒
         val cls = orderToRowClass(order)
         <.tr(
-          <.td(^.cls := s"order-td-left $cls")(order.id),
+          <.td(^.cls := s"order-td-left $cls")(<.a(^.href := s"api/order/${encodeURI(order.id.string)}")(order.id)),
           <.td(^.cls := s"order-td hide-on-phone $cls")(order.nodeKey.workflowPath),
           <.td(^.cls := s"order-td $cls")(order.nodeKey.nodeId),
           <.td(^.cls := s"order-td $cls")(order.outcome),
