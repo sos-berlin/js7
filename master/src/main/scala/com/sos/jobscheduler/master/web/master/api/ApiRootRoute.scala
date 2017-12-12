@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.api.root
+package com.sos.jobscheduler.master.web.master.api
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -15,13 +15,13 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-trait RootRoute {
+trait ApiRootRoute {
 
   protected def executeCommand(command: MasterCommand): Future[MasterCommand.Response]
   protected def orderCountFuture: Future[Int]
   protected implicit def executionContext: ExecutionContext
 
-  final val rootRoute: Route =
+  final val apiRootRoute: Route =
     pathEnd {
       get {
         complete(

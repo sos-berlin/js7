@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.master.web
 
 import akka.actor.ActorRefFactory
-import akka.http.scaladsl.model.StatusCodes.{NotFound, TemporaryRedirect}
-import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.StatusCodes.TemporaryRedirect
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
+import com.sos.jobscheduler.master.web.master.MasterRoute
 
 /**
   * @author Joacim Zschimmer
@@ -20,9 +20,7 @@ trait AllRoute extends MasterRoute {
         htmlPreferred {
           redirect("/master", TemporaryRedirect)
         } ~
-        extractRequest { request ⇒
-          complete((NotFound, s"Try ${request.uri.copy(rawQueryString = None).withPath(Uri.Path("/master/api"))}\n"))
-        }
+        apiRootRoute
       } ~
       pathSegments("master") {
         masterRoute

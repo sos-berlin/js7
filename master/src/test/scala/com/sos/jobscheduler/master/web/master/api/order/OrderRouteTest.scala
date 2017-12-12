@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.api
+package com.sos.jobscheduler.master.web.master.api.order
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
@@ -14,11 +14,11 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, OrderOverview, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, OrderOverview, OrdersOverview, Payload}
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.OrderClient
-import com.sos.jobscheduler.master.web.api.OrderRouteTest._
-import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
+import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
+import com.sos.jobscheduler.master.web.master.api.order.OrderRouteTest._
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.concurrent.Future
@@ -48,12 +48,26 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
       orderRoute
     }
 
+  // OrdersOverview
   OrderUri in {
     Get(OrderUri) ~> Accept(`application/json`) ~> route ~> check {
-      assert(!handled)
+      assert(responseAs[OrdersOverview] == OrdersOverview(orderCount = TestOrders.size))
     }
   }
 
+  // Events
+  for (uri ← List(
+      s"$OrderUri?return=OrderEvent&timeout=60&after=0")) {
+    s"$uri" in {
+      Get(uri) ~> Accept(`application/json`) ~> route ~> check {
+        if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
+        val Stamped(_, EventSeq.NonEmpty(stampeds)) = responseAs[Stamped[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]]
+        assert(stampeds == TestEvents)
+      }
+    }
+  }
+
+  // Seq[OrderOverview]
   for (uri ← List(
       s"$OrderUri/")) {
     s"$uri" in {
@@ -64,6 +78,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
     }
   }
 
+  // Seq[Order]
   for (uri ← List(
        s"$OrderUri/?return=Order")) {
     s"$uri" in {
@@ -74,13 +89,12 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
     }
   }
 
+  // Order
   for (uri ← List(
-      s"$OrderUri/?return=OrderEvent&timeout=60&after=0")) {
+       s"$OrderUri/${TestOrders.values.head.id.string}")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
-        val Stamped(_, EventSeq.NonEmpty(stampeds)) = responseAs[Stamped[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]]
-        assert(stampeds == TestEvents)
+        assert(responseAs[Order[Order.State]] == TestOrders.values.head)
       }
     }
   }

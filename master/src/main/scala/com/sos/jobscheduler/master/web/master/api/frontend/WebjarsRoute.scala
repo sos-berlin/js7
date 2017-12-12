@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.simplegui
+package com.sos.jobscheduler.master.web.master.api.frontend
 
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
@@ -9,7 +9,7 @@ import com.sos.jobscheduler.common.akkahttp.html.Webjar
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.master.web.simplegui.WebjarsRoute._
+import com.sos.jobscheduler.master.web.master.api.frontend.WebjarsRoute._
 import scala.util.control.NonFatal
 
 /**
@@ -28,7 +28,7 @@ trait WebjarsRoute {
     }
 }
 
-private[simplegui] object WebjarsRoute {
+private[frontend] object WebjarsRoute {
   private val LongTimeCaching = `Cache-Control`(`max-age`((30 * 24.h).getSeconds))
   private val WebjarsResourceDirectory = JavaResource("META-INF/resources/webjars")
   private val logger = Logger(getClass)

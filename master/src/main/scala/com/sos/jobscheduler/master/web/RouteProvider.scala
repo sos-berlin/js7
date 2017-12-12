@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.master.OrderClient
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
+import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}

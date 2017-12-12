@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.simplegui
+package com.sos.jobscheduler.master.web.master.api.frontend
 
 import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
@@ -8,8 +8,8 @@ import com.sos.jobscheduler.common.akkahttp.html.HtmlPage.seqFrag
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.master.web.simplegui.MasterHtmlPage._
-import com.sos.jobscheduler.master.web.simplegui.WebjarsRoute.NeededWebjars
+import com.sos.jobscheduler.master.web.master.api.frontend.MasterHtmlPage._
+import com.sos.jobscheduler.master.web.master.api.frontend.WebjarsRoute.NeededWebjars
 import java.time.Instant.now
 import java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
@@ -116,7 +116,7 @@ trait MasterHtmlPage extends HtmlPage {
     //navBarTab("Job chains"     , uris.jobChain.overviews()),
     //navBarTab("Jobs"           , uris.job[JobOverview](PathQuery.All)),
     //navBarTab("Process classes", uris.processClass.views[ProcessClassOverview](PathQuery.All)),
-      navBarTab("Events"         , webServiceContext.uri("api/order/?return=OrderEvent&limit=-1000")))
+      navBarTab("Events"         , webServiceContext.uri("api/order?return=OrderEvent&limit=-1000")))
 
   private def uncollapseButton: Frag =
     button(`type` := "button", cls := "navbar-toggle", data("toggle") := "collapse", data("target") := ".navbar-collapse")(
@@ -131,16 +131,16 @@ trait MasterHtmlPage extends HtmlPage {
   }
 }
 
-private[simplegui] object MasterHtmlPage {
+private[frontend] object MasterHtmlPage {
   private lazy val nav = tag("nav")
   val OurZoneId = ZoneId.systemDefault
 
   private val CssPathsResources = Vector(
-    JavaResource("com/sos/jobscheduler/master/web/simplegui/frontend/common/common.css"))
+    JavaResource("com/sos/jobscheduler/master/web/master/api/frontend/common/common.css"))
   private val ScriptResources = Vector(
-    JavaResource("com/sos/jobscheduler/master/web/simplegui/frontend/common/common.js"))
+    JavaResource("com/sos/jobscheduler/master/web/master/api/frontend/common/common.js"))
   private val RabbitPictureResource =
-    JavaResource("com/sos/jobscheduler/master/web/simplegui/frontend/common/images/job_scheduler_rabbit_circle_60x60.gif")
+    JavaResource("com/sos/jobscheduler/master/web/master/api/frontend/common/images/job_scheduler_rabbit_circle_60x60.gif")
 
   def midnightInstant: Instant =
     Instant.ofEpochSecond(LocalDate.now(MasterHtmlPage.OurZoneId).toEpochDay * 24*3600)

@@ -10,6 +10,7 @@ import java.security.MessageDigest
 import scala.collection.immutable
 import scalatags.Text.TypedTag
 import scalatags.Text.all._
+import org.scalactic.Requirements._
 
 /**
   * @author Joacim Zschimmer

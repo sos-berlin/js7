@@ -1,10 +1,10 @@
-package com.sos.jobscheduler.master.web.simplegui
+package com.sos.jobscheduler.master.web.master.api.frontend
 
 import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives.ToHtmlPage
 import com.sos.jobscheduler.data.event.{Event, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderOverview}
-import com.sos.jobscheduler.master.web.simplegui.OrdersHtmlPage._
+import com.sos.jobscheduler.master.web.master.api.frontend.OrdersHtmlPage._
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 import scalatags.Text.all._

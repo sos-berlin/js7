@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.master.web.simplegui
+package com.sos.jobscheduler.master.web.master.api.frontend
 
 import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.common.akkahttp.html.WebServiceContext
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext._
+import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext._
 
 /**
   * @author Joacim Zschimmer
@@ -23,5 +23,5 @@ extends WebServiceContext {
 }
 
 object MasterWebServiceContext {
-  private val StaticPackage = JavaResource("com/sos/jobscheduler/master/web/simplegui/frontend/")
+  private val StaticPackage = JavaResource("com/sos/jobscheduler/master/web/master/api/frontend/")
 }

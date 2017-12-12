@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.api.root
+package com.sos.jobscheduler.master.web.master.api
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
@@ -10,14 +10,14 @@ import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.data.MasterOverview
-import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
+import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
-final class RootRouteTest extends FreeSpec with ScalatestRouteTest with RootRoute {
+final class ApiRootRouteTest extends FreeSpec with ScalatestRouteTest with ApiRootRoute {
 
   protected implicit def executionContext = system.dispatcher
   protected val webServiceContext = new MasterWebServiceContext
@@ -31,7 +31,7 @@ final class RootRouteTest extends FreeSpec with ScalatestRouteTest with RootRout
 
   private def route: Route =
     pathSegments("api") {
-      rootRoute
+      apiRootRoute
     }
 
   "/api" in {
@@ -52,6 +52,6 @@ final class RootRouteTest extends FreeSpec with ScalatestRouteTest with RootRout
   }
 }
 
-object RootRouteTest {
+object ApiRootRouteTest {
   intelliJuseImport(jsonUnmarshaller)
 }

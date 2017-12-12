@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.simplegui
+package com.sos.jobscheduler.master.web.master.gui
 
 import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
 import akka.http.scaladsl.model.HttpEntity
@@ -11,7 +11,8 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.master.web.simplegui.GuiRoute._
+import com.sos.jobscheduler.master.web.master.api.frontend.WebjarsRoute
+import com.sos.jobscheduler.master.web.master.gui.GuiRoute._
 
 /**
   * @author Joacim Zschimmer

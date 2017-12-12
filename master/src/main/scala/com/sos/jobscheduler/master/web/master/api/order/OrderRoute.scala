@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.api
+package com.sos.jobscheduler.master.web.master.api.order
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes.BadRequest
@@ -15,8 +15,8 @@ import com.sos.jobscheduler.data.event.SomeEventRequest
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import com.sos.jobscheduler.master.OrderClient
-import com.sos.jobscheduler.master.web.simplegui.MasterWebServiceContext
-import com.sos.jobscheduler.master.web.simplegui.OrdersHtmlPage._
+import com.sos.jobscheduler.master.web.master.api.frontend.OrdersHtmlPage._
+import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
 import scala.concurrent.ExecutionContext
 
 /**

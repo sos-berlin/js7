@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.web.simplegui
+package com.sos.jobscheduler.master.web.master.api.frontend
 
 import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.`Cache-Control`
@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.master.web.simplegui.FrontEndRoute._
+import com.sos.jobscheduler.master.web.master.api.frontend.FrontEndRoute._
 
 /**
   * @author Joacim Zschimmer
@@ -14,7 +14,7 @@ import com.sos.jobscheduler.master.web.simplegui.FrontEndRoute._
 trait FrontEndRoute extends WebjarsRoute {
 
   // Lazy and not in object to avoid ExceptionInInitializerError
-  private lazy val FrontendResourceDirectory = JavaResource("com/sos/jobscheduler/master/web/simplegui/frontend")
+  private lazy val FrontendResourceDirectory = JavaResource("com/sos/jobscheduler/master/web/master/api/frontend")
 
   final val frontEndRoute: Route =
     get {
