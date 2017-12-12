@@ -13,8 +13,7 @@ class JournalMeta[E <: Event](
 extends StreamConversion
 
 object JournalMeta {
-  val Header = JournalHeader(
-    version = "0.1",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+  val Header = JournalHeader(version = "0.2",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
     softwareVersion = BuildInfo.version)
 
   def gzipped[E <: Event](

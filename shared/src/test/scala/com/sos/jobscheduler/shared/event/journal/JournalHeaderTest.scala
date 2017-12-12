@@ -13,7 +13,7 @@ final class JournalHeaderTest extends FreeSpec {
     testJson[JournalHeader](JournalMeta.Header,
       s"""{
         "TYPE": "JobScheduler.Journal",
-        "version": "0.1",
+        "version": "${JournalMeta.Header.version}",
         "softwareVersion": "${BuildInfo.version}"
         }""")
   }

@@ -18,7 +18,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator
-import com.sos.jobscheduler.shared.event.journal.JournalActor
+import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.shared.event.journal.tests.JournalTest._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.typesafe.config.ConfigFactory
@@ -227,7 +227,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
         val header = iterator.next()
         assert(header == Json.obj(
           "TYPE" → Json.fromString("JobScheduler.Journal"),
-          "version" → Json.fromString("0.1"),
+          "version" → Json.fromString(JournalMeta.Header.version),
           "softwareVersion" → Json.fromString(BuildInfo.version)))
       }
       Vector.build[Json] { builder ⇒
