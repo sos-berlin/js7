@@ -13,7 +13,7 @@ final class WorkflowsTest extends FreeSpec {
   "ExecutableWorkflow" - {
     val isSwitchableSetting = List(
       ((A.id , Order.Processed), true),
-      ((Bx.id, Order.Processed), true),  ((By.id, Order.Processed), false/*true would be okay*/),
+      ((Bx.id, Order.Processed), true),  ((By.id, Order.Processed), true),
       ((Cx.id, Order.Processed), false), ((Cy.id, Order.Processed), false),
       ((A.id , Order.Forked(Nil)), false),
 

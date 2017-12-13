@@ -4,30 +4,26 @@ import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.transition.Transition._
 import com.sos.jobscheduler.data.workflow.{NodeId, Workflow, WorkflowRoute}
 import io.circe.{Decoder, Encoder}
-import scala.collection.immutable.IndexedSeq
+import scala.collection.immutable.{IndexedSeq, ListMap, Seq}
 
 /**
   * @author Joacim Zschimmer
   */
 final case class Transition private(
-  @deprecated("fork.toNodeIds genügt")
   forkNodeId: Option[NodeId] = None,
   fromProcessedNodeIds: IndexedSeq[NodeId],
   toNodeIds: IndexedSeq[NodeId],
-  childRoutes: IndexedSeq[WorkflowRoute],
+  idToRoute: ListMap[WorkflowRoute.Id, WorkflowRoute],
   transitionType: TransitionType) {
 
   require(toNodeIds.size >= transitionType.routesMinimum, s"$transitionType requires ${transitionType.routesMinimum} input nodes")
-  require(transitionType.routesMaximum forall (childRoutes.size <= _), s"$transitionType supports not more than ${transitionType.routesMinimum} output nodes")
+  require(transitionType.routesMaximum forall (idToRoute.size <= _), s"$transitionType supports not more than ${transitionType.routesMinimum} output nodes")
 
-  val fromNodeIds: Set[NodeId] = fromProcessedNodeIds.toSet ++ forkNodeId
+  val fromNodeIds: IndexedSeq[NodeId] = forkNodeId ++: fromProcessedNodeIds
   val endpoints: Set[NodeId] = (fromProcessedNodeIds ++ toNodeIds).uniqueToSet
-  val nodes: IndexedSeq[Workflow.Node] = childRoutes flatMap (_.nodes)
-
-  val id = Id(fromProcessedNodeIds.head.string)   // Unique, because every node is followed by exactly one transition
+  val nodes: Seq[Workflow.Node] = idToRoute.values.flatMap(_.nodes).toVector
 
   override def toString = {
     val sb = new StringBuilder(50)
@@ -52,35 +48,33 @@ object Transition {
     apply(Vector(from), Vector(to), transition)
 
   def apply(from: Iterable[NodeId], to: Iterable[NodeId], transitionType: TransitionType): Transition =
-    of(None, from.toIndexedSeq, to.toIndexedSeq, transitionType)
+    of(None, from.toIndexedSeq, to.toIndexedSeq, None, transitionType)
 
-  def forkJoin(forkNodeId: NodeId, joinNodeId: NodeId, routes: IndexedSeq[WorkflowRoute], childEndNodes: IndexedSeq[NodeId], forkTransitionType: TransitionType, joinTransitionType: TransitionType): (Transition, Transition) = {
-    val f = fork(from = forkNodeId, routes = routes, forkTransitionType)
-    val j = join(fromForked = forkNodeId, fromProcessed = childEndNodes, to = joinNodeId, joinTransitionType)
+  def forkJoin(forkNodeId: NodeId, joinNodeId: NodeId, idToRoute: ListMap[WorkflowRoute.Id, WorkflowRoute], childEndNodes: IndexedSeq[NodeId], forkTransitionType: TransitionType, joinTransitionType: TransitionType): (Transition, Transition) = {
+    val f = fork(forkNodeId, idToRoute, forkTransitionType)
+    val j = join(forkNodeId, fromProcessed = childEndNodes, to = joinNodeId, joinTransitionType)
     (f, j)
   }
 
   /** Forked orders get the IDs "{OrderId}/{Outlet.Id}". */
-  def fork(from: NodeId, routes: IndexedSeq[WorkflowRoute], transitionType: TransitionType): Transition =
+  def fork(from: NodeId, idToRoute: ListMap[WorkflowRoute.Id, WorkflowRoute], transitionType: TransitionType): Transition =
     new Transition(
       forkNodeId = None,
       fromProcessedNodeIds = Vector(from),
-      toNodeIds = routes.map(_.start),
-      routes,
+      toNodeIds = idToRoute.values.map(_.start).toVector,
+      idToRoute,
       transitionType)
 
-  def join(fromForked: NodeId, fromProcessed: IndexedSeq[NodeId], to: NodeId, transitionType: TransitionType): Transition =
-    of(Some(fromForked), fromProcessed = fromProcessed, Vector(to), transitionType)
+  def join(forkNodeId: NodeId, fromProcessed: IndexedSeq[NodeId], to: NodeId, transitionType: TransitionType): Transition =
+    of(Some(forkNodeId), fromProcessed = fromProcessed, Vector(to), None, transitionType)
 
-  private def of(fromForkedId: Option[NodeId], fromProcessed: IndexedSeq[NodeId], to: IndexedSeq[NodeId], transitionType: TransitionType): Transition =
+  private def of(fromForkedId: Option[NodeId] = None, fromProcessed: IndexedSeq[NodeId], to: IndexedSeq[NodeId], joinNodeId: Option[NodeId] = None, transitionType: TransitionType): Transition =
     new Transition(
       forkNodeId = fromForkedId,
       fromProcessedNodeIds = fromProcessed,
       to,
-      childRoutes = Vector.empty,
+      idToRoute = ListMap.empty,
       transitionType)
-
-  final case class Id(string: String)
 
   implicit def jsonCodec(implicit encoder: Encoder[TransitionType], decoder: Decoder[TransitionType]): CirceCodec[Transition] =
     deriveCirceCodec[Transition]

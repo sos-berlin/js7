@@ -87,6 +87,7 @@ final class AgentCommandTest extends FreeSpec {
         AgentPath("/AGENT"),
         TestWorkflow),
         """{
+          "TYPE": "AttachOrder",
           "order": {
             "state": {
               "TYPE": "Ready"
@@ -96,7 +97,7 @@ final class AgentCommandTest extends FreeSpec {
                 "returnValue": true,
                 "TYPE": "Good"
               },
-              "variables": { }
+              "variables": {}
             },
             "attachedTo": {
               "agentPath": "/AGENT",
@@ -109,10 +110,11 @@ final class AgentCommandTest extends FreeSpec {
             }
           },
           "workflow": {
+            "path": "/WORKFLOW",
             "route": {
               "transitions": [
                 {
-                  "childRoutes": [ ],
+                  "idToRoute": {},
                   "fromProcessedNodeIds": [ "A" ],
                   "toNodeIds": [ "B" ],
                   "transitionType": {
@@ -120,7 +122,7 @@ final class AgentCommandTest extends FreeSpec {
                   }
                 },
                 {
-                  "childRoutes": [ ],
+                  "idToRoute": {},
                   "fromProcessedNodeIds": [ "B" ],
                   "toNodeIds": [ "END" ],
                   "transitionType": {
@@ -128,31 +130,26 @@ final class AgentCommandTest extends FreeSpec {
                   }
                 }
               ],
-              "id": "/WORKFLOW",
               "nodes": [
                 {
                   "agentPath": "/AGENT",
                   "jobPath": "/A",
                   "id": "A",
                   "TYPE": "JobNode"
-                },
-                {
+                }, {
                   "agentPath": "/AGENT",
                   "jobPath": "/B",
                   "id": "B",
                   "TYPE": "JobNode"
-                },
-                {
+                }, {
                   "id": "END",
                   "TYPE": "EndNode"
                 }
               ],
               "end": "END",
               "start": "A"
-            },
-            "path": "/WORKFLOW"
-          },
-          "TYPE": "AttachOrder"
+            }
+          }
         }""")
     }
 

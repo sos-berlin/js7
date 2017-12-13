@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow.transitions
 
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, SuccessFailureTransition, TransitionType}
+import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, TransitionType}
 
 /**
   * @author Joacim Zschimmer

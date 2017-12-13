@@ -16,7 +16,7 @@ trait TransitionType {
   def routesMinimum: Int
   def routesMaximum: Option[Int]
 
-  def result(orders: IndexedSeq[InputOrder], childRoutes: IndexedSeq[WorkflowRoute]): Result
+  def result(orders: IndexedSeq[InputOrder], routeIds: Seq[WorkflowRoute.Id]): Result
 
   protected def singleOrder(orders: Seq[InputOrder]): InputOrder =
     numberedOrders(1, orders).head

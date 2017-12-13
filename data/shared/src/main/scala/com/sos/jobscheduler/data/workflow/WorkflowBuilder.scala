@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow
 import com.sos.jobscheduler.data.workflow.Workflow.{JobNode, Node}
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition}
-import scala.collection.immutable.IndexedSeq
+import scala.collection.immutable.ListMap
 import scala.collection.mutable
 
 /**
@@ -16,13 +16,13 @@ final class WorkflowBuilder private(start: JobNode) {
 
   nodes += start
 
-  def fork(join: Node, routes: IndexedSeq[WorkflowRoute]): this.type = {
+  def fork(join: Node, idToRoute: ListMap[WorkflowRoute.Id, WorkflowRoute]): this.type = {
     val (f, j) =
       Transition.forkJoin(
         forkNodeId = nodes.last.id,
         joinNodeId = join.id,
-        routes = routes,
-        childEndNodes = routes.map(_.end),
+        idToRoute = idToRoute,
+        childEndNodes = idToRoute.values.map(_.end).toVector,
         ForkTransition,
         JoinTransition)
     transitions += f
@@ -41,15 +41,15 @@ final class WorkflowBuilder private(start: JobNode) {
     nodes += node
   }
 
-  def toRoute(id: WorkflowRoute.Id = WorkflowRoute.Id.empty): WorkflowRoute =
-    WorkflowRoute(id,
+  def toRoute: WorkflowRoute =
+    WorkflowRoute(
       start = nodes.head.id,
       end = nodes.last.id,
       nodes.toVector,
       transitions.toVector)
 
   def toWorkflow(path: WorkflowPath): Workflow =
-    Workflow(path, toRoute())
+    Workflow(path, toRoute)
 }
 
 object WorkflowBuilder {

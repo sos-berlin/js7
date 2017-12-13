@@ -5,7 +5,8 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
-import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, SuccessFailureTransition, Transition}
+import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
+import com.sos.jobscheduler.data.workflow.transitions.SuccessFailureTransition
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath}
 import javax.xml.transform.Source
 import scala.collection.immutable.Seq

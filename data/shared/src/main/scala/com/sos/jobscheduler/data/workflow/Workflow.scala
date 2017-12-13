@@ -18,9 +18,9 @@ import scala.collection.immutable.Seq
   */
 final case class Workflow private(path: WorkflowPath, route: WorkflowRoute) {
 
-  val forkNodeToJoiningTransition = transitions.map(o ⇒ o.forkNodeId → o).collect { case (Some(forkNodeId), t) ⇒ forkNodeId → t } .toMap
-    .withNoSuchKey(k ⇒ new NoSuchElementException(s"No joining transition for forking node '$k'"))
-  val nodeToOutputTransition = (for (t ← transitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t)
+  val forkNodeToJoiningTransition = route.allTransitions.map(o ⇒ o.forkNodeId → o).collect { case (Some(forkNodeId), t) ⇒ forkNodeId → t }
+    .toMap withNoSuchKey (k ⇒ new NoSuchElementException(s"No joining transition for forking node '$k'"))
+  val nodeToOutputTransition = (for (t ← route.allTransitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t)
     .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Nodes with duplicate transitions: ${duplicates.mkString(", ")}"))
     .withNoSuchKey(k ⇒ new NoSuchElementException(s"No output transition for Workflow.Node '$k'"))
 
@@ -50,18 +50,14 @@ final case class Workflow private(path: WorkflowPath, route: WorkflowRoute) {
   def startNodeKey = NodeKey(path, route.start)
 
   def start: NodeId = route.start
-
-  def nodes = route.nodes
-
-  def transitions = route.transitions
 }
 
 object Workflow {
   def apply(path: WorkflowPath, route: WorkflowRoute): Workflow =
-    new Workflow(path, route.copy(id = WorkflowRoute.Id(path.string)))
+    new Workflow(path, route)
 
   def apply(path: WorkflowPath, start: NodeId, end: NodeId, nodes: Seq[Node], transitions: Seq[Transition]): Workflow =
-    Workflow(path, WorkflowRoute(WorkflowRoute.Id.empty, start, end, nodes, transitions))
+    Workflow(path, WorkflowRoute(start, end, nodes, transitions))
 
 
   def fromWorkflowAttached(path: WorkflowPath, event: WorkflowEvent.WorkflowAttached): Workflow =

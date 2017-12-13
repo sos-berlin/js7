@@ -3,7 +3,6 @@ package com.sos.jobscheduler.data.workflow
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
-import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.transitions.JoinTransition
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -22,7 +21,7 @@ final class WorkflowTest extends FreeSpec {
     }
 
     "nodes" in {
-      assert(TestWorkflow.nodes.toSet == Set(A, Bx, By, Cx, Cy, D, Ex, Ey, Fx, Fy, G, END))
+      assert(TestWorkflow.route.nodes.toSet == Set(A, Bx, By, Cx, Cy, D, Ex, Ey, Fx, Fy, G, END))
     }
 
     "forkNodeToJoiningTransition" in {
@@ -92,11 +91,15 @@ final class WorkflowTest extends FreeSpec {
         "route": {
           "transitions": [
             {
-              "childRoutes": [
-                {
+              "fromProcessedNodeIds": [ "A" ],
+              "toNodeIds": [ "Bx", "By" ],
+              "idToRoute": {
+                "🥕": {
+                  "start": "Bx",
+                  "end": "Cx",
                   "transitions": [
                     {
-                      "childRoutes": [],
+                      "idToRoute": {},
                       "fromProcessedNodeIds": [ "Bx" ],
                       "toNodeIds": [ "Cx" ],
                       "transitionType": {
@@ -104,17 +107,17 @@ final class WorkflowTest extends FreeSpec {
                       }
                     }
                   ],
-                  "id": "🥕",
                   "nodes": [
                     { "TYPE": "JobNode", "id": "Bx", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                     { "TYPE": "JobNode", "id": "Cx", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
-                  ],
-                  "end": "Cx",
-                  "start": "Bx"
-                }, {
+                  ]
+                },
+                "🍋": {
+                  "start": "By",
+                  "end": "Cy",
                   "transitions": [
                     {
-                      "childRoutes": [],
+                      "idToRoute": {},
                       "fromProcessedNodeIds": [ "By" ],
                       "toNodeIds": [ "Cy" ],
                       "transitionType": {
@@ -122,74 +125,56 @@ final class WorkflowTest extends FreeSpec {
                       }
                     }
                   ],
-                  "id": "🍋",
                   "nodes": [
                     { "TYPE": "JobNode", "id": "By", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                     { "TYPE": "JobNode", "id": "Cy", "jobPath": "/JOB", "agentPath": "/AGENT-B" }
-                  ],
-                  "end": "Cy",
-                  "start": "By"
+                  ]
                 }
-              ],
-              "fromProcessedNodeIds": [ "A" ],
-              "toNodeIds": [ "Bx", "By" ],
+              },
               "transitionType": {
                 "TYPE": "ForkTransition"
               }
             }, {
-              "childRoutes": [],
-              "fromProcessedNodeIds": [ "Bx" ],
-              "toNodeIds": [ "Cx" ],
-              "transitionType": {
-                "TYPE": "ForwardTransition"
-              }
-            }, {
-              "childRoutes": [],
-              "fromProcessedNodeIds": [ "By" ],
-              "toNodeIds": [ "Cy" ],
-              "transitionType": {
-                "TYPE": "ForwardTransition"
-              }
-            }, {
-              "childRoutes": [],
               "fromProcessedNodeIds": [ "Cx", "Cy" ],
               "toNodeIds": [ "D" ],
+              "idToRoute": {},
               "transitionType": {
                 "TYPE": "JoinTransition"
               },
               "forkNodeId": "A"
             }, {
-              "childRoutes": [
-                {
+              "fromProcessedNodeIds": [ "D" ],
+              "toNodeIds": [ "Ex", "Ey" ],
+              "idToRoute": {
+                "🥕": {
                   "transitions": [
                     {
-                      "childRoutes": [],
-                      "fromProcessedNodeIds": [ "Bx" ],
-                      "toNodeIds": [ "Cx" ],
+                      "fromProcessedNodeIds": [ "Ex" ],
+                      "toNodeIds": [ "Fx" ],
+                      "idToRoute": {},
                       "transitionType": {
                         "TYPE": "ForwardTransition"
                       }
                     }
                   ],
-                  "id": "🥕",
                   "nodes": [
                     { "TYPE": "JobNode", "id": "Ex", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                     { "TYPE": "JobNode", "id": "Fx", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
                   ],
                   "end": "Fx",
                   "start": "Ex"
-                }, {
+                },
+                "🍋": {
                   "transitions": [
                     {
-                      "childRoutes": [],
-                      "fromProcessedNodeIds": [ "By" ],
-                      "toNodeIds": [ "Cy" ],
+                      "fromProcessedNodeIds": [ "Ey" ],
+                      "toNodeIds": [ "Fy" ],
+                      "idToRoute": {},
                       "transitionType": {
                         "TYPE": "ForwardTransition"
                       }
                     }
                   ],
-                  "id": "🍋",
                   "nodes": [
                     { "TYPE": "JobNode", "id": "Ey", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                     { "TYPE": "JobNode", "id": "Fy", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
@@ -197,45 +182,27 @@ final class WorkflowTest extends FreeSpec {
                   "end": "Fy",
                   "start": "Ey"
                 }
-              ],
-              "fromProcessedNodeIds": [ "D" ],
-              "toNodeIds": [ "Ex", "Ey" ],
+              },
               "transitionType": {
                 "TYPE": "ForkTransition"
               }
             }, {
-              "childRoutes": [
-              ],
-              "fromProcessedNodeIds": [ "Ex" ],
-              "toNodeIds": [ "Fx" ],
-              "transitionType": {
-                "TYPE": "ForwardTransition"
-              }
-            }, {
-              "childRoutes": [],
-              "fromProcessedNodeIds": [ "Ey" ],
-              "toNodeIds": [ "Fy" ],
-              "transitionType": {
-                "TYPE": "ForwardTransition"
-              }
-            }, {
-              "childRoutes": [],
               "fromProcessedNodeIds": [ "Fx", "Fy" ],
               "toNodeIds": [ "G" ],
+              "idToRoute": {},
               "transitionType": {
                 "TYPE": "JoinTransition"
               },
               "forkNodeId": "D"
             }, {
-              "childRoutes": [],
               "fromProcessedNodeIds": [ "G" ],
               "toNodeIds": [ "END" ],
+              "idToRoute": {},
               "transitionType": {
                 "TYPE": "ForwardTransition"
               }
             }
           ],
-          "id": "/WORKFLOW",
           "nodes": [
             { "TYPE": "JobNode", "id": "A", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
             { "TYPE": "JobNode", "id": "Bx", "jobPath": "/JOB", "agentPath": "/AGENT-A" },

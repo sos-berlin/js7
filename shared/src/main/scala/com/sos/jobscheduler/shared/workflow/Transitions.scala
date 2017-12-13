@@ -21,12 +21,12 @@ object Transitions {
   private val logger = Logger(getClass)
 
   implicit class ExecutableTransition(val transition: Transition) extends AnyVal {
-    import transition.{childRoutes, forkNodeId, fromProcessedNodeIds, toNodeIds, transitionType}
+    import transition.{fromNodeIds, idToRoute, toNodeIds, transitionType}
 
     def switch(nodeToOrder: NodeToTransitionableOrder): Option[KeyedEvent[OrderTransitionedEvent]] =
       canSwitch(nodeToOrder) option {
-        val inputOrders = (forkNodeId ++: fromProcessedNodeIds) map nodeToOrder
-        transitionType.result(inputOrders, childRoutes) match {
+        val inputOrders = fromNodeIds map nodeToOrder
+        transitionType.result(inputOrders, idToRoute.keys.toVector) match {
           case Move(nodeIndex) ⇒
             require(inputOrders.size == 1)
             val orderId = inputOrders.head.id
@@ -40,7 +40,7 @@ object Transitions {
             val orderId = inputOrders.head.id
             KeyedEvent(OrderEvent.OrderForked(
               children.map { case Fork.Child(routeId, payload) ⇒
-                val route = childRoutes find (_.id == routeId) getOrElse (
+                val route = idToRoute.getOrElse(routeId,
                   throw new NoSuchElementException(s"Transition $transition returns unknown route '$routeId'"))
                 OrderForked.Child(orderId.child(routeId.string), route.start, payload)
               })
@@ -58,7 +58,7 @@ object Transitions {
       }
 
     def canSwitch(nodeToOrder: NodeToTransitionableOrder): Boolean =
-      (fromProcessedNodeIds ++ forkNodeId) forall nodeToOrder.isDefinedAt
+      fromNodeIds forall nodeToOrder.isDefinedAt
 
     private[workflow] def joinableOrders(order: Order[Order.Transitionable], idToOrder: PartialFunction[OrderId, Order[Order.State]]): Iterable[Order[Order.Transitionable]] =
       transition.transitionType match {

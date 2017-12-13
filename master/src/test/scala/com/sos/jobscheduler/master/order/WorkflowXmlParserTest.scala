@@ -2,7 +2,8 @@ package com.sos.jobscheduler.master.order
 
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.workflow.transition.{SuccessFailureTransition, Transition}
+import com.sos.jobscheduler.data.workflow.transition.Transition
+import com.sos.jobscheduler.data.workflow.transitions.SuccessFailureTransition
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 
