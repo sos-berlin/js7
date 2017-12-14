@@ -6,7 +6,6 @@ import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichPairTraversable, RichTraversable}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Workflow.{JobNode, Node}
-import com.sos.jobscheduler.data.workflow.WorkflowRoute._
 import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.transitions.TransitionRegister
 import scala.collection.immutable.Seq
@@ -14,12 +13,13 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowRoute(id: Id = Id.empty, start: NodeId, end: NodeId, nodes: Seq[Node], transitions: Seq[Transition]) {
+final case class WorkflowRoute(start: NodeId, end: NodeId, nodes: Seq[Node], transitions: Seq[Transition]) {
 
   val idToNode = nodes toKeyedMap { _.id }
+  val allTransitions: Seq[Transition] = (transitions ++ transitions.flatMap(_.idToRoute.values flatMap (_.allTransitions)))
 
   require(idToNode.size == nodes.size, s"WorkflowRoute contains duplicate NodeIds")
-  (for (t ← transitions; to ← t.toNodeIds) yield to → t).uniqueToMap  // throws if not unique
+  (for (t ← allTransitions; to ← t.toNodeIds) yield to → t).uniqueToMap  // throws if not unique
 
   def requireCompleteness: this.type = {
     require(idToNode isDefinedAt start)
@@ -36,9 +36,8 @@ final case class WorkflowRoute(id: Id = Id.empty, start: NodeId, end: NodeId, no
 
 object WorkflowRoute {
   final case class Id(string: String) extends IsString
-  object Id extends IsString.Companion[Id] {
-    val empty = Id("")
-  }
+  object Id extends IsString.Companion[Id]
+
   implicit val JsonCodec: CirceCodec[WorkflowRoute] = {
     implicit val TransitionRegisterCodec = TransitionRegister.JsonCodec
     deriveCirceCodec[WorkflowRoute]

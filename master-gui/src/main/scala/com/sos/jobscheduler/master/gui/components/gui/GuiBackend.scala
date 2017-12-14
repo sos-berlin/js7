@@ -5,20 +5,19 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent}
 import com.sos.jobscheduler.master.gui.components.gui.GuiBackend._
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.services.MasterApi
-import com.sos.jobscheduler.master.gui.services.MasterApi.Response
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback}
 import org.scalajs.dom
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
   */
 final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
 
-  private val originalTitle = dom.document.title
   private val onDocumentVisibilityChanged = (_: dom.raw.Event) ⇒ sleep.awake().runNow()
   private var isRequestingEvents = false
 
@@ -26,29 +25,16 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
     Callback {
       dom.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
     } >>
-      requestOverview()
+      requestOrders()
 
   def componentWillUnmount() = Callback {
     dom.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged)
   }
 
-  private def requestOverview(): Callback =
-    Callback.future {
-      for (overviewResponse ← MasterApi.overview) yield
-        scope.modState(_.copy(
-          isConnected = overviewResponse.isRight,
-          overview = Some(overviewResponse))
-        ) >>
-          (overviewResponse match {
-            case Left(_) ⇒ Callback.empty  // Stop. User has to reload page
-            case Right(_) ⇒ requestOrders()
-          })
-    }
-
   def requestOrders() = Callback.future {
-    for (response ← MasterApi.orders) yield
-      response match {
-        case Right(stamped: Stamped[Seq[Order[Order.State]]]) ⇒
+    MasterApi.orders transform {
+      case Success(stamped: Stamped[Seq[Order[Order.State]]]) ⇒
+        Try {
           for {
             state ← scope.state
             _ ← scope.setState(state.copy(
@@ -56,15 +42,18 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
                 ordersState = state.ordersState.updateOrders(stamped)))
             callback ← requestAndHandleEvents(after = stamped.eventId, forStep = state.ordersState.step + 1)
           } yield callback
+        }
 
-        case Left(err) ⇒
+      case Failure(err) ⇒
+        Try {
           scope.modState(state ⇒ state.copy(
             isConnected = false,
             ordersState = state.ordersState.copy(
               content = InitialFetchedContext,
-              error = Some(err),
+              error = Some(err.toString),
               step = state.ordersState.step + 1)))
-      }
+        }
+    }
   }
 
   private def requestAndHandleEvents(
@@ -77,54 +66,56 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
       def fetchEvents() =
         Callback.future {
           isRequestingEvents = true
-          MasterApi.events(after = after, timeout = timeout)
+          MasterApi.orderEvents(after = after, timeout = timeout)
             .andThen { case _ ⇒
               isRequestingEvents = false  // TODO Falls requestOrders() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
-            } map
+            } transform
               handleResponse
         }
 
-      def handleResponse(response: Response[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]): Callback =
-        withProperState(forStep) {
-          case state if state.isFreezed ⇒
-            scope.modState { _.copy(
-              isConnected = false)
-            }
+      def handleResponse(response: Try[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]): Try[Callback] =
+        Try {
+          withProperState(forStep) {
+            case state if state.isFreezed ⇒
+              scope.modState { _.copy(
+                isConnected = false)
+              }
 
-          case state  ⇒
-            val step = state.ordersState.step
-            response match {
-              case Left(_) ⇒
-                scope.setState(state.copy(
-                  isConnected = false)
-                ) >>
-                  requestAndHandleEvents(after = after, forStep = step, timeout = FirstEventTimeout, afterErrorDelay = afterErrorDelay)
-                    .delay(afterErrorDelay.next()).void
+            case state  ⇒
+              val step = state.ordersState.step
+              response match {
+                case Failure(_) ⇒
+                  scope.setState(state.copy(
+                    isConnected = false)
+                  ) >>
+                    requestAndHandleEvents(after = after, forStep = step, timeout = FirstEventTimeout, afterErrorDelay = afterErrorDelay)
+                      .delay(afterErrorDelay.next()).void
 
-              case Right(EventSeq.Empty(lastEventId)) ⇒
-                scope.setState(state.copy(
-                  isConnected = true)
-                ) >>
-                  requestAndHandleEvents(after = lastEventId, forStep = step, delay = AfterTimeoutDelay)
+                case Success(EventSeq.Empty(lastEventId)) ⇒
+                  scope.setState(state.copy(
+                    isConnected = true)
+                  ) >>
+                    requestAndHandleEvents(after = lastEventId, forStep = step, delay = AfterTimeoutDelay)
 
-              case Right(EventSeq.NonEmpty(stampedEvents)) ⇒
-                val nextStep = step + 1
-                scope.setState(state.copy(
-                  isConnected = true,
-                  ordersState = state.ordersState.copy(
-                    content = state.ordersState.content match {
-                      case content: OrdersState.FetchedContent ⇒
-                        content.handleEvents(stampedEvents)
-                      case o ⇒ o  // Ignore the events
-                    },
-                    step = nextStep))
-                ) >>
-                  requestAndHandleEvents(after = stampedEvents.last.eventId, forStep = nextStep, delay = ContinueDelay)
+                case Success(EventSeq.NonEmpty(stampedEvents)) ⇒
+                  val nextStep = step + 1
+                  scope.setState(state.copy(
+                    isConnected = true,
+                    ordersState = state.ordersState.copy(
+                      content = state.ordersState.content match {
+                        case content: OrdersState.FetchedContent ⇒
+                          content.handleEvents(stampedEvents)
+                        case o ⇒ o  // Ignore the events
+                      },
+                      step = nextStep))
+                  ) >>
+                    requestAndHandleEvents(after = stampedEvents.last.eventId, forStep = nextStep, delay = ContinueDelay)
 
-              case Right(EventSeq.Torn) ⇒
-                dom.console.warn("EventSeq.Torn")
-                requestOrders().delay(TornDelay).void  // Request all orders
-            }
+                case Success(EventSeq.Torn) ⇒
+                  dom.console.warn("EventSeq.Torn")
+                  requestOrders().delay(TornDelay).void  // Request all orders
+              }
+        }
       }
 
       for {

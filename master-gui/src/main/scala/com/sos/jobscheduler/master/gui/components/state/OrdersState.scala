@@ -6,7 +6,6 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, O
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.gui.common.Utils._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
-import com.sos.jobscheduler.master.gui.services.MasterApi
 import org.scalajs.dom
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -17,7 +16,7 @@ import scala.collection.mutable
 final case class OrdersState(
   content: Content,
   step: Int,
-  error: Option[MasterApi.Error])
+  error: Option[String])
 {
   def updateOrders(stamped: Stamped[Seq[Order[Order.State]]]): OrdersState = {
     val orders = stamped.value

@@ -6,6 +6,9 @@
 # INTELLIJ IDEA
 /.idea/
 /out
+/classes
+idea-shared-main
+idea-shared-test
 
 # MacOS
 .DS_Store

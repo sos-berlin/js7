@@ -22,7 +22,7 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, 
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.command.MasterCommand
+import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JournalMeta, JsonFileIterator}

@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.common.akkahttp
 
-import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
-import akka.http.scaladsl.model.headers.{Accept, HttpEncodings}
-import akka.http.scaladsl.model.{HttpHeader, HttpResponse, MediaType, Uri}
+import akka.http.scaladsl.coding.{Coder, Deflate, Gzip, NoCoding, StreamDecoder}
+import akka.http.scaladsl.model.headers.HttpEncodings.gzip
+import akka.http.scaladsl.model.headers.{Accept, HttpEncoding, HttpEncodings, `Accept-Encoding`}
+import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, MediaType, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ContentNegotiator, Directive0, Directive1, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
@@ -194,13 +195,18 @@ object AkkaHttpUtils {
         }
   }
 
-  def decodeResponse(response: HttpResponse): HttpResponse = {
-    val decoder = response.encoding match {
+  def encodeGzip(request: HttpRequest): HttpRequest =
+    Gzip.encodeMessage(request.copy(headers = `Accept-Encoding`(gzip) :: request.headers.toList))
+
+  /** Decompresses a `HttpResponse` according to `Content-Encoding`. */
+  def decodeResponse(response: HttpResponse): HttpResponse =
+    httpEncodingToCodec(response.encoding).decodeMessage(response)
+
+  private def httpEncodingToCodec(encoding: HttpEncoding): Coder with StreamDecoder =
+    encoding match {
       case HttpEncodings.gzip ⇒ Gzip
       case HttpEncodings.deflate ⇒ Deflate
       case HttpEncodings.identity ⇒ NoCoding
       case o ⇒ throw new RuntimeException(s"Unsupported Encoding: $o")
     }
-    decoder.decodeMessage(response)
-  }
 }

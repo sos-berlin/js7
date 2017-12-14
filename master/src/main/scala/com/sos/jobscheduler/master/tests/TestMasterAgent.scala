@@ -30,9 +30,9 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{JobPath, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
+import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.OrderGeneratorPath
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean

@@ -1,9 +1,9 @@
-package com.sos.jobscheduler.master.command
+package com.sos.jobscheduler.master.data
 
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.master.command.MasterCommand._
+import com.sos.jobscheduler.master.data.MasterCommand._
 import io.circe.generic.JsonCodec
 import scala.concurrent.duration.FiniteDuration
 
@@ -36,7 +36,7 @@ object MasterCommand {
       Subtype(Accepted))
   }
 
-  implicit val JsonCodec = TypedJsonCodec[MasterCommand](
+  implicit val jsonCodec = TypedJsonCodec[MasterCommand](
     Subtype[AddOrderIfNew],
     Subtype[ScheduleOrdersEvery],
     Subtype(Terminate))

@@ -8,12 +8,13 @@ import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.master.web.master.api.frontend.FrontEndRoute
 import com.sos.jobscheduler.master.web.master.api.order.OrderRoute
+import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRoute
 import com.sos.jobscheduler.master.web.master.gui.GuiRoute
 
 /**
   * @author Joacim Zschimmer
   */
-trait ApiRoute extends ApiRootRoute with OrderRoute with FrontEndRoute with GuiRoute {
+trait ApiRoute extends ApiRootRoute with OrderRoute with WorkflowRoute with FrontEndRoute with GuiRoute {
 
   val apiRoute: Route =
     respondWithHeader(RawHeader("X-JobScheduler-Build-ID", BuildInfo.buildId)) {
@@ -23,6 +24,9 @@ trait ApiRoute extends ApiRootRoute with OrderRoute with FrontEndRoute with GuiR
         } ~
         pathSegments("order") {
           orderRoute
+        } ~
+        pathSegments("workflow") {
+          workflowRoute
         }
       } ~
       pathSegments("frontend") {

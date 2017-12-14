@@ -34,6 +34,8 @@ final case class FolderPath(string: String) extends TypedPath {
       }
 
   override def xmlFile = EmptyPath
+
+  override def jsonFile = EmptyPath
 }
 
 object FolderPath extends TypedPath.Companion[FolderPath] {

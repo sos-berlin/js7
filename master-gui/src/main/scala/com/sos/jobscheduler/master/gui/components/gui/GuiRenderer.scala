@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.gui.components.gui
 
 import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.master.data.MasterOverview
 import com.sos.jobscheduler.master.gui.components.SideBarComponent
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListComponent
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
@@ -28,25 +27,26 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
       <.div(^.cls := "row")(
         <.div(^.cls := "col s12")(
           topLineVdom,
-          state.overview match {
-            case None ⇒ <.div()
-            case Some(Left(error)) ⇒ <.p(^.fontSize := 20.px)(error.toString)
-            case Some(Right(_)) ⇒ OrderListComponent(state.ordersState)
-          })))
+          OrderListComponent(state.ordersState))))
+          //state.overview match {
+          //  case None ⇒ <.div()
+          //  case Some(Left(error)) ⇒ <.p(^.fontSize := 20.px)(error.toString)
+          //  case Some(Right(_)) ⇒ OrderListComponent(state.ordersState)
+          //})))
 
   private def topLineVdom = {
     val left =
       <.td(^.cls := "top-left")(
         <.span(^.cls := "top-left-segment")(
-          "JobScheduler Master ",
-          ofOverview(_.version) match {
-            case Left(error) ⇒ error
-            case Right(longVersion) ⇒
-              val Array(version, versionExt) = (longVersion + " ").split(" ", 2)
-              TagMod(
-                <.span(^.cls := "hide-on-phone")(version),
-                <.span(^.cls := "hide-on-mobile unimportant")(s" $versionExt") when versionExt.nonEmpty)
-          }),
+          "JobScheduler Master "),
+          //ofOverview(_.version) match {
+          //  case Left(error) ⇒ error
+          //  case Right(longVersion) ⇒
+          //    val Array(version, versionExt) = (longVersion + " ").split(" ", 2)
+          //    TagMod(
+          //      <.span(^.cls := "hide-on-phone")(version),
+          //      <.span(^.cls := "hide-on-mobile unimportant")(s" $versionExt") when versionExt.nonEmpty)
+          //}),
         <.span(^.cls := "hide-on-phone top-left-segment experimental-monitor")(
           "EXPERIMENTAL MONITOR"))
 
@@ -80,12 +80,12 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
         <.tr(left, right)))
   }
 
-  private def ofOverview[A](f: MasterOverview ⇒ A): Either[TagMod, A] =
-    state.overview match {
-      case Some(Right(o)) ⇒ Right(f(o))
-      case Some(Left(t)) ⇒ Left(<.span(^.title := t.toString)("️⚠️"))
-      case None ⇒ Left("...")
-    }
+  //private def ofOverview[A](f: MasterOverview ⇒ A): Either[TagMod, A] =
+  //  state.overview match {
+  //    case Some(Right(o)) ⇒ Right(f(o))
+  //    case Some(Left(t)) ⇒ Left(<.span(^.title := t.toString)("⚠️"))
+  //    case None ⇒ Left("...")
+  //  }
 }
 
 

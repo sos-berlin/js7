@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.gui.components
 
+import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.gui.services.MasterApi
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
@@ -35,6 +36,6 @@ object SideBarComponent {
   }
 
   private def terminate = Callback {
-    MasterApi.executeCommand("""{"TYPE": "Terminate"}""")
+    MasterApi.executeCommand(MasterCommand.Terminate)
   }
 }

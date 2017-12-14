@@ -24,8 +24,8 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, Even
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterIT._
-import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.{MasterOrderKeeper, OrderGeneratorPath}
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus

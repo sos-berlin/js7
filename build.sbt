@@ -110,6 +110,7 @@ lazy val jobscheduler = (project in file("."))
     `jobscheduler-install`,
     master,
     masterDataJVM,
+    masterClientJVM,
     `agent-client`,
     `agent-data`,
     `agent-test`,
@@ -232,7 +233,7 @@ lazy val common = project.dependsOn(baseJVM, dataJVM, testerJVM % "compile->test
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
 val masterGuiJs = "master-gui.js"
 
-lazy val master = project.dependsOn(masterDataJVM, shared, common, `agent-client`, testerJVM % "compile->test")
+lazy val master = project.dependsOn(masterDataJVM, masterClientJVM, shared, common, `agent-client`, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   // Provide master-gui JavaScript code as resources placed in master-gui package
@@ -288,9 +289,36 @@ lazy val `master-data` = crossProject
 lazy val masterDataJVM = `master-data`.jvm
 lazy val masterDataJs = `master-data`.js
 
+lazy val `master-client` = crossProject
+  .dependsOn(`master-data`, tester % "compile->test")
+  .jvmConfigure(_.dependsOn(common))
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= {
+      import Dependencies._
+      Seq(
+        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test",
+        "io.circe" %%% "circe-core" % circeVersion,
+        "io.circe" %%% "circe-parser" % circeVersion,
+        "io.circe" %%% "circe-generic" % circeVersion)
+    })
+  .jvmSettings(
+    libraryDependencies ++= {
+      import Dependencies._
+      akkaHttp
+    })
+  .jsSettings(
+    scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html
+    jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
+    scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1")
+
+lazy val masterClientJVM = `master-client`.jvm
+lazy val masterClientJs = `master-client`.js
+
 lazy val `master-gui` = project
   .enablePlugins(ScalaJSPlugin)
-  .dependsOn(dataJs, masterDataJs)
+  .dependsOn(dataJs, masterDataJs, masterClientJs)
   .settings(
     commonSettings,
     scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html

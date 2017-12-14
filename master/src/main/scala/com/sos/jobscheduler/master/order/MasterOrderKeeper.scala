@@ -23,8 +23,8 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, O
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
-import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.MasterOrderKeeper._
 import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentXmlParser}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
@@ -175,6 +175,15 @@ with Stash {
       deferAsync {
         sender() ! Done
       }
+
+    case Command.GetWorkflow(path) ⇒
+      sender() ! pathToWorkflow.get(path)
+
+    case Command.GetWorkflows ⇒
+      sender() ! eventIdGenerator.stamp((pathToWorkflow.values).toVector: Vector[Workflow])
+
+    case Command.GetWorkflowCount ⇒
+      sender() ! (pathToWorkflow.size: Int)
 
     case Command.GetOrder(orderId) ⇒
       sender() ! (orderRegister.get(orderId) map { _.order })
@@ -401,6 +410,9 @@ object MasterOrderKeeper {
   sealed trait Command
   object Command {
     final case class AddOrderSchedule(orders: Seq[Order[Order.Scheduled]]) extends Command
+    final case class GetWorkflow(path: WorkflowPath) extends Command
+    case object GetWorkflows extends Command
+    case object GetWorkflowCount extends Command
     final case class GetOrder(orderId: OrderId) extends Command
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command

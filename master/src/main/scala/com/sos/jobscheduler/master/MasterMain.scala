@@ -15,9 +15,9 @@ import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.master.MasterMain._
-import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
+import com.sos.jobscheduler.master.data.MasterCommand
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

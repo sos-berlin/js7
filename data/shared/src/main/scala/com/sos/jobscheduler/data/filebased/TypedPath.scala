@@ -13,6 +13,9 @@ extends AbsolutePath {
   def xmlFile: Path =
     Paths.get(withoutStartingSlash + companion.xmlFilenameExtension)
 
+  def jsonFile: Path =
+    Paths.get(withoutStartingSlash + companion.jsonFilenameExtension)
+
   def asTyped[A <: TypedPath: TypedPath.Companion]: A = {
     val c = implicitly[TypedPath.Companion[A]]
     if (c == companion)

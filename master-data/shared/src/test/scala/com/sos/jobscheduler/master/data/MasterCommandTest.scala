@@ -1,12 +1,11 @@
-package com.sos.jobscheduler.master.command
+package com.sos.jobscheduler.master.data
 
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
-import com.sos.jobscheduler.master.command.MasterCommand.Response._
-import com.sos.jobscheduler.master.command.MasterCommand._
+import com.sos.jobscheduler.master.data.MasterCommand._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 
 final class MasterCommandTest extends FreeSpec {
 
@@ -47,7 +46,7 @@ final class MasterCommandTest extends FreeSpec {
 
   "ScheduleOrdersEvery" in {
     testJson[MasterCommand](
-      ScheduleOrdersEvery(12345.ms.toFiniteDuration),
+      ScheduleOrdersEvery(12345.millis),
       """{
         "TYPE": "ScheduleOrdersEvery",
         "every": 12.345
@@ -56,7 +55,7 @@ final class MasterCommandTest extends FreeSpec {
 
   "Response.Accepted" in {
     testJson[MasterCommand.Response](
-      Accepted,
+      Response.Accepted,
       """{
         "TYPE": "Accepted"
       }""")

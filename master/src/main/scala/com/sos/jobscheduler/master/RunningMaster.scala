@@ -20,9 +20,10 @@ import com.sos.jobscheduler.common.time.ScalaTime.{sleep, _}
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.master.command.MasterCommand
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
+import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.{MasterOrderKeeper, ScheduledOrderGeneratorKeeper}
 import com.sos.jobscheduler.master.web.MasterWebServer
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
@@ -120,6 +121,24 @@ object RunningMaster {
           injector.instance[StampedKeyedEventBus]) },
       onStopped = _ ⇒ Success(Completed))
 
+    val workflowClient = {
+      val ec = executionContext
+      new WorkflowClient {
+        import masterConfiguration.akkaAskTimeout
+
+        implicit def executionContext = ec
+
+        def workflow(path: WorkflowPath): Future[Option[Workflow]] =
+          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[Workflow]]
+
+        def workflows: Future[Stamped[Seq[Workflow]]] =
+          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[Workflow]]]
+
+        def workflowCount =
+          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflowCount).mapTo[Int]
+      }
+    }
+
     val orderClient = {
       val ec = executionContext
       new OrderClient {
@@ -141,7 +160,7 @@ object RunningMaster {
       }
     }
 
-    webServer.setOrderClient(orderClient)
+    webServer.setClients(workflowClient, orderClient)
     val webServerReady = webServer.start()
 
     val terminated = actorStopped andThen { case _ ⇒

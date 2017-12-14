@@ -38,6 +38,9 @@ extends AutoCloseable {
   def xmlFile(path: TypedPath): Path =
     masterDir / "config/live" resolve path.xmlFile
 
+  def jsonFile(path: TypedPath): Path =
+    masterDir / "config/live" resolve path.jsonFile
+
   def masterDir: Path =
     temporaryDirectory / "master"
 

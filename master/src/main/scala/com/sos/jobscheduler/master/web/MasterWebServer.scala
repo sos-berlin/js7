@@ -8,9 +8,9 @@ import com.sos.jobscheduler.common.akkahttp.web.auth.{CSRF, GateKeeper}
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.SetOnce
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.master.OrderClient
-import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.{OrderClient, WorkflowClient}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -32,9 +32,11 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
   protected def uriPathPrefix = ""
   protected val bindings = masterConfiguration.webServerBindings
   private val orderClientOnce = new SetOnce[OrderClient]("OrderClient")
+  private val workflowClientOnce = new SetOnce[WorkflowClient]("WorkflowClient")
   private val executeCommandOnce = new SetOnce[MasterCommand ⇒ Future[MasterCommand.Response]]
 
-  def setOrderClient(orderClient: OrderClient): Unit = {
+  def setClients(workflowClient: WorkflowClient, orderClient: OrderClient): Unit = {
+    workflowClientOnce := workflowClient
     orderClientOnce := orderClient
   }
 
@@ -44,6 +46,7 @@ extends AkkaWebServer with AkkaWebServer.HasUri {
   protected def newRoute(binding: WebServerBinding) =
     injector.instance[RouteProvider.Factory].toRoute(
       new GateKeeper(gateKeeperConfiguration, csrf, timerService, isUnsecuredHttp = binding.isUnsecuredHttp),
+      () ⇒ workflowClientOnce(),
       () ⇒ orderClientOnce(),
       () ⇒ executeCommandOnce())
 }

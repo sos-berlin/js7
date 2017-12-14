@@ -6,8 +6,8 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
-import com.sos.jobscheduler.master.command.MasterCommand
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
+import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
