@@ -11,21 +11,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.math.min
-import scala.scalajs.js
-import scala.scalajs.js.annotation.JSGlobalScope
 import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
   */
-object JsHttpClient extends HttpClient {
+final class JsHttpClient(requiredBuildId: String) extends HttpClient {
 
-  private val ReloadDelay = 1.second
+  private val ReloadDelay = 2.second  // Just in case of a loop
 
-  @js.native @JSGlobalScope
-  object JavascriptGlobal extends js.Object {
-    var indexHtmlJobschedulerVersionUuid: String = js.native
-  }
+  if (requiredBuildId.isEmpty) dom.console.warn("requiredBuildId is empty")
 
   def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Future[A] =
     decodeResponse(
@@ -62,7 +57,7 @@ object JsHttpClient extends HttpClient {
         logAndThrow(OtherFailure(s"Problem while accessing JobScheduler Master: ${t.toStringWithCauses}", Some(t)))
 
       case Success(xhr) ⇒
-        if (Option(xhr.getResponseHeader("X-JobScheduler-Build-ID")).exists(_ != JavascriptGlobal.indexHtmlJobschedulerVersionUuid)) {
+        if (requiredBuildId.nonEmpty && Option(xhr.getResponseHeader("X-JobScheduler-Build-ID")).exists(_ != requiredBuildId)) {
           reloadPage()  // Server version has changed. We cannot continue.
           logAndThrow(OtherFailure(s"JobScheduler Master version changed — Reloading page...", None))
         } else

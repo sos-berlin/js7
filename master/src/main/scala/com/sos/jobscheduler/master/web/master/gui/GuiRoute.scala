@@ -1,8 +1,5 @@
 package com.sos.jobscheduler.master.web.master.gui
 
-import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
-import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.model.MediaTypes.`text/html`
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.{EntityTag, `Cache-Control`}
@@ -21,17 +18,13 @@ trait GuiRoute extends WebjarsRoute {
 
   // Lazy and not in object to avoid ExceptionInInitializerError
   private lazy val ResourceDirectory = JavaResource("com/sos/jobscheduler/master/gui/frontend/gui")
-  private lazy val IndexHtmlResource = JavaResource("com/sos/jobscheduler/master/gui/frontend/gui/index.html")
-  private lazy val IndexHtml = IndexHtmlResource.asUTF8String.replace("{JobSchedulerBuildId}", BuildInfo.buildId)
 
   final def indexHtmlRoute =
     get {
       conditional(EntityTag(BuildInfo.buildId)) {
         respondWithHeader(`Cache-Control`(`max-age`(0))) {  // This allows Firefox and Safari (but not Chrome) to use the cache when hitting the back button - for good user experience.
           // A simple page reload must fetch a fresh copy of index.html to get the up-to-date buildId matching the API's buildId
-          complete {
-            HttpEntity(`text/html` withCharset `UTF-8`, IndexHtml)
-          }
+          complete(IndexHtml)
         }
       }
     }

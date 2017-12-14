@@ -1,0 +1,12 @@
+#! /bin/bash
+set -e
+
+for project in base data master-client; do :
+  test -d $project || { echo "No such project: $project"; exit 1; }
+  for s in main test; do
+    for target in jvm js; do
+      [ ! -d $project/$target ] || ln -snvf ../../../$project/shared/src/$s $project/$target/src/idea-shared-$s
+    done
+  done
+done
+ls -ld $(find . -name "idea-shared*")

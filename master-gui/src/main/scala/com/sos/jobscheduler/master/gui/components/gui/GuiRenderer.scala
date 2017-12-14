@@ -4,6 +4,7 @@ import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.master.gui.components.SideBarComponent
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListComponent
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
+import com.sos.jobscheduler.master.gui.services.JsBridge
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.vdom.html_<^._
 
@@ -35,20 +36,17 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
           //})))
 
   private def topLineVdom = {
-    val left =
+    val left = {
+      val Array(version, versionExt) = (JsBridge.jobschedulerBuildVersion + " ").split(" ", 2)
       <.td(^.cls := "top-left")(
         <.span(^.cls := "top-left-segment")(
-          "JobScheduler Master "),
-          //ofOverview(_.version) match {
-          //  case Left(error) ⇒ error
-          //  case Right(longVersion) ⇒
-          //    val Array(version, versionExt) = (longVersion + " ").split(" ", 2)
-          //    TagMod(
-          //      <.span(^.cls := "hide-on-phone")(version),
-          //      <.span(^.cls := "hide-on-mobile unimportant")(s" $versionExt") when versionExt.nonEmpty)
-          //}),
+          "JobScheduler Master ",
+          TagMod(
+            <.span(^.cls := "hide-on-phone")(version),
+            <.span(^.cls := "hide-on-mobile unimportant")(s" $versionExt") when versionExt.nonEmpty)),
         <.span(^.cls := "hide-on-phone top-left-segment experimental-monitor")(
           "EXPERIMENTAL MONITOR"))
+    }
 
     val right =
       <.td(^.cls := "top-right")(
