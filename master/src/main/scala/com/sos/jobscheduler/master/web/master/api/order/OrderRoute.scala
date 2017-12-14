@@ -15,8 +15,8 @@ import com.sos.jobscheduler.data.event.SomeEventRequest
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import com.sos.jobscheduler.master.OrderClient
-import com.sos.jobscheduler.master.web.master.api.frontend.OrdersHtmlPage._
 import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
+import com.sos.jobscheduler.master.web.master.api.frontend.OrdersHtmlPage._
 import scala.concurrent.ExecutionContext
 
 /**
@@ -67,7 +67,7 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
         case Some(o) ⇒
           o: ToResponseMarshallable
         case None ⇒
-          BadRequest → s"Does not exist: $orderId": ToResponseMarshallable
+          BadRequest → s"Does not exist: $orderId (maybe the starting slash is missing?)\n": ToResponseMarshallable
       }
     }
 

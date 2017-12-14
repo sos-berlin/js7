@@ -91,7 +91,8 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
 
   // Order
   for (uri ← List(
-       s"$OrderUri/${TestOrders.values.head.id.string}")) {
+       s"$OrderUri/${TestOrders.values.head.id.string}",
+       s"$OrderUri/${TestOrders.values.head.id.string.replace("/", "%2F")}")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(responseAs[Order[Order.State]] == TestOrders.values.head)
@@ -103,7 +104,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
 object OrderRouteTest {
   private val OrderUri = "/api/order"
   private val TestOrders: Map[OrderId, Order[Order.State]] = List(
-    Order(OrderId("1"), NodeKey(WorkflowPath("/test"), NodeId("100")), Order.StartNow),
+    Order(OrderId("/PATH/1"), NodeKey(WorkflowPath("/test"), NodeId("100")), Order.StartNow),
     Order(OrderId("2"), NodeKey(WorkflowPath("/test"), NodeId("200")), Order.Finished))
     .toKeyedMap { _.id }
   private val TestEvents = List(
