@@ -265,8 +265,6 @@ lazy val master = project.dependsOn(masterDataJVM, masterClientJVM, shared, comm
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      webjars.bootstrap ++
-      webjars.jQuery ++
       webjars.materializeCss ++
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++

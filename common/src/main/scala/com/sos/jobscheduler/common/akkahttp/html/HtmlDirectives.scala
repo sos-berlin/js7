@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.akkahttp.html
 
-import akka.http.scaladsl.marshalling.ToResponseMarshaller
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.MediaTypes.`text/html`
 import akka.http.scaladsl.model.StatusCodes.TemporaryRedirect
@@ -10,17 +9,13 @@ import akka.http.scaladsl.model.{HttpRequest, MediaRange, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive0, RejectionHandler, Route}
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.passIf
-import com.sos.jobscheduler.common.akkahttp.html.HtmlDirectives._
-import com.sos.jobscheduler.data.event.Stamped
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
   */
 trait HtmlDirectives[C <: WebServiceContext] {
-
-  protected implicit def webServiceContext: C
 
   def dontCache: Directive0 =
     mapInnerRoute { inner ⇒
@@ -121,28 +116,11 @@ trait HtmlDirectives[C <: WebServiceContext] {
         }
       }
     }
-  def completeTryHtml[A](stampedFuture: ⇒ Future[Stamped[A]])(
-    implicit
-      toHtmlPage: ToHtmlPage[Stamped[A]],
-      toResponseMarshaller: ToResponseMarshaller[Stamped[A]],
-      executionContext: ExecutionContext): Route
-  =
-    htmlPreferred {
-      extractUri { uri ⇒
-        complete {
-          for {
-            stamped ← stampedFuture
-            htmlPage ← toHtmlPage(stamped, uri)
-          } yield htmlPage
-        }
-      }
-    } ~
-      complete(stampedFuture)
 
   def htmlPreferred: Directive0 =
     mapInnerRoute { route ⇒
       extractRequest { request ⇒
-        passIf(webServiceContext.htmlEnabled && request.method == GET && isHtmlPreferred(request)) {
+        passIf(request.method == GET && isHtmlPreferred(request)) {
           handleRejections(RejectionHandler.default) {
             route
           }

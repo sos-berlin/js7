@@ -61,8 +61,6 @@ object Dependencies {
   val groovy              = "org.codehaus.groovy" % "groovy" % "1.8.6"
 
   object webjars {
-    val bootstrap = "org.webjars" % "bootstrap" % "3.3.6"
-    val jQuery    = "org.webjars" % "jquery" % "2.2.4"
     val materializeCss = "org.webjars" % "materializecss" % "0.100.2"
   }
 

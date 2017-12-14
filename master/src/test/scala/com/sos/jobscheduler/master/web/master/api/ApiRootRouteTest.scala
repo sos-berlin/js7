@@ -9,7 +9,6 @@ import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
-import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
 import org.scalatest.FreeSpec
 import scala.concurrent.Future
 
@@ -19,7 +18,6 @@ import scala.concurrent.Future
 final class ApiRootRouteTest extends FreeSpec with ScalatestRouteTest with ApiRootRoute {
 
   protected implicit def executionContext = system.dispatcher
-  protected val webServiceContext = new MasterWebServiceContext
 
   protected def executeCommand(command: MasterCommand) =
     command match {

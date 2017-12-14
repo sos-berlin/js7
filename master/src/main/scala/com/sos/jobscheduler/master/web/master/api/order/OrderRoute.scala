@@ -15,8 +15,6 @@ import com.sos.jobscheduler.data.event.SomeEventRequest
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import com.sos.jobscheduler.master.OrderClient
-import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
-import com.sos.jobscheduler.master.web.master.api.frontend.OrdersHtmlPage._
 import scala.concurrent.ExecutionContext
 
 /**
@@ -28,7 +26,6 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
   protected implicit def executionContext: ExecutionContext
   protected def eventCollector: EventCollector
   protected def eventIdGenerator: EventIdGenerator
-  protected implicit def webServiceContext: MasterWebServiceContext
 
   def orderRoute: Route =
     get {
@@ -45,7 +42,7 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
       pathSingleSlash {
         parameter("return".?) {
           case Some("OrderOverview") | None ⇒
-            completeTryHtml(orderClient.orderOverviews)
+            complete(orderClient.orderOverviews)
           case Some("Order") | None ⇒
             complete(orderClient.orders)
           case _ ⇒

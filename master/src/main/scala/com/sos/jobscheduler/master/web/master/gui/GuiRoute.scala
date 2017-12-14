@@ -6,9 +6,9 @@ import akka.http.scaladsl.model.headers.{EntityTag, `Cache-Control`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.utils.JavaResource
-import com.sos.jobscheduler.master.web.master.api.frontend.WebjarsRoute
 import com.sos.jobscheduler.master.web.master.gui.GuiRoute._
 
 /**
@@ -30,24 +30,29 @@ trait GuiRoute extends WebjarsRoute {
     }
 
   final val guiRoute: Route =
-    path("index.html") {
-      complete(NotFound)
-    } ~
-    parameter("v".?) { v ⇒
-      if (v exists (_ != BuildInfo.buildId))
-        complete((NotFound, "Version changed"))
-      else
-        (if (v.isDefined) respondWithHeader(Caching) else /*when browser reads source map*/pass) {
-          getFromResourceDirectory(ResourceDirectory.path)
-        } ~
-        extractUnmatchedPath { path ⇒
-          logger.warn(s"Not found: .../gui$path (resource ${ResourceDirectory.path}$path)")
-          complete(NotFound)
-        }
+    get {
+      pathSegments("webjars") {
+        webjarsRoute
+      } ~
+      path("index.html") {
+        complete(NotFound)
+      } ~
+      parameter("v".?) { v ⇒
+        if (v exists (_ != BuildInfo.buildId))
+          complete((NotFound, "Version changed"))
+        else
+          (if (v.isDefined) respondWithHeader(LongTimeCaching) else /*when browser reads source map*/pass) {
+            getFromResourceDirectory(ResourceDirectory.path)
+          } ~
+          extractUnmatchedPath { path ⇒
+            logger.warn(s"Not found: .../gui$path (resource ${ResourceDirectory.path}$path)")
+            complete(NotFound)
+          }
+      }
     }
 }
 
 object GuiRoute {
   private val logger = Logger(getClass)
-  private val Caching = `Cache-Control`(`max-age`(30*24*3600))
+  private val LongTimeCaching = `Cache-Control`(`max-age`(365*24*3600))
 }

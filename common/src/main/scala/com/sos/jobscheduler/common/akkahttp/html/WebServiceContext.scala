@@ -8,8 +8,6 @@ import com.sos.jobscheduler.common.utils.JavaResource
   */
 trait WebServiceContext {
 
-  final lazy val htmlIncluder = new HtmlIncluder(this)
-
   def htmlEnabled: Boolean
 
   def toWebjarUri(path: String): Uri

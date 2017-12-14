@@ -16,7 +16,6 @@ import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestWorkflow
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowOverview, WorkflowPath, WorkflowsOverview}
 import com.sos.jobscheduler.master.WorkflowClient
-import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
@@ -37,7 +36,6 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
     def workflows = Future.successful(eventIdGenerator.stamp(pathToWorkflow.values.toVector))
     def workflowCount = Future.successful(pathToWorkflow.values.size)
   }
-  protected val webServiceContext = new MasterWebServiceContext
 
   private def route: Route =
     pathSegments("api/workflow") {

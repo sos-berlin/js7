@@ -10,7 +10,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
   */
 object SideBarComponent {
 
-  private val RabbitPictureUri = "api/frontend/common/images/job_scheduler_rabbit_circle_60x60.gif"
+  private val RabbitPictureUri = "gui/frontend/gui/images/job_scheduler_rabbit_circle_60x60.gif"
 
   type State = Unit
 

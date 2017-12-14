@@ -11,7 +11,6 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
 import com.sos.jobscheduler.master.{OrderClient, WorkflowClient}
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
@@ -30,7 +29,6 @@ extends AllRoute {
   protected def eventCollector            = injector.instance[EventCollector]
   protected def eventIdGenerator          = injector.instance[EventIdGenerator]
   implicit protected val executionContext = injector.instance[ExecutionContext]
-  protected val webServiceContext = new MasterWebServiceContext(htmlEnabled = true)
 
   def route(implicit actorRefFactory: ActorRefFactory): Route =
     handleErrorAndLog(config, actorSystem).apply {

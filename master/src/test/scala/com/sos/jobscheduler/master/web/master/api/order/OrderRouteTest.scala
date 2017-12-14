@@ -17,7 +17,6 @@ import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, OrderOverview, OrdersOverview, Payload}
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.OrderClient
-import com.sos.jobscheduler.master.web.master.api.frontend.MasterWebServiceContext
 import com.sos.jobscheduler.master.web.master.api.order.OrderRouteTest._
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
@@ -39,7 +38,6 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
     def orders = Future.successful(eventIdGenerator.stamp(TestOrders.values.toVector))
     def orderCount = Future.successful(TestOrders.values.size)
   }
-  protected val webServiceContext = new MasterWebServiceContext
 
   TestEvents foreach eventCollector.addStamped
 

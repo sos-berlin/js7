@@ -18,7 +18,7 @@ object IndexHtml extends HtmlPage {
         meta(name := "viewport", content := "width=device-width, initial-scale=1.0, shrink-to-fit=no"),
         base(href := "master/"),
         link(rel := "icon", `type` := "image/vnd.microsoft.icon", attr("sizes") := "64x64", `href` := s"gui/images/jobscheduler.ico?v=$buildId"),
-        link(rel := "stylesheet", href := "api/frontend/webjars/materializecss/0.100.2/css/materialize.min.css"),
+        link(rel := "stylesheet", href := "gui/webjars/materializecss/0.100.2/css/materialize.min.css"),
         link(rel := "stylesheet", href := s"gui/gui.css?v=$buildId")),
       body(
         div(id := "GUI")(

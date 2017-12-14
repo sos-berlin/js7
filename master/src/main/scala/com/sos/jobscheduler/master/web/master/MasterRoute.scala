@@ -14,10 +14,10 @@ trait MasterRoute extends ApiRoute {
     pathEndElseRedirect {
       indexHtmlRoute
     } ~
-    pathSegments("gui") {
-      guiRoute
-    } ~
     pathSegments("api") {
       apiRoute
+    } ~
+    pathSegments("gui") {
+      guiRoute
     }
 }
