@@ -179,9 +179,9 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
             actor ! TestActor.Input.Forward(key, command)
 
           case _ ⇒
-            actor ! TestActor.Input.Forward(key, TestAggregateActor.Input.Disturb(before))  // Value disturbance is expected as Command.Response
+            actor ! TestActor.Input.Forward(key, TestAggregateActor.Command.Disturb(before))  // Value disturbance is expected as Command.Response
             actor ! TestActor.Input.Forward(key, command)
-            actor ! TestActor.Input.Forward(key, TestAggregateActor.Input.Disturb(before + 1))  // This message must be delayed until event has been journaled
+            actor ! TestActor.Input.Forward(key, TestAggregateActor.Command.Disturb(before + 1))  // This message must be delayed until event has been journaled
         }
 
         def receive = {

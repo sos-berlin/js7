@@ -25,11 +25,11 @@ extends KeyedJournalingActor[TestEvent] {
     update(event)
 
   def receive = journaling orElse {
-    case Input.Disturb(value) ⇒
-      disturbance = value
-
     case command: Command ⇒
       command match {
+
+        case Command.Disturb(value) ⇒
+          disturbance = value
 
         case Command.DisturbAndRespond ⇒
           deferAsync {
@@ -128,7 +128,6 @@ private[tests] object TestAggregateActor {
 
   object Input {
     final case object Get
-    final case class Disturb(int: Int) extends Command
   }
 
   object Output {
@@ -139,6 +138,7 @@ private[tests] object TestAggregateActor {
   final object Command {
     sealed trait IsAsync
     sealed trait DoNotDisturb
+    final case class Disturb(int: Int) extends Command
     final case object DisturbAndRespond extends Command
     final case class Add(string: String) extends Command
     final case class Append(string: String) extends Command
