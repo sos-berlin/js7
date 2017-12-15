@@ -21,6 +21,9 @@ final class MasterUrisTest extends FreeSpec {
   }
 
   "order" - {
+    "overview" in {
+      assert(masterUris.order.overview == "http://example.com/master/api/order")
+    }
     "single" in {
       assert(masterUris.order(OrderId("ORDER-ID")) == "http://example.com/master/api/order/ORDER-ID")
       assert(masterUris.order(OrderId("/å")) == "http://example.com/master/api/order/%2F%C3%A5")

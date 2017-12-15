@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestWorkflow
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.client.{AkkaHttpClient, MasterApi}
+import com.sos.jobscheduler.master.client.{AkkaHttpClient, HttpMasterApi}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.MasterOrderKeeper
@@ -29,7 +29,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   private lazy val env = new TestEnvironment(agentPaths = Nil, temporaryDirectory / "WebServiceTest")
   private lazy val httpClient = new AkkaHttpClient.StandAlone
   private var master: RunningMaster = _
-  private var api: MasterApi = _
+  private var api: HttpMasterApi = _
 
   override def beforeAll() = {
     super.beforeAll()
@@ -38,7 +38,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
     val runningMaster = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     master = runningMaster
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
-    api = new MasterApi(httpClient, master.localUri.toString)
+    api = new HttpMasterApi(httpClient, master.localUri.toString)
   }
 
   override def afterAll() = {
@@ -55,6 +55,10 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
 
   "overview" in {
     assert(api.overview.await(99.s).version == BuildInfo.buildVersion)
+  }
+
+  "ordersOverview" in {
+    assert(api.ordersOverview.await(99.s).orderCount == 1)
   }
 
   "orders" in {

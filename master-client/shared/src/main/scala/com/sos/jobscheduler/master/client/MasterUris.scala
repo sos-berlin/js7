@@ -21,6 +21,8 @@ final class MasterUris private(masterUri: String) {
   val command = api()
 
   object order {
+    def overview = api("order")
+
     def events[E <: OrderEvent: ClassTag](after: EventId, timeout: Duration): String =
       api("order") + encodeQuery(
         "return" → encodeClass[E],
