@@ -2,16 +2,26 @@ html {
   font-size: 12px;
 }
 
-td, th {
-  padding: 1px 4px;
+th {
+  vertical-align: bottom;
 }
 
-/*
-.table.no-padding thead th,
-.table.no-padding tbody td {
-  padding: 0
+td {
+  vertical-align: top;
+  white-space: nowrap;
 }
-*/
+
+th, td {
+  padding: 1px 10px;
+}
+
+.td-left {
+  padding-left: 0;
+}
+
+.td-right {
+  padding-right: 0;
+}
 
 .side-nav {
   padding-top: 5px;
@@ -28,6 +38,9 @@ td, th {
 @media only screen and (max-width: 992px) {
   .hide-on-mobile {
     display: none !important;
+  }
+  td, th {
+    padding: 1px 4px;
   }
 }
 
@@ -108,18 +121,14 @@ header, main, footer {
   color: lightgrey;
 }
 
-.order-td {
-  padding: 1px 4px;
+.orders-table {
+  width: 10ex;
+}
+.orders-td {
   white-space: nowrap;
 }
 
-.order-td-left {
-  padding: 1px 4px 1px 0;
-  white-space: nowrap;
-}
-
-.order-td-right {
-  padding: 1px 0 1px 4px;
+.orders-td-last-output {
   white-space: nowrap;
 }
 
@@ -135,16 +144,110 @@ header, main, footer {
   color: gray;
 }
 
-.orderTr-enter {
+.Order-Symbol-Scheduled:before {
+  content: '⏰';
+  display: inline-block;
+  width: 20px;
+}
+
+.Order-Symbol-StartNow:before {
+  content: '━';
+  display: inline-block;
+  width: 20px;
+}
+
+.Order-Symbol-InProcess:before {
+  color: #02f;
+  content: '⚒';  /*⬤*/
+  display: inline-block;
+  width: 20px;
+}
+
+.Order-Symbol-Forked:before {
+  content: '⇶';
+  display: inline-block;
+  width: 20px;
+}
+/*⬛*/
+.Order-Symbol-Processed:before {
+  content: '⬇';
+  display: inline-block;
+  width: 20px;
+}
+
+.Order-Symbol-Ready:before {
+  content: '━';
+  display: inline-block;
+  width: 20px;
+}
+
+.Order-Symbol-Finished:before {
+  color: gray;
+  content: '☆';
+  display: inline-block;
+  width: 20px;
+}
+
+.orders-table {
+  width: 10ex;
+}
+
+.orders-tr-enter {
   background-color: #fffce0;
 }
 
-.orderTr-enter.orderTr-enter-active {
+.orders-tr-enter.orders-tr-enter-active {
   background-color: transparent;
-  transition: background-color 1s ease-in;
+  transition: background-color 0.7s ease-in;
 }
 
 .AttachedTo-Detachable {
   color: darkgreen;
   text-decoration: line-through;
+}
+
+.order-table {
+  width: 10ex;
+}
+
+.order-td-field {
+  width: 10ex;
+  white-space: nowrap;
+  color: gray;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 0;
+}
+
+.order-td-value {
+  white-space: nowrap;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-right: 0;
+}
+
+.order-variable {
+  font-family: Inconsolata, Consolas, "Lucida Console", Monaco, monospace;
+}
+
+.OrderId {
+  white-space: nowrap;
+  font-family: Inconsolata, Consolas, "Lucida Console", Monaco, monospace;
+}
+
+.hidden-link {
+  color: inherit;
+}
+
+.hidden-link:hover {
+  background-color: gold;
+}
+
+.log {
+  font-family: Inconsolata, Consolas, "Lucida Console", Monaco, monospace;
+}
+
+.error {
+  color: orangered;
+  font-family: Inconsolata, Consolas, "Lucida Console", Monaco, monospace;
 }

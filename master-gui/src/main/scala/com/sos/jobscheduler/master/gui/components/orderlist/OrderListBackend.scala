@@ -1,7 +1,12 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
+import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.base.utils.Strings.TruncatedString
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.master.gui.common.Renderers._
+import com.sos.jobscheduler.master.gui.common.Renderers.forTable.orderStateToTagMod
+import com.sos.jobscheduler.master.gui.common.Utils.ops.maybeToTagMod
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListBackend._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
@@ -12,14 +17,14 @@ import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom.html
 import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.scalajs.js.URIUtils.encodeURI
 
 /**
   * @author Joacim Zschimmer
   */
 private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState, Unit]) {
 
-  private val highligtTrs = mutable.Buffer[html.TableRow]()
+  private var highligtTrs = mutable.Buffer[html.TableRow]()
+  private var lastHighlightedAt = Timestamp.epochMilli
 
   def componentDidUpdate: (ComponentDidUpdate[OrdersState, Unit, OrderListBackend]) ⇒ Callback =
     _ ⇒ highlightChangedRows()
@@ -36,33 +41,37 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
         <.div(<.i("Fetching orders..."))
 
       case FetchedContent(idToOrder, sequence, _, _) ⇒
+        val limit = if (sequence.length <= OrderLimit + OrderLimitMargin) sequence.length else OrderLimit
         <.div(
           <.div(^.cls := "order-count")(
-            s"${idToOrder.size} orders",
+            s"${sequence.size} orders",
             state.error map (err ⇒ VdomArray(" – ", <.span(^.cls := "error")(s"$err"))) getOrElse ""),
-          <.table(^.cls := "bordered")(
+          <.table(^.cls := "bordered orders-table")(
             theadVdom,
-              <.tbody(
-                sequence.map(idToOrder).toVdomArray(entry ⇒
-                  OrderTr.withKey(entry.id.string)(entry)))))
+            <.tbody(
+              sequence.toIterator.take(limit).map(idToOrder).toVdomArray(entry ⇒
+                OrderTr.withKey(entry.id.string)(entry)))),
+          sequence.length > limit option
+            <.div(<.i(s"${sequence.length - limit} more orders are not shown.")))
     }
 
   private implicit def orderEntryReuse = OrderEntryReuse
 
-  private val OrderTr = ScalaComponent.builder[OrdersState.Entry]("Row")
+  private val OrderTr = ScalaComponent.builder[OrdersState.OrderEntry]("Row")
     .render_P {
-      case OrdersState.Entry(order, output, isUpdated) ⇒
+      case OrdersState.OrderEntry(order, output, updatedAt) ⇒
         val cls = orderToRowClass(order)
         <.tr(
-          <.td(^.cls := s"order-td-left $cls")(<.a(^.href := s"api/order/${encodeURI(order.id.string)}")(order.id)),
-          <.td(^.cls := s"order-td hide-on-phone $cls")(order.nodeKey.workflowPath),
-          <.td(^.cls := s"order-td $cls")(order.nodeKey.nodeId),
-          <.td(^.cls := s"order-td $cls")(order.outcome),
-          <.td(^.cls := s"order-td hide-on-phone $cls")(order.attachedTo),
-          <.td(^.cls := s"order-td $cls")(order.state),
-          <.td(^.cls := s"order-td-right hide-on-phone $cls")(output))
+          <.td(^.cls := s"td-left cls")(order.id),
+          <.td(^.cls := s"orders-td hide-on-phone $cls")(order.nodeKey.workflowPath),
+          <.td(^.cls := s"orders-td $cls")(order.nodeKey.nodeId),
+          <.td(^.cls := s"orders-td $cls")(order.outcome),
+          <.td(^.cls := s"orders-td hide-on-phone $cls")(order.attachedTo),
+          <.td(^.cls := s"orders-td $cls")(order.state),
+          <.td(^.cls := s"orders-td-last-output hide-on-phone $cls")(
+            output.lastOption.getOrElse("").truncateWithEllipsis(50, showLength = false)))
         .ref { tr ⇒
-          if (isUpdated) highligtTrs += tr
+          if (tr != null && updatedAt > lastHighlightedAt) highligtTrs += tr
         }
     }
     .configure(Reusability.shouldComponentUpdate)
@@ -78,34 +87,38 @@ private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState,
 
   private def highlightChangedRows(): Callback = {
     Callback {
-      val trs = highligtTrs.toVector filter (_ != null)
-      highligtTrs.clear()
+      val trs = highligtTrs
+      highligtTrs = mutable.Buffer[html.TableRow]()
       for (tr ← trs) {
-        tr.className = ClassRegex.replaceAllIn(tr.className, "").trim + " orderTr-enter"
+        tr.className = ClassRegex.replaceAllIn(tr.className, "").trim + " orders-tr-enter"
       }
       Callback {
         for (tr ← trs) {
-          tr.className = s"${tr.className} orderTr-enter-active"
+          tr.className = s"${tr.className} orders-tr-enter-active"
         }
+        lastHighlightedAt = Timestamp.epochMilli
       }.delay(5.seconds).runNow()
     }
   }
 }
 
 object OrderListBackend {
+  private val OrderLimit = 1000
+  private val OrderLimitMargin = 99
+
   private val theadVdom =
     <.thead(<.tr(
-      <.th(^.width := 10.ex, ^.cls := "order-td-left")("OrderId"),
-      <.th(^.width := 10.ex, ^.cls := "order-td hide-on-phone")("Workflow"),
-      <.th(^.width := 10.ex, ^.cls := "order-td")("Node"),
-      <.th(^.width := 15.ex, ^.cls := "order-td")("Outcome"),
+      <.th(^.width := 10.ex, ^.cls := "orders-td td-left")("OrderId"),
+      <.th(^.width := 10.ex, ^.cls := "orders-td hide-on-phone")("Workflow"),
+      <.th(^.width := 10.ex, ^.cls := "orders-td")("Node"),
+      <.th(^.width := 15.ex, ^.cls := "orders-td")("Outcome"),
       <.th(^.width := 15.ex, ^.cls := "hide-on-phone")("AttachedTo"),
-      <.th(^.width := 15.ex, ^.cls := "order-td")("State"),
-      <.th(^.width := 15.ex, ^.cls := "order-td-right hide-on-phone")("Last output")))
+      <.th(^.width := 15.ex, ^.cls := "orders-td")("State"),
+      <.th(^.width := 15.ex, ^.cls := "orders-td-right hide-on-phone")("Last output")))
 
-  private val ClassRegex = """\b(orderTr-enter|orderTr-enter-active)\b|^ *| *$""".r
+  private val ClassRegex = """\b(orders-tr-enter|orders-tr-enter-active)\b|^ *| *$""".r
 
-  private val OrderEntryReuse = Reusability.byRef[OrdersState.Entry]
+  private val OrderEntryReuse = Reusability.byRef[OrdersState.OrderEntry]
   //private val OrderReuse = Reusability.byRef[Order[Order.State]]
 
   //<editor-fold defaultstate="collapsed" desc="// (No code here - does not make first rendering quicker)">

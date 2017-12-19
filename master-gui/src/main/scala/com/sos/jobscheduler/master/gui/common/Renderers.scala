@@ -1,11 +1,12 @@
 package com.sos.jobscheduler.master.gui.common
 
 import com.sos.jobscheduler.base.generic.IsString
-import com.sos.jobscheduler.data.order.{Order, Outcome}
+import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import japgolly.scalajs.react.vdom.Implicits._
 import japgolly.scalajs.react.vdom.TagMod
 import japgolly.scalajs.react.vdom.html_<^.{<, ^}
 import scala.language.implicitConversions
+import scala.scalajs.js.URIUtils.encodeURI
 
 /**
   * @author Joacim Zschimmer
@@ -15,22 +16,47 @@ object Renderers {
   implicit def isStringToTagMod(o: IsString): TagMod =
     o.string
 
-  implicit def toTagMod[A: ToTagMod](a: A): TagMod =
-    implicitly[ToTagMod[A]].toTagMod(a)
+  implicit def optionToTagMod[A](a: Option[A])(implicit toTagMod: A ⇒ TagMod): TagMod =
+    a match {
+      case None ⇒ "—"
+      case Some(o) ⇒ o
+    }
 
-  implicit val OrderStateVdom = ToTagMod.toTagMod[Order.State] {
-    case Order.Scheduled(at) ⇒ Array[TagMod](
-      <.span(^.cls := "hide-on-phone")("Scheduled for "),
-      at.toReadableLocaleIsoString).toTagMod
+  implicit def orderIdToTagMod(orderId: OrderId): TagMod =
+    <.a(^.cls := "hidden-link OrderId", ^.href := s"#order/${encodeURI(orderId.string)}")(orderId.string)
 
-    case o ⇒ o.toString
+  implicit def orderStateToTagMod(state: Order.State): TagMod =
+    state match {
+      case Order.Scheduled(at)  ⇒ <.span(^.cls := "Order-Symbol-Scheduled") (s"Scheduled for ${at.toReadableLocaleIsoString}")
+      case Order.StartNow       ⇒ <.span(^.cls := "Order-Symbol-StartNow")  (state.toString)
+      case Order.InProcess      ⇒ <.span(^.cls := "Order-Symbol-InProcess") (state.toString)
+      case Order.Ready          ⇒ <.span(^.cls := "Order-Symbol-Ready")     (state.toString)
+      case _: Order.Forked      ⇒ <.span(^.cls := "Order-Symbol-Forked")    (state.toString)
+      case Order.Processed      ⇒ <.span(^.cls := "Order-Symbol-Processed") (state.toString)
+      case Order.Finished       ⇒ <.span(^.cls := "Order-Symbol-Finished")  (state.toString)
+      case _                    ⇒ state.toString
+    }
+
+  object forTable {
+    implicit def orderStateToTagMod(state: Order.State): TagMod =
+      state match {
+        case Order.Scheduled(at) ⇒ <.span(^.cls := "Order-Symbol-Scheduled")(at.toReadableLocaleIsoString)
+        case o ⇒ Renderers.orderStateToTagMod(o)
+      }
   }
 
-  implicit val OrderStateAttachedToToTagMod = ToTagMod.toTagMod[Option[Order.AttachedTo]] {
-    case None ⇒ "—"
-    case Some(Order.AttachedTo.Agent(agentPath)) ⇒ agentPath.string
-    case Some(Order.AttachedTo.Detachable(agentPath)) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentPath.string)
-  }
+  implicit def orderAttachedToTagMod(attachedTo: Order.AttachedTo): TagMod =
+    attachedTo match {
+      case Order.AttachedTo.Agent(agentPath) ⇒ agentPath.string
+      case Order.AttachedTo.Detachable(agentPath) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentPath.string)
+      case _ ⇒ attachedTo.toString
+    }
 
-  implicit val OutcomeVdom = ToTagMod.toTagMod[Outcome](_.toString)
+  implicit def outcomeToTagMod(outcome: Outcome): TagMod =
+    outcome match {
+      case Outcome.Good(true) ⇒ "🔅 true"
+      case Outcome.Good(false) ⇒ "☁ ️false"
+      case Outcome.Bad(_) ⇒ s"💥 $outcome"
+      case _ ⇒ outcome.toString
+    }
 }

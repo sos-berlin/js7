@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.gui
 
-import com.sos.jobscheduler.master.gui.components.gui.GuiComponent
+import japgolly.scalajs.react.extra.router.BaseUrl
 import org.scalajs.dom
 
 /**
@@ -8,6 +8,8 @@ import org.scalajs.dom
   */
 object GuiMain {
 
-  def main(args: Array[String]): Unit =
-    GuiComponent().renderIntoDOM(dom.document.getElementById("GUI"))
+  def main(args: Array[String]): Unit = {
+    val baseUrl = BaseUrl.fromWindowOrigin / "master"
+    GuiComponent(baseUrl = baseUrl).renderIntoDOM(dom.document.getElementById("GUI"))
+  }
 }

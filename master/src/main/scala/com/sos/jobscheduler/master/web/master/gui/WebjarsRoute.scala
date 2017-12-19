@@ -15,15 +15,16 @@ trait WebjarsRoute {
 
   protected implicit def actorRefFactory: ActorRefFactory
 
+  private lazy val webjarsResourceDirectory = JavaResource("META-INF/resources/webjars")
+
   protected final val webjarsRoute: Route =
     get {
       respondWithHeader(Caching) {  // WebJar resources are immutable versioned and can be cached forever
-        getFromResourceDirectory(WebjarsResourceDirectory.path)    // Artifacts of Maven groupId 'org.webjars'
+        getFromResourceDirectory(webjarsResourceDirectory.path)    // Artifacts of Maven groupId 'org.webjars'
       }
     }
 }
 
 private[gui] object WebjarsRoute {
   private val Caching = `Cache-Control`(`max-age`(365*24*3600))
-  private lazy val WebjarsResourceDirectory = JavaResource("META-INF/resources/webjars")
 }

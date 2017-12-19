@@ -1,8 +1,9 @@
-package com.sos.jobscheduler.master.gui.components.gui
+package com.sos.jobscheduler.master.gui
 
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent}
-import com.sos.jobscheduler.master.gui.components.gui.GuiBackend._
+import com.sos.jobscheduler.master.gui.GuiBackend._
+import com.sos.jobscheduler.master.gui.common.Utils.isMobile
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.services.MasterApi
 import japgolly.scalajs.react.vdom.html_<^._
@@ -16,50 +17,65 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
+final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 
   private val onDocumentVisibilityChanged = (_: dom.raw.Event) ⇒ sleep.awake().runNow()
+  private val onHashChanged = { event: dom.raw.HashChangeEvent⇒
+    //dom.window.screenX
+    scope.modState(state ⇒ state.updateUriHash)
+      //.memoizePositionForUri(event.oldURL))
+    .runNow()
+  }
   private var isRequestingEvents = false
 
   def componentDidMount() =
     Callback {
       dom.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
+      dom.window.onhashchange = onHashChanged
     } >>
+      scope.modState(o ⇒ o.copy(
+        ordersState = o.ordersState.copy(
+          content = OrdersState.FetchingContent))) >>
       requestOrders()
 
   def componentWillUnmount() = Callback {
-    dom.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged)
+    dom.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged, false)
   }
 
-  def requestOrders() = Callback.future {
-    MasterApi.orders transform {
-      case Success(stamped: Stamped[Seq[Order[Order.State]]]) ⇒
-        Try {
-          for {
-            state ← scope.state
-            _ ← scope.setState(state.copy(
-                isConnected = true,
-                ordersState = state.ordersState.updateOrders(stamped)))
-            callback ← requestAndHandleEvents(after = stamped.eventId, forStep = state.ordersState.step + 1)
-          } yield callback
-        }
+  def requestOrders() =
+    scope.modState(_.copy(
+      isFetchingState = true)
+    ) >>
+    Callback.future {
+      MasterApi.orders transform {
+        case Success(stamped: Stamped[Seq[Order[Order.State]]]) ⇒
+          Try {
+            for {
+              state ← scope.state
+              _ ← scope.setState(state.copy(
+                  isFetchingState = false,
+                  isConnected = true,
+                  ordersState = state.ordersState.updateOrders(stamped)))
+              callback ← requestAndHandleEvents(after = stamped.eventId, forStep = state.ordersState.step + 1)
+            } yield callback
+          }
 
-      case Failure(err) ⇒
-        Try {
-          scope.modState(state ⇒ state.copy(
-            isConnected = false,
-            ordersState = state.ordersState.copy(
-              content = InitialFetchedContext,
-              error = Some(err.toString),
-              step = state.ordersState.step + 1)))
-        }
+        case Failure(err) ⇒
+          Try {
+            scope.modState(state ⇒ state.copy(
+              isFetchingState = false,
+              isConnected = false,
+              ordersState = state.ordersState.copy(
+                content = InitialFetchedContext,
+                error = Some(err.toString),
+                step = state.ordersState.step + 1)))
+          }
+      }
     }
-  }
 
   private def requestAndHandleEvents(
     after: EventId,
     forStep: Int,
-    delay: FiniteDuration = 0.seconds,
     timeout: FiniteDuration = EventTimeout,
     afterErrorDelay: Iterator[FiniteDuration] = newAfterErrorDelayIterator)
   : Callback = {
@@ -95,7 +111,8 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
                   scope.setState(state.copy(
                     isConnected = true)
                   ) >>
-                    requestAndHandleEvents(after = lastEventId, forStep = step, delay = AfterTimeoutDelay)
+                    requestAndHandleEvents(after = lastEventId, forStep = step)
+                      .delay(AfterTimeoutDelay).void
 
                 case Success(EventSeq.NonEmpty(stampedEvents)) ⇒
                   val nextStep = step + 1
@@ -109,7 +126,8 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
                       },
                       step = nextStep))
                   ) >>
-                    requestAndHandleEvents(after = stampedEvents.last.eventId, forStep = nextStep, delay = ContinueDelay)
+                    requestAndHandleEvents(after = stampedEvents.last.eventId, forStep = nextStep)
+                      .delay(ContinueDelay).void
 
                 case Success(EventSeq.Torn) ⇒
                   dom.console.warn("EventSeq.Torn")
@@ -126,7 +144,7 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
           else if (dom.document.hidden)
             sleep.start()
           else
-            fetchEvents().delay(delay).void
+            fetchEvents()
       } yield callback
     }
 
@@ -142,8 +160,8 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
         }
     } yield callback
 
-  def render(state: GuiState): VdomElement =
-    new GuiRenderer(state, toggleFreezed).render
+  def render(props: GuiComponent.Props, state: GuiState): VdomElement =
+    new GuiRenderer(props, state, toggleFreezed).render
 
   private def toggleFreezed: Callback =
     scope.modState(state ⇒
@@ -194,12 +212,12 @@ final class GuiBackend(scope: BackendScope[Unit, GuiState]) {
 object GuiBackend {
   private val FirstEventTimeout =  0.seconds   // Short timeout to check connection
   private val EventTimeout      = 50.seconds
-  private val ContinueDelay     =  250.milliseconds
-  private val AfterTimeoutDelay = 1000.milliseconds
-  private val TornDelay         = 1000.milliseconds
+  private val ContinueDelay     = if (isMobile) 1.second else 250.milliseconds
+  private val AfterTimeoutDelay = 1.second
+  private val TornDelay         = 1.second
   private val Moon = "\uD83C\uDF19"
 
   private def newAfterErrorDelayIterator = (Iterator(1, 2, 4, 6) ++ Iterator.continually(10) ) map (_.seconds)
 
-  private val InitialFetchedContext = OrdersState.FetchedContent(Map(), Nil, eventId = EventId.BeforeFirst, eventCount = 0)
+  private val InitialFetchedContext = OrdersState.FetchedContent(Map(), Array(), eventId = EventId.BeforeFirst, eventCount = 0)
 }

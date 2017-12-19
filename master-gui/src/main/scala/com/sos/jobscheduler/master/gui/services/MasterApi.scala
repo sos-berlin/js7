@@ -7,4 +7,5 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-object MasterApi extends HttpMasterApi(new JsHttpClient(jobschedulerBuildId), uri = "")
+object MasterApi extends HttpMasterApi("/",
+  new JsHttpClient(jobschedulerBuildId.ensuring(_.nonEmpty, "GUI error: Variable jobschedulerBuildId is empty")))

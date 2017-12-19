@@ -1,19 +1,29 @@
-package com.sos.jobscheduler.master.gui.components.gui
+package com.sos.jobscheduler.master.gui
 
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.data.event.EventId
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.master.gui.GuiRenderer._
 import com.sos.jobscheduler.master.gui.components.SideBarComponent
+import com.sos.jobscheduler.master.gui.components.order.OrderComponent
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListComponent
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.services.JsBridge
 import japgolly.scalajs.react.Callback
+import japgolly.scalajs.react.extra.router.BaseUrl
 import japgolly.scalajs.react.vdom.html_<^._
+import org.scalajs.dom
+import scala.scalajs.js.URIUtils.decodeURIComponent
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
-final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
+final class GuiRenderer(props: GuiComponent.Props, state: GuiState, toggleFreezed: Callback) {
 
-  def render = {
+  val base = BaseUrl.fromWindowOrigin / "master"
+
+  val render =
     <.div(
       <.header(
         //menuClickHtml,
@@ -21,21 +31,15 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
       //HtmlTag("main"),
       //<.div(^.cls := "section", ^.id :="index-banner"),
       centerVdom)
-  }
 
-  private def centerVdom =
+  private lazy val centerVdom =
     <.div(^.cls := "container")(
       <.div(^.cls := "row")(
         <.div(^.cls := "col s12")(
           topLineVdom,
-          OrderListComponent(state.ordersState))))
-          //state.overview match {
-          //  case None ⇒ <.div()
-          //  case Some(Left(error)) ⇒ <.p(^.fontSize := 20.px)(error.toString)
-          //  case Some(Right(_)) ⇒ OrderListComponent(state.ordersState)
-          //})))
+          route)))
 
-  private def topLineVdom = {
+  private lazy val topLineVdom = {
     val left = {
       val Array(version, versionExt) = (JsBridge.jobschedulerBuildVersion + " ").split(" ", 2)
       <.td(^.cls := "top-left")(
@@ -54,6 +58,8 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
           ^.title := (if (state.isFreezed) "Click to keep up to date" else "Click to freeze"),
           if (state.isFreezed)
             <.span(^.cls := "freezed")("❄ freezed")
+          else if (state.isFetchingState)
+            "fetching..."
           else if (state.isConnected)
             "connected"
           else
@@ -78,16 +84,27 @@ final class GuiRenderer(state: GuiState, toggleFreezed: Callback) {
         <.tr(left, right)))
   }
 
-  //private def ofOverview[A](f: MasterOverview ⇒ A): Either[TagMod, A] =
-  //  state.overview match {
-  //    case Some(Right(o)) ⇒ Right(f(o))
-  //    case Some(Left(t)) ⇒ Left(<.span(^.title := t.toString)("⚠️"))
-  //    case None ⇒ Left("...")
-  //  }
+  private lazy val route: TagMod =
+    dom.document.location.hash match {
+      case "" | "#" ⇒
+        OrderListComponent(state.ordersState)
+
+      case hash if hash.startsWith(OrderPath) ⇒
+        try {
+          val orderId = OrderId(decodeURIComponent(hash.stripPrefix(OrderPath)))
+          OrderComponent(orderId, state.ordersState.maybeOrderEntry(orderId))
+        } catch {
+          case NonFatal(t) ⇒ <.div(^.cls := "error")(s"Unrecognized URI ${dom.document.location}: ${t.toStringWithCauses}")
+        }
+
+      case _ ⇒
+        <.div(^.cls := "error")(s"Unrecognized URI ${dom.document.location}")
+    }
 }
 
-
 object GuiRenderer {
+  private val OrderPath = "#order/"
+
   private def menuClickVdom =
     <.div(^.cls := "container")(
       <.a(^.href := "#", VdomAttr("data-activates") := "nav-mobile", ^.cls := "button-collapse top-nav waves-effect waves-light circle hide-on-large-only")(
