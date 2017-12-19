@@ -15,6 +15,6 @@
       :WINDOWS
       @echo off
       echo Hello
-      ping -n 3 127.0.0.1 >nul
+      ping -n 4 127.0.0.1 >nul
     </script>
 </job>
