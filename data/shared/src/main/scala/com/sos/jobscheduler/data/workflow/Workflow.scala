@@ -76,7 +76,14 @@ object Workflow {
   final case class EndNode(id: NodeId) extends Node
 
   @JsonCodec
-  final case class JobNode(id: NodeId, agentPath: AgentPath, jobPath: JobPath) extends Node
+  final case class JobNode(id: NodeId, job: AgentJobPath) extends Node {
+    def agentPath = job.agentPath
+    def jobPath = job.jobPath
+  }
+  object JobNode {
+    def apply(id: NodeId, agentPath: AgentPath, jobPath: JobPath) =
+      new JobNode(id, AgentJobPath(agentPath, jobPath))
+  }
 
   implicit val JsonCodec = {
     implicit val TransitionRegisterCodec = TransitionRegister.JsonCodec

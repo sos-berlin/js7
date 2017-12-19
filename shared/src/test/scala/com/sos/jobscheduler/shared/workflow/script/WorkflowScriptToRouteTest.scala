@@ -17,16 +17,16 @@ import scala.language.implicitConversions
 final class WorkflowScriptToRouteTest extends FreeSpec {
 
   "Single job" in {
-    val script = WorkflowScript(Job(A.id, AAgentPath, TestJobPath) :: Nil)
+    val script = WorkflowScript(Job(A.id, AAgentJobPath) :: Nil)
     assert(toWorkflowRoute(script) ==
       WorkflowRoute(start = A.id, nodes = A :: Nil, transitions = Nil))
   }
 
   "WorkflowScript of multiple jobs" in {
     val script = WorkflowScript(List(
-      Job(A.id, AAgentPath, TestJobPath),
-      Job(D.id, AAgentPath, TestJobPath),
-      Job(G.id, AAgentPath, TestJobPath)))
+      Job(A.id, AAgentJobPath),
+      Job(D.id, AAgentJobPath),
+      Job(G.id, AAgentJobPath)))
     assert(toWorkflowRoute(script) ==
       WorkflowRoute(start = A.id,
         nodes = List(A, D, G),
@@ -38,9 +38,9 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
   "WorkflowScript with OnError" in {
     val errorNode = EndNode(NodeId("ERROR"))
     val script = WorkflowScript(List(
-      Job(A.id, AAgentPath, TestJobPath),
+      Job(A.id, AAgentJobPath),
       OnError(errorNode.id),
-      Job(D.id, AAgentPath, TestJobPath),
+      Job(D.id, AAgentJobPath),
       End(END.id),
       End(errorNode.id)))
     assert(toWorkflowRoute(script) ==
@@ -53,23 +53,23 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
 
   "Workflow from TestForkSetting" in {
     val script = WorkflowScript(List(
-      Job(A.id, AAgentPath, TestJobPath),
+      Job(A.id, AAgentJobPath),
       ForkJoin(ListMap(
         WorkflowRoute.Id("🥕") → WorkflowScript(List(
-          Job(Bx.id, AAgentPath, TestJobPath),
-          Job(Cx.id, AAgentPath, TestJobPath))),
+          Job(Bx.id, AAgentJobPath),
+          Job(Cx.id, AAgentJobPath))),
         WorkflowRoute.Id("🍋") → WorkflowScript(List(
-          Job(By.id, AAgentPath, TestJobPath),
-          Job(Cy.id, BAgentPath, TestJobPath))))),
-      Job(D.id, AAgentPath, TestJobPath),
+          Job(By.id, AAgentJobPath),
+          Job(Cy.id, BAgentJobPath))))),
+      Job(D.id, AAgentJobPath),
       ForkJoin(ListMap(
         WorkflowRoute.Id("🥕") → WorkflowScript(List(
-          Job(Ex.id, AAgentPath, TestJobPath),
-          Job(Fx.id, AAgentPath, TestJobPath))),
+          Job(Ex.id, AAgentJobPath),
+          Job(Fx.id, AAgentJobPath))),
         WorkflowRoute.Id("🍋") → WorkflowScript(List(
-          Job(Ey.id, AAgentPath, TestJobPath),
-          Job(Fy.id, AAgentPath, TestJobPath))))),
-      Job(G.id, AAgentPath, TestJobPath),
+          Job(Ey.id, AAgentJobPath),
+          Job(Fy.id, AAgentJobPath))))),
+      Job(G.id, AAgentJobPath),
       End(END.id)))
     assert(toWorkflowRoute(script) == TestWorkflow.route)
   }

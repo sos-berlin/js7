@@ -131,20 +131,9 @@ final class AgentCommandTest extends FreeSpec {
                 }
               ],
               "nodes": [
-                {
-                  "agentPath": "/AGENT",
-                  "jobPath": "/A",
-                  "id": "A",
-                  "TYPE": "JobNode"
-                }, {
-                  "agentPath": "/AGENT",
-                  "jobPath": "/B",
-                  "id": "B",
-                  "TYPE": "JobNode"
-                }, {
-                  "id": "END",
-                  "TYPE": "EndNode"
-                }
+                { "TYPE": "JobNode", "id": "A", "job": { "agentPath": "/AGENT", "jobPath": "/A" }},
+                { "TYPE": "JobNode", "id": "B", "job": { "agentPath": "/AGENT", "jobPath": "/B" }},
+                { "TYPE": "EndNode", "id": "END" }
               ],
               "start": "A"
             }

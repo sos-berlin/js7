@@ -41,8 +41,8 @@ object WorkflowScript {
     final def nodes = node :: Nil
   }
 
-  final case class Job(nodeId: NodeId, agentPath: AgentPath, jobPath: JobPath) extends NodeStatement {
-    val node = Workflow.JobNode(nodeId, agentPath, jobPath)
+  final case class Job(nodeId: NodeId, job: AgentJobPath) extends NodeStatement {
+    val node = Workflow.JobNode(nodeId, job)
   }
 
   final case class End(nodeId: NodeId) extends NodeStatement {

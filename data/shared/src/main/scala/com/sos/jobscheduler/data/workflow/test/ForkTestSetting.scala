@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
 import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Job}
 import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition}
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath, WorkflowRoute, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, Workflow, WorkflowPath, WorkflowRoute, WorkflowScript}
 import scala.collection.immutable.{List, ListMap}
 
 /**
@@ -15,39 +15,41 @@ object ForkTestSetting {
 
   val AAgentPath = AgentPath("/AGENT-A")
   val BAgentPath = AgentPath("/AGENT-B")
+  val AAgentJobPath = AgentJobPath(AAgentPath, JobPath("/JOB"))
+  val BAgentJobPath = AgentJobPath(BAgentPath, JobPath("/JOB"))
   val TestJobPath = JobPath("/JOB")
 
-  val A  = JobNode(NodeId("A" ), AAgentPath, TestJobPath)
-  val Bx = JobNode(NodeId("Bx"), AAgentPath, TestJobPath)
-  val By = JobNode(NodeId("By"), AAgentPath, TestJobPath)
-  val Cx = JobNode(NodeId("Cx"), AAgentPath, TestJobPath)
-  val Cy = JobNode(NodeId("Cy"), BAgentPath, TestJobPath)
-  val D  = JobNode(NodeId("D" ), AAgentPath, TestJobPath)
-  val Ex = JobNode(NodeId("Ex"), AAgentPath, TestJobPath)
-  val Ey = JobNode(NodeId("Ey"), AAgentPath, TestJobPath)
-  val Fx = JobNode(NodeId("Fx"), AAgentPath, TestJobPath)
-  val Fy = JobNode(NodeId("Fy"), AAgentPath, TestJobPath)
-  val G  = JobNode(NodeId("G" ), AAgentPath, TestJobPath)
+  val A  = JobNode(NodeId("A" ), AAgentJobPath)
+  val Bx = JobNode(NodeId("Bx"), AAgentJobPath)
+  val By = JobNode(NodeId("By"), AAgentJobPath)
+  val Cx = JobNode(NodeId("Cx"), AAgentJobPath)
+  val Cy = JobNode(NodeId("Cy"), BAgentJobPath)
+  val D  = JobNode(NodeId("D" ), AAgentJobPath)
+  val Ex = JobNode(NodeId("Ex"), AAgentJobPath)
+  val Ey = JobNode(NodeId("Ey"), AAgentJobPath)
+  val Fx = JobNode(NodeId("Fx"), AAgentJobPath)
+  val Fy = JobNode(NodeId("Fy"), AAgentJobPath)
+  val G  = JobNode(NodeId("G" ), AAgentJobPath)
   val END = EndNode(NodeId("END"))
 
   val TestWorkflowScript = WorkflowScript(List(
-    Job(A.id, AAgentPath, TestJobPath),
+    Job(A.id, AAgentJobPath),
     ForkJoin(ListMap(
       WorkflowRoute.Id("🥕") → WorkflowScript(List(
-        Job(Bx.id, AAgentPath, TestJobPath),
-        Job(Cx.id, AAgentPath, TestJobPath))),
+        Job(Bx.id, AAgentJobPath),
+        Job(Cx.id, AAgentJobPath))),
       WorkflowRoute.Id("🍋") → WorkflowScript(List(
-        Job(By.id, AAgentPath, TestJobPath),
-        Job(Cy.id, BAgentPath, TestJobPath))))),
-    Job(D.id, AAgentPath, TestJobPath),
+        Job(By.id, AAgentJobPath),
+        Job(Cy.id, BAgentJobPath))))),
+    Job(D.id, AAgentJobPath),
     ForkJoin(ListMap(
       WorkflowRoute.Id("🥕") → WorkflowScript(List(
-        Job(Ex.id, AAgentPath, TestJobPath),
-        Job(Fx.id, AAgentPath, TestJobPath))),
+        Job(Ex.id, AAgentJobPath),
+        Job(Fx.id, AAgentJobPath))),
       WorkflowRoute.Id("🍋") → WorkflowScript(List(
-        Job(Ey.id, AAgentPath, TestJobPath),
-        Job(Fy.id, AAgentPath, TestJobPath))))),
-    Job(G.id, AAgentPath, TestJobPath),
+        Job(Ey.id, AAgentJobPath),
+        Job(Fy.id, AAgentJobPath))))),
+    Job(G.id, AAgentJobPath),
     End(END.id)))
 
   val bx = Transition(Bx.id, Cx.id)
@@ -72,7 +74,7 @@ object ForkTestSetting {
   //     A
   //  🥕   🍋
   //  Bx   By
-  //  Cx   Cy   ⟵ Cy runs on BAgentPath
+  //  Cx   Cy   ⟵ Cy runs on BAgentJobPath
   //     D
   //  Ex   Ey
   //  Fx   Fy
