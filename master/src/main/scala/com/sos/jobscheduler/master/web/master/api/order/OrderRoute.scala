@@ -64,7 +64,7 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
         case Some(o) ⇒
           o: ToResponseMarshallable
         case None ⇒
-          BadRequest → s"Does not exist: $orderId (maybe the starting slash is missing?)\n": ToResponseMarshallable
+          BadRequest → s"Does not exist: $orderId\n": ToResponseMarshallable
       }
     }
 
