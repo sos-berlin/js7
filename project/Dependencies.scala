@@ -52,7 +52,7 @@ object Dependencies {
 
   val mockito             = "org.mockito" % "mockito-core" % "1.10.19"
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
-  val snakeYaml           = "org.yaml" % "snakeyaml" % "1.18"
+  val snakeYaml           = "org.yaml" % "snakeyaml" % "1.19"
 
   val javaxAnnotations    = "com.google.code.findbugs" % "jsr305" % "3.0.0"
   val guava               = "com.google.guava" % "guava" % "21.0"
