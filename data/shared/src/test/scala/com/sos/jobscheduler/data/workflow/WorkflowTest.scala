@@ -88,7 +88,9 @@ final class WorkflowTest extends FreeSpec {
   "JSON" in {
     testJson(ForkTestSetting.TestWorkflow,
       """{
+        "path": "/WORKFLOW",
         "route": {
+          "start": "A",
           "transitions": [
             {
               "fromProcessedNodeIds": [ "A" ],
@@ -96,7 +98,6 @@ final class WorkflowTest extends FreeSpec {
               "idToRoute": {
                 "🥕": {
                   "start": "Bx",
-                  "end": "Cx",
                   "transitions": [
                     {
                       "idToRoute": {},
@@ -114,7 +115,6 @@ final class WorkflowTest extends FreeSpec {
                 },
                 "🍋": {
                   "start": "By",
-                  "end": "Cy",
                   "transitions": [
                     {
                       "idToRoute": {},
@@ -161,7 +161,6 @@ final class WorkflowTest extends FreeSpec {
                     { "TYPE": "JobNode", "id": "Ex", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                     { "TYPE": "JobNode", "id": "Fx", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
                   ],
-                  "end": "Fx",
                   "start": "Ex"
                 },
                 "🍋": {
@@ -179,7 +178,6 @@ final class WorkflowTest extends FreeSpec {
                     { "TYPE": "JobNode", "id": "Ey", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                     { "TYPE": "JobNode", "id": "Fy", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
                   ],
-                  "end": "Fy",
                   "start": "Ey"
                 }
               },
@@ -206,21 +204,18 @@ final class WorkflowTest extends FreeSpec {
           "nodes": [
             { "TYPE": "JobNode", "id": "A", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
             { "TYPE": "JobNode", "id": "Bx", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-            { "TYPE": "JobNode", "id": "By", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
             { "TYPE": "JobNode", "id": "Cx", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "By", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
             { "TYPE": "JobNode", "id": "Cy", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
             { "TYPE": "JobNode", "id": "D", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
             { "TYPE": "JobNode", "id": "Ex", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-            { "TYPE": "JobNode", "id": "Ey", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
             { "TYPE": "JobNode", "id": "Fx", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+            { "TYPE": "JobNode", "id": "Ey", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
             { "TYPE": "JobNode", "id": "Fy", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
             { "TYPE": "JobNode", "id": "G", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
             { "TYPE": "EndNode", "id": "END" }
-          ],
-          "end": "END",
-          "start": "A"
-        },
-        "path": "/WORKFLOW"
+          ]
+        }
       }""")
   }
 }

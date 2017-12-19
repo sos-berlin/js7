@@ -22,7 +22,6 @@ final class WorkflowBuilder private(start: JobNode) {
         forkNodeId = nodes.last.id,
         joinNodeId = join.id,
         idToRoute = idToRoute,
-        childEndNodes = idToRoute.values.map(_.end).toVector,
         ForkTransition,
         JoinTransition)
     transitions += f
@@ -42,11 +41,7 @@ final class WorkflowBuilder private(start: JobNode) {
   }
 
   def toRoute: WorkflowRoute =
-    WorkflowRoute(
-      start = nodes.head.id,
-      end = nodes.last.id,
-      nodes.toVector,
-      transitions.toVector)
+    WorkflowRoute(start = nodes.head.id, nodes.toVector, transitions.toVector)
 
   def toWorkflow(path: WorkflowPath): Workflow =
     Workflow(path, toRoute)

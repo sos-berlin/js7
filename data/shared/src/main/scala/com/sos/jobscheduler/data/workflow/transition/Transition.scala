@@ -48,16 +48,23 @@ object Transition {
     apply(Vector(from), Vector(to), transition)
 
   def apply(from: Iterable[NodeId], to: Iterable[NodeId], transitionType: TransitionType): Transition =
-    of(None, from.toIndexedSeq, to.toIndexedSeq, None, transitionType)
+    of(None, from.toIndexedSeq, to.toIndexedSeq, transitionType)
 
-  def forkJoin(forkNodeId: NodeId, joinNodeId: NodeId, idToRoute: ListMap[WorkflowRoute.Id, WorkflowRoute], childEndNodes: IndexedSeq[NodeId], forkTransitionType: TransitionType, joinTransitionType: TransitionType): (Transition, Transition) = {
-    val f = fork(forkNodeId, idToRoute, forkTransitionType)
-    val j = join(forkNodeId, fromProcessed = childEndNodes, to = joinNodeId, joinTransitionType)
+  def forkJoin(
+    forkNodeId: NodeId,
+    joinNodeId: NodeId,
+    idToRoute: ListMap[WorkflowRoute.Id, WorkflowRoute],
+    forkTransitionType: TransitionType,
+    joinTransitionType: TransitionType)
+  : (Transition, Transition) = {
+    val f = fork(forkNodeId, joinNodeId = joinNodeId, idToRoute, forkTransitionType)
+    val fromProcessed = for ((id, route) ← idToRoute) yield route.end getOrElse sys.error(s"Forked route '$id' has no end")
+    val j = join(forkNodeId, fromProcessed = fromProcessed.toVector, to = joinNodeId, joinTransitionType)
     (f, j)
   }
 
   /** Forked orders get the IDs "{OrderId}/{Outlet.Id}". */
-  def fork(from: NodeId, idToRoute: ListMap[WorkflowRoute.Id, WorkflowRoute], transitionType: TransitionType): Transition =
+  private def fork(from: NodeId, joinNodeId: NodeId, idToRoute: ListMap[WorkflowRoute.Id, WorkflowRoute], transitionType: TransitionType): Transition =
     new Transition(
       forkNodeId = None,
       fromProcessedNodeIds = Vector(from),
@@ -65,10 +72,12 @@ object Transition {
       idToRoute,
       transitionType)
 
-  def join(forkNodeId: NodeId, fromProcessed: IndexedSeq[NodeId], to: NodeId, transitionType: TransitionType): Transition =
-    of(Some(forkNodeId), fromProcessed = fromProcessed, Vector(to), None, transitionType)
+  private def join(forkNodeId: NodeId, fromProcessed: IndexedSeq[NodeId], to: NodeId, transitionType: TransitionType): Transition =
+    of(Some(forkNodeId), fromProcessed = fromProcessed, Vector(to), transitionType)
 
-  private def of(fromForkedId: Option[NodeId] = None, fromProcessed: IndexedSeq[NodeId], to: IndexedSeq[NodeId], joinNodeId: Option[NodeId] = None, transitionType: TransitionType): Transition =
+  private def of(fromForkedId: Option[NodeId] = None, fromProcessed: IndexedSeq[NodeId],
+    to: IndexedSeq[NodeId], transitionType: TransitionType)
+  : Transition =
     new Transition(
       forkNodeId = fromForkedId,
       fromProcessedNodeIds = fromProcessed,
@@ -79,3 +88,4 @@ object Transition {
   implicit def jsonCodec(implicit encoder: Encoder[TransitionType], decoder: Decoder[TransitionType]): CirceCodec[Transition] =
     deriveCirceCodec[Transition]
 }
+

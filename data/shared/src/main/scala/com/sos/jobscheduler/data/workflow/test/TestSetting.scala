@@ -23,7 +23,7 @@ private[jobscheduler] object TestSetting {
   val a = Transition(from = A.id, to = B.id)
   val b = Transition(from = B.id, to = END.id)
 
-  val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), WorkflowRoute(start = A.id, end = END.id, nodes = List(A, B, END), transitions = List(a, b)))
+  val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), WorkflowRoute(start = A.id, nodes = List(A, B, END), transitions = List(a, b)))
 
   val TestOrder = Order(OrderId("TEST"), TestWorkflow.startNodeKey, Order.Ready, payload = Payload(Map("VARIABLE" → "VALUE")))
 }

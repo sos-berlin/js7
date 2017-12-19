@@ -22,9 +22,8 @@ final class ForkJoinTransitionTest extends FreeSpec {
     forkNodeId = A.id,
     joinNodeId = C.id,
     ListMap(
-      WorkflowRoute.Id("⏰") → WorkflowRoute(start = Bx.id, end = Bx.id, nodes = List(Bx), transitions = Nil),
-      WorkflowRoute.Id("⚒") → WorkflowRoute(start = By.id, end = By.id, nodes = List(By), transitions = Nil)),
-    Vector(Bx.id, By.id),
+      WorkflowRoute.Id("⏰") → WorkflowRoute(start = Bx.id, nodes = List(Bx), transitions = Nil),
+      WorkflowRoute.Id("⚒") → WorkflowRoute(start = By.id, nodes = List(By), transitions = Nil)),
     ForkTransition,
     JoinTransition)
 

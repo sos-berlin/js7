@@ -146,7 +146,6 @@ final class AgentCommandTest extends FreeSpec {
                   "TYPE": "EndNode"
                 }
               ],
-              "end": "END",
               "start": "A"
             }
           }
