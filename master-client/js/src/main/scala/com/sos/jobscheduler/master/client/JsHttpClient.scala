@@ -3,6 +3,7 @@ package com.sos.jobscheduler.master.client
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.master.client.HttpClientException.{HostUnreachable, HttpFailure, OtherFailure}
+import com.sos.jobscheduler.master.client.JsHttpClient._
 import io.circe
 import io.circe.{Decoder, Encoder}
 import org.scalajs.dom
@@ -17,10 +18,6 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 final class JsHttpClient(requiredBuildId: String) extends HttpClient {
-
-  private val ReloadDelay = 2.second  // Just in case of a loop
-
-  if (requiredBuildId.isEmpty) dom.console.warn("requiredBuildId is empty")
 
   def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Future[A] =
     decodeResponse(
@@ -57,11 +54,21 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
         logAndThrow(OtherFailure(s"Problem while accessing JobScheduler Master: ${t.toStringWithCauses}", Some(t)))
 
       case Success(xhr) ⇒
-        if (requiredBuildId.nonEmpty && Option(xhr.getResponseHeader("X-JobScheduler-Build-ID")).exists(_ != requiredBuildId)) {
-          reloadPage()  // Server version has changed. We cannot continue.
-          logAndThrow(OtherFailure(s"JobScheduler Master version changed — Reloading page...", None))
-        } else
-          xhr
+        requireMatchingBuildId(xhr)
+        xhr
+    }
+
+  private def requireMatchingBuildId(xhr: dom.XMLHttpRequest): Unit =
+    xhr.getResponseHeader("X-JobScheduler-Build-ID") match {
+      case null ⇒
+        logAndThrow(OtherFailure("JobScheduler Master does not respond as expected (missing buildId)", None))
+
+      case fromServer if fromServer != requiredBuildId ⇒
+        dom.console.warn(s"JobScheduler Master build has changed from '$requiredBuildId' to '$fromServer' — Reloading page...")
+        reloadPage()
+        throw new HttpClientException(OtherFailure(s"JobScheduler Master build has changed — Reloading page...", None))
+
+      case _ ⇒
     }
 
   private def logAndThrow[A](error: HttpFailure): Nothing = {
@@ -73,4 +80,8 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
     dom.window.setTimeout(
       () ⇒ dom.window.location.reload(),
       ReloadDelay.toMillis)  // Delay in case of reload-loop
+}
+
+object JsHttpClient {
+  private val ReloadDelay = 2.second  // Just in case of a loop
 }

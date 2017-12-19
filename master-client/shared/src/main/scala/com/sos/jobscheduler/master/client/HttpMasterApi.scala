@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @param uri The host URI or empty for addressing base on "master/"
   */
-class HttpMasterApi(httpClient: HttpClient, uri: String)(implicit executionContext: ExecutionContext)
+class HttpMasterApi(uri: String, httpClient: HttpClient)(implicit executionContext: ExecutionContext)
 extends MasterApi {
 
   private val uris = MasterUris(masterUri = if (uri.isEmpty) uri else uri.stripSuffix("/") + "/master")

@@ -38,7 +38,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
     val runningMaster = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     master = runningMaster
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
-    api = new HttpMasterApi(httpClient, master.localUri.toString)
+    api = new HttpMasterApi(master.localUri.toString, httpClient)
   }
 
   override def afterAll() = {

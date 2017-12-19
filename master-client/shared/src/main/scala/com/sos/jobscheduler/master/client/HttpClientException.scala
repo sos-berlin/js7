@@ -7,6 +7,7 @@ import com.sos.jobscheduler.master.client.HttpClientException._
   * @author Joacim Zschimmer
   */
 final class HttpClientException(failure: HttpFailure) extends RuntimeException {
+  override def getMessage = failure.toString
 }
 
 object HttpClientException {
