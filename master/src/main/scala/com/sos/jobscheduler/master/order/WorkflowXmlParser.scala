@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
-import com.sos.jobscheduler.data.workflow.transitions.SuccessFailureTransition
+import com.sos.jobscheduler.data.workflow.transitions.SuccessErrorTransition
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath}
 import javax.xml.transform.Source
 import scala.collection.immutable.Seq
@@ -75,7 +75,7 @@ object WorkflowXmlParser {
       if (next == error)
         Transition(rawNode.id, next, ForwardTransition)
       else
-        Transition(Vector(rawNode.id), Vector(next, error), SuccessFailureTransition)
+        Transition(Vector(rawNode.id), Vector(next, error), SuccessErrorTransition)
     }
   }
 

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.order
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.transition.Transition
-import com.sos.jobscheduler.data.workflow.transitions.SuccessFailureTransition
+import com.sos.jobscheduler.data.workflow.transitions.SuccessErrorTransition
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 
@@ -31,7 +31,7 @@ final class WorkflowXmlParserTest extends FreeSpec {
       Workflow(path, start = A.id, end = FAILURE.id,
         List(A, B, C, END, FAILURE),
         List(
-          Transition(Vector(A.id), Vector(B.id, FAILURE.id), SuccessFailureTransition),
+          Transition(Vector(A.id), Vector(B.id, FAILURE.id), SuccessErrorTransition),
           Transition(B.id, C.id),
           Transition(C.id, END.id)))
     )

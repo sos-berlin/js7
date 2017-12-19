@@ -8,7 +8,7 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-case object SuccessFailureTransition extends SingleInputTransition {
+case object SuccessErrorTransition extends SingleInputTransition {
 
   def routesMaximum = Some(2)
 

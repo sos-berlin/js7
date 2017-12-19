@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transit
 object TransitionRegister {
 
   implicit val JsonCodec = TypedJsonCodec[TransitionType](
-    Subtype(SuccessFailureTransition),
+    Subtype(SuccessErrorTransition),
     Subtype(ForwardTransition),
     Subtype(ForkTransition),
     Subtype(JoinTransition)
