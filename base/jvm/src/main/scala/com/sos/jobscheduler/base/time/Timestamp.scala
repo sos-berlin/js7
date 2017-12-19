@@ -21,7 +21,9 @@ object Timestamp extends GenericTimestamp.Companion[Timestamp] {
 
   def parse(string: String) = ofEpochMilli(Instant.parse(string).toEpochMilli)
 
-  def now = ofEpochMilli(System.currentTimeMillis)
+  def now: Timestamp = ofEpochMilli(epochMilli)
+
+  def epochMilli: Long = System.currentTimeMillis
 
   implicit val JsonEncoder: circe.Encoder[Timestamp] =
     o ⇒ circe.Json.fromLong(o.toEpochMilli)
