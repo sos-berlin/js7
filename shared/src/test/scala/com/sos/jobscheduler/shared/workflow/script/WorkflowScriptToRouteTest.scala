@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.shared.workflow.script
 
-import com.sos.jobscheduler.data.workflow.Workflow.EndNode
-import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Job, OnError}
+import com.sos.jobscheduler.data.workflow.Workflow.JobNode
+import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Goto, Job, OnError}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.SuccessErrorTransition
@@ -35,20 +35,28 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
           Transition(D.id, G.id, ForwardTransition))))
   }
 
-  "WorkflowScript with OnError" in {
-    val errorNode = EndNode(NodeId("ERROR"))
+  "Spaghetti with OnError and Goto" in {
+    val X = JobNode(NodeId("X"), AAgentJobPath)
     val script = WorkflowScript(List(
       Job(A.id, AAgentJobPath),
-      OnError(errorNode.id),
+      OnError(G.id),
       Job(D.id, AAgentJobPath),
+      OnError(END.id),
+      Goto(G.id),
+      Job(X.id, AAgentJobPath),
       End(END.id),
-      End(errorNode.id)))
-    assert(toWorkflowRoute(script) ==
-      WorkflowRoute(start = A.id,
-        nodes = List(A, D, END, errorNode),
-        transitions = List(
-          Transition(from = List(A.id), to = List(D.id, errorNode.id), SuccessErrorTransition),
-          Transition(D.id, END.id, ForwardTransition))))
+      Job(G.id, AAgentJobPath),
+      Goto(X.id)))
+    val expected = WorkflowRoute(start = A.id,
+      nodes = List(A, D, X, END, G),
+      transitions = List(
+        Transition(from = List(A.id), to = List(D.id, G.id), SuccessErrorTransition),
+        Transition(from = List(D.id), to = List(G.id, END.id), SuccessErrorTransition),
+        Transition(X.id, END.id, ForwardTransition),
+        Transition(G.id, X.id, ForwardTransition)))
+    assert(toWorkflowRoute(script) == expected)
+    assert(expected.linearPath == Some(List(A.id, D.id, G.id, X.id, END.id)))
+    assert(expected.end == Some(END.id))
   }
 
   "Workflow from TestForkSetting" in {

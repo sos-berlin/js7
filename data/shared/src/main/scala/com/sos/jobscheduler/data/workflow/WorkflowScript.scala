@@ -3,7 +3,6 @@ package com.sos.jobscheduler.data.workflow
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.WorkflowScript._
 import scala.collection.immutable.{ListMap, Seq}
 
@@ -58,8 +57,8 @@ object WorkflowScript {
     def nodes = Nil
   }
 
-  //final case class Goto(to: NodeId) extends Statement {
-  //  def nodes = Nil
-  //}
+  final case class Goto(to: NodeId) extends Statement {
+    def nodes = Nil
+  }
 }
 

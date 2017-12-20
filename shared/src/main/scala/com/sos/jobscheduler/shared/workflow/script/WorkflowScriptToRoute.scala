@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.shared.workflow.script
 
-import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Job, NodeStatement, OnError}
+import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Goto, Job, NodeStatement, OnError}
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition, SuccessErrorTransition}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowRoute, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{NodeId, Workflow, WorkflowRoute, WorkflowScript}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
@@ -35,15 +35,23 @@ object WorkflowScriptToRoute {
           current = Current.Transitions(next ⇒
             Transition(
               from = node.id :: Nil,
-              to = next.id :: to :: Nil,
+              to = next :: to :: Nil,
               SuccessErrorTransition
             ) :: Nil)
+
+        case (Current.Node(node), Goto(to)) ⇒
+          transitions += Transition(node.id, to, ForwardTransition)
+          current = Current.End
+
+        case (Current.Transitions(toTransition), Goto(to)) ⇒
+          transitions ++= toTransition(to)
+          current = Current.End
 
         case (Current.Node(node), ForkJoin(idToRoute)) ⇒
           current = Current.Transitions { next ⇒
             val (f, j) = Transition.forkJoin(
               forkNodeId = node.id,
-              joinNodeId = next.id,
+              joinNodeId = next,
               idToRoute = idToRoute.map { case (k, v) ⇒ k → toWorkflowRoute(v) },
               ForkTransition,
               JoinTransition)
@@ -51,11 +59,11 @@ object WorkflowScriptToRoute {
           }
 
         case (Current.Transitions(toTransitions), stmt: Job) ⇒
-          transitions ++= toTransitions(stmt.node)
+          transitions ++= toTransitions(stmt.node.id)
           current = Current.Node(stmt.node)
 
         case (Current.Transitions(toTransitions), stmt: End) ⇒
-          transitions ++= toTransitions(stmt.node)
+          transitions ++= toTransitions(stmt.node.id)
           current = Current.End
 
         case _ ⇒
@@ -72,7 +80,7 @@ object WorkflowScriptToRoute {
   private sealed trait Current
   private object Current {
     final case class Node(node: Workflow.Node) extends Current
-    final case class Transitions(node: Workflow.Node ⇒ Seq[Transition]) extends Current
+    final case class Transitions(next: NodeId ⇒ Seq[Transition]) extends Current
     final case object End extends Current
   }
 }

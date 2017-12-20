@@ -22,9 +22,7 @@ final case class WorkflowRoute(start: NodeId, nodes: Seq[Node], transitions: Seq
   val allTransitions: Seq[Transition] = (transitions ++ transitions.flatMap(_.idToRoute.values flatMap (_.allTransitions)))
   /** Linear path of nodes through the WorkflowRoute without forks or branches.
     */
-  lazy val linearPath: Option[Seq[Node]] =
-    for (linearPath ← transitions.linearPath(start) if linearPath forall idToNode.contains) yield
-      linearPath.map(idToNode)
+  lazy val linearPath: Option[Seq[NodeId]] = transitions.linearPath(start)
 
   require(idToNode.size == nodes.size, s"WorkflowRoute contains Nodes with duplicate NodeIds")
   //Not for Goto: (for (t ← allTransitions; to ← t.toNodeIds) yield to → t)
@@ -40,7 +38,7 @@ final case class WorkflowRoute(start: NodeId, nodes: Seq[Node], transitions: Seq
     copy(nodes = agentNodes, transitions = transitions filter (_.endpoints forall (o ⇒ agentNodes.exists(_.id == o))))
   }
 
-  def end: Option[NodeId] = linearPath map (_.last.id)
+  def end: Option[NodeId] = linearPath map (_.last)
 }
 
 object WorkflowRoute {
@@ -53,7 +51,6 @@ object WorkflowRoute {
   }
 
   private[workflow] implicit class Transitions(val transitions: Iterable[Transition]) extends AnyVal {
-
     /** Returns None in case of loop */
     def linearPath(start: NodeId): Option[Seq[NodeId]] = {
       val nodeToTransition: Map[NodeId, Transition] =
@@ -65,28 +62,28 @@ object WorkflowRoute {
           }
         }.flatten.uniqueToMap
 
-      def followers(nodeId: NodeId, remaining: Int): List[NodeId] =
+      def followers(nodeId: NodeId, remaining: Int): List[NodeId] = {
         if (remaining < 0)
           Nil
         else
           nodeId :: (for  {
-              transition ← nodeToTransition.get(nodeId).toList
-              follower ← followerOfTransition(transition)
-              //follower ← transition.pathFollower.toList
-              x ← followers(follower, remaining - 1)
-            } yield x)
+            transition ← nodeToTransition.get(nodeId).toList
+            follower ← followerOfTransition(transition).toList
+            x ← followers(follower, remaining - 1)
+          } yield x)
+      }
       val result = followers(start, transitions.size + 1)
       result.lengthCompare(transitions.size + 1) <= 0 option result
     }
 
-    private def followerOfTransition(transition: Transition): Iterable[NodeId] =
+    private def followerOfTransition(transition: Transition): Option[NodeId] =
       transition.transitionType match {
         case ForwardTransition | SuccessErrorTransition | JoinTransition ⇒  // TODO Generalize
-          transition.toNodeIds
+          transition.toNodeIds.headOption
 
         case ForkTransition ⇒
-          transitions.collect {
-            case t if t.forkNodeId contains transition.fromNodeIds.head ⇒ t.toNodeIds
+          transitions.collectFirst {
+            case t if t.forkNodeId contains transition.fromNodeIds.head ⇒ t.toNodeIds.headOption
           } .flatten
       }
   }
