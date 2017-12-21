@@ -19,6 +19,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderMovedToMaster, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
@@ -34,6 +35,7 @@ import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAn
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess
+import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToRoute.workflowScriptToRoute
 import io.circe.Json
 import java.nio.file.Path
 import java.time.Duration
@@ -102,7 +104,7 @@ with Stash {
   private def readWorkflow(workflowPath: WorkflowPath, file: Path): Workflow =
     if (file.getFileName.toString endsWith ".xml")
       autoClosing(new FileSource(file)) { src ⇒
-        WorkflowXmlParser.parseXml(workflowPath, src)
+        Workflow(workflowPath, workflowScriptToRoute(LegacyJobchainXmlParser.parseXml(src, FolderPath.parentOf(workflowPath))))
       }
     else {
       val json = file.contentString.parseJson

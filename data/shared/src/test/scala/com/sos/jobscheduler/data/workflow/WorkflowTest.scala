@@ -79,10 +79,10 @@ final class WorkflowTest extends FreeSpec {
     val f = Transition(F.id, G.id)
     val g = Transition(G.id, END.id)
 
-    val workflow = Workflow(WorkflowPath("/WORKFLOW"), A.id, END.id, List(A, B, C, D, E, F, G, END), List(a, b, cd, e, f, g))
-    assert(workflow.reduceForAgent(u) == Workflow(workflow.path, A.id, END.id, List(A, B, C), List(a, b)))
-    assert(workflow.reduceForAgent(v) == Workflow(workflow.path, A.id, END.id, List(D, E, F), List(e)))
-    assert(workflow.reduceForAgent(w) == Workflow(workflow.path, A.id, END.id, List(G)      , List()))
+    val workflow = Workflow(WorkflowPath("/WORKFLOW"), A.id, List(A, B, C, D, E, F, G, END), List(a, b, cd, e, f, g))
+    assert(workflow.reduceForAgent(u) == Workflow(workflow.path, A.id, List(A, B, C), List(a, b)))
+    assert(workflow.reduceForAgent(v) == Workflow(workflow.path, A.id, List(D, E, F), List(e)))
+    assert(workflow.reduceForAgent(w) == Workflow(workflow.path, A.id, List(G), List()))
   }
 
   "JSON" in {

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.SuccessErrorTransition
 import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowRoute, WorkflowScript}
-import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToRoute.toWorkflowRoute
+import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToRoute.workflowScriptToRoute
 import org.scalatest.FreeSpec
 import scala.collection.immutable._
 import scala.language.implicitConversions
@@ -18,7 +18,7 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
 
   "Single job" in {
     val script = WorkflowScript(Job(A.id, AAgentJobPath) :: Nil)
-    assert(toWorkflowRoute(script) ==
+    assert(workflowScriptToRoute(script) ==
       WorkflowRoute(start = A.id, nodes = A :: Nil, transitions = Nil))
   }
 
@@ -27,7 +27,7 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
       Job(A.id, AAgentJobPath),
       Job(D.id, AAgentJobPath),
       Job(G.id, AAgentJobPath)))
-    assert(toWorkflowRoute(script) ==
+    assert(workflowScriptToRoute(script) ==
       WorkflowRoute(start = A.id,
         nodes = List(A, D, G),
         transitions = List(
@@ -54,7 +54,7 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
         Transition(from = List(D.id), to = List(G.id, END.id), SuccessErrorTransition),
         Transition(X.id, END.id, ForwardTransition),
         Transition(G.id, X.id, ForwardTransition)))
-    assert(toWorkflowRoute(script) == expected)
+    assert(workflowScriptToRoute(script) == expected)
     assert(expected.linearPath == Some(List(A.id, D.id, G.id, X.id, END.id)))
     assert(expected.end == Some(END.id))
   }
@@ -79,6 +79,6 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
           Job(Fy.id, AAgentJobPath))))),
       Job(G.id, AAgentJobPath),
       End(END.id)))
-    assert(toWorkflowRoute(script) == TestWorkflow.route)
+    assert(workflowScriptToRoute(script) == TestWorkflow.route)
   }
 }

@@ -27,7 +27,7 @@ final class WorkflowRouteTest extends FreeSpec {
     }
 
     "TestForkSetting" in {
-      assert(TestWorkflow.route.linearPath == Some(List(A, D, G, END)))
+      assert(TestWorkflow.route.linearPath == Some(List(A.id, D.id, G.id, END.id)))
     }
   }
 }

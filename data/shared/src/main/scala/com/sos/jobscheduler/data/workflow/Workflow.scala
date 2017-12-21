@@ -56,7 +56,7 @@ object Workflow {
   def apply(path: WorkflowPath, route: WorkflowRoute): Workflow =
     new Workflow(path, route)
 
-  def apply(path: WorkflowPath, start: NodeId, end: NodeId, nodes: Seq[Node], transitions: Seq[Transition]): Workflow =
+  def apply(path: WorkflowPath, start: NodeId, nodes: Seq[Node], transitions: Seq[Transition]): Workflow =
     Workflow(path, WorkflowRoute(start, nodes, transitions))
 
   def fromWorkflowAttached(path: WorkflowPath, event: WorkflowEvent.WorkflowAttached): Workflow =

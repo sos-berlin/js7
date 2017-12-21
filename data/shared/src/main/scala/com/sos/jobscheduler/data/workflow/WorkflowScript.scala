@@ -3,6 +3,8 @@ package com.sos.jobscheduler.data.workflow
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichPairTraversable
+import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.data.workflow.WorkflowScript._
 import scala.collection.immutable.{ListMap, Seq}
 
@@ -16,8 +18,23 @@ final case class WorkflowScript(statements: Seq[Statement]) {
     case Some(_) ⇒ throw new IllegalArgumentException("First statement of a route must be a job")
   }
 
+  val idToNodeStatement = statements.collect {
+    case o: NodeStatement ⇒ o.node.id → o
+  }.uniqueToMap(duplicates ⇒ throw new DuplicateKeyException(s"WorkflowScript cannot have duplicate NodeIds: ${duplicates.mkString(",")}"))
+
   def startNode = head.node
   def nodes = statements.flatMap(_.nodes)
+
+  def reduce: WorkflowScript =
+    WorkflowScript(
+      statements.sliding(2).flatMap {
+        case Seq(Goto(to), b: NodeStatement) if to == b.node.id ⇒ Nil
+        case Seq(OnError(errorTo), Goto(to)) if errorTo == to ⇒ Nil
+        //case Seq(Goto(to), _) ⇒ a :: Nil
+        case Seq(a, _) ⇒ a :: Nil
+        case Seq(_) ⇒ Nil  // Unused code in contrast to sliding's documentation?
+      }.toVector ++
+        statements.lastOption)
 }
 
 object WorkflowScript {
@@ -53,7 +70,7 @@ object WorkflowScript {
     def nodes = idToRoute.values.flatMap(_.nodes).toVector
   }
 
-  final case class OnError(to: NodeId) extends Statement {
+  final case class OnError private(to: NodeId) extends Statement {
     def nodes = Nil
   }
 

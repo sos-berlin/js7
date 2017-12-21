@@ -68,7 +68,7 @@ object ForkTestSetting {
   val (d, f) = Transition.forkJoin(forkNodeId = D.id, joinNodeId = G.id, eChildRoutes, ForkTransition, JoinTransition)
   val g = Transition(G.id, END.id)
 
-  val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), A.id, END.id,
+  val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), A.id,
     Vector(A, Bx, Cx, By, Cy, D, Ex, Fx, Ey, Fy, G, END),
     Vector(a, c, d, f, g))
   //     A

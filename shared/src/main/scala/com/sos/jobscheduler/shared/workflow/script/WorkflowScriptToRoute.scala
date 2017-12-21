@@ -12,58 +12,61 @@ import scala.collection.mutable
   */
 object WorkflowScriptToRoute {
 
-  def toWorkflowRoute(route: WorkflowScript) =
+  def workflowScriptToRoute(route: WorkflowScript) =
     WorkflowRoute(route.startNode.id, route.nodes, transitionsOf(route))
 
   private def transitionsOf(route: WorkflowScript): Seq[Transition] = {
     val transitions = mutable.Buffer[Transition]()
     var current: Current = Current.Node(route.head.node)
     for (stmt ← route.statements.tail) {
-      (current, stmt) match {
-        case (Current.Node(node), stmt: Job) ⇒
+      (stmt, current) match {
+        case (stmt: Job, Current.Node(node)) ⇒
           transitions += Transition(node.id, stmt.node.id, ForwardTransition)
           current = Current.Node(stmt.node)
 
-        case (Current.Node(node), stmt: End) ⇒
+        case (stmt: Job, Current.Transitions(toTransitions)) ⇒
+          transitions ++= toTransitions(stmt.node.id)
+          current = Current.Node(stmt.node)
+
+        case (stmt: End, Current.Node(node)) ⇒
           transitions += Transition(node.id, stmt.node.id, ForwardTransition)
           current = Current.End
 
-        case (Current.End, stmt: NodeStatement) ⇒
+        case (stmt: End, Current.Transitions(toTransitions)) ⇒
+          transitions ++= toTransitions(stmt.node.id)
+          current = Current.End
+
+        case (stmt: NodeStatement, Current.End) ⇒
           current = Current.Node(stmt.node)
 
-        case (Current.Node(node), OnError(to)) ⇒
-          current = Current.Transitions(next ⇒
-            Transition(
-              from = node.id :: Nil,
-              to = next :: to :: Nil,
-              SuccessErrorTransition
-            ) :: Nil)
-
-        case (Current.Node(node), Goto(to)) ⇒
-          transitions += Transition(node.id, to, ForwardTransition)
-          current = Current.End
-
-        case (Current.Transitions(toTransition), Goto(to)) ⇒
-          transitions ++= toTransition(to)
-          current = Current.End
-
-        case (Current.Node(node), ForkJoin(idToRoute)) ⇒
+        case (ForkJoin(idToRoute), Current.Node(node)) ⇒
           current = Current.Transitions { next ⇒
             val (f, j) = Transition.forkJoin(
               forkNodeId = node.id,
               joinNodeId = next,
-              idToRoute = idToRoute.map { case (k, v) ⇒ k → toWorkflowRoute(v) },
+              idToRoute = idToRoute.map { case (k, v) ⇒ k → workflowScriptToRoute(v) },
               ForkTransition,
               JoinTransition)
             f :: j :: Nil
           }
 
-        case (Current.Transitions(toTransitions), stmt: Job) ⇒
-          transitions ++= toTransitions(stmt.node.id)
-          current = Current.Node(stmt.node)
+        case (OnError(to), Current.Node(node)) ⇒
+          current = Current.Transitions(next ⇒
+            if (next == to)
+              Transition(node.id, next, ForwardTransition) :: Nil
+            else
+              Transition(
+                from = node.id :: Nil,
+                to = next :: to :: Nil,
+                SuccessErrorTransition
+              ) :: Nil)
 
-        case (Current.Transitions(toTransitions), stmt: End) ⇒
-          transitions ++= toTransitions(stmt.node.id)
+        case (Goto(to), Current.Node(node)) ⇒
+          transitions += Transition(node.id, to, ForwardTransition)
+          current = Current.End
+
+        case (Goto(to), Current.Transitions(toTransition)) ⇒
+          transitions ++= toTransition(to)
           current = Current.End
 
         case _ ⇒
