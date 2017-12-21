@@ -10,9 +10,8 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken
-import com.sos.jobscheduler.data.workflow.Workflow
+import com.sos.jobscheduler.data.workflow.WorkflowGraph
 import io.circe.generic.JsonCodec
-import org.scalactic.Requirements._
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 
@@ -116,20 +115,19 @@ object AgentCommand {
   sealed trait AttachOrDetachOrder extends OrderCommand
 
   @JsonCodec
-  final case class AttachOrder(order: Order[Order.Idle], workflow: Workflow)
+  final case class AttachOrder(order: Order[Order.Idle], workflowGraph: WorkflowGraph)
   extends AttachOrDetachOrder {
     type Response = Accepted.type
 
-    require(order.workflowPath == workflow.path)
     order.attachedToAgent.force  // throws
 
-    override def toShortString = s"AttachOrder($order,${workflow.path})"
+    override def toShortString = s"AttachOrder($order)"
   }
   object AttachOrder {
-    def apply(order: Order[Order.Idle], agentPath: AgentPath, workflow: Workflow) =
+    def apply(order: Order[Order.Idle], agentPath: AgentPath, workflowGraph: WorkflowGraph) =
       new AttachOrder(
         order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath))),
-        workflow)
+        workflowGraph)
   }
 
   @JsonCodec

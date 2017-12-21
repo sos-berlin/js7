@@ -85,7 +85,7 @@ final class AgentCommandTest extends FreeSpec {
           Order.Ready,
           Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
         AgentPath("/AGENT"),
-        TestWorkflow),
+        TestWorkflow.graph),
         """{
           "TYPE": "AttachOrder",
           "order": {
@@ -109,34 +109,31 @@ final class AgentCommandTest extends FreeSpec {
               "workflowPath": "/WORKFLOW"
             }
           },
-          "workflow": {
-            "path": "/WORKFLOW",
-            "graph": {
-              "transitions": [
-                {
-                  "idToGraph": {},
-                  "fromProcessedNodeIds": [ "A" ],
-                  "toNodeIds": [ "B" ],
-                  "transitionType": {
-                    "TYPE": "ForwardTransition"
-                  }
-                },
-                {
-                  "idToGraph": {},
-                  "fromProcessedNodeIds": [ "B" ],
-                  "toNodeIds": [ "END" ],
-                  "transitionType": {
-                    "TYPE": "ForwardTransition"
-                  }
+          "workflowGraph": {
+            "start": "A",
+            "transitions": [
+              {
+                "idToGraph": {},
+                "fromProcessedNodeIds": [ "A" ],
+                "toNodeIds": [ "B" ],
+                "transitionType": {
+                  "TYPE": "ForwardTransition"
                 }
-              ],
-              "nodes": [
-                { "TYPE": "JobNode", "id": "A", "job": { "agentPath": "/AGENT", "jobPath": "/A" }},
-                { "TYPE": "JobNode", "id": "B", "job": { "agentPath": "/AGENT", "jobPath": "/B" }},
-                { "TYPE": "EndNode", "id": "END" }
-              ],
-              "start": "A"
-            }
+              },
+              {
+                "idToGraph": {},
+                "fromProcessedNodeIds": [ "B" ],
+                "toNodeIds": [ "END" ],
+                "transitionType": {
+                  "TYPE": "ForwardTransition"
+                }
+              }
+            ],
+            "nodes": [
+              { "TYPE": "JobNode", "id": "A", "job": { "agentPath": "/AGENT", "jobPath": "/A" }},
+              { "TYPE": "JobNode", "id": "B", "job": { "agentPath": "/AGENT", "jobPath": "/B" }},
+              { "TYPE": "EndNode", "id": "END" }
+            ]
           }
         }""")
     }

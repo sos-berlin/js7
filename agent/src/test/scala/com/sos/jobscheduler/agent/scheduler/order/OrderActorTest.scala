@@ -30,8 +30,8 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import com.sos.jobscheduler.data.workflow.Workflow.EndNode
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.WorkflowGraph.EndNode
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowGraph, WorkflowPath}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
@@ -106,7 +106,7 @@ private object OrderActorTest {
   private val TestJobPath = JobPath("/test")
   private val LastNode = EndNode(NodeId("END"))
   private val TestAgentPath = AgentPath("/TEST-AGENT")
-  private val TestJobNode = Workflow.JobNode(TestNodeId, TestAgentPath, TestJobPath)
+  private val TestJobNode = WorkflowGraph.JobNode(TestNodeId, TestAgentPath, TestJobPath)
   private val ExpectedOrderEvents = List(
     OrderAttached(TestOrder.nodeKey, Order.Ready, None, AgentPath("/TEST-AGENT"), Payload.empty),
     OrderProcessingStarted,

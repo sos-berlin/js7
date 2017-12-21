@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestWorkflow
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowOverview, WorkflowPath, WorkflowsOverview}
+import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath, WorkflowsOverview}
 import com.sos.jobscheduler.master.WorkflowClient
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
 import org.scalatest.FreeSpec
@@ -56,8 +56,8 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        val Stamped(_, workflows) = responseAs[Stamped[Seq[WorkflowOverview]]]
-        assert(workflows == (pathToWorkflow.values.toList map WorkflowOverview.fromWorkflow))
+        val Stamped(_, workflows) = responseAs[Stamped[Seq[WorkflowPath]]]
+        assert(workflows == (pathToWorkflow.keys.toList))
       }
     }
   }
@@ -68,7 +68,7 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        val Stamped(_, workflows) = responseAs[Stamped[Seq[Workflow]]]
+        val Stamped(_, workflows) = responseAs[Stamped[Seq[WorkflowGraph.Named]]]
         assert(workflows == pathToWorkflow.values.toList)
       }
     }
@@ -81,7 +81,7 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        assert(responseAs[Workflow] == pathToWorkflow.values.head)
+        assert(responseAs[WorkflowGraph.Named] == pathToWorkflow.values.head)
       }
     }
   }
@@ -89,7 +89,7 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
 
 object WorkflowRouteTest {
   private val WorkflowUri = "/api/workflow"
-  private val pathToWorkflow: Map[WorkflowPath, Workflow] =
-    List(TestWorkflow)
-      .map (o ⇒ o.copy(path = WorkflowPath(s"/PATH${o.path.string}"))) toKeyedMap { _.path }
+  private val pathToWorkflow: Map[WorkflowPath, WorkflowGraph.Named] =
+    List(WorkflowGraph.Named(WorkflowPath(s"/PATH${TestWorkflow.path.string}"), TestWorkflow.graph))
+      .toKeyedMap(_.path)
 }

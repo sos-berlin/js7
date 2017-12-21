@@ -2,27 +2,37 @@ package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.base.utils.Collections.RichMap
 import com.sos.jobscheduler.base.utils.Collections.implicits._
+import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.workflow.Workflow.{JobNode, Node}
 import com.sos.jobscheduler.data.workflow.WorkflowGraph._
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition, SuccessErrorTransition, TransitionRegister}
+import io.circe.generic.JsonCodec
 import scala.collection.immutable.{Iterable, Seq}
 
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowGraph(start: NodeId, nodes: Seq[Node], transitions: Seq[Transition]) {
-
+final case class WorkflowGraph(start: NodeId, nodes: Seq[Node], transitions: Seq[Transition],
+  originalScript: Option[WorkflowScript])
+{
   val idToNode = nodes toKeyedMap { _.id } withNoSuchKey (nodeId ⇒ new NoSuchElementException(s"Unknown NodeId '$nodeId'"))
   val allTransitions: Seq[Transition] = (transitions ++ transitions.flatMap(_.idToGraph.values flatMap (_.allTransitions)))
+  lazy val linearPath: Option[Seq[NodeId]] = transitions.linearPath(start)
+
   /** Linear path of nodes through the WorkflowGraph without forks or branches.
     */
-  lazy val linearPath: Option[Seq[NodeId]] = transitions.linearPath(start)
+  val forkNodeToJoiningTransition = allTransitions.map(o ⇒ o.forkNodeId → o).collect { case (Some(forkNodeId), t) ⇒ forkNodeId → t }
+    .toMap withNoSuchKey (k ⇒ new NoSuchElementException(s"No joining transition for forking node '$k'"))
+
+  val nodeToOutputTransition = (for (t ← allTransitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t)
+    .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Nodes with duplicate transitions: ${duplicates.mkString(", ")}"))
+    .withNoSuchKey(k ⇒ new NoSuchElementException(s"No output transition for WorkflowGraph.Node '$k'"))
 
   require(idToNode.size == nodes.size, s"WorkflowGraph contains Nodes with duplicate NodeIds")
   //Not for Goto: (for (t ← allTransitions; to ← t.toNodeIds) yield to → t)
@@ -35,10 +45,23 @@ final case class WorkflowGraph(start: NodeId, nodes: Seq[Node], transitions: Seq
 
   def reduceForAgent(agentPath: AgentPath): WorkflowGraph = {
     val agentNodes = nodes.collect { case o: JobNode if o.agentPath == agentPath ⇒ o }
-    copy(nodes = agentNodes, transitions = transitions filter (_.endpoints forall (o ⇒ agentNodes.exists(_.id == o))))
+    copy(
+      nodes = agentNodes,
+      transitions = transitions filter (_.endpoints forall (o ⇒ agentNodes.exists(_.id == o))),
+      originalScript = None)
   }
 
   def end: Option[NodeId] = linearPath map (_.last)
+
+  def jobNodeOption(nodeId: NodeId): Option[JobNode] =
+    idToNode.get(nodeId) collect { case o: JobNode ⇒ o }
+
+  def jobNode(nodeId: NodeId) = idToNode(nodeId).asInstanceOf[JobNode]
+
+  def jobNodeCount = idToNode.values count { _.isInstanceOf[JobNode] }
+
+  def agentPathOption(nodeId: NodeId): Option[AgentPath] =
+    idToNode.get(nodeId) collect { case o: WorkflowGraph.JobNode ⇒ o.agentPath }
 }
 
 object WorkflowGraph {
@@ -48,6 +71,34 @@ object WorkflowGraph {
   implicit val JsonCodec: CirceCodec[WorkflowGraph] = {
     implicit val TransitionRegisterCodec = TransitionRegister.JsonCodec
     deriveCirceCodec[WorkflowGraph]
+  }
+
+  sealed trait Node {
+    def id: NodeId
+  }
+
+  object Node {
+    implicit val JsonCodec: CirceCodec[Node] = TypedJsonCodec[Node](
+      Subtype[JobNode],
+      Subtype[EndNode])
+  }
+
+  @JsonCodec
+  final case class EndNode(id: NodeId) extends Node
+
+  @JsonCodec
+  final case class JobNode(id: NodeId, job: AgentJobPath) extends Node {
+    def agentPath = job.agentPath
+    def jobPath = job.jobPath
+  }
+  object JobNode {
+    def apply(id: NodeId, agentPath: AgentPath, jobPath: JobPath) =
+      new JobNode(id, AgentJobPath(agentPath, jobPath))
+  }
+
+  @JsonCodec
+  final case class Named(path: WorkflowPath, graph: WorkflowGraph) {
+    def start = NodeKey(path, graph.start)
   }
 
   private[workflow] implicit class Transitions(val transitions: Iterable[Transition]) extends AnyVal {

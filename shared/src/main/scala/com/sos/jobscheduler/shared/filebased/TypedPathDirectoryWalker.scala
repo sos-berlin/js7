@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.shared.filebased
 
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.shared.filebased.TypedPaths.{jsonFileToTypedPath, xmlFileToTypedPath}
@@ -8,6 +9,7 @@ import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -27,11 +29,15 @@ object TypedPathDirectoryWalker {
   def forEachTypedFile(directory: Path, types: Set[TypedPath.AnyCompanion])(callback: (Path, TypedPath) ⇒ Unit): Unit =
     deepForEachPathAndAttributes(directory, nestingLimit = NestingLimit) { (path, attr) ⇒
       if (!attr.isDirectory) {
-        for (t ← types find { t ⇒ matchesJsonFile(t, path) }) {
-          callback(path, jsonFileToTypedPath(path, stripDirectory = directory)(t))
-        }
-        for (t ← types find { t ⇒ matchesXmlFile(t, path) }) {
-          callback(path, xmlFileToTypedPath(path, stripDirectory = directory)(t))
+        try {
+          for (t ← types find { t ⇒ matchesJsonFile(t, path) }) {
+            callback(path, jsonFileToTypedPath(path, stripDirectory = directory)(t))
+          }
+          for (t ← types find { t ⇒ matchesXmlFile(t, path) }) {
+            callback(path, xmlFileToTypedPath(path, stripDirectory = directory)(t))
+          }
+        } catch { case NonFatal(t) ⇒
+          throw new IllegalArgumentException(s"Error when reading configuration file '$path': ${t.toStringWithCauses}", t)
         }
       }
     }
@@ -94,7 +100,6 @@ object TypedPathDirectoryWalker {
   //      }
   //    }
   //  }
-
 
   /**
     * @param nestingLimit to avoid StackOverflowException and symbolic recursion

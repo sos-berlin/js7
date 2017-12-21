@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
-import com.sos.jobscheduler.data.workflow.Workflow.{JobNode, Node}
+import com.sos.jobscheduler.data.workflow.WorkflowGraph.{JobNode, Node}
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition}
 import scala.collection.immutable.ListMap
@@ -41,10 +41,10 @@ final class WorkflowBuilder private(start: JobNode) {
   }
 
   def toGraph: WorkflowGraph =
-    WorkflowGraph(start = nodes.head.id, nodes.toVector, transitions.toVector)
+    WorkflowGraph(start = nodes.head.id, nodes.toVector, transitions.toVector, originalScript = None)
 
-  def toWorkflow(path: WorkflowPath): Workflow =
-    Workflow(path, toGraph)
+  def toWorkflow(path: WorkflowPath): WorkflowGraph.Named =
+    WorkflowGraph.Named(path, toGraph)
 }
 
 object WorkflowBuilder {

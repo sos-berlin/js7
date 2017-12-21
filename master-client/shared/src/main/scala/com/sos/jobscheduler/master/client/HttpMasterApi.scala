@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrdersOverview}
-import com.sos.jobscheduler.data.workflow.Workflow
+import com.sos.jobscheduler.data.workflow.WorkflowGraph
 import com.sos.jobscheduler.master.client.HttpMasterApi._
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
 import scala.collection.immutable.Seq
@@ -35,8 +35,8 @@ extends MasterApi {
       uris.order.events[OrderEvent](after = after, timeout = timeout),
       timeout = timeout + ToleratedEventDelay)
 
-  final def workflows: Future[Stamped[Seq[Workflow]]] =
-    httpClient.get[Stamped[Seq[Workflow]]](uris.workflow.list[Workflow])
+  final def workflows: Future[Stamped[Seq[WorkflowGraph.Named]]] =
+    httpClient.get[Stamped[Seq[WorkflowGraph.Named]]](uris.workflow.list[WorkflowGraph.Named])
 }
 
 object HttpMasterApi {

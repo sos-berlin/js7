@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.{NodeId, Workflow, WorkflowGraph}
+import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowGraph}
 import io.circe.{Decoder, Encoder}
 import scala.collection.immutable.{IndexedSeq, ListMap, Seq}
 
@@ -23,7 +23,7 @@ final case class Transition private(
 
   val fromNodeIds: IndexedSeq[NodeId] = forkNodeId ++: fromProcessedNodeIds
   val endpoints: Set[NodeId] = (fromProcessedNodeIds ++ toNodeIds).uniqueToSet
-  val nodes: Seq[Workflow.Node] = idToGraph.values.flatMap(_.nodes).toVector
+  val nodes: Seq[WorkflowGraph.Node] = idToGraph.values.flatMap(_.nodes).toVector
 
   override def toString = {
     val sb = new StringBuilder(50)

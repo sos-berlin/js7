@@ -12,11 +12,11 @@ final class WorkflowScriptTest extends FreeSpec {
 
   "reduce" in {
     val agentJobPath = AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-A"))
-    val A = Workflow.JobNode(NodeId("A"), agentJobPath)
-    val B = Workflow.JobNode(NodeId("B"), agentJobPath)
-    val C = Workflow.JobNode(NodeId("C"), agentJobPath)
-    val D = Workflow.JobNode(NodeId("D"), agentJobPath)
-    val END = Workflow.EndNode(NodeId("END"))
+    val A = WorkflowGraph.JobNode(NodeId("A"), agentJobPath)
+    val B = WorkflowGraph.JobNode(NodeId("B"), agentJobPath)
+    val C = WorkflowGraph.JobNode(NodeId("C"), agentJobPath)
+    val D = WorkflowGraph.JobNode(NodeId("D"), agentJobPath)
+    val END = WorkflowGraph.EndNode(NodeId("END"))
 
     val script = WorkflowScript(List(
         WorkflowScript.Job(A.id, A.job),

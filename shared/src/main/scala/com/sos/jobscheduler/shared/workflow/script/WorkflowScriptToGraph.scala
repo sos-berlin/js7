@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.shared.workflow.script
 
-import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Goto, Job, NodeStatement, OnError}
+import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Goto, Job, OnError}
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition, SuccessErrorTransition}
-import com.sos.jobscheduler.data.workflow.{NodeId, Workflow, WorkflowGraph, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowGraph, WorkflowScript}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
@@ -13,7 +13,7 @@ import scala.collection.mutable
 object WorkflowScriptToGraph {
 
   def workflowScriptToGraph(script: WorkflowScript) =
-    WorkflowGraph(script.startNode.id, script.nodes, transitionsOf(script))
+    WorkflowGraph(script.startNode.id, script.nodes, transitionsOf(script), originalScript = Some(script))
 
   private def transitionsOf(script: WorkflowScript): Seq[Transition] = {
     val transitions = mutable.Buffer[Transition]()
@@ -28,6 +28,9 @@ object WorkflowScriptToGraph {
           transitions ++= toTransitions(stmt.node.id)
           current = Current.Node(stmt.node)
 
+        case (stmt: Job, Current.End) ⇒
+          current = Current.Node(stmt.node)
+
         case (stmt: End, Current.Node(node)) ⇒
           transitions += Transition(node.id, stmt.node.id, ForwardTransition)
           current = Current.End
@@ -36,8 +39,7 @@ object WorkflowScriptToGraph {
           transitions ++= toTransitions(stmt.node.id)
           current = Current.End
 
-        case (stmt: NodeStatement, Current.End) ⇒
-          current = Current.Node(stmt.node)
+        case (_: End, Current.End) ⇒
 
         case (ForkJoin(idToGraph), Current.Node(node)) ⇒
           current = Current.Transitions { next ⇒
@@ -82,7 +84,7 @@ object WorkflowScriptToGraph {
 
   private sealed trait Current
   private object Current {
-    final case class Node(node: Workflow.Node) extends Current
+    final case class Node(node: WorkflowGraph.Node) extends Current
     final case class Transitions(next: NodeId ⇒ Seq[Transition]) extends Current
     final case object End extends Current
   }

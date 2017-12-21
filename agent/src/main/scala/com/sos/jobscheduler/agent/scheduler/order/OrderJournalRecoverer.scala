@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderDetached, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{WorkflowEvent, WorkflowGraph, WorkflowPath}
 import com.sos.jobscheduler.shared.event.journal.JournalRecoverer
 import java.nio.file.Path
 import scala.collection.mutable
@@ -28,7 +28,7 @@ extends JournalRecoverer[Event] {
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
 
   protected def recoverSnapshot = {
-    case workflow: Workflow ⇒
+    case workflow: WorkflowGraph.Named ⇒
       workflowRegister.recover(workflow)
 
     case order: Order[Order.State] ⇒
@@ -70,6 +70,6 @@ extends JournalRecoverer[Event] {
         }
     }
 
-  def workflows = workflowRegister.workflows
+  def namedWorkflowGraphs = workflowRegister.namedWorkflowGraphs
   def orders = idToOrder.values
 }

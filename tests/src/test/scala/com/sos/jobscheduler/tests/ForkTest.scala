@@ -24,7 +24,6 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.ForkTest._
 import io.circe.syntax.EncoderOps
@@ -42,7 +41,7 @@ final class ForkTest extends FreeSpec {
       withCloser { implicit closer ⇒
         import directoryProvider.directory
 
-        (directoryProvider.master.live / "WORKFLOW.workflow.json").contentString = TestWorkflow.asJson.toPrettyString
+        (directoryProvider.master.live / "WORKFLOW.workflow.json").contentString = TestWorkflowScript.asJson.toPrettyString
         for (a ← directoryProvider.agents) a.job(TestJobPath).xml = jobXml(100.ms)
 
         val agentConfs = directoryProvider.agents map (_.conf)
@@ -78,7 +77,7 @@ final class ForkTest extends FreeSpec {
 }
 
 object ForkTest {
-  private val TestOrder = TestWorkflow.order(OrderId("🔺"), state = Order.StartNow, attachedTo = Some(Order.AttachedTo.Agent(AAgentPath)),
+  private val TestOrder = Order(OrderId("🔺"), NodeKey(TestWorkflow.path, TestWorkflow.graph.start), state = Order.StartNow, attachedTo = Some(Order.AttachedTo.Agent(AAgentPath)),
     payload = Payload(Map("VARIABLE" → "VALUE")))
   private val XOrderId = OrderId(s"🔺/🥕")
   private val YOrderId = OrderId(s"🔺/🍋")

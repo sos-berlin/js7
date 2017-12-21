@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.Workflow
+import com.sos.jobscheduler.data.workflow.WorkflowGraph
 import com.sos.jobscheduler.master.order.agent.AgentDriver._
 import com.sos.jobscheduler.master.order.agent.CommandQueue.QueuedInputResponse
 import com.typesafe.config.Config
@@ -234,9 +234,9 @@ private[master] object AgentDriver {
       def toShortString: String
     }
 
-    final case class AttachOrder(order: Order[Order.Idle], agentPath: AgentPath,  workflow: Workflow) extends QueueableInput {
+    final case class AttachOrder(order: Order[Order.Idle], agentPath: AgentPath,  workflowGraph: WorkflowGraph) extends QueueableInput {
       def orderId = order.id
-      def toShortString = s"AttachOrder($orderId, ${workflow.path})"
+      def toShortString = s"AttachOrder($orderId)"
     }
 
     final case class DetachOrder(orderId: OrderId) extends QueueableInput {

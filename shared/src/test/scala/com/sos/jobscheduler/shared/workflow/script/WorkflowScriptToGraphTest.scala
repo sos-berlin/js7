@@ -1,10 +1,10 @@
 package com.sos.jobscheduler.shared.workflow.script
 
-import com.sos.jobscheduler.data.workflow.Workflow.JobNode
-import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Goto, Job, OnError}
+import com.sos.jobscheduler.data.workflow.WorkflowGraph.JobNode
+import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, Goto, Job, OnError}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
-import com.sos.jobscheduler.data.workflow.transitions.SuccessErrorTransition
+import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, SuccessErrorTransition}
 import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowGraph, WorkflowScript}
 import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToGraph.workflowScriptToGraph
 import org.scalatest.FreeSpec
@@ -19,7 +19,7 @@ final class WorkflowScriptToGraphTest extends FreeSpec {
   "Single job" in {
     val script = WorkflowScript(Job(A.id, AAgentJobPath) :: Nil)
     assert(workflowScriptToGraph(script) ==
-      WorkflowGraph(start = A.id, nodes = A :: Nil, transitions = Nil))
+      WorkflowGraph(start = A.id, nodes = A :: Nil, transitions = Nil, Some(script)))
   }
 
   "WorkflowScript of multiple jobs" in {
@@ -32,7 +32,8 @@ final class WorkflowScriptToGraphTest extends FreeSpec {
         nodes = List(A, D, G),
         transitions = List(
           Transition(A.id, D.id, ForwardTransition),
-          Transition(D.id, G.id, ForwardTransition))))
+          Transition(D.id, G.id, ForwardTransition)),
+        Some(script)))
   }
 
   "Spaghetti with OnError and Goto" in {
@@ -53,32 +54,19 @@ final class WorkflowScriptToGraphTest extends FreeSpec {
         Transition(from = List(A.id), to = List(D.id, G.id), SuccessErrorTransition),
         Transition(from = List(D.id), to = List(G.id, END.id), SuccessErrorTransition),
         Transition(X.id, END.id, ForwardTransition),
-        Transition(G.id, X.id, ForwardTransition)))
+        Transition(G.id, X.id, ForwardTransition)),
+      Some(script))
     assert(workflowScriptToGraph(script) == expected)
     assert(expected.linearPath == Some(List(A.id, D.id, G.id, X.id, END.id)))
     assert(expected.end == Some(END.id))
   }
 
   "Workflow from TestForkSetting" in {
-    val script = WorkflowScript(List(
-      Job(A.id, AAgentJobPath),
-      ForkJoin(ListMap(
-        WorkflowGraph.Id("🥕") → WorkflowScript(List(
-          Job(Bx.id, AAgentJobPath),
-          Job(Cx.id, AAgentJobPath))),
-        WorkflowGraph.Id("🍋") → WorkflowScript(List(
-          Job(By.id, AAgentJobPath),
-          Job(Cy.id, BAgentJobPath))))),
-      Job(D.id, AAgentJobPath),
-      ForkJoin(ListMap(
-        WorkflowGraph.Id("🥕") → WorkflowScript(List(
-          Job(Ex.id, AAgentJobPath),
-          Job(Fx.id, AAgentJobPath))),
-        WorkflowGraph.Id("🍋") → WorkflowScript(List(
-          Job(Ey.id, AAgentJobPath),
-          Job(Fy.id, AAgentJobPath))))),
-      Job(G.id, AAgentJobPath),
-      End(END.id)))
-    assert(workflowScriptToGraph(script) == TestWorkflow.graph)
+    val compiled = workflowScriptToGraph(TestWorkflowScript)
+    for ((a, b) ← compiled.transitions.zip(TestWorkflow.graph.transitions).filter(_._1.transitionType == ForkTransition)) {
+      val x = a == b
+      assert(x)
+    }
+    assert(workflowScriptToGraph(TestWorkflowScript) == TestWorkflow.graph)
   }
 }

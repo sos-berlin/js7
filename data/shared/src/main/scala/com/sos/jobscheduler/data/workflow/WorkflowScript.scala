@@ -48,21 +48,21 @@ object WorkflowScript {
   }
 
   sealed trait Statement {
-    def nodes: Seq[Workflow.Node]
+    def nodes: Seq[WorkflowGraph.Node]
   }
 
   sealed trait NodeStatement extends Statement {
-    def node: Workflow.Node
+    def node: WorkflowGraph.Node
 
     final def nodes = node :: Nil
   }
 
   final case class Job(nodeId: NodeId, job: AgentJobPath) extends NodeStatement {
-    val node = Workflow.JobNode(nodeId, job)
+    val node = WorkflowGraph.JobNode(nodeId, job)
   }
 
   final case class End(nodeId: NodeId) extends NodeStatement {
-    val node = Workflow.EndNode(nodeId)
+    val node = WorkflowGraph.EndNode(nodeId)
   }
 
   final case class ForkJoin(idToGraph: ListMap[WorkflowGraph.Id, WorkflowScript])
@@ -70,7 +70,7 @@ object WorkflowScript {
     def nodes = idToGraph.values.flatMap(_.nodes).toVector
   }
 
-  final case class OnError private(to: NodeId) extends Statement {
+  final case class OnError(to: NodeId) extends Statement {
     def nodes = Nil
   }
 

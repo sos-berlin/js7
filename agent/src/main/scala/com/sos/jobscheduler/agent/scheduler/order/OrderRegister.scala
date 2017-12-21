@@ -7,8 +7,7 @@ import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.Workflow.{JobNode, Node}
+import com.sos.jobscheduler.data.workflow.WorkflowGraph
 import com.sos.jobscheduler.shared.common.ActorRegister
 import scala.concurrent.ExecutionContext
 
@@ -17,8 +16,8 @@ import scala.concurrent.ExecutionContext
   */
 private[order] final class OrderRegister(timerService: TimerService) extends ActorRegister[OrderId, OrderEntry](_.actor) {
 
-  def recover(order: Order[Order.State], workflow: Workflow, actor: ActorRef): OrderEntry = {
-    val orderEntry = new OrderEntry(order, workflow, actor)
+  def recover(order: Order[Order.State], workflowGraph: WorkflowGraph, actor: ActorRef): OrderEntry = {
+    val orderEntry = new OrderEntry(order, workflowGraph, actor)
     insert(order.id → orderEntry)
     orderEntry
   }
@@ -27,8 +26,8 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
     this -= keyedEvent.key
   }
 
-  def insert(order: Order[Order.State], workflow: Workflow, actor: ActorRef): Unit = {
-    insert(order.id → new OrderEntry(order, workflow, actor))
+  def insert(order: Order[Order.State], workflowGraph: WorkflowGraph, actor: ActorRef): Unit = {
+    insert(order.id → new OrderEntry(order, workflowGraph, actor))
   }
 
   def onActorTerminated(actor: ActorRef)(implicit timerService: TimerService): Unit = {
@@ -46,29 +45,27 @@ private[order] object OrderRegister {
 
   final class OrderEntry(
     private var _order: Order[Order.State],
-    val workflow: Workflow,
+    val workflowGraph: WorkflowGraph,
     val actor: ActorRef)
   {
-    assert(workflow.path == _order.workflowPath)
-
     var detaching: Boolean = false
     private[OrderRegister] var timer: Option[Timer[Unit]] = None
 
     def order = _order
 
     def order_=(o: Order[Order.State]) = {
-      assert(workflow.path == o.workflowPath)
+      assert(_order.workflowPath == o.workflowPath)
       _order = o
     }
 
-    def jobNodeOption: Option[JobNode] =
-      workflow.jobNodeOption(order.nodeId)
+    def jobNodeOption: Option[WorkflowGraph.JobNode] =
+      workflowGraph.jobNodeOption(order.nodeId)
 
-    def jobNode: JobNode =
-      workflow.jobNode(order.nodeId)
+    def jobNode: WorkflowGraph.JobNode =
+      workflowGraph.jobNode(order.nodeId)
 
-    def nodeOption: Option[Node] =
-      workflow.idToNode.get(order.nodeId)
+    def nodeOption: Option[WorkflowGraph.Node] =
+      workflowGraph.idToNode.get(order.nodeId)
 
     def at(timestamp: Timestamp)(body: ⇒ Unit)(implicit timerService: TimerService, ec: ExecutionContext): Unit = {
       val t = timerService.at(timestamp.toInstant, name = order.id.string)

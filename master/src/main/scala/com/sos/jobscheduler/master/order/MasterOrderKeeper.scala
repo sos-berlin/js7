@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.order
 
 import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, RichJson}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -22,7 +22,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderMovedToMaster, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath, WorkflowScript}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -36,7 +36,6 @@ import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, Jou
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess
 import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToGraph.workflowScriptToGraph
-import io.circe.Json
 import java.nio.file.Path
 import java.time.Duration
 import scala.collection.immutable.Seq
@@ -64,7 +63,7 @@ with Stash {
 
   private val journalFile = masterConfiguration.stateDirectory / "journal"
   private val agentRegister = new AgentRegister
-  private val pathToWorkflow = mutable.Map[WorkflowPath, Workflow]()
+  private val pathToWorkflow = mutable.Map[WorkflowPath, WorkflowGraph.Named]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private var detachingSuspended = false
   protected val journalActor = {
@@ -86,7 +85,8 @@ with Stash {
       forEachTypedFile(dir, Set(WorkflowPath, AgentPath)) {
         case (file, workflowPath: WorkflowPath) ⇒
           logger.info(s"Adding $workflowPath")
-          pathToWorkflow.insert(workflowPath → readWorkflow(workflowPath, file))
+          val graph = workflowScriptToGraph(readWorkflowScript(workflowPath, file))
+          pathToWorkflow.insert(workflowPath → WorkflowGraph.Named(workflowPath, graph))
 
         case (file, agentPath: AgentPath) ⇒
           logger.info(s"Adding $agentPath")
@@ -101,17 +101,13 @@ with Stash {
     }
   }
 
-  private def readWorkflow(workflowPath: WorkflowPath, file: Path): Workflow =
+  private def readWorkflowScript(workflowPath: WorkflowPath, file: Path): WorkflowScript =
     if (file.getFileName.toString endsWith ".xml")
       autoClosing(new FileSource(file)) { src ⇒
-        Workflow(workflowPath, workflowScriptToGraph(LegacyJobchainXmlParser.parseXml(src, FolderPath.parentOf(workflowPath))))
+        LegacyJobchainXmlParser.parseXml(src, FolderPath.parentOf(workflowPath))
       }
-    else {
-      val json = file.contentString.parseJson
-      // Ignoring field "path" in file
-      val pathAdded = Json.fromJsonObject(json.forceObject.add("path", Json.fromString(workflowPath.string)))
-      pathAdded.as[Workflow].force
-    }
+    else
+      file.contentString.parseJson.as[WorkflowScript].force
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
@@ -182,7 +178,7 @@ with Stash {
       sender() ! pathToWorkflow.get(path)
 
     case Command.GetWorkflows ⇒
-      sender() ! eventIdGenerator.stamp((pathToWorkflow.values).toVector: Vector[Workflow])
+      sender() ! eventIdGenerator.stamp((pathToWorkflow.values).toVector: Vector[WorkflowGraph.Named])
 
     case Command.GetWorkflowCount ⇒
       sender() ! (pathToWorkflow.size: Int)
@@ -353,18 +349,18 @@ with Stash {
       case _: Order.Idle ⇒
         val idleOrder = order.castState[Order.Idle]
         for (workflow ← pathToWorkflow.get(order.workflowPath);
-             node ← workflow.idToNode.get(order.nodeId)) {
+             node ← workflow.graph.idToNode.get(order.nodeId)) {
           node match {
-            case _: Workflow.JobNode ⇒
+            case _: WorkflowGraph.JobNode ⇒
               tryAttachOrderToAgent(idleOrder)
 
-            case _: Workflow.EndNode ⇒
+            case _: WorkflowGraph.EndNode ⇒
               persistAsync(KeyedEvent(OrderEvent.OrderFinished)(order.id))(handleOrderEvent)
           }
         }
 
       case _: Order.Transitionable ⇒
-        val process = new WorkflowProcess(pathToWorkflow(order.workflowPath), orderRegister mapPartialFunction (_.order))
+        val process = new WorkflowProcess(pathToWorkflow(order.workflowPath).graph, orderRegister mapPartialFunction (_.order))
         for (keyedEvent ← process.guardedSwitchTransition(order.castState[Order.Transitionable])) {
           persistAsync(keyedEvent)(handleOrderEvent)
         }
@@ -374,10 +370,10 @@ with Stash {
 
   private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit =
     for (workflow ← pathToWorkflow.get(order.nodeKey.workflowPath);
-         agentPath ← workflow.agentPathOption(order.nodeKey.nodeId);
+         agentPath ← workflow.graph.agentPathOption(order.nodeKey.nodeId);
          agentEntry ← agentRegister.get(agentPath))
     {
-      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentPath, workflow.reduceForAgent(agentPath))
+      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentPath, workflow.graph.reduceForAgent(agentPath))
     }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =

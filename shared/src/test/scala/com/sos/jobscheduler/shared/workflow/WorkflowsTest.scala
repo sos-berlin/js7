@@ -2,7 +2,7 @@ package com.sos.jobscheduler.shared.workflow
 
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
-import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
+import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflowGraph
 import org.scalatest.FreeSpec
 
 /**
@@ -29,26 +29,26 @@ final class WorkflowsTest extends FreeSpec {
       //  assert(TestWorkflow.isTransitionableOnAgent(nodeId, state, AAgentPath) == expected)
       //}
       s"isTransitionableOnAgent($nodeId $state) = $expected - reduceForAgent" in {
-        assert(TestWorkflow.reduceForAgent(AAgentPath).isTransitionableOnAgent(nodeId, state, AAgentPath) == expected)
+        assert(TestWorkflow.graph.reduceForAgent(AAgentPath).isTransitionableOnAgent(nodeId, state, AAgentPath) == expected)
       }
     }
 
     "transitionForNode" in {
-      assert(TestWorkflow.transitionForNode(A.id, Order.Processed) == Some(a))
-      assert(TestWorkflow.transitionForNode(Bx.id, Order.Processed) == Some(bx))
-      assert(TestWorkflow.transitionForNode(By.id, Order.Processed) == Some(by))
-      assert(TestWorkflow.transitionForNode(Cx.id, Order.Processed) == Some(c))
-      assert(TestWorkflow.transitionForNode(Cy.id, Order.Processed) == Some(c))
-      assert(TestWorkflow.transitionForNode(A.id, Order.Forked(Nil)) == Some(c))
+      assert(TestWorkflow.graph.transitionForNode(A.id, Order.Processed) == Some(a))
+      assert(TestWorkflow.graph.transitionForNode(Bx.id, Order.Processed) == Some(bx))
+      assert(TestWorkflow.graph.transitionForNode(By.id, Order.Processed) == Some(by))
+      assert(TestWorkflow.graph.transitionForNode(Cx.id, Order.Processed) == Some(c))
+      assert(TestWorkflow.graph.transitionForNode(Cy.id, Order.Processed) == Some(c))
+      assert(TestWorkflow.graph.transitionForNode(A.id, Order.Forked(Nil)) == Some(c))
 
-      assert(TestWorkflow.transitionForNode(D.id, Order.Processed) == Some(d))
-      assert(TestWorkflow.transitionForNode(Ex.id, Order.Processed) == Some(ex))
-      assert(TestWorkflow.transitionForNode(Ey.id, Order.Processed) == Some(ey))
-      assert(TestWorkflow.transitionForNode(Fx.id, Order.Processed) == Some(f))
-      assert(TestWorkflow.transitionForNode(Fy.id, Order.Processed) == Some(f))
-      assert(TestWorkflow.transitionForNode(D.id, Order.Forked(Nil)) == Some(f))
+      assert(TestWorkflow.graph.transitionForNode(D.id, Order.Processed) == Some(d))
+      assert(TestWorkflow.graph.transitionForNode(Ex.id, Order.Processed) == Some(ex))
+      assert(TestWorkflow.graph.transitionForNode(Ey.id, Order.Processed) == Some(ey))
+      assert(TestWorkflow.graph.transitionForNode(Fx.id, Order.Processed) == Some(f))
+      assert(TestWorkflow.graph.transitionForNode(Fy.id, Order.Processed) == Some(f))
+      assert(TestWorkflow.graph.transitionForNode(D.id, Order.Forked(Nil)) == Some(f))
 
-      assert(TestWorkflow.transitionForNode(G.id, Order.Processed) == Some(g))
+      assert(TestWorkflow.graph.transitionForNode(G.id, Order.Processed) == Some(g))
     }
   }
 }

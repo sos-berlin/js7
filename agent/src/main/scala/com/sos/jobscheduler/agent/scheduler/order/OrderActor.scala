@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import com.sos.jobscheduler.data.workflow.Workflow
+import com.sos.jobscheduler.data.workflow.WorkflowGraph
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
@@ -125,7 +125,7 @@ extends KeyedJournalingActor[OrderEvent] {
       context.stop(self)
   }
 
-  private def processing(node: Workflow.JobNode, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
+  private def processing(node: WorkflowGraph.JobNode, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
     journaling orElse {
       case Internal.StdoutStderrWritten(t, chunk, promise) ⇒
         persistAsync(OrderStdWritten(t)(chunk)) { _ ⇒
@@ -164,7 +164,7 @@ extends KeyedJournalingActor[OrderEvent] {
         terminating = true
     }
 
-  private def finishProcessing(event: OrderProcessed, node: Workflow.JobNode, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
+  private def finishProcessing(event: OrderProcessed, node: WorkflowGraph.JobNode, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
     flushStdoutAndStderr()
     cancelStdoutStderrTimer()
     for (o ← stdoutStderrStatistics()) logger.debug(o)
@@ -293,7 +293,7 @@ private[order] object OrderActor {
   object Input {
     final case class AddChild(order: Order[Order.Ready.type]) extends Input
     final case object DeleteChild extends Input
-    final case class StartProcessing(node: Workflow.JobNode, jobActor: ActorRef) extends Input
+    final case class StartProcessing(node: WorkflowGraph.JobNode, jobActor: ActorRef) extends Input
     final case object Terminate extends Input
     final case object MakeDetachable
     final case class HandleTransitionEvent(event: OrderTransitionedEvent) extends Input

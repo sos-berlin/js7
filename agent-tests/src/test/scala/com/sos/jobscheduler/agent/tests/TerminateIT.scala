@@ -20,17 +20,16 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.soslicense.LicenseKeyString
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.NodeKey
+import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.shared.event.ActorEventCollector
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import com.sos.jobscheduler.data.workflow.test.TestSetting._
 
 /**
   * @author Joacim Zschimmer
@@ -54,7 +53,7 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
               Order.Ready,
               payload = Payload(Map("a" → "A"))),
             TestAgentPath,
-            TestWorkflow))
+            TestWorkflow.graph))
         ) await 99.s
 
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
