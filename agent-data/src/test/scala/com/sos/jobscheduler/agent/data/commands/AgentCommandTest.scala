@@ -111,10 +111,10 @@ final class AgentCommandTest extends FreeSpec {
           },
           "workflow": {
             "path": "/WORKFLOW",
-            "route": {
+            "graph": {
               "transitions": [
                 {
-                  "idToRoute": {},
+                  "idToGraph": {},
                   "fromProcessedNodeIds": [ "A" ],
                   "toNodeIds": [ "B" ],
                   "transitionType": {
@@ -122,7 +122,7 @@ final class AgentCommandTest extends FreeSpec {
                   }
                 },
                 {
-                  "idToRoute": {},
+                  "idToGraph": {},
                   "fromProcessedNodeIds": [ "B" ],
                   "toNodeIds": [ "END" ],
                   "transitionType": {

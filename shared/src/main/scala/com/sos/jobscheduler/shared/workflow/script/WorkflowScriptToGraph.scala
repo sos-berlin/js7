@@ -3,22 +3,22 @@ package com.sos.jobscheduler.shared.workflow.script
 import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Goto, Job, NodeStatement, OnError}
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition, SuccessErrorTransition}
-import com.sos.jobscheduler.data.workflow.{NodeId, Workflow, WorkflowRoute, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{NodeId, Workflow, WorkflowGraph, WorkflowScript}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-object WorkflowScriptToRoute {
+object WorkflowScriptToGraph {
 
-  def workflowScriptToRoute(route: WorkflowScript) =
-    WorkflowRoute(route.startNode.id, route.nodes, transitionsOf(route))
+  def workflowScriptToGraph(script: WorkflowScript) =
+    WorkflowGraph(script.startNode.id, script.nodes, transitionsOf(script))
 
-  private def transitionsOf(route: WorkflowScript): Seq[Transition] = {
+  private def transitionsOf(script: WorkflowScript): Seq[Transition] = {
     val transitions = mutable.Buffer[Transition]()
-    var current: Current = Current.Node(route.head.node)
-    for (stmt ← route.statements.tail) {
+    var current: Current = Current.Node(script.head.node)
+    for (stmt ← script.statements.tail) {
       (stmt, current) match {
         case (stmt: Job, Current.Node(node)) ⇒
           transitions += Transition(node.id, stmt.node.id, ForwardTransition)
@@ -39,12 +39,12 @@ object WorkflowScriptToRoute {
         case (stmt: NodeStatement, Current.End) ⇒
           current = Current.Node(stmt.node)
 
-        case (ForkJoin(idToRoute), Current.Node(node)) ⇒
+        case (ForkJoin(idToGraph), Current.Node(node)) ⇒
           current = Current.Transitions { next ⇒
             val (f, j) = Transition.forkJoin(
               forkNodeId = node.id,
               joinNodeId = next,
-              idToRoute = idToRoute.map { case (k, v) ⇒ k → workflowScriptToRoute(v) },
+              idToGraph = idToGraph.map { case (k, v) ⇒ k → workflowScriptToGraph(v) },
               ForkTransition,
               JoinTransition)
             f :: j :: Nil

@@ -35,7 +35,7 @@ import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAn
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess
-import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToRoute.workflowScriptToRoute
+import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToGraph.workflowScriptToGraph
 import io.circe.Json
 import java.nio.file.Path
 import java.time.Duration
@@ -104,7 +104,7 @@ with Stash {
   private def readWorkflow(workflowPath: WorkflowPath, file: Path): Workflow =
     if (file.getFileName.toString endsWith ".xml")
       autoClosing(new FileSource(file)) { src ⇒
-        Workflow(workflowPath, workflowScriptToRoute(LegacyJobchainXmlParser.parseXml(src, FolderPath.parentOf(workflowPath))))
+        Workflow(workflowPath, workflowScriptToGraph(LegacyJobchainXmlParser.parseXml(src, FolderPath.parentOf(workflowPath))))
       }
     else {
       val json = file.contentString.parseJson

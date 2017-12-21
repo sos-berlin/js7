@@ -16,12 +16,12 @@ final class WorkflowBuilder private(start: JobNode) {
 
   nodes += start
 
-  def fork(join: Node, idToRoute: ListMap[WorkflowRoute.Id, WorkflowRoute]): this.type = {
+  def fork(join: Node, idToGraph: ListMap[WorkflowGraph.Id, WorkflowGraph]): this.type = {
     val (f, j) =
       Transition.forkJoin(
         forkNodeId = nodes.last.id,
         joinNodeId = join.id,
-        idToRoute = idToRoute,
+        idToGraph = idToGraph,
         ForkTransition,
         JoinTransition)
     transitions += f
@@ -40,11 +40,11 @@ final class WorkflowBuilder private(start: JobNode) {
     nodes += node
   }
 
-  def toRoute: WorkflowRoute =
-    WorkflowRoute(start = nodes.head.id, nodes.toVector, transitions.toVector)
+  def toGraph: WorkflowGraph =
+    WorkflowGraph(start = nodes.head.id, nodes.toVector, transitions.toVector)
 
   def toWorkflow(path: WorkflowPath): Workflow =
-    Workflow(path, toRoute)
+    Workflow(path, toGraph)
 }
 
 object WorkflowBuilder {

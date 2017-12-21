@@ -48,7 +48,7 @@ final class WorkflowScriptTest extends FreeSpec {
         { "TYPE": "Job", "nodeId": "A", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
         {
           "TYPE": "ForkJoin",
-          "idToRoute": {
+          "idToGraph": {
             "🥕": {
               "statements": [
                 { "TYPE": "Job", "nodeId": "Bx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
@@ -66,7 +66,7 @@ final class WorkflowScriptTest extends FreeSpec {
         { "TYPE": "Job", "nodeId": "D", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
         {
           "TYPE": "ForkJoin",
-          "idToRoute": {
+          "idToGraph": {
             "🥕": {
               "statements": [
                 { "TYPE": "Job", "nodeId": "Ex", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},

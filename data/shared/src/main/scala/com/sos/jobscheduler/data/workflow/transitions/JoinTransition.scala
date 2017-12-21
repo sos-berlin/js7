@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow.transitions
 
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.WorkflowRoute
+import com.sos.jobscheduler.data.workflow.WorkflowGraph
 import com.sos.jobscheduler.data.workflow.transition.TransitionType
 import com.sos.jobscheduler.data.workflow.transition.TransitionType.Join
 import org.scalactic.Requirements._
@@ -12,10 +12,10 @@ import scala.collection.immutable.{IndexedSeq, Seq}
   */
 case object JoinTransition extends TransitionType {
 
-  val routesMinimum = 1
-  val routesMaximum = None
+  val graphsMinimum = 1
+  val graphsMaximum = None
 
-  def result(orders: IndexedSeq[InputOrder], routeIds: Seq[WorkflowRoute.Id]) = {
+  def result(orders: IndexedSeq[InputOrder], graphIds: Seq[WorkflowGraph.Id]) = {
     val forkedOrder = orders.head
     require(forkedOrder.state.isInstanceOf[Order.Forked])
     Join(forkedOrder.payload)

@@ -21,7 +21,7 @@ final class WorkflowTest extends FreeSpec {
     }
 
     "nodes" in {
-      assert(TestWorkflow.route.nodes.toSet == Set(A, Bx, By, Cx, Cy, D, Ex, Ey, Fx, Fy, G, END))
+      assert(TestWorkflow.graph.nodes.toSet == Set(A, Bx, By, Cx, Cy, D, Ex, Ey, Fx, Fy, G, END))
     }
 
     "forkNodeToJoiningTransition" in {
@@ -89,18 +89,18 @@ final class WorkflowTest extends FreeSpec {
     testJson(ForkTestSetting.TestWorkflow,
       """{
         "path": "/WORKFLOW",
-        "route": {
+        "graph": {
           "start": "A",
           "transitions": [
             {
               "fromProcessedNodeIds": [ "A" ],
               "toNodeIds": [ "Bx", "By" ],
-              "idToRoute": {
+              "idToGraph": {
                 "🥕": {
                   "start": "Bx",
                   "transitions": [
                     {
-                      "idToRoute": {},
+                      "idToGraph": {},
                       "fromProcessedNodeIds": [ "Bx" ],
                       "toNodeIds": [ "Cx" ],
                       "transitionType": {
@@ -117,7 +117,7 @@ final class WorkflowTest extends FreeSpec {
                   "start": "By",
                   "transitions": [
                     {
-                      "idToRoute": {},
+                      "idToGraph": {},
                       "fromProcessedNodeIds": [ "By" ],
                       "toNodeIds": [ "Cy" ],
                       "transitionType": {
@@ -137,7 +137,7 @@ final class WorkflowTest extends FreeSpec {
             }, {
               "fromProcessedNodeIds": [ "Cx", "Cy" ],
               "toNodeIds": [ "D" ],
-              "idToRoute": {},
+              "idToGraph": {},
               "transitionType": {
                 "TYPE": "JoinTransition"
               },
@@ -145,13 +145,13 @@ final class WorkflowTest extends FreeSpec {
             }, {
               "fromProcessedNodeIds": [ "D" ],
               "toNodeIds": [ "Ex", "Ey" ],
-              "idToRoute": {
+              "idToGraph": {
                 "🥕": {
                   "transitions": [
                     {
                       "fromProcessedNodeIds": [ "Ex" ],
                       "toNodeIds": [ "Fx" ],
-                      "idToRoute": {},
+                      "idToGraph": {},
                       "transitionType": {
                         "TYPE": "ForwardTransition"
                       }
@@ -168,7 +168,7 @@ final class WorkflowTest extends FreeSpec {
                     {
                       "fromProcessedNodeIds": [ "Ey" ],
                       "toNodeIds": [ "Fy" ],
-                      "idToRoute": {},
+                      "idToGraph": {},
                       "transitionType": {
                         "TYPE": "ForwardTransition"
                       }
@@ -187,7 +187,7 @@ final class WorkflowTest extends FreeSpec {
             }, {
               "fromProcessedNodeIds": [ "Fx", "Fy" ],
               "toNodeIds": [ "G" ],
-              "idToRoute": {},
+              "idToGraph": {},
               "transitionType": {
                 "TYPE": "JoinTransition"
               },
@@ -195,7 +195,7 @@ final class WorkflowTest extends FreeSpec {
             }, {
               "fromProcessedNodeIds": [ "G" ],
               "toNodeIds": [ "END" ],
-              "idToRoute": {},
+              "idToGraph": {},
               "transitionType": {
                 "TYPE": "ForwardTransition"
               }

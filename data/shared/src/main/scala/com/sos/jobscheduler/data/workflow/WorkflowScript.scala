@@ -15,7 +15,7 @@ final case class WorkflowScript(statements: Seq[Statement]) {
   val head: Job = statements.headOption match {
     case None ⇒ throw new IllegalArgumentException("WorkflowScript must not be empty")
     case Some(job: Job) ⇒ job
-    case Some(_) ⇒ throw new IllegalArgumentException("First statement of a route must be a job")
+    case Some(_) ⇒ throw new IllegalArgumentException("First statement of a graph must be a job")
   }
 
   val idToNodeStatement = statements.collect {
@@ -65,9 +65,9 @@ object WorkflowScript {
     val node = Workflow.EndNode(nodeId)
   }
 
-  final case class ForkJoin(idToRoute: ListMap[WorkflowRoute.Id, WorkflowScript])
+  final case class ForkJoin(idToGraph: ListMap[WorkflowGraph.Id, WorkflowScript])
   extends Statement {
-    def nodes = idToRoute.values.flatMap(_.nodes).toVector
+    def nodes = idToGraph.values.flatMap(_.nodes).toVector
   }
 
   final case class OnError private(to: NodeId) extends Statement {

@@ -16,20 +16,20 @@ import scala.collection.immutable.Seq
 /**
   * @author Joacim Zschimmer
   */
-final case class Workflow private(path: WorkflowPath, route: WorkflowRoute) {
+final case class Workflow private(path: WorkflowPath, graph: WorkflowGraph) {
 
-  val forkNodeToJoiningTransition = route.allTransitions.map(o ⇒ o.forkNodeId → o).collect { case (Some(forkNodeId), t) ⇒ forkNodeId → t }
+  val forkNodeToJoiningTransition = graph.allTransitions.map(o ⇒ o.forkNodeId → o).collect { case (Some(forkNodeId), t) ⇒ forkNodeId → t }
     .toMap withNoSuchKey (k ⇒ new NoSuchElementException(s"No joining transition for forking node '$k'"))
-  val nodeToOutputTransition = (for (t ← route.allTransitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t)
+  val nodeToOutputTransition = (for (t ← graph.allTransitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t)
     .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Nodes with duplicate transitions: ${duplicates.mkString(", ")}"))
     .withNoSuchKey(k ⇒ new NoSuchElementException(s"No output transition for Workflow.Node '$k'"))
 
   def requireCompleteness: this.type = {
-    route.requireCompleteness
+    graph.requireCompleteness
     this
   }
 
-  def reduceForAgent(agentPath: AgentPath) = copy(route = route.reduceForAgent(agentPath))
+  def reduceForAgent(agentPath: AgentPath) = copy(graph = graph.reduceForAgent(agentPath))
 
   def apply(nodeId: NodeId) = idToNode(nodeId)
 
@@ -45,19 +45,19 @@ final case class Workflow private(path: WorkflowPath, route: WorkflowRoute) {
   def agentPathOption(nodeId: NodeId): Option[AgentPath] =
     idToNode.get(nodeId) collect { case o: Workflow.JobNode ⇒ o.agentPath }
 
-  def idToNode: Map[NodeId, Node] = route.idToNode
+  def idToNode: Map[NodeId, Node] = graph.idToNode
 
-  def startNodeKey = NodeKey(path, route.start)
+  def startNodeKey = NodeKey(path, graph.start)
 
-  def start: NodeId = route.start
+  def start: NodeId = graph.start
 }
 
 object Workflow {
-  def apply(path: WorkflowPath, route: WorkflowRoute): Workflow =
-    new Workflow(path, route)
+  def apply(path: WorkflowPath, graph: WorkflowGraph): Workflow =
+    new Workflow(path, graph)
 
   def apply(path: WorkflowPath, start: NodeId, nodes: Seq[Node], transitions: Seq[Transition]): Workflow =
-    Workflow(path, WorkflowRoute(start, nodes, transitions))
+    Workflow(path, WorkflowGraph(start, nodes, transitions))
 
   def fromWorkflowAttached(path: WorkflowPath, event: WorkflowEvent.WorkflowAttached): Workflow =
     event.workflow

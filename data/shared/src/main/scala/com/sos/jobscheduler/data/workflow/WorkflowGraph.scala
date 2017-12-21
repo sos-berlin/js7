@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Workflow.{JobNode, Node}
-import com.sos.jobscheduler.data.workflow.WorkflowRoute._
+import com.sos.jobscheduler.data.workflow.WorkflowGraph._
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition, SuccessErrorTransition, TransitionRegister}
 import scala.collection.immutable.{Iterable, Seq}
@@ -16,15 +16,15 @@ import scala.collection.immutable.{Iterable, Seq}
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowRoute(start: NodeId, nodes: Seq[Node], transitions: Seq[Transition]) {
+final case class WorkflowGraph(start: NodeId, nodes: Seq[Node], transitions: Seq[Transition]) {
 
   val idToNode = nodes toKeyedMap { _.id } withNoSuchKey (nodeId ⇒ new NoSuchElementException(s"Unknown NodeId '$nodeId'"))
-  val allTransitions: Seq[Transition] = (transitions ++ transitions.flatMap(_.idToRoute.values flatMap (_.allTransitions)))
-  /** Linear path of nodes through the WorkflowRoute without forks or branches.
+  val allTransitions: Seq[Transition] = (transitions ++ transitions.flatMap(_.idToGraph.values flatMap (_.allTransitions)))
+  /** Linear path of nodes through the WorkflowGraph without forks or branches.
     */
   lazy val linearPath: Option[Seq[NodeId]] = transitions.linearPath(start)
 
-  require(idToNode.size == nodes.size, s"WorkflowRoute contains Nodes with duplicate NodeIds")
+  require(idToNode.size == nodes.size, s"WorkflowGraph contains Nodes with duplicate NodeIds")
   //Not for Goto: (for (t ← allTransitions; to ← t.toNodeIds) yield to → t)
   //  .uniqueToMap { nodeIds ⇒ new DuplicateKeyException(s"Workflow transitions with duplicate NodeIds: ${nodeIds.mkString(", ")}") }
 
@@ -33,7 +33,7 @@ final case class WorkflowRoute(start: NodeId, nodes: Seq[Node], transitions: Seq
     this
   }
 
-  def reduceForAgent(agentPath: AgentPath): WorkflowRoute = {
+  def reduceForAgent(agentPath: AgentPath): WorkflowGraph = {
     val agentNodes = nodes.collect { case o: JobNode if o.agentPath == agentPath ⇒ o }
     copy(nodes = agentNodes, transitions = transitions filter (_.endpoints forall (o ⇒ agentNodes.exists(_.id == o))))
   }
@@ -41,13 +41,13 @@ final case class WorkflowRoute(start: NodeId, nodes: Seq[Node], transitions: Seq
   def end: Option[NodeId] = linearPath map (_.last)
 }
 
-object WorkflowRoute {
+object WorkflowGraph {
   final case class Id(string: String) extends IsString
   object Id extends IsString.Companion[Id]
 
-  implicit val JsonCodec: CirceCodec[WorkflowRoute] = {
+  implicit val JsonCodec: CirceCodec[WorkflowGraph] = {
     implicit val TransitionRegisterCodec = TransitionRegister.JsonCodec
-    deriveCirceCodec[WorkflowRoute]
+    deriveCirceCodec[WorkflowGraph]
   }
 
   private[workflow] implicit class Transitions(val transitions: Iterable[Transition]) extends AnyVal {

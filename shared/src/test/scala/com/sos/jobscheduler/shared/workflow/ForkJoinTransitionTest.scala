@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.Workflow.JobNode
 import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition}
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath, WorkflowRoute}
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath, WorkflowGraph}
 import com.sos.jobscheduler.shared.workflow.ForkJoinTransitionTest._
 import com.sos.jobscheduler.shared.workflow.Transitions.ExecutableTransition
 import org.scalatest.FreeSpec
@@ -22,8 +22,8 @@ final class ForkJoinTransitionTest extends FreeSpec {
     forkNodeId = A.id,
     joinNodeId = C.id,
     ListMap(
-      WorkflowRoute.Id("⏰") → WorkflowRoute(start = Bx.id, nodes = List(Bx), transitions = Nil),
-      WorkflowRoute.Id("⚒") → WorkflowRoute(start = By.id, nodes = List(By), transitions = Nil)),
+      WorkflowGraph.Id("⏰") → WorkflowGraph(start = Bx.id, nodes = List(Bx), transitions = Nil),
+      WorkflowGraph.Id("⚒") → WorkflowGraph(start = By.id, nodes = List(By), transitions = Nil)),
     ForkTransition,
     JoinTransition)
 

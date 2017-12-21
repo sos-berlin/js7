@@ -5,8 +5,8 @@ import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Goto, J
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.SuccessErrorTransition
-import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowRoute, WorkflowScript}
-import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToRoute.workflowScriptToRoute
+import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowGraph, WorkflowScript}
+import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToGraph.workflowScriptToGraph
 import org.scalatest.FreeSpec
 import scala.collection.immutable._
 import scala.language.implicitConversions
@@ -14,12 +14,12 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowScriptToRouteTest extends FreeSpec {
+final class WorkflowScriptToGraphTest extends FreeSpec {
 
   "Single job" in {
     val script = WorkflowScript(Job(A.id, AAgentJobPath) :: Nil)
-    assert(workflowScriptToRoute(script) ==
-      WorkflowRoute(start = A.id, nodes = A :: Nil, transitions = Nil))
+    assert(workflowScriptToGraph(script) ==
+      WorkflowGraph(start = A.id, nodes = A :: Nil, transitions = Nil))
   }
 
   "WorkflowScript of multiple jobs" in {
@@ -27,8 +27,8 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
       Job(A.id, AAgentJobPath),
       Job(D.id, AAgentJobPath),
       Job(G.id, AAgentJobPath)))
-    assert(workflowScriptToRoute(script) ==
-      WorkflowRoute(start = A.id,
+    assert(workflowScriptToGraph(script) ==
+      WorkflowGraph(start = A.id,
         nodes = List(A, D, G),
         transitions = List(
           Transition(A.id, D.id, ForwardTransition),
@@ -47,14 +47,14 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
       End(END.id),
       Job(G.id, AAgentJobPath),
       Goto(X.id)))
-    val expected = WorkflowRoute(start = A.id,
+    val expected = WorkflowGraph(start = A.id,
       nodes = List(A, D, X, END, G),
       transitions = List(
         Transition(from = List(A.id), to = List(D.id, G.id), SuccessErrorTransition),
         Transition(from = List(D.id), to = List(G.id, END.id), SuccessErrorTransition),
         Transition(X.id, END.id, ForwardTransition),
         Transition(G.id, X.id, ForwardTransition)))
-    assert(workflowScriptToRoute(script) == expected)
+    assert(workflowScriptToGraph(script) == expected)
     assert(expected.linearPath == Some(List(A.id, D.id, G.id, X.id, END.id)))
     assert(expected.end == Some(END.id))
   }
@@ -63,22 +63,22 @@ final class WorkflowScriptToRouteTest extends FreeSpec {
     val script = WorkflowScript(List(
       Job(A.id, AAgentJobPath),
       ForkJoin(ListMap(
-        WorkflowRoute.Id("🥕") → WorkflowScript(List(
+        WorkflowGraph.Id("🥕") → WorkflowScript(List(
           Job(Bx.id, AAgentJobPath),
           Job(Cx.id, AAgentJobPath))),
-        WorkflowRoute.Id("🍋") → WorkflowScript(List(
+        WorkflowGraph.Id("🍋") → WorkflowScript(List(
           Job(By.id, AAgentJobPath),
           Job(Cy.id, BAgentJobPath))))),
       Job(D.id, AAgentJobPath),
       ForkJoin(ListMap(
-        WorkflowRoute.Id("🥕") → WorkflowScript(List(
+        WorkflowGraph.Id("🥕") → WorkflowScript(List(
           Job(Ex.id, AAgentJobPath),
           Job(Fx.id, AAgentJobPath))),
-        WorkflowRoute.Id("🍋") → WorkflowScript(List(
+        WorkflowGraph.Id("🍋") → WorkflowScript(List(
           Job(Ey.id, AAgentJobPath),
           Job(Fy.id, AAgentJobPath))))),
       Job(G.id, AAgentJobPath),
       End(END.id)))
-    assert(workflowScriptToRoute(script) == TestWorkflow.route)
+    assert(workflowScriptToGraph(script) == TestWorkflow.graph)
   }
 }

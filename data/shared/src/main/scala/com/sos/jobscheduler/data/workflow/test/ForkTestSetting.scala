@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.workflow.Workflow.{EndNode, JobNode}
 import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Job}
 import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, Workflow, WorkflowPath, WorkflowRoute, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, Workflow, WorkflowPath, WorkflowGraph, WorkflowScript}
 import scala.collection.immutable.{List, ListMap}
 
 /**
@@ -35,18 +35,18 @@ object ForkTestSetting {
   val TestWorkflowScript = WorkflowScript(List(
     Job(A.id, AAgentJobPath),
     ForkJoin(ListMap(
-      WorkflowRoute.Id("🥕") → WorkflowScript(List(
+      WorkflowGraph.Id("🥕") → WorkflowScript(List(
         Job(Bx.id, AAgentJobPath),
         Job(Cx.id, AAgentJobPath))),
-      WorkflowRoute.Id("🍋") → WorkflowScript(List(
+      WorkflowGraph.Id("🍋") → WorkflowScript(List(
         Job(By.id, AAgentJobPath),
         Job(Cy.id, BAgentJobPath))))),
     Job(D.id, AAgentJobPath),
     ForkJoin(ListMap(
-      WorkflowRoute.Id("🥕") → WorkflowScript(List(
+      WorkflowGraph.Id("🥕") → WorkflowScript(List(
         Job(Ex.id, AAgentJobPath),
         Job(Fx.id, AAgentJobPath))),
-      WorkflowRoute.Id("🍋") → WorkflowScript(List(
+      WorkflowGraph.Id("🍋") → WorkflowScript(List(
         Job(Ey.id, AAgentJobPath),
         Job(Fy.id, AAgentJobPath))))),
     Job(G.id, AAgentJobPath),
@@ -54,18 +54,18 @@ object ForkTestSetting {
 
   val bx = Transition(Bx.id, Cx.id)
   val by = Transition(By.id, Cy.id)
-  private val bChildRoutes = ListMap(
-    WorkflowRoute.Id("🥕") → WorkflowRoute(start = Bx.id, nodes = List(Bx, Cx), transitions = List(bx)),
-    WorkflowRoute.Id("🍋") → WorkflowRoute(start = By.id, nodes = List(By, Cy), transitions = List(by)))
+  private val bChildGraphs = ListMap(
+    WorkflowGraph.Id("🥕") → WorkflowGraph(start = Bx.id, nodes = List(Bx, Cx), transitions = List(bx)),
+    WorkflowGraph.Id("🍋") → WorkflowGraph(start = By.id, nodes = List(By, Cy), transitions = List(by)))
 
   val ex = Transition(Ex.id, Fx.id)
   val ey = Transition(Ey.id, Fy.id)
-  private val eChildRoutes = ListMap(
-    WorkflowRoute.Id("🥕") → WorkflowRoute(start = Ex.id, nodes = List(Ex, Fx), transitions = List(ex)),
-    WorkflowRoute.Id("🍋") → WorkflowRoute(start = Ey.id, nodes = List(Ey, Fy), transitions = List(ey)))
+  private val eChildGraphs = ListMap(
+    WorkflowGraph.Id("🥕") → WorkflowGraph(start = Ex.id, nodes = List(Ex, Fx), transitions = List(ex)),
+    WorkflowGraph.Id("🍋") → WorkflowGraph(start = Ey.id, nodes = List(Ey, Fy), transitions = List(ey)))
 
-  val (a, c) = Transition.forkJoin(forkNodeId = A.id, joinNodeId = D.id, bChildRoutes, ForkTransition, JoinTransition)
-  val (d, f) = Transition.forkJoin(forkNodeId = D.id, joinNodeId = G.id, eChildRoutes, ForkTransition, JoinTransition)
+  val (a, c) = Transition.forkJoin(forkNodeId = A.id, joinNodeId = D.id, bChildGraphs, ForkTransition, JoinTransition)
+  val (d, f) = Transition.forkJoin(forkNodeId = D.id, joinNodeId = G.id, eChildGraphs, ForkTransition, JoinTransition)
   val g = Transition(G.id, END.id)
 
   val TestWorkflow = Workflow(WorkflowPath("/WORKFLOW"), A.id,

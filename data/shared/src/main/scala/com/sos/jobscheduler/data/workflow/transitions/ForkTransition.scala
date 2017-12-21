@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.workflow.transitions
 
-import com.sos.jobscheduler.data.workflow.WorkflowRoute
+import com.sos.jobscheduler.data.workflow.WorkflowGraph
 import com.sos.jobscheduler.data.workflow.transition.SingleInputTransition
 import com.sos.jobscheduler.data.workflow.transition.TransitionType.Fork
 import scala.collection.immutable.Seq
@@ -10,11 +10,11 @@ import scala.collection.immutable.Seq
   */
 case object ForkTransition extends SingleInputTransition {
 
-  val routesMaximum = None
+  val graphsMaximum = None
 
-  def result(order: InputOrder, routeIds: Seq[WorkflowRoute.Id]) =
+  def result(order: InputOrder, graphIds: Seq[WorkflowGraph.Id]) =
     Fork(
-      for (id ← routeIds) yield
+      for (id ← graphIds) yield
         Fork.Child(id, order.payload))
 
 

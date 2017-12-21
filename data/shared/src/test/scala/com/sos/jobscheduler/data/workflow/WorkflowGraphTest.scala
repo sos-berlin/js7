@@ -1,13 +1,13 @@
 package com.sos.jobscheduler.data.workflow
 
-import com.sos.jobscheduler.data.workflow.WorkflowRoute._
+import com.sos.jobscheduler.data.workflow.WorkflowGraph._
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{A, D, END, G, TestWorkflow, a, c, g}
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowRouteTest extends FreeSpec {
+final class WorkflowGraphTest extends FreeSpec {
 
   "linearPath" - {
     "no transition" in {
@@ -27,7 +27,7 @@ final class WorkflowRouteTest extends FreeSpec {
     }
 
     "TestForkSetting" in {
-      assert(TestWorkflow.route.linearPath == Some(List(A.id, D.id, G.id, END.id)))
+      assert(TestWorkflow.graph.linearPath == Some(List(A.id, D.id, G.id, END.id)))
     }
   }
 }

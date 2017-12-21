@@ -21,12 +21,12 @@ object Transitions {
   private val logger = Logger(getClass)
 
   implicit class ExecutableTransition(val transition: Transition) extends AnyVal {
-    import transition.{fromNodeIds, idToRoute, toNodeIds, transitionType}
+    import transition.{fromNodeIds, idToGraph, toNodeIds, transitionType}
 
     def switch(nodeToOrder: NodeToTransitionableOrder): Option[KeyedEvent[OrderTransitionedEvent]] =
       canSwitch(nodeToOrder) option {
         val inputOrders = fromNodeIds map nodeToOrder
-        transitionType.result(inputOrders, idToRoute.keys.toVector) match {
+        transitionType.result(inputOrders, idToGraph.keys.toVector) match {
           case Move(nodeIndex) ⇒
             require(inputOrders.size == 1)
             val orderId = inputOrders.head.id
@@ -39,10 +39,10 @@ object Transitions {
             require(children.nonEmpty)
             val orderId = inputOrders.head.id
             KeyedEvent(OrderEvent.OrderForked(
-              children.map { case Fork.Child(routeId, payload) ⇒
-                val route = idToRoute.getOrElse(routeId,
-                  throw new NoSuchElementException(s"Transition $transition returns unknown route '$routeId'"))
-                OrderForked.Child(orderId.child(routeId.string), route.start, payload)
+              children.map { case Fork.Child(graphId, payload) ⇒
+                val graph = idToGraph.getOrElse(graphId,
+                  throw new NoSuchElementException(s"Transition $transition returns unknown graph '$graphId'"))
+                OrderForked.Child(orderId.child(graphId.string), graph.start, payload)
               })
             )(orderId)
 

@@ -5,8 +5,8 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.transitions.SuccessErrorTransition
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowRoute, WorkflowScript}
-import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToRoute.workflowScriptToRoute
+import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, Workflow, WorkflowGraph, WorkflowScript}
+import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToGraph.workflowScriptToGraph
 import org.scalatest.FreeSpec
 
 /**
@@ -40,9 +40,9 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
       End(FAILURE.id))))
   }
 
-  "WorkflowRoute" in {
-    assert(workflowScriptToRoute(script) ==
-      WorkflowRoute(start = A.id,
+  "WorkflowGraph" in {
+    assert(workflowScriptToGraph(script) ==
+      WorkflowGraph(start = A.id,
         List(A, B, C, END, FAILURE),
         List(
           Transition(Vector(A.id), Vector(B.id, FAILURE.id), SuccessErrorTransition),

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.workflow.transition
 
-import com.sos.jobscheduler.data.workflow.WorkflowRoute
+import com.sos.jobscheduler.data.workflow.WorkflowGraph
 import scala.collection.immutable.{IndexedSeq, Seq}
 
 /**
@@ -10,10 +10,10 @@ import scala.collection.immutable.{IndexedSeq, Seq}
   */
 trait SingleInputTransition extends TransitionType {
 
-  val routesMinimum = 1
+  val graphsMinimum = 1
 
-  def result(order: InputOrder, routeIds: Seq[WorkflowRoute.Id]): TransitionType.Result
+  def result(order: InputOrder, graphIds: Seq[WorkflowGraph.Id]): TransitionType.Result
 
-  final def result(orders: IndexedSeq[InputOrder], routeIds: Seq[WorkflowRoute.Id]) =
-    result(singleOrder(orders), routeIds)
+  final def result(orders: IndexedSeq[InputOrder], graphIds: Seq[WorkflowGraph.Id]) =
+    result(singleOrder(orders), graphIds)
 }
