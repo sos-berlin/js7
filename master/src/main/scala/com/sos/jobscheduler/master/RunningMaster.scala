@@ -16,11 +16,11 @@ import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime.{sleep, _}
+import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -33,8 +33,8 @@ import java.time.{Duration, Instant}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, blocking}
-import scala.util.Success
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
 /**
  * JobScheduler Agent.
@@ -78,7 +78,6 @@ object RunningMaster {
     implicit val executionContext = injector.instance[ExecutionContext]
     val master = RunningMaster(injector) await 99.s
     try {
-      for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
       body(master)
       master.executeCommand(MasterCommand.Terminate) await 99.s
       master.terminated await 99.s
@@ -128,11 +127,14 @@ object RunningMaster {
 
         implicit def executionContext = ec
 
-        def workflow(path: WorkflowPath): Future[Option[Workflow]] =
-          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[Workflow]]
+        def workflow(path: WorkflowPath): Future[Option[WorkflowGraph.Named]] =
+          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[WorkflowGraph.Named]]
 
-        def workflows: Future[Stamped[Seq[Workflow]]] =
-          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[Workflow]]]
+        def workflows: Future[Stamped[Seq[WorkflowGraph.Named]]] =
+          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[WorkflowGraph.Named]]]
+
+        //def workflowPaths =  TODO optimize
+        //(orderKeeper ? MasterOrderKeeper.Command.GetWorkflowPaths).mapTo[Stamped[Seq[WorkflowPath]]]
 
         def workflowCount =
           (orderKeeper ? MasterOrderKeeper.Command.GetWorkflowCount).mapTo[Int]
@@ -163,13 +165,17 @@ object RunningMaster {
     webServer.setClients(workflowClient, orderClient)
     val webServerReady = webServer.start()
 
-    val terminated = actorStopped andThen { case _ ⇒
-      blocking {
-        logger.debug("Delaying close to let HTTP server respond open requests")
-        sleep(500.ms)
+    val terminated = actorStopped
+      .andThen { case Failure(t) ⇒
+        logger.error(t.toStringWithCauses, t)
       }
-      closer.close()  // Close automatically after termination
-    }
+      .andThen { case _ ⇒
+        blocking {
+          logger.debug("Delaying close to let HTTP server respond open requests")
+          sleep(500.ms)
+        }
+        closer.close()  // Close automatically after termination
+      }
     for (_ ← webServerReady) yield {
       def execCmd(command: MasterCommand): Future[command.MyResponse] = {
         import masterConfiguration.akkaAskTimeout

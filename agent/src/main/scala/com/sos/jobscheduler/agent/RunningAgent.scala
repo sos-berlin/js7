@@ -24,6 +24,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
+import scala.util.Failure
 
 /**
  * JobScheduler Agent.
@@ -52,7 +53,6 @@ object RunningAgent {
   def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ A): A =
     autoClosing(apply(configuration) await timeout) { agent ⇒
       implicit val executionContext = agent.injector.instance[ExecutionContext]
-      for (t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
       val a = body(agent)
       agent.terminated await 99.s
       a
@@ -88,6 +88,8 @@ object RunningAgent {
           sleep(500.ms)
         }
         closer.close()  // Close automatically after termination
+      } andThen {
+        case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
       }
       new RunningAgent(webServer, terminated, ready.commandHandler, closer, injector)
     }
