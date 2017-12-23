@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.time
 
 import io.circe.{Decoder, Encoder}
+import scala.concurrent.duration.Duration
 
 /**
   * @author Joacim Zschimmer
@@ -16,6 +17,10 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
   //Problem with sbt: def toIsoStringBuilder: StringBuilder
 
   def compare(o: A) = toEpochMilli compare o.toEpochMilli
+
+  def +(o: Duration) = copy(epochMilli = toEpochMilli + o.toMillis)
+
+  def copy(epochMilli: Long): A
 
   override def toString = toIsoString
 }

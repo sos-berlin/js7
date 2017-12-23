@@ -59,6 +59,9 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
 
   def toJsDate: js.Date =
     new js.Date(toEpochMilli)
+
+  def copy(epochMilli: Long): Timestamp =
+    Timestamp.ofEpochMilli(epochMilli)
 }
 
 object Timestamp extends GenericTimestamp.Companion[Timestamp] {

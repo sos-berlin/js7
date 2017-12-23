@@ -13,6 +13,9 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
   //def toIsoStringBuilder = new StringBuilder(toIsoString)
 
   def toInstant = Instant.ofEpochMilli(toEpochMilli)
+
+  def copy(epochMilli: Long): Timestamp =
+    Timestamp.ofEpochMilli(epochMilli)
 }
 
 object Timestamp extends GenericTimestamp.Companion[Timestamp] {
