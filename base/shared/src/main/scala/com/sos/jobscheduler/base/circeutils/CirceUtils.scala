@@ -3,7 +3,9 @@ package com.sos.jobscheduler.base.circeutils
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedObjectEncoder
+import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, HCursor, Json, JsonNumber, JsonObject, Printer}
+import scala.collection.immutable.{ListMap, Seq}
 import shapeless.Lazy
 
 /**
@@ -105,6 +107,27 @@ object CirceUtils {
       def apply(a: A) = empty
 
       def apply(c: HCursor) = Right(singleton)
+    }
+
+  def listMapCodec[K: Encoder: Decoder, V: Encoder: Decoder](keyName: String = "key", valueName: String = "value"): CirceCodec[ListMap[K, V]] =
+    new Encoder[ListMap[K, V]] with Decoder[ListMap[K, V]] {
+      def apply(listMap: ListMap[K, V]) =
+        Json.fromValues(
+          for ((key, value) ← listMap) yield
+            Json.fromJsonObject(JsonObject.fromMap(
+              ListMap(keyName → key.asJson) ++
+                JsonObject.singleton(valueName, value.asJson).toMap)))
+
+      private implicit val idAndScriptDecoder: Decoder[(K, V)] =
+        cursor ⇒
+          for {
+            id ← cursor.downField(keyName).as[K]
+            value ← cursor.downField(valueName).as[V]
+          } yield
+            id → value
+
+      def apply(cursor: HCursor) =
+        cursor.as[Seq[(K, V)]].map(ListMap.empty.++)
     }
 
   private def throwUnexpected(expected: String, found: String) =
