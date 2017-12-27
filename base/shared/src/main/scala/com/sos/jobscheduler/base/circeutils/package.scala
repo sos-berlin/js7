@@ -8,5 +8,4 @@ import io.circe.{Decoder, Encoder}
 package object circeutils {
 
   type CirceCodec[A] = Encoder[A] with Decoder[A]
-  type CirceObjectCodec[A] = Encoder[A] with Decoder[A]
 }

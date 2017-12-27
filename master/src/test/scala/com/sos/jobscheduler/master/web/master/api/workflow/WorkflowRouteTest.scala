@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestWorkflow
-import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath, WorkflowsOverview}
+import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath, WorkflowScript, WorkflowsOverview}
 import com.sos.jobscheduler.master.WorkflowClient
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
 import org.scalatest.FreeSpec
@@ -64,7 +64,18 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
 
   // Seq[Workflow]
   for (uri ← List(
-       s"$WorkflowUri/?return=Workflow")) {
+       s"$WorkflowUri/?return=WorkflowScript")) {
+    s"$uri" in {
+      Get(uri) ~> Accept(`application/json`) ~> route ~> check {
+        assert(status == OK)
+        val Stamped(_, workflows) = responseAs[Stamped[Seq[WorkflowScript.Named]]]
+        assert(workflows == pathToWorkflow.values.flatMap(_.toWorkflowScriptNamed).toList)
+      }
+    }
+  }
+
+  for (uri ← List(
+       s"$WorkflowUri/?return=WorkflowGraph")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
@@ -81,7 +92,15 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        assert(responseAs[WorkflowGraph.Named] == pathToWorkflow.values.head)
+        assert(responseAs[WorkflowScript] == pathToWorkflow.values.head.graph.originalScript.get)
+      }
+      Get(s"$uri?return=WorkflowScript") ~> Accept(`application/json`) ~> route ~> check {
+        assert(status == OK)
+        assert(responseAs[WorkflowScript] == pathToWorkflow.values.head.graph.originalScript.get)
+      }
+      Get(s"$uri?return=WorkflowGraph") ~> Accept(`application/json`) ~> route ~> check {
+        assert(status == OK)
+        assert(responseAs[WorkflowGraph] == pathToWorkflow.values.head.graph)
       }
     }
   }

@@ -67,7 +67,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "workflow" in {
-    assert(api.workflows.await(99.s).value == List(WorkflowGraph.Named(TestWorkflowPath, workflowScriptToGraph(TestWorkflowScript))))
+    assert(api.workflowScripts.await(99.s).value == List(WorkflowGraph.Named(TestWorkflowPath, workflowScriptToGraph(TestWorkflowScript))))
   }
 }
 

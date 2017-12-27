@@ -47,6 +47,11 @@ object WorkflowScript {
     deriveCirceCodec[WorkflowScript]
   }
 
+  final case class Named(path: WorkflowPath, script: WorkflowScript)
+  object Named {
+    implicit val jsonCodec = deriveCirceCodec[Named]
+  }
+
   sealed trait Statement {
     def nodes: Seq[WorkflowGraph.Node]
   }

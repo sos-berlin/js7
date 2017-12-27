@@ -96,9 +96,13 @@ object WorkflowGraph {
       new JobNode(id, AgentJobPath(agentPath, jobPath))
   }
 
-  @JsonCodec
   final case class Named(path: WorkflowPath, graph: WorkflowGraph) {
     def start = NodeKey(path, graph.start)
+    def toWorkflowScriptNamed: Option[WorkflowScript.Named] =
+      for (script ← graph.originalScript) yield WorkflowScript.Named(path, script)
+  }
+  object Named {
+    implicit val jsonCodec = deriveCirceCodec[Named]
   }
 
   private[workflow] implicit class Transitions(val transitions: Iterable[Transition]) extends AnyVal {
