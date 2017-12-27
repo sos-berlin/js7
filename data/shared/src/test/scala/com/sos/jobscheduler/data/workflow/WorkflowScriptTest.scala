@@ -18,28 +18,19 @@ final class WorkflowScriptTest extends FreeSpec {
     val D = WorkflowGraph.JobNode(NodeId("D"), agentJobPath)
     val END = WorkflowGraph.EndNode(NodeId("END"))
 
-    val script = WorkflowScript(List(
-        WorkflowScript.Job(A.id, A.job),
-        WorkflowScript.Goto(B.id),
-        WorkflowScript.Job(C.id, B.job),
-        WorkflowScript.Goto(D.id),
-        WorkflowScript.OnError(D.id),     // <-- reduce deletes this OnError
-        WorkflowScript.Goto(D.id),        // <-- reduce deletes this Goto
-        WorkflowScript.Job(D.id, B.job),
-        WorkflowScript.Goto(END.id),      // <-- reduce deletes this Goto
-        WorkflowScript.End(END.id),
-        WorkflowScript.Job(B.id, B.job),
-        WorkflowScript.Goto(C.id)))
-    val expected = WorkflowScript(List(
-        WorkflowScript.Job(A.id, A.job),
-        WorkflowScript.Goto(B.id),
-        WorkflowScript.Job(C.id, B.job),
-        WorkflowScript.Goto(D.id),
-        WorkflowScript.Job(D.id, B.job),
-        WorkflowScript.End(END.id),
-        WorkflowScript.Job(B.id, B.job),
-        WorkflowScript.Goto(C.id)))
-    assert(script.reduce == expected)
+    val statements = List(
+      WorkflowScript.Job(A.id, A.job) → true,
+      WorkflowScript.Goto(B.id)       → true,
+      WorkflowScript.Job(C.id, B.job) → true,
+      WorkflowScript.Goto(D.id)       → true,
+      WorkflowScript.OnError(D.id)    → false,  // reducible
+      WorkflowScript.Goto(D.id)       → false,  // reducible
+      WorkflowScript.Job(D.id, B.job) → true,
+      WorkflowScript.Goto(END.id)     → false,  // reducible
+      WorkflowScript.End(END.id)      → true,
+      WorkflowScript.Job(B.id, B.job) → true,
+      WorkflowScript.Goto(C.id)       → true)
+    assert(WorkflowScript(statements map (_._1)).reduce == WorkflowScript(statements collect { case (s, true) ⇒ s }))
   }
 
   "JSON" in {
