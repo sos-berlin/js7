@@ -48,6 +48,15 @@ object ForkTestSetting {
       WorkflowGraph.Id("🍋") → eyScript)),
     Job(G.id, AAgentJobPath),
     End(END.id)))
+  //     A
+  //  🥕   🍋
+  //  Bx   By
+  //  Cx   Cy   ⟵ Cy runs on BAgentJobPath
+  //     D
+  //  Ex   Ey
+  //  Fx   Fy
+  //     G
+  //    END
 
   val bx = Transition(Bx.id, Cx.id)
   val by = Transition(By.id, Cy.id)
@@ -71,13 +80,4 @@ object ForkTestSetting {
       Vector(A, Bx, Cx, By, Cy, D, Ex, Fx, Ey, Fy, G, END),
       Vector(a, c, d, f, g),
       originalScript = Some(TestWorkflowScript/*Must be the original source of this graph*/)))
-  //     A
-  //  🥕   🍋
-  //  Bx   By
-  //  Cx   Cy   ⟵ Cy runs on BAgentJobPath
-  //     D
-  //  Ex   Ey
-  //  Fx   Fy
-  //     G
-  //    END
 }

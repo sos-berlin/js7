@@ -113,7 +113,7 @@ final class AgentCommandTest extends FreeSpec {
             "start": "A",
             "transitions": [
               {
-                "idToGraph": {},
+                "idToGraph": [],
                 "fromProcessedNodeIds": [ "A" ],
                 "toNodeIds": [ "B" ],
                 "transitionType": {
@@ -121,7 +121,7 @@ final class AgentCommandTest extends FreeSpec {
                 }
               },
               {
-                "idToGraph": {},
+                "idToGraph": [],
                 "fromProcessedNodeIds": [ "B" ],
                 "toNodeIds": [ "END" ],
                 "transitionType": {

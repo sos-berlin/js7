@@ -115,61 +115,66 @@ final class WorkflowGraphTest extends FreeSpec {
           {
             "fromProcessedNodeIds": [ "A" ],
             "toNodeIds": [ "Bx", "By" ],
-            "idToGraph": {
-              "🥕": {
-                "start": "Bx",
-                "transitions": [
-                  {
-                    "idToGraph": {},
-                    "fromProcessedNodeIds": [ "Bx" ],
-                    "toNodeIds": [ "Cx" ],
-                    "transitionType": {
-                      "TYPE": "ForwardTransition"
+            "idToGraph": [
+              {
+                "id": "🥕",
+                "graph": {
+                  "start": "Bx",
+                  "transitions": [
+                    {
+                      "idToGraph": [],
+                      "fromProcessedNodeIds": [ "Bx" ],
+                      "toNodeIds": [ "Cx" ],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
                     }
+                  ],
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "Bx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
+                    { "TYPE": "JobNode", "id": "Cx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
+                  ],
+                  "originalScript": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Bx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Cx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
+                    ]
                   }
-                ],
-                "nodes": [
-                  { "TYPE": "JobNode", "id": "Bx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
-                  { "TYPE": "JobNode", "id": "Cx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
-                ],
-                "originalScript": {
-                  "statements": [
-                    { "TYPE": "Job", "nodeId": "Bx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                    { "TYPE": "Job", "nodeId": "Cx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
-                  ]
                 }
-              },
-              "🍋": {
-                "start": "By",
-                "transitions": [
-                  {
-                    "idToGraph": {},
-                    "fromProcessedNodeIds": [ "By" ],
-                    "toNodeIds": [ "Cy" ],
-                    "transitionType": {
-                      "TYPE": "ForwardTransition"
+              }, {
+                "id": "🍋",
+                "graph": {
+                  "start": "By",
+                  "transitions": [
+                    {
+                      "idToGraph": [],
+                      "fromProcessedNodeIds": [ "By" ],
+                      "toNodeIds": [ "Cy" ],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
                     }
+                  ],
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "By", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
+                    { "TYPE": "JobNode", "id": "Cy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-B" }}
+                  ],
+                  "originalScript": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "By", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Cy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }}
+                    ]
                   }
-                ],
-                "nodes": [
-                  { "TYPE": "JobNode", "id": "By", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
-                  { "TYPE": "JobNode", "id": "Cy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-B" }}
-                ],
-                "originalScript": {
-                  "statements": [
-                    { "TYPE": "Job", "nodeId": "By", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                    { "TYPE": "Job", "nodeId": "Cy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }}
-                  ]
                 }
               }
-            },
+            ],
             "transitionType": {
               "TYPE": "ForkTransition"
             }
           }, {
             "fromProcessedNodeIds": [ "Cx", "Cy" ],
             "toNodeIds": [ "D" ],
-            "idToGraph": {},
+            "idToGraph": [],
             "transitionType": {
               "TYPE": "JoinTransition"
             },
@@ -177,61 +182,66 @@ final class WorkflowGraphTest extends FreeSpec {
           }, {
             "fromProcessedNodeIds": [ "D" ],
             "toNodeIds": [ "Ex", "Ey" ],
-            "idToGraph": {
-              "🥕": {
-                "start": "Ex",
-                "transitions": [
-                  {
-                    "fromProcessedNodeIds": [ "Ex" ],
-                    "toNodeIds": [ "Fx" ],
-                    "idToGraph": {},
-                    "transitionType": {
-                      "TYPE": "ForwardTransition"
+            "idToGraph": [
+              {
+                "id": "🥕",
+                "graph": {
+                  "start": "Ex",
+                  "transitions": [
+                    {
+                      "fromProcessedNodeIds": [ "Ex" ],
+                      "toNodeIds": [ "Fx" ],
+                      "idToGraph": [],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
                     }
+                  ],
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "Ex", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
+                    { "TYPE": "JobNode", "id": "Fx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
+                  ],
+                  "originalScript": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Ex", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Fx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
+                    ]
                   }
-                ],
-                "nodes": [
-                  { "TYPE": "JobNode", "id": "Ex", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
-                  { "TYPE": "JobNode", "id": "Fx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
-                ],
-                "originalScript": {
-                  "statements": [
-                    { "TYPE": "Job", "nodeId": "Ex", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                    { "TYPE": "Job", "nodeId": "Fx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
-                  ]
                 }
-              },
-              "🍋": {
-                "start": "Ey",
-                "transitions": [
-                  {
-                    "fromProcessedNodeIds": [ "Ey" ],
-                    "toNodeIds": [ "Fy" ],
-                    "idToGraph": {},
-                    "transitionType": {
-                      "TYPE": "ForwardTransition"
+              }, {
+                "id": "🍋",
+                "graph": {
+                  "start": "Ey",
+                  "transitions": [
+                    {
+                      "fromProcessedNodeIds": [ "Ey" ],
+                      "toNodeIds": [ "Fy" ],
+                      "idToGraph": [],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
                     }
+                  ],
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "Ey", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
+                    { "TYPE": "JobNode", "id": "Fy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
+                  ],
+                  "originalScript": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Ey", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Fy", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
+                    ]
                   }
-                ],
-                "nodes": [
-                  { "TYPE": "JobNode", "id": "Ey", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
-                  { "TYPE": "JobNode", "id": "Fy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
-                ],
-                "originalScript": {
-                  "statements": [
-                    { "TYPE": "Job", "nodeId": "Ey", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                    { "TYPE": "Job", "nodeId": "Fy", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
-                  ]
                 }
               }
-            },
+            ],
             "transitionType": {
               "TYPE": "ForkTransition"
             }
           }, {
             "fromProcessedNodeIds": [ "Fx", "Fy" ],
             "toNodeIds": [ "G" ],
-            "idToGraph": {},
+            "idToGraph": [],
             "transitionType": {
               "TYPE": "JoinTransition"
             },
@@ -239,7 +249,7 @@ final class WorkflowGraphTest extends FreeSpec {
           }, {
             "fromProcessedNodeIds": [ "G" ],
             "toNodeIds": [ "END" ],
-            "idToGraph": {},
+            "idToGraph": [],
             "transitionType": {
               "TYPE": "ForwardTransition"
             }
@@ -265,38 +275,48 @@ final class WorkflowGraphTest extends FreeSpec {
             { "TYPE": "Job", "nodeId": "A", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
             {
               "TYPE": "ForkJoin",
-              "idToGraph": {
-                "🥕": {
-                  "statements": [
-                    { "TYPE": "Job", "nodeId": "Bx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                    { "TYPE": "Job", "nodeId": "Cx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
-                  ]
-                },
-                "🍋": {
-                  "statements": [
-                    { "TYPE": "Job", "nodeId": "By", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                    { "TYPE": "Job", "nodeId": "Cy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }}
-                  ]
+              "idToScript": [
+                {
+                  "id": "🥕",
+                  "script": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Bx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Cx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
+                    ]
+                  }
+                }, {
+                  "id": "🍋",
+                  "script": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "By", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Cy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }}
+                    ]
+                  }
                 }
-              }
+              ]
             },
             { "TYPE": "Job", "nodeId": "D", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
             {
               "TYPE": "ForkJoin",
-              "idToGraph": {
-                "🥕": {
-                  "statements": [
-                    { "TYPE": "Job", "nodeId": "Ex", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                    { "TYPE": "Job", "nodeId": "Fx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
-                  ]
-                },
-                "🍋": {
-                  "statements": [
-                    { "TYPE": "Job", "nodeId": "Ey", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                    { "TYPE": "Job", "nodeId": "Fy", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
-                  ]
+              "idToScript": [
+                {
+                  "id": "🥕",
+                  "script": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Ex", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Fx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
+                    ]
+                  }
+                }, {
+                  "id" : "🍋",
+                  "script": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Ey", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Fy", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
+                    ]
+                  }
                 }
-              }
+              ]
             },
             { "TYPE": "Job", "nodeId": "G", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
             { "TYPE": "End", "nodeId": "END" }

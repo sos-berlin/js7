@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow.transition
 
-import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.{CirceCodec, CirceUtils}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowGraph}
@@ -85,7 +85,9 @@ object Transition {
       idToGraph = ListMap.empty,
       transitionType)
 
-  implicit def jsonCodec(implicit encoder: Encoder[TransitionType], decoder: Decoder[TransitionType]): CirceCodec[Transition] =
+  implicit def jsonCodec(implicit encoder: Encoder[TransitionType], decoder: Decoder[TransitionType]): CirceCodec[Transition] = {
+    implicit val idToGraphListMapCodec = CirceUtils.listMapCodec[WorkflowGraph.Id, WorkflowGraph](keyName = "id", valueName = "graph")
     deriveCirceCodec[Transition]
+  }
 }
 
