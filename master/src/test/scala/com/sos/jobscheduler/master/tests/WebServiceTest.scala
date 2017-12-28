@@ -10,14 +10,13 @@ import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestWorkflowScript
-import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowGraph, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath, WorkflowScript}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.client.{AkkaHttpClient, HttpMasterApi}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.MasterOrderKeeper
 import com.sos.jobscheduler.master.tests.WebServiceTest._
-import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToGraph.workflowScriptToGraph
 import io.circe.syntax.EncoderOps
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -67,7 +66,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "workflow" in {
-    assert(api.workflowScripts.await(99.s).value == List(WorkflowGraph.Named(TestWorkflowPath, workflowScriptToGraph(TestWorkflowScript))))
+    assert(api.workflowScripts.await(99.s).value == List(WorkflowScript.Named(TestWorkflowPath, TestWorkflowScript)))
   }
 }
 

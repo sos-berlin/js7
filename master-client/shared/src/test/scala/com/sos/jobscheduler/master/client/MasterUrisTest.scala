@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath, WorkflowScript}
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 
@@ -24,6 +24,7 @@ final class MasterUrisTest extends FreeSpec {
     "overview" in {
       assert(masterUris.order.overview == "http://example.com/master/api/order")
     }
+
     "single" in {
       assert(masterUris.order(OrderId("ORDER-ID")) == "http://example.com/master/api/order/ORDER-ID")
       assert(masterUris.order(OrderId("/å")) == "http://example.com/master/api/order/%2F%C3%A5")
@@ -45,7 +46,7 @@ final class MasterUrisTest extends FreeSpec {
     }
 
     "list" in {
-      assert(masterUris.workflow.list[WorkflowGraph.Named] == "http://example.com/master/api/workflow/?return=Workflow")
+      assert(masterUris.workflow.list[WorkflowScript.Named] == "http://example.com/master/api/workflow/?return=WorkflowScript")
     }
   }
 }
