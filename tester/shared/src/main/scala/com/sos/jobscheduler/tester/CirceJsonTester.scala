@@ -11,12 +11,13 @@ import org.scalatest.Assertions._
   */
 object CirceJsonTester {
   private val printer = Printer.noSpaces.copy(dropNullKeys = true/*drops None*/)
+  private val prettyPrinter = Printer.spaces2.copy(preserveOrder = true, colonLeft = "", lrbracketsEmpty = "")
 
   def testJson[A: Encoder: Decoder](a: A, jsonString: String): Unit = {
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullKeys = true)
     val compressedJsonString = jsonString filter (o ⇒ !isWhitespace(o))
     val parsed = parseJson(jsonString)
-    assert(asJson == parsed)
+    if (asJson != parsed) fail(s"${prettyPrinter.pretty(normalize(asJson))} did not equal ${prettyPrinter.pretty(normalize(parsed))}")
     assert(forceLeft(parsed.as[A]) == a)
     assert(printer.pretty(asJson).length == compressedJsonString.length, s", expected: $compressedJsonString")
     assert(parsed == parseJson(printer.pretty(asJson)))
@@ -30,6 +31,16 @@ object CirceJsonTester {
     either match {
       case Right(o) ⇒ o
       case Left(t) ⇒ throw new RuntimeException(t.toString, t)   // Add stacktrace
+    }
+
+  private def normalize(json: Json): Json =
+    json.asObject match {
+      case Some(o) ⇒ Json.fromFields(o.toVector.sortBy(_._1).map { case (k, v) ⇒ k → normalize(v) })
+      case None ⇒
+        json.asArray match {
+          case Some(o) ⇒ Json.fromValues(o map normalize)
+          case None ⇒ json
+        }
     }
 
   def removeJNull(json: Json): Json =
