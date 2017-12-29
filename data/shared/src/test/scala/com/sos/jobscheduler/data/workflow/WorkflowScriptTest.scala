@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, FlatStatement, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -31,6 +33,30 @@ final class WorkflowScriptTest extends FreeSpec {
       WorkflowScript.Job(B.id, B.job) → true,
       WorkflowScript.Goto(C.id)       → true)
     assert(WorkflowScript(statements map (_._1)).reduce == WorkflowScript(statements collect { case (s, true) ⇒ s }))
+  }
+
+  "flatten" in {
+    assert(ForkTestSetting.TestWorkflowScript.flatten == Vector(
+      FlatStatement.Simple(FlatStatement.Nesting.empty, Job(A.id, AAgentJobPath)),
+      FlatStatement.Fork(FlatStatement.Nesting.empty),
+      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Bx.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Cx.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(By.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Cy.id, BAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting.empty, Job(D.id, AAgentJobPath)),
+      FlatStatement.Fork(FlatStatement.Nesting.empty),
+      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Ex.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Fx.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Ey.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Fy.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting.empty, Job(G.id, AAgentJobPath)),
+      FlatStatement.Fork(FlatStatement.Nesting.empty),
+      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Hx.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Ix.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Hy.id, BAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Iy.id, BAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting.empty, Job(J.id, AAgentJobPath)),
+      FlatStatement.Simple(FlatStatement.Nesting.empty, End(END.id))))
   }
 
   "JSON" in {
@@ -83,6 +109,29 @@ final class WorkflowScriptTest extends FreeSpec {
           ]
         },
         { "TYPE": "Job", "nodeId": "G", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+        {
+          "TYPE": "ForkJoin",
+          "idToScript": [
+            {
+              "id": "🥕",
+              "script": {
+                "statements": [
+                  { "TYPE": "Job", "nodeId": "Hx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                  { "TYPE": "Job", "nodeId": "Ix", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
+                ]
+              }
+            }, {
+              "id": "🍋",
+              "script": {
+                "statements": [
+                  { "TYPE": "Job", "nodeId": "Hy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }},
+                  { "TYPE": "Job", "nodeId": "Iy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }}
+                ]
+              }
+            }
+          ]
+        },
+        { "TYPE": "Job", "nodeId": "J", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
         { "TYPE": "End", "nodeId": "END" }
       ]
     }""")

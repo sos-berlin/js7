@@ -20,11 +20,16 @@ final class WorkflowGraphTest extends FreeSpec {
     }
 
     "single transition" in {
-      assert(List(g).linearPath(G.id) == Some(List(G.id, END.id)))
+      assert(List(g).linearPath(G.id) == Some(List(G.id)))
+      assert(List(j).linearPath(J.id) == Some(List(J.id, END.id)))
     }
 
     "single fork/join" in {
       assert(List(a, c).linearPath(A.id) == Some(List(A.id, D.id)))
+    }
+
+    "fork branch" in {
+      assert(List(ex).linearPath(Ex.id) == Some(List(Ex.id, Fx.id)))
     }
 
     "loop" in {
@@ -32,7 +37,7 @@ final class WorkflowGraphTest extends FreeSpec {
     }
 
     "TestForkSetting" in {
-      assert(TestWorkflow.graph.linearPath == Some(List(A.id, D.id, G.id, END.id)))
+      assert(TestWorkflow.graph.linearPath == Some(List(A.id, D.id, G.id, J.id, END.id)))
     }
   }
 
@@ -42,11 +47,11 @@ final class WorkflowGraphTest extends FreeSpec {
     }
 
     "nodes" in {
-      assert(TestWorkflow.graph.nodes.toSet == Set(A, Bx, By, Cx, Cy, D, Ex, Ey, Fx, Fy, G, END))
+      assert(TestWorkflow.graph.nodes.toSet == Set(A, Bx, By, Cy, Cx, D, Ex, Fx, Ey, Fy, G, Hx, Ix, Hy, Iy, J, END))
     }
 
     "forkNodeToJoiningTransition" in {
-      assert(TestWorkflow.graph.forkNodeToJoiningTransition == Map(A.id → c, D.id → f))
+      assert(TestWorkflow.graph.forkNodeToJoiningTransition == Map(A.id → c, D.id → f, G.id → i))
     }
 
     //assert(TestWorkflow.nodeToInputTransition == Map(
@@ -66,15 +71,20 @@ final class WorkflowGraphTest extends FreeSpec {
       assert(TestWorkflow.graph.nodeToOutputTransition == Map(
         A.id → a,
         Bx.id → bx,
-        By.id → by,
         Cx.id → c,
+        By.id → by,
         Cy.id → c,
         D.id → d,
         Ex.id → ex,
-        Ey.id → ey,
         Fx.id → f,
+        Ey.id → ey,
         Fy.id → f,
-        G.id → g))
+        G.id → g,
+        Hx.id → hx,
+        Ix.id → i,
+        Hy.id → hy,
+        Iy.id → i,
+        J.id → j))
     }
   }
 
@@ -105,6 +115,17 @@ final class WorkflowGraphTest extends FreeSpec {
     assert(graph.reduceForAgent(u) == WorkflowGraph(A.id, List(A, B, C), List(a, b), originalScript = None))
     assert(graph.reduceForAgent(v) == WorkflowGraph(A.id, List(D, E, F), List(e)   , originalScript = None))
     assert(graph.reduceForAgent(w) == WorkflowGraph(A.id, List(G      ), List()    , originalScript = None))
+  }
+
+  "reduceForAgent ForkTestSetting" in {
+    import ForkTestSetting._
+    assert(TestWorkflow.graph.reduceForAgent(AAgentPath) ==
+      WorkflowGraph(A.id, Vector(A, Bx, Cx, By, D, Ex, Fx, Ey, Fy, G, Hx, Ix, J), Vector(a, d, f, hx), originalScript = None))
+    assert(TestWorkflow.graph.reduceForAgent(AAgentPath).allTransitions == Vector(a, d, f, hx, bx, by, ex, ey))
+
+    assert(TestWorkflow.graph.reduceForAgent(BAgentPath) ==
+      WorkflowGraph(A.id, Vector(Cy, Hy, Iy), Vector(hy), originalScript = None))
+    assert(TestWorkflow.graph.reduceForAgent(BAgentPath).allTransitions == Vector(hy))
   }
 
   "JSON" in {
@@ -248,6 +269,73 @@ final class WorkflowGraphTest extends FreeSpec {
             "forkNodeId": "D"
           }, {
             "fromProcessedNodeIds": [ "G" ],
+            "toNodeIds": [ "Hx", "Hy" ],
+            "idToGraph": [
+              {
+                "id": "🥕",
+                "graph": {
+                  "start": "Hx",
+                  "transitions": [
+                    {
+                      "fromProcessedNodeIds": [ "Hx" ],
+                      "toNodeIds": [ "Ix" ],
+                      "idToGraph": [],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
+                    }
+                  ],
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "Hx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
+                    { "TYPE": "JobNode", "id": "Ix", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
+                  ],
+                  "originalScript": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Hx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Ix", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
+                    ]
+                  }
+                }
+              }, {
+                "id": "🍋",
+                "graph": {
+                  "start": "Hy",
+                  "transitions": [
+                    {
+                      "fromProcessedNodeIds": [ "Hy" ],
+                      "toNodeIds": [ "Iy" ],
+                      "idToGraph": [],
+                      "transitionType": {
+                        "TYPE": "ForwardTransition"
+                      }
+                    }
+                  ],
+                  "nodes": [
+                    { "TYPE": "JobNode", "id": "Hy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-B" }},
+                    { "TYPE": "JobNode", "id": "Iy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-B" }}
+                  ],
+                  "originalScript": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Hy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Iy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }}
+                    ]
+                  }
+                }
+              }
+            ],
+            "transitionType": {
+              "TYPE": "ForkTransition"
+            }
+          }, {
+            "fromProcessedNodeIds": [ "Ix", "Iy" ],
+            "toNodeIds": [ "J" ],
+            "idToGraph": [],
+            "transitionType": {
+              "TYPE": "JoinTransition"
+            },
+            "forkNodeId": "G"
+          }, {
+            "fromProcessedNodeIds": [ "J" ],
             "toNodeIds": [ "END" ],
             "idToGraph": [],
             "transitionType": {
@@ -267,6 +355,11 @@ final class WorkflowGraphTest extends FreeSpec {
           { "TYPE": "JobNode", "id": "Ey", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
           { "TYPE": "JobNode", "id": "Fy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
           { "TYPE": "JobNode", "id": "G", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
+          { "TYPE": "JobNode", "id": "Hx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
+          { "TYPE": "JobNode", "id": "Ix", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
+          { "TYPE": "JobNode", "id": "Hy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-B" }},
+          { "TYPE": "JobNode", "id": "Iy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-B" }},
+          { "TYPE": "JobNode", "id": "J", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
           { "TYPE": "EndNode", "id": "END" }
         ],
 
@@ -319,6 +412,29 @@ final class WorkflowGraphTest extends FreeSpec {
               ]
             },
             { "TYPE": "Job", "nodeId": "G", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+            {
+              "TYPE": "ForkJoin",
+              "idToScript": [
+                {
+                  "id": "🥕",
+                  "script": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Hx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Ix", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
+                    ]
+                  }
+                }, {
+                  "id" : "🍋",
+                  "script": {
+                    "statements": [
+                      { "TYPE": "Job", "nodeId": "Hy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }},
+                      { "TYPE": "Job", "nodeId": "Iy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }}
+                    ]
+                  }
+                }
+              ]
+            },
+            { "TYPE": "Job", "nodeId": "J", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
             { "TYPE": "End", "nodeId": "END" }
           ]
         }

@@ -3,8 +3,10 @@ package com.sos.jobscheduler.data.workflow
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.{deriveCirceCodec, listMapCodec}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichPairTraversable
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
+import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowScript._
 import scala.collection.immutable.{ListMap, Seq}
 
@@ -12,6 +14,7 @@ import scala.collection.immutable.{ListMap, Seq}
   * @author Joacim Zschimmer
   */
 final case class WorkflowScript(statements: Seq[Statement]) {
+
   val head: Job = statements.headOption match {
     case None ⇒ throw new IllegalArgumentException("WorkflowScript must not be empty")
     case Some(job: Job) ⇒ job
@@ -21,6 +24,22 @@ final case class WorkflowScript(statements: Seq[Statement]) {
   val idToNodeStatement = statements.collect {
     case o: NodeStatement ⇒ o.node.id → o
   }.uniqueToMap(duplicates ⇒ throw new DuplicateKeyException(s"WorkflowScript cannot have duplicate NodeIds: ${duplicates.mkString(",")}"))
+
+  lazy val flatten: Seq[FlatStatement] =
+    toFlats(FlatStatement.Nesting.empty)
+
+  private def toFlats(nesting: FlatStatement.Nesting): Seq[FlatStatement] =
+    statements.collect {
+      case o: SimpleStatement ⇒
+        Vector(FlatStatement.Simple(nesting, o))
+      case ForkJoin(idToScript) ⇒
+        Vector(FlatStatement.Fork(nesting)) ++ (
+        for {
+          (id, script) ← idToScript
+          flats ← script.toFlats(nesting / id)
+        } yield
+          flats)
+    }.flatten
 
   def startNode = head.node
   def nodes = statements.flatMap(_.nodes)
@@ -47,11 +66,12 @@ object WorkflowScript {
     def nodes: Seq[WorkflowGraph.Node]
   }
 
+  sealed trait SimpleStatement extends Statement
+
   object Statement {
     private[WorkflowScript] implicit val statementJsonCodec = TypedJsonCodec[Statement](
       Subtype(deriveCirceCodec[Job]),
       Subtype(deriveCirceCodec[End]),
-      //Subtype(circeCodec(ForkJoin.jsonEncoder, ForkJoin.jsonDecoder)),
       Subtype(ForkJoin.jsonCodec),
       Subtype(deriveCirceCodec[OnError]),
       Subtype(deriveCirceCodec[Goto]))
@@ -59,7 +79,7 @@ object WorkflowScript {
 
   implicit val jsonCodec: CirceCodec[WorkflowScript] = deriveCirceCodec[WorkflowScript]
 
-  sealed trait NodeStatement extends Statement {
+  sealed trait NodeStatement extends SimpleStatement {
     def node: WorkflowGraph.Node
 
     final def nodes = node :: Nil
@@ -80,34 +100,42 @@ object WorkflowScript {
   object ForkJoin {
     implicit val myListMapCodec = listMapCodec[WorkflowGraph.Id, WorkflowScript](keyName = "id", valueName = "script")
     implicit lazy val jsonCodec: CirceCodec[ForkJoin] = deriveCirceCodec[ForkJoin]
-
-    //private[WorkflowScript] def jsonEncoder: Encoder[ForkJoin] =
-    //  forkJoin ⇒ Json.obj(
-    //    "scripts" → Json.fromValues(
-    //      for ((id, script) ← forkJoin.idToScript) yield
-    //        Json.fromJsonObject(JsonObject.fromMap(ListMap("id" → id.asJson) ++ script.asJson.asObject.get.toMap))))
-    //
-    //private implicit val idAndScriptDecoder: Decoder[(WorkflowGraph.Id, WorkflowScript)] =
-    //  cursor ⇒
-    //    for {
-    //      id ← cursor.downField("id").as[WorkflowGraph.Id]
-    //      script ← cursor.as[WorkflowScript]
-    //    } yield
-    //      id → script
-    //
-    //private[WorkflowScript] def jsonDecoder: Decoder[ForkJoin] =
-    //  cursor ⇒
-    //    for {
-    //      idAndScripts ← cursor.downField("scripts").as[Seq[(WorkflowGraph.Id, WorkflowScript)]]
-    //    } yield ForkJoin(ListMap.empty ++ idAndScripts)
   }
 
-  final case class OnError(to: NodeId) extends Statement {
+  final case class OnError(to: NodeId) extends SimpleStatement {
     def nodes = Nil
   }
 
-  final case class Goto(to: NodeId) extends Statement {
+  final case class Goto(to: NodeId) extends SimpleStatement {
     def nodes = Nil
+  }
+
+  sealed trait FlatStatement {
+    def nesting: FlatStatement.Nesting
+    //def nodeId: Option[NodeId]
+  }
+  object FlatStatement {
+    final case class Nesting(string: String) extends IsString {
+      def /(id: WorkflowGraph.Id): Nesting =
+        string match {
+          case "" ⇒ Nesting(id.string)
+          case _ ⇒ Nesting(string + OrderId.ChildSeparator + id.string)
+        }
+    }
+    object Nesting {
+      val empty = Nesting("")
+    }
+
+    final case class Simple(nesting: Nesting, statement: SimpleStatement) extends FlatStatement {
+      //def nodeId = statement match {
+      //  case o: NodeStatement ⇒ Some(o.node.id)
+      //  case _ ⇒ None
+      //}
+    }
+
+    final case class Fork(nesting: Nesting) extends FlatStatement {
+      //def nodeId = None
+    }
   }
 }
 

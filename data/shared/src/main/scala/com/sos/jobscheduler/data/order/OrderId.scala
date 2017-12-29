@@ -7,9 +7,10 @@ final case class OrderId(string: String) extends IsString {
 
   override def toString = s"Order:$string"
 
-  // TODO Sicherstellen, dass Schrägstrich in einer OrderId nur hier verwendet wird, damit sie eindeutig ist.
   def child(childString: String): OrderId =
-    OrderId(s"$string/$childString")
+    OrderId(string + OrderId.ChildSeparator + childString)
 }
 
-object OrderId extends IsString.Companion[OrderId]
+object OrderId extends IsString.Companion[OrderId] {
+  val ChildSeparator = "/"  // TODO Sicherstellen, dass Schrägstrich in einer OrderId nur hier verwendet wird, damit sie eindeutig ist.
+}

@@ -41,8 +41,8 @@ final class TransitionTest extends FreeSpec {
     assert(f.fromNodeIds == List(D.id, Fx.id, Fy.id))
     assert(f.toNodeIds == Vector(G.id))
 
-    assert(g.nodes.isEmpty)
-    assert(g.fromNodeIds == List(G.id))
-    assert(g.toNodeIds == Vector(END.id))
+    assert(j.nodes.isEmpty)
+    assert(j.fromNodeIds == List(J.id))
+    assert(j.toNodeIds == Vector(END.id))
   }
 }

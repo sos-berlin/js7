@@ -18,11 +18,16 @@ import scala.collection.immutable.{Iterable, Seq}
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowGraph(start: NodeId, nodes: Seq[Node], transitions: Seq[Transition],
+final case class WorkflowGraph(
+  start: NodeId,
+  nodes: Seq[Node],  // TODO Remove forked nodes like transitions; add function allNodes ?
+  /** Excluding nested fork transitions. */
+  transitions: Seq[Transition],
   originalScript: Option[WorkflowScript])
 {
   val idToNode = nodes toKeyedMap { _.id } withNoSuchKey (nodeId ⇒ new NoSuchElementException(s"Unknown NodeId '$nodeId'"))
-  val allTransitions: Seq[Transition] = (transitions ++ transitions.flatMap(_.idToGraph.values flatMap (_.allTransitions)))
+  /** Including nested fork transitions. */
+  val allTransitions: Seq[Transition] = transitions ++ transitions.flatMap(_.idToGraph.values flatMap (_.allTransitions))
   lazy val linearPath: Option[Seq[NodeId]] = transitions.linearPath(start)
 
   /** Linear path of nodes through the WorkflowGraph without forks or branches.
@@ -31,8 +36,8 @@ final case class WorkflowGraph(start: NodeId, nodes: Seq[Node], transitions: Seq
     .toMap withNoSuchKey (k ⇒ new NoSuchElementException(s"No joining transition for forking node '$k'"))
 
   val nodeToOutputTransition = (for (t ← allTransitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t)
-    .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Nodes with duplicate transitions: ${duplicates.mkString(", ")}"))
-    .withNoSuchKey(k ⇒ new NoSuchElementException(s"No output transition for WorkflowGraph.Node '$k'"))
+    .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Duplicate transitions following the nodes: ${duplicates.mkString(", ")}"))
+    .withNoSuchKey(k ⇒ new NoSuchElementException(s"No following transition for WorkflowGraph.Node '$k'"))
 
   require(idToNode.size == nodes.size, s"WorkflowGraph contains Nodes with duplicate NodeIds")
   //Not for Goto: (for (t ← allTransitions; to ← t.toNodeIds) yield to → t)
@@ -43,11 +48,16 @@ final case class WorkflowGraph(start: NodeId, nodes: Seq[Node], transitions: Seq
     this
   }
 
+  /** Returns an incomplete WorkflowGraph containing node and transitions needed for `agentPath`.
+    * Forked transitions nested in non-forked transitions are included, too.
+    */
   def reduceForAgent(agentPath: AgentPath): WorkflowGraph = {
     val agentNodes = nodes.collect { case o: JobNode if o.agentPath == agentPath ⇒ o }
+    val nonForkedTransitions = transitions.filter(_.endpoints forall (o ⇒ agentNodes.exists(_.id == o)))
+    val forkedTransitions = transitions.filterNot(nonForkedTransitions.toSet).flatMap(_.idToGraph.values.flatMap(_.reduceForAgent(agentPath).transitions))
     copy(
       nodes = agentNodes,
-      transitions = transitions filter (_.endpoints forall (o ⇒ agentNodes.exists(_.id == o))),
+      transitions = nonForkedTransitions ++ forkedTransitions,
       originalScript = None)
   }
 
@@ -65,7 +75,12 @@ final case class WorkflowGraph(start: NodeId, nodes: Seq[Node], transitions: Seq
 }
 
 object WorkflowGraph {
-  final case class Id(string: String) extends IsString
+  def apply(nodes: Seq[Node], transitions: Seq[Transition], originalScript: Option[WorkflowScript]) =
+    new WorkflowGraph(nodes.head.id, nodes, transitions, originalScript)
+
+  final case class Id(string: String) extends IsString {
+    if (string.isEmpty) throw new IllegalArgumentException("WorkflowGraph.Id must not be empty")
+  }
   object Id extends IsString.Companion[Id]
 
   implicit val JsonCodec: CirceCodec[WorkflowGraph] = {

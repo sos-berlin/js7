@@ -309,7 +309,9 @@ with Stash {
           case OrderForked(children) ⇒
             for (child ← children) {
               val childOrder = orderEntry.order.newChild(child)
-              orderRegister.insert(childOrder.id → OrderEntry(childOrder))
+              val entry = OrderEntry(childOrder)
+              orderRegister.insert(childOrder.id → entry)
+              proceedWithOrder(entry)
             }
 
           case event: OrderJoined ⇒

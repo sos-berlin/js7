@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
@@ -28,19 +29,20 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{JobPath, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, WorkflowGraph, WorkflowPath, WorkflowScript}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.OrderGeneratorPath
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
+import io.circe.syntax.EncoderOps
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import java.time.Instant.now
 import java.time.{Duration, Instant}
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{ListMap, Seq}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.language.implicitConversions
@@ -89,11 +91,11 @@ object TestMasterAgent {
               if (isWindows) s"""
                  |@echo off
                  |echo Hello
-                 |${ if (conf.jobDuration.getSeconds > 0) s"ping -n ${ conf.jobDuration.getSeconds + 1 } 127.0.0.1 >nul" else "" }
+                 |${if (conf.jobDuration.getSeconds > 0) s"ping -n ${conf.jobDuration.getSeconds + 1} 127.0.0.1 >nul" else ""}
                  |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
                  |""".stripMargin
               else s"""
-                 |echo Hello ☘️
+                 |echo Hello ☘
                  |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
                  |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
                  |""".stripMargin
@@ -118,15 +120,10 @@ object TestMasterAgent {
         Log4j.shutdown()
       } .closeWithCloser
 
-      env.xmlFile(TestWorkflowPath).xml =
-        <job_chain>
-          {for ((agentPath, i) ← conf.agentPaths.zipWithIndex;
-                j ← 1 to conf.workflowLength)
-          yield <job_chain_node state={s"NODE-${ 1 + i }-$j"} agent={agentPath} job={TestJobPath}/>}<job_chain_node.end state="END"/>
-        </job_chain>
+      env.jsonFile(TestWorkflowPath).contentString = makeWorkflowScript(conf).asJson.toPrettyString
       for (i ← 1 to conf.orderGeneratorCount) {
         env.xmlFile(OrderGeneratorPath(s"/test-$i")).xml =
-          <order job_chain={TestWorkflowPath} state="NODE-1-1">
+          <order job_chain={TestWorkflowPath} state="FIRST">
             <params>
               <param name="VARIABLE" value={i.toString}/>
             </params>
@@ -182,6 +179,18 @@ object TestMasterAgent {
       agents map (_.terminated) await 60.s
     }
   }
+
+  private val PathNames = Stream("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
+
+  private def makeWorkflowScript(conf: Conf): WorkflowScript =
+    WorkflowScript(List(
+      WorkflowScript.Job(NodeId(s"FIRST"), AgentJobPath(conf.agentPaths.head, TestJobPath)),
+      WorkflowScript.ForkJoin(ListMap() ++ (
+        for ((agentPath, pathName) ← conf.agentPaths zip PathNames) yield
+          WorkflowGraph.Id(pathName) → WorkflowScript(
+            for (j ← 1 to conf.workflowLength) yield
+              WorkflowScript.Job(NodeId(s"$pathName-$j"), AgentJobPath(agentPath, TestJobPath))))),
+      WorkflowScript.End(NodeId("END"))))
 
   private case class Conf(
     directory: Path,

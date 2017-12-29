@@ -35,8 +35,6 @@ import scala.concurrent.Future
 final class ForkTest extends FreeSpec {
 
   "test" in {
-    val eventCollector = new TestEventCollector
-
     autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { directoryProvider ⇒
       withCloser { implicit closer ⇒
         import directoryProvider.directory
@@ -48,6 +46,7 @@ final class ForkTest extends FreeSpec {
 
         runAgents(agentConfs) { _ ⇒
           RunningMaster.runForTest(directory) { master ⇒
+            val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
             master.executeCommand(MasterCommand.AddOrderIfNew(TestOrder)) await 99.s
             val EventSeq.NonEmpty(_) = eventCollector.when[OrderFinished.type](
@@ -89,8 +88,8 @@ object ForkTest {
     KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))(TestOrder.id),
     KeyedEvent(OrderForked(Vector(
       OrderForked.Child(XOrderId, Bx.id, Payload(Map("VARIABLE" → "VALUE"))),           OrderForked.Child(YOrderId, By.id, Payload(Map("VARIABLE" → "VALUE")))))) (TestOrder.id),
-      KeyedEvent(OrderDetachable)                                   (TestOrder.id),
-      KeyedEvent(OrderMovedToMaster)                                (TestOrder.id),
+    KeyedEvent(OrderDetachable)                                   (TestOrder.id),
+    KeyedEvent(OrderMovedToMaster)                                (TestOrder.id),
       KeyedEvent(OrderProcessingStarted)                                  (XOrderId),   KeyedEvent(OrderProcessingStarted)                            (YOrderId),
       KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))            (XOrderId),   KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (YOrderId),
       KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))       (XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (YOrderId),
@@ -118,6 +117,25 @@ object ForkTest {
       KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))            (XOrderId),   KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (YOrderId),
       KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))       (XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (YOrderId),
     KeyedEvent(OrderJoined(G.id, MapDiff.empty, Outcome.Good(true)))(TestOrder.id),
+    KeyedEvent(OrderProcessingStarted)                              (TestOrder.id),
+    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))        (TestOrder.id),
+    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
+    KeyedEvent(OrderDetachable)                                     (TestOrder.id),
+    KeyedEvent(OrderMovedToMaster)                                  (TestOrder.id),
+    KeyedEvent(OrderForked(Vector(
+      OrderForked.Child(XOrderId, Hx.id, Payload(Map("VARIABLE" → "VALUE"))),           OrderForked.Child(YOrderId, Hy.id, Payload(Map("VARIABLE" → "VALUE")))))) (TestOrder.id),
+      KeyedEvent(OrderMovedToAgent(AAgentPath))                           (XOrderId),   KeyedEvent(OrderMovedToAgent(BAgentPath))                     (YOrderId),
+      KeyedEvent(OrderProcessingStarted)                                  (XOrderId),   KeyedEvent(OrderProcessingStarted)                            (YOrderId),
+      KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))            (XOrderId),   KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (YOrderId),
+      KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))       (XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (YOrderId),
+      KeyedEvent(OrderMoved(Ix.id))                                       (XOrderId),   KeyedEvent(OrderMoved(Iy.id))                                 (YOrderId),
+      KeyedEvent(OrderProcessingStarted)                                  (XOrderId),   KeyedEvent(OrderProcessingStarted)                            (YOrderId),
+      KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))            (XOrderId),   KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (YOrderId),
+      KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))       (XOrderId),   KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (YOrderId),
+      KeyedEvent(OrderDetachable)                                         (XOrderId),   KeyedEvent(OrderDetachable)                                   (YOrderId),
+      KeyedEvent(OrderMovedToMaster)                                      (XOrderId),   KeyedEvent(OrderMovedToMaster)                                (YOrderId),
+    KeyedEvent(OrderJoined(J.id, MapDiff.empty, Outcome.Good(true)))(TestOrder.id),
+    KeyedEvent(OrderMovedToAgent(AAgentPath))                       (TestOrder.id),
     KeyedEvent(OrderProcessingStarted)                              (TestOrder.id),
     KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))        (TestOrder.id),
     KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
