@@ -7,6 +7,8 @@ final case class OrderId(string: String) extends IsString {
 
   override def toString = s"Order:$string"
 
+  def pretty = s"Order $string"
+
   def child(childString: String): OrderId =
     OrderId(string + OrderId.ChildSeparator + childString)
 }

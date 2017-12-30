@@ -26,6 +26,8 @@ extends AbsolutePath {
 
   override def toString = toTypedString
 
+  def pretty: String = s"${companion.camelName} $string"
+
   def toTypedString: String = s"${companion.camelName}:$string"
 }
 
