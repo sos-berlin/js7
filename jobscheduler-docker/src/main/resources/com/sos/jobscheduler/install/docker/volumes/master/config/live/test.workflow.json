@@ -1,0 +1,75 @@
+{
+  "statements": [
+    { "TYPE": "Job", "nodeId": "A", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }},
+    {
+      "TYPE": "ForkJoin",
+      "idToScript": [
+        {
+          "id": "🥕",
+          "script": {
+            "statements": [
+              { "TYPE": "Job", "nodeId": "Bx", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }},
+              { "TYPE": "Job", "nodeId": "Cx", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }}
+            ]
+          }
+        }, {
+          "id": "🍋",
+          "script": {
+            "statements": [
+              { "TYPE": "Job", "nodeId": "By", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }},
+              { "TYPE": "Job", "nodeId": "Cy", "job": { "agentPath": "/test-agent-2", "jobPath": "/test" }}
+            ]
+          }
+        }
+      ]
+    },
+    { "TYPE": "Job", "nodeId": "D", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }},
+    {
+      "TYPE": "ForkJoin",
+      "idToScript": [
+        {
+          "id": "🥕",
+          "script": {
+            "statements": [
+              { "TYPE": "Job", "nodeId": "Ex", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }},
+              { "TYPE": "Job", "nodeId": "Fx", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }}
+            ]
+          }
+        }, {
+          "id": "🍋",
+          "script": {
+            "statements": [
+              { "TYPE": "Job", "nodeId": "Ey", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }},
+              { "TYPE": "Job", "nodeId": "Fy", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }}
+            ]
+          }
+        }
+      ]
+    },
+    { "TYPE": "Job", "nodeId": "G", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }},
+    {
+      "TYPE": "ForkJoin",
+      "idToScript": [
+        {
+          "id": "🥕",
+          "script": {
+            "statements": [
+              { "TYPE": "Job", "nodeId": "Hx", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }},
+              { "TYPE": "Job", "nodeId": "Ix", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }}
+            ]
+          }
+        }, {
+          "id": "🍋",
+          "script": {
+            "statements": [
+              { "TYPE": "Job", "nodeId": "Hy", "job": { "agentPath": "/test-agent-2", "jobPath": "/test" }},
+              { "TYPE": "Job", "nodeId": "Iy", "job": { "agentPath": "/test-agent-2", "jobPath": "/test" }}
+            ]
+          }
+        }
+      ]
+    },
+    { "TYPE": "Job", "nodeId": "J", "job": { "agentPath": "/test-agent-1", "jobPath": "/test" }},
+    { "TYPE": "End", "nodeId": "END" }
+  ]
+}

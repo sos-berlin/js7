@@ -8,7 +8,7 @@
       @goto WINDOWS
       :;fi
 
-      echo Hello ☘️
+      echo Hello ☘
       sleep 3
       exit
 
