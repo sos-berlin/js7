@@ -95,7 +95,7 @@ object TestMasterAgent {
                  |echo result=TEST-RESULT-%SCHEDULER_PARAM_VAR1% >>"%SCHEDULER_RETURN_VALUES%"
                  |""".stripMargin
               else s"""
-                 |echo Hello ☘
+                 |echo Hello ☘️
                  |sleep ${BigDecimal(conf.jobDuration.toMillis, scale = 3).toString}
                  |echo "result=TEST-RESULT-$$SCHEDULER_PARAM_VAR1" >>"$$SCHEDULER_RETURN_VALUES"
                  |""".stripMargin
