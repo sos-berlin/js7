@@ -6,8 +6,8 @@ import com.sos.jobscheduler.master.client.HttpClientException.{HostUnreachable, 
 import com.sos.jobscheduler.master.client.JsHttpClient._
 import io.circe
 import io.circe.{Decoder, Encoder}
-import org.scalajs.dom
 import org.scalajs.dom.ext.{Ajax, AjaxException}
+import org.scalajs.dom.{XMLHttpRequest, window}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -30,16 +30,16 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
     decodeResponse(
       Ajax.post(uri, implicitly[Encoder[A]].apply(data).compactPrint, headers = Map("Content-Type" → "application/json")))
 
-  private def decodeResponse[A: Decoder](body: ⇒ Future[dom.XMLHttpRequest]): Future[A] =
+  private def decodeResponse[A: Decoder](body: ⇒ Future[XMLHttpRequest]): Future[A] =
     for (xhr ← checkResponse(body)) yield circe.parser.decode[A](xhr.responseText) match {
       case Right(o) ⇒ o
       case Left(t) ⇒ logAndThrow(OtherFailure(s"Error in JSON decoding: ${t.toStringWithCauses}", Some(t)))
     }
 
-  private def checkResponse[A](body: ⇒ Future[dom.XMLHttpRequest]): Future[dom.XMLHttpRequest] =
+  private def checkResponse[A](body: ⇒ Future[XMLHttpRequest]): Future[XMLHttpRequest] =
     body transform { tried ⇒ Success(checkResponse(tried)) }
 
-  private def checkResponse(tried: Try[dom.XMLHttpRequest]): dom.XMLHttpRequest =
+  private def checkResponse(tried: Try[XMLHttpRequest]): XMLHttpRequest =
     tried match {
       case Failure(t: AjaxException) if t.xhr.statusText.nonEmpty ⇒
         logAndThrow(OtherFailure(s"Problem while accessing JobScheduler Master: $t ${t.xhr.statusText}\n${t.xhr.responseText}", Some(t)))
@@ -58,13 +58,13 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
         xhr
     }
 
-  private def requireMatchingBuildId(xhr: dom.XMLHttpRequest): Unit =
+  private def requireMatchingBuildId(xhr: XMLHttpRequest): Unit =
     xhr.getResponseHeader("X-JobScheduler-Build-ID") match {
       case null ⇒
         logAndThrow(OtherFailure("JobScheduler Master does not respond as expected (missing buildId)", None))
 
       case fromServer if fromServer != requiredBuildId ⇒
-        dom.console.warn(s"JobScheduler Master build has changed from '$requiredBuildId' to '$fromServer' — Reloading page...")
+        window.console.warn(s"JobScheduler Master build has changed from '$requiredBuildId' to '$fromServer' — Reloading page...")
         reloadPage()
         throw new HttpClientException(OtherFailure(s"JobScheduler Master build has changed — Reloading page...", None))
 
@@ -72,13 +72,13 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
     }
 
   private def logAndThrow[A](error: HttpFailure): Nothing = {
-    dom.console.warn(error.toString)
+    window.console.warn(error.toString)
     throw new HttpClientException(error)
   }
 
   private def reloadPage(): Unit =
-    dom.window.setTimeout(
-      () ⇒ dom.window.location.reload(),
+    window.setTimeout(
+      () ⇒ window.location.reload(),
       ReloadDelay.toMillis)  // Delay in case of reload-loop
 }
 

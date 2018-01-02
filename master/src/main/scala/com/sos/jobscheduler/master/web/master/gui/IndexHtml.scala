@@ -23,9 +23,15 @@ object IndexHtml extends HtmlPage {
         div(id := "GUI")(
           pre("JobScheduler Master...")),
         script(`type` := "text/javascript", src := s"master/gui/master-gui-jsdeps.min.js?v=$buildId"),
-        script(`type` := "text/javascript")(
-          "$('.button-collapse').sideNav();" +  // Materialize CSS
-          s"jobschedulerBuildId='$buildId';" +
-          s"jobschedulerBuildVersion='$buildVersion';"),
+        script(`type` := "text/javascript")(s"""
+          |jQuery(document).ready(function() {
+          |  jQuery('.button-collapse').sideNav();
+          |  jQuery('#GUI').on('click', '.clickable-row', function() {
+          |    window.location = jQuery(this).data('href');
+          |  });
+          |});
+          |jobschedulerBuildId='$buildId';
+          |jobschedulerBuildVersion='$buildVersion';"""
+          .stripMargin + "\n"),
         script(`type` := "text/javascript", src := s"master/gui/master-gui.js?v=$buildId")))
 }

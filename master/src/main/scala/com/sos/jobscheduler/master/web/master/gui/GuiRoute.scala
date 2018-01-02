@@ -45,8 +45,10 @@ trait GuiRoute extends WebjarsRoute {
             getFromResourceDirectory(ResourceDirectory.path)
           } ~
           extractUnmatchedPath { path ⇒
-            logger.warn(s"Not found: .../gui$path (resource ${ResourceDirectory.path}$path)")
-            complete(NotFound)
+            extractUri { uri ⇒
+              logger.warn(s"Resource not found: ${ResourceDirectory.path}$path, for path ${uri.path}")
+              complete(NotFound)
+            }
           }
       }
     }

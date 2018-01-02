@@ -16,6 +16,7 @@ object GuiComponent {
     .renderBackend[GuiBackend]
     .componentDidMount(_.backend.componentDidMount())
     .componentWillUnmount(_.backend.componentWillUnmount())
+    .componentDidUpdate(_.backend.componentDidUpdate())
     .build
 
   final case class Props(baseUrl: BaseUrl)

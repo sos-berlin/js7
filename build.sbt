@@ -49,7 +49,7 @@ addCommandAlias("test-all"       , "; test:compile; test; ForkedTest:test")
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
-addCommandAlias("TestMasterAgent", "master/runMain com.sos.jobscheduler.master.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=5.s")
+addCommandAlias("TestMasterAgent", "master/runMain com.sos.jobscheduler.master.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 
@@ -265,6 +265,7 @@ lazy val master = project.dependsOn(masterDataJVM, masterClientJVM, shared, comm
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      webjars.materialIcons ++
       webjars.materializeCss ++
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++
@@ -326,7 +327,8 @@ lazy val `master-gui` = project
     libraryDependencies ++= {
       import Dependencies._
       Seq(
-        "org.scala-js" %%% "scalajs-dom" % "0.9.1",
+        "org.scala-js" %%% "scalajs-dom" % "0.9.4",
+        "be.doeraene" %%% "scalajs-jquery" % "0.9.2",
         "com.github.japgolly.scalajs-react" %%% "core" % "1.1.1",
         "com.github.japgolly.scalajs-react" %%% "extra" % "1.1.1",
       //"com.github.japgolly.scalajs-react" %%% "ext-monocle" % "1.1.1",

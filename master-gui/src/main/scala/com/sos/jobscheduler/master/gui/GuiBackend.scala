@@ -2,13 +2,17 @@ package com.sos.jobscheduler.master.gui
 
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent}
+import com.sos.jobscheduler.data.workflow.WorkflowScript
 import com.sos.jobscheduler.master.gui.GuiBackend._
+import com.sos.jobscheduler.master.gui.GuiRenderer.Moon
+import com.sos.jobscheduler.master.gui.ScreenBackground.setScreenClass
 import com.sos.jobscheduler.master.gui.common.Utils.isMobile
-import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
+import com.sos.jobscheduler.master.gui.components.state.{AppState, GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.services.MasterApi
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback}
-import org.scalajs.dom
+import org.scalajs.dom.{raw, window}
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -19,8 +23,8 @@ import scala.util.{Failure, Success, Try}
   */
 final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 
-  private val onDocumentVisibilityChanged = (_: dom.raw.Event) ⇒ sleep.awake().runNow()
-  private val onHashChanged = { event: dom.raw.HashChangeEvent⇒
+  private val onDocumentVisibilityChanged = (_: raw.Event) ⇒ awake().runNow()
+  private val onHashChanged = { _: raw.HashChangeEvent⇒
     //dom.window.screenX
     scope.modState(state ⇒ state.updateUriHash)
       //.memoizePositionForUri(event.oldURL))
@@ -30,48 +34,71 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 
   def componentDidMount() =
     Callback {
-      dom.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
-      dom.window.onhashchange = onHashChanged
+      window.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
+      window.onhashchange = onHashChanged
     } >>
       scope.modState(o ⇒ o.copy(
         ordersState = o.ordersState.copy(
           content = OrdersState.FetchingContent))) >>
-      requestOrders()
+      requestWorkflows >>
+      requestOrdersAndEvents
 
   def componentWillUnmount() = Callback {
-    dom.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged, false)
+    window.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged, false)
   }
 
-  def requestOrders() =
-    scope.modState(_.copy(
-      isFetchingState = true)
+  def componentDidUpdate(): Callback =
+    for (state ← scope.state) yield setScreenClass(state)
+
+  private def requestWorkflows: Callback =
+    Callback.future {
+      MasterApi.workflowScripts transform {
+        case Failure(err) ⇒ setError(err)
+        case Success(stamped: Stamped[Seq[WorkflowScript.Named]]) ⇒
+          Try {
+            scope.modState(_.copy(
+              pathToWorkflow = stamped.value.map(o ⇒ o.path → o.script).toMap))
+          }
+      }
+    }
+
+  def requestOrdersAndEvents: Callback =
+    for {
+      state ← scope.state
+      callback ← requestOrdersAndEvents2.when(state.appState == AppState.RequestingEvents).void
+    } yield callback
+
+  private def requestOrdersAndEvents2: Callback =
+    scope.modState(o ⇒ o.copy(
+      ordersState = o.ordersState.copy(
+        content = OrdersState.FetchingContent))
     ) >>
     Callback.future {
       MasterApi.orders transform {
+        case Failure(err) ⇒ setError(err)
         case Success(stamped: Stamped[Seq[Order[Order.State]]]) ⇒
           Try {
             for {
               state ← scope.state
               _ ← scope.setState(state.copy(
-                  isFetchingState = false,
                   isConnected = true,
                   ordersState = state.ordersState.updateOrders(stamped)))
               callback ← requestAndHandleEvents(after = stamped.eventId, forStep = state.ordersState.step + 1)
             } yield callback
           }
-
-        case Failure(err) ⇒
-          Try {
-            scope.modState(state ⇒ state.copy(
-              isFetchingState = false,
-              isConnected = false,
-              ordersState = state.ordersState.copy(
-                content = InitialFetchedContext,
-                error = Some(err.toString),
-                step = state.ordersState.step + 1)))
-          }
       }
     }
+
+  private def setError(throwable: Throwable) =
+    Try {
+      scope.modState(state ⇒ state.copy(
+        isConnected = false,
+        ordersState = state.ordersState.copy(
+          content = InitialFetchedContext,
+          error = Some(throwable.toString),
+          step = state.ordersState.step + 1)))
+    }
+
 
   private def requestAndHandleEvents(
     after: EventId,
@@ -84,7 +111,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
           isRequestingEvents = true
           MasterApi.orderEvents(after = after, timeout = timeout)
             .andThen { case _ ⇒
-              isRequestingEvents = false  // TODO Falls requestOrders() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
+              isRequestingEvents = false  // TODO Falls requestOrdersAndEvents() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
             } transform
               handleResponse
         }
@@ -92,12 +119,10 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       def handleResponse(response: Try[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]): Try[Callback] =
         Try {
           withProperState(forStep) {
-            case state if state.isFreezed ⇒
-              scope.modState { _.copy(
-                isConnected = false)
-              }
+            case state if state.appState == AppState.Freezed ⇒
+              Callback.empty  // Discard response
 
-            case state  ⇒
+            case state ⇒
               val step = state.ordersState.step
               response match {
                 case Failure(_) ⇒
@@ -130,8 +155,8 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
                       .delay(ContinueDelay).void
 
                 case Success(EventSeq.Torn) ⇒
-                  dom.console.warn("EventSeq.Torn")
-                  requestOrders().delay(TornDelay).void  // Request all orders
+                  window.console.warn("EventSeq.Torn")
+                  requestOrdersAndEvents.delay(TornDelay).void  // Request all orders
               }
         }
       }
@@ -139,11 +164,13 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       for {
         state ← scope.state
         callback ←
-          if (state.isFreezed)
+          if (state.appState != AppState.RequestingEvents)
             Callback.empty
-          else if (dom.document.hidden)
-            sleep.start()
-          else
+          else if (window.document.hidden) {
+            window.console.log(s"$Moon Standby...")
+            scope.modState(_.copy(
+              appState = AppState.Standby))
+          } else
             fetchEvents()
       } yield callback
     }
@@ -154,58 +181,49 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       callback ←
         if (state.ordersState.step == forStep)
           body(state)
-        else {
-          //dom.console.log(s"forStep=$forVersion != state.version=${state.version} - Callback discarded")
-          Callback.empty
-        }
+        else
+          Callback.log(s"${state.appState} forStep=$forStep!= state.version=${state.ordersState.step} - Response discarded")
     } yield callback
 
   def render(props: GuiComponent.Props, state: GuiState): VdomElement =
-    new GuiRenderer(props, state, toggleFreezed).render
+    new GuiRenderer(props, StateSnapshot(state).setStateVia(scope), toggleFreezed).render
 
   private def toggleFreezed: Callback =
-    scope.modState(state ⇒
-      state.copy(
-        isFreezed = !state.isFreezed)
-    ) >>
-      mayReconnect()
-        .delay(100.milliseconds).void  // ??? Without delay, change of isFreezed will not have taken effect in mayReconnect
-
-  object sleep {
-    private var isSleeping = false
-
-    def start() = Callback {
-      if (!isSleeping) {
-        dom.console.log(s"$Moon Sleeping...")
-        //dom.document.title = originalTitle + Moon
-        isSleeping = true
-      }
-    }
-
-    def awake(): Callback = {
-      if (!isSleeping)
-        Callback.empty
-      else {
-        //dom.document.title = originalTitle
-        isSleeping = false
-        mayReconnect()
-      }
-    }
-  }
-
-  private def mayReconnect(): Callback =
     for {
       state ← scope.state
-      callback ← {
-        dom.console.log(s"mayReconnect: isFreezed=${state.isFreezed}")
+      callback ←
+        if (state.appState == AppState.Freezed)
+          continueRequestingEvents()
+        else
+          scope.setState(state.copy(
+            appState = AppState.Freezed))
+    } yield callback
+
+  private def awake(): Callback =
+    for {
+      state ← scope.state
+      callback ←
+        if (state.appState == AppState.Standby)
+          continueRequestingEvents()
+        else
+          Callback.empty
+    } yield callback
+
+  private def continueRequestingEvents(): Callback =
+    for {
+      state ← scope.state
+      callback ←
         state.ordersState.content match {
-          case content: OrdersState.FetchedContent if !state.isFreezed && !dom.document.hidden && !isRequestingEvents ⇒
-            dom.console.log("Continuing requesting events...")
-            requestAndHandleEvents(after = content.eventId, forStep = state.ordersState.step)
+          case content: OrdersState.FetchedContent if !isRequestingEvents ⇒
+            Callback.log("Continuing requesting events...") >>
+              scope.modState(_.copy(
+                appState = AppState.RequestingEvents)
+              ) >>
+              requestAndHandleEvents(after = content.eventId, forStep = state.ordersState.step)
+                .delay(10.milliseconds).void   // Without delay, change of appState will not have taken effect in requestAndHandleEvents ???
           case _ ⇒
             Callback.empty
         }
-      }
     } yield callback
 }
 
@@ -215,9 +233,8 @@ object GuiBackend {
   private val ContinueDelay     = if (isMobile) 1.second else 250.milliseconds
   private val AfterTimeoutDelay = 1.second
   private val TornDelay         = 1.second
-  private val Moon = "\uD83C\uDF19"
 
-  private def newAfterErrorDelayIterator = (Iterator(1, 2, 4, 6) ++ Iterator.continually(10) ) map (_.seconds)
+  private def newAfterErrorDelayIterator = (Iterator(1, 2, 4, 6) ++ Iterator.continually(10)) map (_.seconds)
 
-  private val InitialFetchedContext = OrdersState.FetchedContent(Map(), Array(), eventId = EventId.BeforeFirst, eventCount = 0)
+  private val InitialFetchedContext = OrdersState.FetchedContent(Map(), Map(), eventId = EventId.BeforeFirst, eventCount = 0)
 }

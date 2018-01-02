@@ -74,7 +74,7 @@ object Timestamp extends GenericTimestamp.Companion[Timestamp] {
 
   def now: Timestamp = ofEpochMilli(epochMilli)
 
-  def epochMilli: Long = js.Date.now.toLong
+  def epochMilli: Long = java.lang.System.currentTimeMillis
 
   implicit val JsonEncoder: circe.Encoder[Timestamp] =
     o ⇒ circe.Json.fromLong(o.toEpochMilli)

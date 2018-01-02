@@ -1,184 +1,176 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
-import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.base.utils.Strings.TruncatedString
 import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.workflow.WorkflowScript.FlatStatement
+import com.sos.jobscheduler.data.workflow.{NodeKey, WorkflowScript}
 import com.sos.jobscheduler.master.gui.common.Renderers._
-import com.sos.jobscheduler.master.gui.common.Renderers.forTable.orderStateToTagMod
-import com.sos.jobscheduler.master.gui.common.Utils.ops.maybeToTagMod
+import com.sos.jobscheduler.master.gui.common.Renderers.forTable.orderStateToVdom
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListBackend._
+import com.sos.jobscheduler.master.gui.components.orderlist.OrderListComponent.Props
 import com.sos.jobscheduler.master.gui.components.state.OrdersState
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
+import com.sos.jobscheduler.master.gui.router.Router
 import japgolly.scalajs.react.component.builder.Lifecycle.ComponentDidUpdate
-import japgolly.scalajs.react.extra.Reusability
+import japgolly.scalajs.react.extra.{OnUnmount, Reusability}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import org.scalajs.dom.html
-import scala.collection.mutable
-import scala.concurrent.duration._
+import org.scalajs.dom.{MouseEvent, window}
+import scala.math.min
 
 /**
   * @author Joacim Zschimmer
   */
-private[orderlist] final class OrderListBackend(scope: BackendScope[OrdersState, Unit]) {
+private[orderlist] final class OrderListBackend(scope: BackendScope[Props, Unit])
+extends OnUnmount {
 
-  private var highligtTrs = mutable.Buffer[html.TableRow]()
-  private var lastHighlightedAt = Timestamp.epochMilli
+  private val highlighter = new Highlighter
+  private val orderSelector = new OrderSelector(scope, highlighter)
 
-  def componentDidUpdate: (ComponentDidUpdate[OrdersState, Unit, OrderListBackend]) ⇒ Callback =
-    _ ⇒ highlightChangedRows()
+  def componentDidUpdate: (ComponentDidUpdate[Props, Unit, OrderListBackend]) ⇒ Callback =
+    _ ⇒ Callback {
+      highlighter.componentDidUpdate()
+    }
 
-  def render(state: OrdersState): VdomElement =
-    render2(state)
+  def onMouseMoved(event: MouseEvent): Callback =
+    orderSelector.onMouseMoved(event)
 
-  private def render2(state: OrdersState): VdomElement =
-    state.content match {
+  def render(props: Props): VdomElement = {
+    val ordersState = props.ordersStateSnapshot.value
+    ordersState.content match {
       case Initial ⇒
         <.div()
 
       case FetchingContent ⇒
         <.div(<.i("Fetching orders..."))
 
-      case FetchedContent(idToOrder, sequence, _, _) ⇒
-        val limit = if (sequence.length <= OrderLimit + OrderLimitMargin) sequence.length else OrderLimit
+      case content: FetchedContent ⇒
+        val sequence = content.workflowToOrderSeq.getOrElse(props.workflow.path, Array.empty)
         <.div(
-          <.div(^.cls := "order-count")(
-            s"${sequence.size} orders",
-            state.error map (err ⇒ VdomArray(" – ", <.span(^.cls := "error")(s"$err"))) getOrElse ""),
-          <.table(^.cls := "bordered orders-table")(
-            theadVdom,
-            <.tbody(
-              sequence.toIterator.take(limit).map(idToOrder).toVdomArray(entry ⇒
-                OrderTr.withKey(entry.id.string)(entry)))),
-          sequence.length > limit option
-            <.div(<.i(s"${sequence.length - limit} more orders are not shown.")))
+          <.div(^.float := "left", ^.cls := "sheet orders-sheet")(
+            <.div(^.cls := "sheet-headline")(
+              props.workflow.path),
+            <.div(sequence.length.toString, " orders"),
+            ordersState.error.whenDefined(error ⇒ <.span(^.cls := "error")(error)),
+            renderWorkflowContent(props.workflow, content))/*,
+            <.div(^.cls := "orders-preview")(
+            ordersState.selectedOrder.whenDefined(orderId ⇒
+              idToOrder.get(orderId).whenDefined(entry ⇒
+                OrderComponent(entry, idToOrder(_).order, props.workflow.script, isOwnPage = false))))*/)
     }
+  }
 
-  private implicit def orderEntryReuse = OrderEntryReuse
+  private def renderWorkflowContent(workflow: WorkflowScript.Named, content: FetchedContent) =
+    <.div(^.cls := "Workflow-content")(
+      workflow.script.flatten.iterator.collect { case o: FlatStatement.Node ⇒ o }.toVdomArray { flat ⇒
+        val nodeKey = NodeKey(workflow.path, flat.statement.node.id)
+        val orderIds = content.nodeKeyToOrderIdSeq(nodeKey)
+        val n = min(orderIds.length, OrderPerNodeLimit)
+        val orderEntries = Array.tabulate[OrderEntry](n)(i ⇒ content.idToEntry(orderIds(i)))
+        NodeComponent.withKey(nodeKey.toString)(NodeProps(flat, orderEntries, notShown = orderIds.length - n))
+      })
 
-  private val OrderTr = ScalaComponent.builder[OrdersState.OrderEntry]("Row")
+  private val LittleOrderComponent = ScalaComponent.builder[OrdersState.OrderEntry]("Little-Order")
     .render_P {
-      case OrdersState.OrderEntry(order, output, updatedAt) ⇒
-        val cls = orderToRowClass(order)
-        <.tr(
-          <.td(^.cls := s"td-left cls")(order.id),
-          <.td(^.cls := s"orders-td hide-on-phone $cls")(order.nodeKey.workflowPath),
-          <.td(^.cls := s"orders-td $cls")(order.nodeKey.nodeId),
-          <.td(^.cls := s"orders-td $cls")(order.outcome),
-          <.td(^.cls := s"orders-td hide-on-phone $cls")(order.attachedTo),
-          <.td(^.cls := s"orders-td $cls")(order.state),
-          <.td(^.cls := s"orders-td-last-output hide-on-phone $cls")(
-            output.lastOption.getOrElse("").truncateWithEllipsis(50, showLength = false)))
-        .ref { tr ⇒
-          if (tr != null && updatedAt > lastHighlightedAt) highligtTrs += tr
+      case OrdersState.OrderEntry(order, _, lastOutput, updatedAt) ⇒
+        orderSelector.updateOrder(order)
+        val selectedClass = orderSelector.cssClass(order.id)
+        val highlighted = updatedAt > highlighter.lastHighlightedAt && selectedClass.isEmpty
+        <.div(^.id := OrderSelector.elementId(order.id),
+              ^.cls := "sheet z-depth-2 orders-Order " + orderToClass(order) + selectedClass + (if (highlighted) "orders-Order-changed" else ""),
+          <.div(^.cls := "orders-Order-OrderId", order.id.string),
+            order.state match {
+              case _: Order.Scheduled | Order.StartNow ⇒
+                <.div(^.cls := "orders-Order-compact",
+                  order.state)
+
+              case Order.InProcess ⇒
+                <.div(^.cls := "orders-Order-compact",
+                  orderStateToSymbol(order.state), " ",
+                  lastOutput getOrElse order.state.toString: String)
+
+              case _ ⇒
+                <.div(
+                  <.span(^.cls := "orders-Order-Outcome", order.outcome),
+                  <.span(^.cls := "orders-Order-State", order.state))
+            })
+        .ref {
+          case null ⇒
+          case elem ⇒
+            elem.onmouseover = _ ⇒ orderSelector.onMouseOverRow(order)
+            elem.onmouseout = _ ⇒ orderSelector.onMouseOutRow(order.id)
+            elem.onclick = _ ⇒ window.document.location.assign(Router.hash(order.id))
+            if (highlighted) highlighter.onChanged(order.id, elem)
         }
     }
-    .configure(Reusability.shouldComponentUpdate)
+    .configure {
+      implicit val orderEntryReuse = Reusability.byRef[OrdersState.OrderEntry]
+      Reusability.shouldComponentUpdate
+    }
     .build
 
-  private def orderToRowClass(order: Order[Order.State]): String =
+  private def orderToClass(order: Order[Order.State]): String =
     order.state match {
-      case _: Order.NotStarted ⇒ "Order-NotStarted"
-      case Order.InProcess ⇒ "Order-InProcess"
-      case Order.Finished ⇒ "Order-Finished"
-      case _ ⇒ ""
+      case _: Order.NotStarted ⇒ "Order-NotStarted "
+      case Order.InProcess     ⇒ "Order-InProcess "
+      case Order.Finished      ⇒ "Order-Finished "
+      case _                   ⇒ ""
     }
 
-  private def highlightChangedRows(): Callback = {
-    Callback {
-      val trs = highligtTrs
-      highligtTrs = mutable.Buffer[html.TableRow]()
-      for (tr ← trs) {
-        tr.className = ClassRegex.replaceAllIn(tr.className, "").trim + " orders-tr-enter"
-      }
-      Callback {
-        for (tr ← trs) {
-          tr.className = s"${tr.className} orders-tr-enter-active"
+  private val NodeHeadComponent = ScalaComponent.builder[WorkflowScript.NodeStatement]("WorkflowScript.NodeStatement")
+    .render_P { stmt ⇒
+      <.div(^.cls := "orders-Node-head sheet z-depth-1",
+        <.div(^.cls := "orders-Statement",
+          stmt match {
+            case stmt: WorkflowScript.Job ⇒
+              VdomArray(
+                <.div(stmt.nodeId.string, ": "),
+                <.div("job ", <.span(^.cls := "orders-Node-Job", stmt.job.jobPath.string)),
+                <.div("at ", <.span(^.cls := "orders-Node-Agent", stmt.job.agentPath.string), ";"))
+
+            case WorkflowScript.End(_) ⇒
+              s"$stmt;"
+          }))
+    }
+    .configure {
+      implicit val orderEntryReuse = Reusability.byRef[WorkflowScript.NodeStatement]
+      Reusability.shouldComponentUpdate
+    }
+    .build
+
+  private val NodeComponent = ScalaComponent.builder[NodeProps]("Workflow.Node")
+    .render_P { props ⇒
+      val stmt = props.flat.statement
+      <.div(^.cls := "orders-Node")(
+        NodeHeadComponent.withKey(stmt.node.id.string)(stmt),
+        TagMod(
+          props.orderEntries.toVdomArray(entry ⇒
+            LittleOrderComponent.withKey(entry.id.string)(entry)),
+          <.div(^.cls := "orders-Order-more",
+            <.i(s"(${props.notShown} more orders not shown)")
+          ) when props.notShown > 0))
+    }
+    .configure {
+      implicit val orderEntryReuse = Reusability.by_==[NodeProps]
+      Reusability.shouldComponentUpdate
+    }
+    .build
+
+  private case class NodeProps(flat: FlatStatement.Node, orderEntries: Array[OrderEntry], notShown: Int) {
+    override def equals(o: Any) = o match {
+      case o: NodeProps ⇒ (flat eq o.flat) &&
+        notShown != o.notShown &&
+        orderEntries.length == o.orderEntries.length && {
+          var i = 0
+          while (i < orderEntries.length && (orderEntries(i) eq o.orderEntries(i))) {
+            i += 1
+          }
+          i == orderEntries.length
         }
-        lastHighlightedAt = Timestamp.epochMilli
-      }.delay(5.seconds).runNow()
+      case _ ⇒ false
     }
   }
 }
 
 object OrderListBackend {
-  private val OrderLimit = 1000
-  private val OrderLimitMargin = 99
-
-  private val theadVdom =
-    <.thead(<.tr(
-      <.th(^.width := 10.ex, ^.cls := "orders-td td-left")("OrderId"),
-      <.th(^.width := 10.ex, ^.cls := "orders-td hide-on-phone")("Workflow"),
-      <.th(^.width := 10.ex, ^.cls := "orders-td")("Node"),
-      <.th(^.width := 15.ex, ^.cls := "orders-td")("Outcome"),
-      <.th(^.width := 15.ex, ^.cls := "hide-on-phone")("AttachedTo"),
-      <.th(^.width := 15.ex, ^.cls := "orders-td")("State"),
-      <.th(^.width := 15.ex, ^.cls := "orders-td-right hide-on-phone")("Last output")))
-
-  private val ClassRegex = """\b(orders-tr-enter|orders-tr-enter-active)\b|^ *| *$""".r
-
-  private val OrderEntryReuse = Reusability.byRef[OrdersState.OrderEntry]
-  //private val OrderReuse = Reusability.byRef[Order[Order.State]]
-
-  //<editor-fold defaultstate="collapsed" desc="// (No code here - does not make first rendering quicker)">
-  ////OrderId = String - private implicit val OrderIdReuse = Reusability.derive[OrderId]
-  ////OrderId = String - private implicit val WorkflowPathReuse = Reusability.derive[WorkflowPath]
-  ////OrderId = String - private implicit val NodeIdReuse = Reusability.derive[NodeId]
-  //private implicit val GoodOutcomeReuse = Reusability.derive[Outcome.Good]
-  //private implicit val BadOutcomeReuse = Reusability.derive[Outcome.Bad]
-  //private implicit val OutcomeReuse = Reusability.derive[Outcome]
-  //private implicit val SomeAgentPathReuse = Reusability.derive[Some[AgentPath]]
-  ////private implicit val MaybeAgentPathReuse = Reusability.derive[Option[AgentPath]]
-  //private implicit val orderStateReuse = Reusability.byRef[Order.State]
-  //
-  //private val OrderIdTd = ScalaComponent.builder[OrderId]("OrderId")
-  //  .render_P { orderId ⇒
-  //    <.td(^.cls := "nowrap")(orderId)
-  //  }
-  //  .build
-  //
-  //private val WorkflowPathTd = ScalaComponent.builder[WorkflowPath]("WorkflowPath")
-  //  .render_P { workflowPath ⇒
-  //    <.td(^.cls := "nowrap")(workflowPath)
-  //  }
-  //  .build
-  //
-  //private val NodeIdTd = ScalaComponent.builder[NodeId]("NodeId")
-  //  .render_P { nodeId ⇒
-  //    <.td(^.cls := "nowrap")(nodeId)
-  //  }
-  //  .build
-  //
-  //private val OutcomeTd = ScalaComponent.builder[Outcome]("Outcome")
-  //  .render_P { outcome ⇒
-  //    <.td(^.cls := "nowrap")(outcome.toString)
-  //  }
-  //  .build
-  //
-  //private val AgentPathTd = ScalaComponent.builder[Option[AgentPath]]("AgentPath")
-  //  .render_P { maybeAgentPath ⇒
-  //    <.td(^.cls := "nowrap")(maybeAgentPath.getOrElse("").toString)
-  //  }
-  //  .build
-  //
-  //private val OrderStateTd = ScalaComponent.builder[Order.State]("State")
-  //  .render_P { state ⇒
-  //    <.td(^.cls := "nowrap")(state.toString)
-  //  }
-  //  .build
-  //
-  //private val OrderTr = ScalaComponent.builder[Order[Order.State]]("Row")
-  //  .render_P { order ⇒
-  //    <.tr(
-  //    OrderIdTd(order.id),
-  //    WorkflowPathTd(order.nodeKey.workflowPath),
-  //    NodeIdTd(order.nodeKey.nodeId),
-  //    OutcomeTd(order.outcome),
-  //    AgentPathTd(order.agentPath),
-  //    OrderStateTd(order.state))
-  //  }
-  //  .configure(Reusability.shouldComponentUpdate)
-  //  .build
-  //</editor-fold>
+  private val OrderPerNodeLimit = 20
 }

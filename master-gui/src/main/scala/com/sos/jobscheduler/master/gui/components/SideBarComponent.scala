@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.gui.components
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.gui.services.MasterApi
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
+import japgolly.scalajs.react.{Callback, ScalaComponent}
 
 /**
   * @author Joacim Zschimmer
@@ -16,13 +16,7 @@ object SideBarComponent {
 
   def apply() = reactComponent()
 
-  private val reactComponent = ScalaComponent.builder[Unit]("SideBar")
-    .initialState[State](None)
-    .renderBackend[PageHeaderBackend]
-    .build
-
-  final class PageHeaderBackend(scope: BackendScope[Unit, State]) {
-    def render(state: State) =
+  private val reactComponent = ScalaComponent.static("SideBar")(
       <.ul(^.id := "nav-mobile", ^.cls := "side-nav fixed")(
         <.li(^.cls := "logo")(
           <.a(^.id := "logo-container", ^.href := "#", ^.cls := "brand-logo")(
@@ -32,8 +26,7 @@ object SideBarComponent {
         //    "Orders")),
         <.li(
           <.button(^.cls := "waves-effect waves-light btn deep-orange", ^.onClick --> terminate)(
-            "Shutdown")))
-  }
+            "Shutdown"))))
 
   private def terminate = Callback {
     MasterApi.executeCommand(MasterCommand.Terminate)

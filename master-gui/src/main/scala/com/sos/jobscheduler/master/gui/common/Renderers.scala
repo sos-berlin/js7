@@ -1,62 +1,97 @@
 package com.sos.jobscheduler.master.gui.common
 
 import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.master.gui.router.Router
 import japgolly.scalajs.react.vdom.Implicits._
-import japgolly.scalajs.react.vdom.TagMod
 import japgolly.scalajs.react.vdom.html_<^.{<, ^}
+import japgolly.scalajs.react.vdom.{VdomArray, VdomNode}
 import scala.language.implicitConversions
-import scala.scalajs.js.URIUtils.encodeURI
 
 /**
   * @author Joacim Zschimmer
   */
 object Renderers {
 
-  implicit def isStringToTagMod(o: IsString): TagMod =
-    o.string
+  implicit def isStringToVdom(o: IsString): VdomNode =
+    o.toString
 
-  implicit def optionToTagMod[A](a: Option[A])(implicit toTagMod: A ⇒ TagMod): TagMod =
-    a match {
-      case None ⇒ "—"
-      case Some(o) ⇒ o
-    }
+  implicit def typedPathToVdom(o: TypedPath): VdomNode =
+    VdomArray(o.companion.camelName, " ", o.string)
 
-  implicit def orderIdToTagMod(orderId: OrderId): TagMod =
-    <.a(^.cls := "hidden-link OrderId", ^.href := s"#order/${encodeURI(orderId.string)}")(orderId.string)
+  implicit def workflowPathToVdom(o: WorkflowPath): VdomNode =
+    <.a(^.cls := "hidden-link", ^.href := Router.hash(o), "Workflow ", o.string)
 
-  implicit def orderStateToTagMod(state: Order.State): TagMod =
-    state match {
-      case Order.Scheduled(at)  ⇒ <.span(^.cls := "Order-Symbol-Scheduled") (s"Scheduled for ${at.toReadableLocaleIsoString}")
-      case Order.StartNow       ⇒ <.span(^.cls := "Order-Symbol-StartNow")  (state.toString)
-      case Order.InProcess      ⇒ <.span(^.cls := "Order-Symbol-InProcess") (state.toString)
-      case Order.Ready          ⇒ <.span(^.cls := "Order-Symbol-Ready")     (state.toString)
-      case _: Order.Forked      ⇒ <.span(^.cls := "Order-Symbol-Forked")    (state.toString)
-      case Order.Processed      ⇒ <.span(^.cls := "Order-Symbol-Processed") (state.toString)
-      case Order.Finished       ⇒ <.span(^.cls := "Order-Symbol-Finished")  (state.toString)
-      case _                    ⇒ state.toString
-    }
+  implicit def orderIdToVdom(orderId: OrderId): VdomNode =
+    <.a(^.cls := "hidden-link OrderId", ^.href := Router.hash(orderId))(orderId.string)
 
-  object forTable {
-    implicit def orderStateToTagMod(state: Order.State): TagMod =
-      state match {
-        case Order.Scheduled(at) ⇒ <.span(^.cls := "Order-Symbol-Scheduled")(at.toReadableLocaleIsoString)
-        case o ⇒ Renderers.orderStateToTagMod(o)
+  implicit class OptionalVdom[A](val underlying: Option[A]) extends AnyVal {
+    def orMissing(implicit toVdom: A ⇒ VdomNode): VdomNode =
+      underlying match {
+        case None ⇒ "—"
+        case Some(o) ⇒ o
       }
   }
 
-  implicit def orderAttachedToTagMod(attachedTo: Order.AttachedTo): TagMod =
+  implicit def orderStateToVdom(state: Order.State): VdomNode =
+    VdomArray(
+      orderStateToSymbolFixedWidth(state),
+      orderStateTextToVdom(state))
+
+  object forTable {
+    implicit def orderStateToVdom(state: Order.State): VdomNode =
+      VdomArray(
+        orderStateToSymbolFixedWidth(state),
+        state match {
+           case Order.Scheduled(at) ⇒ at.toReadableLocaleIsoString: VdomNode
+           case _ ⇒ orderStateTextToVdom(state)
+        })
+  }
+
+  private def orderStateTextToVdom(state: Order.State): VdomNode =
+    state match {
+      case Order.Scheduled(at)  ⇒ s"Scheduled for ${at.toReadableLocaleIsoString}"
+      case Order.Forked(children) ⇒ s"Forked ${children.size}×"
+      case _ ⇒ state.toString
+    }
+
+  def orderStateToSymbolFixedWidth(state: Order.State): VdomNode = {
+    val symbol = orderStateToSymbol(state)
+    //if (symbol.isInstanceOf[VdomElement])  // material-icons
+    //  VdomArray(symbol, " ")
+    //else
+      <.span(^.cls := "Order-State-symbol-width")(symbol)
+  }
+
+  def orderStateToSymbol(state: Order.State): VdomNode =
+    state match {
+      case _: Order.Scheduled ⇒ <.i(^.cls := "material-icons text-prefix", "access_alarm")
+      case Order.StartNow     ⇒ "━"
+      case Order.InProcess    ⇒ <.i(^.cls := "material-icons text-prefix rotate-slowly gear", "settings")
+      case _: Order.Forked    ⇒ "⇶"
+      case Order.Processed    ⇒ "⬇"
+      case Order.Ready        ⇒ "━"
+      case Order.Finished     ⇒ "☆"
+      case _                  ⇒ "·"
+    }
+
+  implicit def orderAttachedToVdom(attachedTo: Order.AttachedTo): VdomNode =
     attachedTo match {
       case Order.AttachedTo.Agent(agentPath) ⇒ agentPath.string
       case Order.AttachedTo.Detachable(agentPath) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentPath.string)
       case _ ⇒ attachedTo.toString
     }
 
-  implicit def outcomeToTagMod(outcome: Outcome): TagMod =
+  implicit def outcomeToVdom(outcome: Outcome): VdomNode =
+    VdomArray(outcomeSymbol(outcome), " ", outcome.toString)
+
+  def outcomeSymbol(outcome: Outcome): VdomNode =
     outcome match {
-      case Outcome.Good(true) ⇒ "🔅 true"
-      case Outcome.Good(false) ⇒ "☁ ️false"
-      case Outcome.Bad(_) ⇒ s"💥 $outcome"
-      case _ ⇒ outcome.toString
+      case Outcome.Good(true)  ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny")   // "🔅"
+      case Outcome.Good(false) ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy")  // "☁ ️"
+      case Outcome.Bad(_) ⇒ "💥"
+      case _ ⇒ ""
     }
 }

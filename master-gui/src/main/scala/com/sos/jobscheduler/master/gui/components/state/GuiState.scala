@@ -1,20 +1,21 @@
 package com.sos.jobscheduler.master.gui.components.state
 
-import org.scalajs.dom
+import com.sos.jobscheduler.data.workflow.{WorkflowPath, WorkflowScript}
+import org.scalajs.dom.window
 
 /**
   * @author Joacim Zschimmer
   */
 final case class GuiState(
   ordersState: OrdersState,
-  isFreezed: Boolean,
+  pathToWorkflow: Map[WorkflowPath, WorkflowScript],
+  appState: AppState,
   isConnected: Boolean,
-  isFetchingState: Boolean,
-  uriHash: String = dom.window.document.location.hash)
+  uriHash: String = window.document.location.hash)
   //hashToPosition: Map[String, Position] = Map.empty)
 {
   def updateUriHash = copy(
-    uriHash = dom.window.document.location.hash)
+    uriHash = window.document.location.hash)
 
   //def memoizePositionForUri(uri: String) = copy(
   //  hashToPosition = hashToPosition + (hashOfUri(uri) → GuiState.Position(dom.window.screenX, dom.window.screenY)))
@@ -30,7 +31,7 @@ final case class GuiState(
 }
 
 object GuiState {
-  val Initial = GuiState(OrdersState.Empty, isFreezed = false, isConnected = false, isFetchingState = false)
+  val Initial = GuiState(OrdersState.Empty, Map.empty, AppState.RequestingEvents, isConnected = false)
 
   def hashOfUri(uri: String) =
     uri indexOf '#' match {
