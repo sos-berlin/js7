@@ -30,15 +30,16 @@ final case class WorkflowScript(statements: Seq[Statement]) {
 
   private def toFlats(nesting: FlatStatement.Nesting): Seq[FlatStatement] =
     statements.collect {
+      case o: NodeStatement ⇒
+        Vector(FlatStatement.Node(nesting, o))
       case o: SimpleStatement ⇒
-        Vector(FlatStatement.Simple(nesting, o))
+        Vector(FlatStatement.NonNode(nesting, o))
       case ForkJoin(idToScript) ⇒
-        Vector(FlatStatement.Fork(nesting)) ++ (
         for {
           (id, script) ← idToScript
           flats ← script.toFlats(nesting / id)
         } yield
-          flats)
+          flats
     }.flatten
 
   def startNode = head.node
@@ -112,7 +113,8 @@ object WorkflowScript {
 
   sealed trait FlatStatement {
     def nesting: FlatStatement.Nesting
-    //def nodeId: Option[NodeId]
+    def nodeIdOption = nodeOption map (_.id)
+    def nodeOption: Option[WorkflowGraph.Node]
   }
   object FlatStatement {
     final case class Nesting(string: String) extends IsString {
@@ -126,15 +128,12 @@ object WorkflowScript {
       val empty = Nesting("")
     }
 
-    final case class Simple(nesting: Nesting, statement: SimpleStatement) extends FlatStatement {
-      //def nodeId = statement match {
-      //  case o: NodeStatement ⇒ Some(o.node.id)
-      //  case _ ⇒ None
-      //}
+    final case class NonNode(nesting: Nesting, statement: SimpleStatement) extends FlatStatement {
+      def nodeOption = None
     }
 
-    final case class Fork(nesting: Nesting) extends FlatStatement {
-      //def nodeId = None
+    final case class Node(nesting: Nesting, statement: NodeStatement) extends FlatStatement {
+      def nodeOption = Some(statement.node)
     }
   }
 }

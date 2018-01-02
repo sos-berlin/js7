@@ -37,26 +37,23 @@ final class WorkflowScriptTest extends FreeSpec {
 
   "flatten" in {
     assert(ForkTestSetting.TestWorkflowScript.flatten == Vector(
-      FlatStatement.Simple(FlatStatement.Nesting.empty, Job(A.id, AAgentJobPath)),
-      FlatStatement.Fork(FlatStatement.Nesting.empty),
-      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Bx.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Cx.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(By.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Cy.id, BAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting.empty, Job(D.id, AAgentJobPath)),
-      FlatStatement.Fork(FlatStatement.Nesting.empty),
-      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Ex.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Fx.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Ey.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Fy.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting.empty, Job(G.id, AAgentJobPath)),
-      FlatStatement.Fork(FlatStatement.Nesting.empty),
-      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Hx.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting("🥕"), Job(Ix.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Hy.id, BAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting("🍋"), Job(Iy.id, BAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting.empty, Job(J.id, AAgentJobPath)),
-      FlatStatement.Simple(FlatStatement.Nesting.empty, End(END.id))))
+      FlatStatement.Node(FlatStatement.Nesting.empty, Job(A.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🥕"), Job(Bx.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🥕"), Job(Cx.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🍋"), Job(By.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🍋"), Job(Cy.id, BAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting.empty, Job(D.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🥕"), Job(Ex.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🥕"), Job(Fx.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🍋"), Job(Ey.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🍋"), Job(Fy.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting.empty, Job(G.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🥕"), Job(Hx.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🥕"), Job(Ix.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🍋"), Job(Hy.id, BAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting("🍋"), Job(Iy.id, BAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting.empty, Job(J.id, AAgentJobPath)),
+      FlatStatement.Node(FlatStatement.Nesting.empty, End(END.id))))
   }
 
   "JSON" in {
