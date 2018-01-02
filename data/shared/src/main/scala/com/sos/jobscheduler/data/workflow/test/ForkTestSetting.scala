@@ -46,6 +46,23 @@ object ForkTestSetting {
   private val hxScript = WorkflowScript(Job(Hx.id, AAgentJobPath) :: Job(Ix.id, AAgentJobPath) :: Nil)
   private val hyScript = WorkflowScript(Job(Hy.id, BAgentJobPath) :: Job(Iy.id, BAgentJobPath) :: Nil)
 
+  val TestWorkflowScriptNotation = """
+    "A": job /JOB on /AGENT-A;
+    fork(
+      "🥕" -> { "Bx": job /JOB on /AGENT-A; "Cx": job /JOB on /AGENT-A; },
+      "🍋" -> { "By": job /JOB on /AGENT-A; "Cy": job /JOB on /AGENT-B; });
+    "D": job /JOB on /AGENT-A;
+    fork(
+      "🥕" -> { "Ex": job /JOB on /AGENT-A; "Fx": job /JOB on /AGENT-A; },
+      "🍋" -> { "Ey": job /JOB on /AGENT-A; "Fy": job /JOB on /AGENT-A; });
+    "G": job /JOB on /AGENT-A;
+    fork(
+      "🥕" -> { "Hx": job /JOB on /AGENT-A; "Ix": job /JOB on /AGENT-A; },
+      "🍋" -> { "Hy": job /JOB on /AGENT-B; "Iy": job /JOB on /AGENT-B; });
+    "J": job /JOB on /AGENT-A;
+    "END": end;
+    """.stripMargin
+
   val TestWorkflowScript = WorkflowScript(List(
     Job(A.id, AAgentJobPath),
     ForkJoin(ListMap(

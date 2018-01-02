@@ -10,6 +10,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.workflow.JobPath
 import com.sos.jobscheduler.tests.DirectoryProvider._
 import java.nio.file.Files.createTempDirectory
@@ -50,6 +51,9 @@ object DirectoryProvider {
 
     def job(jobPath: JobPath): Path =
       live / jobPath.toXmlFile
+
+    def jsonFile(path: TypedPath): Path =
+      live resolve path.jsonFile
   }
 
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {

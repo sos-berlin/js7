@@ -15,7 +15,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.LineEnd
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent}
+import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.NodeKey
@@ -31,6 +31,7 @@ import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.language.higherKinds
 
 final class ForkTest extends FreeSpec {
 
@@ -39,24 +40,18 @@ final class ForkTest extends FreeSpec {
       withCloser { implicit closer ⇒
         import directoryProvider.directory
 
-        (directoryProvider.master.live / "WORKFLOW.workflow.json").contentString = TestWorkflowScript.asJson.toPrettyString
+        directoryProvider.master.jsonFile(TestWorkflow.path).contentString = TestWorkflowScript.asJson.toPrettyString
         for (a ← directoryProvider.agents) a.job(TestJobPath).xml = jobXml(100.ms)
 
-        val agentConfs = directoryProvider.agents map (_.conf)
-
-        runAgents(agentConfs) { _ ⇒
+        runAgents(directoryProvider.agents map (_.conf)) { _ ⇒
           RunningMaster.runForTest(directory) { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
             master.executeCommand(MasterCommand.AddOrderIfNew(TestOrder)) await 99.s
             val EventSeq.NonEmpty(_) = eventCollector.when[OrderFinished.type](
               EventRequest.singleClass(after = EventId.BeforeFirst, 99.s), _.key.string startsWith TestOrder.id.string) await 99.s
-            val EventSeq.NonEmpty(eventSeq) = eventCollector.byPredicate[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.s), _ ⇒ true) await 99.s
-            val keyedEvents = eventSeq.map(_.value).toVector
-            for (orderId ← Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
-              assert(keyedEvents.filter(_.key == orderId) == ExpectedEvents.filter(_.key == orderId))
-            }
-            assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
+            val eventSeq = eventCollector.byPredicate[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.s), _ ⇒ true) await 99.s
+            checkEventSeq(eventSeq)
           }
         }
       }
@@ -73,6 +68,19 @@ final class ForkTest extends FreeSpec {
     for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
     whenAgent
   }
+
+  private def checkEventSeq(eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]]): Unit = {
+    eventSeq match {
+      case EventSeq.NonEmpty(stampeds) ⇒
+        val keyedEvents = stampeds.map(_.value).toVector
+        for (orderId ← Array(TestOrder.id, XOrderId, YOrderId)) {  // But ordering if each order is determined
+          assert(keyedEvents.filter(_.key == orderId) == ExpectedEvents.filter(_.key == orderId))
+        }
+        assert(keyedEvents.toSet == ExpectedEvents.toSet)  // XOrderId and YOrderId run in parallel and ordering is not determined
+      case o ⇒
+        fail(s"Unexpected EventSeq received: $o")
+    }
+  }
 }
 
 object ForkTest {
@@ -80,7 +88,7 @@ object ForkTest {
     payload = Payload(Map("VARIABLE" → "VALUE")))
   private val XOrderId = OrderId(s"🔺/🥕")
   private val YOrderId = OrderId(s"🔺/🍋")
-  private val ExpectedEvents = Vector(
+  val ExpectedEvents = Vector(
     KeyedEvent(OrderAdded(NodeKey(TestWorkflow.path, A.id), Order.StartNow, Payload(Map("VARIABLE" → "VALUE"))))(TestOrder.id),
     KeyedEvent(OrderMovedToAgent(AAgentPath))(TestOrder.id),
     KeyedEvent(OrderProcessingStarted)(TestOrder.id),
