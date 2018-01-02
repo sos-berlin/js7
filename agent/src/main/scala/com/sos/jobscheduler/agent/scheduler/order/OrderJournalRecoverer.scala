@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMa
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderDetached, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderDetached, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{WorkflowEvent, WorkflowGraph, WorkflowPath}
 import com.sos.jobscheduler.shared.event.journal.JournalRecoverer
@@ -64,10 +64,33 @@ extends JournalRecoverer[Event] {
         // See also OrderActor#update
         event match {
           case event: OrderCoreEvent ⇒
+            handleForkJoinEvent(orderId, event)
             idToOrder(orderId) = idToOrder(orderId).update(event)
           case _: OrderStdWritten ⇒
             // OrderStdWritten is not handled (but forwarded to Master)
         }
+    }
+
+  private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with MasterJournalRecoverer
+    event match {
+      case OrderForked(children) ⇒
+        for (child ← children) {
+          idToOrder.insert(child.orderId → idToOrder(orderId).newChild(child))
+        }
+        idToOrder(orderId) = idToOrder(orderId).update(event)
+
+      case event: OrderJoined ⇒
+        idToOrder(orderId).state match {
+          case Order.Forked(childOrderIds) ⇒
+            for (childOrderId ← childOrderIds) {
+              idToOrder -= childOrderId
+            }
+
+          case state ⇒
+            sys.error(s"Event $event recovered, but $orderId is in state $state")
+        }
+
+      case _ ⇒
     }
 
   def namedWorkflowGraphs = workflowRegister.namedWorkflowGraphs

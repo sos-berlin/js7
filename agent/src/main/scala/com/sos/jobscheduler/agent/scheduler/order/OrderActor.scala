@@ -69,6 +69,9 @@ extends KeyedJournalingActor[OrderEvent] {
         context.become(processed)
         // Next event 'OrderMoved' is initiated by AgentOrderKeeper
 
+      case _: Order.Forked ⇒
+        context.become(forked)
+
       case Order.Finished ⇒
         sys.error(s"Unexpected order state: ${order.state}")   // A Finished order must be at Master
     }

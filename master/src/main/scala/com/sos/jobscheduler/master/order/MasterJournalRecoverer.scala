@@ -43,23 +43,8 @@ extends JournalRecoverer[Event] {
         case event: OrderAdded ⇒
           idToOrder.insert(orderId → Order.fromOrderAdded(orderId, event))
 
-        case OrderForked(children) ⇒
-          for (child ← children) {
-            idToOrder.insert(child.orderId → idToOrder(orderId).newChild(child))
-          }
-
-        case event: OrderJoined ⇒
-          idToOrder(orderId).state match {
-            case Order.Forked(childOrderIds) ⇒
-              for (childOrderId ← childOrderIds) {
-                idToOrder -= childOrderId
-              }
-
-            case state ⇒
-              sys.error(s"Recovered event $event, but $orderId is in state $state")
-          }
-
         case event: OrderCoreEvent ⇒
+          handleForkJoinEvent(orderId, event)
           idToOrder(orderId) = idToOrder(orderId).update(event)
 
         case OrderStdWritten(t, chunk) ⇒
@@ -70,6 +55,28 @@ extends JournalRecoverer[Event] {
     case Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId))) ⇒
       _agentToEventId(agentPath) = agentEventId
   }
+
+  private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
+    event match {
+      case OrderForked(children) ⇒
+        for (child ← children) {
+          idToOrder.insert(child.orderId → idToOrder(orderId).newChild(child))
+        }
+        idToOrder(orderId) = idToOrder(orderId).update(event)
+
+      case event: OrderJoined ⇒
+        idToOrder(orderId).state match {
+          case Order.Forked(childOrderIds) ⇒
+            for (childOrderId ← childOrderIds) {
+              idToOrder -= childOrderId
+            }
+
+          case state ⇒
+            sys.error(s"Event $event recovered, but $orderId is in state $state")
+        }
+
+      case _ ⇒
+    }
 
   def orders = idToOrder.values.toVector
 
