@@ -111,20 +111,20 @@ final class WorkflowGraphTest extends FreeSpec {
     val g = Transition(G.id, END.id)
 
     val graph = WorkflowGraph(A.id, List(A, B, C, D, E, F, G, END), List(a, b, cd, e, f, g),
-      originalScript = Some(WorkflowScript(WorkflowScript.Job(A.id, A.job) :: Nil)))  // Will be removed
-    assert(graph.reduceForAgent(u) == WorkflowGraph(A.id, List(A, B, C), List(a, b), originalScript = None))
-    assert(graph.reduceForAgent(v) == WorkflowGraph(A.id, List(D, E, F), List(e)   , originalScript = None))
-    assert(graph.reduceForAgent(w) == WorkflowGraph(A.id, List(G      ), List()    , originalScript = None))
+      sourceScript = Some(WorkflowScript(WorkflowScript.Job(A.id, A.job) :: Nil)))  // Will be removed
+    assert(graph.reduceForAgent(u) == WorkflowGraph(A.id, List(A, B, C), List(a, b), sourceScript = None))
+    assert(graph.reduceForAgent(v) == WorkflowGraph(A.id, List(D, E, F), List(e)   , sourceScript = None))
+    assert(graph.reduceForAgent(w) == WorkflowGraph(A.id, List(G      ), List()    , sourceScript = None))
   }
 
   "reduceForAgent ForkTestSetting" in {
     import ForkTestSetting._
     assert(TestWorkflow.graph.reduceForAgent(AAgentPath) ==
-      WorkflowGraph(A.id, Vector(A, Bx, Cx, By, D, Ex, Fx, Ey, Fy, G, Hx, Ix, J), Vector(a, d, f, hx), originalScript = None))
+      WorkflowGraph(A.id, Vector(A, Bx, Cx, By, D, Ex, Fx, Ey, Fy, G, Hx, Ix, J), Vector(a, d, f, hx), sourceScript = None))
     assert(TestWorkflow.graph.reduceForAgent(AAgentPath).allTransitions == Vector(a, d, f, hx, bx, by, ex, ey))
 
     assert(TestWorkflow.graph.reduceForAgent(BAgentPath) ==
-      WorkflowGraph(A.id, Vector(Cy, Hy, Iy), Vector(hy), originalScript = None))
+      WorkflowGraph(A.id, Vector(Cy, Hy, Iy), Vector(hy), sourceScript = None))
     assert(TestWorkflow.graph.reduceForAgent(BAgentPath).allTransitions == Vector(hy))
   }
 
@@ -155,7 +155,7 @@ final class WorkflowGraphTest extends FreeSpec {
                     { "TYPE": "JobNode", "id": "Bx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
                     { "TYPE": "JobNode", "id": "Cx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
                   ],
-                  "originalScript": {
+                  "sourceScript": {
                     "statements": [
                       { "TYPE": "Job", "nodeId": "Bx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
                       { "TYPE": "Job", "nodeId": "Cx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
@@ -180,7 +180,7 @@ final class WorkflowGraphTest extends FreeSpec {
                     { "TYPE": "JobNode", "id": "By", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
                     { "TYPE": "JobNode", "id": "Cy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-B" }}
                   ],
-                  "originalScript": {
+                  "sourceScript": {
                     "statements": [
                       { "TYPE": "Job", "nodeId": "By", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
                       { "TYPE": "Job", "nodeId": "Cy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }}
@@ -222,7 +222,7 @@ final class WorkflowGraphTest extends FreeSpec {
                     { "TYPE": "JobNode", "id": "Ex", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
                     { "TYPE": "JobNode", "id": "Fx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
                   ],
-                  "originalScript": {
+                  "sourceScript": {
                     "statements": [
                       { "TYPE": "Job", "nodeId": "Ex", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
                       { "TYPE": "Job", "nodeId": "Fx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
@@ -247,7 +247,7 @@ final class WorkflowGraphTest extends FreeSpec {
                     { "TYPE": "JobNode", "id": "Ey", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
                     { "TYPE": "JobNode", "id": "Fy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
                   ],
-                  "originalScript": {
+                  "sourceScript": {
                     "statements": [
                       { "TYPE": "Job", "nodeId": "Ey", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
                       { "TYPE": "Job", "nodeId": "Fy", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
@@ -289,7 +289,7 @@ final class WorkflowGraphTest extends FreeSpec {
                     { "TYPE": "JobNode", "id": "Hx", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }},
                     { "TYPE": "JobNode", "id": "Ix", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-A" }}
                   ],
-                  "originalScript": {
+                  "sourceScript": {
                     "statements": [
                       { "TYPE": "Job", "nodeId": "Hx", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
                       { "TYPE": "Job", "nodeId": "Ix", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }}
@@ -314,7 +314,7 @@ final class WorkflowGraphTest extends FreeSpec {
                     { "TYPE": "JobNode", "id": "Hy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-B" }},
                     { "TYPE": "JobNode", "id": "Iy", "job": { "jobPath": "/JOB", "agentPath": "/AGENT-B" }}
                   ],
-                  "originalScript": {
+                  "sourceScript": {
                     "statements": [
                       { "TYPE": "Job", "nodeId": "Hy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }},
                       { "TYPE": "Job", "nodeId": "Iy", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }}
@@ -363,7 +363,8 @@ final class WorkflowGraphTest extends FreeSpec {
           { "TYPE": "EndNode", "id": "END" }
         ],
 
-        "originalScript": {
+        "sourceScript": {
+          "source": "\"A\": job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { \"Bx\": job /JOB on /AGENT-A; \"Cx\": job /JOB on /AGENT-A; },\n  \"🍋\" { \"By\": job /JOB on /AGENT-A; \"Cy\": job /JOB on /AGENT-B; });\n\"D\": job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { \"Ex\": job /JOB on /AGENT-A; \"Fx\": job /JOB on /AGENT-A; },\n  \"🍋\" { \"Ey\": job /JOB on /AGENT-A; \"Fy\": job /JOB on /AGENT-A; });\n\"G\": job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { \"Hx\": job /JOB on /AGENT-A; \"Ix\": job /JOB on /AGENT-A; },\n  \"🍋\" { \"Hy\": job /JOB on /AGENT-B; \"Iy\": job /JOB on /AGENT-B; });\n\"J\": job /JOB on /AGENT-A;\n\"END\": end;",
           "statements": [
             { "TYPE": "Job", "nodeId": "A", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
             {

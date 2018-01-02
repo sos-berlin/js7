@@ -10,11 +10,14 @@ extends AbsolutePath {
 
   def companion: Companion[_ <: TypedPath]
 
-  def xmlFile: Path =
-    Paths.get(withoutStartingSlash + companion.xmlFilenameExtension)
-
   def jsonFile: Path =
     Paths.get(withoutStartingSlash + companion.jsonFilenameExtension)
+
+  def txtFile: Path =
+    Paths.get(withoutStartingSlash + companion.txtFilenameExtension)
+
+  def xmlFile: Path =
+    Paths.get(withoutStartingSlash + companion.xmlFilenameExtension)
 
   def asTyped[A <: TypedPath: TypedPath.Companion]: A = {
     val c = implicitly[TypedPath.Companion[A]]
@@ -33,9 +36,7 @@ extends AbsolutePath {
 
 object TypedPath {
   implicit def ordering[P <: TypedPath]: Ordering[P] =
-    new Ordering[P] {
-      def compare(a: P, b: P) = a.string compare b.string
-    }
+    (a, b) ⇒ a.string compare b.string
 
   type AnyCompanion = Companion[_ <: TypedPath]
 
@@ -47,8 +48,9 @@ object TypedPath {
     val camelName: String = name stripSuffix "Path"
     final lazy val lowerCaseCamelName = camelName.substring(0, 1).toLowerCase + camelName.substring(1)
     final lazy val cppName: String = lowerCaseCamelName map { c ⇒ if (c.isUpper) "_" + c.toLower else c } mkString ""
-    lazy val xmlFilenameExtension: String = s".$cppName.xml"
+    lazy val txtFilenameExtension: String = s".$lowerCaseCamelName.txt"
     lazy val jsonFilenameExtension: String = s".$lowerCaseCamelName.json"
+    lazy val xmlFilenameExtension: String = s".$cppName.xml"
 
     /**
      * Interprets a path as absolute.

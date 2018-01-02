@@ -25,7 +25,7 @@ private[jobscheduler] object TestSetting {
 
   val TestWorkflow = WorkflowGraph.Named(
     WorkflowPath("/WORKFLOW"),
-    WorkflowGraph(start = A.id, nodes = List(A, B, END), transitions = List(a, b), originalScript = None))
+    WorkflowGraph(start = A.id, nodes = List(A, B, END), transitions = List(a, b), sourceScript = None))
 
   val TestOrder = Order(OrderId("TEST"), TestWorkflow.start, Order.Ready, payload = Payload(Map("VARIABLE" → "VALUE")))
 }

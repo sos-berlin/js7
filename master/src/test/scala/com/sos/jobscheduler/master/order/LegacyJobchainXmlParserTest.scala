@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.order
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, Goto, Job, OnError}
+import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, Goto, Job, IfError}
 import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.transitions.SuccessErrorTransition
 import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, WorkflowGraph, WorkflowScript}
@@ -36,10 +36,10 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
 
   "WorkflowScript" in {
     assert(script == WorkflowScript(List(
-      Job(A.id, A.job), OnError(FAILURE.id),
-      Job(B.id, B.job), OnError(FAILURE.id),
+      Job(A.id, A.job), IfError(FAILURE.id),
+      Job(B.id, B.job), IfError(FAILURE.id),
       Job(C.id, C.job), Goto(D.id),
-      Job(E.id, E.job), OnError(FAILURE.id), Goto(END.id),
+      Job(E.id, E.job), IfError(FAILURE.id), Goto(END.id),
       Job(D.id, D.job), Goto(E.id),
       End(END.id),
       End(FAILURE.id))))

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.tests
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -9,7 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestWorkflowScript
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflowScript, TestWorkflowScriptNotation}
 import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath, WorkflowScript}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.client.{AkkaHttpClient, HttpMasterApi}
@@ -17,7 +16,6 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.MasterOrderKeeper
 import com.sos.jobscheduler.master.tests.WebServiceTest._
-import io.circe.syntax.EncoderOps
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -34,7 +32,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   override def beforeAll() = {
     super.beforeAll()
     //env.xmlFile(TestAgentPath).xml = <agent uri="http://0.0.0.0:0"/>
-    env.jsonFile(TestWorkflowPath).contentString = TestWorkflowScript.asJson.toPrettyString
+    env.txtFile(TestWorkflowPath).contentString = TestWorkflowScriptNotation
     val runningMaster = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     master = runningMaster
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)

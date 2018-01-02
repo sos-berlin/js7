@@ -36,6 +36,7 @@ import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, Jou
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess
 import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToGraph.workflowScriptToGraph
+import com.sos.jobscheduler.shared.workflow.script.notation.WorkflowScriptParser
 import java.nio.file.Path
 import java.time.Duration
 import scala.collection.immutable.Seq
@@ -102,12 +103,21 @@ with Stash {
   }
 
   private def readWorkflowScript(workflowPath: WorkflowPath, file: Path): WorkflowScript =
-    if (file.getFileName.toString endsWith ".xml")
+    if (file.getFileName.toString endsWith WorkflowPath.jsonFilenameExtension)
+      file.contentString.parseJson.as[WorkflowScript].force
+    else
+    if (file.getFileName.toString endsWith WorkflowPath.txtFilenameExtension)
+      WorkflowScriptParser.parse(file.contentString) match {
+        case Right(workflowScript) ⇒ workflowScript
+        case Left(message) ⇒ sys.error(s"$file: $message")
+      }
+    else
+    if (file.getFileName.toString endsWith WorkflowPath.xmlFilenameExtension)
       autoClosing(new FileSource(file)) { src ⇒
         LegacyJobchainXmlParser.parseXml(src, FolderPath.parentOf(workflowPath))
       }
     else
-      file.contentString.parseJson.as[WorkflowScript].force
+      sys.error(s"Unrecognized file type: $file")
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself

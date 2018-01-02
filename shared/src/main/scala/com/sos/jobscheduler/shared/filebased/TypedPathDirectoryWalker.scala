@@ -3,8 +3,7 @@ package com.sos.jobscheduler.shared.filebased
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.data.filebased.TypedPath
-import com.sos.jobscheduler.shared.filebased.TypedPaths.{jsonFileToTypedPath, xmlFileToTypedPath}
-import java.nio.file
+import com.sos.jobscheduler.shared.filebased.TypedPaths.{jsonFileToTypedPath, textFileToTypedPath, xmlFileToTypedPath}
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path}
@@ -30,10 +29,13 @@ object TypedPathDirectoryWalker {
     deepForEachPathAndAttributes(directory, nestingLimit = NestingLimit) { (path, attr) ⇒
       if (!attr.isDirectory) {
         try {
-          for (t ← types find { t ⇒ matchesJsonFile(t, path) }) {
+          for (t ← types find { t ⇒ path.toString endsWith t.jsonFilenameExtension }) {
             callback(path, jsonFileToTypedPath(path, stripDirectory = directory)(t))
           }
-          for (t ← types find { t ⇒ matchesXmlFile(t, path) }) {
+          for (t ← types find { t ⇒ path.toString endsWith t.txtFilenameExtension }) {
+            callback(path, textFileToTypedPath(path, stripDirectory = directory)(t))
+          }
+          for (t ← types find { t ⇒ path.toString endsWith t.xmlFilenameExtension }) {
             callback(path, xmlFileToTypedPath(path, stripDirectory = directory)(t))
           }
         } catch { case NonFatal(t) ⇒
@@ -41,12 +43,6 @@ object TypedPathDirectoryWalker {
         }
       }
     }
-
-  private[filebased] def matchesJsonFile[P <: TypedPath](companion: TypedPath.Companion[P], path: file.Path): Boolean =
-    path.toString endsWith companion.jsonFilenameExtension
-
-  private[filebased] def matchesXmlFile[P <: TypedPath](companion: TypedPath.Companion[P], path: file.Path): Boolean =
-    path.toString endsWith companion.xmlFilenameExtension
 
   //def typedFileIterator(directory: Path, types: Set[TypedPath.AnyCompanion]): AutoCloseable with Iterator[(Path, TypedPath)] =
   //  new AbstractIterator[(Path, TypedPath)] with AutoCloseable {

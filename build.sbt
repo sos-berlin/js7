@@ -353,6 +353,7 @@ lazy val shared = project.dependsOn(common, testerJVM % "compile->test")
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      fastparse ++
       scalaTest % "test" ++
       log4j % "test"
   }

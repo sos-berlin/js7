@@ -3,7 +3,6 @@ package com.sos.jobscheduler.tester
 import io.circe.parser.parse
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, Printer}
-import java.lang.Character.isWhitespace
 import org.scalatest.Assertions._
 
 /**
@@ -15,11 +14,9 @@ object CirceJsonTester {
 
   def testJson[A: Encoder: Decoder](a: A, jsonString: String): Unit = {
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullKeys = true)
-    val compressedJsonString = jsonString filter (o ⇒ !isWhitespace(o))
     val parsed = parseJson(jsonString)
     if (asJson != parsed) fail(s"${prettyPrinter.pretty(normalize(asJson))} did not equal ${prettyPrinter.pretty(normalize(parsed))}")
     assert(forceLeft(parsed.as[A]) == a)
-    assert(printer.pretty(asJson).length == compressedJsonString.length, s", expected: $compressedJsonString")
     assert(parsed == parseJson(printer.pretty(asJson)))
     assert(parseJson(printer.pretty(asJson)) == asJson)
   }

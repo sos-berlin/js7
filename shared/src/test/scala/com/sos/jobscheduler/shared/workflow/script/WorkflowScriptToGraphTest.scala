@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.shared.workflow.script
 
 import com.sos.jobscheduler.data.workflow.WorkflowGraph.JobNode
-import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, Goto, Job, OnError}
+import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, Goto, IfError, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, SuccessErrorTransition}
@@ -36,13 +36,13 @@ final class WorkflowScriptToGraphTest extends FreeSpec {
         Some(script)))
   }
 
-  "Spaghetti with OnError and Goto" in {
+  "Spaghetti with IfError and Goto" in {
     val X = JobNode(NodeId("X"), AAgentJobPath)
     val script = WorkflowScript(List(
       Job(A.id, AAgentJobPath),
-      OnError(G.id),
+      IfError(G.id),
       Job(D.id, AAgentJobPath),
-      OnError(END.id),
+      IfError(END.id),
       Goto(G.id),
       Job(X.id, AAgentJobPath),
       End(END.id),

@@ -41,7 +41,7 @@ final class WorkflowBuilder private(start: JobNode) {
   }
 
   def toGraph: WorkflowGraph =
-    WorkflowGraph(start = nodes.head.id, nodes.toVector, transitions.toVector, originalScript = None)
+    WorkflowGraph(start = nodes.head.id, nodes.toVector, transitions.toVector, sourceScript = None)
 
   def toWorkflow(path: WorkflowPath): WorkflowGraph.Named =
     WorkflowGraph.Named(path, toGraph)

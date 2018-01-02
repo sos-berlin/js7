@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.shared.workflow.script
 
-import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Goto, Job, OnError}
+import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, ForkJoin, Goto, IfError, Job}
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition, SuccessErrorTransition}
 import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowGraph, WorkflowScript}
@@ -13,7 +13,7 @@ import scala.collection.mutable
 object WorkflowScriptToGraph {
 
   def workflowScriptToGraph(script: WorkflowScript) =
-    WorkflowGraph(script.startNode.id, script.nodes, transitionsOf(script), originalScript = Some(script))
+    WorkflowGraph(script.startNode.id, script.nodes, transitionsOf(script), sourceScript = Some(script))
 
   private def transitionsOf(script: WorkflowScript): Seq[Transition] = {
     val transitions = mutable.Buffer[Transition]()
@@ -52,7 +52,7 @@ object WorkflowScriptToGraph {
             f :: j :: Nil
           }
 
-        case (OnError(to), Current.Node(node)) ⇒
+        case (IfError(to), Current.Node(node)) ⇒
           current = Current.Transitions(next ⇒
             if (next == to)
               Transition(node.id, next, ForwardTransition) :: Nil

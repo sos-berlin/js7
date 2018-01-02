@@ -25,7 +25,7 @@ final class WorkflowScriptTest extends FreeSpec {
       WorkflowScript.Goto(B.id)       → true,
       WorkflowScript.Job(C.id, B.job) → true,
       WorkflowScript.Goto(D.id)       → true,
-      WorkflowScript.OnError(D.id)    → false,  // reducible
+      WorkflowScript.IfError(D.id)    → false,  // reducible
       WorkflowScript.Goto(D.id)       → false,  // reducible
       WorkflowScript.Job(D.id, B.job) → true,
       WorkflowScript.Goto(END.id)     → false,  // reducible
@@ -58,6 +58,7 @@ final class WorkflowScriptTest extends FreeSpec {
 
   "JSON" in {
     testJson(ForkTestSetting.TestWorkflowScript, """{
+      "source": "\"A\": job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { \"Bx\": job /JOB on /AGENT-A; \"Cx\": job /JOB on /AGENT-A; },\n  \"🍋\" { \"By\": job /JOB on /AGENT-A; \"Cy\": job /JOB on /AGENT-B; });\n\"D\": job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { \"Ex\": job /JOB on /AGENT-A; \"Fx\": job /JOB on /AGENT-A; },\n  \"🍋\" { \"Ey\": job /JOB on /AGENT-A; \"Fy\": job /JOB on /AGENT-A; });\n\"G\": job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { \"Hx\": job /JOB on /AGENT-A; \"Ix\": job /JOB on /AGENT-A; },\n  \"🍋\" { \"Hy\": job /JOB on /AGENT-B; \"Iy\": job /JOB on /AGENT-B; });\n\"J\": job /JOB on /AGENT-A;\n\"END\": end;",
       "statements": [
         { "TYPE": "Job", "nodeId": "A", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
         {

@@ -12,6 +12,9 @@ object TypedPaths {
   def jsonFileToTypedPath[P <: TypedPath: TypedPath.Companion](path: Path, stripDirectory: Path): P =
     fileToTypedPath[P](_.jsonFilenameExtension, path, stripDirectory)
 
+  def textFileToTypedPath[P <: TypedPath: TypedPath.Companion](path: Path, stripDirectory: Path): P =
+    fileToTypedPath[P](_.txtFilenameExtension, path, stripDirectory)
+
   def xmlFileToTypedPath[P <: TypedPath: TypedPath.Companion](path: Path, stripDirectory: Path): P =
     fileToTypedPath[P](_.xmlFilenameExtension, path, stripDirectory)
 

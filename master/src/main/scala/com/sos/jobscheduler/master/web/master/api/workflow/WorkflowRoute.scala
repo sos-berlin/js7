@@ -51,7 +51,7 @@ trait WorkflowRoute {
   private def singleWorkflow(path: WorkflowPath): Route =
     parameter("return".?) {
       case Some("WorkflowScript") | None ⇒
-        completeAs(path, _.graph.originalScript)
+        completeAs(path, _.graph.sourceScript)
 
       case Some("WorkflowGraph") ⇒
         completeAs(path, _.graph)

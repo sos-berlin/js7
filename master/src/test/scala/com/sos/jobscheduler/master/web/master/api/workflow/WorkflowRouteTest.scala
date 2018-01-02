@@ -92,11 +92,11 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        assert(responseAs[WorkflowScript] == pathToWorkflow.values.head.graph.originalScript.get)
+        assert(responseAs[WorkflowScript] == pathToWorkflow.values.head.graph.sourceScript.get)
       }
       Get(s"$uri?return=WorkflowScript") ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        assert(responseAs[WorkflowScript] == pathToWorkflow.values.head.graph.originalScript.get)
+        assert(responseAs[WorkflowScript] == pathToWorkflow.values.head.graph.sourceScript.get)
       }
       Get(s"$uri?return=WorkflowGraph") ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)

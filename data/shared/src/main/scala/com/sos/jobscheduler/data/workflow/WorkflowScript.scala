@@ -13,7 +13,7 @@ import scala.collection.immutable.{ListMap, Seq}
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowScript(statements: Seq[Statement]) {
+final case class WorkflowScript(statements: Seq[Statement], source: Option[String] = None) {
 
   val head: Job = statements.headOption match {
     case None ⇒ throw new IllegalArgumentException("WorkflowScript must not be empty")
@@ -49,7 +49,7 @@ final case class WorkflowScript(statements: Seq[Statement]) {
     WorkflowScript(
       statements.sliding(2).flatMap {
         case Seq(Goto(to), b: NodeStatement) if to == b.node.id ⇒ Nil
-        case Seq(OnError(errorTo), Goto(to)) if errorTo == to ⇒ Nil
+        case Seq(IfError(errorTo), Goto(to)) if errorTo == to ⇒ Nil
         //case Seq(Goto(to), _) ⇒ a :: Nil
         case Seq(a, _) ⇒ a :: Nil
         case Seq(_) ⇒ Nil  // Unused code in contrast to sliding's documentation?
@@ -74,7 +74,7 @@ object WorkflowScript {
       Subtype(deriveCirceCodec[Job]),
       Subtype(deriveCirceCodec[End]),
       Subtype(ForkJoin.jsonCodec),
-      Subtype(deriveCirceCodec[OnError]),
+      Subtype(deriveCirceCodec[IfError]),
       Subtype(deriveCirceCodec[Goto]))
   }
 
@@ -103,7 +103,7 @@ object WorkflowScript {
     implicit lazy val jsonCodec: CirceCodec[ForkJoin] = deriveCirceCodec[ForkJoin]
   }
 
-  final case class OnError(to: NodeId) extends SimpleStatement {
+  final case class IfError(to: NodeId) extends SimpleStatement {
     def nodes = Nil
   }
 

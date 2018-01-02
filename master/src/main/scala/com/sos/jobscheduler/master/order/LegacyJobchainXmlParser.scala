@@ -24,7 +24,7 @@ object LegacyJobchainXmlParser {
               attributeMap.get("job") match {
                 case Some(jobPathString) ⇒
                   WorkflowScript.Job(nodeId, AgentJobPath(folderPath.resolve[AgentPath](attributeMap("agent")), folderPath.resolve[JobPath](jobPathString))) ::
-                    attributeMap.optionAs[NodeId]("error_state").map(WorkflowScript.OnError.apply).toList :::
+                    attributeMap.optionAs[NodeId]("error_state").map(WorkflowScript.IfError.apply).toList :::
                     attributeMap.optionAs[NodeId]("next_state").map(WorkflowScript.Goto.apply).toList
                 case None ⇒
                   WorkflowScript.End(nodeId) :: Nil

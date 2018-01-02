@@ -23,7 +23,7 @@ final case class WorkflowGraph(
   nodes: Seq[Node],  // TODO Remove forked nodes like transitions; add function allNodes ?
   /** Excluding nested fork transitions. */
   transitions: Seq[Transition],
-  originalScript: Option[WorkflowScript])
+  sourceScript: Option[WorkflowScript])
 {
   val idToNode = nodes toKeyedMap { _.id } withNoSuchKey (nodeId ⇒ new NoSuchElementException(s"Unknown NodeId '$nodeId'"))
   /** Including nested fork transitions. */
@@ -58,7 +58,7 @@ final case class WorkflowGraph(
     copy(
       nodes = agentNodes,
       transitions = nonForkedTransitions ++ forkedTransitions,
-      originalScript = None)
+      sourceScript = None)
   }
 
   def end: Option[NodeId] = linearPath map (_.last)
@@ -114,7 +114,7 @@ object WorkflowGraph {
   final case class Named(path: WorkflowPath, graph: WorkflowGraph) {
     def start = NodeKey(path, graph.start)
     def toWorkflowScriptNamed: Option[WorkflowScript.Named] =
-      for (script ← graph.originalScript) yield WorkflowScript.Named(path, script)
+      for (script ← graph.sourceScript) yield WorkflowScript.Named(path, script)
   }
   object Named {
     implicit val jsonCodec = deriveCirceCodec[Named]

@@ -35,11 +35,14 @@ extends AutoCloseable {
     catch { case t: IOException ⇒ logger.debug(s"Delete $temporaryDirectory: $t", t)}
   }
 
-  def xmlFile(path: TypedPath): Path =
-    masterDir / "config/live" resolve path.xmlFile
-
   def jsonFile(path: TypedPath): Path =
     masterDir / "config/live" resolve path.jsonFile
+
+  def txtFile(path: TypedPath): Path =
+    masterDir / "config/live" resolve path.txtFile
+
+  def xmlFile(path: TypedPath): Path =
+    masterDir / "config/live" resolve path.xmlFile
 
   def masterDir: Path =
     temporaryDirectory / "master"

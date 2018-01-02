@@ -48,6 +48,7 @@ object Dependencies {
                             "io.circe" %% "circe-parser" % circeVersion ::
                             "io.circe" %% "circe-generic" % circeVersion :: Nil
 
+  val fastparse           = "com.lihaoyi" %% "fastparse" % "1.0.0"
   val scalaTags           = "com.lihaoyi" %% "scalatags" % "0.6.7"
 
   val mockito             = "org.mockito" % "mockito-core" % "1.10.19"
