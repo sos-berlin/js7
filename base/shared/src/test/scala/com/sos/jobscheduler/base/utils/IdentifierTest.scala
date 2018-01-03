@@ -2,6 +2,7 @@ package com.sos.jobscheduler.base.utils
 
 import com.sos.jobscheduler.base.utils.Identifier._
 import org.scalatest.FreeSpec
+import scala.collection.JavaConverters.asScalaIteratorConverter
 
 /**
   * @author Joacim Zschimmer
@@ -51,5 +52,20 @@ final class IdentifierTest extends FreeSpec {
     assert(!isIdentifier("a\u007f"))
     assert(!isIdentifier("a\u0080"))
     assert(!isIdentifier("a\u009f"))
+  }
+
+  "Surrogates are allowed" in {
+    val allowed = "🍏🍎🍐🍊🍋🍌🍉🍇🍓🍈🍒🍑🍍🥥🥝🍅🍆🥑🥦🥒🌶🌽🥕🥔🍠🥐🍞🥖🥨🧀🥚🍳🥞🥓🥩🍗🍖🌭🍔🍟" +
+                  "🍕🥪🥙🌮🌯🥗🥘🥘🥫🍝🍜🍲🍛🍱🥟🍤🍙🍚🍘🍥🍢🍡🍧🍨🍦🥧🍰🎂🍮🍭🍬🍫🍿🍩🍪🌰🥜🍯🥛🍼" +
+                  "🐣🐥🦆🦅🦉🦇🐺🐗🐴🦄🐝🐛🦋🐌🐚🐞🐜🦗🕷🕸🦂🐢🐍🦎🦖🦕🐙🦑🦐🦀🐡🐠🐟🐬🐳🐋🐊🐆🦓🦍" +
+                  "🐘🐪🐫🦒🐃🐄🐎🐏🐑🦌🐕🐩🐓🕊🐁🐿🐉🎄🌲" +
+                  "🇸🇪"
+    for ((cp, i) ← allowed.codePoints.iterator.asScala.zipWithIndex) {
+      val identifier = new String(Character.toChars(cp))
+      assert(isIdentifier(identifier), f"#$i U+${cp.toInt}%04x $identifier")
+    }
+    assert(isIdentifier(allowed))
+    assert(!isIdentifier("☺︎"))
+    assert(!isIdentifier("→"))
   }
 }

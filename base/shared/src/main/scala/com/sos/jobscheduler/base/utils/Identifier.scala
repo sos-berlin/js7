@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.base.utils
 
-import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
+import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart, isSurrogate, isHighSurrogate}
 
 /**
   * @author Joacim Zschimmer
@@ -22,8 +22,8 @@ object Identifier {
       (1 until string.length forall { i ⇒ isIdentifierPart(string charAt i) })
 
   def isIdentifierStart(c: Char): Boolean =
-    isUnicodeIdentifierStart(c)
+    isUnicodeIdentifierStart(c) || isHighSurrogate(c)
 
   def isIdentifierPart(c: Char): Boolean =
-    isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) || c == '-'
+    isUnicodeIdentifierPart(c) && !isIdentifierIgnorable(c) || c == '-' || isSurrogate(c)
 }
