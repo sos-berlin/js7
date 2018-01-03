@@ -47,20 +47,20 @@ object ForkTestSetting {
   private val hyScript = WorkflowScript(Job(Hy.id, BAgentJobPath) :: Job(Iy.id, BAgentJobPath) :: Nil)
 
   val TestWorkflowScriptNotation = """
-    |"A": job /JOB on /AGENT-A;
+    |A: job /JOB at /AGENT-A;
     |fork(
-    |  "🥕" { "Bx": job /JOB on /AGENT-A; "Cx": job /JOB on /AGENT-A; },
-    |  "🍋" { "By": job /JOB on /AGENT-A; "Cy": job /JOB on /AGENT-B; });
-    |"D": job /JOB on /AGENT-A;
+    |  "🥕" { Bx: job /JOB at /AGENT-A; Cx: job /JOB at /AGENT-A; },
+    |  "🍋" { By: job /JOB at /AGENT-A; Cy: job /JOB at /AGENT-B; });
+    |D: job /JOB at /AGENT-A;
     |fork(
-    |  "🥕" { "Ex": job /JOB on /AGENT-A; "Fx": job /JOB on /AGENT-A; },
-    |  "🍋" { "Ey": job /JOB on /AGENT-A; "Fy": job /JOB on /AGENT-A; });
-    |"G": job /JOB on /AGENT-A;
+    |  "🥕" { Ex: job /JOB at /AGENT-A; Fx: job /JOB at /AGENT-A; },
+    |  "🍋" { Ey: job /JOB at /AGENT-A; Fy: job /JOB at /AGENT-A; });
+    |G: job /JOB at /AGENT-A;
     |fork(
-    |  "🥕" { "Hx": job /JOB on /AGENT-A; "Ix": job /JOB on /AGENT-A; },
-    |  "🍋" { "Hy": job /JOB on /AGENT-B; "Iy": job /JOB on /AGENT-B; });
-    |"J": job /JOB on /AGENT-A;
-    |"END": end;
+    |  "🥕" { Hx: job /JOB at /AGENT-A; Ix: job /JOB at /AGENT-A; },
+    |  "🍋" { Hy: job /JOB at /AGENT-B; Iy: job /JOB at /AGENT-B; });
+    |J: job /JOB at /AGENT-A;
+    |END: end;
     """.stripMargin.trim
 
   val TestWorkflowScript = WorkflowScript(

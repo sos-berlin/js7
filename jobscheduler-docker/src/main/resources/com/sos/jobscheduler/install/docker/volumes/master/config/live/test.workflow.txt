@@ -1,32 +1,32 @@
-"A": job /test on /test-agent-1;
+A: job /test at /test-agent-1;
 fork(
   "🥕" {
-    "Bx": job /test on /test-agent-1;
-    "Cx": job /test on /test-agent-1;
+    Bx: job /test at /test-agent-1;
+    Cx: job /test at /test-agent-1;
   },
   "🍋" {
-    "By": job /test on /test-agent-1;
-    "Cy": job /test on /test-agent-2;
+    By: job /test at /test-agent-1;
+    Cy: job /test at /test-agent-2;
   });
-"D": job /test on /test-agent-1;
+D: job /test at /test-agent-1;
 fork(
   "🥕" {
-    "Ex": job /test on /test-agent-1;
-    "Fx": job /test on /test-agent-1;
+    Ex: job /test at /test-agent-1;
+    Fx: job /test at /test-agent-1;
   },
   "🍋" {
-    "Ey": job /test on /test-agent-1;
-    "Fy": job /test on /test-agent-1;
+    Ey: job /test at /test-agent-1;
+    Fy: job /test at /test-agent-1;
   });
-"G": job /test on /test-agent-1;
+G: job /test at /test-agent-1;
 fork(
   "🥕" {
-    "Hx": job /test on /test-agent-1;
-    "Ix": job /test on /test-agent-1;
+    Hx: job /test at /test-agent-1;
+    Ix: job /test at /test-agent-1;
   },
   "🍋" {
-    "Hy": job /test on /test-agent-2;
-    "Iy": job /test on /test-agent-2;
+    Hy: job /test at /test-agent-2;
+    Iy: job /test at /test-agent-2;
   });
-"J": job /test on /test-agent-1;
-"END": end;
+J: job /test at /test-agent-1;
+END: end;

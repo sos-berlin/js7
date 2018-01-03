@@ -37,13 +37,13 @@ object WorkflowScriptParser {
     private val statementTerminator = P(w ~ ((";" ~ w) | &("}") | End))
     //Scala-like: private val statementTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
 
-    private val name = P((CharPred(isIdentifierStart) ~ CharsWhile(isIdentifierPart, min = 0)).!)
+    private val identifier = P((CharPred(isIdentifierStart) ~ CharsWhile(isIdentifierPart, min = 0)).!)
     private val quotedString = P("\"" ~ CharsWhile(c ⇒ c != '"' && c != '\\').! ~ "\"")
-    private val nodeId = quotedString map NodeId.apply
+    private val nodeId = identifier map NodeId.apply
     private val nodeIdDefinition = P(nodeId ~ h ~ ":" ~ w)
-    private val javaClassName = P((name ~ ("." ~ name).rep).!)
+    private val javaClassName = P((identifier ~ ("." ~ identifier).rep).!)
 
-    private val pathString = P(("/" ~ name ~ ("/" ~ name).rep).!)
+    private val pathString = P(("/" ~ identifier ~ ("/" ~ identifier).rep).!)
     private def path[P <: TypedPath: TypedPath.Companion] =
       P(pathString map implicitly[TypedPath.Companion[P]].apply)
 
@@ -51,7 +51,7 @@ object WorkflowScriptParser {
       P("{" ~ w ~ script ~ w ~ "}")
 
     private val agentJobPath =
-      P(("job" ~ w ~ path[JobPath] ~ w ~ "on" ~ w ~ path[AgentPath])
+      P(("job" ~ w ~ path[JobPath] ~ w ~ "at" ~ w ~ path[AgentPath])
         .map { case (j, a) ⇒ AgentJobPath(a, j) })
 
     private val jobStatement: Parser[WorkflowScript.Job] =

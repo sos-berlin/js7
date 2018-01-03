@@ -58,7 +58,7 @@ final class WorkflowScriptTest extends FreeSpec {
 
   "JSON" in {
     testJson(ForkTestSetting.TestWorkflowScript, """{
-      "source": "\"A\": job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { \"Bx\": job /JOB on /AGENT-A; \"Cx\": job /JOB on /AGENT-A; },\n  \"🍋\" { \"By\": job /JOB on /AGENT-A; \"Cy\": job /JOB on /AGENT-B; });\n\"D\": job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { \"Ex\": job /JOB on /AGENT-A; \"Fx\": job /JOB on /AGENT-A; },\n  \"🍋\" { \"Ey\": job /JOB on /AGENT-A; \"Fy\": job /JOB on /AGENT-A; });\n\"G\": job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { \"Hx\": job /JOB on /AGENT-A; \"Ix\": job /JOB on /AGENT-A; },\n  \"🍋\" { \"Hy\": job /JOB on /AGENT-B; \"Iy\": job /JOB on /AGENT-B; });\n\"J\": job /JOB on /AGENT-A;\n\"END\": end;",
+      "source": "A: job /JOB at /AGENT-A;\nfork(\n  \"🥕\" { Bx: job /JOB at /AGENT-A; Cx: job /JOB at /AGENT-A; },\n  \"🍋\" { By: job /JOB at /AGENT-A; Cy: job /JOB at /AGENT-B; });\nD: job /JOB at /AGENT-A;\nfork(\n  \"🥕\" { Ex: job /JOB at /AGENT-A; Fx: job /JOB at /AGENT-A; },\n  \"🍋\" { Ey: job /JOB at /AGENT-A; Fy: job /JOB at /AGENT-A; });\nG: job /JOB at /AGENT-A;\nfork(\n  \"🥕\" { Hx: job /JOB at /AGENT-A; Ix: job /JOB at /AGENT-A; },\n  \"🍋\" { Hy: job /JOB at /AGENT-B; Iy: job /JOB at /AGENT-B; });\nJ: job /JOB at /AGENT-A;\nEND: end;",
       "statements": [
         { "TYPE": "Job", "nodeId": "A", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
         {

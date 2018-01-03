@@ -88,10 +88,12 @@ object WorkflowScript {
 
   final case class Job(nodeId: NodeId, job: AgentJobPath) extends NodeStatement {
     val node = WorkflowGraph.JobNode(nodeId, job)
+    override def toString = s"$nodeId: job ${job.jobPath.string} at ${job.agentPath.string}"
   }
 
   final case class End(nodeId: NodeId) extends NodeStatement {
     val node = WorkflowGraph.EndNode(nodeId)
+    override def toString = s"$nodeId: end"
   }
 
   final case class ForkJoin(idToScript: ListMap[WorkflowGraph.Id, WorkflowScript])

@@ -21,23 +21,23 @@ final class WorkflowScriptParserTest extends FreeSpec {
     WorkflowScript.Job(NodeId("A"), AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))))
 
   "Single statement with implicit NodeId" in {
-    val source = """job /A on /AGENT;"""
+    val source = """job /A at /AGENT;"""
     assert(parse(source) == singleJobScript.copy(source = Some(source)))
   }
 
   "Single statement with explicit NodeId" in {
-    val source = """"A": job /A on /AGENT;"""
+    val source = """A: job /A at /AGENT;"""
     assert(parse(source) == singleJobScript.copy(source = Some(source)))
   }
 
   "onError and goto" in {
     val source = """
-      job /A on /AGENT;
-      ifError "ERROR";
-      job /B on /AGENT;
-      goto "END";
-      "ERROR": job /Error on /AGENT;
-      "END": end;"""
+      job /A at /AGENT;
+      ifError ERROR;
+      job /B at /AGENT;
+      goto END;
+      ERROR: job /Error at /AGENT;
+      END: end;"""
     assert(parse(source) == WorkflowScript(
       List(
         WorkflowScript.Job(NodeId("A"), AgentJobPath(AgentPath("/AGENT"), JobPath("/A"))),
@@ -77,7 +77,7 @@ final class WorkflowScriptParserTest extends FreeSpec {
     val source = """/*comment
         */
         //comment
-        /*comment/**/job /***//A/**/on/**//AGENT/**/;/**///comment
+        /*comment/**/job /***//A/**/at/**//AGENT/**/;/**///comment
       """
     assert(parse(source) == singleJobScript.copy(source = Some(source)))
   }
