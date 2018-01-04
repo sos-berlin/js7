@@ -57,7 +57,7 @@ trait WorkflowRoute {
         completeAs(path, _.graph)
 
       case o ⇒
-        complete((BadRequest → s"Unrecognized parameter return=$o"))
+        complete((BadRequest → s"Unrecognized parameter return=$o\n"))
     }
 
   private def completeAs[A: circe.Encoder](path: WorkflowPath, as: WorkflowGraph.Named ⇒ A) =
@@ -66,7 +66,7 @@ trait WorkflowRoute {
         case Some(o) ⇒
           as(o): ToResponseMarshallable
         case None ⇒
-          BadRequest → s"Does not exist: $path\n": ToResponseMarshallable
+          BadRequest → s"$path does not exist\n": ToResponseMarshallable
       }
     }
 }
