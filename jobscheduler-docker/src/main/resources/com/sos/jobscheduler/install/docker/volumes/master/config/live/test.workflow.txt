@@ -1,4 +1,9 @@
+// Workflow containg three forks
+
 A: job /test at /test-agent-1;
+
+// Fork with part of a branch running at another Agent
+// Each branch starts with a string which is appended to the child Orders.
 fork(
   "🥕" {
     Bx: job /test at /test-agent-1;
@@ -9,6 +14,8 @@ fork(
     Cy: job /test at /test-agent-2;
   });
 D: job /test at /test-agent-1;
+
+// Fork with all jobs at same (current) Agent
 fork(
   "🥕" {
     Ex: job /test at /test-agent-1;
@@ -19,6 +26,8 @@ fork(
     Fy: job /test at /test-agent-1;
   });
 G: job /test at /test-agent-1;
+
+// Fork with one branch at current Agent, the other branch at the other Agent.
 fork(
   "🥕" {
     Hx: job /test at /test-agent-1;
@@ -29,4 +38,5 @@ fork(
     Iy: job /test at /test-agent-2;
   });
 J: job /test at /test-agent-1;
+
 END: end;
