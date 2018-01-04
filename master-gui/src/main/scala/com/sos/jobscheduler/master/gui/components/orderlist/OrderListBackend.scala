@@ -59,15 +59,29 @@ extends OnUnmount {
     }
   }
 
-  private def renderWorkflowContent(workflow: WorkflowScript.Named, content: FetchedContent) =
+  private def renderWorkflowContent(workflow: WorkflowScript.Named, content: FetchedContent) = {
+    val statementWithPosition = workflow.script.flatten.collect { case o: FlatStatement.Node ⇒ o } .zipWithIndex.map { case (o, i) ⇒ o → nodeTop(i) }
     <.div(^.cls := "Workflow-content")(
-      workflow.script.flatten.iterator.collect { case o: FlatStatement.Node ⇒ o }.toVdomArray { flat ⇒
-        val nodeKey = NodeKey(workflow.path, flat.statement.node.id)
-        val orderIds = content.nodeKeyToOrderIdSeq(nodeKey)
-        val n = min(orderIds.length, OrderPerNodeLimit)
-        val orderEntries = Array.tabulate[OrderEntry](n)(i ⇒ content.idToEntry(orderIds(i)))
-        NodeComponent.withKey(nodeKey.toString)(NodeProps(flat, orderEntries, notShown = orderIds.length - n))
+      statementWithPosition.toVdomArray { case (flat, position) ⇒
+        <.div(^.key := flat.statement.node.id.string, ^.position := "absolute", ^.top := position)(
+          <.div(^.cls := "orders-Node",
+            NodeHeadComponent(flat.statement)))
+      }, {
+        val orderWithPosition = for {
+          (flat, nodePosition) ← statementWithPosition
+          (orderEntry, i) ← {
+            val orderIds = content.nodeKeyToOrderIdSeq(NodeKey(workflow.path, flat.statement.node.id))
+            val n = min(orderIds.length, OrderPerNodeLimit)
+            Array.tabulate[OrderEntry](n)(i ⇒ content.idToEntry(orderIds(i))).zipWithIndex
+          }
+        } yield (orderEntry, i, nodePosition)
+        orderWithPosition.sortBy(_._1.id)  // Sort to allow React to identify the previous orders
+          .toVdomArray { case (orderEntry, orderIndex, nodePosition) ⇒
+            <.div(^.key := orderEntry.id.string, ^.cls := "orders-Order-moving", ^.top := nodePosition, ^.left := orderLeft(orderIndex),
+              LittleOrderComponent(orderEntry))
+          }
       })
+  }
 
   private val LittleOrderComponent = ScalaComponent.builder[OrdersState.OrderEntry]("Little-Order")
     .render_P {
@@ -144,7 +158,7 @@ extends OnUnmount {
         NodeHeadComponent.withKey(stmt.node.id.string)(stmt),
         TagMod(
           props.orderEntries.toVdomArray(entry ⇒
-            LittleOrderComponent.withKey(entry.id.string)(entry)),
+            LittleOrderComponent(entry)),
           <.div(^.cls := "orders-Order-more",
             <.i(s"(${props.notShown} more orders not shown)")
           ) when props.notShown > 0))
@@ -173,4 +187,6 @@ extends OnUnmount {
 
 object OrderListBackend {
   private val OrderPerNodeLimit = 20
+  private def nodeTop(i: Int) = (120 + 80*i).px
+  private def orderLeft(i: Int) = (60 + 38*i).ex
 }

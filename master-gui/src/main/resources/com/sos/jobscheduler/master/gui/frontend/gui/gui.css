@@ -104,6 +104,7 @@ header, main, footer { padding-left: 150px; }
 
 .Workflow-content { white-space: nowrap; vertical-align: top; margin-top: 1rem; }
 .orders-sheet { padding-left: 0; }
+.orders-Order-moving { position: absolute; transition: top 1s ease-in-out, left 1s ease-in-out; }
 .orders-Node {}
 .orders-Node-head { display: inline-grid; margin: 0 5px 10px 0; width: 36ex; height: 66px; vertical-align: top; padding: 7px; border: 1px #c0c0c0 solid; }
 .orders-NodeId {}
