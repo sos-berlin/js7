@@ -60,6 +60,8 @@ object Collections {
     implicit class RichTraversable[A](val delegate: Traversable[A]) extends AnyVal {
       def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap
 
+      def toKeyedMap[K](toKey: A ⇒ K, ifNot: Iterable[K] ⇒ Nothing): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap(ifNot)
+
       def uniqueToSet: Set[A] =
         delegate.requireUniqueness.toSet
 
@@ -67,10 +69,7 @@ object Collections {
         requireUniqueness(identity[A])
 
       def requireUniqueness[K](key: A ⇒ K): Traversable[A] =
-        ifNotUniqueThrow[K](key, keys ⇒ new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
-
-      def ifNotUniqueThrow[K](key: A ⇒ K, toException: Iterable[K] ⇒ Exception): Traversable[A] =
-        ifNotUnique[K, A](key, keys ⇒ throw toException(keys))
+        ifNotUnique[K, A](key, keys ⇒ throw new DuplicateKeyException(s"Unexpected duplicates: ${keys mkString ", "}"))
 
       def ifNotUnique[K, B >: A](key: A ⇒ K, then_ : Iterable[K] ⇒ Traversable[B]): Traversable[B] =
         duplicateKeys(key) match {
@@ -108,13 +107,13 @@ object Collections {
     }
 
     implicit class RichPairTraversable[A, B](val delegate: Traversable[(A, B)]) extends AnyVal {
-      def uniqueToMap = {
+      def uniqueToMap: Map[A, B] = {
         delegate.requireUniqueness { _._1 }
         delegate.toMap
       }
 
-      def uniqueToMap(ifNot: Iterable[A] ⇒ Exception) = {
-        delegate.ifNotUniqueThrow(_._1, ifNot)
+      def uniqueToMap(ifNot: Iterable[A] ⇒ Nothing): Map[A, B] = {
+        delegate.ifNotUnique(_._1, ifNot)
         delegate.toMap
       }
 
@@ -146,8 +145,8 @@ object Collections {
   }
 
   implicit class RichMap[K, V](val underlying: Map[K, V]) extends AnyVal {
-    def withNoSuchKey(keyToThrowable: K ⇒ Throwable): Map[K, V] =
-      underlying withDefault (k ⇒ throw keyToThrowable(k))
+    def withNoSuchKey(noSuchKey: K ⇒ Nothing): Map[K, V] =
+      underlying withDefault (k ⇒ noSuchKey(k))
   }
 
   // To satisfy IntelliJ IDEA 2016.2.5

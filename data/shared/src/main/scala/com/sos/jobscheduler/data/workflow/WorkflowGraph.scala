@@ -24,7 +24,7 @@ final case class WorkflowGraph(
   transitions: Seq[Transition],
   sourceScript: Option[WorkflowScript])
 {
-  val idToNode = nodes toKeyedMap { _.id } withNoSuchKey (nodeId ⇒ new NoSuchElementException(s"Unknown NodeId '$nodeId'"))
+  val idToNode = nodes toKeyedMap { _.id } withNoSuchKey (nodeId ⇒ throw new NoSuchElementException(s"Unknown NodeId '$nodeId'"))
   /** Including nested fork transitions. */
   val allTransitions: Seq[Transition] = transitions ++ transitions.flatMap(_.idToGraph.values flatMap (_.allTransitions))
   lazy val linearPath: Option[Seq[NodeId]] = transitions.linearPath(start)
@@ -32,11 +32,11 @@ final case class WorkflowGraph(
   /** Linear path of nodes through the WorkflowGraph without forks or branches.
     */
   val forkNodeToJoiningTransition = allTransitions.map(o ⇒ o.forkNodeId → o).collect { case (Some(forkNodeId), t) ⇒ forkNodeId → t }
-    .toMap withNoSuchKey (k ⇒ new NoSuchElementException(s"No joining transition for forking node '$k'"))
+    .toMap withNoSuchKey (k ⇒ throw new NoSuchElementException(s"No joining transition for forking node '$k'"))
 
   val nodeToOutputTransition = (for (t ← allTransitions; nodeId ← t.fromProcessedNodeIds) yield nodeId → t)
-    .uniqueToMap(duplicates ⇒ new DuplicateKeyException(s"Duplicate transitions following the nodes: ${duplicates.mkString(", ")}"))
-    .withNoSuchKey(k ⇒ new NoSuchElementException(s"No following transition for WorkflowGraph.Node '$k'"))
+    .uniqueToMap(duplicates ⇒ throw new DuplicateKeyException(s"Duplicate transitions following the nodes: ${duplicates.mkString(", ")}"))
+    .withNoSuchKey(k ⇒ throw new NoSuchElementException(s"No following transition for WorkflowGraph.Node '$k'"))
 
   require(idToNode.size == nodes.size, s"WorkflowGraph contains Nodes with duplicate NodeIds")
   //Not for Goto: (for (t ← allTransitions; to ← t.toNodeIds) yield to → t)
