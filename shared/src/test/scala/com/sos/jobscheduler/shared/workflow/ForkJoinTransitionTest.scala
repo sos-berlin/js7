@@ -22,8 +22,8 @@ final class ForkJoinTransitionTest extends FreeSpec {
     forkNodeId = A.id,
     joinNodeId = C.id,
     ListMap(
-      WorkflowGraph.Id("⏰") → WorkflowGraph(start = Bx.id, nodes = List(Bx), transitions = Nil, sourceScript = None),
-      WorkflowGraph.Id("⚒") → WorkflowGraph(start = By.id, nodes = List(By), transitions = Nil, sourceScript = None)),
+      OrderId.Child("⏰") → WorkflowGraph(start = Bx.id, nodes = List(Bx), transitions = Nil, sourceScript = None),
+      OrderId.Child("⚒") → WorkflowGraph(start = By.id, nodes = List(By), transitions = Nil, sourceScript = None)),
     ForkTransition,
     JoinTransition)
 

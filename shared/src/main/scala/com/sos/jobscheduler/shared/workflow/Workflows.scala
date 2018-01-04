@@ -2,7 +2,7 @@ package com.sos.jobscheduler.shared.workflow
 
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowGraph.JobNode
 import com.sos.jobscheduler.data.workflow.transition.Transition
 import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowGraph}

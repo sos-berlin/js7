@@ -39,10 +39,10 @@ object Transitions {
             require(children.nonEmpty)
             val orderId = inputOrders.head.id
             KeyedEvent(OrderEvent.OrderForked(
-              children.map { case Fork.Child(graphId, payload) ⇒
-                val graph = idToGraph.getOrElse(graphId,
-                  throw new NoSuchElementException(s"Transition $transition returns unknown graph '$graphId'"))
-                OrderForked.Child(orderId.child(graphId.string), graph.start, payload)
+              children.map { case Fork.Child(childId, payload) ⇒
+                val graph = idToGraph.getOrElse(childId,
+                  throw new NoSuchElementException(s"Transition $transition returns unknown graph '$childId'"))
+                OrderForked.Child(orderId / childId, graph.start, payload)
               })
             )(orderId)
 

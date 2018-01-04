@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
+import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowGraph.{JobNode, Node}
 import com.sos.jobscheduler.data.workflow.transition.{ForwardTransition, Transition}
 import com.sos.jobscheduler.data.workflow.transitions.{ForkTransition, JoinTransition}
@@ -16,7 +17,7 @@ final class WorkflowBuilder private(start: JobNode) {
 
   nodes += start
 
-  def fork(join: Node, idToGraph: ListMap[WorkflowGraph.Id, WorkflowGraph]): this.type = {
+  def fork(join: Node, idToGraph: ListMap[OrderId.Child, WorkflowGraph]): this.type = {
     val (f, j) =
       Transition.forkJoin(
         forkNodeId = nodes.last.id,

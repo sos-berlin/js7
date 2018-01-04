@@ -4,7 +4,8 @@ import com.sos.jobscheduler.base.utils.Identifier.{isIdentifierPart, isIdentifie
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, WorkflowGraph, WorkflowScript}
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, WorkflowScript}
 import fastparse.all._
 import scala.collection.immutable.ListMap
 import scala.reflect.ClassTag
@@ -69,10 +70,10 @@ object WorkflowScriptParser {
     private val nodeStatement: Parser[WorkflowScript.NodeStatement] =
       P(jobStatement | endStatement)
 
-    private val orderSuffix: Parser[WorkflowGraph.Id] =
-      P(quotedString map WorkflowGraph.Id.apply)
+    private val orderSuffix: Parser[OrderId.Child] =
+      P(quotedString map OrderId.Child.apply)
 
-    private val forkBranch: Parser[(WorkflowGraph.Id, WorkflowScript)] =
+    private val forkBranch: Parser[(OrderId.Child, WorkflowScript)] =
       P(orderSuffix ~ w ~ curlyScript)
 
     private val forkStatement: Parser[WorkflowScript.ForkJoin] =

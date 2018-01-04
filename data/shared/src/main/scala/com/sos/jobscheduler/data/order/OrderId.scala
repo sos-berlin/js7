@@ -9,10 +9,15 @@ final case class OrderId(string: String) extends IsString {
 
   def pretty = s"Order $string"
 
-  def child(childString: String): OrderId =
-    OrderId(string + OrderId.ChildSeparator + childString)
+  def /(child: OrderId.Child): OrderId =
+    OrderId(string + OrderId.ChildSeparator + child.string)
 }
 
 object OrderId extends IsString.Companion[OrderId] {
   val ChildSeparator = "/"  // TODO Sicherstellen, dass Schrägstrich in einer OrderId nur hier verwendet wird, damit sie eindeutig ist.
+
+  final case class Child(string: String) extends IsString {
+    if (string.isEmpty) throw new IllegalArgumentException("OrderId.Child must not be empty")
+  }
+  object Child extends IsString.Companion[Child]
 }

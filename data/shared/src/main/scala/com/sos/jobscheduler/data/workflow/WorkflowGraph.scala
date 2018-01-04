@@ -3,7 +3,6 @@ package com.sos.jobscheduler.data.workflow
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.base.utils.Collections.RichMap
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
@@ -77,11 +76,6 @@ final case class WorkflowGraph(
 object WorkflowGraph {
   def apply(nodes: Seq[Node], transitions: Seq[Transition], originalScript: Option[WorkflowScript]) =
     new WorkflowGraph(nodes.head.id, nodes, transitions, originalScript)
-
-  final case class Id(string: String) extends IsString {
-    if (string.isEmpty) throw new IllegalArgumentException("WorkflowGraph.Id must not be empty")
-  }
-  object Id extends IsString.Companion[Id]
 
   implicit val JsonCodec: CirceCodec[WorkflowGraph] = {
     implicit val TransitionRegisterCodec = TransitionRegister.JsonCodec

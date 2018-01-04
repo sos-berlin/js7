@@ -96,12 +96,12 @@ object WorkflowScript {
     override def toString = s"$nodeId: end"
   }
 
-  final case class ForkJoin(idToScript: ListMap[WorkflowGraph.Id, WorkflowScript])
+  final case class ForkJoin(idToScript: ListMap[OrderId.Child, WorkflowScript])
   extends Statement {
     def nodes = idToScript.values.flatMap(_.nodes).toVector
   }
   object ForkJoin {
-    implicit val myListMapCodec = listMapCodec[WorkflowGraph.Id, WorkflowScript](keyName = "id", valueName = "script")
+    implicit val myListMapCodec = listMapCodec[OrderId.Child, WorkflowScript](keyName = "id", valueName = "script")
     implicit lazy val jsonCodec: CirceCodec[ForkJoin] = deriveCirceCodec[ForkJoin]
   }
 
@@ -120,7 +120,7 @@ object WorkflowScript {
   }
   object FlatStatement {
     final case class Nesting(string: String) extends IsString {
-      def /(id: WorkflowGraph.Id): Nesting =
+      def /(id: OrderId.Child): Nesting =
         string match {
           case "" ⇒ Nesting(id.string)
           case _ ⇒ Nesting(string + OrderId.ChildSeparator + id.string)

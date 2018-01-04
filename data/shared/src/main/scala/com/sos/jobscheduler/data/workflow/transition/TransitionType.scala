@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.data.workflow.transition
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.data.order.{Order, Payload}
-import com.sos.jobscheduler.data.workflow.WorkflowGraph
+import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.transition.TransitionType._
 import scala.collection.immutable.{IndexedSeq, Seq}
 
@@ -16,7 +15,7 @@ trait TransitionType {
   def graphsMinimum: Int
   def graphsMaximum: Option[Int]
 
-  def result(orders: IndexedSeq[InputOrder], graphIds: Seq[WorkflowGraph.Id]): Result
+  def result(orders: IndexedSeq[InputOrder], childIds: Seq[OrderId.Child]): Result
 
   protected def singleOrder(orders: Seq[InputOrder]): InputOrder =
     numberedOrders(1, orders).head
@@ -36,7 +35,7 @@ object TransitionType {
 
   final case class Fork(children: Seq[Fork.Child]) extends Result
   object Fork {
-    final case class Child(graphId: WorkflowGraph.Id, payload: Payload)
+    final case class Child(childId: OrderId.Child, payload: Payload)
   }
 
   final case class Join(payload: Payload) extends Result

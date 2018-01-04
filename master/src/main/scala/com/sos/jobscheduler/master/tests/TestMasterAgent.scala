@@ -29,7 +29,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, WorkflowGraph, WorkflowPath, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, WorkflowPath, WorkflowScript}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -187,7 +187,7 @@ object TestMasterAgent {
       WorkflowScript.Job(NodeId(s"FIRST"), AgentJobPath(conf.agentPaths.head, TestJobPath)),
       WorkflowScript.ForkJoin(ListMap() ++ (
         for ((agentPath, pathName) ← conf.agentPaths zip PathNames) yield
-          WorkflowGraph.Id(pathName) → WorkflowScript(
+          OrderId.Child(pathName) → WorkflowScript(
             for (j ← 1 to conf.workflowLength) yield
               WorkflowScript.Job(NodeId(s"$pathName-$j"), AgentJobPath(agentPath, TestJobPath))))),
       WorkflowScript.End(NodeId("END"))))

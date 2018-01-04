@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow.transition
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.{CirceCodec, CirceUtils}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.{NodeId, WorkflowGraph}
 import io.circe.{Decoder, Encoder}
 import scala.collection.immutable.{IndexedSeq, ListMap, Seq}
@@ -15,7 +15,7 @@ final case class Transition private(
   forkNodeId: Option[NodeId] = None,
   fromProcessedNodeIds: IndexedSeq[NodeId],
   toNodeIds: IndexedSeq[NodeId],
-  idToGraph: ListMap[WorkflowGraph.Id, WorkflowGraph],
+  idToGraph: ListMap[OrderId.Child, WorkflowGraph],
   transitionType: TransitionType) {
 
   require(toNodeIds.size >= transitionType.graphsMinimum, s"$transitionType requires ${transitionType.graphsMinimum} input nodes")
@@ -53,7 +53,7 @@ object Transition {
   def forkJoin(
     forkNodeId: NodeId,
     joinNodeId: NodeId,
-    idToGraph: ListMap[WorkflowGraph.Id, WorkflowGraph],
+    idToGraph: ListMap[OrderId.Child, WorkflowGraph],
     forkTransitionType: TransitionType,
     joinTransitionType: TransitionType)
   : (Transition, Transition) = {
@@ -64,7 +64,7 @@ object Transition {
   }
 
   /** Forked orders get the IDs "{OrderId}/{Outlet.Id}". */
-  private def fork(from: NodeId, joinNodeId: NodeId, idToGraph: ListMap[WorkflowGraph.Id, WorkflowGraph], transitionType: TransitionType): Transition =
+  private def fork(from: NodeId, joinNodeId: NodeId, idToGraph: ListMap[OrderId.Child, WorkflowGraph], transitionType: TransitionType): Transition =
     new Transition(
       forkNodeId = None,
       fromProcessedNodeIds = Vector(from),
@@ -86,7 +86,7 @@ object Transition {
       transitionType)
 
   implicit def jsonCodec(implicit encoder: Encoder[TransitionType], decoder: Decoder[TransitionType]): CirceCodec[Transition] = {
-    implicit val idToGraphListMapCodec = CirceUtils.listMapCodec[WorkflowGraph.Id, WorkflowGraph](keyName = "id", valueName = "graph")
+    implicit val idToGraphListMapCodec = CirceUtils.listMapCodec[OrderId.Child, WorkflowGraph](keyName = "id", valueName = "graph")
     deriveCirceCodec[Transition]
   }
 }
