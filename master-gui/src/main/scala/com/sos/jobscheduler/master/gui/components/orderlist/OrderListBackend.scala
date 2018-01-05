@@ -2,19 +2,21 @@ package com.sos.jobscheduler.master.gui.components.orderlist
 
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.WorkflowScript.FlatStatement
-import com.sos.jobscheduler.data.workflow.{NodeKey, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{NodeKey, WorkflowPath, WorkflowScript}
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.common.Renderers.forTable.orderStateToVdom
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListBackend._
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListComponent.Props
-import com.sos.jobscheduler.master.gui.components.state.OrdersState
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
+import com.sos.jobscheduler.master.gui.components.state.{OrdersState, PreparedWorkflow}
 import com.sos.jobscheduler.master.gui.router.Router
 import japgolly.scalajs.react.component.builder.Lifecycle.ComponentDidUpdate
 import japgolly.scalajs.react.extra.{OnUnmount, Reusability}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom.{MouseEvent, window}
+import scala.collection.immutable.Seq
+import scala.collection.mutable
 import scala.math.min
 
 /**
@@ -44,43 +46,36 @@ extends OnUnmount {
         <.div(<.i("Fetching orders..."))
 
       case content: FetchedContent ⇒
-        val sequence = content.workflowToOrderSeq.getOrElse(props.workflow.path, Array.empty)
+        val sequence = content.workflowToOrderSeq.getOrElse(props.workflowPath, Vector.empty)
         <.div(
           <.div(^.float := "left", ^.cls := "sheet orders-sheet")(
             <.div(^.cls := "sheet-headline")(
-              props.workflow.path),
+              props.workflowPath),
             <.div(sequence.length.toString, " orders"),
             ordersState.error.whenDefined(error ⇒ <.span(^.cls := "error")(error)),
-            renderWorkflowContent(props.workflow, content))/*,
-            <.div(^.cls := "orders-preview")(
-            ordersState.selectedOrder.whenDefined(orderId ⇒
-              idToOrder.get(orderId).whenDefined(entry ⇒
-                OrderComponent(entry, idToOrder(_).order, props.workflow.script, isOwnPage = false))))*/)
+            renderWorkflowContent(props.workflowPath, props.workflow, content)))
     }
   }
 
-  private def renderWorkflowContent(workflow: WorkflowScript.Named, content: FetchedContent) = {
-    val statementWithPosition = workflow.script.flatten.collect { case o: FlatStatement.Node ⇒ o } .zipWithIndex.map { case (o, i) ⇒ o → nodeTop(i) }
-    <.div(^.cls := "Workflow-content")(
-      statementWithPosition.toVdomArray { case (flat, position) ⇒
-        <.div(^.key := flat.statement.node.id.string, ^.position := "absolute", ^.top := position)(
-          <.div(^.cls := "orders-Node",
-            NodeHeadComponent(flat.statement)))
-      }, {
-        val orderWithPosition = for {
-          (flat, nodePosition) ← statementWithPosition
-          (orderEntry, i) ← {
-            val orderIds = content.nodeKeyToOrderIdSeq(NodeKey(workflow.path, flat.statement.node.id))
-            val n = min(orderIds.length, OrderPerNodeLimit)
-            Array.tabulate[OrderEntry](n)(i ⇒ content.idToEntry(orderIds(i))).zipWithIndex
-          }
-        } yield (orderEntry, i, nodePosition)
-        orderWithPosition.sortBy(_._1.id)  // Sort to allow React to identify the previous orders
-          .toVdomArray { case (orderEntry, orderIndex, nodePosition) ⇒
-            <.div(^.key := orderEntry.id.string, ^.cls := "orders-Order-moving", ^.top := nodePosition, ^.left := orderLeft(orderIndex),
-              LittleOrderComponent(orderEntry))
-          }
-      })
+  private def renderWorkflowContent(workflowPath: WorkflowPath, workflow: PreparedWorkflow, content: FetchedContent) = {
+    val statementsWithTop = workflow.nodeStatements.zipWithIndex.map { case (o, i) ⇒ o → nodeTop(i) }
+    val nodesVdom = statementsWithTop.toVdomArray { case (flat, top) ⇒
+      <.div(^.key := flat.statement.node.id.string, ^.position := "absolute", top)(
+        <.div(^.cls := "orders-Node",
+          NodeHeadComponent(flat.statement)))
+    }
+    val orderWithLeftTop: Seq[(OrderEntry, TagMod, TagMod)] = for {
+      (flat, top) ← statementsWithTop
+      orderIds = content.nodeKeyToOrderIdSeq(NodeKey(workflowPath, flat.statement.node.id))
+      n = min(orderIds.length, OrderPerNodeLimit)
+      (orderEntry, i) ← Array.tabulate[OrderEntry](n)(i ⇒ content.idToEntry(orderIds(i))).zipWithIndex
+    } yield (orderEntry, orderLeft(i), top)
+    val ordersVdom = orderWithLeftTop.sortBy(_._1.id)  // Sort to allow React to identify known orders
+      .toVdomArray { case (orderEntry, left, top) ⇒
+        <.div(^.key := orderEntry.id.string, left, top, ^.cls := "orders-Order-moving",
+          LittleOrderComponent(orderEntry))
+      }
+    <.div(^.cls := "Workflow-content", nodesVdom, ordersVdom)
   }
 
   private val LittleOrderComponent = ScalaComponent.builder[OrdersState.OrderEntry]("Little-Order")
@@ -88,7 +83,7 @@ extends OnUnmount {
       case OrdersState.OrderEntry(order, _, lastOutput, updatedAt) ⇒
         orderSelector.updateOrder(order)
         val selectedClass = orderSelector.cssClass(order.id)
-        val highlighted = updatedAt > highlighter.lastHighlightedAt && selectedClass.isEmpty
+        val highlighted = false //updatedAt > highlighter.lastHighlightedAt && selectedClass.isEmpty
         <.div(^.id := OrderSelector.elementId(order.id),
               ^.cls := "sheet z-depth-2 orders-Order " + orderToClass(order) + selectedClass + (if (highlighted) "orders-Order-changed" else ""),
           <.div(^.cls := "orders-Order-OrderId", order.id.string),
@@ -151,24 +146,6 @@ extends OnUnmount {
     }
     .build
 
-  private val NodeComponent = ScalaComponent.builder[NodeProps]("Workflow.Node")
-    .render_P { props ⇒
-      val stmt = props.flat.statement
-      <.div(^.cls := "orders-Node")(
-        NodeHeadComponent.withKey(stmt.node.id.string)(stmt),
-        TagMod(
-          props.orderEntries.toVdomArray(entry ⇒
-            LittleOrderComponent(entry)),
-          <.div(^.cls := "orders-Order-more",
-            <.i(s"(${props.notShown} more orders not shown)")
-          ) when props.notShown > 0))
-    }
-    .configure {
-      implicit val orderEntryReuse = Reusability.by_==[NodeProps]
-      Reusability.shouldComponentUpdate
-    }
-    .build
-
   private case class NodeProps(flat: FlatStatement.Node, orderEntries: Array[OrderEntry], notShown: Int) {
     override def equals(o: Any) = o match {
       case o: NodeProps ⇒ (flat eq o.flat) &&
@@ -187,6 +164,12 @@ extends OnUnmount {
 
 object OrderListBackend {
   private val OrderPerNodeLimit = 20
-  private def nodeTop(i: Int) = (120 + 80*i).px
-  private def orderLeft(i: Int) = (60 + 38*i).ex
+  private val nodeTop = memoize[Int, TagMod](i ⇒ ^.top := (120 + 80*i).px)
+  private val orderLeft = memoize[Int, TagMod](i ⇒ ^.left := (60 + 38*i).ex)
+
+  // https://stackoverflow.com/questions/16257378
+  private def memoize[K, V](f: K ⇒ V): K ⇒ V =
+    new mutable.HashMap[K, V] {
+      override def apply(key: K) = getOrElseUpdate(key, f(key))
+    }
 }

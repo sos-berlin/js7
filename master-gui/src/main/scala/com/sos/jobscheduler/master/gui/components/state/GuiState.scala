@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.gui.components.state
 
-import com.sos.jobscheduler.data.workflow.{WorkflowPath, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import org.scalajs.dom.window
 
 /**
@@ -8,7 +8,7 @@ import org.scalajs.dom.window
   */
 final case class GuiState(
   ordersState: OrdersState,
-  pathToWorkflow: Map[WorkflowPath, WorkflowScript],
+  pathToWorkflow: Map[WorkflowPath, PreparedWorkflow],
   appState: AppState,
   isConnected: Boolean,
   uriHash: String = window.document.location.hash)

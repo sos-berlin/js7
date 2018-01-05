@@ -2,8 +2,9 @@ package com.sos.jobscheduler.master.gui.components.workflow
 
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.WorkflowScript._
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, WorkflowPath, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, WorkflowPath}
 import com.sos.jobscheduler.master.gui.common.Renderers._
+import com.sos.jobscheduler.master.gui.components.state.PreparedWorkflow
 import japgolly.scalajs.react.ScalaComponent
 import japgolly.scalajs.react.vdom.html_<^._
 import scala.collection.immutable.Seq
@@ -13,21 +14,21 @@ import scala.collection.immutable.Seq
   */
 object WorkflowComponent {
 
-  def apply(workflow: WorkflowScript.Named, orders: Seq[Order[Order.State]] = Nil) =
-    scalaComponent(Props(workflow, orders))
+  def apply(workflowPath: WorkflowPath, workflow: PreparedWorkflow, orders: Seq[Order[Order.State]] = Nil) =
+    scalaComponent(Props(workflowPath, workflow, orders))
 
   private val scalaComponent = ScalaComponent.builder[Props]("Workflow")
     .render_P {
-      case Props(workflow, Seq()) ⇒ renderWorkflow(workflow)
-      case Props(workflow, orders) ⇒ renderWorkflowWithOrder(workflow, orders)
+      case Props(workflowPath, workflow, Seq()) ⇒ renderWorkflow(workflowPath, workflow)
+      case Props(workflowPath, workflow, orders) ⇒ renderWorkflowWithOrder(workflowPath, workflow, orders)
     }
     .build
 
-  private def renderWorkflowWithOrder(workflow: WorkflowScript.Named, orders: Seq[Order[Order.State]]) =
+  private def renderWorkflowWithOrder(workflowPath: WorkflowPath, workflow: PreparedWorkflow, orders: Seq[Order[Order.State]]) =
     <.table(^.cls := "no-padding")(
       <.colgroup(<.col(^.cls := "Workflow-symbol-col"), <.col),
       <.tbody(
-        <.tr(<.td, renderHeadlineTh(workflow.path)),
+        <.tr(<.td, renderHeadlineTh(workflowPath)),
         workflow.script.flatten.toVdomArray(flat ⇒
           (for {
              nodeId ← flat.nodeIdOption
@@ -38,10 +39,10 @@ object WorkflowComponent {
                <.td(<.div(^.cls := stateToClass(order.state), renderFlatStatement(flat)))): VdomNode
           ) getOrElse <.tr(<.td, renderFlatStatementTd(flat)))))
 
-  private def renderWorkflow(workflow: WorkflowScript.Named): VdomElement =
+  private def renderWorkflow(workflowPath: WorkflowPath, workflow: PreparedWorkflow): VdomElement =
     <.table(^.cls := "no-padding")(  // Same layout as renderWorkflowWithOrder
       <.tbody(
-        <.tr(renderHeadlineTh(workflow.path)),
+        <.tr(renderHeadlineTh(workflowPath)),
         workflow.script.flatten.toVdomArray(flat ⇒
           <.tr(renderFlatStatementTd(flat)))))
 
@@ -77,5 +78,5 @@ object WorkflowComponent {
         VdomArray(nesting.toString, " ", "goto ", nodeId)
     }
 
-  final case class Props(workflow: WorkflowScript.Named, orders: Seq[Order[Order.State]])
+  final case class Props(workflowPath: WorkflowPath, workflow: PreparedWorkflow, orders: Seq[Order[Order.State]])
 }

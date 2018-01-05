@@ -94,7 +94,7 @@ header, main, footer { padding-left: 150px; }
 .page-top-right { padding: 0; text-align: right; }
 .page-top-left-segment { white-space: nowrap; padding-right: 12px; }
 .page-top-right-segment { white-space: nowrap; padding-left: 12px; }
-.page-content { overflow-x: scroll; }
+.page-content {}
 
 .experimental-monitor { letter-spacing: 1.5px; }
 .freezed { color: #7ccefd; }
@@ -102,7 +102,7 @@ header, main, footer { padding-left: 150px; }
 
 .OrderId { white-space: nowrap; font-family: Inconsolata, Consolas, "Lucida Console", Monaco, monospace; }
 
-.Workflow-content { white-space: nowrap; vertical-align: top; margin-top: 1rem; }
+.Workflow-content { overflow-x: scroll; vertical-align: top; margin-top: 1rem; }
 .orders-sheet { padding-left: 0; }
 .orders-Order-moving { position: absolute; transition: top 1s ease-in-out, left 1s ease-in-out; }
 .orders-Node {}

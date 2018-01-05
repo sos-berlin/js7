@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.gui.components.orderlist.workflowlist
 
-import com.sos.jobscheduler.data.workflow.{WorkflowPath, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.master.gui.components.state.PreparedWorkflow
 import com.sos.jobscheduler.master.gui.router.Router
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, ScalaComponent}
@@ -10,7 +11,7 @@ import japgolly.scalajs.react.{BackendScope, ScalaComponent}
   */
 object WorkflowListComponent {
 
-  def apply(pathToWorkflow: Map[WorkflowPath, WorkflowScript]) =
+  def apply(pathToWorkflow: Map[WorkflowPath, PreparedWorkflow]) =
     scalaComponent(pathToWorkflow)
 
   private val scalaComponent = ScalaComponent.builder[Props]("WorkflowList")
@@ -26,5 +27,5 @@ object WorkflowListComponent {
           <.a(^.cls := "hidden-link", ^.href := Router.hash(path))(path.string)))
   }
 
-  private type Props = Map[WorkflowPath, WorkflowScript]
+  private type Props = Map[WorkflowPath, PreparedWorkflow]
 }

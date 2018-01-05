@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
 import com.sos.jobscheduler.master.gui.common.Utils._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
 import org.scalajs.dom.window
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{Seq, VectorBuilder}
 import scala.collection.mutable
 
 /**
@@ -26,7 +26,7 @@ final case class OrdersState(
     copy(
       content = OrdersState.FetchedContent(
         idToEntry = updatedIdToEntry,
-        workflowToOrderSeq = updatedIdToEntry.values groupBy (_.order.workflowPath) mapValues (_.map(_.order.id).toArray.sorted),
+        workflowToOrderSeq = updatedIdToEntry.values groupBy (_.order.workflowPath) mapValues (_.map(_.order.id).toVector.sorted),
         eventId = stamped.eventId, eventCount = 0),
       error = None,
       step = step + 1)
@@ -36,6 +36,7 @@ final case class OrdersState(
 object OrdersState {
   val Empty = OrdersState(Initial, step = 0, error = None)
 
+  private type WorkflowToOrderIds = Map[WorkflowPath, Vector[OrderId]]
   sealed trait Content
 
   object Initial extends Content
@@ -43,25 +44,25 @@ object OrdersState {
 
   final case class FetchedContent(
     idToEntry: Map[OrderId, OrderEntry],
-    workflowToOrderSeq: Map[WorkflowPath, Array[OrderId]],
+    workflowToOrderSeq: WorkflowToOrderIds,
     eventId: EventId,
     eventCount: Int)
   extends Content
   {
-    private val nodeKeyCache = mutable.Map[WorkflowPath, mutable.Map[NodeId, Array[OrderId]]]()
+    private val nodeKeyCache = mutable.Map[WorkflowPath, mutable.Map[NodeId, Vector[OrderId]]]()
 
-    def nodeKeyToOrderIdSeq(nodeKey: NodeKey): Array[OrderId] =
+    def nodeKeyToOrderIdSeq(nodeKey: NodeKey): Vector[OrderId] =
       nodeKeyCache.getOrElseUpdate(nodeKey.workflowPath, {
-        val m = mutable.Map.empty[NodeId, mutable.ArrayBuilder[OrderId]]
-        for (orderId ← workflowToOrderSeq.getOrElse(nodeKey.workflowPath, Array.empty)) {
-          m.getOrElseUpdate(idToEntry(orderId).order.nodeId, new mutable.ArrayBuilder.ofRef) += orderId
+        val m = mutable.Map.empty[NodeId, VectorBuilder[OrderId]]
+        for (orderId ← workflowToOrderSeq.getOrElse(nodeKey.workflowPath, Vector.empty)) {
+          m.getOrElseUpdate(idToEntry(orderId).order.nodeId, new VectorBuilder[OrderId]) += orderId
         }
         m map { case (k, v) ⇒ k → v.result }
-      }).getOrElseUpdate(nodeKey.nodeId, Array.empty)
+      }).getOrElseUpdate(nodeKey.nodeId, Vector.empty)
 
     private def restoreCache(from: FetchedContent, dirty: collection.Set[NodeKey]): this.type = {
       for ((workflowPath, nodeToOrderIds) ← from.nodeKeyCache -- dirty.map(_.workflowPath)) {
-        val m = mutable.Map.empty[NodeId, Array[OrderId]]
+        val m = mutable.Map.empty[NodeId, Vector[OrderId]]
         for ((nodeId, orderIds) ← nodeToOrderIds -- dirty.map(_.nodeId)) {
           m(nodeId) = orderIds
         }
@@ -152,19 +153,19 @@ object OrdersState {
   }
 
   private def concatOrderIds(
-    wToO: Map[WorkflowPath, Array[OrderId]],
+    wToO: WorkflowToOrderIds,
     added: mutable.Map[WorkflowPath, mutable.Buffer[OrderId]])
-  : Map[WorkflowPath, Array[OrderId]] =
+  : WorkflowToOrderIds =
       wToO ++
         (for ((workflowPath, orderIds) ← added) yield
           workflowPath →
             (wToO.get(workflowPath) match {
               case Some(a) ⇒ a ++ orderIds
-              case None ⇒ orderIds.toArray
+              case None ⇒ orderIds.toVector
             })
         ).toMap
 
-  private def deleteOrderIds(wToO: Map[WorkflowPath, Array[OrderId]], deleted: Set[OrderId]): Map[WorkflowPath, Array[OrderId]] =
+  private def deleteOrderIds(wToO: WorkflowToOrderIds, deleted: Set[OrderId]): WorkflowToOrderIds =
     if (deleted.isEmpty)
       wToO
     else

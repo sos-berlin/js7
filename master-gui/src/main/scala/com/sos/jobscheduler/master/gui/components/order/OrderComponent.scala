@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.master.gui.components.order
 
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowScript
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState.OrderEntry
+import com.sos.jobscheduler.master.gui.components.state.PreparedWorkflow
 import com.sos.jobscheduler.master.gui.components.workflow.WorkflowComponent
 import io.circe.syntax.EncoderOps
 import japgolly.scalajs.react.vdom.html_<^._
@@ -15,8 +15,8 @@ import scala.collection.immutable.Seq
   * @author Joacim Zschimmer
   */
 object OrderComponent {
-  def apply(orderEntry: OrderEntry, idToOrder: OrderId ⇒ Order[Order.State], workflowScript: WorkflowScript, isOwnPage: Boolean) =
-    scalaComponent(Props(orderEntry, forkedOrders(orderEntry.order, idToOrder), workflowScript, isOwnPage))
+  def apply(orderEntry: OrderEntry, idToOrder: OrderId ⇒ Order[Order.State], workflow: PreparedWorkflow, isOwnPage: Boolean) =
+    scalaComponent(Props(orderEntry, forkedOrders(orderEntry.order, idToOrder), workflow, isOwnPage))
 
   private val scalaComponent = ScalaComponent.builder[Props]("Order")
     .renderBackend[OrderBackend]
@@ -38,7 +38,7 @@ object OrderComponent {
         <.div(^.float := "left")(
           renderCore(props.orderEntry)),
         <.div(^.float := "right")(
-          WorkflowComponent(WorkflowScript.Named(props.orderEntry.order.workflowPath, props.workflowScript), props.orderEntry.order +: props.forkedOrders)),
+          WorkflowComponent(props.orderEntry.order.workflowPath, props.workflow, props.orderEntry.order +: props.forkedOrders)),
         <.div(^.clear := "both")(
           renderVariables(props.orderEntry.order.variables)),
           renderOutput(props.orderEntry.output))
@@ -87,7 +87,7 @@ object OrderComponent {
   final case class Props(
     orderEntry: OrderEntry,
     forkedOrders: Seq[Order[Order.State]],
-    workflowScript: WorkflowScript,
+    workflow: PreparedWorkflow,
     isOwnPage: Boolean)
 }
 

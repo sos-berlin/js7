@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.gui
 
+import com.sos.jobscheduler.base.utils.Collections.RichMap
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent}
 import com.sos.jobscheduler.data.workflow.WorkflowScript
@@ -7,7 +8,7 @@ import com.sos.jobscheduler.master.gui.GuiBackend._
 import com.sos.jobscheduler.master.gui.GuiRenderer.Moon
 import com.sos.jobscheduler.master.gui.ScreenBackground.setScreenClass
 import com.sos.jobscheduler.master.gui.common.Utils.isMobile
-import com.sos.jobscheduler.master.gui.components.state.{AppState, GuiState, OrdersState}
+import com.sos.jobscheduler.master.gui.components.state.{AppState, GuiState, OrdersState, PreparedWorkflow}
 import com.sos.jobscheduler.master.gui.services.MasterApi
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
@@ -57,7 +58,8 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
         case Success(stamped: Stamped[Seq[WorkflowScript.Named]]) ⇒
           Try {
             scope.modState(_.copy(
-              pathToWorkflow = stamped.value.map(o ⇒ o.path → o.script).toMap))
+              pathToWorkflow = stamped.value.map(o ⇒ o.path → PreparedWorkflow(o.script)).toMap
+                .withNoSuchKey(k ⇒ throw new NoSuchElementException(s"Unknown $k"))))
           }
       }
     }

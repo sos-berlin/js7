@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
-import com.sos.jobscheduler.data.workflow.WorkflowScript
-import com.sos.jobscheduler.master.gui.components.state.OrdersState
+import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.master.gui.components.state.{OrdersState, PreparedWorkflow}
 import japgolly.scalajs.react.ScalaComponent
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.{EventListener, StateSnapshot}
@@ -12,8 +12,8 @@ import org.scalajs.dom.MouseEvent
   */
 object OrderListComponent {
 
-  def apply(workflow: WorkflowScript.Named, stateSnapshot: StateSnapshot[OrdersState]): Unmounted[Props, Unit, OrderListBackend] =
-    scalaComponent(Props(workflow, stateSnapshot))
+  def apply(workflowPath: WorkflowPath, workflow: PreparedWorkflow, stateSnapshot: StateSnapshot[OrdersState]): Unmounted[Props, Unit, OrderListBackend] =
+    scalaComponent(Props(workflowPath, workflow, stateSnapshot))
 
   private val scalaComponent = ScalaComponent.builder[Props]("OrderList")
     .renderBackend[OrderListBackend]
@@ -21,5 +21,5 @@ object OrderListComponent {
     .configure(EventListener[MouseEvent].install("mousemove", _.backend.onMouseMoved))
     .build
 
-  final case class Props(workflow: WorkflowScript.Named, ordersStateSnapshot: StateSnapshot[OrdersState])
+  final case class Props(workflowPath: WorkflowPath, workflow: PreparedWorkflow, ordersStateSnapshot: StateSnapshot[OrdersState])
 }
