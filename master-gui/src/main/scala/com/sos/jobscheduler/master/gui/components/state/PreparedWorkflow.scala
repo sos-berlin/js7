@@ -1,12 +1,8 @@
 package com.sos.jobscheduler.master.gui.components.state
 
-import com.sos.jobscheduler.data.workflow.WorkflowScript
-import com.sos.jobscheduler.data.workflow.WorkflowScript.FlatStatement
+import com.sos.jobscheduler.data.workflow.Workflow
 
 /**
   * @author Joacim Zschimmer
   */
-final case class PreparedWorkflow(script: WorkflowScript) {
-
-  val nodeStatements = script.flatten.collect { case o: FlatStatement.Node ⇒ o }
-}
+final case class PreparedWorkflow(workflow: Workflow)

@@ -37,7 +37,7 @@ final class ScheduledOrderGeneratorKeeper @Inject private(masterConfiguration: M
           instant ← orderGenerator.schedule.instants(instantInterval)) yield
       Order(
         toOrderId(orderGenerator.path, instant),
-        orderGenerator.nodeKey,
+        orderGenerator.workflowPath,
         Order.Scheduled(instant.toTimestamp),
         payload = Payload(orderGenerator.variables)))
     .toVector.sortBy { _.state.at }

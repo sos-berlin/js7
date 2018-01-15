@@ -1,0 +1,20 @@
+/* https://google-webfonts-helper.herokuapp.com/fonts/open-sans?subsets=vietnamese,latin,greek-ext,latin-ext,cyrillic,greek,cyrillic-ext
+   https://github.com/google/fonts/blob/master/apache/opensans/LICENSE.txt
+*/
+/* open-sans-regular - cyrillic-ext_greek_cyrillic_latin-ext_greek-ext_latin_vietnamese */
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Open Sans'), local('Open Sans Regular'), local('OpenSans-Regular'),
+       url('open-sans-v15-cyrillic-ext_greek_cyrillic_latin-ext_greek-ext_latin_vietnamese-regular.woff2') format('woff2');
+}
+
+/* open-sans-600 - cyrillic-ext_greek_cyrillic_latin-ext_greek-ext_latin_vietnamese */
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 600;
+  src: local('Open Sans SemiBold'), local('OpenSans-SemiBold'),
+       url('open-sans-v15-cyrillic-ext_greek_cyrillic_latin-ext_greek-ext_latin_vietnamese-600.woff2') format('woff2');
+}

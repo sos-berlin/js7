@@ -1,54 +1,88 @@
 package com.sos.jobscheduler.shared.workflow
 
-import com.sos.jobscheduler.data.order.Order
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.workflow.Instruction.{ForkJoin, Gap, Job}
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
-import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflowGraph
+import com.sos.jobscheduler.data.workflow.{Position, Workflow}
+import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflowScript
 import org.scalatest.FreeSpec
+import scala.collection.immutable.ListMap
 
 /**
   * @author Joacim Zschimmer
   */
 final class WorkflowsTest extends FreeSpec {
 
-  "ExecutableWorkflow" - {
-    val isSwitchableSetting = List(
-      ((A.id , Order.Processed), true),
-      ((Bx.id, Order.Processed), true),  ((By.id, Order.Processed), true),
-      ((Cx.id, Order.Processed), false), ((Cy.id, Order.Processed), false),
-      ((A.id , Order.Forked(Nil)), false),
+  "reduceForAgent A" in {
+    assert(ForkTestSetting.TestWorkflowScript.reduceForAgent(AAgentPath) == Workflow(
+      Vector(
+        Job(AAgentJobPath),
+        ForkJoin(ListMap(
+          OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+          OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Gap))),
+        Job(AAgentJobPath),
+        ForkJoin(ListMap(
+          OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+          OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)))),
+        Job(AAgentJobPath),
+        ForkJoin(ListMap(
+          OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+          OrderId.ChildId("🍋") → Workflow.of(Gap               , Gap))),
+        Job(AAgentJobPath)),
+      source = None))
+  }
 
-      ((D.id , Order.Processed), true),
-      ((Ex.id, Order.Processed), true),   ((Ey.id, Order.Processed), true),
-      ((Fx.id, Order.Processed), true),   ((Fy.id, Order.Processed), true),
-      ((D.id , Order.Forked(Nil)), true),
+  "reduceForAgent B" in {
+    assert(ForkTestSetting.TestWorkflowScript.reduceForAgent(BAgentPath) == Workflow(
+      Vector(
+        /*0*/ Gap,
+        /*1*/ ForkJoin(ListMap(
+                OrderId.ChildId("🥕") → Workflow.of(Gap, Gap),
+                OrderId.ChildId("🍋") → Workflow.of(Gap, Job(BAgentJobPath)))),
+        /*2*/ Gap,
+        /*3*/ Gap,
+        /*4*/ Gap,
+        /*5*/ ForkJoin(ListMap(
+                OrderId.ChildId("🥕") → Workflow.of(Gap, Gap),
+                OrderId.ChildId("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath)))),
+        /*6*/ Gap),
+      source = None))
+  }
 
-      ((G.id , Order.Processed), false/*true would be okay*/))
+  "isStartableOnAgent" - {
+    val isStartableSetting = List(
+      Position(0) → List(AAgentPath),
+      Position(1) → List(AAgentPath),
+      Position(1, "🥕", 0) → List(AAgentPath),
+      Position(1, "🥕", 1) → List(AAgentPath),
+      Position(1, "🍋", 0) → List(AAgentPath),
+      Position(1, "🍋", 1) → List(BAgentPath),
+      Position(2) → List(AAgentPath),
+      Position(3) → List(AAgentPath),
+      Position(3, "🥕", 0) → List(AAgentPath),
+      Position(3, "🥕", 1) → List(AAgentPath),
+      Position(3, "🍋", 0) → List(AAgentPath),
+      Position(3, "🍋", 1) → List(AAgentPath),
+      Position(4) → List(AAgentPath),
+      Position(5) → List(AAgentPath, BAgentPath),  // Order 🍋 is created on A but executed on B
+      Position(5, "🥕", 0) → List(AAgentPath),
+      Position(5, "🥕", 1) → List(AAgentPath),
+      Position(5, "🍋", 0) → List(BAgentPath),
+      Position(5, "🍋", 1) → List(BAgentPath),
+      Position(6) → List(AAgentPath),
+      Position(7) → Nil)
 
-    for (((nodeId, state), expected) ← isSwitchableSetting) {
-      //s"isTransitionableOnAgent($nodeId $state) = $expected" in {
-      //  assert(TestWorkflow.isTransitionableOnAgent(nodeId, state, AAgentPath) == expected)
-      //}
-      s"isTransitionableOnAgent($nodeId $state) = $expected - reduceForAgent" in {
-        assert(TestWorkflow.graph.reduceForAgent(AAgentPath).isTransitionableOnAgent(nodeId, state, AAgentPath) == expected)
+    for ((position, agentPaths) ← isStartableSetting) {
+      for ((agentPath, expected) ← agentPaths.map(_ → true) ++ (AgentPaths filterNot agentPaths.toSet).map(_ → false)) {
+        s"isStartableOnAgent($position $agentPath) = $expected" in {
+          assert(TestWorkflow.workflow.isStartableOnAgent(position, agentPath) == expected)
+        }
+        s".reduceForAgent.isStartableOnAgent($position $agentPath) = $expected" in {
+          //assert(TestWorkflow.workflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath))
+          assert(TestWorkflow.workflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath) == expected)
+        }
       }
-    }
-
-    "transitionForNode" in {
-      assert(TestWorkflow.graph.transitionForNode(A.id, Order.Processed) == Some(a))
-      assert(TestWorkflow.graph.transitionForNode(Bx.id, Order.Processed) == Some(bx))
-      assert(TestWorkflow.graph.transitionForNode(By.id, Order.Processed) == Some(by))
-      assert(TestWorkflow.graph.transitionForNode(Cx.id, Order.Processed) == Some(c))
-      assert(TestWorkflow.graph.transitionForNode(Cy.id, Order.Processed) == Some(c))
-      assert(TestWorkflow.graph.transitionForNode(A.id, Order.Forked(Nil)) == Some(c))
-
-      assert(TestWorkflow.graph.transitionForNode(D.id, Order.Processed) == Some(d))
-      assert(TestWorkflow.graph.transitionForNode(Ex.id, Order.Processed) == Some(ex))
-      assert(TestWorkflow.graph.transitionForNode(Ey.id, Order.Processed) == Some(ey))
-      assert(TestWorkflow.graph.transitionForNode(Fx.id, Order.Processed) == Some(f))
-      assert(TestWorkflow.graph.transitionForNode(Fy.id, Order.Processed) == Some(f))
-      assert(TestWorkflow.graph.transitionForNode(D.id, Order.Forked(Nil)) == Some(f))
-
-      assert(TestWorkflow.graph.transitionForNode(G.id, Order.Processed) == Some(g))
     }
   }
 }

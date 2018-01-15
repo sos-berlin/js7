@@ -2,8 +2,8 @@ package com.sos.jobscheduler.agent.data.commands
 
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestWorkflow
-import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 import scala.concurrent.duration.DurationInt
@@ -81,11 +81,11 @@ final class AgentCommandTest extends FreeSpec {
       check(AgentCommand.AttachOrder(
         Order(
           OrderId("ORDER-ID"),
-          NodeKey(TestWorkflow.path, NodeId("INPUT")),
+          TestWorkflow.path /: Position(3),
           Order.Ready,
           Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
         AgentPath("/AGENT"),
-        TestWorkflow.graph),
+        TestWorkflow.workflow),
         """{
           "TYPE": "AttachOrder",
           "order": {
@@ -104,35 +104,13 @@ final class AgentCommandTest extends FreeSpec {
               "TYPE": "Agent"
             },
             "id": "ORDER-ID",
-            "nodeKey": {
-              "nodeId": "INPUT",
-              "workflowPath": "/WORKFLOW"
-            }
+            "workflowPosition": [ "/WORKFLOW", 3 ]
           },
-          "workflowGraph": {
-            "start": "A",
-            "transitions": [
-              {
-                "idToGraph": [],
-                "fromProcessedNodeIds": [ "A" ],
-                "toNodeIds": [ "B" ],
-                "transitionType": {
-                  "TYPE": "ForwardTransition"
-                }
-              },
-              {
-                "idToGraph": [],
-                "fromProcessedNodeIds": [ "B" ],
-                "toNodeIds": [ "END" ],
-                "transitionType": {
-                  "TYPE": "ForwardTransition"
-                }
-              }
-            ],
-            "nodes": [
-              { "TYPE": "JobNode", "id": "A", "job": { "agentPath": "/AGENT", "jobPath": "/A" }},
-              { "TYPE": "JobNode", "id": "B", "job": { "agentPath": "/AGENT", "jobPath": "/B" }},
-              { "TYPE": "EndNode", "id": "END" }
+          "workflowScript": {
+            "instructions": [
+              { "TYPE": "Job", "job": { "agentPath": "/AGENT", "jobPath": "/A" } },
+              { "TYPE": "Job", "job": { "agentPath": "/AGENT", "jobPath": "/B" } },
+              { "TYPE": "ImplicitEnd" }
             ]
           }
         }""")

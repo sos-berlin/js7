@@ -20,7 +20,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, 
 import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
@@ -89,7 +89,7 @@ final class RecoveryIT extends FreeSpec {
               assert(master.orderClient.order(orderId).await(99.s) ==
                 Some(Order(
                   orderId,
-                  NodeKey(TestWorkflowPath, NodeId("END")),
+                  TestWorkflowPath /: Position(5),
                   Order.Finished,
                   payload = Payload(
                     Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")))))
@@ -148,7 +148,7 @@ private object RecoveryIT {
   private val TestJobPath = JobPath("/test")
 
   private val FastOrderId = OrderId("FAST-ORDER")
-  private val FastOrder = Order(FastOrderId, NodeKey(FastWorkflowPath, NodeId("100")), Order.StartNow)
+  private val FastOrder = Order(FastOrderId, FastWorkflowPath, Order.StartNow)
   private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
 
   private val TestJobChainElem =
@@ -162,7 +162,7 @@ private object RecoveryIT {
     </job_chain>
 
   private val TestOrderGeneratorElem =
-    <order job_chain={TestWorkflowPath.string} state="100">
+    <order job_chain={TestWorkflowPath.string}>
       <run_time><period absolute_repeat="3"/></run_time>
     </order>
 
@@ -173,33 +173,33 @@ private object RecoveryIT {
     </job_chain>
 
   private val ExpectedEvents = Vector(
-    OrderAdded(NodeKey(TestWorkflowPath, NodeId("100")), Scheduled(SomeTimestamp), Payload(Map())),
+    OrderAdded(TestWorkflowPath, Scheduled(SomeTimestamp), Payload(Map())),
     OrderMovedToAgent(AgentPaths(0)),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.Good(true)),
-    OrderMoved(NodeId("110")),
+    OrderMoved(1),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff.empty, Outcome.Good(true)),
-    OrderMoved(NodeId("120")),
+    OrderMoved(2),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderMoved(3),
     OrderDetachable,
     OrderMovedToMaster,
-    OrderMoved(NodeId("200")),
     OrderMovedToAgent(AgentPaths(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.Good(true)),
-    OrderMoved(NodeId("210")),
+    OrderMoved(4),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
+    OrderMoved(5),
     OrderDetachable,
     OrderMovedToMaster,
-    OrderMoved(NodeId("END")),
     OrderFinished)
 
   /** Deletes restart sequences to make event sequence comparable with ExpectedEvents. */

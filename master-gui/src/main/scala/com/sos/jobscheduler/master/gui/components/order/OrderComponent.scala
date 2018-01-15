@@ -16,7 +16,7 @@ import scala.collection.immutable.Seq
   */
 object OrderComponent {
   def apply(orderEntry: OrderEntry, idToOrder: OrderId ⇒ Order[Order.State], workflow: PreparedWorkflow, isOwnPage: Boolean) =
-    scalaComponent(Props(orderEntry, forkedOrders(orderEntry.order, idToOrder), workflow, isOwnPage))
+    scalaComponent(Props(orderEntry, joinOrders(orderEntry.order, idToOrder), workflow, isOwnPage))
 
   private val scalaComponent = ScalaComponent.builder[Props]("Order")
     .renderBackend[OrderBackend]
@@ -32,13 +32,13 @@ object OrderComponent {
       }
 
     def render(props: Props): VdomElement =
-      <.div(^.cls := "sheet z-depth-5")(
+      <.div(
         <.div(^.cls := "sheet-headline")(
           "Order ", <.span(^.whiteSpace := "nowrap")(props.orderEntry.order.id.string)),
         <.div(^.float := "left")(
           renderCore(props.orderEntry)),
         <.div(^.float := "right")(
-          WorkflowComponent(props.orderEntry.order.workflowPath, props.workflow, props.orderEntry.order +: props.forkedOrders)),
+          WorkflowComponent(props.orderEntry.order.workflowPath, props.workflow, props.orderEntry.order +: props.joinOrders)),
         <.div(^.clear := "both")(
           renderVariables(props.orderEntry.order.variables)),
           renderOutput(props.orderEntry.output))
@@ -49,10 +49,10 @@ object OrderComponent {
           orderEntry.order.parent.whenDefined(showField("Parent" , _)),
           showField("Outcome", orderEntry.order.outcome),
           showField("State"  , orderEntry.order.state match {
-            case Order.Forked(children) ⇒ VdomArray(<.div("Forked"), children.toVdomArray(orderId ⇒ <.div(orderId)))
+            case Order.Join(children) ⇒ VdomArray(<.div("Join"), children.toVdomArray(orderId ⇒ <.div(orderId)))
             case o ⇒ o
           }),
-          showField("Node"       , orderEntry.order.workflowPath.string + " : " + orderEntry.order.nodeId),
+          showField("Position"   , orderEntry.order.workflowPosition.toString),
           showField("Attached to", orderEntry.order.attachedTo.orMissing)))
 
     private def showField(key: String, value: VdomNode): VdomNode =
@@ -78,15 +78,15 @@ object OrderComponent {
         lines.toVdomArray(line ⇒ <.div(^.cls := "log")(line)))
   }
 
-  private def forkedOrders(order: Order[Order.State], idToOrder: OrderId ⇒ Order[Order.State]): Seq[Order[Order.State]] =
-    order.ifState[Order.Forked] match {
-      case Some(o) ⇒ o.state.childOrderIds.map(idToOrder).flatMap(o ⇒ o +: forkedOrders(o, idToOrder))
+  private def joinOrders(order: Order[Order.State], idToOrder: OrderId ⇒ Order[Order.State]): Seq[Order[Order.State]] =
+    order.ifState[Order.Join] match {
+      case Some(o) ⇒ o.state.joinOrderIds.map(idToOrder).flatMap(o ⇒ o +: joinOrders(o, idToOrder))
       case None ⇒ Nil
     }
 
   final case class Props(
     orderEntry: OrderEntry,
-    forkedOrders: Seq[Order[Order.State]],
+    joinOrders: Seq[Order[Order.State]],
     workflow: PreparedWorkflow,
     isOwnPage: Boolean)
 }

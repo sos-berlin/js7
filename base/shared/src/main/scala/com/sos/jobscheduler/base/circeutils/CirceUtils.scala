@@ -130,6 +130,31 @@ object CirceUtils {
         cursor.as[Seq[(K, V)]].map(ListMap.empty.++)
     }
 
+  //def delegateCodec[A, B: Encoder: Decoder](toB: A ⇒ B, fromB: B ⇒ A): CirceCodec[A] =
+  //  new Encoder[A] with Decoder[A] {
+  //    def apply(a: A) = toB(a).asJson
+  //    def apply(c: HCursor) = c.as[B] flatMap catched(fromB)
+  //  }
+  //
+  //private def catched[A, B](convert: A ⇒ B)(a: A): Decoder.Result[B] =
+  //  try Right(convert(a))
+  //  catch { case NonFatal(t) ⇒
+  //    Left(DecodingFailure(t.toStringWithCauses, Nil))
+  //  }
+
+  implicit class JsonStringInterpolator(val sc: StringContext) extends AnyVal {
+    def json(args: Any*): Json = {
+      require(args.isEmpty, "json string interpolator accepts no variables")
+      sc.parts.mkString("").parseJson
+    }
+
+    /** Dummy interpolator returning the string itself, to allow syntax checking by IntelliJ IDEA. */
+    def jsonString(args: Any*): String = {
+      require(args.isEmpty, "jsonString string interpolator accepts no variables")
+      sc.parts mkString ""
+    }
+  }
+
   private def throwUnexpected(expected: String, found: String) =
     throw new JsonException(s"JSON $expected expected instead of $found")
 

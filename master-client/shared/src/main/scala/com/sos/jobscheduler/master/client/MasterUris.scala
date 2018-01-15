@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.client
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{WorkflowPath, Workflow}
 import com.sos.jobscheduler.master.client.MasterUris._
 import com.sos.jobscheduler.master.client.Uris.{encodePath, encodeQuery}
 import scala.concurrent.duration.Duration
@@ -69,11 +69,8 @@ object MasterUris {
 
   private def encodeClass(cls: Class[_]): String = {
     require(cls != classOf[Nothing], "Missing return=CLASS")
-    if (cls == classOf[WorkflowGraph.Named])
-      "WorkflowGraph"
-    else
-    if (cls == classOf[WorkflowScript.Named])
-      "WorkflowScript"
+    if (cls == classOf[Workflow.Named])
+      "Workflow"
     else
       cls.simpleScalaName
   }

@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.master.gui.components.workflow
 
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.WorkflowScript._
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.Instruction._
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, Position, WorkflowPath}
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.components.state.PreparedWorkflow
 import japgolly.scalajs.react.ScalaComponent
@@ -29,54 +29,57 @@ object WorkflowComponent {
       <.colgroup(<.col(^.cls := "Workflow-symbol-col"), <.col),
       <.tbody(
         <.tr(<.td, renderHeadlineTh(workflowPath)),
-        workflow.script.flatten.toVdomArray(flat ⇒
+        workflow.workflow.flatten.toVdomArray(posInstr ⇒
           (for {
-             nodeId ← flat.nodeIdOption
-             order ← orders collectFirst { case order if order.nodeId == nodeId ⇒ order }
+             order ← orders collectFirst { case order if order.position == posInstr._1 ⇒ order }
            } yield
              <.tr(
-               <.td(<.div(^.cls := "WorkflowScript-Statement", outcomeSymbol(order.outcome), orderStateToSymbol(order.state))),
-               <.td(<.div(^.cls := stateToClass(order.state), renderFlatStatement(flat)))): VdomNode
-          ) getOrElse <.tr(<.td, renderFlatStatementTd(flat)))))
+               <.td(<.div(^.cls := "Instruction", outcomeSymbol(order.outcome), orderStateToSymbol(order.state))),
+               <.td(<.div(^.cls := stateToClass(order.state), renderInstruction(posInstr)))): VdomNode
+          ) getOrElse <.tr(<.td, renderInstructionTd(posInstr)))))
 
   private def renderWorkflow(workflowPath: WorkflowPath, workflow: PreparedWorkflow): VdomElement =
     <.table(^.cls := "no-padding")(  // Same layout as renderWorkflowWithOrder
       <.tbody(
         <.tr(renderHeadlineTh(workflowPath)),
-        workflow.script.flatten.toVdomArray(flat ⇒
-          <.tr(renderFlatStatementTd(flat)))))
+        workflow.workflow.flatten.toVdomArray(flat ⇒
+          <.tr(renderInstructionTd(flat)))))
 
   private def renderHeadlineTh(workflowPath: WorkflowPath) =
     <.td(
-      <.h5(^.cls := "WorkflowScript-Statement")(
+      <.h5(^.cls := "Instruction")(
         "Workflow ", <.span(^.whiteSpace := "nowrap")(workflowPath.string)))
 
   private def stateToClass(state: Order.State): String =
     state match {
-      case Order.InProcess          ⇒ "WorkflowScript-Statement WorkflowScript-Statement-InProcess"
-      case Order.Ready              ⇒ "WorkflowScript-Statement WorkflowScript-Statement-Ready"
-      case _: Order.Transitionable  ⇒ "WorkflowScript-Statement WorkflowScript-Statement-Transitionable"
-      case Order.Finished           ⇒ "WorkflowScript-Statement WorkflowScript-Statement-Finished"
-      case _                        ⇒ "WorkflowScript-Statement WorkflowScript-Statement-Idle"
+      case Order.InProcess          ⇒ "Instruction Instruction-InProcess"
+      case Order.Ready              ⇒ "Instruction Instruction-Ready"
+      case _: Order.Transitionable  ⇒ "Instruction Instruction-Transitionable"
+      case Order.Finished           ⇒ "Instruction Instruction-Finished"
+      case _                        ⇒ "Instruction Instruction-Idle"
     }
 
-  private def renderFlatStatementTd(flat: FlatStatement) =
-    <.td(<.div(^.cls := "WorkflowScript-Statement", renderFlatStatement(flat)))
+  private def renderInstructionTd(pi: (Position, Instruction.Labeled)) =
+    <.td(<.div(^.cls := "Instruction", renderInstruction(pi)))
 
-  private def renderFlatStatement(stmt: FlatStatement): VdomNode =
-    stmt match {
-      case FlatStatement.Node(nesting, Job(nodeId, AgentJobPath(agentPath, jobPath))) ⇒
-        VdomArray(nesting.toString, " ", nodeId, ": ", agentPath, " · ", jobPath)
+  private def renderInstruction(pi: (Position, Instruction.Labeled)): VdomNode =
+    VdomArray(
+      pi._1.parents map (_.childId) mkString "/",
+      " ",
+      pi._2.labels.map(_ + ": ").mkString,
+      pi._2.instruction match {
+        case Job(AgentJobPath(agentPath, jobPath)) ⇒
+          VdomArray(agentPath, " · ", jobPath)
 
-      case FlatStatement.Node(nesting, End(nodeId)) ⇒
-        VdomArray(nesting.toString, " ", nodeId, ": ", "end")
+        case _: Instruction.ForkJoin ⇒
+          "fork"
 
-      case FlatStatement.NonNode(nesting, IfError(nodeId)) ⇒
-        VdomArray(nesting.toString, " ", "onError ", nodeId)
+        case _: End ⇒
+          "end"
 
-      case FlatStatement.NonNode(nesting, Goto(nodeId)) ⇒
-        VdomArray(nesting.toString, " ", "goto ", nodeId)
-    }
+        case stmt ⇒
+          s"$stmt;"
+      })
 
   final case class Props(workflowPath: WorkflowPath, workflow: PreparedWorkflow, orders: Seq[Order[Order.State]])
 }

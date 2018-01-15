@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.master.gui
 
 import com.sos.jobscheduler.base.utils.Collections.RichMap
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent}
-import com.sos.jobscheduler.data.workflow.WorkflowScript
+import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.gui.GuiBackend._
 import com.sos.jobscheduler.master.gui.GuiRenderer.Moon
 import com.sos.jobscheduler.master.gui.ScreenBackground.setScreenClass
@@ -17,7 +18,7 @@ import org.scalajs.dom.{raw, window}
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Random, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -55,10 +56,10 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
     Callback.future {
       MasterApi.workflowScripts transform {
         case Failure(err) ⇒ setError(err)
-        case Success(stamped: Stamped[Seq[WorkflowScript.Named]]) ⇒
+        case Success(stamped: Stamped[Seq[Workflow.Named]]) ⇒
           Try {
             scope.modState(_.copy(
-              pathToWorkflow = stamped.value.map(o ⇒ o.path → PreparedWorkflow(o.script)).toMap
+              pathToWorkflow = stamped.value.map(o ⇒ o.path → PreparedWorkflow(o.workflow)).toMap
                 .withNoSuchKey(k ⇒ throw new NoSuchElementException(s"Unknown $k"))))
           }
       }
@@ -114,12 +115,12 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
           MasterApi.orderEvents(after = after, timeout = timeout)
             .andThen { case _ ⇒
               isRequestingEvents = false  // TODO Falls requestOrdersAndEvents() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
-            } transform
-              handleResponse
+            }
+            .transform (o ⇒ Success(handleResponse(o)))
         }
 
-      def handleResponse(response: Try[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]): Try[Callback] =
-        Try {
+      def handleResponse(response: Try[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]): Callback =
+        catching {
           withProperState(forStep) {
             case state if state.appState == AppState.Freezed ⇒
               Callback.empty  // Discard response
@@ -160,8 +161,8 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
                   window.console.warn("EventSeq.Torn")
                   requestOrdersAndEvents.delay(TornDelay).void  // Request all orders
               }
+          }
         }
-      }
 
       for {
         state ← scope.state
@@ -182,10 +183,23 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       state ← scope.state
       callback ←
         if (state.ordersState.step == forStep)
-          body(state)
+          catching {
+            body(state)
+          }
         else
           Callback.log(s"${state.appState} forStep=$forStep!= state.version=${state.ordersState.step} - Response discarded")
     } yield callback
+
+  private def catching(body: ⇒ Callback): Callback =
+    try body
+    catch {
+      case t: Throwable ⇒
+        window.console.error(t.toStringWithCauses + "\n" + t.stackTraceAsString)
+        scope.modState(state ⇒ state.copy(
+          isConnected = false,
+          ordersState = state.ordersState.copy( // ordersState.error ???
+            error = Some(t.toStringWithCauses))))
+    }
 
   def render(props: GuiComponent.Props, state: GuiState): VdomElement =
     new GuiRenderer(props, StateSnapshot(state).setStateVia(scope), toggleFreezed).render
@@ -232,7 +246,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 object GuiBackend {
   private val FirstEventTimeout =  0.seconds   // Short timeout to check connection
   private val EventTimeout      = 50.seconds
-  private val ContinueDelay     = if (isMobile) 1.second else 250.milliseconds
+  private val ContinueDelay     = if (isMobile) 1.second else 500.milliseconds
   private val AfterTimeoutDelay = 1.second
   private val TornDelay         = 1.second
 

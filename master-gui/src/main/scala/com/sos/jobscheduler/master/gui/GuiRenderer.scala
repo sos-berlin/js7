@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.gui
 
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.master.gui.GuiRenderer._
+import com.sos.jobscheduler.master.gui.common.Utils.emptyTagMod
 import com.sos.jobscheduler.master.gui.components.SideBarComponent
 import com.sos.jobscheduler.master.gui.components.state.{AppState, GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.router.Router
@@ -37,44 +38,57 @@ final class GuiRenderer(
           <.div(^.cls := "page-content")(
             Router.route(stateSnapshot)))))
 
-  private def topLineVdom =
+  private def topLineVdom = {
+    val (events, clock) = eventsAndClock
     <.table(^.cls := "page-top")(
       <.tbody(
         <.tr(
           topLineleft,
-          <.td(^.cls := "page-top-right")(
-            <.span(^.cls := "page-top-right-segment hidden-link", ^.onClick --> toggleFreezed,
-              ^.title := (if (state.appState == AppState.Freezed) "Click to keep up to date" else "Click to freeze"),
-              state.appState match {
-                case AppState.Freezed ⇒ <.span(^.cls := "freezed")("❄ freezed")
-                case AppState.Standby ⇒ <.span(^.cls := "standby")(s"$Moon standby")
-                case AppState.RequestingEvents ⇒
-                  if (state.ordersState.content == OrdersState.FetchingContent)
-                    "fetching..."
-                  else if (state.isConnected)
-                    VdomArray(
-                      <.i(^.cls := "material-icons rotate-slowly top-line")("autorenew"),
-                      " connected")
-                  else
-                    <.span(^.cls := "disconnected")("⚠️ disconnected")
-              }),
-            state.ordersState.content match {
-              case OrdersState.Initial ⇒
-                ""
-              case OrdersState.FetchingContent ⇒
-                <.span(^.cls := "page-top-right-segment")(
-                  "...")
-              case OrdersState.FetchedContent(_, _, eventId, eventCount) ⇒
-                val (dt, millis) = EventId.toTimestamp(eventId).toLocaleIsoStringWithoutOffset splitAt 19
-                VdomArray(
-                  <.span(^.cls := "page-top-right-segment unimportant")(s"$eventCount events"),
-                  <.span(^.cls := "page-top-right-segment")(
-                    <.span(^.cls := "nowrap")(dt.replace("T", " "),
-                      <.span(^.cls := "hide-on-mobile unimportant")(s"$millis"))))
-            }))))
+          <.td(^.cls := "page-top-right")
+            (events, appState, clock))))
+  }
+
+  private def eventsAndClock: (TagMod, TagMod) =
+    state.ordersState.content match {
+      case OrdersState.Initial ⇒
+        (emptyTagMod, emptyTagMod)
+      case OrdersState.FetchingContent ⇒
+        (emptyTagMod,
+          <.span(^.cls := "page-top-right-segment")(
+            "..."))
+      case OrdersState.FetchedContent(_, _, eventId, eventCount) ⇒
+        val dateTime = EventId.toTimestamp(eventId).toLocaleIsoStringWithoutOffset take 19
+        val events = <.span(^.cls := "page-top-right-segment unimportant")(s"$eventCount events")
+        val dt =
+          <.span(^.cls := "page-top-right-segment")(
+            <.span(^.cls := "nowrap")(dateTime.replace("T", " ")))
+            //<.span(^.cls := "hide-on-mobile unimportant")(s"$millis"))))
+        (events, dt)
+    }
+
+  private def appState: TagMod =
+    <.span(^.cls := "page-top-right-segment hidden-link", ^.onClick --> toggleFreezed,
+                  ^.title := (if (state.appState == AppState.Freezed) "Click to keep up to date" else "Click to freeze"),
+      state.appState match {
+        case AppState.Freezed ⇒ <.span(^.cls := "freezed")("❄ freezed")
+        case AppState.Standby ⇒ <.span(^.cls := "standby")(s"$Moon standby")
+        case AppState.RequestingEvents ⇒
+          if (state.ordersState.content == OrdersState.FetchingContent)
+            "fetching..."
+          else if (state.isConnected)
+            Connected
+          else
+          state.ordersState.error match {
+            case Some(error) ⇒ <.span(^.cls := "disconnected", ^.title := error)("☠️ GUI error")
+            case None ⇒ <.span(^.cls := "disconnected")("⚠️ disconnected")
+          }
+      })
 }
 
 object GuiRenderer {
+  val Connected = VdomArray(
+    <.i(^.cls := "material-icons rotate-slowly top-line")("autorenew"),
+    " connected")
   val Moon = "\uD83C\uDF19"
 
   lazy val topLineleft = {
@@ -83,10 +97,11 @@ object GuiRenderer {
       <.span(^.cls := "page-top-left-segment")(
         <.a(^.cls := "hidden-link", ^.href := "#")(
           "JobScheduler Master ",
-          <.span(^.cls := "hide-on-phone")(
+          <.span(^.cls := "hide-on-phone unimportant")(
+            "· ",
             version,
             <.span(^.cls := "hide-on-mobile")(s" $versionExt") when versionExt.nonEmpty))),
-      <.span(^.cls := "hide-on-phone page-top-left-segment experimental-monitor")(
+      <.span(^.cls := "hide-on-phone page-top-left-segment experimental-monitor  unimportant")(
         "EXPERIMENTAL MONITOR"))
   }
 

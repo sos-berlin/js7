@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Position, InstructionNr, WorkflowPath, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
@@ -19,20 +19,22 @@ import scala.reflect.ClassTag
   */
 final case class Order[+S <: Order.State](
   id: OrderId,
-  nodeKey: NodeKey,
+  workflowPosition: WorkflowPosition,
   state: S,
   attachedTo: Option[AttachedTo] = None,
   payload: Payload = Payload.empty,
   parent: Option[OrderId] = None)
 {
   def newChild(child: OrderForked.Child): Order[Order.Ready.type] =
-    Order(child.orderId, NodeKey(workflowPath, child.nodeId), Ready, attachedTo, child.payload, Some(id))
+    Order(child.orderId, workflowPosition.copy(position = workflowPosition.position / child.childId / InstructionNr.First), Ready, attachedTo,
+      Payload(child.variablesDiff.applyTo(payload.variables)),
+      parent = Some(id))
 
   def workflowPath: WorkflowPath =
-    nodeKey.workflowPath
+    workflowPosition.workflowPath
 
-  def nodeId: NodeId =
-    nodeKey.nodeId
+  def position: Position =
+    workflowPosition.position
 
   def update(event: OrderEvent.OrderCoreEvent): Order[State] =
     event match {
@@ -53,16 +55,18 @@ final case class Order[+S <: Order.State](
           outcome = outcome_))
 
       case OrderForked(children) ⇒ copy(
-        state = Forked(children map (_.orderId)))
+        state = Join(children map (_.orderId)))
 
-      case OrderJoined(toNodeId, variablesDiff, outcome_) ⇒ copy(
-        state = Ready,
-        nodeKey = NodeKey(workflowPath, toNodeId),
-        payload = Payload(variablesDiff applyTo variables, outcome_))
+      case OrderJoined(to, variablesDiff, outcome_) ⇒
+        copy(
+          state = Ready,
+          payload = Payload(variablesDiff applyTo variables, outcome_))
+        .moveTo(to)
 
-      case OrderMoved(toNodeId) ⇒ copy(
+      case OrderMoved(to) ⇒ copy(
         state = Ready,
-        nodeKey = NodeKey(workflowPath, toNodeId))
+        workflowPosition = workflowPosition.copy(
+          position = workflowPosition.position.moveTo(to)))
 
       case OrderDetachable ⇒
         attachedTo match {
@@ -77,9 +81,17 @@ final case class Order[+S <: Order.State](
       case OrderDetached ⇒ copy(
         attachedTo = None)
 
-      case OrderFinished ⇒ copy(
-        state = Finished)
+      case OrderFinished ⇒
+        position.dropChild match {
+          case Some(position) ⇒
+            copy(workflowPosition = workflowPosition.copy(position = position))
+          case None ⇒
+            copy(state = Finished)
+        }
     }
+
+  def moveTo(to: InstructionNr): Order[S] = copy(
+    workflowPosition = workflowPosition.copy(position = workflowPosition.position.moveTo(to)))
 
   def variables = payload.variables
 
@@ -122,10 +134,10 @@ final case class Order[+S <: Order.State](
 
 object Order {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Idle] =
-    Order(id, event.nodeKey, event.state, None, event.payload)
+    Order(id, event.workflowPath, event.state, None, event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[Idle] =
-    Order(id, event.nodeKey, event.state, Some(AttachedTo.Agent(event.agentPath)), event.payload)
+    Order(id, event.workflowPosition, event.state, Some(AttachedTo.Agent(event.agentPath)), event.payload)
 
   sealed trait AttachedTo
   object AttachedTo {
@@ -169,7 +181,7 @@ object Order {
   case object Processed extends Transitionable
 
   @JsonCodec
-  final case class Forked(childOrderIds: Seq[OrderId]) extends Transitionable
+  final case class Join(joinOrderIds: Seq[OrderId]) extends Transitionable
 
   case object Finished extends State
 
@@ -185,7 +197,7 @@ object Order {
     Subtype[Idle],
     Subtype(InProcess),
     Subtype(Processed),
-    Subtype[Forked],
+    Subtype[Join],
     Subtype(Finished))
 
   implicit val NotStartedOrderJsonCodec: CirceCodec[Order[NotStarted]] = deriveCirceCodec[Order[NotStarted]]

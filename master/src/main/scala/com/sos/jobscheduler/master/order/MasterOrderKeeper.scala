@@ -20,9 +20,9 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderMovedToMaster, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderMovedToAgent, OrderMovedToMaster, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -35,8 +35,8 @@ import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAn
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess
-import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToGraph.workflowScriptToGraph
-import com.sos.jobscheduler.shared.workflow.script.notation.WorkflowScriptParser
+import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflowScript
+import com.sos.jobscheduler.shared.workflow.notation.WorkflowParser
 import java.nio.file.Path
 import java.time.Duration
 import scala.collection.immutable.Seq
@@ -64,7 +64,7 @@ with Stash {
 
   private val journalFile = masterConfiguration.stateDirectory / "journal"
   private val agentRegister = new AgentRegister
-  private val pathToWorkflow = mutable.Map[WorkflowPath, WorkflowGraph.Named]()
+  private val pathToNamedWorkflow = mutable.Map[WorkflowPath, Workflow.Named]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private var detachingSuspended = false
   protected val journalActor = {
@@ -86,8 +86,8 @@ with Stash {
       forEachTypedFile(dir, Set(WorkflowPath, AgentPath)) {
         case (file, workflowPath: WorkflowPath) ⇒
           logger.info(s"Adding $workflowPath")
-          val graph = workflowScriptToGraph(readWorkflowScript(workflowPath, file))
-          pathToWorkflow.insert(workflowPath → WorkflowGraph.Named(workflowPath, graph))
+          val workflow = readWorkflow(workflowPath, file)
+          pathToNamedWorkflow.insert(workflowPath → Workflow.Named(workflowPath, workflow))
 
         case (file, agentPath: AgentPath) ⇒
           logger.info(s"Adding $agentPath")
@@ -102,12 +102,12 @@ with Stash {
     }
   }
 
-  private def readWorkflowScript(workflowPath: WorkflowPath, file: Path): WorkflowScript =
+  private def readWorkflow(workflowPath: WorkflowPath, file: Path): Workflow =
     if (file.getFileName.toString endsWith WorkflowPath.jsonFilenameExtension)
-      file.contentString.parseJson.as[WorkflowScript].force
+      file.contentString.parseJson.as[Workflow].force
     else
     if (file.getFileName.toString endsWith WorkflowPath.txtFilenameExtension)
-      WorkflowScriptParser.parse(file.contentString) match {
+      WorkflowParser.parse(file.contentString) match {
         case Right(workflowScript) ⇒ workflowScript
         case Left(message) ⇒ sys.error(s"$file: $message")
       }
@@ -133,7 +133,7 @@ with Stash {
 
   protected def snapshots = Future.successful(
     (for (entry ← agentRegister.values) yield AgentEventId(entry.agentPath, entry.lastAgentEventId)) ++
-      //??? pathToWorkflow.values ++
+      //??? pathToNamedWorkflow.values ++
       (orderRegister.values map { _ .order }))
 
   private def recover() = {
@@ -172,10 +172,10 @@ with Stash {
         orderRegister.get(order.id) match {
           case Some(_) ⇒
             logger.info(s"$logMsg is duplicate and discarded")
-          case None if !pathToWorkflow.isDefinedAt(order.nodeKey.workflowPath) ⇒
-            logger.error(s"$logMsg: Unknown '${order.nodeKey.workflowPath}'")
+          case None if !pathToNamedWorkflow.isDefinedAt(order.workflowPath) ⇒
+            logger.error(s"$logMsg: Unknown '${order.workflowPath}'")
           case _ ⇒
-            persistAsync(KeyedEvent(OrderAdded(order.nodeKey, order.state, order.payload))(order.id)) { stamped ⇒
+            persistAsync(KeyedEvent(OrderAdded(order.workflowPath, order.state, order.payload))(order.id)) { stamped ⇒
               handleOrderEvent(stamped)
             }
         }
@@ -185,13 +185,13 @@ with Stash {
       }
 
     case Command.GetWorkflow(path) ⇒
-      sender() ! pathToWorkflow.get(path)
+      sender() ! pathToNamedWorkflow.get(path)
 
     case Command.GetWorkflows ⇒
-      sender() ! eventIdGenerator.stamp((pathToWorkflow.values).toVector: Vector[WorkflowGraph.Named])
+      sender() ! eventIdGenerator.stamp((pathToNamedWorkflow.values).toVector: Vector[Workflow.Named])
 
     case Command.GetWorkflowCount ⇒
-      sender() ! (pathToWorkflow.size: Int)
+      sender() ! (pathToNamedWorkflow.size: Int)
 
     case Command.GetOrder(orderId) ⇒
       sender() ! (orderRegister.get(orderId) map { _.order })
@@ -231,7 +231,7 @@ with Stash {
         logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
       else {
         val ownEvent = event match {
-          case _: OrderEvent.OrderAttached ⇒ OrderEvent.OrderMovedToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+          case _: OrderEvent.OrderAttached ⇒ OrderMovedToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
           case _ ⇒ event
         }
         // OrderForked: The children have to be registered before its events. We simply stash this actor's message input until OrderForked has been journaled and handled. Slow
@@ -245,10 +245,10 @@ with Stash {
     case AgentDriver.Output.OrdersDetached(orderIds) ⇒
       val unknown = orderIds -- orderRegister.keySet
       if (unknown.nonEmpty) {
-        logger.error(s"Received OrdersDetached from Agent for unknown orders:" + unknown.mkString(", "))
+        logger.error(s"Received OrdersDetached from Agent for unknown orders: "+ unknown.mkString(", "))
       }
       for (orderId ← orderIds -- unknown) {
-        persistAsync(KeyedEvent(OrderEvent.OrderMovedToMaster)(orderId))(handleOrderEvent)
+        persistAsync(KeyedEvent(OrderMovedToMaster)(orderId))(handleOrderEvent)
       }
 
     case msg @ JournalActor.Output.SerializationFailure(throwable) ⇒
@@ -283,13 +283,13 @@ with Stash {
 
     case MasterCommand.AddOrderIfNew(order) ⇒
       orderRegister.get(order.id) match {
-        case None if pathToWorkflow.isDefinedAt(order.nodeKey.workflowPath) ⇒
-          persistAsync(KeyedEvent(OrderAdded(order.nodeKey, order.state, order.payload))(order.id)) { stamped ⇒
+        case None if pathToNamedWorkflow.isDefinedAt(order.workflowPath) ⇒
+          persistAsync(KeyedEvent(OrderAdded(order.workflowPath, order.state, order.payload))(order.id)) { stamped ⇒
             handleOrderEvent(stamped)
             sender() ! MasterCommand.Response.Accepted
           }
-        case None if !pathToWorkflow.isDefinedAt(order.nodeKey.workflowPath) ⇒
-          sender() ! Status.Failure(new NoSuchElementException(s"Unknown Workflow '${order.nodeKey.workflowPath.string}'"))
+        case None if !pathToNamedWorkflow.isDefinedAt(order.workflowPath) ⇒
+          sender() ! Status.Failure(new NoSuchElementException(s"Unknown Workflow '${order.workflowPath.string}'"))
         case Some(_) ⇒
           logger.debug(s"Discarding duplicate AddOrderIfNew: ${order.id}")
           sender() ! MasterCommand.Response.Accepted //Status.Failure(new IllegalStateException(s"Duplicate OrderId '${order.taskId}'"))
@@ -326,9 +326,9 @@ with Stash {
 
           case event: OrderJoined ⇒
             orderEntry.order.state match {
-              case Order.Forked(childOrderIds) ⇒
-                for (childOrderId ← childOrderIds) {
-                  orderRegister -= childOrderId
+              case Order.Join(joinOrderIds) ⇒
+                for (joinOrderId ← joinOrderIds) {
+                  orderRegister -= joinOrderId
                 }
               case state ⇒
                 logger.error(s"Event $event, but $orderId is in state $state")
@@ -347,7 +347,7 @@ with Stash {
     val order = orderEntry.order
     order.attachedTo match {
       case None ⇒
-        proceedWithOrderOnMaster(order)
+        proceedWithOrderOnMaster(orderEntry)
 
       case Some(_: Order.AttachedTo.Detachable) ⇒
         detachOrderFromAgent(order.id)
@@ -356,36 +356,33 @@ with Stash {
     }
   }
 
-  private def proceedWithOrderOnMaster(order: Order[Order.State]): Unit =
+  private def proceedWithOrderOnMaster(orderEntry: OrderEntry): Unit = {
+    import orderEntry.order
+    val namedWorkflow = pathToNamedWorkflow(order.workflowPath)
     order.state match {
       case _: Order.Idle ⇒
         val idleOrder = order.castState[Order.Idle]
-        for (workflow ← pathToWorkflow.get(order.workflowPath);
-             node ← workflow.graph.idToNode.get(order.nodeId)) {
-          node match {
-            case _: WorkflowGraph.JobNode ⇒
-              tryAttachOrderToAgent(idleOrder)
-
-            case _: WorkflowGraph.EndNode ⇒
-              persistAsync(KeyedEvent(OrderEvent.OrderFinished)(order.id))(handleOrderEvent)
-          }
-        }
-
-      case _: Order.Transitionable ⇒
-        val process = new WorkflowProcess(pathToWorkflow(order.workflowPath).graph, orderRegister mapPartialFunction (_.order))
-        for (keyedEvent ← process.guardedSwitchTransition(order.castState[Order.Transitionable])) {
-          persistAsync(keyedEvent)(handleOrderEvent)
+        namedWorkflow.workflow.instruction(order.position) match {
+          case _: Instruction.Job ⇒ tryAttachOrderToAgent(idleOrder)
+          case _ ⇒
         }
 
       case _ ⇒
     }
+    val process = new WorkflowProcess(pathToNamedWorkflow(order.workflowPath).workflow, orderRegister mapPartialFunction (_.order))
+    if (!order.isAttachedToAgent) {
+      for (keyedEvent ← process.tryExecuteInstruction(order)) {
+        persistAsync(keyedEvent)(handleOrderEvent)
+      }
+    }
+  }
 
   private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit =
-    for (workflow ← pathToWorkflow.get(order.nodeKey.workflowPath);
-         agentPath ← workflow.graph.agentPathOption(order.nodeKey.nodeId);
-         agentEntry ← agentRegister.get(agentPath))
+    for (namedWorkflow ← pathToNamedWorkflow.get(order.workflowPath);
+         job ← namedWorkflow.workflow.jobOption(order.position);
+         agentEntry ← agentRegister.get(job.agentPath))
     {
-      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentPath, workflow.graph.reduceForAgent(agentPath))
+      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, job.agentPath, namedWorkflow.workflow.reduceForAgent(job.agentPath))
     }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
@@ -461,11 +458,11 @@ object MasterOrderKeeper {
 
   private def logNotableEvent(orderId: OrderId, event: OrderEvent): Unit =
     event match {
-      case _ @  (_: OrderEvent.OrderAdded | _: OrderEvent.OrderMovedToAgent | OrderEvent.OrderMovedToMaster | OrderEvent.OrderFinished) ⇒
+      case _ @  (_: OrderAdded | _: OrderMovedToAgent | OrderMovedToMaster | _: OrderForked | _: OrderJoined | OrderFinished) ⇒
         logEvent(orderId, event)
       case _ ⇒
     }
 
   private def logEvent(orderId: OrderId, event: OrderEvent): Unit =
-    logger.info(s"$orderId 🔶 $event")
+    logger.info(s"🔶 ${KeyedEvent(event)(orderId)}")
 }

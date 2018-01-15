@@ -4,16 +4,16 @@ import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.collection.generic.{GenMapFactory, GenericCompanion}
-import scala.collection.immutable.Vector
+import scala.collection.immutable.{ListMap, Seq, Vector}
 import scala.collection.{GenMap, GenMapLike, GenTraversable, TraversableLike, immutable, mutable}
 import scala.language.{higherKinds, implicitConversions}
 
 object Collections {
   object implicits {
     implicit class RichTraversableOnce[A](val delegate: TraversableOnce[A]) extends AnyVal {
-      def toImmutableSeq: immutable.Seq[A] =
+      def toImmutableSeq: Seq[A] =
         delegate match {
-          case o: immutable.Seq[A] ⇒ o
+          case o: Seq[A] ⇒ o
           case _ ⇒ Vector() ++ delegate
         }
 
@@ -29,7 +29,7 @@ object Collections {
       def compareElementWise(other: TraversableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
     }
 
-    implicit class RichSeq[A](val delegate: Seq[A]) extends AnyVal {
+    implicit class RichSeq[A](val delegate: collection.Seq[A]) extends AnyVal {
       /**
         * Like `fold` but uses `neutral` only when `operation` cannot be applied, that is size &lt; 2.
         *
@@ -37,23 +37,23 @@ object Collections {
         */
       def foldFast(neutral: A)(operation: (A, A) ⇒ A): A = delegate match {
         case Nil ⇒ neutral
-        case Seq(a) ⇒ a
+        case collection.Seq(a) ⇒ a
         case seq ⇒ seq reduce operation
       }
     }
 
     implicit class RichArray[A](val delegate: Array[A]) extends AnyVal {
-      def toImmutableSeq: immutable.Seq[A] =
+      def toImmutableSeq: Seq[A] =
         Vector() ++ delegate
     }
 
     implicit class RichJavaIterable[A](val delegate: java.lang.Iterable[A]) extends AnyVal {
-      def toImmutableSeq: immutable.Seq[A] =
+      def toImmutableSeq: Seq[A] =
         Vector() ++ delegate.asScala
     }
 
     implicit class RichJavaIterator[A](val delegate: java.util.Iterator[A]) extends AnyVal {
-      def toImmutableSeq: immutable.Seq[A] =
+      def toImmutableSeq: Seq[A] =
         Vector() ++ delegate.asScala
     }
 
@@ -117,7 +117,7 @@ object Collections {
         delegate.toMap
       }
 
-      def toSeqMultiMap: Map[A, immutable.Seq[B]] =
+      def toSeqMultiMap: Map[A, Seq[B]] =
         delegate groupBy { _._1 } map { case (key, seq) ⇒ key → (seq map { _._2 }).toImmutableSeq }
     }
 
@@ -131,7 +131,7 @@ object Collections {
     implicit def javaStreamToIterator[A](stream: java.util.stream.Stream[A]): Iterator[A] = stream.iterator.asScala
 
     implicit class RichJavaStream[A](val delegate: java.util.stream.Stream[A]) extends AnyVal {
-      def toImmutableSeq: immutable.Seq[A] =
+      def toImmutableSeq: Seq[A] =
         Vector() ++ delegate.iterator.asScala
     }
   }
@@ -158,6 +158,12 @@ object Collections {
       body(b)
       b.result
     }
+  }
+
+  implicit class RichListMap[K, V](val underlying: ListMap[K, V]) extends AnyVal {
+    // ListMap is ordered
+    def keySeq: Seq[K] = underlying.keys.toVector
+    def valueSeq: Seq[V] = underlying.values.toVector
   }
 
   implicit class RichBufferedIterator[A](val delegate: BufferedIterator[A]) extends AnyVal {

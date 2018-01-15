@@ -3,7 +3,8 @@ package com.sos.jobscheduler.master.order
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, Goto, IfError, Job, Labeled}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Label, Workflow}
 import javax.xml.transform.Source
 import scala.collection.immutable.Seq
 
@@ -12,31 +13,31 @@ import scala.collection.immutable.Seq
   */
 object LegacyJobchainXmlParser {
 
-  def parseXml(source: Source, folderPath: FolderPath): WorkflowScript =
+  def parseXml(source: Source, folderPath: FolderPath): Workflow =
     ScalaXMLEventReader.parseDocument(source) { eventReader ⇒
       import eventReader._
 
       eventReader.parseElement("job_chain") {
-        val items = forEachStartElement[Seq[WorkflowScript.Statement]] {
+        val items = forEachStartElement[Seq[Labeled]] {
           case "job_chain_node" ⇒
             parseElement() {
-              val nodeId = attributeMap.as[NodeId]("state")
+              val label = attributeMap.as[Label]("state")
               attributeMap.get("job") match {
                 case Some(jobPathString) ⇒
-                  WorkflowScript.Job(nodeId, AgentJobPath(folderPath.resolve[AgentPath](attributeMap("agent")), folderPath.resolve[JobPath](jobPathString))) ::
-                    attributeMap.optionAs[NodeId]("error_state").map(WorkflowScript.IfError.apply).toList :::
-                    attributeMap.optionAs[NodeId]("next_state").map(WorkflowScript.Goto.apply).toList
+                  label @: Job(AgentJobPath(folderPath.resolve[AgentPath](attributeMap("agent")), folderPath.resolve[JobPath](jobPathString))) ::
+                    attributeMap.optionAs[Label]("error_state").map(o ⇒ () @: IfError(o)).toList :::
+                    attributeMap.optionAs[Label]("next_state").map(o ⇒ () @: Goto(o)).toList
                 case None ⇒
-                  WorkflowScript.End(nodeId) :: Nil
+                  label @: ExplicitEnd :: Nil
               }
             }
 
           case "job_chain_node.end" ⇒
             parseElement() {
-              WorkflowScript.End(attributeMap.as[NodeId]("state")) :: Nil
+              attributeMap.as[Label]("state") @: ExplicitEnd :: Nil
             }
         }
-        WorkflowScript(items.values.flatten).reduce
+        Workflow(items.values.flatten).reduce
       }
     }
 }

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.order
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.Order._
-import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -15,7 +15,7 @@ final class OrderTest extends FreeSpec {
   "Order" - {
     val order = Order(
       OrderId("ID"),
-      NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")),
+      WorkflowPath("/JOBNET"),
       Order.Ready,
       payload = Payload(Map(
         "var1" → "value1",
@@ -64,10 +64,7 @@ final class OrderTest extends FreeSpec {
           parent = Some(OrderId("PARENT"))),
         """{
           "id": "ID",
-          "nodeKey": {
-            "workflowPath": "/JOBNET",
-            "nodeId": "NODE"
-          },
+          "workflowPosition": [ "/JOBNET", 0 ],
           "state": {
             "TYPE": "Ready"
           },
@@ -129,11 +126,11 @@ final class OrderTest extends FreeSpec {
         }""")
     }
 
-    "Forked" in {
-      check(Forked(List(OrderId("A/1"), OrderId("A/2"))),
+    "Join" in {
+      check(Join(List(OrderId("A/1"), OrderId("A/2"))),
         """{
-           "TYPE": "Forked",
-           "childOrderIds": [ "A/1", "A/2" ]
+           "TYPE": "Join",
+           "joinOrderIds": [ "A/1", "A/2" ]
         }""")
     }
 
@@ -148,7 +145,7 @@ final class OrderTest extends FreeSpec {
   }
 
   "isAttachable" in {
-    val order = Order(OrderId("ORDER-ID"), NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE")), Order.Ready, Some(AttachedTo.Detachable(AgentPath("/AGENT"))))
+    val order = Order(OrderId("ORDER-ID"), WorkflowPath("/JOBNET"), Order.Ready, Some(AttachedTo.Detachable(AgentPath("/AGENT"))))
     assert(order.detachableFromAgent == Right(AgentPath("/AGENT")))
 
     for (o ← Array(

@@ -16,7 +16,6 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.NodeKey
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -47,7 +46,7 @@ final class AgentActorIT extends FreeSpec {
           executeCommand(RegisterAsMaster) await 99.s
           val stopwatch = new Stopwatch
           val orderIds = for (i ← 0 until n) yield OrderId(s"TEST-ORDER-$i")
-          orderIds map (orderId ⇒ executeCommand(AttachOrder(TestOrder.copy(id = orderId), TestAgentPath, TestWorkflow.graph))) await 99.s
+          orderIds map (orderId ⇒ executeCommand(AttachOrder(TestOrder.copy(id = orderId), TestAgentPath, TestWorkflow.workflow))) await 99.s
           for (orderId ← orderIds)
             eventCollector.whenKeyedEvent[OrderEvent.OrderDetachable.type](EventRequest.singleClass(after = lastEventId, 90.s), orderId) await 99.s
           info(stopwatch.itemsPerSecondString(n, "Orders"))
@@ -56,7 +55,7 @@ final class AgentActorIT extends FreeSpec {
           assert(orders.toSet ==
             orderIds.map(orderId ⇒ Order(
               orderId,
-              NodeKey(TestWorkflow.path, END.id),
+              TestWorkflow.lastWorkflowPosition,
               Order.Ready,
               Some(Order.AttachedTo.Detachable(TestAgentPath)),
               payload = TestOrder.payload.copy(

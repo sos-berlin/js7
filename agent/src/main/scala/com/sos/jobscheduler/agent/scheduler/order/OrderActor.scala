@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import akka.actor.{ActorRef, Cancellable, Status, Terminated}
+import akka.actor.{ActorRef, Cancellable, Props, Status, Terminated}
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import com.sos.jobscheduler.data.workflow.WorkflowGraph
+import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
@@ -69,8 +69,8 @@ extends KeyedJournalingActor[OrderEvent] {
         context.become(processed)
         // Next event 'OrderMoved' is initiated by AgentOrderKeeper
 
-      case _: Order.Forked ⇒
-        context.become(forked)
+      case _: Order.Join ⇒
+        context.become(joining)
 
       case Order.Finished ⇒
         sys.error(s"Unexpected order state: ${order.state}")   // A Finished order must be at Master
@@ -86,9 +86,9 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case command: Command ⇒
       command match {
-        case Command.Attach(Order(`orderId`, nodeKey, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), payload, parent)) ⇒
+        case Command.Attach(Order(`orderId`, workflowPosition, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), payload, parent)) ⇒
           context.become(idle)
-          persist(OrderAttached(nodeKey, state, parent, agentPath, payload)) { event ⇒
+          persist(OrderAttached(workflowPosition, state, parent, agentPath, payload)) { event ⇒
             sender() ! Completed
             update(event)
           }
@@ -105,10 +105,10 @@ extends KeyedJournalingActor[OrderEvent] {
     case command: Command ⇒
       executeOtherCommand(command)
 
-    case Input.StartProcessing(jobNode, jobActor) ⇒
+    case Input.StartProcessing(job, jobActor) ⇒
       val stdoutWriter = new StatisticalWriter(stdWriters(Stdout))
       val stderrWriter = new StatisticalWriter(stdWriters(Stderr))
-      context.become(processing(jobNode, jobActor,
+      context.become(processing(job, jobActor,
         () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
       context.watch(jobActor)
       persist(OrderProcessingStarted) { event ⇒
@@ -121,14 +121,18 @@ extends KeyedJournalingActor[OrderEvent] {
             stderrWriter = stderrWriter))
       }
 
-    case Input.MakeDetachable ⇒
+    case Input.HandleTransitionEvent(event: OrderForked) ⇒
+      context.become(joining)
+      persist(event)(update)
+
+    case Input.HandleTransitionEvent(OrderDetachable) ⇒
       persist(OrderDetachable)(update)
 
     case Input.Terminate ⇒
       context.stop(self)
   }
 
-  private def processing(node: WorkflowGraph.JobNode, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
+  private def processing(job: Instruction.Job, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
     journaling orElse {
       case Internal.StdoutStderrWritten(t, chunk, promise) ⇒
         persistAsync(OrderStdWritten(t)(chunk)) { _ ⇒
@@ -153,12 +157,12 @@ extends KeyedJournalingActor[OrderEvent] {
           case TaskStepFailed(bad) ⇒
             OrderProcessed(MapDiff.empty, bad)
         }
-        finishProcessing(event, node, stdoutStderrStatistics)
+        finishProcessing(event, job, stdoutStderrStatistics)
         context.unwatch(jobActor)
 
       case Terminated(`jobActor`) ⇒
-        val bad = Outcome.Bad(Outcome.Bad.Other(s"Job Actor '${node.jobPath.string}' terminated unexpectedly"))
-        finishProcessing(OrderProcessed(MapDiff.empty, bad), node, stdoutStderrStatistics)
+        val bad = Outcome.Bad(Outcome.Bad.Other(s"Job Actor '${job.jobPath.string}' terminated unexpectedly"))
+        finishProcessing(OrderProcessed(MapDiff.empty, bad), job, stdoutStderrStatistics)
 
       case command: Command ⇒
         executeOtherCommand(command)
@@ -167,7 +171,7 @@ extends KeyedJournalingActor[OrderEvent] {
         terminating = true
     }
 
-  private def finishProcessing(event: OrderProcessed, node: WorkflowGraph.JobNode, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
+  private def finishProcessing(event: OrderProcessed, job: Instruction.Job, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
     flushStdoutAndStderr()
     cancelStdoutStderrTimer()
     for (o ← stdoutStderrStatistics()) logger.debug(o)
@@ -195,17 +199,10 @@ extends KeyedJournalingActor[OrderEvent] {
       context.become(idle)
       persist(event)(update)
 
-    case Input.HandleTransitionEvent(event: OrderForked) ⇒
-      context.become(forked)
-      persist(event)(update)
-
-    case Input.MakeDetachable ⇒
+    case Input.HandleTransitionEvent(OrderDetachable) ⇒
       persist(OrderDetachable)(update)
 
     case Input.Terminate ⇒
-      context.stop(self)
-
-    case Input.DeleteChild ⇒
       context.stop(self)
 
     case Command.Detach ⇒
@@ -215,13 +212,13 @@ extends KeyedJournalingActor[OrderEvent] {
       executeOtherCommand(command)
   }
 
-  private def forked: Receive =
+  private def joining: Receive =
     journaling orElse {
       case Input.HandleTransitionEvent(event: OrderJoined) ⇒
         context.become(idle)
         persist(event)(update)
 
-      case Input.MakeDetachable ⇒
+      case Input.HandleTransitionEvent(OrderDetachable) ⇒
         persist(OrderDetachable)(update)
 
       case Command.Detach ⇒
@@ -274,7 +271,8 @@ extends KeyedJournalingActor[OrderEvent] {
   override def unhandled(msg: Any) =
     msg match {
       case msg @ (_: Command | _: Input) ⇒
-        logger.warn(s"Unhandled message $msg in state ${order.state}")
+        logger.error(s"Unhandled message $msg in state ${order.state}")
+
       case _ ⇒
         super.unhandled(msg)
     }
@@ -286,6 +284,9 @@ private[order] object OrderActor {
   private val StdPipeCharBufferSize = 500  // Even a size of 1 character is not slow
   val RecoveryGeneratedOutcome = Outcome.Bad(Outcome.Bad.AgentRestarted)
 
+  private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config) =
+    Props { new OrderActor(orderId, journalActor = journalActor, config) }
+
   sealed trait Command
   object Command {
     final case class  Attach(order: Order[Order.Idle]) extends Command
@@ -295,10 +296,8 @@ private[order] object OrderActor {
   sealed trait Input
   object Input {
     final case class AddChild(order: Order[Order.Ready.type]) extends Input
-    final case object DeleteChild extends Input
-    final case class StartProcessing(node: WorkflowGraph.JobNode, jobActor: ActorRef) extends Input
+    final case class StartProcessing(job: Instruction.Job, jobActor: ActorRef) extends Input
     final case object Terminate extends Input
-    final case object MakeDetachable
     final case class HandleTransitionEvent(event: OrderTransitionedEvent) extends Input
   }
 

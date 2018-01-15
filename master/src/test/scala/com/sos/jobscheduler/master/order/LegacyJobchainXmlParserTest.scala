@@ -3,11 +3,8 @@ package com.sos.jobscheduler.master.order
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.workflow.WorkflowScript.{End, Goto, Job, IfError}
-import com.sos.jobscheduler.data.workflow.transition.Transition
-import com.sos.jobscheduler.data.workflow.transitions.SuccessErrorTransition
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, WorkflowGraph, WorkflowScript}
-import com.sos.jobscheduler.shared.workflow.script.WorkflowScriptToGraph.workflowScriptToGraph
+import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, Goto, IfError, Job}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
 
 /**
@@ -25,36 +22,23 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
       <job_chain_node state="END"/>
       <job_chain_node.end state="FAILURE"/>
     </job_chain>
-  private val A = WorkflowGraph.JobNode(NodeId("A"), AgentPath("/AGENT"), JobPath("/JOB-A"))
-  private val B = WorkflowGraph.JobNode(NodeId("B"), AgentPath("/FOLDER/AGENT"), JobPath("/FOLDER/JOB-B"))
-  private val C = WorkflowGraph.JobNode(NodeId("C"), AgentPath("/AGENT"), JobPath("/JOB-C"))
-  private val D = WorkflowGraph.JobNode(NodeId("D"), AgentPath("/AGENT"), JobPath("/JOB-D"))
-  private val E = WorkflowGraph.JobNode(NodeId("E"), AgentPath("/AGENT"), JobPath("/JOB-E"))
-  private val END = WorkflowGraph.EndNode(NodeId("END"))
-  private val FAILURE = WorkflowGraph.EndNode(NodeId("FAILURE"))  // This last node becomes the workflow's end node
-  private val script = LegacyJobchainXmlParser.parseXml(xml, FolderPath("/FOLDER"))
 
-  "WorkflowScript" in {
-    assert(script == WorkflowScript(List(
-      Job(A.id, A.job), IfError(FAILURE.id),
-      Job(B.id, B.job), IfError(FAILURE.id),
-      Job(C.id, C.job), Goto(D.id),
-      Job(E.id, E.job), IfError(FAILURE.id), Goto(END.id),
-      Job(D.id, D.job), Goto(E.id),
-      End(END.id),
-      End(FAILURE.id))))
-  }
+  private val workflow = LegacyJobchainXmlParser.parseXml(xml, FolderPath("/FOLDER"))
 
-  "WorkflowGraph" in {
-    assert(workflowScriptToGraph(script) ==
-      WorkflowGraph(start = A.id,
-        List(A, B, C, E, D, END, FAILURE),
-        List(
-          Transition(Vector(A.id), Vector(B.id, FAILURE.id), SuccessErrorTransition),
-          Transition(Vector(B.id), Vector(C.id, FAILURE.id), SuccessErrorTransition),
-          Transition(C.id, D.id),
-          Transition(Vector(E.id), Vector(END.id, FAILURE.id), SuccessErrorTransition),
-          Transition(D.id, E.id)),
-        Some(script)))
+  "Workflow" in {
+    assert(workflow == Workflow(Vector(
+      "A"       @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-A"))),
+                   IfError(Label("FAILURE")),
+      "B"       @: Job(AgentJobPath(AgentPath("/FOLDER/AGENT"), JobPath("/FOLDER/JOB-B"))),
+                   IfError(Label("FAILURE")),
+      "C"       @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-C"))),
+                   Goto(Label("D")),
+      "E"       @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-E"))),
+                   IfError(Label("FAILURE")),
+                   Goto(Label("END")),
+      "D"       @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-D"))),
+                   Goto(Label("E")),
+      "END"     @: ExplicitEnd,
+      "FAILURE" @: ExplicitEnd)))
   }
 }

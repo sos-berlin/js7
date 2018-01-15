@@ -20,7 +20,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{WorkflowPath, Workflow}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -127,11 +127,11 @@ object RunningMaster {
 
         implicit def executionContext = ec
 
-        def workflow(path: WorkflowPath): Future[Option[WorkflowGraph.Named]] =
-          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[WorkflowGraph.Named]]
+        def namedWorkflow(path: WorkflowPath): Future[Option[Workflow.Named]] =
+          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[Workflow.Named]]
 
-        def workflows: Future[Stamped[Seq[WorkflowGraph.Named]]] =
-          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[WorkflowGraph.Named]]]
+        def namedWorkflows: Future[Stamped[Seq[Workflow.Named]]] =
+          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[Workflow.Named]]]
 
         //def workflowPaths =  TODO optimize
         //(orderKeeper ? MasterOrderKeeper.Command.GetWorkflowPaths).mapTo[Stamped[Seq[WorkflowPath]]]

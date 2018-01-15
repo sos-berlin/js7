@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.StdoutStderr._
-import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey}
+import com.sos.jobscheduler.data.workflow.{InstructionNr, WorkflowPath, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 
@@ -25,12 +25,12 @@ object OrderEvent {
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderTransitionedEvent extends OrderCoreEvent
 
-  final case class OrderAdded(nodeKey: NodeKey, state: Idle, payload: Payload)
+  final case class OrderAdded(workflowPath: WorkflowPath, state: Idle, payload: Payload)
   extends OrderCoreEvent {
     //type State = Idle
   }
 
-  final case class OrderAttached(nodeKey: NodeKey, state: Idle, parent: Option[OrderId], agentPath: AgentPath, payload: Payload)
+  final case class OrderAttached(workflowPosition: WorkflowPosition, state: Idle, parent: Option[OrderId], agentPath: AgentPath, payload: Payload)
   extends OrderCoreEvent {
     //type State = Idle
   }
@@ -80,7 +80,6 @@ object OrderEvent {
     override def toString = super.toString
   }
 
-
   final case class OrderProcessed(variablesDiff: MapDiff[String, String], outcome: Outcome) extends OrderCoreEvent {
     //type State = Processed.type
   }
@@ -88,13 +87,13 @@ object OrderEvent {
   final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderTransitionedEvent
   object OrderForked {
     @JsonCodec
-    final case class Child(orderId: OrderId, nodeId: NodeId, payload: Payload)
+    final case class Child(childId: OrderId.ChildId, orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty)
   }
 
-  final case class OrderJoined(toNodeId: NodeId, variablesDiff: MapDiff[String, String], outcome: Outcome)
+  final case class OrderJoined(to: InstructionNr, variablesDiff: MapDiff[String, String], outcome: Outcome)
   extends OrderTransitionedEvent
 
-  final case class OrderMoved(toNodeId: NodeId)
+  final case class OrderMoved(to: InstructionNr)
   extends OrderTransitionedEvent {
     //type State = Ready.type
   }
@@ -102,7 +101,7 @@ object OrderEvent {
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
-  case object OrderDetachable extends OrderCoreEvent {
+  case object OrderDetachable extends OrderTransitionedEvent {
     //type State = Detachable.type
   }
 
@@ -113,7 +112,7 @@ object OrderEvent {
     //type State = Detached.type
   }
 
-  case object OrderFinished extends OrderCoreEvent {
+  case object OrderFinished extends OrderTransitionedEvent {
     //type State = Finished.type
   }
 

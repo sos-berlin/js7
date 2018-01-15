@@ -13,7 +13,7 @@ sealed trait WorkflowEvent extends Event {
 
 object WorkflowEvent {
   @JsonCodec
-  final case class WorkflowAttached(graph: WorkflowGraph)
+  final case class WorkflowAttached(workflow: Workflow)
   extends WorkflowEvent
 
   //TODO case object WorkflowDeleted   Wann wird ein Workflow vom AgentOrderKeeper gelöscht?

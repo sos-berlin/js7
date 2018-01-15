@@ -30,8 +30,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import com.sos.jobscheduler.data.workflow.WorkflowGraph.EndNode
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowGraph, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, InstructionNr, WorkflowPath}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
@@ -101,17 +100,16 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 }
 
 private object OrderActorTest {
-  private val TestNodeId = NodeId("NODE-ID")
-  private val TestOrder = Order(OrderId("TEST-ORDER"), NodeKey(WorkflowPath("/JOBNET"), TestNodeId), Order.Ready)
+  private val TestOrder = Order(OrderId("TEST-ORDER"), WorkflowPath("/JOBNET"), Order.Ready)
   private val TestJobPath = JobPath("/test")
-  private val LastNode = EndNode(NodeId("END"))
   private val TestAgentPath = AgentPath("/TEST-AGENT")
-  private val TestJobNode = WorkflowGraph.JobNode(TestNodeId, TestAgentPath, TestJobPath)
+  private val TestJob = Instruction.Job(AgentJobPath(TestAgentPath, TestJobPath))
+  private val TestNr = InstructionNr(777)
   private val ExpectedOrderEvents = List(
-    OrderAttached(TestOrder.nodeKey, Order.Ready, None, AgentPath("/TEST-AGENT"), Payload.empty),
+    OrderAttached(TestOrder.workflowPosition, Order.Ready, None, AgentPath("/TEST-AGENT"), Payload.empty),
     OrderProcessingStarted,
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.Good(true)),
-    OrderMoved(LastNode.id),
+    OrderMoved(TestNr),
     OrderDetached)
   private val Nl = System.lineSeparator
 
@@ -189,7 +187,7 @@ private object OrderActorTest {
 
     private def attaching: Receive = receiveOrderEvent orElse {
       case Completed ⇒
-        orderActor ! OrderActor.Input.StartProcessing(TestJobNode, jobActor = jobActor)
+        orderActor ! OrderActor.Input.StartProcessing(TestJob, jobActor = jobActor)
         become(ready)
     }
 
@@ -224,10 +222,10 @@ private object OrderActorTest {
 
           case _: OrderProcessed ⇒
             events += event
-            orderActor ! OrderActor.Input.HandleTransitionEvent(OrderMoved(LastNode.id))
+            orderActor ! OrderActor.Input.HandleTransitionEvent(OrderMoved(TestNr))
 
-          case _: OrderMoved ⇒
-            events += event
+            case _: OrderMoved ⇒
+              events += event
             orderActor ! OrderActor.Command.Detach
             become(detaching)
 

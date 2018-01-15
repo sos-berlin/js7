@@ -13,7 +13,7 @@ object ScreenBackground {
   private val freezed       = "app-freezed"
 
   def setScreenClass(state: GuiState): Unit = {
-    jQuery("body").removeClass(connected).removeClass(fetching).removeClass(disconnected).removeClass(freezed)
+    jQuery("html").removeClass(connected).removeClass(fetching).removeClass(disconnected).removeClass(freezed)
       .addClass(connectionClass(state))
   }
 

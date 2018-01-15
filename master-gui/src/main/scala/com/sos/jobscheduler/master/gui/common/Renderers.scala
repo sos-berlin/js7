@@ -53,7 +53,7 @@ object Renderers {
   private def orderStateTextToVdom(state: Order.State): VdomNode =
     state match {
       case Order.Scheduled(at)  ⇒ s"Scheduled for ${at.toReadableLocaleIsoString}"
-      case Order.Forked(children) ⇒ s"Forked ${children.size}×"
+      case Order.Join(children) ⇒ s"Join ${children.size}×"
       case _ ⇒ state.toString
     }
 
@@ -70,7 +70,7 @@ object Renderers {
       case _: Order.Scheduled ⇒ <.i(^.cls := "material-icons text-prefix", "access_alarm")
       case Order.StartNow     ⇒ "━"
       case Order.InProcess    ⇒ <.i(^.cls := "material-icons text-prefix rotate-slowly gear", "settings")
-      case _: Order.Forked    ⇒ "⇶"
+      case _: Order.Join      ⇒ "⨁"
       case Order.Processed    ⇒ "⬇"
       case Order.Ready        ⇒ "━"
       case Order.Finished     ⇒ "☆"

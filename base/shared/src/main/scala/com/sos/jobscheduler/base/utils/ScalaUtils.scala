@@ -1,6 +1,9 @@
 package com.sos.jobscheduler.base.utils
 
+import cats.data.Validated
 import com.sos.jobscheduler.base.exceptions.PublicException
+import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import java.io.{PrintWriter, StringWriter}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -93,6 +96,12 @@ object ScalaUtils {
       else
         delegate.toString
     }
+
+    def stackTraceAsString: String = {
+      val w = new StringWriter
+      delegate.printStackTrace(new PrintWriter(w))
+      w.toString
+    }
   }
 
   /*Scala 2.12.3 crashes: private*/ object RichThrowable {
@@ -143,6 +152,15 @@ object ScalaUtils {
     def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.callIfDefined(delegate)
   }
 
+  implicit class RichOption[A](val underlying: Option[A]) extends AnyVal {
+    def whenEmpty(f: ⇒ Unit): underlying.type = {
+      if (underlying.isEmpty) {
+        f
+      }
+      underlying
+    }
+  }
+
   implicit class RichEither[L <: Throwable, R](val underlying: Either[L, R]) extends AnyVal {
     def toImmediateFuture: Future[R] =
       withStackTrace.underlying match {
@@ -152,7 +170,7 @@ object ScalaUtils {
 
     def force: R =
       withStackTrace.underlying match {
-        case Left(t) ⇒ throw t
+        case Left(t) ⇒ throw t.appendCurrentStackTrace
         case Right(o) ⇒ o
       }
 
@@ -168,5 +186,9 @@ object ScalaUtils {
           t.fillInStackTrace()
           Left(if (t.getStackTrace.nonEmpty) t else new IllegalStateException(s"$t", t))
       }
+  }
+
+  implicit class RichValidated[E <: Throwable, A](val underlying: Validated[E, A]) extends AnyVal {
+    def force: A = underlying.valueOr(t ⇒ throw t.appendCurrentStackTrace)
   }
 }

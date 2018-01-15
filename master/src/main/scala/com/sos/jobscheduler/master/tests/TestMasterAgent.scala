@@ -29,7 +29,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, WorkflowPath, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Instruction, WorkflowPath, Workflow}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -123,7 +123,7 @@ object TestMasterAgent {
       env.jsonFile(TestWorkflowPath).contentString = makeWorkflowScript(conf).asJson.toPrettyString
       for (i ← 1 to conf.orderGeneratorCount) {
         env.xmlFile(OrderGeneratorPath(s"/test-$i")).xml =
-          <order job_chain={TestWorkflowPath} state="FIRST">
+          <order job_chain={TestWorkflowPath}>
             <params>
               <param name="VARIABLE" value={i.toString}/>
             </params>
@@ -182,15 +182,15 @@ object TestMasterAgent {
 
   private val PathNames = Stream("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
 
-  private def makeWorkflowScript(conf: Conf): WorkflowScript =
-    WorkflowScript(List(
-      WorkflowScript.Job(NodeId(s"FIRST"), AgentJobPath(conf.agentPaths.head, TestJobPath)),
-      WorkflowScript.ForkJoin(ListMap() ++ (
+  private def makeWorkflowScript(conf: Conf): Workflow =
+    Workflow(Vector(
+      Instruction.Job(AgentJobPath(conf.agentPaths.head, TestJobPath)),
+      Instruction.ForkJoin(ListMap() ++ (
         for ((agentPath, pathName) ← conf.agentPaths zip PathNames) yield
-          OrderId.Child(pathName) → WorkflowScript(
-            for (j ← 1 to conf.workflowLength) yield
-              WorkflowScript.Job(NodeId(s"$pathName-$j"), AgentJobPath(agentPath, TestJobPath))))),
-      WorkflowScript.End(NodeId("END"))))
+          OrderId.ChildId(pathName) → Workflow(
+            for (_ ← 1 to conf.workflowLength) yield
+              () @: Instruction.Job(AgentJobPath(agentPath, TestJobPath))))),
+      Instruction.ExplicitEnd))
 
   private case class Conf(
     directory: Path,

@@ -1,11 +1,12 @@
-package com.sos.jobscheduler.shared.workflow.script.notation
+package com.sos.jobscheduler.shared.workflow.notation
 
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, NodeId, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Workflow}
 import fastparse.all._
 import scala.collection.immutable.ListMap
 import scala.reflect.ClassTag
@@ -13,7 +14,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-object WorkflowScriptParser {
+object WorkflowParser {
 
   def parse(string: String) =
     parser.whole.parse(string) match {
@@ -35,70 +36,65 @@ object WorkflowScriptParser {
     private val newline = P(h ~ "\r".? ~ "\n" ~ w)
     private val comma = w ~ "," ~ w
     private val commaOrNewLine = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
-    private val statementTerminator = P(w ~ ((";" ~ w) | &("}") | End))
-    //Scala-like: private val statementTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
+    private val instructionTerminator = P(w ~ ((";" ~ w) | &("}") | End))
+    //Scala-like: private val instructionTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
 
     private val identifier = P((CharPred(isIdentifierStart) ~ CharsWhile(isIdentifierPart, min = 0)).!)
     private val quotedString = P("\"" ~ CharsWhile(c ⇒ c != '"' && c != '\\').! ~ "\"")
-    private val nodeId = identifier map NodeId.apply
-    private val nodeIdDefinition = P(nodeId ~ h ~ ":" ~ w)
+    private val label = identifier map Label.apply
     private val javaClassName = P((identifier ~ ("." ~ identifier).rep).!)
 
     private val pathString = P(("/" ~ identifier ~ ("/" ~ identifier).rep).!)
     private def path[P <: TypedPath: TypedPath.Companion] =
       P(pathString map implicitly[TypedPath.Companion[P]].apply)
 
-    private lazy val curlyScript: Parser[WorkflowScript] =
-      P("{" ~ w ~ script ~ w ~ "}")
+    private lazy val curlyWorkflow: Parser[Workflow] =
+      P("{" ~ w ~ workflow ~ w ~ "}")
 
-    private val agentJobPath =
-      P(("job" ~ w ~ path[JobPath] ~ w ~ "at" ~ w ~ path[AgentPath])
-        .map { case (j, a) ⇒ AgentJobPath(a, j) })
+    private val agentJobPath = P[AgentJobPath](
+      ("job" ~ w ~ path[JobPath] ~ w ~ "at" ~ w ~ path[AgentPath])
+        map { case (j, a) ⇒ AgentJobPath(a, j) })
 
-    private val jobStatement: Parser[WorkflowScript.Job] =
-      P((nodeIdDefinition.? ~ agentJobPath)
-        .map {
-          case (Some(n), a) ⇒ n → a
-          case (None, a) ⇒ NodeId(a.jobPath.withoutStartingSlash) → a
-        }
-        .map { case (n, a) ⇒ WorkflowScript.Job(n, a)})
+    private val labelDef = P[Label](
+      label ~ h ~ ":" ~ w)
 
-    private val endStatement: Parser[WorkflowScript.End] =
-      P(nodeIdDefinition ~ w ~ "end")
-        .map { n ⇒ WorkflowScript.End(n) }
+    private val jobInstruction = P[Instruction.Job](
+      (agentJobPath  ~ instructionTerminator)
+        map Instruction.Job.apply)
 
-    private val nodeStatement: Parser[WorkflowScript.NodeStatement] =
-      P(jobStatement | endStatement)
+    private val endInstruction = P[Instruction.End](
+      ("end" ~ instructionTerminator)
+        map { _ ⇒ Instruction.ExplicitEnd })
 
-    private val orderSuffix: Parser[OrderId.Child] =
-      P(quotedString map OrderId.Child.apply)
-
-    private val forkBranch: Parser[(OrderId.Child, WorkflowScript)] =
-      P(orderSuffix ~ w ~ curlyScript)
-
-    private val forkStatement: Parser[WorkflowScript.ForkJoin] =
-      P(("fork" ~ w ~ inParentheses(w ~ forkBranch ~ (comma ~ forkBranch).rep ~ w))
-        .map { case (orderSuffix_, script_, more) ⇒
-          WorkflowScript.ForkJoin(ListMap(orderSuffix_ → script_) ++ more)
+    private val forkInstruction = P[Instruction.ForkJoin]{
+      val orderSuffix = P[OrderId.Child](quotedString map OrderId.Child.apply)
+      val forkBranch = P[(OrderId.Child, Workflow)](orderSuffix ~ w ~ curlyWorkflow)
+      P(("fork" ~ w ~ inParentheses(w ~ forkBranch ~ (comma ~ forkBranch).rep ~ w) ~ instructionTerminator)
+        map { case (orderSuffix_, script_, more) ⇒
+          Instruction.ForkJoin(ListMap(orderSuffix_ → script_) ++ more)
         })
+    }
 
-    private val ifErrorStatement: Parser[WorkflowScript.IfError] =
-      P(("ifError" ~ w ~ nodeId)
-        .map { n ⇒ WorkflowScript.IfError(n) })
+    private val ifErrorInstruction: Parser[Instruction.IfError] =
+      P(("ifError" ~ w ~ label ~ instructionTerminator)
+        map { n ⇒ Instruction.IfError(n) })
 
-    private val gotoStatement: Parser[WorkflowScript.Goto] =
-      P(("goto" ~ w ~ nodeId)
-        .map { n ⇒ WorkflowScript.Goto(n) })
+    private val gotoInstruction: Parser[Instruction.Goto] =
+      P(("goto" ~ w ~ label ~ instructionTerminator)
+        map { n ⇒ Instruction.Goto(n) })
 
-    private val statement: Parser[WorkflowScript.Statement] =
-      P(nodeStatement | forkStatement | ifErrorStatement | gotoStatement)
+    private val instruction: Parser[Instruction] =
+      P(jobInstruction | endInstruction | forkInstruction | ifErrorInstruction | gotoInstruction)
 
-    private val script: Parser[WorkflowScript] =
-      P(jobStatement ~ statementTerminator ~ (statement ~ statementTerminator).rep) map {
-        case (head, tail) ⇒ WorkflowScript(Vector(head) ++ tail)
-      }
+    private val labeledInstruction = P[Instruction.Labeled](
+      (labelDef.rep ~ instruction)
+        map { case (labels, instruction_) ⇒ Instruction.Labeled(labels.toImmutableSeq, instruction_)})
 
-    val whole = w ~ script ~ w ~ End
+    private val workflow = P[Workflow](
+      labeledInstruction.rep
+        map (stmts ⇒ Workflow(stmts.toVector)))
+
+    val whole = w ~ workflow ~ w ~ End
 
     private def keyValue[V](name: String, valueParser: Parser[V]): Parser[V] =
       P(name ~ h ~ "=" ~ w ~ valueParser)

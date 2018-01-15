@@ -1,10 +1,11 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.WorkflowScript.FlatStatement
-import com.sos.jobscheduler.data.workflow.{NodeKey, WorkflowPath, WorkflowScript}
+import com.sos.jobscheduler.data.workflow.Instruction.{@:, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, Position, WorkflowPath}
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.common.Renderers.forTable.orderStateToVdom
+import com.sos.jobscheduler.master.gui.common.Utils.memoize
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListBackend._
 import com.sos.jobscheduler.master.gui.components.orderlist.OrderListComponent.Props
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
@@ -14,9 +15,8 @@ import japgolly.scalajs.react.component.builder.Lifecycle.ComponentDidUpdate
 import japgolly.scalajs.react.extra.{OnUnmount, Reusability}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import org.scalajs.dom.{MouseEvent, window}
+import org.scalajs.dom.window
 import scala.collection.immutable.Seq
-import scala.collection.mutable
 import scala.math.min
 
 /**
@@ -33,14 +33,11 @@ extends OnUnmount {
       highlighter.componentDidUpdate()
     }
 
-  def onMouseMoved(event: MouseEvent): Callback =
-    orderSelector.onMouseMoved(event)
-
   def render(props: Props): VdomElement = {
     val ordersState = props.ordersStateSnapshot.value
     ordersState.content match {
       case Initial ⇒
-        <.div()
+        <.div
 
       case FetchingContent ⇒
         <.div(<.i("Fetching orders..."))
@@ -48,31 +45,31 @@ extends OnUnmount {
       case content: FetchedContent ⇒
         val sequence = content.workflowToOrderSeq.getOrElse(props.workflowPath, Vector.empty)
         <.div(
-          <.div(^.float := "left", ^.cls := "sheet orders-sheet")(
-            <.div(^.cls := "sheet-headline")(
-              props.workflowPath),
-            <.div(sequence.length.toString, " orders"),
-            ordersState.error.whenDefined(error ⇒ <.span(^.cls := "error")(error)),
-            renderWorkflowContent(props.workflowPath, props.workflow, content)))
+          <.div(^.cls := "sheet-headline")(
+            props.workflowPath),
+          <.div(sequence.length.toString, " orders"),
+          ordersState.error.whenDefined(error ⇒ <.span(^.cls := "error")(error)),
+          renderWorkflowContent(props.workflowPath, props.workflow, content))
     }
   }
 
   private def renderWorkflowContent(workflowPath: WorkflowPath, workflow: PreparedWorkflow, content: FetchedContent) = {
-    val statementsWithTop = workflow.nodeStatements.zipWithIndex.map { case (o, i) ⇒ o → nodeTop(i) }
-    val nodesVdom = statementsWithTop.toVdomArray { case (flat, top) ⇒
-      <.div(^.key := flat.statement.node.id.string, ^.position := "absolute", top)(
-        <.div(^.cls := "orders-Node",
-          NodeHeadComponent(flat.statement)))
+    val instructionsWithY = workflow.workflow.flatten.zipWithIndex.map { case (o, i) ⇒ o → nodeYpx(i) }
+    val nodesVdom = instructionsWithY.toVdomArray { case (instr, y) ⇒
+      <.div(^.cls := "orders-Instruction", moveElement(nodeXpx(instr._1.depth), y))(
+        <.div(^.cls := "orders-Instruction-head",
+          NodeHeadComponent(instr)))
     }
-    val orderWithLeftTop: Seq[(OrderEntry, TagMod, TagMod)] = for {
-      (flat, top) ← statementsWithTop
-      orderIds = content.nodeKeyToOrderIdSeq(NodeKey(workflowPath, flat.statement.node.id))
-      n = min(orderIds.length, OrderPerNodeLimit)
+    val orderWithXY: Seq[(OrderEntry, Int, Int)] = for {
+      ((position, _), y) ← instructionsWithY
+      orderIds = content.workflowPositionToOrderIdSeq(workflowPath /: position)
+      n = min(orderIds.length, OrderPerInstructionLimit)
       (orderEntry, i) ← Array.tabulate[OrderEntry](n)(i ⇒ content.idToEntry(orderIds(i))).zipWithIndex
-    } yield (orderEntry, orderLeft(i), top)
-    val ordersVdom = orderWithLeftTop.sortBy(_._1.id)  // Sort to allow React to identify known orders
-      .toVdomArray { case (orderEntry, left, top) ⇒
-        <.div(^.key := orderEntry.id.string, left, top, ^.cls := "orders-Order-moving",
+    } yield (orderEntry, orderXpx(position.depth, i), y)
+    val ordersVdom = orderWithXY
+      .sortBy(_._1.id)  // Sort to allow React to identify known orders
+      .toVdomArray { case (orderEntry, x, y) ⇒
+        <.div(^.key := orderEntry.id.string, moveElement(x, y), ^.cls := "orders-Order-moving",
           LittleOrderComponent(orderEntry))
       }
     <.div(^.cls := "Workflow-content", nodesVdom, ordersVdom)
@@ -85,10 +82,11 @@ extends OnUnmount {
         val selectedClass = orderSelector.cssClass(order.id)
         val highlighted = false //updatedAt > highlighter.lastHighlightedAt && selectedClass.isEmpty
         <.div(^.id := OrderSelector.elementId(order.id),
-              ^.cls := "sheet z-depth-2 orders-Order " + orderToClass(order) + selectedClass + (if (highlighted) "orders-Order-changed" else ""),
+              ^.cls := "sheet z-depth-1 orders-Order " + orderToClass(order) + selectedClass + (if (highlighted) "orders-Order-changed" else ""),
+              ^.title := "Double-click for details",
           <.div(^.cls := "orders-Order-OrderId", order.id.string),
             order.state match {
-              case _: Order.Scheduled | Order.StartNow ⇒
+              case _: Order.NotStarted | _: Order.Join ⇒
                 <.div(^.cls := "orders-Order-compact",
                   order.state)
 
@@ -99,16 +97,17 @@ extends OnUnmount {
 
               case _ ⇒
                 <.div(
-                  <.span(^.cls := "orders-Order-Outcome", order.outcome),
-                  <.span(^.cls := "orders-Order-State", order.state))
+                  <.span(^.cls := "orders-Order-State", order.state),
+                  <.span(^.cls := "orders-Order-Outcome", order.outcome))
             })
         .ref {
           case null ⇒
           case elem ⇒
-            elem.onmouseover = _ ⇒ orderSelector.onMouseOverRow(order)
-            elem.onmouseout = _ ⇒ orderSelector.onMouseOutRow(order.id)
-            elem.onclick = _ ⇒ window.document.location.assign(Router.hash(order.id))
-            if (highlighted) highlighter.onChanged(order.id, elem)
+            elem.onmouseover = _ ⇒ orderSelector.onMouseOver(order)
+            elem.onmouseout = _ ⇒ orderSelector.onMouseOut(order.id)
+            elem.onclick = _ ⇒ orderSelector.onClick(order)
+            elem.ondblclick = _ ⇒ window.document.location.assign(Router.hash(order.id))
+            //if (highlighted) highlighter.onChanged(order.id, elem)
         }
     }
     .configure {
@@ -121,34 +120,44 @@ extends OnUnmount {
     order.state match {
       case _: Order.NotStarted ⇒ "Order-NotStarted "
       case Order.InProcess     ⇒ "Order-InProcess "
+      case _: Order.Join       ⇒ "Order-Join "
       case Order.Finished      ⇒ "Order-Finished "
       case _                   ⇒ ""
     }
 
-  private val NodeHeadComponent = ScalaComponent.builder[WorkflowScript.NodeStatement]("WorkflowScript.NodeStatement")
-    .render_P { stmt ⇒
-      <.div(^.cls := "orders-Node-head sheet z-depth-1",
-        <.div(^.cls := "orders-Statement",
-          stmt match {
-            case stmt: WorkflowScript.Job ⇒
-              VdomArray(
-                <.div(stmt.nodeId.string, ": "),
-                <.div("job ", <.span(^.cls := "orders-Node-Job", stmt.job.jobPath.string)),
-                <.div("at ", <.span(^.cls := "orders-Node-Agent", stmt.job.agentPath.string), ";"))
+  private val NodeHeadComponent = ScalaComponent.builder[(Position, Instruction.Labeled)]("Instruction")
+    .render_P {
+      case (position, labels @: instruction) ⇒
+          <.div(
+            <.div(
+              position.parents map (_.childId) mkString "/",
+              " ",
+              labels.map(_ + ": ").mkString),
+            instruction match {
+              case _: Instruction.ForkJoin ⇒
+                "fork"
 
-            case WorkflowScript.End(_) ⇒
-              s"$stmt;"
-          }))
+              case Instruction.Job(AgentJobPath(agentPath, jobPath)) ⇒
+                VdomArray(
+                  <.div("job ", <.span(^.cls := "orders-Instruction-Job", jobPath.string)),
+                  <.div("at ", <.span(^.cls := "orders-Instruction-Agent", agentPath.string)))
+
+              case ImplicitEnd ⇒
+                "end"
+
+              case stmt: Instruction ⇒
+                stmt.toString
+            })
     }
     .configure {
-      implicit val orderEntryReuse = Reusability.byRef[WorkflowScript.NodeStatement]
+      implicit val orderEntryReuse = Reusability.byRef[(Position, Instruction.Labeled)]
       Reusability.shouldComponentUpdate
     }
     .build
 
-  private case class NodeProps(flat: FlatStatement.Node, orderEntries: Array[OrderEntry], notShown: Int) {
+  private case class NodeProps(labeledInstruction: Instruction.Labeled, orderEntries: Array[OrderEntry], notShown: Int) {
     override def equals(o: Any) = o match {
-      case o: NodeProps ⇒ (flat eq o.flat) &&
+      case o: NodeProps ⇒ (labeledInstruction eq o.labeledInstruction) &&
         notShown != o.notShown &&
         orderEntries.length == o.orderEntries.length && {
           var i = 0
@@ -163,13 +172,14 @@ extends OnUnmount {
 }
 
 object OrderListBackend {
-  private val OrderPerNodeLimit = 20
-  private val nodeTop = memoize[Int, TagMod](i ⇒ ^.top := (120 + 80*i).px)
-  private val orderLeft = memoize[Int, TagMod](i ⇒ ^.left := (60 + 38*i).ex)
+  private val OrderPerInstructionLimit = 20
+  private def nodeYpx(i: Int) = 50*i
+  private def nodeXpx(depth: Int) = depthPx(depth)
+  private def orderXpx(depth: Int, i: Int) = depthPx(depth) + 215 + 240*i
 
-  // https://stackoverflow.com/questions/16257378
-  private def memoize[K, V](f: K ⇒ V): K ⇒ V =
-    new mutable.HashMap[K, V] {
-      override def apply(key: K) = getOrElseUpdate(key, f(key))
-    }
+  private def depthPx(nesting: Int) = 35 * nesting
+
+  private val moveElement = memoize[(Int, Int), TagMod] { case (x, y) ⇒
+    ^.transform := s"translate(${x}px,${y}px)"
+  }
 }

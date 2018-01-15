@@ -12,12 +12,15 @@ object CirceJsonTester {
   private val printer = Printer.noSpaces.copy(dropNullKeys = true/*drops None*/)
   private val prettyPrinter = Printer.spaces2.copy(preserveOrder = true, colonLeft = "", lrbracketsEmpty = "")
 
-  def testJson[A: Encoder: Decoder](a: A, jsonString: String): Unit = {
+  def testJson[A: Encoder: Decoder](a: A, jsonString: String): Unit =
+    testJson(a, parseJson(jsonString))
+
+  def testJson[A: Encoder: Decoder](a: A, json: ⇒ Json): Unit = {
+    // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullKeys = true)
-    val parsed = parseJson(jsonString)
-    if (asJson != parsed) fail(s"${prettyPrinter.pretty(normalize(asJson))} did not equal ${prettyPrinter.pretty(normalize(parsed))}")
-    assert(forceLeft(parsed.as[A]) == a)
-    assert(parsed == parseJson(printer.pretty(asJson)))
+    if (asJson != json) fail(s"${prettyPrinter.pretty(normalize(asJson))} did not equal ${prettyPrinter.pretty(normalize(json))}")
+    assert(forceLeft(json.as[A]) == a)
+    assert(json == parseJson(printer.pretty(asJson)))
     assert(parseJson(printer.pretty(asJson)) == asJson)
   }
 

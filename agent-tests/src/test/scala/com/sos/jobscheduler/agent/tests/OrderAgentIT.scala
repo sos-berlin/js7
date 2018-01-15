@@ -42,8 +42,8 @@ final class OrderAgentIT extends FreeSpec {
 
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
-          val order = Order(OrderId("TEST-ORDER"), TestWorkflow.start, Order.Ready, payload = Payload(Map("x" → "X")))
-          agentClient.executeCommand(AttachOrder(order, TestAgentPath, TestWorkflow.graph)) await 99.s shouldEqual AgentCommand.Accepted
+          val order = Order(OrderId("TEST-ORDER"), TestWorkflow.path, Order.Ready, payload = Payload(Map("x" → "X")))
+          agentClient.executeCommand(AttachOrder(order, TestAgentPath, TestWorkflow.workflow)) await 99.s shouldEqual AgentCommand.Accepted
           EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 10.s).repeat(agentClient.mastersEvents) {
             case Stamped(_, KeyedEvent(order.id, OrderDetachable)) ⇒
           }
@@ -57,7 +57,7 @@ final class OrderAgentIT extends FreeSpec {
     }
   }
 
-  for (testSpeed ← sys.props.get("test.speed")) s"Speed test $testSpeed orders × ${TestWorkflow.graph.jobNodeCount} jobs" in {
+  for (testSpeed ← sys.props.get("test.speed")) s"Speed test $testSpeed orders × ${/*TestWorkflow.workflow.jobNodeCount*/"·"} jobs" in {
     val n = testSpeed.toInt
     provideAgentDirectory { directory ⇒
       val jobDir = directory / "config" / "live"
@@ -73,10 +73,10 @@ final class OrderAgentIT extends FreeSpec {
           agentClient.executeCommand(RegisterAsMaster) await 99.s
 
           val orders = for (i ← 1 to n) yield
-            Order(OrderId(s"TEST-ORDER-$i"), TestWorkflow.start, Order.Ready, payload = Payload(Map("x" → "X")))
+            Order(OrderId(s"TEST-ORDER-$i"), TestWorkflow.path, Order.Ready, payload = Payload(Map("x" → "X")))
 
           val stopwatch = new Stopwatch
-          agentClient.executeCommand(Batch(orders map { AttachOrder(_, TestWorkflow.graph) })) await 99.s
+          agentClient.executeCommand(Batch(orders map { AttachOrder(_, TestWorkflow.workflow) })) await 99.s
 
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()
@@ -127,7 +127,7 @@ private object OrderAgentIT {
 
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
-      nodeKey = order.nodeKey.copy(nodeId = END.id),
+      workflowPosition = order.workflowPosition.copy(position = 2),
       attachedTo = Some(Order.AttachedTo.Detachable(TestAgentPath)),
       payload = Payload(
         variables = Map("x" → "X", "result" → "TEST-RESULT-BBB"),

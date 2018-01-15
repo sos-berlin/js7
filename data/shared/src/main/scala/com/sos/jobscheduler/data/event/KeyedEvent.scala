@@ -10,7 +10,9 @@ import scala.reflect.ClassTag
   *
   * @author Joacim Zschimmer
   */
-final case class KeyedEvent[+E <: Event](key: E#Key, event: E)
+final case class KeyedEvent[+E <: Event](key: E#Key, event: E) {
+  override def toString = s"$key <-: $event"
+}
 
 object KeyedEvent {
   private[event] val KeyFieldName = "key"
@@ -37,7 +39,7 @@ object KeyedEvent {
         case key ⇒
           val jsonObject = json.forceObject
           require(!jsonObject.contains(KeyFieldName), s"Serialized ${keyedEvent.getClass} must not contain a field '$KeyFieldName'")
-          Json.fromJsonObject(jsonObject.add(KeyFieldName, key.asJson))
+          Json.fromJsonObject((KeyFieldName → key.asJson) +: jsonObject)
       }
     }
 

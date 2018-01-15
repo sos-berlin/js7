@@ -2,9 +2,9 @@ package com.sos.jobscheduler.master.gui.components.state
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderProcessed, OrderStdWritten, OrderTransitionedEvent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten, OrderTransitionedEvent}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.master.gui.common.Utils._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
 import org.scalajs.dom.window
@@ -17,7 +17,6 @@ import scala.collection.mutable
 final case class OrdersState(
   content: Content,
   step: Int,
-  selectedOrder: Option[OrderId] = None,
   error: Option[String] = None)
 {
   def updateOrders(stamped: Stamped[Seq[Order[Order.State]]]): OrdersState = {
@@ -49,24 +48,24 @@ object OrdersState {
     eventCount: Int)
   extends Content
   {
-    private val nodeKeyCache = mutable.Map[WorkflowPath, mutable.Map[NodeId, Vector[OrderId]]]()
+    private val positionCache = mutable.Map[WorkflowPath, mutable.Map[WorkflowPosition, Vector[OrderId]]]()
 
-    def nodeKeyToOrderIdSeq(nodeKey: NodeKey): Vector[OrderId] =
-      nodeKeyCache.getOrElseUpdate(nodeKey.workflowPath, {
-        val m = mutable.Map.empty[NodeId, VectorBuilder[OrderId]]
-        for (orderId ← workflowToOrderSeq.getOrElse(nodeKey.workflowPath, Vector.empty)) {
-          m.getOrElseUpdate(idToEntry(orderId).order.nodeId, new VectorBuilder[OrderId]) += orderId
+    def workflowPositionToOrderIdSeq(address: WorkflowPosition): Vector[OrderId] =
+      positionCache.getOrElseUpdate(address.workflowPath, {
+        val m = mutable.Map.empty[WorkflowPosition, VectorBuilder[OrderId]]
+        for (orderId ← workflowToOrderSeq.getOrElse(address.workflowPath, Vector.empty)) {
+          m.getOrElseUpdate(idToEntry(orderId).order.workflowPosition, new VectorBuilder[OrderId]) += orderId
         }
         m map { case (k, v) ⇒ k → v.result }
-      }).getOrElseUpdate(nodeKey.nodeId, Vector.empty)
+      }).getOrElseUpdate(address, Vector.empty)
 
-    private def restoreCache(from: FetchedContent, dirty: collection.Set[NodeKey]): this.type = {
-      for ((workflowPath, nodeToOrderIds) ← from.nodeKeyCache -- dirty.map(_.workflowPath)) {
-        val m = mutable.Map.empty[NodeId, Vector[OrderId]]
-        for ((nodeId, orderIds) ← nodeToOrderIds -- dirty.map(_.nodeId)) {
-          m(nodeId) = orderIds
+    private def restoreCache(from: FetchedContent, dirty: collection.Set[WorkflowPosition]): this.type = {
+      for ((workflowPath, positionToOrderIds) ← from.positionCache -- dirty.map(_.workflowPath)) {
+        val m = mutable.Map.empty[WorkflowPosition, Vector[OrderId]]
+        for ((position, orderIds) ← positionToOrderIds -- dirty) {
+          m(position) = orderIds
         }
-        nodeKeyCache(workflowPath)  = m
+        positionCache(workflowPath)  = m
       }
       this
     }
@@ -80,7 +79,7 @@ object OrdersState {
       stampedEvents foreach {
         case Stamped(_, KeyedEvent(orderId, event: OrderAdded)) ⇒
           updated += orderId → OrderEntry(Order.fromOrderAdded(orderId, event), updatedAt = nowMillis)
-          added.getOrElseUpdate(event.nodeKey.workflowPath, mutable.Buffer()) += orderId
+          added.getOrElseUpdate(event.workflowPath, mutable.Buffer()) += orderId
           deleted -= orderId
           evtCount += 1
 
@@ -116,12 +115,12 @@ object OrdersState {
                   }
 
                 case _: OrderJoined ⇒
-                  for (order ← entry.order.ifState[Order.Forked]) {
-                    deleted ++= order.state.childOrderIds
-                    updated --= order.state.childOrderIds
+                  for (order ← entry.order.ifState[Order.Join]) {
+                    deleted ++= order.state.joinOrderIds
+                    updated --= order.state.joinOrderIds
                     val w = entry.order.workflowPath
                     for (a ← added.get(w)) {
-                      added(w) = a filterNot order.state.childOrderIds.toSet
+                      added(w) = a filterNot order.state.joinOrderIds.toSet
                     }
                   }
 
@@ -135,11 +134,11 @@ object OrdersState {
 
         case _ ⇒
       }
-      val updatedNodeKeys: Iterator[NodeKey] = for {
+      val updatedWorkflowPositions: Iterator[WorkflowPosition] = for {
         order ← updated.valuesIterator map (_.order)
-        previousNodeKey = idToEntry.get(order.id) map (_.order.nodeKey) if !previousNodeKey.contains(order.nodeKey)
-        nodeKey ← Array(order.nodeKey) ++ previousNodeKey
-      } yield nodeKey
+        previousWorkflowPositions = idToEntry.get(order.id) map (_.order.workflowPosition) if !previousWorkflowPositions.contains(order.workflowPosition)
+        pos ← Array(order.workflowPosition) ++ previousWorkflowPositions
+      } yield pos
       val updatedIdToEntry = idToEntry -- deleted ++ updated
       copy(
         idToEntry = updatedIdToEntry,
@@ -148,7 +147,7 @@ object OrdersState {
         eventCount = eventCount + evtCount)
       .restoreCache(
         from = this,
-        dirty = deleted.flatMap(o ⇒ idToEntry.get(o)).map(_.order.nodeKey) ++ updatedNodeKeys)
+        dirty = deleted.flatMap(o ⇒ idToEntry.get(o)).map(_.order.workflowPosition) ++ updatedWorkflowPositions)
     }
   }
 

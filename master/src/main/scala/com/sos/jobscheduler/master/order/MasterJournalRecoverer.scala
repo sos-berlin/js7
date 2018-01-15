@@ -66,9 +66,9 @@ extends JournalRecoverer[Event] {
 
       case event: OrderJoined ⇒
         idToOrder(orderId).state match {
-          case Order.Forked(childOrderIds) ⇒
-            for (childOrderId ← childOrderIds) {
-              idToOrder -= childOrderId
+          case Order.Join(joinOrderIds) ⇒
+            for (joinOrderId ← joinOrderIds) {
+              idToOrder -= joinOrderId
             }
 
           case state ⇒

@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.Stamped
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestWorkflow
-import com.sos.jobscheduler.data.workflow.{WorkflowGraph, WorkflowPath, WorkflowScript, WorkflowsOverview}
+import com.sos.jobscheduler.data.workflow.{WorkflowPath, Workflow, WorkflowsOverview}
 import com.sos.jobscheduler.master.WorkflowClient
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
 import org.scalatest.FreeSpec
@@ -32,8 +32,8 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
   protected val eventIdGenerator = new EventIdGenerator
   protected val workflowClient = new WorkflowClient {
     def executionContext = WorkflowRouteTest.this.executionContext
-    def workflow(path: WorkflowPath) = Future.successful(pathToWorkflow.get(path))
-    def workflows = Future.successful(eventIdGenerator.stamp(pathToWorkflow.values.toVector))
+    def namedWorkflow(path: WorkflowPath) = Future.successful(pathToWorkflow.get(path))
+    def namedWorkflows = Future.successful(eventIdGenerator.stamp(pathToWorkflow.values.toVector))
     def workflowCount = Future.successful(pathToWorkflow.values.size)
   }
 
@@ -64,23 +64,12 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
 
   // Seq[Workflow]
   for (uri ← List(
-       s"$WorkflowUri/?return=WorkflowScript")) {
+       s"$WorkflowUri/?return=Workflow")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        val Stamped(_, workflows) = responseAs[Stamped[Seq[WorkflowScript.Named]]]
-        assert(workflows == pathToWorkflow.values.flatMap(_.toWorkflowScriptNamed).toList)
-      }
-    }
-  }
-
-  for (uri ← List(
-       s"$WorkflowUri/?return=WorkflowGraph")) {
-    s"$uri" in {
-      Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        assert(status == OK)
-        val Stamped(_, workflows) = responseAs[Stamped[Seq[WorkflowGraph.Named]]]
-        assert(workflows == pathToWorkflow.values.toList)
+        val Stamped(_, workflows) = responseAs[Stamped[Seq[Workflow.Named]]]
+        assert(workflows == pathToWorkflow.values.toVector)
       }
     }
   }
@@ -92,15 +81,11 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        assert(responseAs[WorkflowScript] == pathToWorkflow.values.head.graph.sourceScript.get)
+        assert(responseAs[Workflow] == pathToWorkflow.values.head.workflow)
       }
-      Get(s"$uri?return=WorkflowScript") ~> Accept(`application/json`) ~> route ~> check {
+      Get(s"$uri?return=Workflow") ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        assert(responseAs[WorkflowScript] == pathToWorkflow.values.head.graph.sourceScript.get)
-      }
-      Get(s"$uri?return=WorkflowGraph") ~> Accept(`application/json`) ~> route ~> check {
-        assert(status == OK)
-        assert(responseAs[WorkflowGraph] == pathToWorkflow.values.head.graph)
+        assert(responseAs[Workflow] == pathToWorkflow.values.head.workflow)
       }
     }
   }
@@ -108,7 +93,7 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
 
 object WorkflowRouteTest {
   private val WorkflowUri = "/api/workflow"
-  private val pathToWorkflow: Map[WorkflowPath, WorkflowGraph.Named] =
-    List(WorkflowGraph.Named(WorkflowPath(s"/PATH${TestWorkflow.path.string}"), TestWorkflow.graph))
+  private val pathToWorkflow: Map[WorkflowPath, Workflow.Named] =
+    List(Workflow.Named(WorkflowPath(s"/PATH${TestWorkflow.path.string}"), TestWorkflow.workflow))
       .toKeyedMap(_.path)
 }

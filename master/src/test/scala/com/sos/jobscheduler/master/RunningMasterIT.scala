@@ -22,7 +22,7 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.{JobPath, NodeId, NodeKey, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterIT._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -65,7 +65,7 @@ final class RunningMasterIT extends FreeSpec {
           <job_chain_node.end state="END"/>
         </job_chain>
       env.xmlFile(OrderGeneratorPath("/test")).xml =
-        <order job_chain="test" state="100">
+        <order job_chain="test">
           <params>
             <param name="x" value="XXX"/>
           </params>
@@ -84,7 +84,7 @@ final class RunningMasterIT extends FreeSpec {
         val lastEventId = injector.instance[EventCollector].lastEventId
         val actorSystem = injector.instance[ActorSystem]
         val eventGatherer = new TestEventGatherer(injector)
-        val adHocOrder = Order(TestOrderId, NodeKey(TestWorkflowPath, NodeId("100")), Order.StartNow)
+        val adHocOrder = Order(TestOrderId, TestWorkflowPath, Order.StartNow)
 
         sleep(3.s)  // Let OrderGenerator generate some orders
         master.orderKeeper ! MasterOrderKeeper.Input.SuspendDetaching
@@ -101,7 +101,7 @@ final class RunningMasterIT extends FreeSpec {
         orderClient.order(TestOrderId) await 10.s shouldEqual
           Some(Order(
             TestOrderId,
-            NodeKey(TestWorkflowPath, NodeId("END")),
+            TestWorkflowPath /: Position(2),
             Order.Finished,
             payload = Payload(
               Map("result" → "TEST-RESULT-VALUE-agent-222"),

@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.WorkflowGraph
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
 import com.sos.jobscheduler.shared.common.ActorRegister
 import scala.concurrent.ExecutionContext
 
@@ -16,8 +16,8 @@ import scala.concurrent.ExecutionContext
   */
 private[order] final class OrderRegister(timerService: TimerService) extends ActorRegister[OrderId, OrderEntry](_.actor) {
 
-  def recover(order: Order[Order.State], workflowGraph: WorkflowGraph, actor: ActorRef): OrderEntry = {
-    val orderEntry = new OrderEntry(order, workflowGraph, actor)
+  def recover(order: Order[Order.State], workflowScript: Workflow, actor: ActorRef): OrderEntry = {
+    val orderEntry = new OrderEntry(order, workflowScript, actor)
     insert(order.id → orderEntry)
     orderEntry
   }
@@ -26,15 +26,18 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
     this -= keyedEvent.key
   }
 
-  def insert(order: Order[Order.State], workflowGraph: WorkflowGraph, actor: ActorRef): Unit = {
-    insert(order.id → new OrderEntry(order, workflowGraph, actor))
+  def insert(order: Order[Order.State], workflowScript: Workflow, actor: ActorRef): Unit = {
+    insert(order.id → new OrderEntry(order, workflowScript, actor))
   }
 
-  def onActorTerminated(actor: ActorRef)(implicit timerService: TimerService): Unit = {
-    for (orderEntry ← remove(actorToKey(actor))) {
+  def onActorTerminated(actor: ActorRef): Unit =
+    remove(actorToKey(actor))
+
+  override def remove(orderId: OrderId): Option[OrderEntry] =
+    for (orderEntry ← super.remove(orderId)) yield {
       orderEntry.timer foreach timerService.cancel
+      orderEntry
     }
-  }
 
   def idToOrder: PartialFunction[OrderId, Order[Order.State]] = {
     case orderId if contains(orderId) ⇒ apply(orderId).order
@@ -45,7 +48,7 @@ private[order] object OrderRegister {
 
   final class OrderEntry(
     private var _order: Order[Order.State],
-    val workflowGraph: WorkflowGraph,
+    val workflowScript: Workflow,
     val actor: ActorRef)
   {
     var detaching: Boolean = false
@@ -58,14 +61,10 @@ private[order] object OrderRegister {
       _order = o
     }
 
-    def jobNodeOption: Option[WorkflowGraph.JobNode] =
-      workflowGraph.jobNodeOption(order.nodeId)
+    def jobOption: Option[Instruction.Job] =
+      workflowScript.jobOption(order.position)
 
-    def jobNode: WorkflowGraph.JobNode =
-      workflowGraph.jobNode(order.nodeId)
-
-    def nodeOption: Option[WorkflowGraph.Node] =
-      workflowGraph.idToNode.get(order.nodeId)
+    def instruction = workflowScript.instruction(order.position)
 
     def at(timestamp: Timestamp)(body: ⇒ Unit)(implicit timerService: TimerService, ec: ExecutionContext): Unit = {
       val t = timerService.at(timestamp.toInstant, name = order.id.string)

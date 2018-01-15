@@ -2,6 +2,7 @@ package com.sos.jobscheduler.base.circeutils
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 import scala.collection.immutable._
@@ -46,5 +47,14 @@ final class CirceUtilsTest extends FreeSpec {
           { "key": 4, "value": "vier" }
         ]
       }""")
+  }
+
+  "json string interpolator" in {
+    assert(json"""{ "A": 7 }""" == Json.obj("A" → Json.fromInt(7)))
+    //val string = "STRING"
+    //assert(json"""{ "A": "$string" }""" == Json.obj("A" → Json.fromString("STRING")))
+    //val i = 7
+    //assert(json"""{ "A": $i }""" == Json.obj("A" → Json.fromInt(7)))
+    assert(jsonString"""{ "A": 7 }""" == """{ "A": 7 }""")
   }
 }

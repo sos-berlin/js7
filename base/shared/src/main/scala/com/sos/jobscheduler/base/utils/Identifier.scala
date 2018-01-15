@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.base.utils
 
-import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart, isSurrogate, isHighSurrogate}
+import java.lang.Character.{isHighSurrogate, isIdentifierIgnorable, isSurrogate, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 
 /**
   * @author Joacim Zschimmer

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.workflow.{NodeId, NodeKey, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
@@ -17,13 +17,10 @@ import org.scalatest.FreeSpec
 final class OrderEventTest extends FreeSpec {
 
   "OrderAdded" in {
-    check(OrderAdded(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Payload(Map("VAR" → "VALUE"))),
+    check(OrderAdded(WorkflowPath("/JOBNET"), Order.Ready, Payload(Map("VAR" → "VALUE"))),
       """{
-        "TYPE":"OrderAdded",
-        "nodeKey": {
-          "workflowPath": "/JOBNET",
-          "nodeId": "NODE-ID"
-        },
+        "TYPE": "OrderAdded",
+        "workflowPath": "/JOBNET",
         "state": {
           "TYPE":"Ready"
         },
@@ -40,13 +37,10 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderAttached" in {
-    check(OrderAttached(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Some(OrderId("PARENT")), AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))),
+    check(OrderAttached(WorkflowPath("/JOBNET") /: Position(2), Order.Ready, Some(OrderId("PARENT")), AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))),
       """{
         "TYPE": "OrderAttached",
-        "nodeKey": {
-          "workflowPath": "/JOBNET",
-          "nodeId": "NODE-ID"
-        },
+        "workflowPosition": [ "/JOBNET", 2 ],
         "state": {
           "TYPE":"Ready"
         },
@@ -119,30 +113,24 @@ final class OrderEventTest extends FreeSpec {
 
   "OrderForked" in {
     check(OrderForked(List(
-      OrderForked.Child(OrderId("ORDER-ID/A"), NodeId("A"), Payload.empty),
-      OrderForked.Child(OrderId("ORDER-ID/B"), NodeId("B"), Payload.empty))),
+      OrderForked.Child(OrderId.ChildId("A"), OrderId("ORDER-ID/A"), MapDiff(Map("added" → "x"))),
+      OrderForked.Child(OrderId.ChildId("B"), OrderId("ORDER-ID/B")))),
       """{
         "TYPE": "OrderForked",
         "children": [
           {
+            "childId": "A",
             "orderId": "ORDER-ID/A",
-            "nodeId": "A",
-            "payload": {
-              "variables": {},
-              "outcome": {
-                "TYPE": "Good",
-                "returnValue": true
-              }
+            "variablesDiff": {
+              "addedOrUpdated": { "added": "x" },
+              "removed": []
             }
           }, {
+            "childId": "B",
             "orderId": "ORDER-ID/B",
-            "nodeId": "B",
-            "payload": {
-              "variables": {},
-              "outcome": {
-                "TYPE": "Good",
-                "returnValue": true
-              }
+            "variablesDiff": {
+              "addedOrUpdated": {},
+              "removed": []
             }
           }
         ]
@@ -150,10 +138,10 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderJoined" in {
-    check(OrderJoined(NodeId("JOINED"), MapDiff.empty, Outcome.Default),
+    check(OrderJoined(7, MapDiff.empty, Outcome.Default),
       """{
         "TYPE": "OrderJoined",
-        "toNodeId": "JOINED",
+        "to": 7,
         "variablesDiff": {
           "addedOrUpdated": {},
           "removed": []
@@ -166,10 +154,10 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderMoved" in {
-    check(OrderMoved(NodeId("NODE")),
+    check(OrderMoved(7),
       """{
         "TYPE": "OrderMoved",
-        "toNodeId": "NODE"
+        "to": 7
       }""")
   }
 
@@ -198,7 +186,7 @@ final class OrderEventTest extends FreeSpec {
 
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
-    val event = Stamped(12345678, KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(NodeKey(WorkflowPath("/JOBNET"), NodeId("NODE-ID")), Order.Ready, Payload(Map("VAR" → "VALUE")))))
+    val event = Stamped(12345678, KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/JOBNET"), Order.Ready, Payload(Map("VAR" → "VALUE")))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
     for (_ ← 1 to 10) {
