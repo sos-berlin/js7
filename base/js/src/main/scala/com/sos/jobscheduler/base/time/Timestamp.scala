@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.time
 
-import io.circe
 import java.time.Instant
 import scala.math.abs
 import scala.scalajs.js
@@ -10,6 +9,7 @@ import scala.scalajs.js
   */
 final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[Timestamp] {
 
+  /** "2017-12-04T11:22:33.456Z". */
   def toIsoString = {
     val string = toJsDate.toISOString
     val sb = new StringBuilder(string)
@@ -19,6 +19,7 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
     }
       else string
   }
+
   //def toIsoString = toIsoStringBuilder.toString
   //
   //override def toIsoStringBuilder = {
@@ -33,14 +34,14 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
     val date = toJsDate
     val offsetMinutes = date.getTimezoneOffset
     val offsetSuffix = f"${-offsetMinutes / 60}%+03d${abs(offsetMinutes) % 60}%02d"
-    new js.Date((date.getTime - offsetMinutes*60000)).toISOString.stripSuffix("Z") + offsetSuffix
+    new js.Date(date.getTime - offsetMinutes * 60000).toISOString.stripSuffix("Z") + offsetSuffix
   }
 
   /** "2017-12-03T12:00:00.123" */
   def toLocaleIsoStringWithoutOffset = {
     val date = toJsDate
     val offsetMinutes = date.getTimezoneOffset
-    new js.Date((date.getTime - offsetMinutes*60000)).toISOString.stripSuffix("Z")
+    new js.Date(date.getTime - offsetMinutes * 60000).toISOString.stripSuffix("Z")
   }
 
   /** "2017-12-03 12:00:00.123"
@@ -50,7 +51,7 @@ final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[
   def toReadableLocaleIsoString = {
     val date = toJsDate
     val offsetMinutes = date.getTimezoneOffset
-    val iso = new js.Date((date.getTime - offsetMinutes*60000)).toISOString
+    val iso = new js.Date(date.getTime - offsetMinutes * 60000).toISOString
     iso.substring(0, 10) + " " + iso.substring(11)
       .stripSuffix(".000Z").stripSuffix("Z").stripSuffix(".000").stripSuffix(":00")
   }
@@ -70,19 +71,9 @@ object Timestamp extends GenericTimestamp.Companion[Timestamp] {
 
   def fromInstant(instant: Instant) = ofEpochMilli(instant.toEpochMilli)
 
-  def parse(string: String) = ofEpochMilli((js.Date.parse(string)).toLong)
+  def parse(string: String) = ofEpochMilli(js.Date.parse(string).toLong)
 
   def now: Timestamp = ofEpochMilli(epochMilli)
 
   def epochMilli: Long = java.lang.System.currentTimeMillis
-
-  implicit val JsonEncoder: circe.Encoder[Timestamp] =
-    o ⇒ circe.Json.fromLong(o.toEpochMilli)
-
-  implicit val JsonDecoder: circe.Decoder[Timestamp] =
-    cursor ⇒
-      cursor.as[Long] match {
-        case Right(milli) ⇒ Right(ofEpochMilli(milli))
-        case _ ⇒ cursor.as[String].map(parse)
-      }
 }

@@ -1,16 +1,15 @@
 package com.sos.jobscheduler.base.time
 
-import io.circe
+import com.sos.jobscheduler.base.time.Timestamp._
 import java.time.Instant
+import java.time.format.DateTimeFormatter
 
 /**
   * @author Joacim Zschimmer
   */
 final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[Timestamp] {
 
-  def toIsoString = toInstant.toString
-
-  //def toIsoStringBuilder = new StringBuilder(toIsoString)
+  def toIsoString = dateTimeFormatter.format(toInstant)
 
   def toInstant = Instant.ofEpochMilli(toEpochMilli)
 
@@ -22,19 +21,14 @@ object Timestamp extends GenericTimestamp.Companion[Timestamp] {
 
   def ofEpochMilli(o: Long) = new Timestamp(o)
 
-  def parse(string: String) = ofEpochMilli(Instant.parse(string).toEpochMilli)
+  def ofInstant(instant: Instant) = new Timestamp(instant.toEpochMilli)
+
+  private def dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
+
+  def parse(string: String): Timestamp =
+    ofInstant(Instant.from(dateTimeFormatter parse string))
 
   def now: Timestamp = ofEpochMilli(epochMilli)
 
   def epochMilli: Long = System.currentTimeMillis
-
-  implicit val JsonEncoder: circe.Encoder[Timestamp] =
-    o ⇒ circe.Json.fromLong(o.toEpochMilli)
-
-  implicit val JsonDecoder: circe.Decoder[Timestamp] =
-    cursor ⇒
-      cursor.as[Long] match {
-        case Right(milli) ⇒ Right(ofEpochMilli(milli))
-        case _ ⇒ cursor.as[String].map(parse)
-      }
 }

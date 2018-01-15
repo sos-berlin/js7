@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.base.time
 
-import io.circe.{Decoder, Encoder}
+import io.circe
 import scala.concurrent.duration.Duration
 
 /**
@@ -27,8 +27,20 @@ trait GenericTimestamp[A <: GenericTimestamp[A]] extends Ordered[A] {
 
 object GenericTimestamp {
   trait Companion[A <: GenericTimestamp[A]] {
-    implicit val JsonEncoder: Encoder[A]
-    implicit val JsonDecoder: Decoder[A]
+    val StringTimestampJsonEncoder: circe.Encoder[A] =
+      o ⇒ circe.Json.fromString(o.toIsoString)
+
+    val NumericTimestampJsonEncoder: circe.Encoder[A] =
+      o ⇒ circe.Json.fromLong(o.toEpochMilli)
+
+    implicit val jsonEncoder: circe.Encoder[A] = NumericTimestampJsonEncoder
+
+    implicit val jsonDecoder: circe.Decoder[A] =
+      cursor ⇒
+        if (cursor.value.isNumber)
+          cursor.as[Long] map ofEpochMilli
+        else
+          cursor.as[String] map parse
 
     def apply(string: String): A =
       parse(string)
