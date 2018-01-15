@@ -1,16 +1,14 @@
 package com.sos.jobscheduler.master.order
 
-import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.InstantJsonCodec
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import io.circe.generic.JsonCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import java.time.Instant
 
 /**
   * @author Joacim Zschimmer
   */
-@JsonCodec
 final case class OrderScheduleEndedAt(instant: Instant)
 
 object OrderScheduleEndedAt {
-  intelliJuseImport(InstantJsonCodec)
+  implicit val jsonCodec = deriveCirceCodec[OrderScheduleEndedAt]
 }

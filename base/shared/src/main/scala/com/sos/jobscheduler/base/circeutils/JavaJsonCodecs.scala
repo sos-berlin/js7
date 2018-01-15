@@ -52,8 +52,10 @@ object JavaJsonCodecs {
   }
   object InstantDecoder extends InstantDecoder
 
-  val NumericInstantJsonCodec: CirceCodec[Instant] = new NumericInstantEncoder with InstantDecoder
-  val StringInstantJsonCodec: CirceCodec[Instant] = new StringInstantEncoder with InstantDecoder
+  object instant {
+    implicit val NumericInstantJsonCodec: CirceCodec[Instant] = new NumericInstantEncoder with InstantDecoder
+    implicit val StringInstantJsonCodec: CirceCodec[Instant] = new StringInstantEncoder with InstantDecoder
 
-  implicit val InstantJsonCodec = StringInstantJsonCodec
+    implicit val InstantJsonCodec = NumericInstantJsonCodec
+  }
 }

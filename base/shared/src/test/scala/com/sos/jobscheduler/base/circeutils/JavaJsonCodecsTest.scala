@@ -2,6 +2,7 @@ package com.sos.jobscheduler.base.circeutils
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs._
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
@@ -20,26 +21,30 @@ final class JavaJsonCodecsTest extends FreeSpec {
     testJson(Paths.get("/tmp/test"), """ "/tmp/test" """)
   }
 
-  "Instant" - {
+  "Instant" - {  // See also Timestamp
     case class A(instant: Instant)
-    implicit val aJsonCodec = deriveCirceCodec[A]
 
     "String/Number speed comparision" in {
-      val instant = Instant.parse("2015-06-09T12:22:33.987Z")
+
+      val millis = Instant.parse("2015-06-09T12:22:33.987Z").toEpochMilli
       val n = 100000
       run("milliseconds")(NumericInstantEncoder, InstantDecoder)
       run("ISO string  ")(StringInstantEncoder, InstantDecoder)
 
-      def run(what: String)(implicit encoder: Encoder[Instant], decoder: Decoder[Instant]) = {
-        for (_ ← 1 to 100000) instant.asJson.as[Instant].force  // Warm-up
+      def run(what: String)(implicit instantJsonCodec: Encoder[Instant], decoder: Decoder[Instant]) = {
+        for (i ← 1 to 100000) Instant.ofEpochMilli(i).asJson.as[Instant].force  // Warm-up
         val t = System.currentTimeMillis
-        for (_ ← 1 to n) instant.asJson.as[Instant].force
+        for (i ← 1 to n) Instant.ofEpochMilli(millis + i).asJson.as[Instant].force
         val duration = System.currentTimeMillis - t
         info(s"Instant as $what: ${if (duration > 0) 1000*n / duration else "∞"} conversions/s")
       }
     }
 
     "String" - {
+      import JavaJsonCodecs.instant.StringInstantJsonCodec
+      intelliJuseImport(StringInstantJsonCodec)
+      implicit val aJsonCodec = deriveCirceCodec[A]
+
       "No second fraction" in {
         val t = "2015-06-09T12:22:33Z"
         val a = A(Instant.parse(t))
@@ -77,7 +82,7 @@ final class JavaJsonCodecsTest extends FreeSpec {
     }
 
     "Numeric" - {
-      implicit def InstantJsonCodec = NumericInstantJsonCodec  // Override default
+      import JavaJsonCodecs.instant.InstantJsonCodec
 
       "Numeric" in {
         val instant = Instant.parse("2017-11-12T09:24:32.471Z")

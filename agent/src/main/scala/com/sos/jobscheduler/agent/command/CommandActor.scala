@@ -8,8 +8,7 @@ import com.sos.jobscheduler.agent.command.CommandActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
-import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs._
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -101,8 +100,6 @@ extends Actor {
 }
 
 object CommandActor {
-  intelliJuseImport(InstantJsonCodec)
-
   private val logger = Logger(getClass)
 
   object Command {
