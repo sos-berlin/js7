@@ -12,6 +12,6 @@ final case class JournalHeader(
 
 object JournalHeader {
 
-  implicit lazy val JsonCodec = TypedJsonCodec[JournalHeader](
+  implicit lazy val jsonCodec = TypedJsonCodec[JournalHeader](
     Subtype.named(deriveCirceCodec[JournalHeader], "JobScheduler.Journal"))
 }

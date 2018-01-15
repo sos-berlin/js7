@@ -43,13 +43,13 @@ object Outcome {
     final case class Other(message: String) extends Reason
 
     object Reason {
-      implicit val JsonCodec = TypedJsonCodec[Reason](
+      implicit val jsonCodec = TypedJsonCodec[Reason](
         Subtype(AgentRestarted),
         Subtype[Other])
     }
   }
 
-  implicit val JsonCodec = TypedJsonCodec[Outcome](
+  implicit val jsonCodec = TypedJsonCodec[Outcome](
     Subtype[Good],
     Subtype[Bad])
 }

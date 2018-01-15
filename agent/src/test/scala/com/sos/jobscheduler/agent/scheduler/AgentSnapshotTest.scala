@@ -10,7 +10,7 @@ import org.scalatest.FreeSpec
 final class AgentSnapshotTest extends FreeSpec {
 
   "JSON" in {
-    implicit val codec = AgentSnapshot.JsonCodec
+    implicit val codec = AgentSnapshot.jsonCodec
     testJson[Any](AgentSnapshot.Master(UserId.Anonymous), """
       {
         "TYPE": "Master",

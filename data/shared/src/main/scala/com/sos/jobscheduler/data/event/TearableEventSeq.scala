@@ -29,7 +29,7 @@ object EventSeq {
 
   case object Torn
   extends TearableEventSeq[Nothing, Nothing] {
-    implicit val JsonCodec = objectCodec(Torn)
+    implicit val jsonCodec = objectCodec(Torn)
   }
 
   implicit def nonEmptyJsonEncoder[E: Encoder]: Encoder[NonEmpty[Seq, E]] =

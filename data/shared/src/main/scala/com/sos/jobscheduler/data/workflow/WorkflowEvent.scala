@@ -18,6 +18,6 @@ object WorkflowEvent {
 
   //TODO case object WorkflowDeleted   Wann wird ein Workflow vom AgentOrderKeeper gelöscht?
 
-  implicit val JsonCodec = TypedJsonCodec[WorkflowEvent](
+  implicit val jsonCodec = TypedJsonCodec[WorkflowEvent](
     Subtype[WorkflowAttached])
 }

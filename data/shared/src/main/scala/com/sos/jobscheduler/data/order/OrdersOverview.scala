@@ -9,5 +9,5 @@ final case class OrdersOverview(
   orderCount: Int)
 
 object OrdersOverview {
-  implicit val JsonCodec = deriveCirceCodec[OrdersOverview]
+  implicit val jsonCodec = deriveCirceCodec[OrdersOverview]
 }

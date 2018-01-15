@@ -33,5 +33,5 @@ private[tests] final case class TestAggregate(key: String, string: String,
 }
 
 private[tests] object TestAggregate {
-  implicit val JsonCodec = deriveCirceCodec[TestAggregate]
+  implicit val jsonCodec = deriveCirceCodec[TestAggregate]
 }

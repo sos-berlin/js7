@@ -17,5 +17,5 @@ final case class MasterOverview(
   java: JavaInformation)
 
 object MasterOverview {
-  implicit val JsonCodec = deriveCirceCodec[MasterOverview]
+  implicit val jsonCodec = deriveCirceCodec[MasterOverview]
 }

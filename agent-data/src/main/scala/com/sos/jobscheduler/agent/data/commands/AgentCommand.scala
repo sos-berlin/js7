@@ -69,7 +69,7 @@ object AgentCommand {
   }
 
   case object Accepted extends AgentCommand.Response {
-    implicit val JsonCodec: CirceCodec[Accepted.type] = objectCodec(Accepted)
+    implicit val jsonCodec: CirceCodec[Accepted.type] = objectCodec(Accepted)
   }
 
   case object AbortImmediately extends TerminateOrAbort {

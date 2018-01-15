@@ -13,6 +13,6 @@ private[scheduler] object AgentSnapshot {
   @JsonCodec
   final case class Master(userId: UserId) extends AgentSnapshot
 
-  val JsonCodec = TypedJsonCodec[Any](
+  val jsonCodec = TypedJsonCodec[Any](
     Subtype[Master])
 }

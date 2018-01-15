@@ -46,7 +46,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val journalMeta = JournalMeta.gzipped(AgentSnapshot.JsonCodec, AgentEvent.KeyedEventJsonCodec,
+  private val journalMeta = JournalMeta.gzipped(AgentSnapshot.jsonCodec, AgentEvent.KeyedEventJsonCodec,
     compressWithGzip = agentConfiguration.config.getBoolean("jobscheduler.agent.journal.gzip"))
   private val journalFile = stateDirectory / "journal"
   protected val journalActor = actorOf(

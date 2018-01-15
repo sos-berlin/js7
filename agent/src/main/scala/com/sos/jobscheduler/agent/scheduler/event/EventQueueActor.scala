@@ -150,7 +150,7 @@ object EventQueueActor {
     @JsonCodec final case class HeaderSnapshot(oldestKnownEventId: EventId) extends Snapshot
     @JsonCodec final case class EventSnapshot(stamped: StampedEvent) extends Snapshot
 
-    implicit val JsonCodec = TypedJsonCodec[Snapshot](
+    implicit val jsonCodec = TypedJsonCodec[Snapshot](
       Subtype.named[HeaderSnapshot]("EventQueue.Header"),
       Subtype.named[EventSnapshot]("EventQueue.Event"))
   }

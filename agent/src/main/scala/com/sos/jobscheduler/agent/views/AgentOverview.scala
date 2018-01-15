@@ -2,9 +2,8 @@ package com.sos.jobscheduler.agent.views
 
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
-import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.InstantJsonCodec
+import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import com.sos.jobscheduler.base.system.SystemInformation
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.data.system.JavaInformation
 import java.time.Instant
 
@@ -20,7 +19,5 @@ final case class AgentOverview(
   java: JavaInformation)
 
 object AgentOverview {
-  intelliJuseImport(InstantJsonCodec)
-
-  implicit val JsonCodec: CirceCodec[AgentOverview] = deriveCirceCodec[AgentOverview]
+  implicit val jsonCodec: CirceCodec[AgentOverview] = deriveCirceCodec[AgentOverview]
 }

@@ -158,7 +158,7 @@ object Order {
     @JsonCodec
     final case class Detachable(agentPath: AgentPath) extends AgentOrDetachable
 
-    implicit val JsonCodec = TypedJsonCodec[AttachedTo](
+    implicit val jsonCodec = TypedJsonCodec[AttachedTo](
       Subtype[Agent],
       Subtype[Detachable])
   }
@@ -202,5 +202,5 @@ object Order {
 
   implicit val NotStartedOrderJsonCodec: CirceCodec[Order[NotStarted]] = deriveCirceCodec[Order[NotStarted]]
   implicit val IdleOrderJsonCodec: CirceCodec[Order[Idle]] = deriveCirceCodec[Order[Idle]]
-  implicit val JsonCodec: CirceCodec[Order[State]] = deriveCirceCodec[Order[State]]
+  implicit val jsonCodec: CirceCodec[Order[State]] = deriveCirceCodec[Order[State]]
 }
