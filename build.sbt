@@ -174,6 +174,7 @@ lazy val base = crossProject
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      "org.typelevel" %%% "cats-core" % catsVersion ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
@@ -327,15 +328,11 @@ lazy val `master-gui` = project
     libraryDependencies ++= {
       import Dependencies._
       Seq(
+        "com.github.mpilquist" %% "simulacrum" % simulacrumVersion,
         "org.scala-js" %%% "scalajs-dom" % "0.9.4",
         "be.doeraene" %%% "scalajs-jquery" % "0.9.2",
         "com.github.japgolly.scalajs-react" %%% "core" % "1.1.1",
         "com.github.japgolly.scalajs-react" %%% "extra" % "1.1.1",
-      //"com.github.japgolly.scalajs-react" %%% "ext-monocle" % "1.1.1",
-      //"com.github.japgolly.scalacss" %%% "core" % "0.5.3",
-      //"com.github.japgolly.scalacss" %%% "ext-react" % "0.5.3",
-      //"com.github.julien-truffaut" %%%  "monocle-core"  % "1.4.0",
-      //"com.github.julien-truffaut" %%%  "monocle-macro" % "1.4.0",
         "org.scalatest" %%% "scalatest" % scalaTestVersion % "test",
         "io.circe" %%% "circe-core" % circeVersion,
         "io.circe" %%% "circe-parser" % circeVersion,

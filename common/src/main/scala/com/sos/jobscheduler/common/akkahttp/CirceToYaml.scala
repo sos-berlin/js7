@@ -13,7 +13,7 @@ import org.yaml.snakeyaml.{DumperOptions, Yaml}
   * @author Joacim Zschimmer
   */
 object CirceToYaml {
-  private implicit val printer = Printer.noSpaces.copy(dropNullKeys = true/*Suppress None*/)
+  private implicit val printer = Printer.noSpaces.copy(dropNullValues = true/*Suppress None*/)
 
   implicit class ToYamlString[A](val delegate: A) extends AnyVal {
     /**

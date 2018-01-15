@@ -31,8 +31,8 @@ object CirceUtils {
       def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
     }
 
-  val CompactPrinter = Printer.noSpaces.copy(dropNullKeys = true/*Suppress None*/, preserveOrder = true/*maybe slow but readable*/)
-  val PrettyPrinter = Printer.spaces2.copy(dropNullKeys = true/*Suppress None*/, colonLeft = "", lrbracketsEmpty = "")
+  val CompactPrinter = Printer.noSpaces.copy(dropNullValues = true/*Suppress None*/, preserveOrder = true/*maybe slow but readable*/)
+  val PrettyPrinter = Printer.spaces2.copy(dropNullValues = true/*Suppress None*/, colonLeft = "", lrbracketsEmpty = "")
 
   object implicits {
     implicit val CompactPrinter = CirceUtils.CompactPrinter

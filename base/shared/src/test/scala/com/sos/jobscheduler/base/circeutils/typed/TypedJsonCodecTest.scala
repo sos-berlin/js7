@@ -23,7 +23,7 @@ final class TypedJsonCodecTest extends FreeSpec {
 
   "encode unknown subclass" in {
     intercept[UnknownClassForJsonException] {
-      (NotRegistered(1): A).asJson(JsonCodec)
+      (NotRegistered(1): A).asJson(AJsonCodec)
     }.getMessage should include (
       "Class com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$NotRegistered is not registered with JsonTypeCodec[com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$A]")
   }
@@ -52,7 +52,7 @@ object TypedJsonCodecTest {
   private implicit val AAJsonCodec: TypedJsonCodec[AA] = TypedJsonCodec[AA](
     Subtype[AA1])
 
-  private implicit val JsonCodec: TypedJsonCodec[A] = TypedJsonCodec[A](
+  private implicit val AJsonCodec: TypedJsonCodec[A] = TypedJsonCodec[A](
     Subtype(A0),
     Subtype[A1],
     Subtype[A2],
