@@ -19,35 +19,35 @@ object ForkTestSetting {
   val TestJobPath = JobPath("/JOB")
 
   val TestWorkflowScriptNotation = """
-    |job /JOB at /AGENT-A;
+    |job /JOB on /AGENT-A;
     |fork(
-    |  "🥕" { job /JOB at /AGENT-A; job /JOB at /AGENT-A; },
-    |  "🍋" { job /JOB at /AGENT-A; job /JOB at /AGENT-B; });
-    |job /JOB at /AGENT-A;
+    |  "🥕" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },
+    |  "🍋" { job /JOB on /AGENT-A; job /JOB on /AGENT-B; });
+    |job /JOB on /AGENT-A;
     |fork(
-    |  "🥕" { job /JOB at /AGENT-A; job /JOB at /AGENT-A; },
-    |  "🍋" { job /JOB at /AGENT-A; job /JOB at /AGENT-A; });
-    |job /JOB at /AGENT-A;
+    |  "🥕" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },
+    |  "🍋" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; });
+    |job /JOB on /AGENT-A;
     |fork(
-    |  "🥕" { job /JOB at /AGENT-A; job /JOB at /AGENT-A; },
-    |  "🍋" { job /JOB at /AGENT-B; job /JOB at /AGENT-B; });
-    |job /JOB at /AGENT-A;
+    |  "🥕" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },
+    |  "🍋" { job /JOB on /AGENT-B; job /JOB on /AGENT-B; });
+    |job /JOB on /AGENT-A;
     """.stripMargin.trim
 
   val TestWorkflowScript = Workflow(
     Vector(
       /*0*/ Job(AAgentJobPath),
       /*1*/ ForkJoin(ListMap(
-        OrderId.Child("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.Child("🍋") → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath)))),
+        OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+        OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath)))),
       /*2*/ Job(AAgentJobPath),
       /*3*/ ForkJoin(ListMap(
-        OrderId.Child("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.Child("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)))),
+        OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+        OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)))),
       /*4*/ Job(AAgentJobPath),
       /*5*/ ForkJoin(ListMap(
-        OrderId.Child("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.Child("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath)))),
+        OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+        OrderId.ChildId("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath)))),
       /*6*/ Job(AAgentJobPath)),
     source = Some(TestWorkflowScriptNotation/*Must be the source source of this workflow*/))
   //     A

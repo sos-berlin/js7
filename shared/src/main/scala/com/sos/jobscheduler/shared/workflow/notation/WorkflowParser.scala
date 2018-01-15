@@ -52,7 +52,7 @@ object WorkflowParser {
       P("{" ~ w ~ workflow ~ w ~ "}")
 
     private val agentJobPath = P[AgentJobPath](
-      ("job" ~ w ~ path[JobPath] ~ w ~ "at" ~ w ~ path[AgentPath])
+      ("job" ~ w ~ path[JobPath] ~ w ~ "on" ~ w ~ path[AgentPath])
         map { case (j, a) ⇒ AgentJobPath(a, j) })
 
     private val labelDef = P[Label](
@@ -67,8 +67,8 @@ object WorkflowParser {
         map { _ ⇒ Instruction.ExplicitEnd })
 
     private val forkInstruction = P[Instruction.ForkJoin]{
-      val orderSuffix = P[OrderId.Child](quotedString map OrderId.Child.apply)
-      val forkBranch = P[(OrderId.Child, Workflow)](orderSuffix ~ w ~ curlyWorkflow)
+      val orderSuffix = P[OrderId.ChildId](quotedString map OrderId.ChildId.apply)
+      val forkBranch = P[(OrderId.ChildId, Workflow)](orderSuffix ~ w ~ curlyWorkflow)
       P(("fork" ~ w ~ inParentheses(w ~ forkBranch ~ (comma ~ forkBranch).rep ~ w) ~ instructionTerminator)
         map { case (orderSuffix_, script_, more) ⇒
           Instruction.ForkJoin(ListMap(orderSuffix_ → script_) ++ more)

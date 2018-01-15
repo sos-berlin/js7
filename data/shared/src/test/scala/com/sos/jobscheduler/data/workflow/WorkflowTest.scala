@@ -100,8 +100,8 @@ final class WorkflowTest extends FreeSpec {
     val addressToInstruction = List(
       Position(0) → Job(AAgentJobPath),
       Position(1) → ForkJoin(ListMap(
-        OrderId.Child("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.Child("🍋") → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath)))),
+        OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+        OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath)))),
       Position(1, "🥕", 0) → Job(AAgentJobPath),
       Position(1, "🥕", 1) → Job(AAgentJobPath),
       Position(1, "🥕", 2) → ImplicitEnd,
@@ -110,8 +110,8 @@ final class WorkflowTest extends FreeSpec {
       Position(1, "🍋", 2) → ImplicitEnd,
       Position(2) → Job(AAgentJobPath),
       Position(3) → ForkJoin(ListMap(
-            OrderId.Child("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-            OrderId.Child("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)))),
+            OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+            OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)))),
       Position(3, "🥕", 0) → Job(AAgentJobPath),
       Position(3, "🥕", 1) → Job(AAgentJobPath),
       Position(3, "🥕", 2) → ImplicitEnd,
@@ -120,8 +120,8 @@ final class WorkflowTest extends FreeSpec {
       Position(3, "🍋", 2) → ImplicitEnd,
       Position(4) → Job(AAgentJobPath),
       Position(5) → ForkJoin(ListMap(
-        OrderId.Child("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.Child("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath)))),
+        OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+        OrderId.ChildId("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath)))),
       Position(5, "🥕", 0) → Job(AAgentJobPath),
       Position(5, "🥕", 1) → Job(AAgentJobPath),
       Position(5, "🥕", 2) → ImplicitEnd,
@@ -144,7 +144,7 @@ final class WorkflowTest extends FreeSpec {
 
   "JSON" in {
     testJson(ForkTestSetting.TestWorkflowScript, """{
-      "source": "job /JOB at /AGENT-A;\nfork(\n  \"🥕\" { job /JOB at /AGENT-A; job /JOB at /AGENT-A; },\n  \"🍋\" { job /JOB at /AGENT-A; job /JOB at /AGENT-B; });\njob /JOB at /AGENT-A;\nfork(\n  \"🥕\" { job /JOB at /AGENT-A; job /JOB at /AGENT-A; },\n  \"🍋\" { job /JOB at /AGENT-A; job /JOB at /AGENT-A; });\njob /JOB at /AGENT-A;\nfork(\n  \"🥕\" { job /JOB at /AGENT-A; job /JOB at /AGENT-A; },\n  \"🍋\" { job /JOB at /AGENT-B; job /JOB at /AGENT-B; });\njob /JOB at /AGENT-A;",
+      "source": "job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },\n  \"🍋\" { job /JOB on /AGENT-A; job /JOB on /AGENT-B; });\njob /JOB on /AGENT-A;\nfork(\n  \"🥕\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },\n  \"🍋\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; });\njob /JOB on /AGENT-A;\nfork(\n  \"🥕\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },\n  \"🍋\" { job /JOB on /AGENT-B; job /JOB on /AGENT-B; });\njob /JOB on /AGENT-A;",
       "instructions": [
         { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
         {

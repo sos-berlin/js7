@@ -21,7 +21,7 @@ final class WorkflowParserTest extends FreeSpec {
     Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))))
 
   "Single instruction" in {
-    val source = """job /A at /AGENT;"""
+    val source = """job /A on /AGENT;"""
     assert(parse(source) ==
       Workflow(
         Vector(
@@ -30,7 +30,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Label and single instruction" in {
-    val source = """A: job /A at /AGENT;"""
+    val source = """A: job /A on /AGENT;"""
     assert(parse(source) ==
       Workflow(
         Vector(
@@ -40,11 +40,11 @@ final class WorkflowParserTest extends FreeSpec {
 
   "onError and goto" in {
     val source = """
-      job /A at /AGENT;
+      job /A on /AGENT;
       ifError ERROR;
-      job /B at /AGENT;
+      job /B on /AGENT;
       goto END;
-      ERROR: job /Error at /AGENT;
+      ERROR: job /Error on /AGENT;
       END: end;"""
     assert(parse(source) == Workflow(
       Vector(
@@ -77,7 +77,7 @@ final class WorkflowParserTest extends FreeSpec {
     val source = """/*comment
         */
         //comment
-        /*comment/**/job /***//A/**/at/**//AGENT/**/;/**///comment
+        /*comment/**/job /***//A/**/on/**//AGENT/**/;/**///comment
       """
     assert(parse(source) == singleJobScript.copy(source = Some(source)))
   }
