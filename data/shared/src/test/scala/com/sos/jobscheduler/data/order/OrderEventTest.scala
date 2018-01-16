@@ -95,14 +95,14 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderProcessed" in {
-    check(OrderProcessed(MapDiff(addedOrUpdated = Map("VAR" → "VALUE"), removed = Set("REMOVED")), Outcome.Good(true)),
+    check(OrderProcessed(MapDiff(changed = Map("VAR" → "VALUE"), deleted = Set("REMOVED")), Outcome.Good(true)),
       """{
         "TYPE": "OrderProcessed",
         "variablesDiff": {
-          "addedOrUpdated": {
+          "changed": {
             "VAR": "VALUE"
           },
-          "removed": ["REMOVED"]
+          "deleted": ["REMOVED"]
         },
         "outcome": {
           "TYPE": "Good",
@@ -122,15 +122,15 @@ final class OrderEventTest extends FreeSpec {
             "childId": "A",
             "orderId": "ORDER-ID/A",
             "variablesDiff": {
-              "addedOrUpdated": { "added": "x" },
-              "removed": []
+              "changed": { "added": "x" },
+              "deleted": []
             }
           }, {
             "childId": "B",
             "orderId": "ORDER-ID/B",
             "variablesDiff": {
-              "addedOrUpdated": {},
-              "removed": []
+              "changed": {},
+              "deleted": []
             }
           }
         ]
@@ -143,8 +143,8 @@ final class OrderEventTest extends FreeSpec {
         "TYPE": "OrderJoined",
         "to": 7,
         "variablesDiff": {
-          "addedOrUpdated": {},
-          "removed": []
+          "changed": {},
+          "deleted": []
         },
         "outcome": {
           "TYPE": "Good",

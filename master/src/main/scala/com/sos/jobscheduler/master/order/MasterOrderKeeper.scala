@@ -216,7 +216,7 @@ with Stash {
                 sender() ! Done
 
               case Some(Order.AttachedTo.AgentOrDetachable(agentPath)) ⇒
-                sender() ! Status.Failure(new IllegalStateException(s"Order cannot be removed because it is attached to Agent '$agentPath'"))
+                sender() ! Status.Failure(new IllegalStateException(s"Order cannot be deleted because it is attached to Agent '$agentPath'"))
             }
           }
       }

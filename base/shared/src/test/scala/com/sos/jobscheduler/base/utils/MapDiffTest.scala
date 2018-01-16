@@ -40,17 +40,17 @@ final class MapDiffTest extends FreeSpec {
   "JSON" in {
     testJson(MapDiff[String, String](),
       """{
-        "addedOrUpdated": {},
-        "removed": []
+        "changed": {},
+        "deleted": []
       }""")
 
     testJson(MapDiff(Map("a" → "A", "b" → "B"), Set("x", "y")),
       """{
-        "addedOrUpdated": {
+        "changed": {
           "a": "A",
           "b": "B"
         },
-        "removed": [
+        "deleted": [
           "x",
           "y"
         ]
