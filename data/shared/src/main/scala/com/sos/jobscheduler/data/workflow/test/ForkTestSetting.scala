@@ -3,8 +3,7 @@ package com.sos.jobscheduler.data.workflow.test
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.{ForkJoin, Job}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, WorkflowPath, Workflow}
-import scala.collection.immutable.ListMap
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Workflow, WorkflowPath}
 
 /**
   * @author Joacim Zschimmer
@@ -37,17 +36,17 @@ object ForkTestSetting {
   val TestWorkflowScript = Workflow(
     Vector(
       /*0*/ Job(AAgentJobPath),
-      /*1*/ ForkJoin(ListMap(
+      /*1*/ ForkJoin.of(
         OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath)))),
+        OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath))),
       /*2*/ Job(AAgentJobPath),
-      /*3*/ ForkJoin(ListMap(
+      /*3*/ ForkJoin.of(
         OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)))),
+        OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath))),
       /*4*/ Job(AAgentJobPath),
-      /*5*/ ForkJoin(ListMap(
+      /*5*/ ForkJoin.of(
         OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.ChildId("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath)))),
+        OrderId.ChildId("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
       /*6*/ Job(AAgentJobPath)),
     source = Some(TestWorkflowScriptNotation/*Must be the source source of this workflow*/))
   //     A

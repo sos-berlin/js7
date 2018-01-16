@@ -29,7 +29,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Instruction, WorkflowPath, Workflow}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -42,7 +42,7 @@ import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import java.time.Instant.now
 import java.time.{Duration, Instant}
-import scala.collection.immutable.{ListMap, Seq}
+import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 import scala.language.implicitConversions
@@ -185,9 +185,11 @@ object TestMasterAgent {
   private def makeWorkflowScript(conf: Conf): Workflow =
     Workflow(Vector(
       Instruction.Job(AgentJobPath(conf.agentPaths.head, TestJobPath)),
-      Instruction.ForkJoin(ListMap() ++ (
-        for ((agentPath, pathName) ← conf.agentPaths zip PathNames) yield
-          OrderId.ChildId(pathName) → Workflow(
+      Instruction.ForkJoin(
+        for ((agentPath, pathName) ← conf.agentPaths.toVector zip PathNames) yield
+          Instruction.ForkJoin.Branch(
+            OrderId.ChildId(pathName),
+          Workflow(
             for (_ ← 1 to conf.workflowLength) yield
               () @: Instruction.Job(AgentJobPath(agentPath, TestJobPath))))),
       Instruction.ExplicitEnd))

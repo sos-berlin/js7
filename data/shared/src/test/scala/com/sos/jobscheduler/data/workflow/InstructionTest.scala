@@ -50,12 +50,12 @@ final class InstructionTest extends FreeSpec {
     }
 
     "ForkJoin" in {
-      testLabeled(ForkJoin(List(
-        OrderId.ChildId("A") → Workflow(Vector(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB"))))),
-        OrderId.ChildId("B") → Workflow())), json"""
+      testLabeled(ForkJoin.of(
+        OrderId.ChildId("A") → Workflow.of(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB")))),
+        OrderId.ChildId("B") → Workflow()), json"""
         {
           "TYPE": "ForkJoin",
-          "idToWorkflow":
+          "branches":
             [
               {
                 "id": "A",

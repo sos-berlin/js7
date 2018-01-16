@@ -43,7 +43,7 @@ object CirceJsonTester {
         }
     }
 
-  def removeJNull(json: Json): Json =
+  private def removeJNull(json: Json): Json =
     json.asObject match {
       case Some(o) ⇒ Json.fromFields(o.toMap collect {
         case (k, v) if !v.isNull ⇒ k → removeJNull(v)

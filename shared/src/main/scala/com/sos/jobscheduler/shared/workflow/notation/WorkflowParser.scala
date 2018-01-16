@@ -8,7 +8,6 @@ import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Workflow}
 import fastparse.all._
-import scala.collection.immutable.ListMap
 import scala.reflect.ClassTag
 
 /**
@@ -68,11 +67,11 @@ object WorkflowParser {
 
     private val forkInstruction = P[Instruction.ForkJoin]{
       val orderSuffix = P[OrderId.ChildId](quotedString map OrderId.ChildId.apply)
-      val forkBranch = P[(OrderId.ChildId, Workflow)](orderSuffix ~ w ~ curlyWorkflow)
+      val forkBranch = P[Instruction.ForkJoin.Branch](
+        (orderSuffix ~ w ~ curlyWorkflow)
+          map Instruction.ForkJoin.Branch.fromPair)
       P(("fork" ~ w ~ inParentheses(w ~ forkBranch ~ (comma ~ forkBranch).rep ~ w) ~ instructionTerminator)
-        map { case (orderSuffix_, script_, more) ⇒
-          Instruction.ForkJoin(ListMap(orderSuffix_ → script_) ++ more)
-        })
+        map { case (branch, more) ⇒ Instruction.ForkJoin(Vector(branch) ++ more) })
     }
 
     private val ifErrorInstruction: Parser[Instruction.IfError] =

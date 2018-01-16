@@ -4,7 +4,7 @@ import javax.annotation.Nullable
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.collection.generic.{GenMapFactory, GenericCompanion}
-import scala.collection.immutable.{ListMap, Seq, Vector}
+import scala.collection.immutable.{Seq, Vector}
 import scala.collection.{GenMap, GenMapLike, GenTraversable, TraversableLike, immutable, mutable}
 import scala.language.{higherKinds, implicitConversions}
 
@@ -160,11 +160,11 @@ object Collections {
     }
   }
 
-  implicit class RichListMap[K, V](val underlying: ListMap[K, V]) extends AnyVal {
-    // ListMap is ordered
-    def keySeq: Seq[K] = underlying.keys.toVector
-    def valueSeq: Seq[V] = underlying.values.toVector
-  }
+  //implicit class RichListMap[K, V](val underlying: ListMap[K, V]) extends AnyVal {
+  //  // ListMap is ordered
+  //  def keySeq: Seq[K] = underlying.keys.toVector
+  //  def valueSeq: Seq[V] = underlying.values.toVector
+  //}
 
   implicit class RichBufferedIterator[A](val delegate: BufferedIterator[A]) extends AnyVal {
     def headOption: Option[A] = if (delegate.hasNext) Some(delegate.head) else None

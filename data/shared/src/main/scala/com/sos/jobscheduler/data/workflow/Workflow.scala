@@ -38,11 +38,11 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
   private def toFlats(parents: List[Position.Parent]): Seq[(Position, Instruction.Labeled)] =
     positionAndInstructions(parents)
       .collect {
-        case pi @ (pos, _ @: ForkJoin(idToWorkflow)) ⇒
+        case pi @ (pos, _ @: ForkJoin(branches)) ⇒
           Vector(pi) ++
             (for {
-              (id, workflow) ← idToWorkflow
-              flats ← workflow.toFlats(pos.parents ::: Position.Parent(pos.nr, id) :: Nil)
+              branch ← branches
+              flats ← branch.workflow.toFlats(pos.parents ::: Position.Parent(pos.nr, branch.id) :: Nil)
             } yield flats)
 
         case o ⇒
@@ -94,7 +94,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
       case Position(Nil, nr) ⇒ isDefinedAt(nr)
       case Position(Position.Parent(nr, childId) :: tail, tailNr) ⇒
         instruction(nr) match {
-          case ForkJoin(childToScript) ⇒ childToScript.get(childId) exists (_ isDefinedAt Position(tail, tailNr))
+          case ForkJoin(branches) ⇒ branches.find(_.id == childId) exists (_.workflow isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
         }
     }
@@ -116,7 +116,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
       case Position(Position.Parent(nr, childId) :: tail, tailNr) ⇒
         instruction(nr) match {
           case fj: ForkJoin ⇒
-            fj.idToWorkflow.get(childId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
+            fj.branches find (_.id == childId) map (_.workflow.instruction(Position(tail, tailNr))) getOrElse Gap
           case _ ⇒
             Gap
         }

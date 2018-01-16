@@ -7,7 +7,6 @@ import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.{Position, Workflow}
 import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflowScript
 import org.scalatest.FreeSpec
-import scala.collection.immutable.ListMap
 
 /**
   * @author Joacim Zschimmer
@@ -18,17 +17,17 @@ final class WorkflowsTest extends FreeSpec {
     assert(ForkTestSetting.TestWorkflowScript.reduceForAgent(AAgentPath) == Workflow(
       Vector(
         Job(AAgentJobPath),
-        ForkJoin(ListMap(
+        ForkJoin.of(
           OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-          OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Gap))),
+          OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Gap)),
         Job(AAgentJobPath),
-        ForkJoin(ListMap(
+        ForkJoin.of(
           OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-          OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)))),
+          OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath))),
         Job(AAgentJobPath),
-        ForkJoin(ListMap(
+        ForkJoin.of(
           OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-          OrderId.ChildId("🍋") → Workflow.of(Gap               , Gap))),
+          OrderId.ChildId("🍋") → Workflow.of(Gap               , Gap)),
         Job(AAgentJobPath)),
       source = None))
   }
@@ -37,15 +36,15 @@ final class WorkflowsTest extends FreeSpec {
     assert(ForkTestSetting.TestWorkflowScript.reduceForAgent(BAgentPath) == Workflow(
       Vector(
         /*0*/ Gap,
-        /*1*/ ForkJoin(ListMap(
+        /*1*/ ForkJoin.of(
                 OrderId.ChildId("🥕") → Workflow.of(Gap, Gap),
-                OrderId.ChildId("🍋") → Workflow.of(Gap, Job(BAgentJobPath)))),
+                OrderId.ChildId("🍋") → Workflow.of(Gap, Job(BAgentJobPath))),
         /*2*/ Gap,
         /*3*/ Gap,
         /*4*/ Gap,
-        /*5*/ ForkJoin(ListMap(
+        /*5*/ ForkJoin.of(
                 OrderId.ChildId("🥕") → Workflow.of(Gap, Gap),
-                OrderId.ChildId("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath)))),
+                OrderId.ChildId("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
         /*6*/ Gap),
       source = None))
   }

@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.shared.workflow
 
-import com.sos.jobscheduler.base.utils.Collections.RichListMap
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.event.KeyedEvent
@@ -52,8 +51,8 @@ final class WorkflowProcess(workflowScript: Workflow, idToOrder: PartialFunction
 
       case (forkJoin: Instruction.ForkJoin, Order.Ready) ⇒
         Some(order.id <-: OrderForked(
-          for (childId ← forkJoin.idToWorkflow.keySeq) yield
-            OrderForked.Child(childId, order.id / childId, MapDiff.empty)))
+          for (branch ← forkJoin.branches) yield
+            OrderForked.Child(branch.id, order.id / branch.id, MapDiff.empty)))
 
       case (_: Instruction.ForkJoin, _: Order.Join) ⇒
         //orderEntry.instruction match {

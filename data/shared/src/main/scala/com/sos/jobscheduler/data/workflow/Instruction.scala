@@ -8,9 +8,10 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
+import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
-import scala.collection.immutable.{ListMap, Seq}
+import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.language.implicitConversions
 
 /**
@@ -72,34 +73,39 @@ object Instruction {
     override def toString = "gap"
   }
 
-  final case class ForkJoin(idToWorkflow: ListMap[OrderId.ChildId, Workflow])  // TODO ListMap durch Map und Seq ersetzen
+  final case class ForkJoin(branches: IndexedSeq[ForkJoin.Branch])
   extends Instruction {
-    for (idAndScript ← idToWorkflow) ForkJoin.validateBranch(idAndScript).valueOr(throw _)
+    for (idAndScript ← branches) ForkJoin.validateBranch(idAndScript).valueOr(throw _)
 
     def isPartiallyExecutableOnAgent(agentPath: AgentPath): Boolean =
-      idToWorkflow.values exists (_ isPartiallyExecutableOnAgent agentPath)
+      branches exists (_.workflow isPartiallyExecutableOnAgent agentPath)
 
     def isStartableOnAgent(agentPath: AgentPath): Boolean =
       // Any Agent or the master can fork. The current Agent is okay.
-      idToWorkflow.values exists (_ isStartableOnAgent agentPath)
+      branches exists (_.workflow isStartableOnAgent agentPath)
 
     //def isJoinableOnAgent(agentPath: AgentPath): Boolean =
     //  // If branches end on multiple Agents, only the Master can join the Orders
-    //  idToWorkflow.values forall (_ isEndingOnAgent agentPath)
+    //  branches.values forall (_ isEndingOnAgent agentPath)
   }
   object ForkJoin {
     implicit val myListMapCodec = listMapCodec[OrderId.ChildId, Workflow](keyName = "id", valueName = "workflow")
     implicit lazy val jsonCodec: CirceCodec[ForkJoin] = deriveCirceCodec[ForkJoin]
 
-    def apply(idToWorkflow: Seq[(OrderId.ChildId, Workflow)]) =
-      new ForkJoin(ListMap() ++ idToWorkflow)
+    def of(idAndWorkflows: (OrderId.ChildId, Workflow)*) =
+      new ForkJoin(idAndWorkflows.map { case (id, workflow) ⇒ Branch(id, workflow) } .toVector)
 
-    private def validateBranch(idAndScript: (OrderId.ChildId, Workflow)): Validated[RuntimeException, (OrderId.ChildId, Workflow)] = {
-      val (childId, workflow) = idAndScript
-      if (workflow.instructions exists (o ⇒ o.isInstanceOf[Goto]  || o.isInstanceOf[IfError]))
-        Invalid(new IllegalArgumentException(s"Fork/Join branch '$childId' cannot contain a jump instruction like 'goto' or 'ifError'"))
+    private def validateBranch(branch: Branch): Validated[RuntimeException, Branch] = {
+      if (branch.workflow.instructions exists (o ⇒ o.isInstanceOf[Goto]  || o.isInstanceOf[IfError]))
+        Invalid(new IllegalArgumentException(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto' or 'ifError'"))
       else
-        Valid(idAndScript)
+        Valid(branch)
+    }
+
+    @JsonCodec
+    final case class Branch(id: OrderId.ChildId, workflow: Workflow)
+    object Branch {
+      implicit def fromPair(pair: (OrderId.ChildId, Workflow)) = new Branch(pair._1, pair._2)
     }
   }
 
