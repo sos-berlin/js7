@@ -14,7 +14,6 @@ import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.agent.web.common.LoginSession
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -65,7 +64,7 @@ object RunningAgent {
     AgentStartInformation.initialize()
     val injector = Guice.createInjector(PRODUCTION, module)
     val agentConfiguration = injector.instance[AgentConfiguration]
-    logger.info(s"Agent ${BuildInfo.buildVersion} config=${agentConfiguration.configDirectory getOrElse ""} data=${agentConfiguration.dataDirectory getOrElse ""}")
+    logger.info(s"config=${agentConfiguration.configDirectory getOrElse ""} data=${agentConfiguration.dataDirectory getOrElse ""}")
 
     implicit val executionContext = injector.instance[ExecutionContext]
     implicit val actorSystem = injector.instance[ActorSystem]

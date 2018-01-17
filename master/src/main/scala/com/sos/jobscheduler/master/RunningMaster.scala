@@ -8,7 +8,6 @@ import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
@@ -20,7 +19,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.{WorkflowPath, Workflow}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -95,7 +94,7 @@ object RunningMaster {
 
   def apply(injector: Injector): Future[RunningMaster] = {
     val masterConfiguration = injector.instance[MasterConfiguration]
-    logger.info(s"Agent ${BuildInfo.buildVersion} config=${masterConfiguration.configDirectoryOption getOrElse ""} data=${masterConfiguration.dataDirectory}")
+    logger.info(s"config=${masterConfiguration.configDirectoryOption getOrElse ""} data=${masterConfiguration.dataDirectory}")
 
     masterConfiguration.stateDirectory match {
       case o if !exists(o) ⇒ createDirectory(o)

@@ -6,6 +6,7 @@ import com.google.inject.Guice
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichArray
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
@@ -47,6 +48,7 @@ object MasterMain {
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
+    logger.info(s"Master ${BuildInfo.buildVersion}")  // Log early
     import scala.concurrent.ExecutionContext.Implicits.global
     try
       start(MasterConfiguration.fromCommandLine(args.toImmutableSeq))

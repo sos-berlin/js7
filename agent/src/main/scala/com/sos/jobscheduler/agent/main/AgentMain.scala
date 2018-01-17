@@ -5,6 +5,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Closers.EmptyAutoCloseable
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
@@ -31,6 +32,7 @@ object AgentMain {
 
   def main(args: Array[String]): Unit =
     try {
+      logger.info(s"Agent ${BuildInfo.buildVersion}")  // Log early
       val agentConfiguration = AgentConfiguration(args)
       val (conf, dotnet) = tryProvideDotnet(agentConfiguration)
       start(conf) andThen { case _ ⇒
