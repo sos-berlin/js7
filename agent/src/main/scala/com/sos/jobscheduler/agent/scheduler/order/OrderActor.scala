@@ -4,10 +4,12 @@ import akka.actor.{ActorRef, Props, Status, Terminated}
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
+import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent.Stdouterr
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
@@ -16,7 +18,7 @@ import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
-import scala.concurrent.Promise
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -26,7 +28,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
 
-  private val stdouterr = new StdouterrToEvent(context, config)
+  private val stdouterr = new StdouterrToEvent(context, config, writeStdouterr)
   private var order: Order[Order.State] = null
   private var terminating = false
 
@@ -125,16 +127,8 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private def processing(job: Instruction.Job, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
     journaling orElse {
-      case Internal.StdoutStderrWritten(t, chunk, promise) ⇒
-        persistAsync(OrderStdWritten(t)(chunk)) { _ ⇒
-          promise.success(Completed)
-        }
-
-      case Internal.BufferingStarted ⇒
-        stdouterr.onBufferingStarted()
-
-      case Internal.FlushStdoutStderr ⇒
-        stdouterr.flushStdoutAndStderr()
+      case msg: Stdouterr ⇒
+        stdouterr.handle(msg)
 
       case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) ⇒
         val event = moduleStepEnded match {
@@ -169,7 +163,6 @@ extends KeyedJournalingActor[OrderEvent] {
       }
     }
   }
-
 
   private def processed: Receive = journaling orElse {
     case Input.HandleTransitionEvent(event: OrderMoved) ⇒
@@ -216,6 +209,13 @@ extends KeyedJournalingActor[OrderEvent] {
     persist(OrderDetached) { event ⇒
       sender() ! Completed
       update(event)
+    }
+
+  private def writeStdouterr(t: StdoutStderrType, chunk: String): Future[Completed] =
+    promiseFuture[Completed] { promise ⇒
+      persistAsync(OrderStdWritten(t)(chunk)) { _ ⇒
+        promise.success(Completed)
+      }
     }
 
   private def update(event: OrderEvent) = {
@@ -280,11 +280,5 @@ private[order] object OrderActor {
   object Output {
     final case class RecoveryFinished(order: Order[Order.State])
     final case class OrderChanged(order: Order[Order.State], event: OrderEvent)
-  }
-
-  private[order] object Internal {
-    final case object BufferingStarted
-    final case class StdoutStderrWritten(typ: StdoutStderrType, chunk: String, completed: Promise[Completed])
-    final case object FlushStdoutStderr
   }
 }
