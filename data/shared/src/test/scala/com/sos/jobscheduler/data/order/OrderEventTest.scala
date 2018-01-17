@@ -8,6 +8,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.Json
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 
@@ -17,12 +18,12 @@ import org.scalatest.FreeSpec
 final class OrderEventTest extends FreeSpec {
 
   "OrderAdded" in {
-    check(OrderAdded(WorkflowPath("/JOBNET"), Order.Ready, Payload(Map("VAR" → "VALUE"))),
-      """{
+    check(OrderAdded(WorkflowPath("/JOBNET"), Order.StartNow, Payload(Map("VAR" → "VALUE"))), json"""
+      {
         "TYPE": "OrderAdded",
         "workflowPath": "/JOBNET",
         "state": {
-          "TYPE":"Ready"
+          "TYPE": "StartNow"
         },
         "payload": {
           "variables": {
@@ -37,12 +38,12 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderAttached" in {
-    check(OrderAttached(WorkflowPath("/JOBNET") /: Position(2), Order.Ready, Some(OrderId("PARENT")), AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))),
-      """{
+    check(OrderAttached(WorkflowPath("/JOBNET") /: Position(2), Order.Ready, Some(OrderId("PARENT")), AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))), json"""
+      {
         "TYPE": "OrderAttached",
         "workflowPosition": [ "/JOBNET", 2 ],
         "state": {
-          "TYPE":"Ready"
+          "TYPE": "Ready"
         },
         "parent": "PARENT",
         "agentPath": "/AGENT",
@@ -58,17 +59,17 @@ final class OrderEventTest extends FreeSpec {
       }""")
   }
 
-  "OrderMovedToAgent" in {
-    check(OrderMovedToAgent(AgentPath("/AGENT")),
-      """{
-        "TYPE": "OrderMovedToAgent",
+  "OrderTransferredToAgent" in {
+    check(OrderTransferredToAgent(AgentPath("/AGENT")), json"""
+      {
+        "TYPE": "OrderTransferredToAgent",
         "agentPath": "/AGENT"
       }""")
   }
 
   "OrderProcessingStarted" in {
-    check(OrderProcessingStarted,
-      """{
+    check(OrderProcessingStarted, json"""
+      {
         "TYPE": "OrderProcessingStarted"
       }""")
   }
@@ -79,24 +80,24 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderStdoutWritten" in {
-    check(OrderStdoutWritten("STDOUT\n"),
-      """{
+    check(OrderStdoutWritten("STDOUT\n"), json"""
+      {
         "TYPE": "OrderStdoutWritten",
         "chunk": "STDOUT\n"
       }""")
   }
 
   "OrderStderrWritten" in {
-    check(OrderStderrWritten("STDOUT\n"),
-      """{
+    check(OrderStderrWritten("STDOUT\n"), json"""
+      {
         "TYPE": "OrderStderrWritten",
         "chunk": "STDOUT\n"
       }""")
   }
 
   "OrderProcessed" in {
-    check(OrderProcessed(MapDiff(changed = Map("VAR" → "VALUE"), deleted = Set("REMOVED")), Outcome.Good(true)),
-      """{
+    check(OrderProcessed(MapDiff(changed = Map("VAR" → "VALUE"), deleted = Set("REMOVED")), Outcome.Good(true)), json"""
+      {
         "TYPE": "OrderProcessed",
         "variablesDiff": {
           "changed": {
@@ -113,16 +114,16 @@ final class OrderEventTest extends FreeSpec {
 
   "OrderForked" in {
     check(OrderForked(List(
-      OrderForked.Child(OrderId.ChildId("A"), OrderId("ORDER-ID/A"), MapDiff(Map("added" → "x"))),
-      OrderForked.Child(OrderId.ChildId("B"), OrderId("ORDER-ID/B")))),
-      """{
+      OrderForked.Child(OrderId.ChildId("A"), OrderId("ORDER-ID/A"), MapDiff(Map("CHANGED" → "x"))),
+      OrderForked.Child(OrderId.ChildId("B"), OrderId("ORDER-ID/B")))), json"""
+      {
         "TYPE": "OrderForked",
         "children": [
           {
             "childId": "A",
             "orderId": "ORDER-ID/A",
             "variablesDiff": {
-              "changed": { "added": "x" },
+              "changed": { "CHANGED": "x" },
               "deleted": []
             }
           }, {
@@ -138,8 +139,8 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderJoined" in {
-    check(OrderJoined(7, MapDiff.empty, Outcome.Default),
-      """{
+    check(OrderJoined(7, MapDiff.empty, Outcome.Default), json"""
+      {
         "TYPE": "OrderJoined",
         "to": 7,
         "variablesDiff": {
@@ -154,35 +155,35 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderMoved" in {
-    check(OrderMoved(7),
-      """{
+    check(OrderMoved(7), json"""
+      {
         "TYPE": "OrderMoved",
         "to": 7
       }""")
   }
 
   "OrderDetachable" in {
-    check(OrderDetachable,
-      """{
+    check(OrderDetachable, json"""
+      {
         "TYPE": "OrderDetachable"
       }""")
   }
 
   "OrderDetached" in {
-    check(OrderDetached,
-      """{
+    check(OrderDetached, json"""
+      {
         "TYPE": "OrderDetached"
       }""")
   }
 
   "OrderFinished" in {
-    check(OrderFinished,
-      """{
+    check(OrderFinished, json"""
+      {
         "TYPE": "OrderFinished"
       }""")
   }
 
-  private def check(event: OrderEvent, json: String) = testJson(event, json)
+  private def check(event: OrderEvent, json: ⇒ Json) = testJson(event, json)
 
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.workflow.{Position, InstructionNr, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{InstructionNr, Position, WorkflowPath, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
@@ -38,11 +38,11 @@ final case class Order[+S <: Order.State](
 
   def update(event: OrderEvent.OrderCoreEvent): Order[State] =
     event match {
-      case OrderMovedToAgent(o) ⇒
+      case OrderTransferredToAgent(o) ⇒
         copy(
           attachedTo = Some(AttachedTo.Agent(o)))
 
-      case OrderMovedToMaster ⇒ copy(
+      case OrderTransferredToMaster ⇒ copy(
         attachedTo = None)
 
       case OrderProcessingStarted ⇒ copy(

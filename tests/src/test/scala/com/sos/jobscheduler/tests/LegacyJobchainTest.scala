@@ -20,7 +20,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, Goto, IfError, Job}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Workflow, WorkflowPath}
@@ -123,7 +123,7 @@ object LegacyJobchainTest {
   private val TestOrder = Order(OrderId("🔺"), TestNamedWorkflow.path, state = Order.StartNow)
   private val ExpectedEvents = Vector(
     TestOrder.id <-: OrderAdded(TestNamedWorkflow.path, Order.StartNow, Payload.empty),
-    TestOrder.id <-: OrderMovedToAgent(TestAgentPath),
+    TestOrder.id <-: OrderTransferredToAgent(TestAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.Good(true)),
     TestOrder.id <-: OrderMoved(4),   // next_state="B"
@@ -131,7 +131,7 @@ object LegacyJobchainTest {
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.Good(false)),
     TestOrder.id <-: OrderMoved(7),   // error_state="FAILURE"
     TestOrder.id <-: OrderDetachable,
-    TestOrder.id <-: OrderMovedToMaster,
+    TestOrder.id <-: OrderTransferredToMaster,
     TestOrder.id <-: OrderFinished)
 
   private def jobXml(returnCode: ReturnCode) =

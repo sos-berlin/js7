@@ -20,7 +20,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderMovedToAgent, OrderMovedToMaster, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
@@ -229,7 +229,7 @@ with Stash {
         logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
       else {
         val ownEvent = event match {
-          case _: OrderEvent.OrderAttached ⇒ OrderMovedToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+          case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
           case _ ⇒ event
         }
         // OrderForked: The children have to be registered before its events. We simply stash this actor's message input until OrderForked has been journaled and handled. Slow
@@ -246,7 +246,7 @@ with Stash {
         logger.error(s"Received OrdersDetached from Agent for unknown orders: "+ unknown.mkString(", "))
       }
       for (orderId ← orderIds -- unknown) {
-        persistAsync(KeyedEvent(OrderMovedToMaster)(orderId))(handleOrderEvent)
+        persistAsync(KeyedEvent(OrderTransferredToMaster)(orderId))(handleOrderEvent)
       }
 
     case msg @ JournalActor.Output.SerializationFailure(throwable) ⇒
@@ -332,7 +332,7 @@ with Stash {
                 logger.error(s"Event $event, but $orderId is in state $state")
             }
 
-          case OrderMovedToMaster ⇒
+          case OrderTransferredToMaster ⇒
 
           case _ ⇒
         }
@@ -456,7 +456,7 @@ object MasterOrderKeeper {
 
   private def logNotableEvent(orderId: OrderId, event: OrderEvent): Unit =
     event match {
-      case _ @  (_: OrderAdded | _: OrderMovedToAgent | OrderMovedToMaster | _: OrderForked | _: OrderJoined | OrderFinished) ⇒
+      case _ @  (_: OrderAdded | _: OrderTransferredToAgent | OrderTransferredToMaster | _: OrderForked | _: OrderJoined | OrderFinished) ⇒
         logEvent(orderId, event)
       case _ ⇒
     }

@@ -18,7 +18,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.Order.Scheduled
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderMovedToAgent, OrderMovedToMaster, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
@@ -174,7 +174,7 @@ private object RecoveryIT {
 
   private val ExpectedEvents = Vector(
     OrderAdded(TestWorkflowPath, Scheduled(SomeTimestamp), Payload(Map())),
-    OrderMovedToAgent(AgentPaths(0)),
+    OrderTransferredToAgent(AgentPaths(0)),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.Good(true)),
@@ -188,8 +188,8 @@ private object RecoveryIT {
     OrderProcessed(MapDiff.empty, Outcome.Good(true)),
     OrderMoved(3),
     OrderDetachable,
-    OrderMovedToMaster,
-    OrderMovedToAgent(AgentPaths(1)),
+    OrderTransferredToMaster,
+    OrderTransferredToAgent(AgentPaths(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(s"$StdoutOutput\n"),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.Good(true)),
@@ -199,7 +199,7 @@ private object RecoveryIT {
     OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
     OrderMoved(5),
     OrderDetachable,
-    OrderMovedToMaster,
+    OrderTransferredToMaster,
     OrderFinished)
 
   /** Deletes restart sequences to make event sequence comparable with ExpectedEvents. */

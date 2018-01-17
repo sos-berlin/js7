@@ -35,12 +35,12 @@ object OrderEvent {
     //type State = Idle
   }
 
-  final case class OrderMovedToAgent(agentPath: AgentPath)
+  final case class OrderTransferredToAgent(agentPath: AgentPath)
   extends OrderCoreEvent {
     //type State = Idle
   }
 
-  final case object OrderMovedToMaster
+  final case object OrderTransferredToMaster
   extends OrderCoreEvent {
     //type State = Detached.type
   }
@@ -119,8 +119,8 @@ object OrderEvent {
   implicit val OrderEventJsonCodec = TypedJsonCodec[OrderEvent](
     Subtype(deriveCirceCodec[OrderAdded]),
     Subtype(deriveCirceCodec[OrderAttached]),
-    Subtype(deriveCirceCodec[OrderMovedToAgent]),
-    Subtype(OrderMovedToMaster),
+    Subtype(deriveCirceCodec[OrderTransferredToAgent]),
+    Subtype(OrderTransferredToMaster),
     Subtype(deriveCirceCodec[OrderStdoutWritten]),
     Subtype(deriveCirceCodec[OrderStderrWritten]),
     Subtype(deriveCirceCodec[OrderProcessed]),
