@@ -94,7 +94,7 @@ final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[Order
       case Valid(Some(n)) ⇒ Some(n)
       case Valid(None) ⇒ Some(order.position.nr)
       case Invalid(message) ⇒
-        logger.error(message)
+        logger.error(message) // TODO
         None
     }
 

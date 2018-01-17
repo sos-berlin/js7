@@ -11,7 +11,7 @@ import com.typesafe.config.Config
 /**
  * Standard trait for Agent web services.
  * To be able to mix-in multiple web services, use `addRootRoute` to add a `Route`.
- * Method `graph` returns the combined `Route`.
+ * Method `buildRoute` returns the combined `Route`.
  *
  * @author Joacim Zschimmer
  */
