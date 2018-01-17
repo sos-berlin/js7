@@ -30,7 +30,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, InstructionNr, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, InstructionNr, JobPath, WorkflowPath}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
@@ -152,9 +152,7 @@ private object OrderActorTest {
       AgentConfiguration.forTest(configAndData = Some(dir)))
 
     private val journalActor = actorOf(
-      Props {
-        new JournalActor[OrderEvent](TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, keyedEventBus)
-      },
+      JournalActor.props(TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, keyedEventBus),
       "Journal")
     private val jobActor = context.watch(context.actorOf(JobActor.props(TestJobPath, taskRunnerFactory, timerService)))
     private val orderActor = actorOf(Props { new OrderActor(TestOrder.id, journalActor = journalActor, config)}, s"Order-${TestOrder.id.string}")

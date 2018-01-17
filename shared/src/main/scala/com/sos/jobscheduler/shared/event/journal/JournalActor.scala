@@ -27,7 +27,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class JournalActor[E <: Event](
+final class JournalActor[E <: Event] private(
   meta: JournalMeta[E],
   file: Path,
   syncOnCommit: Boolean,
@@ -106,7 +106,7 @@ extends Actor with Stash {
           writeToDisk(jsons, replyTo)
           writtenBuffer += Written(stampedOptions, replyTo, sender())
           dontSync &= noSync
-          statistics.countCommit(jsons.size)
+          statistics.countWillBeCommittedEvents(jsons.size) // ???
           self.forward(Internal.Commit(writtenBuffer.length))  // Commit after possibly outstanding Input.Store messages
 
         case Failure(t) ⇒
@@ -119,15 +119,15 @@ extends Actor with Stash {
         self.forward(Internal.Commit(writtenBuffer.length))  // storedBuffer has grown? Queue again to coalesce two commits
       } else
       if (level == writtenBuffer.length) {  // storedBuffer has not grown since last issued Commit
-        try flush(sync = syncOnCommit && !dontSync)
+        val sync = syncOnCommit && !dontSync
+        try flush(sync = sync)
         catch { case NonFatal(t) ⇒
           val tt = t.appendCurrentStackTrace
           for (w ← writtenBuffer) w.replyTo.!(Output.StoreFailure(tt))(sender)
           throw tt;
         }
-        //logger.trace(s"${if (jsonWriter.syncOnFlush) "Synced" else "Flushed"} ${(writtenBuffer map { _.stampeds.size }).sum} events:")
+        logWrittenAsStored(sync)
         for (Written(stampedOptions, replyTo, sender) ← writtenBuffer) {
-          logStoredEvents(stampedOptions)
           replyTo.!(Output.Stored(stampedOptions))(sender)
           for (stampedOption ← stampedOptions; stamped ← stampedOption) {
             keyedEventBus.publish(stamped)
@@ -165,10 +165,14 @@ extends Actor with Stash {
       keylessJournalingActors -= a
   }
 
-  private def logStoredEvents(stampedOptions: Seq[Option[Stamped[AnyKeyedEvent]]]) =
+  private def logWrittenAsStored(synced: Boolean) =
     if (logger.underlying.isTraceEnabled) {
-      for (stampedOption ← stampedOptions; stamped ← stampedOption)
-        logger.trace(s"STORED #${statistics.flushCount} $stamped")
+      val it = writtenBuffer.iterator.flatMap(_.stampeds).flatten
+      while (it.hasNext) {
+        val stamped = it.next()
+        val last = if (it.hasNext) "     " else if (synced) "sync " else "flush"  // After the last one, the file buffer was flushed
+        logger.trace(s"$last STORED ${stamped.eventId} ${stamped.value}")
+      }
     }
 
   private def becomeTakingSnapshotThen(andThen: ⇒ Unit) = {
@@ -244,6 +248,11 @@ extends Actor with Stash {
 object JournalActor {
   val SnapshotsHeader = Json.fromString("SNAPSHOTS")
   val EventsHeader = Json.fromString("EVENTS")
+
+  def props[E <: Event](meta: JournalMeta[E], file: Path, syncOnCommit: Boolean,
+    eventIdGenerator: EventIdGenerator, keyedEventBus: StampedKeyedEventBus)
+  =
+    Props { new JournalActor(meta, file, syncOnCommit, eventIdGenerator, keyedEventBus) }
 
   object Input {
     private[journal] final case class Start(recoveredJournalingActors: RecoveredJournalingActors)

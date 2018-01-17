@@ -33,7 +33,7 @@ object ForkTestSetting {
     |job /JOB on /AGENT-A;
     """.stripMargin.trim
 
-  val TestWorkflowScript = Workflow(
+  val TestWorkflow = Workflow(
     Vector(
       /*0*/ Job(AAgentJobPath),
       /*1*/ ForkJoin.of(
@@ -62,5 +62,5 @@ object ForkTestSetting {
   //     J
   //    END
 
-  val TestWorkflow = Workflow.Named(WorkflowPath("/WORKFLOW"), TestWorkflowScript)
+  val TestNamedWorkflow = Workflow.Named(WorkflowPath("/WORKFLOW"), TestWorkflow)
 }

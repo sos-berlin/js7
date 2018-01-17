@@ -3,7 +3,7 @@ package com.sos.jobscheduler.shared.workflow.notation
 import com.sos.jobscheduler.common.time.Stopwatch.{measureTime, measureTimeParallel}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Instruction.{Goto, IfError, Job}
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflowScript, TestWorkflowScriptNotation}
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowScriptNotation}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
 import scala.util.control.NoStackTrace
@@ -14,7 +14,7 @@ import scala.util.control.NoStackTrace
 final class WorkflowParserTest extends FreeSpec {
 
   "parse" in {
-    assert(parse(TestWorkflowScriptNotation) == TestWorkflowScript)
+    assert(parse(TestWorkflowScriptNotation) == TestWorkflow)
   }
 
   private val singleJobScript = Workflow(Vector(
@@ -84,7 +84,7 @@ final class WorkflowParserTest extends FreeSpec {
 
   private def parse(workflow: String): Workflow =
     WorkflowParser.parse(workflow) match {
-      case Right(workflowScript) ⇒ workflowScript
+      case Right(workflow) ⇒ workflow
       case Left(message) ⇒ throw new AssertionError(message) with NoStackTrace
     }
 }

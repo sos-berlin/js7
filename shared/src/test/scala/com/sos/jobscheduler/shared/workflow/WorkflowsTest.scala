@@ -14,7 +14,7 @@ import org.scalatest.FreeSpec
 final class WorkflowsTest extends FreeSpec {
 
   "reduceForAgent A" in {
-    assert(ForkTestSetting.TestWorkflowScript.reduceForAgent(AAgentPath) == Workflow(
+    assert(ForkTestSetting.TestWorkflow.reduceForAgent(AAgentPath) == Workflow(
       Vector(
         Job(AAgentJobPath),
         ForkJoin.of(
@@ -33,7 +33,7 @@ final class WorkflowsTest extends FreeSpec {
   }
 
   "reduceForAgent B" in {
-    assert(ForkTestSetting.TestWorkflowScript.reduceForAgent(BAgentPath) == Workflow(
+    assert(ForkTestSetting.TestWorkflow.reduceForAgent(BAgentPath) == Workflow(
       Vector(
         /*0*/ Gap,
         /*1*/ ForkJoin.of(
@@ -75,11 +75,11 @@ final class WorkflowsTest extends FreeSpec {
     for ((position, agentPaths) ← isStartableSetting) {
       for ((agentPath, expected) ← agentPaths.map(_ → true) ++ (AgentPaths filterNot agentPaths.toSet).map(_ → false)) {
         s"isStartableOnAgent($position $agentPath) = $expected" in {
-          assert(TestWorkflow.workflow.isStartableOnAgent(position, agentPath) == expected)
+          assert(TestWorkflow.isStartableOnAgent(position, agentPath) == expected)
         }
         s".reduceForAgent.isStartableOnAgent($position $agentPath) = $expected" in {
           //assert(TestWorkflow.workflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath))
-          assert(TestWorkflow.workflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath) == expected)
+          assert(TestWorkflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath) == expected)
         }
       }
     }

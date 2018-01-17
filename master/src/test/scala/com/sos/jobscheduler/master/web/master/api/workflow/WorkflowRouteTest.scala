@@ -13,8 +13,8 @@ import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.Stamped
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.TestWorkflow
-import com.sos.jobscheduler.data.workflow.{WorkflowPath, Workflow, WorkflowsOverview}
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestNamedWorkflow, TestWorkflow}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath, WorkflowsOverview}
 import com.sos.jobscheduler.master.WorkflowClient
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
 import org.scalatest.FreeSpec
@@ -94,6 +94,6 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
 object WorkflowRouteTest {
   private val WorkflowUri = "/api/workflow"
   private val pathToWorkflow: Map[WorkflowPath, Workflow.Named] =
-    List(Workflow.Named(WorkflowPath(s"/PATH${TestWorkflow.path.string}"), TestWorkflow.workflow))
+    List(Workflow.Named(WorkflowPath(s"/PATH${TestNamedWorkflow.path.string}"), TestWorkflow))
       .toKeyedMap(_.path)
 }

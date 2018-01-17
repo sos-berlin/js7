@@ -106,7 +106,7 @@ final class AgentCommandTest extends FreeSpec {
             "id": "ORDER-ID",
             "workflowPosition": [ "/WORKFLOW", 3 ]
           },
-          "workflowScript": {
+          "workflow": {
             "instructions": [
               { "TYPE": "Job", "job": { "agentPath": "/AGENT", "jobPath": "/A" } },
               { "TYPE": "Job", "job": { "agentPath": "/AGENT", "jobPath": "/B" } },

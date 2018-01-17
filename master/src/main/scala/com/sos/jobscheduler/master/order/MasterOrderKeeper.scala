@@ -67,16 +67,14 @@ with Stash {
   private val pathToNamedWorkflow = mutable.Map[WorkflowPath, Workflow.Named]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private var detachingSuspended = false
-  protected val journalActor = {
-    val meta = journalMeta(compressWithGzip = masterConfiguration.config.getBoolean("jobscheduler.master.journal.gzip"))
-    context.watch(context.actorOf(
-      Props { new JournalActor(meta, journalFile, syncOnCommit = masterConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
-      "Journal"))
-  }
+  protected val journalActor = context.watch(context.actorOf(
+    JournalActor.props(
+      journalMeta(compressWithGzip = masterConfiguration.config.getBoolean("jobscheduler.master.journal.gzip")),
+      journalFile, syncOnCommit = masterConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus),
+    "Journal"))
   private val orderScheduleGenerator = context.actorOf(
     Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, scheduledOrderGeneratorKeeper)},
-    "OrderScheduleGenerator"
-  )
+    "OrderScheduleGenerator")
   private var terminating = false
 
   loadConfiguration()
@@ -108,13 +106,13 @@ with Stash {
     else
     if (file.getFileName.toString endsWith WorkflowPath.txtFilenameExtension)
       WorkflowParser.parse(file.contentString) match {
-        case Right(workflowScript) ⇒ workflowScript
+        case Right(workflow) ⇒ workflow
         case Left(message) ⇒ sys.error(s"$file: $message")
       }
     else
     if (file.getFileName.toString endsWith WorkflowPath.xmlFilenameExtension)
       autoClosing(new FileSource(file)) { src ⇒
-        LegacyJobchainXmlParser.parseXml(src, FolderPath.parentOf(workflowPath))
+        LegacyJobchainXmlParser.parseXml(FolderPath.parentOf(workflowPath), src)
       }
     else
       sys.error(s"Unrecognized file type: $file")
@@ -235,9 +233,9 @@ with Stash {
           case _ ⇒ event
         }
         // OrderForked: The children have to be registered before its events. We simply stash this actor's message input until OrderForked has been journaled and handled. Slow
-        val stashUntilJournaled = ownEvent.isInstanceOf[OrderForked]
-        persist(KeyedEvent(ownEvent)(orderId), async = !stashUntilJournaled)(handleOrderEvent)
-        persist(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath), async = !stashUntilJournaled) { e ⇒
+        //val stashUntilJournaled = ownEvent.isInstanceOf[OrderForked]
+        persist(KeyedEvent(ownEvent)(orderId)/*, async = !stashUntilJournaled*/)(handleOrderEvent)
+        persist(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)/*, async = !stashUntilJournaled*/) { e ⇒
           agentEntry.lastAgentEventId = e.eventId
         }
       }

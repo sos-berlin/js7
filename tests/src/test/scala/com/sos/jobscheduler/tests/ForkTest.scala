@@ -40,7 +40,7 @@ final class ForkTest extends FreeSpec {
       withCloser { implicit closer ⇒
         import directoryProvider.directory
 
-        directoryProvider.master.jsonFile(TestWorkflow.path).contentString = TestWorkflowScript.asJson.toPrettyString
+        directoryProvider.master.jsonFile(TestNamedWorkflow.path).contentString = TestWorkflow.asJson.toPrettyString
         for (a ← directoryProvider.agents) a.job(TestJobPath).xml = jobXml(100.ms)
 
         runAgents(directoryProvider.agents map (_.conf)) { _ ⇒
@@ -85,12 +85,11 @@ final class ForkTest extends FreeSpec {
 
 object ForkTest {
   def nr(n: Int) = InstructionNr(n)
-  private val TestOrder = Order(OrderId("🔺"), TestWorkflow.path, state = Order.StartNow, attachedTo = Some(Order.AttachedTo.Agent(AAgentPath)),
-    payload = Payload(Map("VARIABLE" → "VALUE")))
+  private val TestOrder = Order(OrderId("🔺"), TestNamedWorkflow.path, state = Order.StartNow, payload = Payload(Map("VARIABLE" → "VALUE")))
   private val XOrderId = OrderId(s"🔺/🥕")
   private val YOrderId = OrderId(s"🔺/🍋")
   val ExpectedEvents = Vector(
-    KeyedEvent(OrderAdded(TestWorkflow.path, Order.StartNow, Payload(Map("VARIABLE" → "VALUE"))))(TestOrder.id),
+    KeyedEvent(OrderAdded(TestNamedWorkflow.path, Order.StartNow, Payload(Map("VARIABLE" → "VALUE"))))(TestOrder.id),
     KeyedEvent(OrderMovedToAgent(AAgentPath))                     (TestOrder.id),
     KeyedEvent(OrderProcessingStarted)                            (TestOrder.id),
     KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (TestOrder.id),
@@ -114,13 +113,13 @@ object ForkTest {
       KeyedEvent(OrderMoved(2))                                           (XOrderId),   KeyedEvent(OrderMoved(2))                                     (YOrderId),
       KeyedEvent(OrderDetachable)                                         (XOrderId),   KeyedEvent(OrderDetachable)                                   (YOrderId),
     KeyedEvent(OrderMovedToMaster)                                      (XOrderId),   KeyedEvent(OrderMovedToMaster)                                (YOrderId),
-    KeyedEvent(OrderJoined(2, MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
+    KeyedEvent(OrderJoined(2, MapDiff.empty, Outcome.Good(true))) (TestOrder.id),
 
-    KeyedEvent(OrderMovedToAgent(AAgentPath))                       (TestOrder.id),
-    KeyedEvent(OrderProcessingStarted)                              (TestOrder.id),
-    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))        (TestOrder.id),
-    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
-    KeyedEvent(OrderMoved(3))                                       (TestOrder.id),
+    KeyedEvent(OrderMovedToAgent(AAgentPath))                     (TestOrder.id),
+    KeyedEvent(OrderProcessingStarted)                            (TestOrder.id),
+    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (TestOrder.id),
+    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (TestOrder.id),
+    KeyedEvent(OrderMoved(3))                                     (TestOrder.id),
     KeyedEvent(OrderForked(Vector(
       OrderForked.Child(OrderId.ChildId("🥕"), XOrderId, MapDiff.empty),                  OrderForked.Child(OrderId.ChildId("🍋"), YOrderId, MapDiff.empty)))) (TestOrder.id),
     KeyedEvent(OrderDetachable)                                   (TestOrder.id),
@@ -135,20 +134,20 @@ object ForkTest {
       KeyedEvent(OrderMoved(2))                                           (XOrderId),   KeyedEvent(OrderMoved(2))                                     (YOrderId),
       KeyedEvent(OrderDetachable)                                         (XOrderId),   KeyedEvent(OrderDetachable)                                   (YOrderId),
       KeyedEvent(OrderMovedToMaster)                                      (XOrderId),   KeyedEvent(OrderMovedToMaster)                                (YOrderId),
-    KeyedEvent(OrderJoined(4, MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
+    KeyedEvent(OrderJoined(4, MapDiff.empty, Outcome.Good(true))) (TestOrder.id),
 
-    KeyedEvent(OrderMovedToAgent(AAgentPath))                       (TestOrder.id),
-    KeyedEvent(OrderProcessingStarted)                              (TestOrder.id),
-    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))        (TestOrder.id),
-    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
-    KeyedEvent(OrderMoved(5))                                       (TestOrder.id),
-  //KeyedEvent(OrderDetachable)                                     (TestOrder.id),
-  //KeyedEvent(OrderMovedToMaster)                                  (TestOrder.id),
+    KeyedEvent(OrderMovedToAgent(AAgentPath))                     (TestOrder.id),
+    KeyedEvent(OrderProcessingStarted)                            (TestOrder.id),
+    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (TestOrder.id),
+    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (TestOrder.id),
+    KeyedEvent(OrderMoved(5))                                     (TestOrder.id),
+  //KeyedEvent(OrderDetachable)                                   (TestOrder.id),
+  //KeyedEvent(OrderMovedToMaster)                                (TestOrder.id),
 
     KeyedEvent(OrderForked(Vector(
       OrderForked.Child(OrderId.ChildId("🥕"), XOrderId, MapDiff.empty),                  OrderForked.Child(OrderId.ChildId("🍋"), YOrderId, MapDiff.empty)))) (TestOrder.id),
-    KeyedEvent(OrderDetachable)                                     (TestOrder.id),
-    KeyedEvent(OrderMovedToMaster)                                  (TestOrder.id),
+    KeyedEvent(OrderDetachable)                                   (TestOrder.id),
+    KeyedEvent(OrderMovedToMaster)                                (TestOrder.id),
                                                                                         KeyedEvent(OrderDetachable)                                   (YOrderId),
                                                                                         KeyedEvent(OrderMovedToMaster)                                (YOrderId),
                                                                                         KeyedEvent(OrderMovedToAgent(BAgentPath))                     (YOrderId),
@@ -162,16 +161,16 @@ object ForkTest {
       KeyedEvent(OrderMoved(2))                                           (XOrderId),   KeyedEvent(OrderMoved(2))                                     (YOrderId),
       KeyedEvent(OrderDetachable)                                         (XOrderId),   KeyedEvent(OrderDetachable)                                   (YOrderId),
       KeyedEvent(OrderMovedToMaster)                                      (XOrderId),   KeyedEvent(OrderMovedToMaster)                                (YOrderId),
-    KeyedEvent(OrderJoined(6, MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
+    KeyedEvent(OrderJoined(6, MapDiff.empty, Outcome.Good(true))) (TestOrder.id),
 
-    KeyedEvent(OrderMovedToAgent(AAgentPath))                       (TestOrder.id),
-    KeyedEvent(OrderProcessingStarted)                              (TestOrder.id),
-    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))        (TestOrder.id),
-    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true)))   (TestOrder.id),
-    KeyedEvent(OrderMoved(7))                                       (TestOrder.id),
-    KeyedEvent(OrderDetachable)                                     (TestOrder.id),
-    KeyedEvent(OrderMovedToMaster)                                  (TestOrder.id),
-    KeyedEvent(OrderFinished)                                       (TestOrder.id))
+    KeyedEvent(OrderMovedToAgent(AAgentPath))                     (TestOrder.id),
+    KeyedEvent(OrderProcessingStarted)                            (TestOrder.id),
+    KeyedEvent(OrderStdoutWritten(s"$StdoutOutput$LineEnd"))      (TestOrder.id),
+    KeyedEvent(OrderProcessed(MapDiff.empty, Outcome.Good(true))) (TestOrder.id),
+    KeyedEvent(OrderMoved(7))                                     (TestOrder.id),
+    KeyedEvent(OrderDetachable)                                   (TestOrder.id),
+    KeyedEvent(OrderMovedToMaster)                                (TestOrder.id),
+    KeyedEvent(OrderFinished)                                     (TestOrder.id))
 
   private val logger = Logger(getClass)
 }

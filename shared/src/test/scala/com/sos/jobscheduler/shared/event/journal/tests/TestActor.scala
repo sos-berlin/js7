@@ -30,7 +30,7 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(999.seconds)
   private val journalActor = context.actorOf(
-    Props { new JournalActor(TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new StampedKeyedEventBus) },
+    JournalActor.props(TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new StampedKeyedEventBus),
     "Journal")
   private val keyToAggregate = mutable.Map[String, ActorRef]()
 

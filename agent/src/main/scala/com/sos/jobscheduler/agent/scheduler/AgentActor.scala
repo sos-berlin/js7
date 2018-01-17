@@ -50,7 +50,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
     compressWithGzip = agentConfiguration.config.getBoolean("jobscheduler.agent.journal.gzip"))
   private val journalFile = stateDirectory / "journal"
   protected val journalActor = actorOf(
-    Props { new JournalActor(journalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus) },
+    JournalActor.props(journalMeta, journalFile, syncOnCommit = agentConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus),
     "Journal")
   private val jobKeeper = {
     val taskRegister = new TaskRegister(actorOf(TaskRegisterActor.props(agentConfiguration, timerService), "TaskRegister"))

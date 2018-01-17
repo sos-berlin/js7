@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.shared.event.journal.StatisticsCounter._
 import java.lang.System.nanoTime
@@ -19,7 +18,7 @@ private[journal] final class StatisticsCounter {
   private var syncs = 0
   private var syncNanos = 0L
 
-  def countCommit(eventCount: Int): Unit = {
+  def countWillBeCommittedEvents(eventCount: Int): Unit = {
     events += eventCount
     commits += 1
   }

@@ -16,8 +16,8 @@ import scala.concurrent.ExecutionContext
   */
 private[order] final class OrderRegister(timerService: TimerService) extends ActorRegister[OrderId, OrderEntry](_.actor) {
 
-  def recover(order: Order[Order.State], workflowScript: Workflow, actor: ActorRef): OrderEntry = {
-    val orderEntry = new OrderEntry(order, workflowScript, actor)
+  def recover(order: Order[Order.State], workflow: Workflow, actor: ActorRef): OrderEntry = {
+    val orderEntry = new OrderEntry(order, workflow, actor)
     insert(order.id → orderEntry)
     orderEntry
   }
@@ -26,8 +26,8 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
     this -= keyedEvent.key
   }
 
-  def insert(order: Order[Order.State], workflowScript: Workflow, actor: ActorRef): Unit = {
-    insert(order.id → new OrderEntry(order, workflowScript, actor))
+  def insert(order: Order[Order.State], workflow: Workflow, actor: ActorRef): Unit = {
+    insert(order.id → new OrderEntry(order, workflow, actor))
   }
 
   def onActorTerminated(actor: ActorRef): Unit =
@@ -48,7 +48,7 @@ private[order] object OrderRegister {
 
   final class OrderEntry(
     private var _order: Order[Order.State],
-    val workflowScript: Workflow,
+    val workflow: Workflow,
     val actor: ActorRef)
   {
     var detaching: Boolean = false
@@ -62,9 +62,9 @@ private[order] object OrderRegister {
     }
 
     def jobOption: Option[Instruction.Job] =
-      workflowScript.jobOption(order.position)
+      workflow.jobOption(order.position)
 
-    def instruction = workflowScript.instruction(order.position)
+    def instruction = workflow.instruction(order.position)
 
     def at(timestamp: Timestamp)(body: ⇒ Unit)(implicit timerService: TimerService, ec: ExecutionContext): Unit = {
       val t = timerService.at(timestamp.toInstant, name = order.id.string)

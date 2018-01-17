@@ -30,7 +30,7 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderForked, OrderJoined, OrderProcessed}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
-import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, WorkflowEvent, Workflow}
+import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, Workflow, WorkflowEvent}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
@@ -60,12 +60,11 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  protected val journalActor = {
-    val meta = journalMeta(compressWithGzip = config.getBoolean("jobscheduler.agent.journal.gzip"))
-    actorOf(
-      Props { new JournalActor(meta, journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus) },
-      "Journal")
-  }
+  protected val journalActor = actorOf(
+    JournalActor.props(
+      journalMeta(compressWithGzip = config.getBoolean("jobscheduler.agent.journal.gzip")),
+      journalFile, syncOnCommit = syncOnCommit, eventIdGenerator, keyedEventBus),
+    "Journal")
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
@@ -160,9 +159,9 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     case JobActor.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
       tryStartProcessing(jobRegister(sender()))
 
-    case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflowScript), promise) ⇒
+    case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflow), promise) ⇒
       promise completeWith {
-        if (!workflowScript.isDefinedAt(order.position))
+        if (!workflow.isDefinedAt(order.position))
           Future.failed(new IllegalArgumentException(s"Unknown Position ${order.position} in ${order.workflowPath}"))
         else
           if (orderRegister contains order.id) {
@@ -170,7 +169,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
             logger.debug(s"Ignoring duplicate $cmd")
             Future.successful(Accepted)
           } else
-            attachOrder(workflowRegister.reuseMemory(order), workflowScript) map { case Completed ⇒ Accepted }
+            attachOrder(workflowRegister.reuseMemory(order), workflow) map { case Completed ⇒ Accepted }
       }
 
     case Internal.Due(orderId) if orderRegister contains orderId ⇒
@@ -250,9 +249,9 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         Future.failed(new IllegalArgumentException(s"Unknown $orderId"))
     }
 
-  private def attachOrder(order: Order[Order.Idle], workflowScript: Workflow): Future[Completed] = {
+  private def attachOrder(order: Order[Order.Idle], workflow: Workflow): Future[Completed] = {
     val actor = newOrderActor(order)
-    orderRegister.insert(order, workflowScript, actor)
+    orderRegister.insert(order, workflow, actor)
     (actor ? OrderActor.Command.Attach(order)).mapTo[Completed]  // TODO ask will time-out when Journal blocks
     // Now expecting OrderEvent.OrderAttached
   }
@@ -293,7 +292,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         for (child ← children) {
           val childOrder = order.newChild(child)
           val actor = newOrderActor(childOrder)
-          orderRegister.insert(childOrder, orderEntry.workflowScript, actor)
+          orderRegister.insert(childOrder, orderEntry.workflow, actor)
           actor ! OrderActor.Input.AddChild(childOrder)
           proceedWithOrder(childOrder.id)
         }
@@ -326,7 +325,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
           onOrderAvailable(orderEntry)
 
         case _ ⇒
-          tryExecuteInstruction(order, orderEntry.workflowScript)
+          tryExecuteInstruction(order, orderEntry.workflow)
       }
     }
   }
@@ -346,7 +345,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
               }
 
             case _ ⇒
-              tryExecuteInstruction(orderEntry.order, orderEntry.workflowScript)
+              tryExecuteInstruction(orderEntry.order, orderEntry.workflow)
           }
       }
     }
@@ -386,12 +385,11 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     orderEntry.actor ! OrderActor.Input.StartProcessing(job, jobEntry.actor)
   }
 
-  private def tryExecuteInstruction(order: Order[Order.State], workflowScript: Workflow): Unit = {
-    if (order.isAttachedToAgent) {
-      val process = new WorkflowProcess(workflowScript, orderRegister.idToOrder)
-      for (KeyedEvent(orderId, event) ← process.tryExecuteInstruction(order)) {
-        orderRegister(orderId).actor ! OrderActor.Input.HandleTransitionEvent(event)
-      }
+  private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
+    assert(order.isAttachedToAgent)
+    val process = new WorkflowProcess(workflow, orderRegister.idToOrder)
+    for (KeyedEvent(orderId, event) ← process.tryExecuteInstruction(order)) {
+      orderRegister(orderId).actor ! OrderActor.Input.HandleTransitionEvent(event)
     }
   }
 
