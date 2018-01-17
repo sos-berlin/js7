@@ -47,7 +47,7 @@ final class StringsTest extends FreeSpec {
     assert("ABCDEFG".truncateWithEllipsis(6) == "ABC...")
     assert("ABCDEFGHIJKLMNOPQRSTUVWXYZ".truncateWithEllipsis(6) == "ABC...")
     val expected = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...(length 100)"
-    assert(("x" * 100).truncateWithEllipsis(50) == expected)
+    assert(("x" * 100).truncateWithEllipsis(50, showLength = true) == expected)
     assert(expected.length == 50)
   }
 }
