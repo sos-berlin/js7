@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.order
 
-import akka.actor.{ActorRef, Cancellable, Props, Status, Terminated}
+import akka.actor.{ActorRef, Props, Status, Terminated}
 import com.sos.jobscheduler.agent.scheduler.job.JobActor
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskStepFailed, TaskStepSucceeded}
 import com.sos.jobscheduler.agent.scheduler.order.OrderActor._
@@ -8,9 +8,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
@@ -18,9 +16,7 @@ import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
-import java.time.Duration
 import scala.concurrent.Promise
-import scala.math.min
 
 /**
   * @author Joacim Zschimmer
@@ -30,20 +26,15 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private val logger = Logger.withPrefix[OrderActor](orderId.toString)
 
+  private val stdouterr = new StdouterrToEvent(context, config)
   private var order: Order[Order.State] = null
-  private val stdCharBlockSize = config.getInt("jobscheduler.agent.task.stdout-event-size")  // See also StdPipeCharBufferSize
-  private val delay = config.as[Duration]("jobscheduler.agent.task.stdout-delay")
-  private val stdWriters = Map(
-    Stdout → new StdWriter(Stdout, self, size = stdCharBlockSize, passThroughSize = stdCharBlockSize / 2, delay),
-    Stderr → new StdWriter(Stderr, self, size = stdCharBlockSize, passThroughSize = stdCharBlockSize / 2, delay))
-  private var stdoutStderrTimer: Cancellable = null
   private var terminating = false
 
   protected def key = orderId
   protected def snapshot = Option(order)
 
   override def postStop() = {
-    cancelStdoutStderrTimer()
+    stdouterr.close()
     super.postStop()
   }
 
@@ -106,8 +97,8 @@ extends KeyedJournalingActor[OrderEvent] {
       executeOtherCommand(command)
 
     case Input.StartProcessing(job, jobActor) ⇒
-      val stdoutWriter = new StatisticalWriter(stdWriters(Stdout))
-      val stderrWriter = new StatisticalWriter(stdWriters(Stderr))
+      val stdoutWriter = new StatisticalWriter(stdouterr.writers(Stdout))
+      val stderrWriter = new StatisticalWriter(stdouterr.writers(Stderr))
       context.become(processing(job, jobActor,
         () ⇒ (stdoutWriter.nonEmpty || stderrWriter.nonEmpty) option s"stdout: $stdoutWriter, stderr: $stderrWriter"))
       context.watch(jobActor)
@@ -116,7 +107,7 @@ extends KeyedJournalingActor[OrderEvent] {
         jobActor ! JobActor.Command.ProcessOrder(
           order.castAfterEvent(event),
           new StdChannels(
-            charBufferSize = min(StdPipeCharBufferSize, stdCharBlockSize),
+            charBufferSize = stdouterr.charBufferSize,
             stdoutWriter = stdoutWriter,
             stderrWriter = stderrWriter))
       }
@@ -140,14 +131,10 @@ extends KeyedJournalingActor[OrderEvent] {
         }
 
       case Internal.BufferingStarted ⇒
-        if (stdoutStderrTimer == null) {
-          stdoutStderrTimer = context.system.scheduler.scheduleOnce(
-            delay.toFiniteDuration, context.self, Internal.FlushStdoutStderr)(context.dispatcher)
-        }
+        stdouterr.onBufferingStarted()
 
       case Internal.FlushStdoutStderr ⇒
-        flushStdoutAndStderr()
-        stdoutStderrTimer = null
+        stdouterr.flushStdoutAndStderr()
 
       case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) ⇒
         val event = moduleStepEnded match {
@@ -172,8 +159,7 @@ extends KeyedJournalingActor[OrderEvent] {
     }
 
   private def finishProcessing(event: OrderProcessed, job: Instruction.Job, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
-    flushStdoutAndStderr()
-    cancelStdoutStderrTimer()
+    stdouterr.finish()
     for (o ← stdoutStderrStatistics()) logger.debug(o)
     context.become(processed)
     persist(event) { event ⇒
@@ -184,15 +170,6 @@ extends KeyedJournalingActor[OrderEvent] {
     }
   }
 
-  private def flushStdoutAndStderr(): Unit =
-    for (o ← stdWriters.values) o.flush()
-
-  private def cancelStdoutStderrTimer(): Unit = {
-    if (stdoutStderrTimer != null) {
-      stdoutStderrTimer.cancel()
-      stdoutStderrTimer = null
-    }
-  }
 
   private def processed: Receive = journaling orElse {
     case Input.HandleTransitionEvent(event: OrderMoved) ⇒
@@ -281,7 +258,6 @@ extends KeyedJournalingActor[OrderEvent] {
 }
 
 private[order] object OrderActor {
-  private val StdPipeCharBufferSize = 500  // Even a size of 1 character is not slow
   val RecoveryGeneratedOutcome = Outcome.Bad(Outcome.Bad.AgentRestarted)
 
   private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config) =
@@ -306,24 +282,9 @@ private[order] object OrderActor {
     final case class OrderChanged(order: Order[Order.State], event: OrderEvent)
   }
 
-  private object Internal {
+  private[order] object Internal {
     final case object BufferingStarted
     final case class StdoutStderrWritten(typ: StdoutStderrType, chunk: String, completed: Promise[Completed])
     final case object FlushStdoutStderr
-  }
-
-  private class StdWriter(stdoutOrStderr: StdoutStderrType, self: ActorRef, protected val size: Int, protected val passThroughSize: Int, delay: Duration)
-  extends BufferedStringWriter {
-
-    def close() = flush()
-
-    protected def onFlush(string: String) = {
-      val promise = Promise[Completed]()
-      self ! Internal.StdoutStderrWritten(stdoutOrStderr, string, promise)
-      promise.future
-    }
-
-    protected def onBufferingStarted() =
-      self ! Internal.BufferingStarted
   }
 }

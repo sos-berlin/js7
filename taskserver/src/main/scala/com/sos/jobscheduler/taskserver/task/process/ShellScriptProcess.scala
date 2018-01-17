@@ -5,7 +5,6 @@ import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.{blockingFuture, promiseFuture}
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration.Encoding
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
 import java.io.{InputStreamReader, Reader, Writer}
 import java.nio.file.Path
