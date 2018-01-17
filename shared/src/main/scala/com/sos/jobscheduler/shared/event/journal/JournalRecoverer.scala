@@ -33,7 +33,7 @@ trait JournalRecoverer[E <: Event] {
   private var lastEventId: EventId = EventId.BeforeFirst
   private var snapshotCount = 0
   private var eventCount = 0
-  private lazy val logger = Logger.withPrefix[JournalRecoverer[_]](journalFile.toString)
+  private lazy val logger = Logger.withPrefix[JournalRecoverer[_]](journalFile.getFileName.toString)
 
   final def recoverAll(): Unit = {
     try

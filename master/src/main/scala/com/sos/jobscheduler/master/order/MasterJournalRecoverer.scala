@@ -8,7 +8,6 @@ import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.master.order.MasterJournalRecoverer._
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import com.sos.jobscheduler.shared.event.journal.{JournalRecoverer, KeyedJournalingActor}
 import java.nio.file.Path
@@ -49,7 +48,7 @@ extends JournalRecoverer[Event] {
 
         case OrderStdWritten(t, chunk) ⇒
           // TODO What to do with Order output?
-          logger.debug(s"$orderId recovered $t: ${chunk.trim}")
+          //logger.debug(s"$orderId recovered $t: ${chunk.trim}")
       }
 
     case Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId))) ⇒
