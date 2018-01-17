@@ -1,42 +1,42 @@
 // Workflow containg three forks
 
-job /test on /test-agent-1;
+job "test" on "test-agent-1";
 
 // Fork with part of a branch running at another Agent
 // Each branch starts with a string which is appended to the child Orders.
 fork(
   "🥕" {
-    job /test on /test-agent-1;
-    job /test on /test-agent-1;
+    job "test" on "test-agent-1";
+    job "test" on "test-agent-1";
   },
   "🍋" {
-    job /test on /test-agent-1;
-    job /test on /test-agent-2;
+    job "test" on "test-agent-1";
+    job "test" on "test-agent-2";
   });
-job /test on /test-agent-1;
+job "test" on "test-agent-1";
 
 // Fork with all jobs at same (current) Agent
 fork(
   "🥕" {
-    job /test on /test-agent-1;
-    job /test on /test-agent-1;
+    job "test" on "test-agent-1";
+    job "test" on "test-agent-1";
   },
   "🍋" {
-    job /test on /test-agent-1;
-    job /test on /test-agent-1;
+    job "test" on "test-agent-1";
+    job "test" on "test-agent-1";
   });
-job /test on /test-agent-1;
+job "test" on "test-agent-1";
 
 // Fork with one branch at current Agent, the other branch at the other Agent.
 fork(
   "🥕" {
-    job /test on /test-agent-1;
-    job /test on /test-agent-1;
+    job "test" on "test-agent-1";
+    job "test" on "test-agent-1";
   },
   "🍋" {
-    job /test on /test-agent-2;
-    job /test on /test-agent-2;
+    job "test" on "test-agent-2";
+    job "test" on "test-agent-2";
   });
-job /test on /test-agent-1;
+job "test" on "test-agent-1";
 
 end;

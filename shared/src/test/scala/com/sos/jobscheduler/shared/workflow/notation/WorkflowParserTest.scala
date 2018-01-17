@@ -20,8 +20,17 @@ final class WorkflowParserTest extends FreeSpec {
   private val singleJobScript = Workflow(Vector(
     Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))))
 
-  "Single instruction" in {
-    val source = """job /A on /AGENT;"""
+  "Single instruction with relative paths" in {
+    val source = """job "A" on "AGENT";"""
+    assert(parse(source) ==
+      Workflow(
+        Vector(
+          Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))),
+        Some(source)))
+  }
+
+  "Single instruction with absolute job path" in {
+    val source = """job "A" on "AGENT";"""
     assert(parse(source) ==
       Workflow(
         Vector(
@@ -30,7 +39,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "Label and single instruction" in {
-    val source = """A: job /A on /AGENT;"""
+    val source = """A: job "A" on "AGENT";"""
     assert(parse(source) ==
       Workflow(
         Vector(
@@ -40,11 +49,11 @@ final class WorkflowParserTest extends FreeSpec {
 
   "onError and goto" in {
     val source = """
-      job /A on /AGENT;
+      job "A" on "AGENT";
       ifError ERROR;
-      job /B on /AGENT;
+      job "B" on "AGENT";
       goto END;
-      ERROR: job /Error on /AGENT;
+      ERROR: job "Error" on "AGENT";
       END: end;"""
     assert(parse(source) == Workflow(
       Vector(
@@ -77,13 +86,13 @@ final class WorkflowParserTest extends FreeSpec {
     val source = """/*comment
         */
         //comment
-        /*comment/**/job /***//A/**/on/**//AGENT/**/;/**///comment
+        /*comment/**/job/***/"A"/**/on/**/"AGENT"/**/;/**///comment
       """
     assert(parse(source) == singleJobScript.copy(source = Some(source)))
   }
 
-  private def parse(workflow: String): Workflow =
-    WorkflowParser.parse(workflow) match {
+  private def parse(workflowString: String): Workflow =
+    WorkflowParser.parse(workflowString) match {
       case Right(workflow) ⇒ workflow
       case Left(message) ⇒ throw new AssertionError(message) with NoStackTrace
     }

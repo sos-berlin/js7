@@ -18,19 +18,19 @@ object ForkTestSetting {
   val TestJobPath = JobPath("/JOB")
 
   val TestWorkflowScriptNotation = """
-    |job /JOB on /AGENT-A;
+    |job "JOB" on "AGENT-A";
     |fork(
-    |  "🥕" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },
-    |  "🍋" { job /JOB on /AGENT-A; job /JOB on /AGENT-B; });
-    |job /JOB on /AGENT-A;
+    |  "🥕" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-A"; },
+    |  "🍋" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-B"; });
+    |job "JOB" on "AGENT-A";
     |fork(
-    |  "🥕" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },
-    |  "🍋" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; });
-    |job /JOB on /AGENT-A;
+    |  "🥕" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-A"; },
+    |  "🍋" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-A"; });
+    |job "JOB" on "AGENT-A";
     |fork(
-    |  "🥕" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },
-    |  "🍋" { job /JOB on /AGENT-B; job /JOB on /AGENT-B; });
-    |job /JOB on /AGENT-A;
+    |  "🥕" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-A"; },
+    |  "🍋" { job "JOB" on "AGENT-B"; job "JOB" on "AGENT-B"; });
+    |job "JOB" on "AGENT-A";
     """.stripMargin.trim
 
   val TestWorkflow = Workflow(

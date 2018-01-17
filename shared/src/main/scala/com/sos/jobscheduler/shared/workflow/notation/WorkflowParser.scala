@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.utils.Identifier.{isIdentifierPart, isIdentifie
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Workflow}
 import fastparse.all._
@@ -43,9 +44,10 @@ object WorkflowParser {
     private val label = identifier map Label.apply
     private val javaClassName = P((identifier ~ ("." ~ identifier).rep).!)
 
-    private val pathString = P(("/" ~ identifier ~ ("/" ~ identifier).rep).!)
-    private def path[P <: TypedPath: TypedPath.Companion] =
-      P(pathString map implicitly[TypedPath.Companion[P]].apply)
+    private val pathString = P[String](quotedString)
+    //private val pathString = P(("/" ~ identifier ~ ("/" ~ identifier).rep).!)
+    private def path[P <: TypedPath: TypedPath.Companion] = P[P](
+      pathString map (p ⇒ FolderPath.Root.resolve[P](p)))
 
     private lazy val curlyWorkflow: Parser[Workflow] =
       P("{" ~ w ~ workflow ~ w ~ "}")

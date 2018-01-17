@@ -160,7 +160,7 @@ final class WorkflowTest extends FreeSpec {
 
   "JSON" in {
     testJson(ForkTestSetting.TestWorkflow, json"""{
-      "source": "job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },\n  \"🍋\" { job /JOB on /AGENT-A; job /JOB on /AGENT-B; });\njob /JOB on /AGENT-A;\nfork(\n  \"🥕\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },\n  \"🍋\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; });\njob /JOB on /AGENT-A;\nfork(\n  \"🥕\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },\n  \"🍋\" { job /JOB on /AGENT-B; job /JOB on /AGENT-B; });\njob /JOB on /AGENT-A;",
+      "source": "job \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-B\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";",
       "instructions": [
         { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
         {
