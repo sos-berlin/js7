@@ -16,13 +16,28 @@
         <sizeBasedTriggeringPolicy size="1GB"/>
       </policies>
     </rollingRandomAccessFile>
+    <rollingRandomAccessFile name="weblog"
+                             fileName="${env:SCHEDULER_LOGS}/web.log"
+                             filePattern="${env:SCHEDULER_LOGS}/web-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="false">
+      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %message%n"
+                     charset="UTF-8"/>
+      <policies>
+        <onStartupTriggeringPolicy/>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+    </rollingRandomAccessFile>
   </appenders>
   <loggers>
-    <logger name="com.sos.jobscheduler.master" level="DEBUG"/>
-    <logger name="com.sos.jobscheduler.shared" level="DEBUG"/>
     <root level="INFO">
-      <appenderRef ref="console" level="INFO"/>
-      <appenderRef ref="file" level="DEBUG"/>
+      <appenderRef level="INFO"  ref="console"/>
+      <appenderRef level="DEBUG" ref="file"/>
     </root>
+    <logger level="DEBUG" name="Web" additivity="false">
+      <appenderRef ref="weblog"/>
+    </logger>
+    <logger level="WARN" name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="DEBUG" name="jobscheduler"/>
   </loggers>
 </configuration>

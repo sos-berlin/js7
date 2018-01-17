@@ -18,11 +18,11 @@
     </rollingRandomAccessFile>
   </appenders>
   <loggers>
-    <logger name="com.sos.jobscheduler.agent" level="debug"/>
-    <logger name="com.sos.jobscheduler.shared" level="debug"/>
-    <root level="debug">
-      <appenderref ref="console" level="info"/>
-      <appenderref ref="file" level="debug"/>
+    <root level="INFO">
+      <appenderRef level="INFO"  ref="console"/>
+      <appenderRef level="DEBUG" ref="file"/>
     </root>
+    <logger level="WARN" name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="DEBUG" name="jobscheduler"/>
   </loggers>
 </configuration>
