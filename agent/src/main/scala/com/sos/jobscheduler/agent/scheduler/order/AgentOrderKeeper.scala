@@ -186,17 +186,17 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
-    case cmd @ AttachOrder(order, workflowGraph) if !terminating ⇒
+    case cmd @ AttachOrder(order, workflow) if !terminating ⇒
       order.attachedToAgent match {
         case Left(throwable) ⇒ Future.failed(throwable)
         case Right(_) ⇒
           val workflowResponse = workflowRegister.get(order.workflowPath) map (_.workflow) match {
             case None ⇒
-              persistFuture(KeyedEvent(WorkflowAttached(workflowGraph))(order.workflowPath)) { stampedEvent ⇒
+              persistFuture(KeyedEvent(WorkflowAttached(workflow))(order.workflowPath)) { stampedEvent ⇒
                 workflowRegister.handleEvent(stampedEvent.value)
                 Accepted
               }
-            case Some(`workflowGraph`) ⇒
+            case Some(w) if w.withoutSource == workflow.withoutSource ⇒
               Future.successful(Accepted)
             case Some(_) ⇒
               Future.failed(new IllegalStateException(s"Changed ${order.workflowPath}"))

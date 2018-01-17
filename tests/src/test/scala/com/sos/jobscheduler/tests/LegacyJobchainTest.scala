@@ -41,7 +41,7 @@ import scala.language.higherKinds
 final class LegacyJobchainTest extends FreeSpec {
 
   "Workflow" in {
-    assert(TestWorkflow.copy(source = None) == ExpectedWorkflow)
+    assert(TestWorkflow.withoutSource == ExpectedWorkflow)
   }
 
   "reduceForAgent" in {

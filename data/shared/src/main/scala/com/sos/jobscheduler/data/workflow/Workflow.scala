@@ -144,6 +144,8 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
           case _ ⇒ None
         }
     }
+
+  def withoutSource = copy(source = None)
 }
 
 object Workflow {
