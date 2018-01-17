@@ -13,7 +13,7 @@ import scala.collection.immutable.Seq
   */
 object LegacyJobchainXmlParser {
 
-  def parseXml(source: Source, folderPath: FolderPath): Workflow =
+  def parseXml(folderPath: FolderPath, source: Source): Workflow =
     ScalaXMLEventReader.parseDocument(source) { eventReader ⇒
       import eventReader._
 

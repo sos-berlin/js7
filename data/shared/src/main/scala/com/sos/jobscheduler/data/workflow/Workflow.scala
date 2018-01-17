@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
+import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichPairTraversable
 import com.sos.jobscheduler.data.agent.AgentPath
@@ -17,17 +18,23 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
   assert(isCorrectlyEnded(labeledInstructions), "Missing implicit end instruction")
 
   val instructions: IndexedSeq[Instruction] = labeledInstructions map (_.instruction)
-  val labelToNumber: Map[Label, InstructionNr] =
+  private val _labelToNumber: Map[Label, InstructionNr] =
     numberedInstructions.flatMap { case (nr, Labeled(labels, _)) ⇒ labels map (_ → nr) }
       .uniqueToMap(labels ⇒ throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
   labeledInstructions foreach {
-    case _ @: (stmt @ Goto(label)) if !labelToNumber.contains(label) ⇒ throw new IllegalArgumentException(s"Missing label '$label' in Workflow: $stmt")
-    case _ @: (stmt @ IfError(label)) if !labelToNumber.contains(label) ⇒ throw new IllegalArgumentException(s"Missing label '$label' in Workflow: $stmt")
+    case _ @: (jump: JumpInstruction) ⇒ labelToNumber(Nil, jump.to) // throws if label is unknown
     case _ ⇒
   }
 
   //def firstExecutableInstructionNr: InstructionNr =
+
+  def labelToNumber(position: Position, label: Label): InstructionNr =
+    labelToNumber(position.parents, label)
+
+  private def labelToNumber(parents: List[Position.Parent], label: Label): InstructionNr =
+    workflowOption(parents) flatMap (_._labelToNumber.get(label)) getOrElse
+      sys.error(s"Unknown label '$label' for position $parents")
 
   def lastNr: InstructionNr =
     instructions.length - 1
@@ -94,7 +101,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
       case Position(Nil, nr) ⇒ isDefinedAt(nr)
       case Position(Position.Parent(nr, childId) :: tail, tailNr) ⇒
         instruction(nr) match {
-          case ForkJoin(branches) ⇒ branches.find(_.id == childId) exists (_.workflow isDefinedAt Position(tail, tailNr))
+          case fj: ForkJoin ⇒ fj.workflowOption(childId) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
         }
     }
@@ -105,9 +112,6 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
   def jobOption(address: Position): Option[Job] =
     Some(instruction(address)) collect { case o: Job ⇒ o }
 
-  def nextInstructionNr(position: Position): InstructionNr =
-    position.nr.increment
-
   def instruction(position: Position): Instruction =
     position match {
       case Position(Nil, nr) ⇒
@@ -116,14 +120,30 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
       case Position(Position.Parent(nr, childId) :: tail, tailNr) ⇒
         instruction(nr) match {
           case fj: ForkJoin ⇒
-            fj.branches find (_.id == childId) map (_.workflow.instruction(Position(tail, tailNr))) getOrElse Gap
+            fj.workflowOption(childId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
           case _ ⇒
             Gap
         }
     }
 
+  def labeledInstruction(nr: InstructionNr): Instruction.Labeled =
+    instructions(nr.number)
+
   def instruction(nr: InstructionNr): Instruction =
     instructions(nr.number)
+
+  def workflowOption(position: Position): Option[Workflow] =
+    workflowOption(position.parents)
+
+  private def workflowOption(parents: List[Position.Parent]): Option[Workflow] =
+    parents match {
+      case Nil ⇒ this.some
+      case Position.Parent(nr, childId) :: tail ⇒
+        instruction(nr) match {
+          case fj: ForkJoin ⇒ fj.workflowOption(childId) flatMap (_.workflowOption(tail))
+          case _ ⇒ None
+        }
+    }
 }
 
 object Workflow {

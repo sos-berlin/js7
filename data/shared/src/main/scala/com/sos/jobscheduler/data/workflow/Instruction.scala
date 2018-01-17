@@ -5,6 +5,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.{deriveCirceCodec, listMapCodec, objectCodec}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.Strings.TruncatedString
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
@@ -18,6 +19,8 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 sealed trait Instruction {
+  def toShortString = toString truncateWithEllipsis 40
+
   final def @:(labels: Seq[Label]) = Labeled(labels, this)
   final def @:(label: Label) = Labeled(label :: Nil, this)
   final def @:(label: String) = Labeled(Label(label) :: Nil, this)
@@ -27,7 +30,13 @@ sealed trait Instruction {
 object Instruction {
   val @: = Labeled
 
-  final case class Labeled(labels: Seq[Label], instruction: Instruction)
+  final case class Labeled(labels: Seq[Label], instruction: Instruction) {
+    def toShortString = s"$labelsString ${instruction.toShortString}"
+
+    override def toString = s"$labelsString $instruction"
+
+    def labelsString = labels.map(o ⇒ s"$o: ").mkString
+  }
   object Labeled {
     implicit def fromInstruction(instruction: Instruction): Labeled =
       Labeled(Nil, instruction)
@@ -87,6 +96,11 @@ object Instruction {
     //def isJoinableOnAgent(agentPath: AgentPath): Boolean =
     //  // If branches end on multiple Agents, only the Master can join the Orders
     //  branches.values forall (_ isEndingOnAgent agentPath)
+
+    def workflowOption(id: OrderId.ChildId): Option[Workflow] =
+      branches collectFirst { case ForkJoin.Branch(`id`, workflow) ⇒ workflow }
+
+    override def toShortString = s"ForkJoin(${branches.map(_.id).mkString(",")})"
   }
   object ForkJoin {
     implicit val myListMapCodec = listMapCodec[OrderId.ChildId, Workflow](keyName = "id", valueName = "workflow")

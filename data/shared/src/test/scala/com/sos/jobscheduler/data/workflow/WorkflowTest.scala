@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
+import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.OrderId
@@ -18,8 +19,8 @@ final class WorkflowTest extends FreeSpec {
     val workflow = Workflow(Vector(
       "A" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB"))),
       "B" @: ExplicitEnd))
-    assert(workflow.labelToNumber(Label(("A"))) == InstructionNr(0))
-    assert(workflow.labelToNumber(Label(("B"))) == InstructionNr(1))
+    assert(workflow.labelToNumber(Position(0), Label("A")) == InstructionNr(0))
+    assert(workflow.labelToNumber(Position(0), Label("B")) == InstructionNr(1))
   }
 
   "Duplicate labels" in {
@@ -41,6 +42,21 @@ final class WorkflowTest extends FreeSpec {
     intercept[RuntimeException] {
       Workflow.of(IfError(Label("A")))
     }
+  }
+
+  "jobOption" in {
+    assert(TestWorkflow.jobOption(6) == Job(AAgentJobPath).some)
+    assert(TestWorkflow.jobOption(7) == None)  // ImplicitEnd
+    intercept[IndexOutOfBoundsException] {
+      assert(TestWorkflow.jobOption(8) == None)
+    }
+  }
+
+  "workflowOption" in {
+    assert(TestWorkflow.workflowOption(0) == TestWorkflow.some)
+    assert(TestWorkflow.workflowOption(1) == TestWorkflow.some)
+    assert(TestWorkflow.workflowOption(Position(1, "🥕", 1)) == Some(
+      TestWorkflow.instruction(1).asInstanceOf[ForkJoin].workflowOption(OrderId.ChildId("🥕")).get))
   }
 
   "reduce" in {
@@ -67,33 +83,33 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "flatten" in {
-    assert(ForkTestSetting.TestWorkflowScript.flatten == Vector(
-      (Position(0         ), () @: Job(AAgentJobPath)),
-      (Position(1         ), () @: ForkTestSetting.TestWorkflowScript.instruction(1)),
-      (Position(1, "🥕", 0), () @: Job(AAgentJobPath)),
-      (Position(1, "🥕", 1), () @: Job(AAgentJobPath)),
-      (Position(1, "🥕", 2), () @: ImplicitEnd),
-      (Position(1, "🍋", 0), () @: Job(AAgentJobPath)),
-      (Position(1, "🍋", 1), () @: Job(BAgentJobPath)),
-      (Position(1, "🍋", 2), () @: ImplicitEnd),
-      (Position(2         ), () @: Job(AAgentJobPath)),
-      (Position(3         ), () @: ForkTestSetting.TestWorkflowScript.instruction(3)),
-      (Position(3, "🥕", 0), () @: Job(AAgentJobPath)),
-      (Position(3, "🥕", 1), () @: Job(AAgentJobPath)),
-      (Position(3, "🥕", 2), () @: ImplicitEnd),
-      (Position(3, "🍋", 0), () @: Job(AAgentJobPath)),
-      (Position(3, "🍋", 1), () @: Job(AAgentJobPath)),
-      (Position(3, "🍋", 2), () @: ImplicitEnd),
-      (Position(4         ), () @: Job(AAgentJobPath)),
-      (Position(5         ), () @: ForkTestSetting.TestWorkflowScript.instruction(5)),
-      (Position(5, "🥕", 0), () @: Job(AAgentJobPath)),
-      (Position(5, "🥕", 1), () @: Job(AAgentJobPath)),
-      (Position(5, "🥕", 2), () @: ImplicitEnd),
-      (Position(5, "🍋", 0), () @: Job(BAgentJobPath)),
-      (Position(5, "🍋", 1), () @: Job(BAgentJobPath)),
-      (Position(5, "🍋", 2), () @: ImplicitEnd),
-      (Position(6         ), () @: Job(AAgentJobPath)),
-      (Position(7         ), () @: ImplicitEnd)))
+    assert(ForkTestSetting.TestWorkflow.flatten == Vector[(Position, Instruction.Labeled)](
+      (Position(0         ), Job(AAgentJobPath)),
+      (Position(1         ), ForkTestSetting.TestWorkflow.instruction(1)),
+      (Position(1, "🥕", 0), Job(AAgentJobPath)),
+      (Position(1, "🥕", 1), Job(AAgentJobPath)),
+      (Position(1, "🥕", 2), ImplicitEnd),
+      (Position(1, "🍋", 0), Job(AAgentJobPath)),
+      (Position(1, "🍋", 1), Job(BAgentJobPath)),
+      (Position(1, "🍋", 2), ImplicitEnd),
+      (Position(2         ), Job(AAgentJobPath)),
+      (Position(3         ), ForkTestSetting.TestWorkflow.instruction(3)),
+      (Position(3, "🥕", 0), Job(AAgentJobPath)),
+      (Position(3, "🥕", 1), Job(AAgentJobPath)),
+      (Position(3, "🥕", 2), ImplicitEnd),
+      (Position(3, "🍋", 0), Job(AAgentJobPath)),
+      (Position(3, "🍋", 1), Job(AAgentJobPath)),
+      (Position(3, "🍋", 2), ImplicitEnd),
+      (Position(4         ), Job(AAgentJobPath)),
+      (Position(5         ), ForkTestSetting.TestWorkflow.instruction(5)),
+      (Position(5, "🥕", 0), Job(AAgentJobPath)),
+      (Position(5, "🥕", 1), Job(AAgentJobPath)),
+      (Position(5, "🥕", 2), ImplicitEnd),
+      (Position(5, "🍋", 0), Job(BAgentJobPath)),
+      (Position(5, "🍋", 1), Job(BAgentJobPath)),
+      (Position(5, "🍋", 2), ImplicitEnd),
+      (Position(6         ), Job(AAgentJobPath)),
+      (Position(7         ), ImplicitEnd)))
   }
 
   "isDefinedAt, instruction" in {
@@ -132,18 +148,18 @@ final class WorkflowTest extends FreeSpec {
       Position(7) → ImplicitEnd)
 
     for ((address, instruction) ← addressToInstruction) {
-      assert(TestWorkflowScript isDefinedAt address)
-      assert(TestWorkflowScript.instruction(address) == instruction, s" - $address")
+      assert(TestWorkflow isDefinedAt address)
+      assert(TestWorkflow.instruction(address) == instruction, s" - $address")
     }
-    assert(!TestWorkflowScript.isDefinedAt(Position(8)))
-  //assert(!TestWorkflowScript.isDefinedAt(Position(0, "🥕")))
-    assert(!TestWorkflowScript.isDefinedAt(Position(0, "🥕", 0)))
-  //assert(!TestWorkflowScript.isDefinedAt(Position(0, "🥕")))
-    assert(!TestWorkflowScript.isDefinedAt(Position(0, "🥕", 3)))
+    assert(!TestWorkflow.isDefinedAt(Position(8)))
+  //assert(!TestWorkflow.isDefinedAt(Position(0, "🥕")))
+    assert(!TestWorkflow.isDefinedAt(Position(0, "🥕", 0)))
+  //assert(!TestWorkflow.isDefinedAt(Position(0, "🥕")))
+    assert(!TestWorkflow.isDefinedAt(Position(0, "🥕", 3)))
   }
 
   "JSON" in {
-    testJson(ForkTestSetting.TestWorkflowScript, json"""{
+    testJson(ForkTestSetting.TestWorkflow, json"""{
       "source": "job /JOB on /AGENT-A;\nfork(\n  \"🥕\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },\n  \"🍋\" { job /JOB on /AGENT-A; job /JOB on /AGENT-B; });\njob /JOB on /AGENT-A;\nfork(\n  \"🥕\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },\n  \"🍋\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; });\njob /JOB on /AGENT-A;\nfork(\n  \"🥕\" { job /JOB on /AGENT-A; job /JOB on /AGENT-A; },\n  \"🍋\" { job /JOB on /AGENT-B; job /JOB on /AGENT-B; });\njob /JOB on /AGENT-A;",
       "instructions": [
         { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},

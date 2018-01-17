@@ -14,7 +14,7 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
 
   private val xml =
     <job_chain>
-      <job_chain_node state="A" agent="/AGENT" job="/JOB-A" next_state="B" error_state="FAILURE"/>
+      <job_chain_node state="A" agent="/AGENT" job="/JOB-A"                error_state="FAILURE"/>
       <job_chain_node state="B" agent="AGENT"  job="JOB-B"  next_state="C" error_state="FAILURE"/>
       <job_chain_node state="C" agent="/AGENT" job="/JOB-C" next_state="D" error_state="D"/>
       <job_chain_node state="E" agent="/AGENT" job="/JOB-E" next_state="END" error_state="FAILURE"/>
@@ -23,22 +23,22 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
       <job_chain_node.end state="FAILURE"/>
     </job_chain>
 
-  private val workflow = LegacyJobchainXmlParser.parseXml(xml, FolderPath("/FOLDER"))
+  private val workflow = LegacyJobchainXmlParser.parseXml(FolderPath("/FOLDER"), xml)
 
   "Workflow" in {
     assert(workflow == Workflow(Vector(
-      "A"       @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-A"))),
-                   IfError(Label("FAILURE")),
-      "B"       @: Job(AgentJobPath(AgentPath("/FOLDER/AGENT"), JobPath("/FOLDER/JOB-B"))),
-                   IfError(Label("FAILURE")),
-      "C"       @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-C"))),
-                   Goto(Label("D")),
-      "E"       @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-E"))),
-                   IfError(Label("FAILURE")),
-                   Goto(Label("END")),
-      "D"       @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-D"))),
-                   Goto(Label("E")),
-      "END"     @: ExplicitEnd,
+      "A" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-A"))),
+             IfError(Label("FAILURE")),
+      "B" @: Job(AgentJobPath(AgentPath("/FOLDER/AGENT"), JobPath("/FOLDER/JOB-B"))),
+             IfError(Label("FAILURE")),
+      "C" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-C"))),
+             Goto(Label("D")),
+      "E" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-E"))),
+             IfError(Label("FAILURE")),
+             Goto(Label("END")),
+      "D" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-D"))),
+             Goto(Label("E")),
+      "END" @: ExplicitEnd,
       "FAILURE" @: ExplicitEnd)))
   }
 }

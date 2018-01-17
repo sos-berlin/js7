@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.shared.workflow
 
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.workflow.Instruction.{@:, End, ForkJoin, Gap, Job, Labeled}
+import com.sos.jobscheduler.data.workflow.Instruction.{@:, End, ForkJoin, Gap, Goto, IfError, Job, Labeled}
 import com.sos.jobscheduler.data.workflow.Workflow
 
 /**
@@ -22,7 +22,7 @@ object Workflows {
         case o @ (_ @: (job: Job)) if job isExecutableOnAgent agentPath ⇒
           o
 
-        case o @ (_ @: (_: End))  ⇒
+        case o @ (_ @: (_: End | _: IfError | _: Goto ))  ⇒
           o
 
         case Labeled(labels, _) ⇒
