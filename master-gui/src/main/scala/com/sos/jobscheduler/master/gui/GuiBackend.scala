@@ -18,7 +18,7 @@ import org.scalajs.dom.{raw, window}
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.util.{Failure, Random, Success, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -59,7 +59,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
         case Success(stamped: Stamped[Seq[Workflow.Named]]) ⇒
           Try {
             scope.modState(_.copy(
-              pathToWorkflow = stamped.value.map(o ⇒ o.path → PreparedWorkflow(o.workflow)).toMap
+              pathToWorkflow = stamped.value.map(o ⇒ o.path → PreparedWorkflow(o.path, o.workflow)).toMap
                 .withNoSuchKey(k ⇒ throw new NoSuchElementException(s"Unknown $k"))))
           }
       }

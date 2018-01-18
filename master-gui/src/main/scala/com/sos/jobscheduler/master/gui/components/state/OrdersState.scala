@@ -19,6 +19,9 @@ final case class OrdersState(
   step: Int,
   error: Option[String] = None)
 {
+  def orderCountByWorkflow(path: WorkflowPath): Option[Int] =
+    content.orderCountByWorkflow(path)
+
   def updateOrders(stamped: Stamped[Seq[Order[Order.State]]]): OrdersState = {
     val orders = stamped.value
     val updatedIdToEntry = orders.map(v ⇒ v.id → OrderEntry(v, updatedAt = 0)).toMap
@@ -36,10 +39,16 @@ object OrdersState {
   val Empty = OrdersState(Initial, step = 0, error = None)
 
   private type WorkflowToOrderIds = Map[WorkflowPath, Vector[OrderId]]
-  sealed trait Content
+  sealed trait Content {
+    def orderCountByWorkflow(workflowPath: WorkflowPath): Option[Int]
+  }
 
-  object Initial extends Content
-  object FetchingContent extends Content
+  object Initial extends Content {
+    def orderCountByWorkflow(workflowPath: WorkflowPath) = None
+  }
+  object FetchingContent extends Content {
+    def orderCountByWorkflow(workflowPath: WorkflowPath) = None
+  }
 
   final case class FetchedContent(
     idToEntry: Map[OrderId, OrderEntry],
@@ -49,6 +58,9 @@ object OrdersState {
   extends Content
   {
     private val positionCache = mutable.Map[WorkflowPath, mutable.Map[WorkflowPosition, Vector[OrderId]]]()
+
+    def orderCountByWorkflow(workflowPath: WorkflowPath) =
+      Some(workflowToOrderSeq(workflowPath).size)
 
     def workflowPositionToOrderIdSeq(address: WorkflowPosition): Vector[OrderId] =
       positionCache.getOrElseUpdate(address.workflowPath, {

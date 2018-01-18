@@ -36,7 +36,7 @@ object Router {
     try state.uriHash match {
       case "" | "#" ⇒
         window.document.title = DefaultTitle
-        WorkflowListComponent(state.pathToWorkflow)
+        WorkflowListComponent(state.workflowListProps)
 
       case h if h startsWith WorkflowPrefix ⇒
         val path = decodeURIComponent(h.stripPrefix(WorkflowPrefix))

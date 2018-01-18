@@ -101,11 +101,11 @@ header, main, footer { padding-left: 150px; }
 .freezed { color: #7ccefd; font-weight: bold;  }
 .disconnected { color: orangered; font-weight: bold; }
 
-.OrderId { white-space: nowrap; font-family: Inconsolata, Consolas, "Lucida Console", Monaco, monospace; }
+.OrderId { white-space: nowrap; }
 
 .Workflow-content { margin-top: 1rem; }
 .orders-Instruction { position: absolute; width: 100%; border-top: 0.5px solid #a0a0a0; margin: 3px 0; padding: 4px; height: 42px; }
-.orders-Instruction-head { max-width: 200px; overflow: hidden; text-overflow: ellipsis; line-height: 1.2rem; font-family: "Lucida Console", Inconsolata, Consolas, monospace;}
+.orders-Instruction-head { max-width: 200px; overflow: hidden; text-overflow: ellipsis; line-height: 1.2rem; }
 .orders-Instruction-Job { font-weight: bold; }
 .orders-Instruction-Agent { font-weight: bold; }
 .orders-Order-moving { position: absolute; transition: transform 700ms cubic-bezier(0.4, 0.0, 0.2, 1); }
@@ -129,7 +129,7 @@ header, main, footer { padding-left: 150px; }
 .order-table { width: 45ex; margin-top: 12px; margin-right: 2rem; }
 .order-td-field { width: 10ex; white-space: nowrap; color: gray; padding-top: 0; padding-bottom: 0; padding-left: 0;}
 .order-td-value { white-space: nowrap; padding-top: 0; padding-bottom: 0; padding-right: 0; }
-.order-variable { font-family: "Lucida Console", Inconsolata, Consolas, monospace; }
+.order-variable {}
 
 .Order-NotStarted { background-color: #f4f4f4; }
 .Order-Finished   { background-color: #f4f4f4; }
