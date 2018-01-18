@@ -10,6 +10,11 @@ import scala.language.{higherKinds, implicitConversions}
 
 object Collections {
   object implicits {
+    implicit class RichIndexedSeq[A](val underlying: IndexedSeq[A]) extends AnyVal {
+      def get(i: Int): Option[A] =
+        if (underlying.indices contains i) Some(underlying(i)) else None
+    }
+
     implicit class RichTraversableOnce[A](val delegate: TraversableOnce[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
         delegate match {

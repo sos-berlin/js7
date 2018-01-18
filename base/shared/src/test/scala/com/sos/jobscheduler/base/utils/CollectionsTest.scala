@@ -9,6 +9,12 @@ import scala.collection.{immutable, mutable}
 
 final class CollectionsTest extends FreeSpec {
 
+  "IndexSeq#get" in {
+    assert(Vector().get(0) == None)
+    assert(Vector(1, 2, 3).get(0) == Some(1))
+    assert(Vector(1, 2, 3).get(-1) == None)
+  }
+
   "toImmutableSeq of an already immutable.Seq" in {
     val list = List(1, 2, 3)
     assert(list.toImmutableSeq eq list)
