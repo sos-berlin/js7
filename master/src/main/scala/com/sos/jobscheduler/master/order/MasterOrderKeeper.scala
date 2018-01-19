@@ -369,7 +369,7 @@ with Stash {
     }
     val process = new WorkflowProcess(pathToNamedWorkflow(order.workflowPath).workflow, orderRegister mapPartialFunction (_.order))
     if (!order.isAttachedToAgent) {
-      for (keyedEvent ← process.tryExecuteInstruction(order)) {
+      for (keyedEvent ← process.tryExecuteInstruction(order.id)) {
         persistAsync(keyedEvent)(handleOrderEvent)
       }
     }

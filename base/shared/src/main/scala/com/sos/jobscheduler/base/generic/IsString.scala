@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.generic
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.As
 import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import javax.annotation.Nullable
@@ -32,7 +31,7 @@ object IsString {
     def apply(o: String): A
 
     implicit val JsonEncoder: Encoder[A] = jsonEncoder[A]
-    implicit val JsonDecoder: Decoder[A] = o ⇒ Right(apply(o.value.forceString))
+    implicit val JsonDecoder: Decoder[A] = _.as[String] map apply
     implicit val keyEncoder: KeyEncoder[A] = _.string
     implicit val keyDecoder: KeyDecoder[A] = o ⇒ Some(apply(o))
   }

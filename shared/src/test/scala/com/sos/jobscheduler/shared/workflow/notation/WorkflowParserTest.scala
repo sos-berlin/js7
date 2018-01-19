@@ -2,7 +2,9 @@ package com.sos.jobscheduler.shared.workflow.notation
 
 import com.sos.jobscheduler.common.time.Stopwatch.{measureTime, measureTimeParallel}
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.workflow.Instruction.{Goto, IfError, Job}
+import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.workflow.Instruction.simplify._
+import com.sos.jobscheduler.data.workflow.Instruction.{Goto, IfErrorGoto, IfReturnCode, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowScriptNotation}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
@@ -47,6 +49,27 @@ final class WorkflowParserTest extends FreeSpec {
         Some(source)))
   }
 
+  "if (...)" in {
+    val source = """if (returnCode 1, 2, 3) { job "THEN" on "AGENT" }"""
+    assert(parse(source) ==
+      Workflow(
+        Vector(
+          IfReturnCode(List(ReturnCode(1), ReturnCode(2), ReturnCode(3)), Vector(
+            Workflow.of(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/THEN"))))))),
+        Some(source)))
+  }
+
+  "if (...) else" in {
+    val source = """if (returnCode -1) { job "THEN" on "AGENT" } else { job "ELSE" on "AGENT" }"""
+    assert(parse(source) ==
+      Workflow(
+        Vector(
+          IfReturnCode(List(ReturnCode(-1)), Vector(
+            Workflow.of(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/THEN")))),
+            Workflow.of(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/ELSE"))))))),
+        Some(source)))
+  }
+
   "onError and goto" in {
     val source = """
       job "A" on "AGENT";
@@ -58,7 +81,7 @@ final class WorkflowParserTest extends FreeSpec {
     assert(parse(source) == Workflow(
       Vector(
         Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A"))),
-        IfError(Label("ERROR")),
+        IfErrorGoto(Label("ERROR")),
         Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/B"))),
         Goto(Label("END")),
         "ERROR" @:

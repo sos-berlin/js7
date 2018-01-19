@@ -139,10 +139,10 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderJoined" in {
-    check(OrderJoined(7, MapDiff.empty, Outcome.Default), json"""
+    check(OrderJoined(Position(7), MapDiff.empty, Outcome.Default), json"""
       {
         "TYPE": "OrderJoined",
-        "to": 7,
+        "to": [ 7 ],
         "variablesDiff": {
           "changed": {},
           "deleted": []
@@ -155,10 +155,10 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderMoved" in {
-    check(OrderMoved(7), json"""
+    check(OrderMoved(Position(7)), json"""
       {
         "TYPE": "OrderMoved",
-        "to": 7
+        "to": [ 7 ]
       }""")
   }
 

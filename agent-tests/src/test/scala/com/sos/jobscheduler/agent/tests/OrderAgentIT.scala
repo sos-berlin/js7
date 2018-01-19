@@ -19,6 +19,7 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
@@ -127,7 +128,7 @@ private object OrderAgentIT {
 
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
-      workflowPosition = order.workflowPosition.copy(position = 2),
+      workflowPosition = order.workflowPosition.copy(position = Position(2)),
       attachedTo = Some(Order.AttachedTo.Detachable(TestAgentPath)),
       payload = Payload(
         variables = Map("x" → "X", "result" → "TEST-RESULT-BBB"),

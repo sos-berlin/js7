@@ -2,6 +2,7 @@ package com.sos.jobscheduler.shared.workflow
 
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -9,8 +10,8 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderTransitionedEvent}
 import com.sos.jobscheduler.data.order.Outcome.Bad.AgentRestarted
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.Instruction.{End, ForkJoin, Gap, Goto, IfError, Job}
-import com.sos.jobscheduler.data.workflow.{InstructionNr, Workflow}
+import com.sos.jobscheduler.data.workflow.Instruction.{End, ForkJoin, Gap, Goto, IfErrorGoto, IfReturnCode, Job}
+import com.sos.jobscheduler.data.workflow.{Position, Workflow}
 import com.sos.jobscheduler.shared.workflow.WorkflowProcess._
 import scala.annotation.tailrec
 
@@ -19,10 +20,17 @@ import scala.annotation.tailrec
   */
 final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[OrderId, Order[Order.State]]) {
 
-  def tryExecuteInstruction(order: Order[Order.State]): Option[KeyedEvent[OrderTransitionedEvent]] =
-    order.outcome match {
-      case Outcome.Bad(AgentRestarted) ⇒
-        Some(order.id <-: OrderMoved(order.position.nr))  // Repeat
+  @deprecated
+  def this(workflow: Workflow, orders: Iterable[Order[Order.State]]) =
+    this(workflow, orders toKeyedMap (_.id))
+
+  def tryExecuteInstruction(orderId: OrderId): Option[KeyedEvent[OrderTransitionedEvent]] =
+    tryExecuteInstruction(idToOrder(orderId))
+
+  private def tryExecuteInstruction(order: Order[Order.State]): Option[KeyedEvent[OrderTransitionedEvent]] =
+    (order.state, order.outcome) match {
+      case (Order.Processed, Outcome.Bad(AgentRestarted)) ⇒
+        Some(order.id <-: OrderMoved(order.position))  // Repeat
       case _ ⇒
         tryExecuteInstruction2(order)
     }
@@ -66,8 +74,11 @@ final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[Order
           order.ifState[Order.Join] flatMap tryJoinParent
 
       case (Order.Processed, _: Job) ⇒
-        for (to ← nextInstructionNr(order)) yield
+        for (to ← nextPosition(order)) yield
           order.id <-: OrderMoved(to)
+
+      case (Order.InProcess, _: Job) ⇒
+        None
 
       case (instruction, state) ⇒
         logger.trace(s"❓ $state -> $instruction")
@@ -76,7 +87,7 @@ final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[Order
 
   private def tryJoinParent(parent: Order[Order.State]): Option[KeyedEvent[OrderTransitionedEvent]] =
     parent.ifState[Order.Join] flatMap (parentOrder ⇒
-      nextInstructionNr(parentOrder) flatMap (next ⇒
+      nextPosition(parentOrder) flatMap (next ⇒
         parentOrder.state.joinOrderIds map idToOrder forall childOrderEnded(parentOrder) option
           (parentOrder.id <-: OrderJoined(next, MapDiff.empty, Outcome.Good(true)))))
 
@@ -86,39 +97,51 @@ final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[Order
       order.position.dropChild.contains(parentOrder.position) &&
       order.attachedTo == parentOrder.attachedTo
 
-  private def nextInstructionNr(order: Order[Order.State]): Option[InstructionNr] =
-    applyJumpInstructions(order.moveTo(order.position.nr.increment))
+  private def nextPosition(order: Order[Order.State]): Option[Position] =
+    applyTransitionInstructions(order withPosition order.position.increment)
 
-  private[workflow] def applyJumpInstructions(order: Order[Order.State]): Option[InstructionNr] =
-    applyJumpInstructions(order, Nil) match {
+  private[workflow] def applyTransitionInstructions(order: Order[Order.State]): Option[Position] =
+    applyTransitionInstructions(order, Nil) match {
       case Valid(Some(n)) ⇒ Some(n)
-      case Valid(None) ⇒ Some(order.position.nr)
+      case Valid(None) ⇒ Some(order.position)
       case Invalid(message) ⇒
         logger.error(message) // TODO
         None
     }
 
   @tailrec
-  private def applyJumpInstructions(order: Order[Order.State], visited: List[InstructionNr]): Validated[String, Option[InstructionNr]] =
-      skipJumpInstruction(order) match {
-        case Some(nr) ⇒
-          if (visited contains nr)
-            Invalid(s"${order.id} is in a Goto loop: " + visited.reverse.map(nr ⇒ workflow.labeledInstruction(nr).toShortString).mkString(" -> "))
-          else
-            applyJumpInstructions(order.moveTo(nr), nr :: visited)
-        case None ⇒ Valid(Some(order.position.nr))
-      }
-
-  private def skipJumpInstruction(order: Order[Order.State]): Option[InstructionNr] =
-    workflow.instruction(order.position) match {
-      case Goto(label) ⇒
-        Some(workflow.labelToNumber(order.position, label))
-
-      case IfError(label) ⇒
-        if (order.outcome.isSuccess)
-          Some(order.position.nr.increment)
+  private def applyTransitionInstructions(order: Order[Order.State], visited: List[Position]): Validated[String, Option[Position]] =
+    applySingleTransitionInstruction(order) match {
+      case Some(position) ⇒
+        if (visited contains position)
+          Invalid(s"${order.id} is in a Goto loop: " + visited.reverse.map(pos ⇒ workflow.labeledInstruction(pos).toShortString).mkString(" -> "))
         else
-          Some(workflow.labelToNumber(order.position, label))
+          applyTransitionInstructions(order.withPosition(position), position :: visited)
+      case None ⇒ Valid(Some(order.position))
+    }
+
+  private def applySingleTransitionInstruction(order: Order[Order.State]): Option[Position] =
+    workflow.instruction(order.position) match {
+      case instr: IfReturnCode ⇒
+        instr.nextPosition(order, idToOrder)
+
+      case Goto(label) ⇒
+        workflow.labelToPosition(order.position.parents, label)
+
+      case IfErrorGoto(label) ⇒
+        if (order.outcome.isError)
+          workflow.labelToPosition(order.position.parents, label)
+        else
+          Some(order.position.increment)
+
+      case _: End if order.position.isNested ⇒
+        order.position.dropChild flatMap (returnPosition ⇒
+          workflow.instruction(returnPosition) match {
+            case _: IfReturnCode ⇒
+              nextPosition(order withPosition returnPosition)
+            case _ ⇒
+              None
+          })
 
       case _ ⇒ None
     }

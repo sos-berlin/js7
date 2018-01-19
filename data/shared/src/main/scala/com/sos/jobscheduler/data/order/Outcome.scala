@@ -7,6 +7,7 @@ import io.circe.generic.JsonCodec
   * @author Joacim Zschimmer
   */
 sealed trait Outcome {
+  def isError: Boolean = !isSuccess
   def isSuccess: Boolean
 }
 

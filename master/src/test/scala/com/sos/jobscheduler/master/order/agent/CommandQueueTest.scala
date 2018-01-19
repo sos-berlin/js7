@@ -6,7 +6,8 @@ import com.sos.jobscheduler.common.scalautil.Futures.SynchronousExecutionContext
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, WorkflowPath, Workflow}
+import com.sos.jobscheduler.data.workflow.Instruction.simplify._
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.order.agent.AgentDriver.Input
 import com.sos.jobscheduler.master.order.agent.CommandQueue.QueuedInputResponse
 import com.sos.jobscheduler.master.order.agent.CommandQueueTest._

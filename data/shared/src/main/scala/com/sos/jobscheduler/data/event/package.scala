@@ -22,6 +22,11 @@ package object event {
     */
   type EventId = Long
 
+  type AnyKeyedEvent = KeyedEvent[Event]
+  type AnyEvent = Event { type Key = Any }
+
+  val <-: = KeyedEvent
+
   object EventId {
     val BeforeFirst: EventId = 0
     val IdsPerMillisecond = 1000
@@ -62,7 +67,4 @@ package object event {
           }
       }
   }
-
-  type AnyKeyedEvent = KeyedEvent[Event]
-  type AnyEvent = Event { type Key = Any }
 }

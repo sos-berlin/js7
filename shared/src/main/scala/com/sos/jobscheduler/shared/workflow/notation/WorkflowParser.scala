@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.folder.FolderPath
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Workflow}
 import fastparse.all._
@@ -36,6 +37,7 @@ object WorkflowParser {
     private val newline = P(h ~ "\r".? ~ "\n" ~ w)
     private val comma = w ~ "," ~ w
     private val commaOrNewLine = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
+    private val int = P[Int](("-".? ~ CharsWhile(c ⇒ c >= '0' && c <= '9')).! map (_.toInt))
     private val instructionTerminator = P(w ~ ((";" ~ w) | &("}") | End))
     //Scala-like: private val instructionTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
 
@@ -51,6 +53,10 @@ object WorkflowParser {
 
     private lazy val curlyWorkflow: Parser[Workflow] =
       P("{" ~ w ~ workflow ~ w ~ "}")
+
+    private lazy val workflow = P[Workflow](
+      labeledInstruction.rep
+        map (stmts ⇒ Workflow(stmts.toVector)))
 
     private val agentJobPath = P[AgentJobPath](
       ("job" ~ w ~ path[JobPath] ~ w ~ "on" ~ w ~ path[AgentPath])
@@ -76,24 +82,26 @@ object WorkflowParser {
         map { case (branch, more) ⇒ Instruction.ForkJoin(Vector(branch) ++ more) })
     }
 
-    private val ifErrorInstruction: Parser[Instruction.IfError] =
-      P(("ifError" ~ w ~ label ~ instructionTerminator)
-        map { n ⇒ Instruction.IfError(n) })
+    private val ifReturnCodeInstruction = P[Instruction.IfReturnCode](
+      ("if" ~ w ~ "(" ~ w ~ "returnCode" ~ w ~ commaSeq(int) ~ w ~ ")" ~ w ~ curlyWorkflow ~ w ~ ("else" ~ w ~ curlyWorkflow ~ w).?)
+        map { case (returnCodes, then_, else_) ⇒
+          Instruction.IfReturnCode(returnCodes.map(o ⇒ ReturnCode(o)).toVector, Vector(then_) ++ else_)
+      }
+    )
+    private val ifErrorGotoInstruction = P[Instruction.IfErrorGoto](
+      ("ifError" ~ w ~ label ~ instructionTerminator)
+        map { n ⇒ Instruction.IfErrorGoto(n) })
 
     private val gotoInstruction: Parser[Instruction.Goto] =
       P(("goto" ~ w ~ label ~ instructionTerminator)
         map { n ⇒ Instruction.Goto(n) })
 
     private val instruction: Parser[Instruction] =
-      P(jobInstruction | endInstruction | forkInstruction | ifErrorInstruction | gotoInstruction)
+      P(jobInstruction | endInstruction | forkInstruction | ifReturnCodeInstruction | ifErrorGotoInstruction | gotoInstruction)
 
     private val labeledInstruction = P[Instruction.Labeled](
       (labelDef.rep ~ instruction)
         map { case (labels, instruction_) ⇒ Instruction.Labeled(labels.toImmutableSeq, instruction_)})
-
-    private val workflow = P[Workflow](
-      labeledInstruction.rep
-        map (stmts ⇒ Workflow(stmts.toVector)))
 
     val whole = w ~ workflow ~ w ~ End
 
@@ -104,7 +112,10 @@ object WorkflowParser {
       P(h ~ "(" ~ w ~ parser ~ w ~ ")")
 
     private def array[A](parser: Parser[A]): Parser[collection.Seq[A]] =
-      P("[" ~ w ~ parser ~ (comma ~ parser).rep ~ w ~ "]") map {
+      P("[" ~ commaSeq(parser) ~ "]")
+
+    private def commaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
+      P(w ~ parser ~ (comma ~ parser).rep ~ w) map {
         case (head, tail) ⇒ head +: tail
       }
 

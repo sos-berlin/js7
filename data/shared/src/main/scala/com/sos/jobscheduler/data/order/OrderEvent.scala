@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.StdoutStderr._
-import com.sos.jobscheduler.data.workflow.{InstructionNr, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 
@@ -25,7 +25,7 @@ object OrderEvent {
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderTransitionedEvent extends OrderCoreEvent
 
-  final case class OrderAdded(workflowPath: WorkflowPath, state: Idle, payload: Payload)
+  final case class OrderAdded(workflowPath: WorkflowPath, state: Idle, payload: Payload = Payload.empty)
   extends OrderCoreEvent {
     //type State = Idle
   }
@@ -90,10 +90,10 @@ object OrderEvent {
     final case class Child(childId: OrderId.ChildId, orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty)
   }
 
-  final case class OrderJoined(to: InstructionNr, variablesDiff: MapDiff[String, String], outcome: Outcome)
+  final case class OrderJoined(to: Position, variablesDiff: MapDiff[String, String], outcome: Outcome)
   extends OrderTransitionedEvent
 
-  final case class OrderMoved(to: InstructionNr)
+  final case class OrderMoved(to: Position)
   extends OrderTransitionedEvent {
     //type State = Ready.type
   }

@@ -30,7 +30,7 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, InstructionNr, JobPath, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Position, WorkflowPath}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
@@ -104,12 +104,12 @@ private object OrderActorTest {
   private val TestJobPath = JobPath("/test")
   private val TestAgentPath = AgentPath("/TEST-AGENT")
   private val TestJob = Instruction.Job(AgentJobPath(TestAgentPath, TestJobPath))
-  private val TestNr = InstructionNr(777)
+  private val TestPosition = Position(777)
   private val ExpectedOrderEvents = List(
     OrderAttached(TestOrder.workflowPosition, Order.Ready, None, AgentPath("/TEST-AGENT"), Payload.empty),
     OrderProcessingStarted,
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.Good(true)),
-    OrderMoved(TestNr),
+    OrderMoved(TestPosition),
     OrderDetached)
   private val Nl = System.lineSeparator
 
@@ -220,7 +220,7 @@ private object OrderActorTest {
 
           case _: OrderProcessed ⇒
             events += event
-            orderActor ! OrderActor.Input.HandleTransitionEvent(OrderMoved(TestNr))
+            orderActor ! OrderActor.Input.HandleTransitionEvent(OrderMoved(TestPosition))
 
             case _: OrderMoved ⇒
               events += event

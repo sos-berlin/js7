@@ -3,8 +3,10 @@ package com.sos.jobscheduler.data.workflow
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, ForkJoin, Goto, IfError, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.Instruction.simplify._
+import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, ForkJoin, Goto, IfErrorGoto, IfReturnCode, ImplicitEnd, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -15,12 +17,15 @@ import org.scalatest.FreeSpec
   */
 final class WorkflowTest extends FreeSpec {
 
-  "labelToNumber" in {
+  "labelToPosition" in {
     val workflow = Workflow(Vector(
       "A" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB"))),
+      IfReturnCode(List(ReturnCode(1)), Vector(Workflow(Vector(
+        "B" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB"))))))),
       "B" @: ExplicitEnd))
-    assert(workflow.labelToNumber(Position(0), Label("A")) == InstructionNr(0))
-    assert(workflow.labelToNumber(Position(0), Label("B")) == InstructionNr(1))
+    assert(workflow.labelToPosition(Nil, Label("A")) == Some(Position(0)))
+    assert(workflow.labelToPosition(Nil, Label("B")) == Some(Position(2)))
+    assert(workflow.labelToPosition(Position.Parent(1, 0) :: Nil, Label("B")) == Some(Position(1, 0, 0)))
   }
 
   "Duplicate labels" in {
@@ -38,25 +43,25 @@ final class WorkflowTest extends FreeSpec {
     }
   }
 
-  "Missing Label for IfError" in {
+  "Missing Label for IfErrorGoto" in {
     intercept[RuntimeException] {
-      Workflow.of(IfError(Label("A")))
+      Workflow.of(IfErrorGoto(Label("A")))
     }
   }
 
   "jobOption" in {
-    assert(TestWorkflow.jobOption(6) == Job(AAgentJobPath).some)
-    assert(TestWorkflow.jobOption(7) == None)  // ImplicitEnd
+    assert(TestWorkflow.jobOption(Position(6)) == Job(AAgentJobPath).some)
+    assert(TestWorkflow.jobOption(Position(7)) == None)  // ImplicitEnd
     intercept[IndexOutOfBoundsException] {
-      assert(TestWorkflow.jobOption(8) == None)
+      assert(TestWorkflow.jobOption(Position(8)) == None)
     }
   }
 
   "workflowOption" in {
-    assert(TestWorkflow.workflowOption(0) == TestWorkflow.some)
-    assert(TestWorkflow.workflowOption(1) == TestWorkflow.some)
+    assert(TestWorkflow.workflowOption(Position(0)) == TestWorkflow.some)
+    assert(TestWorkflow.workflowOption(Position(1)) == TestWorkflow.some)
     assert(TestWorkflow.workflowOption(Position(1, "🥕", 1)) == Some(
-      TestWorkflow.instruction(1).asInstanceOf[ForkJoin].workflowOption(OrderId.ChildId("🥕")).get))
+      TestWorkflow.instruction(1).asInstanceOf[ForkJoin].workflowOption(Position.BranchId("🥕")).get))
   }
 
   "reduce" in {
@@ -71,7 +76,7 @@ final class WorkflowTest extends FreeSpec {
       (()  @: Goto(B))           → true,
       (C   @: Job(agentJobPath)) → true,
       (()  @: Goto(D))           → true,   // reducible?
-      (()  @: IfError(D))        → false,  // reducible
+      (()  @: IfErrorGoto(D))    → false,  // reducible
       (()  @: Goto(D))           → false,  // reducible
       (D   @: Job(agentJobPath)) → true,
       (()  @: Goto(END))         → false,  // reducible

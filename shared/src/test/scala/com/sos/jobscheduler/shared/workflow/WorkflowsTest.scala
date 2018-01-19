@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.shared.workflow
 
 import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.Instruction.{ForkJoin, Gap, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._

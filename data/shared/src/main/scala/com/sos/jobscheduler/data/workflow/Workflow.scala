@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.workflow
 
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichPairTraversable
+import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.Workflow._
@@ -23,18 +23,18 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
       .uniqueToMap(labels ⇒ throw new IllegalArgumentException(s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
   labeledInstructions foreach {
-    case _ @: (jump: JumpInstruction) ⇒ labelToNumber(Nil, jump.to) // throws if label is unknown
+    case _ @: (jump: JumpInstruction) ⇒
+      _labelToNumber.getOrElse(jump.to, throw new IllegalArgumentException(s"Unknown label '${jump.to}'"))
     case _ ⇒
   }
 
-  //def firstExecutableInstructionNr: InstructionNr =
+  def firstExecutablePosition = Position(0)
 
-  def labelToNumber(position: Position, label: Label): InstructionNr =
-    labelToNumber(position.parents, label)
-
-  private def labelToNumber(parents: List[Position.Parent], label: Label): InstructionNr =
-    workflowOption(parents) flatMap (_._labelToNumber.get(label)) getOrElse
-      sys.error(s"Unknown label '$label' for position $parents")
+  def labelToPosition(parents: List[Position.Parent], label: Label): Option[Position] =
+    for {
+      workflow ← workflowOption(parents)
+      nr ← workflow._labelToNumber.get(label)
+    } yield Position(parents, nr)
 
   def lastNr: InstructionNr =
     instructions.length - 1
@@ -68,7 +68,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
     Workflow(
       labeledInstructions.sliding(2).flatMap { // Peep-hole optimize
         case Seq(_ @: (jmp: JumpInstruction), Labeled(labels, _)) if labels contains jmp.to ⇒ Nil
-        case Seq(_ @: IfError(errorTo), _ @: Goto(to)) if errorTo == to ⇒ Nil
+        case Seq(_ @: IfErrorGoto(errorTo), _ @: Goto(to)) if errorTo == to ⇒ Nil
         case Seq(a, _) ⇒ a :: Nil
         case Seq(_) ⇒ Nil  // Unused code in contrast to sliding's documentation?
       }.toVector ++
@@ -99,9 +99,9 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
   def isDefinedAt(position: Position): Boolean =
     position match {
       case Position(Nil, nr) ⇒ isDefinedAt(nr)
-      case Position(Position.Parent(nr, childId) :: tail, tailNr) ⇒
+      case Position(Position.Parent(nr, branch: Position.BranchId.Named) :: tail, tailNr) ⇒
         instruction(nr) match {
-          case fj: ForkJoin ⇒ fj.workflowOption(childId) exists (_ isDefinedAt Position(tail, tailNr))
+          case fj: ForkJoin ⇒ fj.workflowOption(branch) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
         }
     }
@@ -117,17 +117,20 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
       case Position(Nil, nr) ⇒
         instruction(nr)
 
-      case Position(Position.Parent(nr, childId) :: tail, tailNr) ⇒
-        instruction(nr) match {
-          case fj: ForkJoin ⇒
-            fj.workflowOption(childId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
+      case Position(Position.Parent(nr, branchId) :: tail, tailNr) ⇒
+        (instruction(nr), branchId) match {
+          case (instr: IfReturnCode, Position.BranchId.Indexed(index)) ⇒
+            instr.workflows.get(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
+          case (fj: ForkJoin, branchId: Position.BranchId.Named) ⇒
+            fj.workflowOption(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
           case _ ⇒
             Gap
         }
     }
 
-  def labeledInstruction(nr: InstructionNr): Instruction.Labeled =
-    instructions(nr.number)
+  def labeledInstruction(position: Position): Instruction.Labeled =
+    workflowOption(position.parents).flatMap(_.labeledInstructions.get(position.nr.number))
+      .getOrElse(throw new IllegalArgumentException(s"Unknown workflow position $position"))
 
   def instruction(nr: InstructionNr): Instruction =
     instructions(nr.number)
@@ -138,14 +141,21 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
   private def workflowOption(parents: List[Position.Parent]): Option[Workflow] =
     parents match {
       case Nil ⇒ this.some
-      case Position.Parent(nr, childId) :: tail ⇒
-        instruction(nr) match {
-          case fj: ForkJoin ⇒ fj.workflowOption(childId) flatMap (_.workflowOption(tail))
-          case _ ⇒ None
+      case Position.Parent(nr, branchId: Position.BranchId) :: tail ⇒
+        (instruction(nr), branchId) match {
+          case (o: ForkJoin, branchId: Position.BranchId.Named) ⇒
+            o.workflowOption(branchId) flatMap (_.workflowOption(tail))
+          case (o: IfReturnCode, branchId: Position.BranchId.Indexed) ⇒
+            o.workflowOption(branchId) flatMap (_.workflowOption(tail))
+          case _ ⇒
+            None
         }
+      case _ ⇒ None
     }
 
   def withoutSource = copy(source = None)
+
+  override def toString = s"{ ${instructions.mkString("; ")} }"
 }
 
 object Workflow {

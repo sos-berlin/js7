@@ -61,12 +61,10 @@ final case class Order[+S <: Order.State](
         copy(
           state = Ready,
           payload = Payload(variablesDiff applyTo variables, outcome_))
-        .moveTo(to)
+        .withPosition(to)
 
-      case OrderMoved(to) ⇒ copy(
-        state = Ready,
-        workflowPosition = workflowPosition.copy(
-          position = workflowPosition.position.moveTo(to)))
+      case OrderMoved(to) ⇒
+        withPosition(to).copy(state = Ready)
 
       case OrderDetachable ⇒
         attachedTo match {
@@ -90,8 +88,11 @@ final case class Order[+S <: Order.State](
         }
     }
 
-  def moveTo(to: InstructionNr): Order[S] = copy(
-    workflowPosition = workflowPosition.copy(position = workflowPosition.position.moveTo(to)))
+  def withInstructionNr(to: InstructionNr): Order[S] =
+    withPosition(position.copy(nr = to))
+
+  def withPosition(to: Position): Order[S] = copy(
+    workflowPosition = workflowPosition.copy(position = to))
 
   def variables = payload.variables
 

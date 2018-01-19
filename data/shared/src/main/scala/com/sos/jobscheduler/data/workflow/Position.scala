@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
+import cats.syntax.either.catsSyntaxEither
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Position._
 import io.circe.syntax.EncoderOps
@@ -13,17 +14,18 @@ import scala.language.implicitConversions
   */
 final case class Position(parents: List[Parent], nr: InstructionNr) {
 
-  def moveTo(to: InstructionNr) = copy(nr = to)
-
-  def /(childId: OrderId.ChildId) = new HalfPosition(this, childId)
-  def /(id: String) = new HalfPosition(this, OrderId.ChildId(id))
+  def /(childId: OrderId.ChildId) = new NamedBranchStage(this, childId)
+  def /(index: Int) = new IndexedBranchStage(this, index)
+  def /(id: String) = new NamedBranchStage(this, OrderId.ChildId(id))
   def /:(workflowPath: WorkflowPath) = new WorkflowPosition(workflowPath, this)
 
   def dropChild: Option[Position] =
     for (last ← parents.lastOption) yield
       Position(parents dropRight 1, last.nr)
 
-  override def toString = "#" + (parents map (p ⇒ s"${p.nr.number}/${p.childId}/") mkString "") + nr.number
+  def increment: Position = copy(nr = nr + 1)
+
+  override def toString = "#" + (parents map (p ⇒ s"${p.nr.number}/${p.branchId}/") mkString "") + nr.number
 
   def isNested = parents.nonEmpty
 
@@ -31,26 +33,64 @@ final case class Position(parents: List[Parent], nr: InstructionNr) {
 }
 
 object Position {
-  implicit def apply(nr: InstructionNr): Position =
+  def apply(nr: InstructionNr): Position =
     Position(Nil, nr)
 
-  implicit def apply(nr: Int): Position =
+  def apply(nr: Int): Position =
     Position(Nil, nr)
 
-  implicit def apply(parentNr: Int, childId: String, nr: Int): Position =
-    Position(Parent(parentNr, OrderId.ChildId(childId)) :: Nil, nr)
+  def apply(parentInstructionNr: Int, branchId: BranchId, nr: Int): Position =
+    Position(Parent(parentInstructionNr, branchId) :: Nil, nr)
 
-  final case class Parent(nr: InstructionNr, childId: OrderId.ChildId)
+  final case class Parent(nr: InstructionNr, branchId: BranchId)
+  object Parent {
+    def apply(nr: InstructionNr, childId: OrderId.ChildId): Parent =
+      Parent(nr, BranchId.Named(childId))
 
-  final class HalfPosition private[Position](position: Position, childId: OrderId.ChildId) {
+    def apply(nr: InstructionNr, childId: String): Parent =
+      Parent(nr, BranchId.Named(OrderId.ChildId(childId)))
+
+    def apply(nr: InstructionNr, index: Int): Parent =
+      Parent(nr, BranchId.Indexed(index))
+  }
+
+  sealed trait BranchId
+  object BranchId {
+    def apply(childId: OrderId.ChildId): Named = Named(childId)
+    implicit def apply(branchId: String): Named = Named(OrderId.ChildId(branchId))
+    implicit def apply(index: Int): Indexed = Indexed(index)
+
+    final case class Named(childId: OrderId.ChildId) extends BranchId {
+      override def toString = childId.toString
+    }
+
+    final case class Indexed(number: Int) extends BranchId {
+      override def toString = number.toString
+    }
+
+    implicit val jsonEncoder: Encoder[BranchId] = {
+      case Named(OrderId.ChildId(string)) ⇒ Json.fromString(string)
+      case Indexed(number) ⇒ Json.fromInt(number)
+      case Indexed(i) ⇒ Json.fromInt(i)
+    }
+    implicit val jsonDecoder: Decoder[BranchId] = cursor ⇒
+      cursor.as[OrderId.ChildId] map BranchId.Named orElse (
+        cursor.as[Int] map BranchId.Indexed)
+  }
+
+  final class NamedBranchStage private[Position](position: Position, childId: OrderId.ChildId) {
     def /(nr: InstructionNr) = Position(position.parents ::: Parent(position.nr, childId) :: Nil, nr)
+  }
+
+  final class IndexedBranchStage private[Position](position: Position, index: Int) {
+    def /(nr: InstructionNr) = Position(position.parents ::: Parent(position.nr, index) :: Nil, nr)
   }
 
   implicit val jsonEncoder: Encoder[Position] =
     pos ⇒ Json.fromValues(toJsonSeq(pos))
 
   implicit val jsonDecoder: Decoder[Position] = {
-    def decodeParents(pairs: Iterator[Seq[Json]]): Decoder.Result[List[Parent]] = {
+    def decodeParents(pairs: Iterator[Vector[Json]]): Decoder.Result[List[Parent]] = {
       var left: Option[Left[DecodingFailure, Nothing]] = None
       val b = mutable.Buffer[Parent]()
       val parentResults: Iterator[Decoder.Result[Parent]] = pairs map decodeParent
@@ -61,13 +101,13 @@ object Position {
       left getOrElse Right(b.toList)
     }
 
-    def decodeParent(pair: Seq[Json]): Decoder.Result[Parent] =
+    def decodeParent(pair: Vector[Json]): Decoder.Result[Parent] =
       for {
         nr ← pair(0).as[InstructionNr]
-        childId ← pair(1).as[OrderId.ChildId]
-      } yield Parent(nr, childId)
+        branchId ← pair(1).as[BranchId]
+      } yield Parent(nr, branchId)
 
-    _.as[Seq[Json]] flatMap (parts ⇒
+    _.as[Vector[Json]] flatMap (parts ⇒
       if (parts.size % 2 != 1)
         Left(DecodingFailure("Not a valid Position", Nil))
       else
@@ -78,5 +118,5 @@ object Position {
   }
 
   private[workflow] def toJsonSeq(position: Position): Seq[Json] =
-    position.parents.toVector.flatMap(p ⇒ Array(p.nr.asJson, p.childId.asJson)) :+ position.nr.asJson
+    position.parents.toVector.flatMap(p ⇒ Array(p.nr.asJson, p.branchId.asJson)) :+ position.nr.asJson
 }

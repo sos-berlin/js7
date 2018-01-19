@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.workflow.test
 
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.Instruction.{ForkJoin, Job}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Workflow, WorkflowPath}
 

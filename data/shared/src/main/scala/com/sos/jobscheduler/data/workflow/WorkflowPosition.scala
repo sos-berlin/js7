@@ -8,12 +8,15 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowPosition(workflowPath: WorkflowPath, position: Position)
+final case class WorkflowPosition(workflowPath: WorkflowPath, position: Position) {
+
+  override def toString = s"$workflowPath/$position"
+}
 
 object WorkflowPosition {
 
   implicit def apply(workflowPath: WorkflowPath): WorkflowPosition =
-    WorkflowPosition(workflowPath, InstructionNr.First)
+    WorkflowPosition(workflowPath, Position(InstructionNr.First))
 
   implicit val jsonEncoder: Encoder[WorkflowPosition] =
     absolute ⇒ Json.fromValues(absolute.workflowPath.asJson +: Position.toJsonSeq(absolute.position))

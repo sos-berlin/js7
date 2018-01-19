@@ -3,11 +3,13 @@ package com.sos.jobscheduler.data.workflow
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.{deriveCirceCodec, listMapCodec, objectCodec}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.{deriveCirceCodec, objectCodec}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichIndexedSeq
 import com.sos.jobscheduler.base.utils.Strings.TruncatedString
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
@@ -30,6 +32,12 @@ sealed trait Instruction {
 object Instruction {
   val @: = Labeled
 
+  /** Only for tests and application. */
+  object simplify {
+    implicit def fromInstruction(instruction: Instruction): Labeled =
+      Labeled(Nil, instruction)
+  }
+
   final case class Labeled(labels: Seq[Label], instruction: Instruction) {
     def toShortString = s"$labelsString ${instruction.toShortString}"
 
@@ -38,9 +46,6 @@ object Instruction {
     def labelsString = labels.map(o ⇒ s"$o: ").mkString
   }
   object Labeled {
-    implicit def fromInstruction(instruction: Instruction): Labeled =
-      Labeled(Nil, instruction)
-
     implicit val jsonEncoder: Encoder[Labeled] = {
       case Labeled(Seq(), instruction) ⇒
         instruction.asJson
@@ -97,20 +102,19 @@ object Instruction {
     //  // If branches end on multiple Agents, only the Master can join the Orders
     //  branches.values forall (_ isEndingOnAgent agentPath)
 
-    def workflowOption(id: OrderId.ChildId): Option[Workflow] =
-      branches collectFirst { case ForkJoin.Branch(`id`, workflow) ⇒ workflow }
+    def workflowOption(branchId: Position.BranchId.Named): Option[Workflow] =
+      branches collectFirst { case fj: ForkJoin.Branch if fj.id == branchId.childId ⇒ fj.workflow }
 
     override def toShortString = s"ForkJoin(${branches.map(_.id).mkString(",")})"
   }
   object ForkJoin {
-    implicit val myListMapCodec = listMapCodec[OrderId.ChildId, Workflow](keyName = "id", valueName = "workflow")
     implicit lazy val jsonCodec: CirceCodec[ForkJoin] = deriveCirceCodec[ForkJoin]
 
     def of(idAndWorkflows: (OrderId.ChildId, Workflow)*) =
       new ForkJoin(idAndWorkflows.map { case (id, workflow) ⇒ Branch(id, workflow) } .toVector)
 
     private def validateBranch(branch: Branch): Validated[RuntimeException, Branch] = {
-      if (branch.workflow.instructions exists (o ⇒ o.isInstanceOf[Goto]  || o.isInstanceOf[IfError]))
+      if (branch.workflow.instructions exists (o ⇒ o.isInstanceOf[Goto]  || o.isInstanceOf[IfErrorGoto]))
         Invalid(new IllegalArgumentException(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto' or 'ifError'"))
       else
         Valid(branch)
@@ -123,11 +127,40 @@ object Instruction {
     }
   }
 
+  @JsonCodec
+  final case class IfReturnCode(returnCodes: Seq[ReturnCode], workflows: IndexedSeq[Workflow]) extends Instruction {
+    require(workflows.size >= 1 && workflows.size <= 2)
+
+    def nextPosition(order: Order[Order.State], idToOrder: PartialFunction[OrderId, Order[Order.State]]): Option[Position] = {
+      assert(order == idToOrder(order.id).withPosition(order.position))
+      Some(order.outcome) collect {
+        case Outcome.Good(okay) ⇒
+          val index = if (returnCodes contains ReturnCode(if (okay) 0 else 1)) 0 else 1
+          if (workflows.indices contains index)
+            Position(Position.Parent(order.position.nr, index) :: Nil, 0)
+          else
+            order.position.increment  // Skip statement
+      }
+    }
+
+    override def toString = s"IfReturnCode ${returnCodes map (_.number) mkString ", "} then $thenWorkflow" +
+      (elseWorkflow map (w ⇒ s" else $w") getOrElse "")
+
+    private def thenWorkflow: Workflow =
+      workflows(0)
+
+    private def elseWorkflow: Option[Workflow] =
+      workflows.get(1)
+
+    def workflowOption(branchId: Position.BranchId.Indexed): Option[Workflow] =
+      workflows.get(branchId.number)
+  }
+
   sealed trait JumpInstruction extends Instruction {
     def to: Label
   }
 
-  final case class IfError(to: Label) extends JumpInstruction {
+  final case class IfErrorGoto(to: Label) extends JumpInstruction {
     def nodes = Nil
 
     override def toString = s"ifError $to"
@@ -143,7 +176,8 @@ object Instruction {
     Subtype.named(objectCodec(ExplicitEnd), "End"),
     Subtype(objectCodec(ImplicitEnd)),  // Serialized for easier external use of Workflow
     Subtype(ForkJoin.jsonCodec),
-    Subtype(deriveCirceCodec[IfError]),
+    Subtype(deriveCirceCodec[IfReturnCode]),
+    Subtype(deriveCirceCodec[IfErrorGoto]),
     Subtype(deriveCirceCodec[Goto]),
     Subtype(objectCodec(Gap)))
 }

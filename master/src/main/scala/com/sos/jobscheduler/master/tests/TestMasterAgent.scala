@@ -29,6 +29,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
+import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration

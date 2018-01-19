@@ -35,5 +35,6 @@ final class PositionTest extends FreeSpec {
   "JSON" in {
     testJson(Position(7), """[ 7 ]""")
     testJson(Position(1) / "A" / 2, """[ 1, "A", 2 ]""")
+    testJson(Position(1) / 2 / 3, """[ 1, 2, 3 ]""")
   }
 }

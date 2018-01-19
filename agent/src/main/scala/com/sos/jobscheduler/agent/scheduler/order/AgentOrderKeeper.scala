@@ -388,7 +388,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
     assert(order.isAttachedToAgent)
     val process = new WorkflowProcess(workflow, orderRegister.idToOrder)
-    for (KeyedEvent(orderId, event) ← process.tryExecuteInstruction(order)) {
+    for (KeyedEvent(orderId, event) ← process.tryExecuteInstruction(order.id)) {
       orderRegister(orderId).actor ! OrderActor.Input.HandleTransitionEvent(event)
     }
   }

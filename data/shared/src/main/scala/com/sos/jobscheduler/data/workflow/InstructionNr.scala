@@ -9,8 +9,6 @@ import scala.language.implicitConversions
 final case class InstructionNr(number: Int) extends GenericInt {
   require(number >= InstructionNr.FirstInt, s"Negative Index? $number")
 
-  def increment = this + 1
-
   def +(n: Int) = copy(number + n)
 
   override def toString = s"#$number"

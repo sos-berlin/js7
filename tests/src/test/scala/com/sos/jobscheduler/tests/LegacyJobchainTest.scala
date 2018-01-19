@@ -22,8 +22,9 @@ import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, Goto, IfError, Job}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.Instruction.simplify._
+import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, Goto, IfErrorGoto, Job}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
@@ -112,11 +113,11 @@ object LegacyJobchainTest {
   private val TestNamedWorkflow = Workflow.Named(WorkflowPath("/WORKFLOW"), TestWorkflow)
   private val ExpectedWorkflow = Workflow(Vector(
     "A" @: /*0*/ Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-0"))),
-           /*1*/ IfError("FAILURE"),
+           /*1*/ IfErrorGoto("FAILURE"),
            /*2*/ Goto("B"),
     "X" @: /*3*/ ExplicitEnd,
     "B" @: /*4*/ Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-1"))),
-           /*5*/ IfError("FAILURE"),
+           /*5*/ IfErrorGoto("FAILURE"),
     "END" @: /*6*/ ExplicitEnd,
     "FAILURE" @: /*7*/ ExplicitEnd))
 
@@ -126,10 +127,10 @@ object LegacyJobchainTest {
     TestOrder.id <-: OrderTransferredToAgent(TestAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.Good(true)),
-    TestOrder.id <-: OrderMoved(4),   // next_state="B"
+    TestOrder.id <-: OrderMoved(Position(4)),   // next_state="B"
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.Good(false)),
-    TestOrder.id <-: OrderMoved(7),   // error_state="FAILURE"
+    TestOrder.id <-: OrderMoved(Position(7)),   // error_state="FAILURE"
     TestOrder.id <-: OrderDetachable,
     TestOrder.id <-: OrderTransferredToMaster,
     TestOrder.id <-: OrderFinished)

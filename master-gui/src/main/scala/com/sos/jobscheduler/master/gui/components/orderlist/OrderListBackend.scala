@@ -130,7 +130,7 @@ extends OnUnmount {
       case (position, labels @: instruction) ⇒
           <.div(
             <.div(
-              position.parents map (_.childId) mkString "/",
+              position.parents map (_.branchId) mkString "/",
               " ",
               labels.map(_ + ": ").mkString),
             instruction match {
