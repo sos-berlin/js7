@@ -14,9 +14,7 @@ import scala.language.implicitConversions
   */
 final case class Position(parents: List[Parent], nr: InstructionNr) {
 
-  def /(childId: OrderId.ChildId) = new NamedBranchStage(this, childId)
-  def /(index: Int) = new IndexedBranchStage(this, index)
-  def /(id: String) = new NamedBranchStage(this, OrderId.ChildId(id))
+  def /(branchId: BranchId) = new BranchStage(this, branchId)
   def /:(workflowPath: WorkflowPath) = new WorkflowPosition(workflowPath, this)
 
   def dropChild: Option[Position] =
@@ -63,27 +61,29 @@ object Position {
     final case class Named(childId: OrderId.ChildId) extends BranchId {
       override def toString = childId.toString
     }
+    object Named {
+      implicit val jsonEncoder: Encoder[Named] = o ⇒ Json.fromString(o.childId.string)
+      implicit val jsonDecoder: Decoder[Named] = _.as[String] map (o ⇒ Named(OrderId.ChildId(o)))
+    }
 
     final case class Indexed(number: Int) extends BranchId {
       override def toString = number.toString
     }
+    object Indexed {
+      implicit val jsonEncoder: Encoder[Indexed] = o ⇒ Json.fromInt(o.number)
+      implicit val jsonDecoder: Decoder[Indexed] = _.as[Int] map Indexed.apply
+    }
 
     implicit val jsonEncoder: Encoder[BranchId] = {
-      case Named(OrderId.ChildId(string)) ⇒ Json.fromString(string)
-      case Indexed(number) ⇒ Json.fromInt(number)
-      case Indexed(i) ⇒ Json.fromInt(i)
+      case o: Named ⇒ o.asJson    // String
+      case o: Indexed ⇒ o.asJson  // Number
     }
     implicit val jsonDecoder: Decoder[BranchId] = cursor ⇒
-      cursor.as[OrderId.ChildId] map BranchId.Named orElse (
-        cursor.as[Int] map BranchId.Indexed)
+      cursor.as[Named]/*String*/ orElse cursor.as[Indexed]/*Number*/
   }
 
-  final class NamedBranchStage private[Position](position: Position, childId: OrderId.ChildId) {
-    def /(nr: InstructionNr) = Position(position.parents ::: Parent(position.nr, childId) :: Nil, nr)
-  }
-
-  final class IndexedBranchStage private[Position](position: Position, index: Int) {
-    def /(nr: InstructionNr) = Position(position.parents ::: Parent(position.nr, index) :: Nil, nr)
+  final class BranchStage private[Position](position: Position, branchId: BranchId) {
+    def /(nr: InstructionNr) = Position(position.parents ::: Parent(position.nr, branchId) :: Nil, nr)
   }
 
   implicit val jsonEncoder: Encoder[Position] =

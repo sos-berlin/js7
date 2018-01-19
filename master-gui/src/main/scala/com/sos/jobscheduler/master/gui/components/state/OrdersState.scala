@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.gui.components.state
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten, OrderTransitionedEvent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.master.gui.common.Utils._
@@ -102,7 +102,7 @@ object OrdersState {
               updated += orderId → (event match {
                 case event: OrderCoreEvent ⇒
                   val lastOutput = event match {
-                    case _: OrderTransitionedEvent ⇒ None
+                    case _: OrderActorEvent ⇒ None
                     case _ ⇒ entry.lastOutputOfCurrentJob
                   }
                   entry.copy(
@@ -118,9 +118,8 @@ object OrdersState {
                     updatedAt = nowMillis)
               })
               event match {
-                case OrderForked(children) ⇒
-                  for (child ← children) {
-                    val childOrder = entry.order.newChild(child)
+                case event: OrderForked ⇒
+                  for (childOrder ← entry.order.newForkedOrders(event)) {
                     updated += childOrder.id → OrderEntry(childOrder, updatedAt = nowMillis)
                     deleted -= childOrder.id
                     added.getOrElseUpdate(entry.order.workflowPath, mutable.Buffer()) += childOrder.id

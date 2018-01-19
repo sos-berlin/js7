@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.shared.workflow
 
-import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.Instruction.{ForkJoin, Gap, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
@@ -19,16 +18,16 @@ final class WorkflowsTest extends FreeSpec {
       Vector(
         Job(AAgentJobPath),
         ForkJoin.of(
-          OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-          OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Gap)),
+          "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+          "🍋" → Workflow.of(Job(AAgentJobPath), Gap)),
         Job(AAgentJobPath),
         ForkJoin.of(
-          OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-          OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath))),
+          "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+          "🍋" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath))),
         Job(AAgentJobPath),
         ForkJoin.of(
-          OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-          OrderId.ChildId("🍋") → Workflow.of(Gap               , Gap)),
+          "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+          "🍋" → Workflow.of(Gap               , Gap)),
         Job(AAgentJobPath)),
       source = None))
   }
@@ -38,14 +37,14 @@ final class WorkflowsTest extends FreeSpec {
       Vector(
         /*0*/ Gap,
         /*1*/ ForkJoin.of(
-                OrderId.ChildId("🥕") → Workflow.of(Gap, Gap),
-                OrderId.ChildId("🍋") → Workflow.of(Gap, Job(BAgentJobPath))),
+                "🥕" → Workflow.of(Gap, Gap),
+                "🍋" → Workflow.of(Gap, Job(BAgentJobPath))),
         /*2*/ Gap,
         /*3*/ Gap,
         /*4*/ Gap,
         /*5*/ ForkJoin.of(
-                OrderId.ChildId("🥕") → Workflow.of(Gap, Gap),
-                OrderId.ChildId("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
+                "🥕" → Workflow.of(Gap, Gap),
+                "🍋" → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
         /*6*/ Gap),
       source = None))
   }

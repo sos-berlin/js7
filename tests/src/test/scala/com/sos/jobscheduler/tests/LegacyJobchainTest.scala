@@ -1,13 +1,10 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -25,7 +22,6 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Pay
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, Goto, IfErrorGoto, Job}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Position, Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 import com.sos.jobscheduler.master.tests.TestEventCollector
@@ -34,9 +30,7 @@ import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflowScript
 import com.sos.jobscheduler.tests.LegacyJobchainTest._
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.language.higherKinds
 
 final class LegacyJobchainTest extends FreeSpec {
@@ -52,14 +46,12 @@ final class LegacyJobchainTest extends FreeSpec {
   "Run workflow" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
       withCloser { implicit closer ⇒
-        import directoryProvider.directory
-
         directoryProvider.master.jsonFile(TestNamedWorkflow.path).contentString = TestWorkflow.asJson.toPrettyString
         for (a ← directoryProvider.agents) a.job(Test0JobPath).xml = jobXml(ReturnCode(0))
         for (a ← directoryProvider.agents) a.job(Test1JobPath).xml = jobXml(ReturnCode(1))
 
-        runAgents(directoryProvider.agents map (_.conf)) { _ ⇒
-          RunningMaster.runForTest(directory) { master ⇒
+        directoryProvider.runAgents { _ ⇒
+          directoryProvider.runMaster { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
             master.executeCommand(MasterCommand.AddOrderIfNew(TestOrder)) await 99.s
@@ -71,17 +63,6 @@ final class LegacyJobchainTest extends FreeSpec {
         }
       }
     }
-  }
-
-  private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[RunningAgent] ⇒ Unit): Unit =
-    multipleAutoClosing(confs map startAgent await 10.s) { agents ⇒
-      body(agents)
-    }
-
-  private def startAgent(conf: AgentConfiguration): Future[RunningAgent] = {
-    val whenAgent = RunningAgent(conf)
-    for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
-    whenAgent
   }
 
   private def checkEventSeq(eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]]): Unit = {

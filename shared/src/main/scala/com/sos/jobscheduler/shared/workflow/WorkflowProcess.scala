@@ -2,12 +2,11 @@ package com.sos.jobscheduler.shared.workflow
 
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderTransitionedEvent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved}
 import com.sos.jobscheduler.data.order.Outcome.Bad.AgentRestarted
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Instruction.{End, ForkJoin, Gap, Goto, IfErrorGoto, IfReturnCode, Job}
@@ -20,14 +19,10 @@ import scala.annotation.tailrec
   */
 final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[OrderId, Order[Order.State]]) {
 
-  @deprecated
-  def this(workflow: Workflow, orders: Iterable[Order[Order.State]]) =
-    this(workflow, orders toKeyedMap (_.id))
-
-  def tryExecuteInstruction(orderId: OrderId): Option[KeyedEvent[OrderTransitionedEvent]] =
+  def tryExecuteInstruction(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] =
     tryExecuteInstruction(idToOrder(orderId))
 
-  private def tryExecuteInstruction(order: Order[Order.State]): Option[KeyedEvent[OrderTransitionedEvent]] =
+  private def tryExecuteInstruction(order: Order[Order.State]): Option[KeyedEvent[OrderActorEvent]] =
     (order.state, order.outcome) match {
       case (Order.Processed, Outcome.Bad(AgentRestarted)) ⇒
         Some(order.id <-: OrderMoved(order.position))  // Repeat
@@ -35,7 +30,7 @@ final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[Order
         tryExecuteInstruction2(order)
     }
 
-  private def tryExecuteInstruction2(order: Order[Order.State]): Option[KeyedEvent[OrderTransitionedEvent]] =
+  private def tryExecuteInstruction2(order: Order[Order.State]): Option[KeyedEvent[OrderActorEvent]] =
     (order.state, workflow.instruction(order.position)) match {
       case (Order.Ready, Gap) ⇒  // Replacement for a Job running on a different Agent
         Some(order.id <-: OrderDetachable)
@@ -63,7 +58,7 @@ final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[Order
       case (Order.Ready, forkJoin: ForkJoin) ⇒
         Some(order.id <-: OrderForked(
           for (branch ← forkJoin.branches) yield
-            OrderForked.Child(branch.id, order.id / branch.id, MapDiff.empty)))
+            OrderForked.Child(branch.id, order.id / branch.id.childId, MapDiff.empty)))
 
       case (_: Order.Join, _: ForkJoin) ⇒
         //orderEntry.instruction match {
@@ -85,7 +80,7 @@ final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[Order
         None
     }
 
-  private def tryJoinParent(parent: Order[Order.State]): Option[KeyedEvent[OrderTransitionedEvent]] =
+  private def tryJoinParent(parent: Order[Order.State]): Option[KeyedEvent[OrderActorEvent]] =
     parent.ifState[Order.Join] flatMap (parentOrder ⇒
       nextPosition(parentOrder) flatMap (next ⇒
         parentOrder.state.joinOrderIds map idToOrder forall childOrderEnded(parentOrder) option
@@ -114,7 +109,7 @@ final class WorkflowProcess(workflow: Workflow, idToOrder: PartialFunction[Order
     applySingleTransitionInstruction(order) match {
       case Some(position) ⇒
         if (visited contains position)
-          Invalid(s"${order.id} is in a Goto loop: " + visited.reverse.map(pos ⇒ workflow.labeledInstruction(pos).toShortString).mkString(" -> "))
+          Invalid(s"${order.id} is in a workflow loop: " + visited.reverse.map(pos ⇒ workflow.labeledInstruction(pos).toShortString).mkString(" -> "))
         else
           applyTransitionInstructions(order.withPosition(position), position :: visited)
       case None ⇒ Valid(Some(order.position))

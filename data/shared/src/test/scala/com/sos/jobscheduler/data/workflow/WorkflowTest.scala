@@ -4,7 +4,6 @@ import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, ForkJoin, Goto, IfErrorGoto, IfReturnCode, ImplicitEnd, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
@@ -121,8 +120,8 @@ final class WorkflowTest extends FreeSpec {
     val addressToInstruction = List(
       Position(0) → Job(AAgentJobPath),
       Position(1) → ForkJoin.of(
-        OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath))),
+        "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+        "🍋" → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath))),
       Position(1, "🥕", 0) → Job(AAgentJobPath),
       Position(1, "🥕", 1) → Job(AAgentJobPath),
       Position(1, "🥕", 2) → ImplicitEnd,
@@ -131,8 +130,8 @@ final class WorkflowTest extends FreeSpec {
       Position(1, "🍋", 2) → ImplicitEnd,
       Position(2) → Job(AAgentJobPath),
       Position(3) → ForkJoin.of(
-        OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.ChildId("🍋") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath))),
+        "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+        "🍋" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath))),
       Position(3, "🥕", 0) → Job(AAgentJobPath),
       Position(3, "🥕", 1) → Job(AAgentJobPath),
       Position(3, "🥕", 2) → ImplicitEnd,
@@ -141,8 +140,8 @@ final class WorkflowTest extends FreeSpec {
       Position(3, "🍋", 2) → ImplicitEnd,
       Position(4) → Job(AAgentJobPath),
       Position(5) → ForkJoin.of(
-        OrderId.ChildId("🥕") → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        OrderId.ChildId("🍋") → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
+        "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+        "🍋" → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
       Position(5, "🥕", 0) → Job(AAgentJobPath),
       Position(5, "🥕", 1) → Job(AAgentJobPath),
       Position(5, "🥕", 2) → ImplicitEnd,

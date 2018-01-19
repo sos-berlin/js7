@@ -2,7 +2,6 @@ package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
@@ -51,8 +50,8 @@ final class InstructionTest extends FreeSpec {
 
     "ForkJoin" in {
       testLabeled(ForkJoin.of(
-        OrderId.ChildId("A") → Workflow.of(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB")))),
-        OrderId.ChildId("B") → Workflow()), json"""
+        "A" → Workflow.of(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB")))),
+        "B" → Workflow()), json"""
         {
           "TYPE": "ForkJoin",
           "branches":

@@ -23,7 +23,7 @@ sealed trait OrderEvent extends Event {
 
 object OrderEvent {
   sealed trait OrderCoreEvent extends OrderEvent
-  sealed trait OrderTransitionedEvent extends OrderCoreEvent
+  sealed trait OrderActorEvent extends OrderCoreEvent
 
   final case class OrderAdded(workflowPath: WorkflowPath, state: Idle, payload: Payload = Payload.empty)
   extends OrderCoreEvent {
@@ -84,24 +84,24 @@ object OrderEvent {
     //type State = Processed.type
   }
 
-  final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderTransitionedEvent
+  final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderActorEvent
   object OrderForked {
     @JsonCodec
-    final case class Child(childId: OrderId.ChildId, orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty)
+    final case class Child(branchId: Position.BranchId.Named, orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty)
   }
 
-  final case class OrderJoined(to: Position, variablesDiff: MapDiff[String, String], outcome: Outcome)
-  extends OrderTransitionedEvent
+  final case class OrderJoined(next: Position, variablesDiff: MapDiff[String, String], outcome: Outcome)
+  extends OrderActorEvent
 
   final case class OrderMoved(to: Position)
-  extends OrderTransitionedEvent {
+  extends OrderActorEvent {
     //type State = Ready.type
   }
 
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
-  case object OrderDetachable extends OrderTransitionedEvent {
+  case object OrderDetachable extends OrderActorEvent {
     //type State = Detachable.type
   }
 
@@ -112,7 +112,7 @@ object OrderEvent {
     //type State = Detached.type
   }
 
-  case object OrderFinished extends OrderTransitionedEvent {
+  case object OrderFinished extends OrderActorEvent {
     //type State = Finished.type
   }
 

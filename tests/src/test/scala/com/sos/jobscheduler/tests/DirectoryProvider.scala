@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.tests
 
+import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
-import com.sos.jobscheduler.common.scalautil.AutoClosing.closeOnError
+import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -12,11 +14,13 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.tests.DirectoryProvider._
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Files, Path}
 import java.time.Duration
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{IndexedSeq, Seq}
+import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
@@ -26,7 +30,7 @@ private class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
   val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
   val master = new Tree(directory / "master")
   val agentToTree: Map[AgentPath, AgentTree] = agentPaths.map { o ⇒ o → new AgentTree(directory, o) }.toMap
-  val agents = agentPaths map agentToTree
+  val agents = agentPaths.toVector map agentToTree
   closeOnError(this) {
     master.createDirectories()
      for (a ← agentToTree.values) {
@@ -34,6 +38,19 @@ private class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
       (master.live / s"${a.name}.agent.xml").xml = <agent uri={a.conf.localUri.toString}/>
     }
   }
+
+  def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit)(implicit ec: ExecutionContext): Unit =
+    runAgents(agents ⇒
+      runMaster(master ⇒
+        body(master, agents)))
+
+  def runMaster(body: RunningMaster ⇒ Unit): Unit =
+    RunningMaster.runForTest(directory)(body)
+
+  def runAgents(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
+    multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
+      body(agents)
+    }
 
   def agent(agentName: String) = new Tree(directory / agentName)
 }
@@ -54,6 +71,9 @@ object DirectoryProvider {
 
     def jsonFile(path: TypedPath): Path =
       live resolve path.jsonFile
+
+    def txtFile(path: TypedPath): Path =
+      live resolve path.txtFile
   }
 
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {

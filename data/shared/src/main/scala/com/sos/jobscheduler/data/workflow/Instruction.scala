@@ -103,27 +103,26 @@ object Instruction {
     //  branches.values forall (_ isEndingOnAgent agentPath)
 
     def workflowOption(branchId: Position.BranchId.Named): Option[Workflow] =
-      branches collectFirst { case fj: ForkJoin.Branch if fj.id == branchId.childId ⇒ fj.workflow }
+      branches collectFirst { case fj: ForkJoin.Branch if fj.id == branchId ⇒ fj.workflow }
 
     override def toShortString = s"ForkJoin(${branches.map(_.id).mkString(",")})"
   }
   object ForkJoin {
     implicit lazy val jsonCodec: CirceCodec[ForkJoin] = deriveCirceCodec[ForkJoin]
 
-    def of(idAndWorkflows: (OrderId.ChildId, Workflow)*) =
+    def of(idAndWorkflows: (String, Workflow)*) =
       new ForkJoin(idAndWorkflows.map { case (id, workflow) ⇒ Branch(id, workflow) } .toVector)
 
-    private def validateBranch(branch: Branch): Validated[RuntimeException, Branch] = {
+    private def validateBranch(branch: Branch): Validated[RuntimeException, Branch] =
       if (branch.workflow.instructions exists (o ⇒ o.isInstanceOf[Goto]  || o.isInstanceOf[IfErrorGoto]))
         Invalid(new IllegalArgumentException(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto' or 'ifError'"))
       else
         Valid(branch)
-    }
 
     @JsonCodec
-    final case class Branch(id: OrderId.ChildId, workflow: Workflow)
+    final case class Branch(id: Position.BranchId.Named, workflow: Workflow)
     object Branch {
-      implicit def fromPair(pair: (OrderId.ChildId, Workflow)) = new Branch(pair._1, pair._2)
+      implicit def fromPair(pair: (Position.BranchId.Named, Workflow)) = new Branch(pair._1, pair._2)
     }
   }
 

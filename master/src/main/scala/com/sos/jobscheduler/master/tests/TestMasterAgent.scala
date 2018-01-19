@@ -189,10 +189,10 @@ object TestMasterAgent {
       Instruction.ForkJoin(
         for ((agentPath, pathName) ← conf.agentPaths.toVector zip PathNames) yield
           Instruction.ForkJoin.Branch(
-            OrderId.ChildId(pathName),
-          Workflow(
-            for (_ ← 1 to conf.workflowLength) yield
-              () @: Instruction.Job(AgentJobPath(agentPath, TestJobPath))))),
+            pathName,
+            Workflow(
+              for (_ ← 1 to conf.workflowLength) yield
+                () @: Instruction.Job(AgentJobPath(agentPath, TestJobPath))))),
       Instruction.ExplicitEnd))
 
   private case class Conf(

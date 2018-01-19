@@ -57,9 +57,9 @@ extends JournalRecoverer[Event] {
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
     event match {
-      case OrderForked(children) ⇒
-        for (child ← children) {
-          idToOrder.insert(child.orderId → idToOrder(orderId).newChild(child))
+      case event: OrderForked ⇒
+        for (childOrder ← idToOrder(orderId).newForkedOrders(event)) {
+          idToOrder.insert(childOrder.id → childOrder)
         }
         idToOrder(orderId) = idToOrder(orderId).update(event)
 

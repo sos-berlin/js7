@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransitionedEvent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted}
 import com.sos.jobscheduler.data.order.Outcome.Bad.AgentRestarted
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
@@ -34,7 +34,7 @@ final class WorkflowProcessTest extends FreeSpec {
       job)                                      // 2
 
     "then branch executed" in {
-      assert(step(workflow, Outcome.Good(false)) == Some(OrderMoved(Position(2))))
+      assert(stepAfterJob(workflow, Outcome.Good(false)) == Some(OrderMoved(Position(2))))
     }
 
     "again, all events" in {
@@ -50,7 +50,7 @@ final class WorkflowProcessTest extends FreeSpec {
     }
 
     "then branch not executed" in {
-      assert(step(workflow, Outcome.Good(false)) == Some(OrderMoved(Position(2))))
+      assert(stepAfterJob(workflow, Outcome.Good(false)) == Some(OrderMoved(Position(2))))
     }
   }
 
@@ -62,12 +62,12 @@ final class WorkflowProcessTest extends FreeSpec {
         Workflow.of(job))),  // else            // 1,1,0
       job)                                      // 2
 
-      "then branch executed" in {
-      assert(step(workflow, Outcome.Good(true)) == Some(OrderMoved(Position(1, 0, 0))))
+    "then branch executed" in {
+      assert(stepAfterJob(workflow, Outcome.Good(true)) == Some(OrderMoved(Position(1, 0, 0))))
     }
 
     "else branch executed" in {
-      assert(step(workflow, Outcome.Good(false)) == Some(OrderMoved(Position(1, 1, 0))))
+      assert(stepAfterJob(workflow, Outcome.Good(false)) == Some(OrderMoved(Position(1, 1, 0))))
     }
   }
 
@@ -80,7 +80,7 @@ final class WorkflowProcessTest extends FreeSpec {
         "C" @:   job,            // 3
         "END" @: ExplicitEnd,    // 4
         "B" @:   IfErrorGoto("C"))) // 5
-      val process = new WorkflowProcess(workflow, List(okayOrder, errorOrder))
+      val process = newWorkflowProcess(workflow, List(okayOrder, errorOrder))
       assert(process.applyTransitionInstructions(okayOrder.withInstructionNr(0)) == Some(Position(0)))    // Job
       assert(process.applyTransitionInstructions(okayOrder.withInstructionNr(1)) == Some(Position(6)))    // success
       assert(process.applyTransitionInstructions(errorOrder.withInstructionNr(1)) == Some(Position(3)))   // error
@@ -100,7 +100,7 @@ final class WorkflowProcessTest extends FreeSpec {
         "A" @: Goto("B"),           // 0
         "B" @: Goto("A"),           // 1
         "C" @: IfErrorGoto("A")))   // 2
-      val process = new WorkflowProcess(workflow, List(okayOrder, errorOrder))
+      val process = newWorkflowProcess(workflow, List(okayOrder, errorOrder))
       assert(process.applyTransitionInstructions(okayOrder.withInstructionNr(0)) == None)  // Loop
       assert(process.applyTransitionInstructions(okayOrder.withInstructionNr(1)) == None)  // Loop
       assert(process.applyTransitionInstructions(okayOrder.withInstructionNr(2)) == Some(Position(3)))  // No loop
@@ -108,13 +108,13 @@ final class WorkflowProcessTest extends FreeSpec {
     }
 
     "Job, ForkJoin" in {
-      val process = new WorkflowProcess(TestWorkflow, List(okayOrder, errorOrder))
+      val process = newWorkflowProcess(TestWorkflow, List(okayOrder, errorOrder))
       assert(process.applyTransitionInstructions(okayOrder.withInstructionNr(0)) == Some(Position(0)))
       assert(process.applyTransitionInstructions(okayOrder.withInstructionNr(1)) == Some(Position(1)))
     }
 
     "In forked order" in {
-      val process = new WorkflowProcess(TestWorkflow, List(okayOrder, errorOrder))
+      val process = newWorkflowProcess(TestWorkflow, List(okayOrder, errorOrder))
       val forkedOrder = okayOrder.copy(workflowPosition = okayOrder.workflowPosition.copy(position = Position(1, "🥕", 1)))
       assert(process.applyTransitionInstructions(forkedOrder) == Some(Position(1, "🥕", 1)))
     }
@@ -127,11 +127,16 @@ object WorkflowProcessTest {
   private val errorOrder = Order(OrderId("ERROR"), WorkflowPath("/WORKFLOW"), Order.Ready, payload = Payload(Map(), Outcome.Good(false)))
   private val job = Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB")))
 
-
-  private def step(workflow: Workflow, outcome: Outcome): Option[OrderTransitionedEvent] = {
+  private def stepAfterJob(workflow: Workflow, outcome: Outcome): Option[OrderActorEvent] = {
     val process = new SingleOrderProcess(workflow)
     process.update(OrderAdded(WorkflowPath("/WORKFLOW"), Order.Ready))
     process.jobStep(outcome = outcome)
+    process.step()
+  }
+
+  private def step(workflow: Workflow, outcome: Outcome): Option[OrderActorEvent] = {
+    val process = new SingleOrderProcess(workflow)
+    process.update(OrderAdded(WorkflowPath("/WORKFLOW"), Order.Ready))
     process.step()
   }
 
@@ -141,7 +146,7 @@ object WorkflowProcessTest {
     def jobStep(variablesDiff: MapDiff[String, String] = MapDiff.empty, outcome: Outcome = Outcome.Good(true)) =
       process.jobStep(orderId, variablesDiff, outcome)
 
-    def step(): Option[OrderTransitionedEvent] =
+    def step(): Option[OrderActorEvent] =
       process.step(orderId) map (_.event)
 
     def update(event: OrderEvent) = process.update(orderId <-: event)
@@ -156,7 +161,7 @@ object WorkflowProcessTest {
       update(orderId <-: OrderProcessed(variablesDiff, outcome))
     }
 
-    def step(orderId: OrderId): Option[KeyedEvent[OrderTransitionedEvent]] = {
+    def step(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
       val keyedEventOption = process.tryExecuteInstruction(orderId)
       keyedEventOption foreach update
       keyedEventOption
@@ -181,8 +186,11 @@ object WorkflowProcessTest {
       payload = Payload(Map.empty, outcome = outcome))
       .withPosition(position)
 
-  private def exec(workflow: Workflow, order: Order[Order.State]): Option[KeyedEvent[OrderTransitionedEvent]] = {
+  private def exec(workflow: Workflow, order: Order[Order.State]): Option[KeyedEvent[OrderActorEvent]] = {
     val process = new WorkflowProcess(workflow, Map(order.id → order))
     process.tryExecuteInstruction(order.id)
   }
+
+  private def newWorkflowProcess(workflow: Workflow, orders: Iterable[Order[Order.State]]) =
+    new WorkflowProcess(workflow, orders toKeyedMap (_.id))
 }

@@ -220,7 +220,7 @@ private object OrderActorTest {
 
           case _: OrderProcessed ⇒
             events += event
-            orderActor ! OrderActor.Input.HandleTransitionEvent(OrderMoved(TestPosition))
+            orderActor ! OrderActor.Input.HandleEvent(OrderMoved(TestPosition))
 
             case _: OrderMoved ⇒
               events += event

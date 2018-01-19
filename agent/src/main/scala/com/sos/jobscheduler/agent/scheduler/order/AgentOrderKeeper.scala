@@ -288,9 +288,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
           jobEntry.queue -= order.id
         }
 
-      case OrderForked(children) ⇒
-        for (child ← children) {
-          val childOrder = order.newChild(child)
+      case event: OrderForked ⇒
+        for (childOrder ← order.newForkedOrders(event)) {
           val actor = newOrderActor(childOrder)
           orderRegister.insert(childOrder, orderEntry.workflow, actor)
           actor ! OrderActor.Input.AddChild(childOrder)
@@ -389,7 +388,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     assert(order.isAttachedToAgent)
     val process = new WorkflowProcess(workflow, orderRegister.idToOrder)
     for (KeyedEvent(orderId, event) ← process.tryExecuteInstruction(order.id)) {
-      orderRegister(orderId).actor ! OrderActor.Input.HandleTransitionEvent(event)
+      orderRegister(orderId).actor ! OrderActor.Input.HandleEvent(event)
     }
   }
 

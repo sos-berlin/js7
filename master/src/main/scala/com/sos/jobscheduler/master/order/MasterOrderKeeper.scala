@@ -314,9 +314,8 @@ with Stash {
       case _ ⇒
         val orderEntry = orderRegister(orderId)
         event match {
-          case OrderForked(children) ⇒
-            for (child ← children) {
-              val childOrder = orderEntry.order.newChild(child)
+          case event: OrderForked ⇒
+            for (childOrder ← orderEntry.order.newForkedOrders(event)) {
               val entry = OrderEntry(childOrder)
               orderRegister.insert(childOrder.id → entry)
               proceedWithOrder(entry)

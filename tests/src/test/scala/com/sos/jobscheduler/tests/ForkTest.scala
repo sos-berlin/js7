@@ -1,13 +1,10 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
-import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -20,7 +17,6 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, 
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
-import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
@@ -28,9 +24,7 @@ import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.ForkTest._
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
-import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 import scala.language.higherKinds
 
 final class ForkTest extends FreeSpec {
@@ -38,13 +32,11 @@ final class ForkTest extends FreeSpec {
   "test" in {
     autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { directoryProvider ⇒
       withCloser { implicit closer ⇒
-        import directoryProvider.directory
-
         directoryProvider.master.jsonFile(TestNamedWorkflow.path).contentString = TestWorkflow.asJson.toPrettyString
         for (a ← directoryProvider.agents) a.job(TestJobPath).xml = jobXml(100.ms)
 
-        runAgents(directoryProvider.agents map (_.conf)) { _ ⇒
-          RunningMaster.runForTest(directory) { master ⇒
+        directoryProvider.runAgents { _ ⇒
+          directoryProvider.runMaster { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
             master.executeCommand(MasterCommand.AddOrderIfNew(TestOrder)) await 99.s
@@ -56,17 +48,6 @@ final class ForkTest extends FreeSpec {
         }
       }
     }
-  }
-
-  private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[RunningAgent] ⇒ Unit): Unit =
-    multipleAutoClosing(confs map startAgent await 10.s) { agents ⇒
-      body(agents)
-    }
-
-  private def startAgent(conf: AgentConfiguration): Future[RunningAgent] = {
-    val whenAgent = RunningAgent(conf)
-    for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
-    whenAgent
   }
 
   private def checkEventSeq(eventSeq: TearableEventSeq[TraversableOnce, KeyedEvent[OrderEvent]]): Unit = {
@@ -87,7 +68,7 @@ object ForkTest {
   private val TestOrder = Order(OrderId("🔺"), TestNamedWorkflow.path, state = Order.StartNow, payload = Payload(Map("VARIABLE" → "VALUE")))
   private val XOrderId = OrderId(s"🔺/🥕")
   private val YOrderId = OrderId(s"🔺/🍋")
-  val ExpectedEvents = Vector(
+  private val ExpectedEvents = Vector(
     TestOrder.id <-: OrderAdded(TestNamedWorkflow.path, Order.StartNow, Payload(Map("VARIABLE" → "VALUE"))),
     TestOrder.id <-: OrderTransferredToAgent(AAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
@@ -96,7 +77,7 @@ object ForkTest {
     TestOrder.id <-: OrderMoved(Position(1)),
 
     TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child(OrderId.ChildId("🥕"), XOrderId, MapDiff.empty),       OrderForked.Child(OrderId.ChildId("🍋"), YOrderId, MapDiff.empty))),
+      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
     TestOrder.id <-: OrderDetachable,
     TestOrder.id <-: OrderTransferredToMaster,
       XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
@@ -120,7 +101,7 @@ object ForkTest {
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.Good(true)),
     TestOrder.id <-: OrderMoved(Position(3)),
     TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child(OrderId.ChildId("🥕"), XOrderId, MapDiff.empty),       OrderForked.Child(OrderId.ChildId("🍋"), YOrderId, MapDiff.empty))),
+      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
     TestOrder.id <-: OrderDetachable,
     TestOrder.id <-: OrderTransferredToMaster,
       XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
@@ -144,7 +125,7 @@ object ForkTest {
   //TestOrder.id <-: OrderTransferredToMaster,
 
     TestOrder.id <-: OrderForked(Vector(
-      OrderForked.Child(OrderId.ChildId("🥕"), XOrderId, MapDiff.empty),       OrderForked.Child(OrderId.ChildId("🍋"), YOrderId, MapDiff.empty))),
+      OrderForked.Child("🥕", XOrderId, MapDiff.empty),                        OrderForked.Child("🍋", YOrderId, MapDiff.empty))),
     TestOrder.id <-: OrderDetachable,
     TestOrder.id <-: OrderTransferredToMaster,
                                                                                YOrderId <-: OrderDetachable,

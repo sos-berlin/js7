@@ -25,10 +25,11 @@ final case class Order[+S <: Order.State](
   payload: Payload = Payload.empty,
   parent: Option[OrderId] = None)
 {
-  def newChild(child: OrderForked.Child): Order[Order.Ready.type] =
-    Order(child.orderId, workflowPosition.copy(position = workflowPosition.position / child.childId / InstructionNr.First), Ready, attachedTo,
-      Payload(child.variablesDiff.applyTo(payload.variables)),
-      parent = Some(id))
+  def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready.type]] =
+    for (child ← event.children) yield
+      Order(child.orderId, workflowPosition.copy(position = workflowPosition.position / child.branchId / InstructionNr.First), Ready, attachedTo,
+        Payload(child.variablesDiff.applyTo(payload.variables)),
+        parent = Some(id))
 
   def workflowPath: WorkflowPath =
     workflowPosition.workflowPath

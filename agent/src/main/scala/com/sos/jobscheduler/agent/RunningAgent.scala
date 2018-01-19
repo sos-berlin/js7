@@ -57,6 +57,17 @@ object RunningAgent {
       a
     }
 
+  def runForTest(conf: AgentConfiguration)(body: RunningAgent ⇒ Unit): Unit =
+    autoClosing(startForTest(conf) await 10.s)(body)
+
+
+  def startForTest(conf: AgentConfiguration): Future[RunningAgent] = {
+    import ExecutionContext.Implicits.global
+    val whenAgent = apply(conf)
+    for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
+    whenAgent
+  }
+
   def apply(configuration: AgentConfiguration): Future[RunningAgent] =
     apply(new AgentModule(configuration))
 

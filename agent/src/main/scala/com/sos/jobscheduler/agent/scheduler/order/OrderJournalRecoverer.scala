@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderDetached, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{WorkflowEvent, WorkflowPath, Workflow}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowPath}
 import com.sos.jobscheduler.shared.event.journal.JournalRecoverer
 import java.nio.file.Path
 import scala.collection.mutable
@@ -73,9 +73,9 @@ extends JournalRecoverer[Event] {
 
   private def handleForkJoinEvent(orderId: OrderId, event: OrderCoreEvent): Unit =  // TODO Duplicate with MasterJournalRecoverer
     event match {
-      case OrderForked(children) ⇒
-        for (child ← children) {
-          idToOrder.insert(child.orderId → idToOrder(orderId).newChild(child))
+      case event: OrderForked ⇒
+        for (childOrder ← idToOrder(orderId).newForkedOrders(event)) {
+          idToOrder.insert(childOrder.id → childOrder)
         }
         idToOrder(orderId) = idToOrder(orderId).update(event)
 

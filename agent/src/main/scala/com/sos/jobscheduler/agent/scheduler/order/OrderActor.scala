@@ -114,11 +114,11 @@ extends KeyedJournalingActor[OrderEvent] {
             stderrWriter = stderrWriter))
       }
 
-    case Input.HandleTransitionEvent(event: OrderForked) ⇒
+    case Input.HandleEvent(event: OrderForked) ⇒
       context.become(joining)
       persist(event)(update)
 
-    case Input.HandleTransitionEvent(OrderDetachable) ⇒
+    case Input.HandleEvent(OrderDetachable) ⇒
       persist(OrderDetachable)(update)
 
     case Input.Terminate ⇒
@@ -165,11 +165,11 @@ extends KeyedJournalingActor[OrderEvent] {
   }
 
   private def processed: Receive = journaling orElse {
-    case Input.HandleTransitionEvent(event: OrderMoved) ⇒
+    case Input.HandleEvent(event: OrderMoved) ⇒
       context.become(idle)
       persist(event)(update)
 
-    case Input.HandleTransitionEvent(OrderDetachable) ⇒
+    case Input.HandleEvent(OrderDetachable) ⇒
       persist(OrderDetachable)(update)
 
     case Input.Terminate ⇒
@@ -184,11 +184,11 @@ extends KeyedJournalingActor[OrderEvent] {
 
   private def joining: Receive =
     journaling orElse {
-      case Input.HandleTransitionEvent(event: OrderJoined) ⇒
+      case Input.HandleEvent(event: OrderJoined) ⇒
         context.become(idle)
         persist(event)(update)
 
-      case Input.HandleTransitionEvent(OrderDetachable) ⇒
+      case Input.HandleEvent(OrderDetachable) ⇒
         persist(OrderDetachable)(update)
 
       case Command.Detach ⇒
@@ -274,7 +274,7 @@ private[order] object OrderActor {
     final case class AddChild(order: Order[Order.Ready.type]) extends Input
     final case class StartProcessing(job: Instruction.Job, jobActor: ActorRef) extends Input
     final case object Terminate extends Input
-    final case class HandleTransitionEvent(event: OrderTransitionedEvent) extends Input
+    final case class HandleEvent(event: OrderActorEvent) extends Input
   }
 
   object Output {

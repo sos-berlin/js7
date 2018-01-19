@@ -2,13 +2,12 @@ package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.scheduler.AgentEvent
 import com.sos.jobscheduler.base.utils.MapDiff
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichThrowable}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -32,10 +31,9 @@ import java.nio.file.Path
 import java.time.Instant
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -50,19 +48,16 @@ final class RecoveryIT extends FreeSpec {
       for ((agentPath, tree) ← directoryProvider.agentToTree)
         tree.job(TestJobPath).xml = jobXml(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
       withCloser { implicit closer ⇒
-        import directoryProvider.directory
 
         (directoryProvider.master.live / "fast.job_chain.xml").xml = QuickJobChainElem
         (directoryProvider.master.live / "test.job_chain.xml").xml = TestJobChainElem
         (directoryProvider.master.live / "test.order.xml").xml = TestOrderGeneratorElem
 
-        val agentConfs = directoryProvider.agents map (_.conf)
-
-        runMaster(directory) { master ⇒
+        runMaster(directoryProvider) { master ⇒
           if (lastEventId == EventId.BeforeFirst) {
             lastEventId = eventCollector.oldestEventId
           }
-          runAgents(agentConfs) { _ ⇒
+          runAgents(directoryProvider) { _ ⇒
             master.executeCommand(MasterCommand.AddOrderIfNew(FastOrder)) await 99.s
             lastEventId = lastEventIdOf(eventCollector.when[OrderFinished.type](EventRequest.singleClass(after = lastEventId, 99.s), _.key == FastOrderId) await 99.s)
             lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestWorkflowPath.string) await 99.s)
@@ -71,7 +66,7 @@ final class RecoveryIT extends FreeSpec {
           assert((readEvents(directoryProvider.agents(0).data / "state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
             Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId.Anonymous)))
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
-          runAgents(agentConfs) { _ ⇒
+          runAgents(directoryProvider) { _ ⇒
             lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestWorkflowPath.string) await 99.s)
           }
         }
@@ -80,8 +75,8 @@ final class RecoveryIT extends FreeSpec {
           val myLastEventId = lastEventId
           sys.runtime.gc()  // For a clean memory view
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
-          runAgents(agentConfs) { _ ⇒
-            runMaster(directory) { master ⇒
+          runAgents(directoryProvider) { _ ⇒
+            runMaster(directoryProvider) { master ⇒
               val finishedEventSeq = eventCollector.when[OrderFinished.type](EventRequest.singleClass(after = myLastEventId, 99.s), _.key.string startsWith TestWorkflowPath.string) await 99.s
               val orderId = (finishedEventSeq: @unchecked) match {
                 case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderFinished.type]] ⇒ eventSeq.stampeds.toVector.last.value.key
@@ -108,25 +103,19 @@ final class RecoveryIT extends FreeSpec {
     }
   }
 
-  private def runMaster(directory: Path)(body: RunningMaster ⇒ Unit): Unit =
-    RunningMaster.runForTest(directory) { master ⇒
+  private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster ⇒ Unit): Unit =
+    directoryProvider.runMaster { master ⇒
       eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
     }
 
-  private def runAgents(confs: Seq[AgentConfiguration])(body: Seq[RunningAgent] ⇒ Unit): Unit =
-    multipleAutoClosing(confs map startAgent await 10.s) { agents ⇒
+  private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
+    directoryProvider.runAgents { agents ⇒
       body(agents)
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
     }
-
-  private def startAgent(conf: AgentConfiguration): Future[RunningAgent] = {
-    val whenAgent = RunningAgent(conf)
-    for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
-    whenAgent
-  }
 
   private def readEvents(journalFile: Path): Vector[Stamped[KeyedEvent[AgentEvent]]] = {
     val conversion = new GzipCompression {}
