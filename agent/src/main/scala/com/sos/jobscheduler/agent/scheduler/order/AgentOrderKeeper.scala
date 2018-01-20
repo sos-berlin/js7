@@ -34,8 +34,8 @@ import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, Workflow, Workf
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
-import com.sos.jobscheduler.shared.workflow.{WorkflowEventHandler, WorkflowProcessor}
-import com.sos.jobscheduler.shared.workflow.WorkflowProcessor.FollowUp
+import com.sos.jobscheduler.shared.workflow.{WorkflowEventHandler, WorkflowEventSource}
+import com.sos.jobscheduler.shared.workflow.WorkflowEventSource.FollowUp
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Duration
@@ -69,7 +69,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
-  private val workflowProcessor = new WorkflowProcessor(workflowRegister.pathToWorkflow, orderRegister.idToOrder)
+  private val workflowEventSource = new WorkflowEventSource(workflowRegister.pathToWorkflow, orderRegister.idToOrder)
   private val workflowEventHandler = new WorkflowEventHandler(orderRegister.idToOrder)
   private val eventsForMaster = actorOf(Props { new EventQueueActor(timerService) }, "eventsForMaster").taggedWith[EventQueueActor]
 
@@ -375,7 +375,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
     assert(order.isAttachedToAgent)
-    for (KeyedEvent(orderId, event) ← workflowProcessor.nextEvent(order.id)) {
+    for (KeyedEvent(orderId, event) ← workflowEventSource.nextEvent(order.id)) {
       orderRegister(orderId).actor ! OrderActor.Input.HandleEvent(event)
     }
   }

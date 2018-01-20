@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderForked, OrderJoined}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.shared.workflow.WorkflowEventHandler._
-import com.sos.jobscheduler.shared.workflow.WorkflowProcessor.FollowUp
+import com.sos.jobscheduler.shared.workflow.WorkflowEventSource.FollowUp
 import scala.collection.immutable.Seq
 
 /**

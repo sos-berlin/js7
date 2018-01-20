@@ -11,13 +11,13 @@ import com.sos.jobscheduler.data.order.Outcome.Bad.AgentRestarted
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Instruction.{End, ForkJoin, Gap, Goto, IfErrorGoto, IfReturnCode, Job}
 import com.sos.jobscheduler.data.workflow.{Instruction, Position, Workflow, WorkflowPath, WorkflowPosition}
-import com.sos.jobscheduler.shared.workflow.WorkflowProcessor._
+import com.sos.jobscheduler.shared.workflow.WorkflowEventSource._
 import scala.annotation.tailrec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowProcessor(
+final class WorkflowEventSource(
   pathToWorkflow: PartialFunction[WorkflowPath, Workflow],
   idToOrder: PartialFunction[OrderId, Order[Order.State]])
 {
@@ -155,7 +155,7 @@ final class WorkflowProcessor(
     pathToWorkflow(workflowPosition.workflowPath).instruction(workflowPosition.position)
 }
 
-object WorkflowProcessor {
+object WorkflowEventSource {
   private val logger = Logger(getClass)
 
   sealed trait FollowUp
