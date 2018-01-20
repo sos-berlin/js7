@@ -9,8 +9,11 @@ final case class OrderId(string: String) extends IsString {
 
   def pretty = s"Order $string"
 
-  def /(child: OrderId.ChildId): OrderId =
-    OrderId(string + OrderId.ChildSeparator + child.string)
+  def /(childId: String): OrderId =
+    this / (OrderId.ChildId(childId))
+
+  def /(childId: OrderId.ChildId): OrderId =
+    OrderId(string + OrderId.ChildSeparator + childId.string)
 }
 
 object OrderId extends IsString.Companion[OrderId] {

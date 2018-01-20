@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.{WorkflowEvent, WorkflowPath, Workflow}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowPath}
 import scala.collection.mutable
 
 /**
@@ -37,6 +37,11 @@ private[order] final class WorkflowRegister {
       assert(order.workflowPosition == wp)
       order.copy(workflowPosition = wp)
     }
+  }
+
+  def pathToWorkflow: PartialFunction[WorkflowPath, Workflow] = {
+    case workflowPath if pathToNamedWorkflow contains workflowPath ⇒
+      pathToNamedWorkflow(workflowPath).workflow
   }
 
   def get(path: WorkflowPath): Option[Workflow.Named] =

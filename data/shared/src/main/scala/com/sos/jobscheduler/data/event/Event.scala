@@ -14,7 +14,7 @@ trait Event {
   type Key
 
   @deprecated("Use <-:", "")  // For easier typing. When typing <-:, IntelliJ replaces it by ←:
-  final def <<:(key: Key) = key <-: this
+  final def <<:(key: Key) = new KeyedEvent[this.type](key, this)
 
   final def <-:(key: Key) = new KeyedEvent[this.type](key, this)
 }

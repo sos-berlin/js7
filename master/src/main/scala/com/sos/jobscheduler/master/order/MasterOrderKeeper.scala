@@ -34,7 +34,8 @@ import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
-import com.sos.jobscheduler.shared.workflow.WorkflowProcess
+import com.sos.jobscheduler.shared.workflow.{WorkflowEventHandler, WorkflowProcessor}
+import com.sos.jobscheduler.shared.workflow.WorkflowProcessor.FollowUp
 import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflowScript
 import com.sos.jobscheduler.shared.workflow.notation.WorkflowParser
 import java.nio.file.Path
@@ -66,6 +67,9 @@ with Stash {
   private val agentRegister = new AgentRegister
   private val pathToNamedWorkflow = mutable.Map[WorkflowPath, Workflow.Named]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
+  private val idToOrder = orderRegister mapPartialFunction (_.order)
+  private val workflowProcessor = new WorkflowProcessor(pathToNamedWorkflow mapPartialFunction (_.workflow), idToOrder)
+  private val workflowEventHandler = new WorkflowEventHandler(idToOrder)
   private var detachingSuspended = false
   protected val journalActor = context.watch(context.actorOf(
     JournalActor.props(
@@ -314,26 +318,16 @@ with Stash {
       case _ ⇒
         val orderEntry = orderRegister(orderId)
         event match {
-          case event: OrderForked ⇒
-            for (childOrder ← orderEntry.order.newForkedOrders(event)) {
-              val entry = OrderEntry(childOrder)
-              orderRegister.insert(childOrder.id → entry)
-              proceedWithOrder(entry)
-            }
-
-          case event: OrderJoined ⇒
-            orderEntry.order.state match {
-              case Order.Join(joinOrderIds) ⇒
-                for (joinOrderId ← joinOrderIds) {
-                  orderRegister -= joinOrderId
-                }
-              case state ⇒
-                logger.error(s"Event $event, but $orderId is in state $state")
-            }
-
-          case OrderTransferredToMaster ⇒
-
           case _ ⇒
+            workflowEventHandler.handleEvent(orderId <-: event) foreach {
+              case FollowUp.Add(derivedOrder) ⇒
+                val entry = OrderEntry(derivedOrder)
+                orderRegister.insert(derivedOrder.id → entry)
+                proceedWithOrder(entry)
+
+              case FollowUp.Remove(removeOrderId) ⇒
+                orderRegister -= removeOrderId
+            }
         }
         orderEntry.update(event)
         proceedWithOrder(orderEntry)
@@ -366,9 +360,8 @@ with Stash {
 
       case _ ⇒
     }
-    val process = new WorkflowProcess(pathToNamedWorkflow(order.workflowPath).workflow, orderRegister mapPartialFunction (_.order))
     if (!order.isAttachedToAgent) {
-      for (keyedEvent ← process.tryExecuteInstruction(order.id)) {
+      for (keyedEvent ← workflowProcessor.nextEvent(order.id)) {
         persistAsync(keyedEvent)(handleOrderEvent)
       }
     }

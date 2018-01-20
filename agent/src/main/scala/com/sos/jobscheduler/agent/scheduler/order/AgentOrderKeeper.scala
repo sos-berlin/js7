@@ -27,14 +27,15 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderForked, OrderJoined, OrderProcessed}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderProcessed}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, Workflow, WorkflowEvent}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
-import com.sos.jobscheduler.shared.workflow.WorkflowProcess
+import com.sos.jobscheduler.shared.workflow.{WorkflowEventHandler, WorkflowProcessor}
+import com.sos.jobscheduler.shared.workflow.WorkflowProcessor.FollowUp
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Duration
@@ -68,6 +69,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
+  private val workflowProcessor = new WorkflowProcessor(workflowRegister.pathToWorkflow, orderRegister.idToOrder)
+  private val workflowEventHandler = new WorkflowEventHandler(orderRegister.idToOrder)
   private val eventsForMaster = actorOf(Props { new EventQueueActor(timerService) }, "eventsForMaster").taggedWith[EventQueueActor]
 
   private var terminating = false
@@ -155,6 +158,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
     case OrderActor.Output.OrderChanged(order, event) if orderRegister contains order.id ⇒
       handleOrderEvent(order, event)
+      proceedWithOrder(order.id)
 
     case JobActor.Output.ReadyForOrder if (jobRegister contains sender()) && !terminating ⇒
       tryStartProcessing(jobRegister(sender()))
@@ -271,43 +275,28 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   }
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
-    handleOrderEventOnly(order, event)
-    proceedWithOrder(order.id)
-  }
-
-  private def handleOrderEventOnly(order: Order[Order.State], event: OrderEvent): Unit = {
     val orderEntry = orderRegister(order.id)
-    val previousOrder = orderEntry.order
-    orderEntry.order = order
     event match {
       case event: OrderProcessed if event.outcome != OrderActor.RecoveryGeneratedOutcome ⇒
         assert(order.state == Order.Processed)
-
         for (jobEntry ← orderEntry.jobOption map (_.jobPath) flatMap jobRegister.get whenEmpty
                           logger.error(s"OrderProcessed but missing job for ${order.id} ${order.workflowPosition} state=${order.state.getClass.simpleScalaName}")) {
           jobEntry.queue -= order.id
         }
 
-      case event: OrderForked ⇒
-        for (childOrder ← order.newForkedOrders(event)) {
-          val actor = newOrderActor(childOrder)
-          orderRegister.insert(childOrder, orderEntry.workflow, actor)
-          actor ! OrderActor.Input.AddChild(childOrder)
-          proceedWithOrder(childOrder.id)
-        }
-
-      case joined: OrderJoined ⇒
-        previousOrder.state match {
-          case Order.Join(joinOrderIds) ⇒
-            for (joinOrderId ← joinOrderIds) {
-              removeOrder(joinOrderId)
-            }
-          case state ⇒
-            logger.error(s"Event $joined, but Order is in state $state")
-        }
-
       case _ ⇒
+        workflowEventHandler.handleEvent(order.id <-: event) foreach {
+          case FollowUp.Add(derivedOrder) ⇒
+            val actor = newOrderActor(derivedOrder)
+            orderRegister.insert(derivedOrder, orderEntry.workflow, actor)
+            actor ! OrderActor.Input.AddChild(derivedOrder)
+            proceedWithOrder(derivedOrder.id)
+
+          case FollowUp.Remove(removeOrderId) ⇒
+            removeOrder(removeOrderId)
+        }
     }
+    orderEntry.order = order
   }
 
   private def proceedWithOrder(orderId: OrderId): Unit = {
@@ -386,8 +375,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
     assert(order.isAttachedToAgent)
-    val process = new WorkflowProcess(workflow, orderRegister.idToOrder)
-    for (KeyedEvent(orderId, event) ← process.tryExecuteInstruction(order.id)) {
+    for (KeyedEvent(orderId, event) ← workflowProcessor.nextEvent(order.id)) {
       orderRegister(orderId).actor ! OrderActor.Input.HandleEvent(event)
     }
   }

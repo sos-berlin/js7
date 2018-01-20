@@ -9,6 +9,7 @@ import com.sos.jobscheduler.data.workflow.Workflow._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.{IndexedSeq, Seq}
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
@@ -188,6 +189,8 @@ object Workflow {
     def lastWorkflowPosition = path /: Position(workflow.lastNr)
   }
   object Named {
+    implicit def fromPair(pair: (WorkflowPath, Workflow)) = Named(pair._1, pair._2)
+
     implicit val jsonCodec = deriveCirceCodec[Named]
   }
 

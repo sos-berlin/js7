@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.akkautils
 
-import akka.actor.{Actor, ActorSystem, DeadLetter, Props, UnhandledMessage}
+import akka.actor.{Actor, ActorSystem, DeadLetter, DeadLetterSuppression, Props, UnhandledMessage}
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor._
 import com.sos.jobscheduler.common.scalautil.Logger
 import scala.util.control.NonFatal
@@ -10,6 +10,8 @@ import scala.util.control.NonFatal
   */
 private class DeadLetterActor(output: (⇒ String) ⇒ Unit) extends Actor {
   def receive = {
+    case _: DeadLetterSuppression ⇒
+
     case o: DeadLetter ⇒
       callOutput(s"DeadLetter from ${o.sender} to ${o.recipient}: ${o.message}")
 
