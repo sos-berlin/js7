@@ -54,7 +54,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
 
   private def requestWorkflows: Callback =
     Callback.future {
-      MasterApi.workflowScripts transform {
+      MasterApi.workflows transform {
         case Failure(err) ⇒ setError(err)
         case Success(stamped: Stamped[Seq[Workflow.Named]]) ⇒
           Try {

@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.Instruction.{Goto, IfErrorGoto, IfReturnCode, Job}
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowScriptNotation}
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
 import scala.util.control.NoStackTrace
@@ -16,7 +16,7 @@ import scala.util.control.NoStackTrace
 final class WorkflowParserTest extends FreeSpec {
 
   "parse" in {
-    assert(parse(TestWorkflowScriptNotation) == TestWorkflow)
+    assert(parse(TestWorkflowNotation) == TestWorkflow)
   }
 
   private val singleJobScript = Workflow(Vector(
@@ -94,13 +94,13 @@ final class WorkflowParserTest extends FreeSpec {
   for (n ← sys.props.get("test.speed") map (_.toInt)) "Speed" - {
     s"Parsing $n processes" in {
       info(measureTime(n, "processes") {
-        parse(TestWorkflowScriptNotation)
+        parse(TestWorkflowNotation)
       }.toString)
     }
 
     s"Parsing and compiling $n processes, parallel" in {
       info(measureTimeParallel(n, "processes") {
-        parse(TestWorkflowScriptNotation)
+        parse(TestWorkflowNotation)
       }.toString)
     }
   }

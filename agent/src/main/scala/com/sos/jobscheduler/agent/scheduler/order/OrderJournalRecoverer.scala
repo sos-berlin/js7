@@ -93,6 +93,6 @@ extends JournalRecoverer[Event] {
       case _ ⇒
     }
 
-  def namedWorkflowScripts = workflowRegister.namedWorkflowScripts
+  def namedWorkflows = workflowRegister.namedWorkflows
   def orders = idToOrder.values
 }

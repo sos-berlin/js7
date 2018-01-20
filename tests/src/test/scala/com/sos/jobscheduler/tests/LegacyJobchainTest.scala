@@ -26,7 +26,7 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflowScript
+import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.tests.LegacyJobchainTest._
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec

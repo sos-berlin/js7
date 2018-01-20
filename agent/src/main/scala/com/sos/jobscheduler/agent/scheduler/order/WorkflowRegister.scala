@@ -50,7 +50,7 @@ private[order] final class WorkflowRegister {
   def apply(path: WorkflowPath): Workflow.Named =
     pathToNamedWorkflow(path)
 
-  def namedWorkflowScripts: Vector[Workflow.Named] =
+  def namedWorkflows: Vector[Workflow.Named] =
     pathToNamedWorkflow.values.toVector
 
   def size: Int =

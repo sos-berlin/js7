@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowScriptNotation}
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.client.{AkkaHttpClient, HttpMasterApi}
@@ -32,7 +32,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   override def beforeAll() = {
     super.beforeAll()
     //env.xmlFile(TestAgentPath).xml = <agent uri="http://0.0.0.0:0"/>
-    env.txtFile(TestWorkflowPath).contentString = TestWorkflowScriptNotation
+    env.txtFile(TestWorkflowPath).contentString = TestWorkflowNotation
     val runningMaster = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     master = runningMaster
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
@@ -64,7 +64,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "workflow" in {
-    assert(api.workflowScripts.await(99.s).value == List(Workflow.Named(TestWorkflowPath, TestWorkflow)))
+    assert(api.workflows.await(99.s).value == List(Workflow.Named(TestWorkflowPath, TestWorkflow)))
   }
 }
 

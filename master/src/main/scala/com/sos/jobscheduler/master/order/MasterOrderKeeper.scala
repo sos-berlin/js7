@@ -36,7 +36,7 @@ import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, Jou
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.shared.workflow.{WorkflowEventHandler, WorkflowEventSource}
 import com.sos.jobscheduler.shared.workflow.WorkflowEventSource.FollowUp
-import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflowScript
+import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.shared.workflow.notation.WorkflowParser
 import java.nio.file.Path
 import java.time.Duration

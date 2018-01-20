@@ -84,7 +84,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private def recover(): Unit = {
     val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster)(askTimeout)
     recoverer.recoverAll()
-    for (namedWorkflow ← recoverer.namedWorkflowScripts)
+    for (namedWorkflow ← recoverer.namedWorkflows)
       wrapException(s"Error when recovering ${namedWorkflow.path}") {
         workflowRegister.recover(namedWorkflow)
       }
@@ -105,7 +105,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   }
 
   def snapshots = {
-    val workflowSnapshots = workflowRegister.namedWorkflowScripts
+    val workflowSnapshots = workflowRegister.namedWorkflows
     for (got ← (eventsForMaster ? EventQueueActor.Input.GetSnapshots).mapTo[EventQueueActor.Output.GotSnapshots])
       yield workflowSnapshots ++ got.snapshots  // Future: don't use mutable `this`
   }

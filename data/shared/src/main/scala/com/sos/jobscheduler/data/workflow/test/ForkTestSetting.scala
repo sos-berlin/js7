@@ -17,7 +17,7 @@ object ForkTestSetting {
   val BAgentJobPath = AgentJobPath(BAgentPath, JobPath("/JOB"))
   val TestJobPath = JobPath("/JOB")
 
-  val TestWorkflowScriptNotation = """
+  val TestWorkflowNotation = """
     |job "JOB" on "AGENT-A";
     |fork(
     |  "🥕" { job "JOB" on "AGENT-A"; job "JOB" on "AGENT-A"; },
@@ -48,7 +48,7 @@ object ForkTestSetting {
         "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
         "🍋" → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
       /*6*/ Job(AAgentJobPath)),
-    source = Some(TestWorkflowScriptNotation/*Must be the source source of this workflow*/))
+    source = Some(TestWorkflowNotation/*Must be the source source of this workflow*/))
   //     A
   //  🥕   🍋
   //  Bx   By

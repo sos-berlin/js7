@@ -121,7 +121,7 @@ object TestMasterAgent {
         Log4j.shutdown()
       } .closeWithCloser
 
-      env.jsonFile(TestWorkflowPath).contentString = makeWorkflowScript(conf).asJson.toPrettyString
+      env.jsonFile(TestWorkflowPath).contentString = makeWorkflow(conf).asJson.toPrettyString
       for (i ← 1 to conf.orderGeneratorCount) {
         env.xmlFile(OrderGeneratorPath(s"/test-$i")).xml =
           <order job_chain={TestWorkflowPath}>
@@ -183,7 +183,7 @@ object TestMasterAgent {
 
   private val PathNames = Stream("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
 
-  private def makeWorkflowScript(conf: Conf): Workflow =
+  private def makeWorkflow(conf: Conf): Workflow =
     Workflow(Vector(
       Instruction.Job(AgentJobPath(conf.agentPaths.head, TestJobPath)),
       Instruction.ForkJoin(

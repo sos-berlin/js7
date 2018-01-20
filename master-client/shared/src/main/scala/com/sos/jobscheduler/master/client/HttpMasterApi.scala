@@ -35,7 +35,7 @@ extends MasterApi {
       uris.order.events[OrderEvent](after = after, timeout = timeout),
       timeout = timeout + ToleratedEventDelay)
 
-  final def workflowScripts: Future[Stamped[Seq[Workflow.Named]]] =
+  final def workflows: Future[Stamped[Seq[Workflow.Named]]] =
     httpClient.get[Stamped[Seq[Workflow.Named]]](uris.workflow.list[Workflow.Named])
 }
 
