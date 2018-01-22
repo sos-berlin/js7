@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.order
 
+import cats.syntax.option._
 import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
@@ -223,23 +224,28 @@ with Stash {
           }
       }
 
-    case AgentDriver.Output.EventFromAgent(Stamped(_, KeyedEvent(_, OrderEvent.OrderDetached))) if detachingSuspended ⇒
-      stash()
-
-    case msg @ AgentDriver.Output.EventFromAgent(Stamped(agentEventId, KeyedEvent(orderId: OrderId, event: OrderEvent))) ⇒
+    case AgentDriver.Output.EventsFromAgent(stampeds) ⇒
       val agentEntry = agentRegister(sender())
       import agentEntry.agentPath
-      if (!orderRegister.contains(orderId))
-        logger.warn(s"Event for unknown $orderId received from $agentPath: $msg")
-      else {
-        val ownEvent = event match {
-          case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-          case _ ⇒ event
-        }
-        // OrderForked: The children have to be registered before its events. We simply stash this actor's message input until OrderForked has been journaled and handled. Slow
-        //val stashUntilJournaled = ownEvent.isInstanceOf[OrderForked]
-        persist(KeyedEvent(ownEvent)(orderId)/*, async = !stashUntilJournaled*/)(handleOrderEvent)
-        persist(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)/*, async = !stashUntilJournaled*/) { e ⇒
+      var lastAgentEventId = none[EventId]
+      stampeds foreach {
+        case Stamped(_, KeyedEvent(_, OrderEvent.OrderDetached)) if detachingSuspended ⇒
+          stash()
+
+        case Stamped(agentEventId, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
+          //if (!orderRegister.contains(orderId))  OrderForked: The child events may arrive before OrderForked has been stored and processed, registering the child orders !!!
+          //  logger.error(s"Event for unknown $orderId received from $agentPath: $stamped")
+          //else {
+            val ownEvent = event match {
+              case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+              case _ ⇒ event
+            }
+            persist(KeyedEvent(ownEvent)(orderId))(handleOrderEvent)
+            lastAgentEventId = agentEventId.some
+          //}
+      }
+      for (agentEventId ← lastAgentEventId) {
+        persist(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)) { e ⇒  // Sync
           agentEntry.lastAgentEventId = e.eventId
         }
       }
@@ -313,19 +319,24 @@ with Stash {
         addOrderAndProceed(Order.fromOrderAdded(orderId, event))
 
       case _ ⇒
-        val orderEntry = orderRegister(orderId)
-        orderProcessor.handleEvent(orderId <-: event) foreach {
-          case FollowUp.AddChild(childOrder) ⇒
-            addOrderAndProceed(childOrder)
+        orderRegister.get(orderId) match {
+          case None ⇒
+            logger.error(s"Unknown OrderId for event ${orderId <-: event}")
 
-          case FollowUp.AddOffered(offeredOrder) ⇒
-            addOrderAndProceed(offeredOrder)
+          case Some(orderEntry) ⇒
+            orderProcessor.handleEvent(orderId <-: event) foreach {
+              case FollowUp.AddChild(childOrder) ⇒
+                addOrderAndProceed(childOrder)
 
-          case FollowUp.Remove(removeOrderId) ⇒
-            orderRegister -= removeOrderId
+              case FollowUp.AddOffered(offeredOrder) ⇒
+                addOrderAndProceed(offeredOrder)
+
+              case FollowUp.Remove(removeOrderId) ⇒
+                orderRegister -= removeOrderId
+            }
+            orderEntry.update(event)
+            proceedWithOrder(orderEntry)
         }
-        orderEntry.update(event)
-        proceedWithOrder(orderEntry)
     }
   }
 

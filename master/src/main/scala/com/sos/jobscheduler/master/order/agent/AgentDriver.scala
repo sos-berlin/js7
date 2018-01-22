@@ -135,7 +135,7 @@ with Stash {
     eventFetcher = new EventFetcher[OrderEvent](lastEventId) {
       def config = AgentDriver.this.config
       def fetchEvents(request: EventRequest[OrderEvent]) = client.mastersEvents(request)
-      def onEvent(stamped: Stamped[KeyedEvent[OrderEvent]]) = self ! Internal.AgentEvent(stamped)  // TODO Possible OutOfMemoryError
+      def onEvents(stamped: Seq[Stamped[KeyedEvent[OrderEvent]]]) = self ! Internal.AgentEvents(stamped)
     }
     eventFetcher.start() onComplete {
       o ⇒ self ! Internal.EventFetcherTerminated(o)
@@ -203,9 +203,11 @@ with Stash {
 
     case Internal.CommandQueueReady ⇒
 
-    case Internal.AgentEvent(stamped) ⇒
-      context.parent ! Output.EventFromAgent(stamped)  // TODO Possible OutOfMemoryError. Use reactive stream ?
-      lastEventId = stamped.eventId
+    case Internal.AgentEvents(stamped) ⇒
+      context.parent ! Output.EventsFromAgent(stamped)  // TODO Possible OutOfMemoryError. Use reactive stream ?
+      for (last ← stamped.lastOption) {
+        lastEventId = last.eventId
+      }
   }
 
   override def toString = s"AgentDriver($agentPath: $uri)"
@@ -245,7 +247,7 @@ private[master] object AgentDriver {
   }
 
   object Output {
-    final case class EventFromAgent(stamped: Stamped[AnyKeyedEvent])
+    final case class EventsFromAgent(stamped: Seq[Stamped[AnyKeyedEvent]])
     final case class OrdersDetached(orderIds: Set[OrderId])
   }
 
@@ -256,7 +258,7 @@ private[master] object AgentDriver {
     final case object LoggedOut
     final case object Ready
     final case object CommandQueueReady
-    final case class AgentEvent(stamped: Stamped[KeyedEvent[OrderEvent]])
+    final case class AgentEvents(stamped: Seq[Stamped[KeyedEvent[OrderEvent]]])
     final case class EventFetcherTerminated(completed: Try[Completed]) extends DeadLetterSuppression
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse])
     final case class BatchFailed(inputs: Seq[Input.QueueableInput], throwable: Throwable)

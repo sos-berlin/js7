@@ -26,10 +26,10 @@ extends AutoCloseable {
 
   protected def fetchEvents(request: EventRequest[E]): Future[EventSeq[Seq, KeyedEvent[E]]]
 
-  protected def onEvent(stamped: Stamped[KeyedEvent[E]]): Unit
+  protected def onEvents(stamped: Seq[Stamped[KeyedEvent[E]]]): Unit
 
   protected lazy val delay = config.as[Duration]("jobscheduler.master.agent-driver.event-fetcher.delay")
-  private var count = 0
+  private var logCount = 0
   @volatile private var closed = false
 
   def start(): Future[Completed] =
@@ -47,11 +47,8 @@ extends AutoCloseable {
           case Failure(t) ⇒
             promise.failure(t.appendCurrentStackTrace)
           case Success(EventSeq.NonEmpty(stampeds)) ⇒
-            for (stamped ← stampeds if !closed) {
-              count += 1
-              logger.trace(s"#$count $stamped")
-              onEvent(stamped)
-            }
+            if (logger.underlying.isTraceEnabled) for (stamped ← stampeds) { logCount += 1; logger.trace(s"#$logCount $stamped") }
+            onEvents(stampeds)
             loop(stampeds.last.eventId)
           case Success(EventSeq.Empty(lastEventId)) ⇒
             loop(lastEventId)

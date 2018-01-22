@@ -9,6 +9,7 @@ import com.typesafe.config.ConfigFactory
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
 import scala.collection.JavaConverters._
+import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -54,8 +55,8 @@ final class EventFetcherTest extends FreeSpec {
           }
         }
 
-      def onEvent(stamped: Stamped[KeyedEvent[TestEvent]]) =
-        collector += stamped
+      def onEvents(stamped: Seq[Stamped[KeyedEvent[TestEvent]]]) =
+        collector ++= stamped
     }
 
     val whenCompleted = fetcher.start()
