@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.event.collector.EventCollectorTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext
 import scala.reflect.ClassTag
@@ -29,11 +29,11 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
     val eventCollector = new MyEventCollector
     import eventCollector.keyedEventQueue
     assert(keyedEventQueue.after(after = EventId.BeforeFirst).get.isEmpty)
-    eventCollector.putEvent_(KeyedEvent(A1)("1"))
-    eventCollector.putEvent_(KeyedEvent(A1)("2"))
+    eventCollector.putEvent_("1" <-: A1)
+    eventCollector.putEvent_("2" <-: A1)
     val stampedEventSeq = keyedEventQueue.after(after = EventId.BeforeFirst).get.toVector
-    assert((stampedEventSeq map { _.value }) == Vector(KeyedEvent(A1)("1"), KeyedEvent(A1)("2")))
-    assert((keyedEventQueue.after(after = stampedEventSeq(0).eventId).get.toVector map { _.value }) == Vector(KeyedEvent(A1)("2")))
+    assert((stampedEventSeq map { _.value }) == Vector("1" <-: A1, "2" <-: A1))
+    assert((keyedEventQueue.after(after = stampedEventSeq(0).eventId).get.toVector map { _.value }) == Vector("2" <-: A1))
     assert((keyedEventQueue.after(after = stampedEventSeq(1).eventId).get.toVector map { _.value }).isEmpty)
   }
 
@@ -42,32 +42,32 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
     val anyFuture = eventCollector.when(EventRequest.singleClass[Event](after = EventId.BeforeFirst, 30.s))
     val bFuture = eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 30.s))
     assert(!anyFuture.isCompleted)
-    eventCollector.putEvent_(KeyedEvent(A1)("1"))
+    eventCollector.putEvent_("1" <-: A1)
     val EventSeq.NonEmpty(anyEvents) = anyFuture await 100.ms
-    assert((anyEvents.toList map { _.value }) == List(KeyedEvent(A1)("1")))
+    assert((anyEvents.toList map { _.value }) == List("1" <-: A1))
 
     assert(!bFuture.isCompleted)
-    eventCollector.putEvent_(KeyedEvent(B1)("2"))
+    eventCollector.putEvent_("2" <-: B1)
     val EventSeq.NonEmpty(bEventsIterator) = bFuture await 100.ms
     val bEvents = bEventsIterator.toVector
-    assert((bEvents map { _.value }) == Vector(KeyedEvent(B1)("2")))
+    assert((bEvents map { _.value }) == Vector("2" <-: B1))
 
     // Third event, overflowing the queue
-    eventCollector.putEvent_(KeyedEvent(B1)("2"))
+    eventCollector.putEvent_("2" <-: B1)
 
     val EventSeq.NonEmpty(cEventIterator) = eventCollector.when(EventRequest.singleClass[BEvent](after = bEvents.last.eventId, 1.s)) await 100.ms
-    assert((cEventIterator.toList map { _.value }) == List(KeyedEvent(B1)("2")))
+    assert((cEventIterator.toList map { _.value }) == List("2" <-: B1))
 
     assert((eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 1.s)) await 100.ms) == EventSeq.Torn)
   }
 
   "eventCollector.whenForKey, whenKeyedEvent" in {
     val eventCollector = new MyEventCollector
-    eventCollector.putEvent_(KeyedEvent(A1)("1"))
-    eventCollector.putEvent_(KeyedEvent(B1)("1"))
-    eventCollector.putEvent_(KeyedEvent(A2)("1"))
-    eventCollector.putEvent_(KeyedEvent(A2)("2"))
-    eventCollector.putEvent_(KeyedEvent(B2)("1"))
+    eventCollector.putEvent_("1" <-: A1)
+    eventCollector.putEvent_("1" <-: B1)
+    eventCollector.putEvent_("1" <-: A2)
+    eventCollector.putEvent_("2" <-: A2)
+    eventCollector.putEvent_("1" <-: B2)
 
     def eventsForKey[E <: Event: ClassTag](key: E#Key) = {
       val EventSeq.NonEmpty(eventIterator) = eventCollector.whenForKey[E](EventRequest.singleClass(after = EventId.BeforeFirst, 20.s), key) await 10.s
