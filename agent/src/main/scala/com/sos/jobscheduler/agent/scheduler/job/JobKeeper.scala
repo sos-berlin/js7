@@ -29,6 +29,11 @@ extends Actor with Stash {
   private val startedJobActors = mutable.Set[ActorRef]()
   private var terminating = false
 
+  override def postStop() = {
+    logger.debug("Stopped")
+    super.postStop()
+  }
+
   def receive = handleReadyForOrder orElse {
     case message ⇒
       message match {
@@ -73,7 +78,6 @@ extends Actor with Stash {
     if (!ifAllJobsStartedThenBecomeStarted()) {
       become(handleReadyForOrder orElse {
         case JobActor.Response.Ready ⇒
-          unwatch(sender())
           startedJobActors += sender()
           ifAllJobsStartedThenBecomeStarted()
 
@@ -90,7 +94,11 @@ extends Actor with Stash {
     handleReadyForOrder orElse {
       case cmd: AgentCommand.Terminate ⇒
         terminating = true
-        for (a ← startedJobActors) a ! cmd
+        if (startedJobActors.nonEmpty) {
+          for (a ← startedJobActors) a ! cmd
+        } else {
+          stop(self)
+        }
         sender() ! AgentCommand.Accepted
 
       case Terminated(a) if startedJobActors contains a ⇒
