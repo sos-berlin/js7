@@ -49,7 +49,7 @@ object Instruction {
 
     override def toString = s"$labelsString $instruction"
 
-    def labelsString = labels.map(o ⇒ s"$o: ").mkString
+    def labelsString = labels.map(o ⇒ s"$o:").mkString(" ")
   }
   object Labeled {
     implicit def jsonEncoder(implicit instrEncoder: Encoder[Instruction]): Encoder[Labeled] = {

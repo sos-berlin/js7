@@ -53,7 +53,7 @@ extends Actor with Stash {
   override def postStop() = {
     stopped.success(Stopped(keyedEventJournalingActorCount = keyToJournalingActor.size))
     for (key ← keyToJournalingActor.keys) logger.debug(s"Journal stopped but a KeyedJournalingActor is still running for key=$key")
-    for (a ← keylessJournalingActors) logger.debug(s"Journal stopped but a JournalingActor is still running for for $a")
+    for (a ← keylessJournalingActors) logger.debug(s"Journal stopped but a JournalingActor is still running for $a")
     if (temporaryJsonWriter != null) {
       logger.debug(s"Deleting temporary journal file due to termination: ${temporaryJsonWriter.file}")
       temporaryJsonWriter.close()
