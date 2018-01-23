@@ -11,6 +11,7 @@ import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.{InstructionNr, Position, WorkflowPath, WorkflowPosition}
 import io.circe.generic.JsonCodec
+import io.circe.LowPriorityDecoders
 import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
 
@@ -30,6 +31,11 @@ final case class Order[+S <: Order.State](
       Order(child.orderId, workflowPosition.copy(position = workflowPosition.position / child.branchId / InstructionNr.First), Ready, attachedTo,
         Payload(child.variablesDiff.applyTo(payload.variables)),
         parent = Some(id))
+
+  def newPublishedOrder(event: OrderOffered): Order[Offered] = copy(
+    event.orderId,
+    state = Offered(event.until),
+    parent = None)
 
   def workflowPath: WorkflowPath =
     workflowPosition.workflowPath
@@ -58,11 +64,16 @@ final case class Order[+S <: Order.State](
       case OrderForked(children) ⇒ copy(
         state = Join(children map (_.orderId)))
 
-      case OrderJoined(to, variablesDiff, outcome_) ⇒
+      case OrderJoined(variablesDiff, outcome_) ⇒
         copy(
-          state = Ready,
+          state = Processed,
           payload = Payload(variablesDiff applyTo variables, outcome_))
-        .withPosition(to)
+
+      case _: OrderOffered ⇒ copy(
+        state = Processed)
+
+      case OrderAwaiting(orderId) ⇒ copy(
+        state = Awaiting(orderId))
 
       case OrderMoved(to) ⇒
         withPosition(to).copy(state = Ready)
@@ -185,6 +196,13 @@ object Order {
   @JsonCodec
   final case class Join(joinOrderIds: Seq[OrderId]) extends Transitionable
 
+  @JsonCodec
+  final case class Offered(until: Timestamp)
+  extends Started
+
+  @JsonCodec
+  final case class Awaiting(offeredOrderId: OrderId) extends Transitionable
+
   case object Finished extends State
 
   implicit val NotStartedJsonCodec: TypedJsonCodec[NotStarted] = TypedJsonCodec[NotStarted](
@@ -200,6 +218,8 @@ object Order {
     Subtype(InProcess),
     Subtype(Processed),
     Subtype[Join],
+    Subtype[Offered],
+    Subtype[Awaiting],
     Subtype(Finished))
 
   implicit val NotStartedOrderJsonCodec: CirceCodec[Order[NotStarted]] = deriveCirceCodec[Order[NotStarted]]

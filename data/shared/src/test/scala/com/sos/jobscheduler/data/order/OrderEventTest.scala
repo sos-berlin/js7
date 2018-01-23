@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.data.agent.AgentPath
@@ -139,10 +140,9 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderJoined" in {
-    check(OrderJoined(Position(7), MapDiff.empty, Outcome.Default), json"""
+    check(OrderJoined(MapDiff.empty, Outcome.Default), json"""
       {
         "TYPE": "OrderJoined",
-        "next": [ 7 ],
         "variablesDiff": {
           "changed": {},
           "deleted": []
@@ -151,6 +151,23 @@ final class OrderEventTest extends FreeSpec {
           "TYPE": "Good",
           "returnValue": true
         }
+      }""")
+  }
+
+  "OrderOffered" in {
+    check(OrderOffered(OrderId("ORDER-ID"), Timestamp.ofEpochMilli(123)), json"""
+      {
+        "TYPE": "OrderOffered",
+        "orderId": "ORDER-ID",
+        "until": 123
+      }""")
+  }
+
+  "OrderAwaiting" in {
+    check(OrderAwaiting(OrderId("ORDER-ID")), json"""
+      {
+        "TYPE": "OrderAwaiting",
+        "orderId": "ORDER-ID"
       }""")
   }
 

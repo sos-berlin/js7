@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.shared.workflow
 
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.workflow.Instruction.{@:, End, ForkJoin, Gap, Goto, IfErrorGoto, IfReturnCode, Job, Labeled}
+import com.sos.jobscheduler.data.workflow.Instruction.{@:, Labeled}
 import com.sos.jobscheduler.data.workflow.Workflow
+import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, IfErrorGoto, IfReturnCode, Job}
 
 /**
   * @author Joacim Zschimmer

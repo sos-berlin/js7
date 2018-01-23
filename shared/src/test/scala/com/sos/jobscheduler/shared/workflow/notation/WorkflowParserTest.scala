@@ -3,11 +3,13 @@ package com.sos.jobscheduler.shared.workflow.notation
 import com.sos.jobscheduler.common.time.Stopwatch.{measureTime, measureTimeParallel}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.Instruction.{Goto, IfErrorGoto, IfReturnCode, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, Goto, IfErrorGoto, IfReturnCode, Job, Offer}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Workflow}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
 
 /**
@@ -70,6 +72,16 @@ final class WorkflowParserTest extends FreeSpec {
         Some(source)))
   }
 
+  "offer" in {
+    val source = """offer orderId = "OFFERED", timeout = 60;"""
+    assert(parse(source) == Workflow(Vector(Offer(OrderId("OFFERED"), 60.seconds)), Some(source)))
+  }
+
+  "await" in {
+    val source = """await orderId = "OFFERED";"""
+    assert(parse(source) == Workflow(Vector(AwaitOrder(OrderId("OFFERED"))), Some(source)))
+  }
+
   "onError and goto" in {
     val source = """
       job "A" on "AGENT";
@@ -87,7 +99,7 @@ final class WorkflowParserTest extends FreeSpec {
         "ERROR" @:
         Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/Error"))),
         "END" @:
-        Instruction.ExplicitEnd),
+        ExplicitEnd),
       Some(source)))
   }
 

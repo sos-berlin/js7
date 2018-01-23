@@ -2,8 +2,8 @@ package com.sos.jobscheduler.data.workflow.test
 
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
-import com.sos.jobscheduler.data.workflow.Instruction.Job
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
+import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Workflow, WorkflowPath}
 
 /**

@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.master.gui.components.orderlist
 
 import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.workflow.Instruction.{@:, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.Instruction.@:
+import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, ImplicitEnd, Job}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, Position, WorkflowPath}
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.common.Renderers.forTable.orderStateToVdom
@@ -134,10 +135,10 @@ extends OnUnmount {
               " ",
               labels.map(_ + ": ").mkString),
             instruction match {
-              case _: Instruction.ForkJoin ⇒
+              case _: ForkJoin ⇒
                 "fork"
 
-              case Instruction.Job(AgentJobPath(agentPath, jobPath)) ⇒
+              case Job(AgentJobPath(agentPath, jobPath)) ⇒
                 VdomArray(
                   <.div("job ", <.span(^.cls := "orders-Instruction-Job", jobPath.string)),
                   <.div("at ", <.span(^.cls := "orders-Instruction-Agent", agentPath.string)))

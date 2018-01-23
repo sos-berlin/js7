@@ -14,15 +14,14 @@ import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, Goto, IfErrorGoto, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfErrorGoto, Job}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Position, Workflow, WorkflowPath}
-import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
@@ -54,11 +53,9 @@ final class LegacyJobchainTest extends FreeSpec {
           directoryProvider.runMaster { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
-            master.executeCommand(MasterCommand.AddOrderIfNew(TestOrder)) await 99.s
-            val EventSeq.NonEmpty(_) = eventCollector.when[OrderFinished.type](
-              EventRequest.singleClass(after = EventId.BeforeFirst, 99.s), _.key == TestOrder.id) await 99.s
-            checkEventSeq(
-              eventCollector.byPredicate[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.s), _ ⇒ true) await 99.s)
+            master.addOrder(TestOrder) await 99.s
+            eventCollector.await[OrderFinished.type](_.key == TestOrder.id)
+            checkEventSeq(eventCollector.all[OrderEvent])
           }
         }
       }

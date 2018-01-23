@@ -2,6 +2,7 @@ package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.Strings.TruncatedString
@@ -90,8 +91,13 @@ object OrderEvent {
     final case class Child(branchId: Position.BranchId.Named, orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty)
   }
 
-  final case class OrderJoined(next: Position, variablesDiff: MapDiff[String, String], outcome: Outcome)
+  final case class OrderJoined(variablesDiff: MapDiff[String, String], outcome: Outcome)  // TODO Das gleiche wie OrderProcessed ?
   extends OrderActorEvent
+
+  final case class OrderOffered(orderId: OrderId, until: Timestamp)
+  extends OrderActorEvent
+
+  final case class OrderAwaiting(orderId: OrderId) extends OrderActorEvent
 
   final case class OrderMoved(to: Position)
   extends OrderActorEvent {
@@ -126,6 +132,8 @@ object OrderEvent {
     Subtype(deriveCirceCodec[OrderProcessed]),
     Subtype(deriveCirceCodec[OrderForked]),
     Subtype(deriveCirceCodec[OrderJoined]),
+    Subtype(deriveCirceCodec[OrderOffered]),
+    Subtype(deriveCirceCodec[OrderAwaiting]),
     Subtype(OrderDetached),
     Subtype(OrderDetachable),
     Subtype(OrderProcessingStarted),

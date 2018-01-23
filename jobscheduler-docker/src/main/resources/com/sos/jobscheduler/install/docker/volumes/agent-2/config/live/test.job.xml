@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <job xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
      xsi:noNamespaceSchemaLocation="https://github.com/sos-berlin/scheduler-engine-doc/raw/master/enginedoc-common/src/main/resources/com/sos/scheduler/enginedoc/common/scheduler.xsd"
-     tasks="5"
+     tasks="100"
 >
     <script language="shell">
       echo はじめまして。

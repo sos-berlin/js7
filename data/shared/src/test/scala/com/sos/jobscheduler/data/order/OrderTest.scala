@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.data.order
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.Json
 import org.scalatest.FreeSpec
 
 /**
@@ -62,7 +64,7 @@ final class OrderTest extends FreeSpec {
         order.copy(
           attachedTo = Some(Order.AttachedTo.Agent(AgentPath("/AGENT"))),
           parent = Some(OrderId("PARENT"))),
-        """{
+        json"""{
           "id": "ID",
           "workflowPosition": [ "/JOBNET", 0 ],
           "state": {
@@ -85,63 +87,71 @@ final class OrderTest extends FreeSpec {
           }
         }""")
 
-      def check(o: Order[Order.State], json: String) = testJson(o, json)
+      def check(o: Order[Order.State], json: Json) = testJson(o, json)
     }
   }
 
   "State" - {
     "Scheduled" in {
       check(Scheduled(Timestamp.parse("2017-11-15T12:33:44.789Z")),
-        """{
-           "TYPE": "Scheduled",
-           "at": 1510749224789
+        json"""{
+          "TYPE": "Scheduled",
+          "at": 1510749224789
         }""")
     }
 
     "StartNow" in {
       check(StartNow,
-        """{
-           "TYPE": "StartNow"
+        json"""{
+          "TYPE": "StartNow"
         }""")
     }
 
     "Ready" in {
       check(Ready,
-        """{
-           "TYPE": "Ready"
+        json"""{
+          "TYPE": "Ready"
         }""")
     }
 
     "InProcess" in {
       check(InProcess,
-        """{
-           "TYPE": "InProcess"
+        json"""{
+          "TYPE": "InProcess"
         }""")
     }
 
     "Processed" in {
       check(Processed,
-        """{
-           "TYPE": "Processed"
+        json"""{
+          "TYPE": "Processed"
         }""")
     }
 
     "Join" in {
       check(Join(List(OrderId("A/1"), OrderId("A/2"))),
-        """{
-           "TYPE": "Join",
-           "joinOrderIds": [ "A/1", "A/2" ]
+        json"""{
+          "TYPE": "Join",
+          "joinOrderIds": [ "A/1", "A/2" ]
+        }""")
+    }
+
+    "Offered" in {
+      check(Offered(Timestamp.ofEpochMilli(123)),
+        json"""{
+          "TYPE": "Offered",
+          "until": 123
         }""")
     }
 
     "Finished" in {
       check(Finished,
-        """{
-           "TYPE": "Finished"
+        json"""{
+          "TYPE": "Finished"
         }""")
     }
 
-    def check(o: Order.State, json: String) = testJson(o, json)
+    def check(o: Order.State, json: Json) = testJson(o, json)
   }
 
   "isAttachable" in {

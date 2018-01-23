@@ -20,9 +20,10 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -34,8 +35,8 @@ import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
 import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
-import com.sos.jobscheduler.shared.workflow.{WorkflowEventHandler, WorkflowEventSource}
-import com.sos.jobscheduler.shared.workflow.WorkflowEventSource.FollowUp
+import com.sos.jobscheduler.shared.workflow.OrderEventHandler.FollowUp
+import com.sos.jobscheduler.shared.workflow.OrderProcessor
 import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.shared.workflow.notation.WorkflowParser
 import java.nio.file.Path
@@ -68,8 +69,7 @@ with Stash {
   private val pathToNamedWorkflow = mutable.Map[WorkflowPath, Workflow.Named]()
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private val idToOrder = orderRegister mapPartialFunction (_.order)
-  private val workflowEventSource = new WorkflowEventSource(pathToNamedWorkflow mapPartialFunction (_.workflow), idToOrder)
-  private val workflowEventHandler = new WorkflowEventHandler(idToOrder)
+  private val orderProcessor = new OrderProcessor(pathToNamedWorkflow mapPartialFunction (_.workflow), idToOrder)
   private var detachingSuspended = false
   protected val journalActor = context.watch(context.actorOf(
     JournalActor.props(
@@ -310,28 +310,29 @@ with Stash {
     logNotableEvent(orderId, event)
     event match {
       case event: OrderAdded ⇒
-        val order = Order.fromOrderAdded(orderId, event)
-        val orderEntry = OrderEntry(order)
-        orderRegister.insert(order.id → orderEntry)
-        proceedWithOrder(orderEntry)
+        addOrderAndProceed(Order.fromOrderAdded(orderId, event))
 
       case _ ⇒
         val orderEntry = orderRegister(orderId)
-        event match {
-          case _ ⇒
-            workflowEventHandler.handleEvent(orderId <-: event) foreach {
-              case FollowUp.Add(derivedOrder) ⇒
-                val entry = OrderEntry(derivedOrder)
-                orderRegister.insert(derivedOrder.id → entry)
-                proceedWithOrder(entry)
+        orderProcessor.handleEvent(orderId <-: event) foreach {
+          case FollowUp.AddChild(childOrder) ⇒
+            addOrderAndProceed(childOrder)
 
-              case FollowUp.Remove(removeOrderId) ⇒
-                orderRegister -= removeOrderId
-            }
+          case FollowUp.AddOffered(offeredOrder) ⇒
+            addOrderAndProceed(offeredOrder)
+
+          case FollowUp.Remove(removeOrderId) ⇒
+            orderRegister -= removeOrderId
         }
         orderEntry.update(event)
         proceedWithOrder(orderEntry)
     }
+  }
+
+  private def addOrderAndProceed(order: Order[Order.State]): Unit = {
+    val entry = OrderEntry(order)
+    orderRegister.insert(order.id → entry)
+    proceedWithOrder(entry)
   }
 
   private def proceedWithOrder(orderEntry: OrderEntry): Unit = {
@@ -349,21 +350,25 @@ with Stash {
 
   private def proceedWithOrderOnMaster(orderEntry: OrderEntry): Unit = {
     import orderEntry.order
-    val namedWorkflow = pathToNamedWorkflow(order.workflowPath)
     order.state match {
       case _: Order.Idle ⇒
         val idleOrder = order.castState[Order.Idle]
-        namedWorkflow.workflow.instruction(order.position) match {
-          case _: Instruction.Job ⇒ tryAttachOrderToAgent(idleOrder)
+        instruction(order.workflowPosition) match {
+          case _: Job ⇒ tryAttachOrderToAgent(idleOrder)
           case _ ⇒
+        }
+
+      case _: Order.Offered ⇒
+        for (awaitingOrderId ← orderProcessor.offeredToAwaitingOrder(orderEntry.orderId);
+             o ← orderRegister.get(awaitingOrderId);
+             _ ← o.order.ifState[Order.Awaiting]/*must be*/) {
+          proceedWithOrder(o)
         }
 
       case _ ⇒
     }
-    if (!order.isAttachedToAgent) {
-      for (keyedEvent ← workflowEventSource.nextEvent(order.id)) {
-        persistAsync(keyedEvent)(handleOrderEvent)
-      }
+    for (keyedEvent ← orderProcessor.nextEvent(order.id)) {
+      persistAsync(keyedEvent)(handleOrderEvent)
     }
   }
 
@@ -382,6 +387,9 @@ with Stash {
       case Right(agentPath) ⇒
         agentRegister(agentPath).actor ! AgentDriver.Input.DetachOrder(orderId)
     }
+
+  private def instruction(workflowPosition: WorkflowPosition): Instruction =
+    pathToNamedWorkflow(workflowPosition.workflowPath).workflow.instruction(workflowPosition.position)
 
   override def toString = "MasterOrderKeeper"
 }
@@ -448,7 +456,8 @@ object MasterOrderKeeper {
 
   private def logNotableEvent(orderId: OrderId, event: OrderEvent): Unit =
     event match {
-      case _ @  (_: OrderAdded | _: OrderTransferredToAgent | OrderTransferredToMaster | _: OrderForked | _: OrderJoined | OrderFinished) ⇒
+      case _ @  (_: OrderAdded | _: OrderTransferredToAgent | OrderTransferredToMaster | OrderFinished |
+                 _: OrderForked | _: OrderJoined | _: OrderOffered | _: OrderAwaiting ) ⇒
         logEvent(orderId, event)
       case _ ⇒
     }

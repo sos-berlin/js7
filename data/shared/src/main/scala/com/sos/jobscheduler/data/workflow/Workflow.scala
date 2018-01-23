@@ -6,6 +6,8 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, Ri
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.Workflow._
+import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
+import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, IfErrorGoto, IfReturnCode, ImplicitEnd, Job}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.{IndexedSeq, Seq}

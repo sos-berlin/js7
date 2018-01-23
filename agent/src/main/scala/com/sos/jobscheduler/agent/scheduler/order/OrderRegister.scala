@@ -7,7 +7,8 @@ import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow}
+import com.sos.jobscheduler.data.workflow.Workflow
+import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.shared.common.ActorRegister
 import scala.concurrent.ExecutionContext
 
@@ -61,7 +62,7 @@ private[order] object OrderRegister {
       _order = o
     }
 
-    def jobOption: Option[Instruction.Job] =
+    def jobOption: Option[Job] =
       workflow.jobOption(order.position)
 
     def instruction = workflow.instruction(order.position)

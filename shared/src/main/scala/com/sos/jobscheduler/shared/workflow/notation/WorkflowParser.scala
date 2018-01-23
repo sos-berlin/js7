@@ -8,8 +8,12 @@ import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.workflow.Instruction.Labeled
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, ForkJoin, Goto, IfErrorGoto, IfReturnCode, Job, Offer, End ⇒ EndInstr}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Position, Workflow}
 import fastparse.all._
+import java.util.concurrent.TimeUnit.SECONDS
+import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 
 /**
@@ -65,50 +69,62 @@ object WorkflowParser {
     private val labelDef = P[Label](
       label ~ h ~ ":" ~ w)
 
-    private val jobInstruction = P[Instruction.Job](
+    private val jobInstruction = P[Job](
       agentJobPath
-        map Instruction.Job.apply)
+        map Job.apply)
 
-    private val endInstruction = P[Instruction.End](
+    private val endInstruction = P[EndInstr](
       ("end").!
-        map (_ ⇒ Instruction.ExplicitEnd))
+        map (_ ⇒ ExplicitEnd))
 
-    private val forkInstruction = P[Instruction.ForkJoin]{
+    private val forkInstruction = P[ForkJoin]{
       val orderSuffix = P(quotedString map (o ⇒ Position.BranchId.Named(OrderId.ChildId(o))))
-      val forkBranch = P[Instruction.ForkJoin.Branch](
+      val forkBranch = P[ForkJoin.Branch](
         (orderSuffix ~ w ~ curlyWorkflow)
-          map Instruction.ForkJoin.Branch.fromPair)
+          map ForkJoin.Branch.fromPair)
       P(("fork" ~ w ~ inParentheses(w ~ forkBranch ~ (comma ~ forkBranch).rep ~ w))
-        map { case (branch, more) ⇒ Instruction.ForkJoin(Vector(branch) ++ more) })
+        map { case (branch, more) ⇒ ForkJoin(Vector(branch) ++ more) })
     }
 
-    private val ifReturnCodeInstruction = P[Instruction.IfReturnCode](
+    private val offerInstruction = P[Offer](
+      ("offer" ~ w ~ keyValue("orderId", quotedString) ~ comma ~ keyValue("timeout", int))
+        map { case (orderId_, duration_) ⇒
+          Offer(OrderId(orderId_), Duration(duration_, SECONDS))
+        })
+
+    private val awaitInstruction = P[AwaitOrder](
+      ("await" ~ w ~ keyValue("orderId", quotedString))
+        map (orderId_ ⇒ AwaitOrder(OrderId(orderId_))))
+
+    private val ifReturnCodeInstruction = P[IfReturnCode](
       ("if" ~ w ~ "(" ~ w ~ "returnCode" ~ w ~ commaSeq(int) ~ w ~ ")" ~
         w ~ curlyWorkflow ~
         (w ~ "else" ~ w ~ curlyWorkflow ~ w).?
       ) map { case (returnCodes, then_, else_) ⇒
-          Instruction.IfReturnCode(returnCodes.map(o ⇒ ReturnCode(o)).toVector, Vector(then_) ++ else_)
+          IfReturnCode(returnCodes.map(o ⇒ ReturnCode(o)).toVector, Vector(then_) ++ else_)
       }
     )
-    private val ifErrorGotoInstruction = P[Instruction.IfErrorGoto](
+    private val ifErrorGotoInstruction = P[IfErrorGoto](
       ("ifError" ~ w ~ label)
-        map { n ⇒ Instruction.IfErrorGoto(n) })
+        map { n ⇒ IfErrorGoto(n) })
 
-    private val gotoInstruction: Parser[Instruction.Goto] =
+    private val gotoInstruction: Parser[Goto] =
       P(("goto" ~ w ~ label)
-        map { n ⇒ Instruction.Goto(n) })
+        map { n ⇒ Goto(n) })
 
     private val instruction: Parser[Instruction] =
       P(jobInstruction |
         endInstruction |
         forkInstruction |
+        offerInstruction |
+        awaitInstruction |
         ifReturnCodeInstruction |
         ifErrorGotoInstruction |
         gotoInstruction)
 
-    private val labeledInstruction = P[Instruction.Labeled](
+    private val labeledInstruction = P[Labeled](
       (labelDef.rep ~ instruction  ~ instructionTerminator)
-        map { case (labels, instruction_) ⇒ Instruction.Labeled(labels.toImmutableSeq, instruction_)})
+        map { case (labels, instruction_) ⇒ Labeled(labels.toImmutableSeq, instruction_)})
 
     val whole = w ~ workflow ~ w ~ End
 

@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, ForkJoin, Goto, IfErrorGoto, IfReturnCode, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Goto, IfErrorGoto, IfReturnCode, ImplicitEnd, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson

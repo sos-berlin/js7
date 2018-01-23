@@ -30,7 +30,8 @@ import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Job}
+import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -185,15 +186,15 @@ object TestMasterAgent {
 
   private def makeWorkflow(conf: Conf): Workflow =
     Workflow(Vector(
-      Instruction.Job(AgentJobPath(conf.agentPaths.head, TestJobPath)),
-      Instruction.ForkJoin(
+      Job(AgentJobPath(conf.agentPaths.head, TestJobPath)),
+      ForkJoin(
         for ((agentPath, pathName) ← conf.agentPaths.toVector zip PathNames) yield
-          Instruction.ForkJoin.Branch(
+          ForkJoin.Branch(
             pathName,
             Workflow(
               for (_ ← 1 to conf.workflowLength) yield
-                () @: Instruction.Job(AgentJobPath(agentPath, TestJobPath))))),
-      Instruction.ExplicitEnd))
+                () @: Job(AgentJobPath(agentPath, TestJobPath))))),
+      ExplicitEnd))
 
   private case class Conf(
     directory: Path,

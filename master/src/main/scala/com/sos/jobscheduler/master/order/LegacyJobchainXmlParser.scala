@@ -3,7 +3,8 @@ package com.sos.jobscheduler.master.order
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.workflow.Instruction.{ExplicitEnd, Goto, IfErrorGoto, Job, Labeled}
+import com.sos.jobscheduler.data.workflow.Instruction.Labeled
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfErrorGoto, Job}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Label, Workflow}
 import javax.xml.transform.Source
 import scala.collection.immutable.Seq

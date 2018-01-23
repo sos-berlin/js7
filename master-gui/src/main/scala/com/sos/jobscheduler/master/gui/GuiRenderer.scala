@@ -79,7 +79,7 @@ final class GuiRenderer(
             Connected
           else
           state.ordersState.error match {
-            case Some(error) ⇒ <.span(^.cls := "disconnected", ^.title := error)("☠️ GUI error")
+            case Some(error) ⇒ <.span(^.cls := "disconnected", ^.title := error)("☠️ ERROR")
             case None ⇒ <.span(^.cls := "disconnected")("⚠️ disconnected")
           }
       })

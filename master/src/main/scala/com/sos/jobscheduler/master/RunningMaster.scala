@@ -51,11 +51,15 @@ abstract class RunningMaster private(
   @TestOnly val injector: Injector)
 extends AutoCloseable
 {
+  private implicit val executionContext = injector.instance[ExecutionContext]
+
   def executeCommand(command: MasterCommand): Future[command.MyResponse]
+
+  def addOrder(order: Order[Order.NotStarted]): Future[Completed] =
+    executeCommand(MasterCommand.AddOrderIfNew(order)) map (_ ⇒ Completed)
 
   val localUri: Uri = webServer.localUri
   val eventCollector = injector.instance[EventCollector]
-  private implicit val executionContext = injector.instance[ExecutionContext]
 
   def close() = closer.close()
 }

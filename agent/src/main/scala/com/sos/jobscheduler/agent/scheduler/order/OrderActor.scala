@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
-import com.sos.jobscheduler.data.workflow.Instruction
+import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
@@ -77,6 +77,10 @@ extends KeyedJournalingActor[OrderEvent] {
       order = o
       context.become(idle)
 
+    case Input.AddPublished(o) ⇒
+      order = o
+      context.become(offered)
+
     case command: Command ⇒
       command match {
         case Command.Attach(Order(`orderId`, workflowPosition, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), payload, parent)) ⇒
@@ -118,6 +122,9 @@ extends KeyedJournalingActor[OrderEvent] {
       context.become(joining)
       persist(event)(update)
 
+    case Input.HandleEvent(event: OrderOffered) ⇒
+      persist(event)(update)
+
     case Input.HandleEvent(OrderDetachable) ⇒
       persist(OrderDetachable)(update)
 
@@ -125,7 +132,7 @@ extends KeyedJournalingActor[OrderEvent] {
       context.stop(self)
   }
 
-  private def processing(job: Instruction.Job, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
+  private def processing(job: Job, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
     journaling orElse {
       case msg: Stdouterr ⇒
         stdouterr.handle(msg)
@@ -152,7 +159,7 @@ extends KeyedJournalingActor[OrderEvent] {
         terminating = true
     }
 
-  private def finishProcessing(event: OrderProcessed, job: Instruction.Job, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
+  private def finishProcessing(event: OrderProcessed, job: Job, stdoutStderrStatistics: () ⇒ Option[String]): Unit = {
     stdouterr.finish()
     for (o ← stdoutStderrStatistics()) logger.debug(o)
     context.become(processed)
@@ -194,6 +201,15 @@ extends KeyedJournalingActor[OrderEvent] {
       case Command.Detach ⇒
         detach()
 
+      case Input.Terminate ⇒
+        context.stop(self)
+
+      case command: Command ⇒
+        executeOtherCommand(command)
+    }
+
+  private def offered: Receive =
+    journaling orElse {
       case command: Command ⇒
         executeOtherCommand(command)
     }
@@ -272,7 +288,8 @@ private[order] object OrderActor {
   sealed trait Input
   object Input {
     final case class AddChild(order: Order[Order.Ready.type]) extends Input
-    final case class StartProcessing(job: Instruction.Job, jobActor: ActorRef) extends Input
+    final case class AddPublished(order: Order[Order.Offered]) extends Input
+    final case class StartProcessing(job: Job, jobActor: ActorRef) extends Input
     final case object Terminate extends Input
     final case class HandleEvent(event: OrderActorEvent) extends Input
   }

@@ -1,0 +1,14 @@
+package com.sos.jobscheduler.data.workflow.instructions
+
+import com.sos.jobscheduler.data.workflow.{JumpInstruction, Label}
+import io.circe.generic.JsonCodec
+
+/**
+  * @author Joacim Zschimmer
+  */
+@JsonCodec
+final case class Goto(to: Label) extends JumpInstruction {
+  def nodes = Nil
+
+  override def toString = s"goto $to"
+}

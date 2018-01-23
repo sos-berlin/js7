@@ -8,16 +8,14 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.LineEnd
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
-import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
@@ -39,11 +37,9 @@ final class ForkTest extends FreeSpec {
           directoryProvider.runMaster { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
-            master.executeCommand(MasterCommand.AddOrderIfNew(TestOrder)) await 99.s
-            val EventSeq.NonEmpty(_) = eventCollector.when[OrderFinished.type](
-              EventRequest.singleClass(after = EventId.BeforeFirst, 99.s), _.key.string startsWith TestOrder.id.string) await 99.s
-            val eventSeq = eventCollector.byPredicate[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 0.s), _ ⇒ true) await 99.s
-            checkEventSeq(eventSeq)
+            master.addOrder(TestOrder) await 99.s
+            eventCollector.await[OrderFinished.type](_.key == TestOrder.id)
+            checkEventSeq(eventCollector.all[OrderEvent])
           }
         }
       }
@@ -93,7 +89,8 @@ object ForkTest {
       XOrderId <-: OrderMoved(Position(1, "🥕", 2)),                           YOrderId <-: OrderMoved(Position(1, "🍋", 2)),
       XOrderId <-: OrderDetachable,                                            YOrderId <-: OrderDetachable,
       XOrderId <-: OrderTransferredToMaster,                                   YOrderId <-: OrderTransferredToMaster,
-    TestOrder.id <-: OrderJoined(Position(2), MapDiff.empty, Outcome.Good(true)),
+    TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.Good(true)),
+    TestOrder.id <-: OrderMoved(Position(2)),
 
     TestOrder.id <-: OrderTransferredToAgent(AAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
@@ -114,7 +111,8 @@ object ForkTest {
       XOrderId <-: OrderMoved(Position(3, "🥕", 2)),                           YOrderId <-: OrderMoved(Position(3, "🍋", 2)),
       XOrderId <-: OrderDetachable,                                            YOrderId <-: OrderDetachable,
       XOrderId <-: OrderTransferredToMaster,                                   YOrderId <-: OrderTransferredToMaster,
-    TestOrder.id <-: OrderJoined(Position(4), MapDiff.empty, Outcome.Good(true)),
+    TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.Good(true)),
+    TestOrder.id <-: OrderMoved(Position(4)),
 
     TestOrder.id <-: OrderTransferredToAgent(AAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
@@ -141,7 +139,8 @@ object ForkTest {
       XOrderId <-: OrderMoved(Position(5, "🥕", 2)),                           YOrderId <-: OrderMoved(Position(5, "🍋", 2)),
       XOrderId <-: OrderDetachable,                                            YOrderId <-: OrderDetachable,
       XOrderId <-: OrderTransferredToMaster,                                   YOrderId <-: OrderTransferredToMaster,
-    TestOrder.id <-: OrderJoined(Position(6), MapDiff.empty, Outcome.Good(true)),
+    TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.Good(true)),
+    TestOrder.id <-: OrderMoved(Position(6)),
 
     TestOrder.id <-: OrderTransferredToAgent(AAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
@@ -151,6 +150,4 @@ object ForkTest {
     TestOrder.id <-: OrderDetachable,
     TestOrder.id <-: OrderTransferredToMaster,
     TestOrder.id <-: OrderFinished)
-
-  private val logger = Logger(getClass)
 }

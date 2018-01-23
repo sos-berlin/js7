@@ -30,12 +30,13 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderProcessed}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
-import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, Workflow, WorkflowEvent}
+import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowEvent}
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, KeyedJournalingActor}
-import com.sos.jobscheduler.shared.workflow.{WorkflowEventHandler, WorkflowEventSource}
-import com.sos.jobscheduler.shared.workflow.WorkflowEventSource.FollowUp
+import com.sos.jobscheduler.shared.workflow.OrderEventHandler.FollowUp
+import com.sos.jobscheduler.shared.workflow.OrderProcessor
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Duration
@@ -69,8 +70,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
-  private val workflowEventSource = new WorkflowEventSource(workflowRegister.pathToWorkflow, orderRegister.idToOrder)
-  private val workflowEventHandler = new WorkflowEventHandler(orderRegister.idToOrder)
+  private val orderProcessor = new OrderProcessor(workflowRegister.pathToWorkflow, orderRegister.idToOrder)
   private val eventsForMaster = actorOf(Props { new EventQueueActor(timerService) }, "eventsForMaster").taggedWith[EventQueueActor]
 
   private var terminating = false
@@ -285,12 +285,12 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         }
 
       case _ ⇒
-        workflowEventHandler.handleEvent(order.id <-: event) foreach {
-          case FollowUp.Add(derivedOrder) ⇒
-            val actor = newOrderActor(derivedOrder)
-            orderRegister.insert(derivedOrder, orderEntry.workflow, actor)
-            actor ! OrderActor.Input.AddChild(derivedOrder)
-            proceedWithOrder(derivedOrder.id)
+        orderProcessor.handleEvent(order.id <-: event) foreach {
+          case FollowUp.AddChild(childOrder) ⇒
+            val actor = newOrderActor(childOrder)
+            orderRegister.insert(childOrder, workflowRegister(childOrder.workflowPath).workflow, actor)
+            actor ! OrderActor.Input.AddChild(childOrder)
+            proceedWithOrder(childOrder.id)
 
           case FollowUp.Remove(removeOrderId) ⇒
             removeOrder(removeOrderId)
@@ -324,7 +324,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         case Left(throwable) ⇒ logger.error(s"onOrderAvailable: $throwable")
         case Right(_) ⇒
           orderEntry.instruction match {
-            case job: Instruction.Job ⇒
+            case job: Job ⇒
               jobRegister.get(job.jobPath) match {
                 case Some(jobEntry) ⇒
                   onOrderAvailableForJob(orderEntry.order.id, jobEntry)
@@ -366,7 +366,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         jobEntry.waitingForOrder = true
     }
 
-  private def startProcessing(orderEntry: OrderEntry, job: Instruction.Job, jobEntry: JobEntry): Unit = {
+  private def startProcessing(orderEntry: OrderEntry, job: Job, jobEntry: JobEntry): Unit = {
     logger.trace(s"${orderEntry.order.id} is going to be processed by ${jobEntry.jobPath}")
     assert(job.jobPath == jobEntry.jobPath)
     jobEntry.waitingForOrder = false
@@ -375,7 +375,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
     assert(order.isAttachedToAgent)
-    for (KeyedEvent(orderId, event) ← workflowEventSource.nextEvent(order.id)) {
+    for (KeyedEvent(orderId, event) ← orderProcessor.nextEvent(order.id)) {
       orderRegister(orderId).actor ! OrderActor.Input.HandleEvent(event)
     }
   }
