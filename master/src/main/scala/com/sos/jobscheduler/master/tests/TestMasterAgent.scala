@@ -103,7 +103,7 @@ object TestMasterAgent {
                  |""".stripMargin
             }</script>
           </job>
-        val agent = RunningAgent(AgentConfiguration.forTest(
+        val agent = RunningAgent.startForTest(AgentConfiguration.forTest(
             configAndData = Some(env.agentDir(agentPath))).copy(
             journalSyncOnCommit = conf.syncAgent))
           .map { _.closeWithCloser } await 99.s

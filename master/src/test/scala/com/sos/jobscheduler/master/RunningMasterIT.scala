@@ -57,7 +57,7 @@ final class RunningMasterIT extends FreeSpec {
         AgentConfiguration.forTest(Some(env.agentDir(agentPath)))
       }
 
-      val agent0 = RunningAgent(agentConfigs(0)) await 10.s
+      val agent0 = RunningAgent.startForTest(agentConfigs(0)) await 10.s
       env.xmlFile(TestWorkflowPath).xml =
         <job_chain>
           <job_chain_node state="100" agent="test-agent-111" job="/test"/>
@@ -88,7 +88,7 @@ final class RunningMasterIT extends FreeSpec {
 
         sleep(3.s)  // Let OrderGenerator generate some orders
         master.orderKeeper ! MasterOrderKeeper.Input.SuspendDetaching
-        val agent1 = RunningAgent(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
+        val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
         master.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
 
         val EventSeq.NonEmpty(_) = master.eventCollector.when[OrderEvent.OrderDetachable.type](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
@@ -119,10 +119,15 @@ final class RunningMasterIT extends FreeSpec {
         val addedOrderIds = eventGatherer.orderIdsOf[OrderEvent.OrderAdded] filter orderIds.toSet
         assert(addedOrderIds.size == orderIds.size)
         assert(eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type] == addedOrderIds)
-        agent0.close()
-        agent1.close()
+
+        master.executeCommand(MasterCommand.Terminate) await 99.s
+        master.terminated await 99.s
         master.close()
+        agent1.terminate() await 99.s
+        agent1.close()
       }
+      agent0.terminate() await 99.s
+      agent0.close()
     }
   }
 }

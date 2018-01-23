@@ -4,20 +4,23 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import com.sos.jobscheduler.agent.client.{AgentClient, SimpleAgentClient}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Login, Logout, NoOperation}
-import com.sos.jobscheduler.agent.test.AgentTest
+import com.sos.jobscheduler.agent.test.TestAgentProvider
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentAddress
 import com.sos.jobscheduler.data.session.SessionToken
-import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 
 /**
   * @author Joacim Zschimmer
   */
-final class LoginIT extends FreeSpec with AgentTest {
+final class LoginIT extends FreeSpec with BeforeAndAfterAll with TestAgentProvider {
+
+  override def afterAll() = closer closeThen { super.afterAll() }
 
   "Login and Logout" in {
     withClient { client ⇒

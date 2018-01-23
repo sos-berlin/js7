@@ -21,6 +21,7 @@ import java.nio.file.StandardCopyOption.{ATOMIC_MOVE, REPLACE_EXISTING}
 import java.nio.file.{Files, Path, Paths}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
+import scala.concurrent.Promise
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -32,7 +33,8 @@ final class JournalActor[E <: Event] private(
   file: Path,
   syncOnCommit: Boolean,
   eventIdGenerator: EventIdGenerator,
-  keyedEventBus: StampedKeyedEventBus)
+  keyedEventBus: StampedKeyedEventBus,
+  stopped: Promise[Stopped])
 extends Actor with Stash {
 
   import meta.{convertOutputStream, eventJsonCodec, snapshotJsonCodec}
@@ -49,6 +51,9 @@ extends Actor with Stash {
   private val statistics = new StatisticsCounter
 
   override def postStop() = {
+    stopped.success(Stopped(keyedEventJournalingActorCount = keyToJournalingActor.size))
+    for (key ← keyToJournalingActor.keys) logger.debug(s"Journal stopped but a KeyedJournalingActor is still running for key=$key")
+    for (a ← keylessJournalingActors) logger.debug(s"Journal stopped but a JournalingActor is still running for for $a")
     if (temporaryJsonWriter != null) {
       logger.debug(s"Deleting temporary journal file due to termination: ${temporaryJsonWriter.file}")
       temporaryJsonWriter.close()
@@ -67,6 +72,7 @@ extends Actor with Stash {
   def receive = {
     case Input.Start(RecoveredJournalingActors(keyToActor)) ⇒
       keyToJournalingActor ++= keyToActor
+      keyToJournalingActor.values foreach context.watch
       val sender = this.sender()
       becomeTakingSnapshotThen {
         unstashAll()
@@ -160,7 +166,7 @@ extends Actor with Stash {
 
     case Terminated(a) ⇒
       val keys = keyToJournalingActor collect { case (k, `a`) ⇒ k }
-      logger.trace(s"Unregistering $keys -> ${a.path}")
+      logger.trace(s"Terminated: ${keys mkString "?"} -> ${a.path}")
       keyToJournalingActor --= keys
       keylessJournalingActors -= a
   }
@@ -239,9 +245,11 @@ extends Actor with Stash {
   private def handleRegisterMe(msg: Input.RegisterMe) = msg match {
     case Input.RegisterMe(None) ⇒
       keylessJournalingActors.add(sender())
+      context.watch(sender())
 
     case Input.RegisterMe(Some(key)) ⇒
       keyToJournalingActor += key → sender()
+      context.watch(sender())
   }
 }
 
@@ -250,9 +258,9 @@ object JournalActor {
   val EventsHeader = Json.fromString("EVENTS")
 
   def props[E <: Event](meta: JournalMeta[E], file: Path, syncOnCommit: Boolean,
-    eventIdGenerator: EventIdGenerator, keyedEventBus: StampedKeyedEventBus)
+    eventIdGenerator: EventIdGenerator, keyedEventBus: StampedKeyedEventBus, stopped: Promise[Stopped] = Promise())
   =
-    Props { new JournalActor(meta, file, syncOnCommit, eventIdGenerator, keyedEventBus) }
+    Props { new JournalActor(meta, file, syncOnCommit, eventIdGenerator, keyedEventBus, stopped) }
 
   object Input {
     private[journal] final case class Start(recoveredJournalingActors: RecoveredJournalingActors)
@@ -273,6 +281,8 @@ object JournalActor {
     final case object SnapshotTaken
     private[journal] final case class State(isFlushed: Boolean, isSynced: Boolean)
   }
+
+  final case class Stopped(keyedEventJournalingActorCount: Int)
 
   private object Internal {
     final case class Commit(writtenLevel: Int)

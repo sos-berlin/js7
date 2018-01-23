@@ -87,7 +87,7 @@ object TerminateIT {
         <job tasks="10">
           <script language="shell">{AScript}</script>
         </job>
-      val agent = RunningAgent(AgentConfiguration.forTest(configAndData = Some(agentDirectory))) map { _.closeWithCloser } await 10.s
+      val agent = RunningAgent.startForTest(AgentConfiguration.forTest(configAndData = Some(agentDirectory))) map { _.closeWithCloser } await 10.s
       implicit val actorRefFactory: ActorRefFactory = newActorSystem("TerminateIT")(closer)
       val client = AgentClient(
         agentUri = agent.localUri.toString,

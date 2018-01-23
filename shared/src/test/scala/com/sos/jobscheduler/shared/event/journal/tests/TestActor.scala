@@ -18,21 +18,23 @@ import com.sos.jobscheduler.shared.event.journal.tests.TestJsonCodecs.TestKeyedE
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JournalActor, JournalActorRecoverer, JournalMeta, JournalRecoverer}
 import java.nio.file.Path
 import scala.collection.mutable
+import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt
 
 /**
   * @author Joacim Zschimmer
   */
-private[tests] final class TestActor(journalFile: Path) extends Actor with Stash {
+private[tests] final class TestActor(journalFile: Path, journalStopped: Promise[JournalActor.Stopped]) extends Actor with Stash {
 
   private implicit val executionContext = context.dispatcher
 
   override val supervisorStrategy = SupervisorStrategies.escalate
   private implicit val askTimeout = Timeout(999.seconds)
   private val journalActor = context.actorOf(
-    JournalActor.props(TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new StampedKeyedEventBus),
+    JournalActor.props(TestJournalMeta, journalFile, syncOnCommit = true, new EventIdGenerator, new StampedKeyedEventBus, journalStopped),
     "Journal")
   private val keyToAggregate = mutable.Map[String, ActorRef]()
+  private var terminator: ActorRef = null
 
   override def preStart() = {
     super.preStart()
@@ -81,8 +83,7 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
 
     case Input.Forward(key: String, command: TestAggregateActor.Command.Add) ⇒
       assert(!keyToAggregate.contains(key))
-      val actor = context.actorOf(Props { new TestAggregateActor(key, journalActor) })
-      context.watch(actor)
+      val actor = newAggregateActor(key)
       keyToAggregate += key → actor
       (actor ? command).mapTo[Done] pipeTo sender()
 
@@ -104,14 +105,29 @@ private[tests] final class TestActor(journalFile: Path) extends Actor with Stash
     case Input.GetJournalState ⇒
       journalActor.forward(JournalActor.Input.GetState)
 
-    case Terminated(actorRef) ⇒  // ???
-      keyToAggregate --= keyToAggregate collectFirst { case (key, `actorRef`) ⇒ key }
+    case Input.Terminate ⇒
+      if (keyToAggregate.isEmpty) {
+        context.stop(self)
+        sender() ! Done
+      } else {
+        terminator = sender()
+        keyToAggregate.values foreach context.stop
+      }
+
+    case Terminated(actorRef) ⇒
+      val key = keyToAggregate collectFirst { case (k, `actorRef`) ⇒ k }
+      keyToAggregate --= key
+      if (terminator != null && keyToAggregate.isEmpty) {
+        sleep(1.s)
+        context.stop(self)
+        terminator ! Done
+      }
   }
 
   private def newAggregateActor(key: String): ActorRef =
-    context.actorOf(
+    context.watch(context.actorOf(
       Props { new TestAggregateActor(key, journalActor) },
-      s"Test-$key")
+      s"Test-$key"))
 }
 
 private[tests] object TestActor {
@@ -128,5 +144,6 @@ private[tests] object TestActor {
     final case class Forward(key: String, command: TestAggregateActor.Command)
     final case object GetJournalState
     final case object GetAll
+    final case object Terminate
   }
 }

@@ -4,7 +4,7 @@ import com.sos.jobscheduler.agent.client.main.AgentClientMain
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
-import com.sos.jobscheduler.agent.test.AgentTest
+import com.sos.jobscheduler.agent.test.TestAgentProvider
 import com.sos.jobscheduler.agent.tests.AgentClientMainIT._
 import com.sos.jobscheduler.common.guice.ScalaAbstractModule
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
@@ -18,7 +18,7 @@ import scala.concurrent.duration._
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCloser with AgentTest {
+final class AgentClientMainIT extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider {
 
   override def afterAll() = closer.closeThen { super.afterAll() }
 

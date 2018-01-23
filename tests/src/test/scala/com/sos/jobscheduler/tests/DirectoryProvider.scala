@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multiple
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -50,6 +50,7 @@ private class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
   def runAgents(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
       body(agents)
+      agents map (_.terminate()) await 99.s
     }
 
   def agent(agentName: String) = new Tree(directory / agentName)

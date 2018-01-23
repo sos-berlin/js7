@@ -18,9 +18,9 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.shared.common.jsonseq.InputStreamJsonSeqIterator
-import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.shared.event.journal.tests.JournalTest._
 import com.sos.jobscheduler.shared.event.journal.tests.TestJsonCodecs.TestKeyedEventJsonCodec
+import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta}
 import com.typesafe.config.ConfigFactory
 import io.circe.Json
 import java.io.{EOFException, FileInputStream}
@@ -157,8 +157,12 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
     val actorSystem = ActorSystem("JournalTest", ConfigFactory.parseString("akka.scheduler.tick-duration: 1s"))
     try {
       DeadLetterActor.subscribe(actorSystem, o ⇒ logger.warn(o))
-      val actor = actorSystem.actorOf(Props { new TestActor(journalFile) }, "TestActor")
+      val whenJournalStopped = Promise[JournalActor.Stopped]()
+      val actor = actorSystem.actorOf(Props { new TestActor(journalFile, whenJournalStopped) }, "TestActor")
       body(actorSystem, actor)
+      (actor ? TestActor.Input.Terminate) await 99.s
+      actorSystem.stop(actor)
+      assert(whenJournalStopped.future.await(99.s) == JournalActor.Stopped(keyedEventJournalingActorCount = 0))  // No memory leak
     }
     finally actorSystem.terminate() await 99.s
   }
@@ -256,20 +260,20 @@ object JournalTest {
     s"$prefix-B" → TestAggregateActor.Command.Remove)
 
   private def testEvents(prefix: String) = Vector(
-    KeyedEvent(TestEvent.Added("AAA"))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Added("BBB"))(s"$prefix-B"),
-    KeyedEvent(TestEvent.Added("CCC"))(s"$prefix-C"),
-    KeyedEvent(TestEvent.Appended('a'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('b'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('c'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('d'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('e'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('f'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('g'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('h'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('i'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('j'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('k'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Appended('l'))(s"$prefix-A"),
-    KeyedEvent(TestEvent.Removed)(s"$prefix-B"))
+    s"$prefix-A" <-: TestEvent.Added("AAA"),
+    s"$prefix-B" <-: TestEvent.Added("BBB"),
+    s"$prefix-C" <-: TestEvent.Added("CCC"),
+    s"$prefix-A" <-: TestEvent.Appended('a'),
+    s"$prefix-A" <-: TestEvent.Appended('b'),
+    s"$prefix-A" <-: TestEvent.Appended('c'),
+    s"$prefix-A" <-: TestEvent.Appended('d'),
+    s"$prefix-A" <-: TestEvent.Appended('e'),
+    s"$prefix-A" <-: TestEvent.Appended('f'),
+    s"$prefix-A" <-: TestEvent.Appended('g'),
+    s"$prefix-A" <-: TestEvent.Appended('h'),
+    s"$prefix-A" <-: TestEvent.Appended('i'),
+    s"$prefix-A" <-: TestEvent.Appended('j'),
+    s"$prefix-A" <-: TestEvent.Appended('k'),
+    s"$prefix-A" <-: TestEvent.Appended('l'),
+    s"$prefix-B" <-: TestEvent.Removed)
 }

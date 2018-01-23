@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.agent.test
 
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
 /**
@@ -8,12 +10,18 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 trait AgentTest extends BeforeAndAfterAll with TestAgentProvider {
   this: Suite ⇒
 
+  private var started = false
+
   override protected def beforeAll() = {
     super.beforeAll()
     agent
+    started = true
   }
 
-  override def afterAll(): Unit = {
+  override def afterAll() = {
+    if (started) {
+      agent.terminate() await 99.s
+    }
     onClose { super.afterAll() }
     close()
   }

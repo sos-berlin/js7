@@ -6,6 +6,7 @@ import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AbortImmediately, Accepted, Terminate}
 import com.sos.jobscheduler.agent.test.AgentTest
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -42,14 +43,14 @@ extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with Ag
       def detailed = throw new NotImplementedError
     }
   }
-  override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
+  override implicit val patienceConfig = PatienceConfig(timeout = 123.s.toConcurrent)
   private lazy val client = SimpleAgentClient(agentUri = AgentAddress(agent.localUri.toString)).closeWithCloser
 
   List[(AgentCommand, AgentCommand.Response)](
     ExpectedTerminate → Accepted,
     AbortImmediately → Accepted)
   .foreach { case (command, response) ⇒
-    command.getClass.getSimpleName in {
+    command.getClass.simpleScalaName in {
       whenReady(client.executeCommand(command)) { o ⇒
         assert(o == response)
       }
@@ -58,5 +59,5 @@ extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with Ag
 }
 
 private object AgentClientCommandMarshallingTest {
-  private val ExpectedTerminate = Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
+  private val ExpectedTerminate = Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(123.seconds))
 }

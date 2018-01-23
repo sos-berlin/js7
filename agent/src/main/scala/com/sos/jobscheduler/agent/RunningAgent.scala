@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.Uri
 import com.google.common.io.Closer
 import com.google.inject
@@ -9,21 +9,23 @@ import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.views.AgentStartInformation
 import com.sos.jobscheduler.agent.web.AgentWebServer
 import com.sos.jobscheduler.agent.web.common.LoginSession
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
+import com.sos.jobscheduler.common.auth.User.Anonymous
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.time.Duration
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
-import scala.util.Failure
 
 /**
  * JobScheduler Agent.
@@ -34,15 +36,30 @@ import scala.util.Failure
  */
 final class RunningAgent private(
   val webServer: AgentWebServer,
+  mainActor: ActorRef,
   val terminated: Future[Completed],
   val commandHandler: CommandHandler,
   closer: Closer,
   @TestOnly val injector: Injector)
 extends AutoCloseable {
 
+  private implicit val executionContext = injector.instance[ExecutionContext]
+
   val localUri: Uri = webServer.localUri
 
   def close() = closer.close()
+
+  def terminate(): Future[Completed] =
+    for {
+      _ <- executeCommand(AgentCommand.Terminate())
+      t ← terminated
+    } yield t
+
+  /** Circumvents the CommandHandler which is possibly changed by a test via DI. */
+  private def executeCommand(command: AgentCommand): Future[AgentCommand.Response] =
+    promiseFuture[AgentCommand.Response](promise ⇒
+      mainActor ! MainActor.Input.ExternalCommand(Anonymous.id, AgentCommand.Terminate(), promise))
+
 }
 
 object RunningAgent {
@@ -57,13 +74,12 @@ object RunningAgent {
       a
     }
 
-  def runForTest(conf: AgentConfiguration)(body: RunningAgent ⇒ Unit): Unit =
-    autoClosing(startForTest(conf) await 10.s)(body)
+  def startForTest(conf: AgentConfiguration): Future[RunningAgent] =
+    startForTest(new AgentModule(conf))
 
-
-  def startForTest(conf: AgentConfiguration): Future[RunningAgent] = {
+  def startForTest(module: Module): Future[RunningAgent] = {
     import ExecutionContext.Implicits.global
-    val whenAgent = apply(conf)
+    val whenAgent = apply(module)
     for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
     whenAgent
   }
@@ -85,7 +101,7 @@ object RunningAgent {
     val sessionRegister = injector.getInstance(inject.Key.get(new inject.TypeLiteral[SessionRegister[LoginSession]] {}))
     val readyPromise = Promise[MainActor.Ready]()
     val stoppedPromise = Promise[Completed]()
-    actorSystem.actorOf(
+    val mainActor = actorSystem.actorOf(
       Props { new MainActor(agentConfiguration, sessionRegister, injector, readyPromise, stoppedPromise) },
       "main")
     for (ready ← readyPromise.future) yield {
@@ -98,10 +114,10 @@ object RunningAgent {
           sleep(500.ms)
         }
         closer.close()  // Close automatically after termination
-      } andThen {
-        case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
-      }
-      new RunningAgent(webServer, terminated, ready.commandHandler, closer, injector)
+      } //andThen {
+        //case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
+      //}
+      new RunningAgent(webServer, mainActor, terminated, ready.commandHandler, closer, injector)
     }
   }
 }

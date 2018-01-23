@@ -25,6 +25,6 @@ trait TestAgentProvider extends TestAgentDirectoryProvider {
   protected lazy final val agent: RunningAgent = {
     val confModule = new AgentModule(agentConfiguration)
     val combinedModule = Modules.`override`(confModule) `with` extraAgentModule
-    RunningAgent(combinedModule) map { _.closeWithCloser } await 10.s
+    RunningAgent.startForTest(combinedModule) map { _.closeWithCloser } await 10.s
   }.closeWithCloser
 }

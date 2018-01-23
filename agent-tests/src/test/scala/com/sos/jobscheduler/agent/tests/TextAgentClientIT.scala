@@ -7,12 +7,13 @@ import com.sos.jobscheduler.agent.client.TextAgentClient
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.test.{AgentTest, TestAgentDirectoryProvider}
+import com.sos.jobscheduler.agent.test.{TestAgentDirectoryProvider, TestAgentProvider}
 import com.sos.jobscheduler.agent.tests.TextAgentClientIT._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.web.auth.OurAuthenticator
 import com.sos.jobscheduler.common.auth.{HashedPassword, User, UserAndPassword, UserId}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.data.agent.AgentAddress
@@ -26,18 +27,13 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
  * @author Joacim Zschimmer
  */
-final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCloser with AgentTest with TestAgentDirectoryProvider {
+final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider with TestAgentDirectoryProvider {
 
   override protected lazy val agentConfiguration = {
     val c = newAgentConfiguration()
     c.copy(
       http = None)
       .withHttpsInetSocketAddress(c.http.get.address)
-  }
-
-  override def afterAll() = {
-    onClose { super.afterAll() }
-    close()
   }
 
   override protected def extraAgentModule = new AbstractModule {
@@ -64,6 +60,8 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
         case _ ⇒ None
       })
   }
+
+  override def afterAll() = closer closeThen { super.afterAll() }
 
   "Unauthorized" in {
     autoClosing(newTextAgentClient(_ ⇒ (), login = None)) { client ⇒

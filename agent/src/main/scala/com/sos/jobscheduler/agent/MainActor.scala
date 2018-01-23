@@ -6,11 +6,13 @@ import com.softwaremill.tagging._
 import com.sos.jobscheduler.agent.MainActor._
 import com.sos.jobscheduler.agent.command.{CommandActor, CommandHandler, SessionActor}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentHandle}
 import com.sos.jobscheduler.agent.web.common.LoginSession
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy
+import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
 import scala.concurrent.{ExecutionContext, Promise}
@@ -63,6 +65,9 @@ extends Actor {
     case AgentActor.Output.Ready ⇒
       readyPromise.success(Ready(commandHandler, agentHandle))
 
+    case Input.ExternalCommand(userId, cmd, response) ⇒  // For RunningMaster
+      agentHandle.executeCommand(cmd, userId, response)
+
     case Terminated(`agentActor`) ⇒
       logger.debug("AgentActor has stopped")
       stoppedPromise.trySuccess(Completed)
@@ -74,4 +79,8 @@ object MainActor {
   private val logger = Logger(getClass)
 
   final case class Ready(commandHandler: CommandHandler, agentHandle: AgentHandle)
+
+  object Input {
+    final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[AgentCommand.Response])
+  }
 }
