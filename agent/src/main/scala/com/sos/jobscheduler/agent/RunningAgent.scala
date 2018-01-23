@@ -42,9 +42,9 @@ final class RunningAgent private(
   val commandHandler: CommandHandler,
   closer: Closer,
   @TestOnly val injector: Injector)
+  (implicit ec: ExecutionContext)
 extends AutoCloseable {
 
-  private implicit val executionContext = injector.instance[ExecutionContext]
   val localUri: Uri = webServer.localUri
 
   logger.debug("Ready")
@@ -59,7 +59,7 @@ extends AutoCloseable {
     } yield t
   }
 
-  /** Circumvents the CommandHandler which is possibly changed by a test via DI. */
+  /** Circumvents the CommandHandler which is possibly replaced by a test via DI. */
   private def executeCommand(command: AgentCommand): Future[AgentCommand.Response] =
     promiseFuture[AgentCommand.Response](promise ⇒
       mainActor ! MainActor.Input.ExternalCommand(Anonymous.id, AgentCommand.Terminate(), promise))
@@ -69,35 +69,32 @@ object RunningAgent {
   private val logger = Logger(getClass)
   private val WebServerReadyTimeout = 60.s
 
-  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ A): A =
+  def run[A](configuration: AgentConfiguration, timeout: Option[Duration] = None)(body: RunningAgent ⇒ A)(implicit ec: ExecutionContext): A =
     autoClosing(apply(configuration) await timeout) { agent ⇒
-      implicit val executionContext = agent.injector.instance[ExecutionContext]
       val a = body(agent)
       agent.terminated await 99.s
       a
     }
 
-  def startForTest(conf: AgentConfiguration): Future[RunningAgent] =
+  def startForTest(conf: AgentConfiguration)(implicit ec: ExecutionContext): Future[RunningAgent] =
     startForTest(new AgentModule(conf))
 
-  def startForTest(module: Module): Future[RunningAgent] = {
-    import ExecutionContext.Implicits.global
+  def startForTest(module: Module)(implicit ec: ExecutionContext): Future[RunningAgent] = {
     val whenAgent = apply(module)
     for (agent ← whenAgent; t ← agent.terminated.failed) logger.error(t.toStringWithCauses, t)
     whenAgent
   }
 
-  def apply(configuration: AgentConfiguration): Future[RunningAgent] =
+  def apply(configuration: AgentConfiguration)(implicit ec: ExecutionContext): Future[RunningAgent] =
     apply(new AgentModule(configuration))
 
-  def apply(module: Module): Future[RunningAgent] = {
+  def apply(module: Module)(implicit ec: ExecutionContext): Future[RunningAgent] = {
     AgentStartInformation.initialize()
     val injector = Guice.createInjector(PRODUCTION, module)
     val agentConfiguration = injector.instance[AgentConfiguration]
     logger.info(s"config=${agentConfiguration.configDirectory getOrElse ""} data=${agentConfiguration.dataDirectory getOrElse ""}")
 
-    implicit val executionContext = injector.instance[ExecutionContext]
-    implicit val actorSystem = injector.instance[ActorSystem]
+    val actorSystem = injector.instance[ActorSystem]
     val closer = injector.instance[Closer]
     val webServer = injector.instance[AgentWebServer]
     val webServerReady = webServer.start()
@@ -107,19 +104,23 @@ object RunningAgent {
     val mainActor = actorSystem.actorOf(
       Props { new MainActor(agentConfiguration, sessionRegister, injector, readyPromise, stoppedPromise) },
       "main")
+
     for (ready ← readyPromise.future) yield {
       webServerReady await WebServerReadyTimeout
       webServer.setCommandHandler(ready.commandHandler)
       webServer.setAgentActor(ready.agentHandle)
-      val terminated = stoppedPromise.future andThen { case _ ⇒
-        blocking {
-          logger.debug("Delaying close to let HTTP server respond open requests")
-          sleep(500.ms)
+      val terminated = stoppedPromise.future
+        .map(identity)  // Change to implicit ExecutionContext (needed?)
+        .andThen { case _ ⇒
+          blocking {
+            logger.debug("Delaying close to let HTTP server respond open requests")
+            sleep(500.ms)
+          }
+          //To early. closer.close()  // Close automatically after termination
         }
-        closer.close()  // Close automatically after termination
-      } //andThen {
-        //case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
-      //}
+        //.andThen {
+        //  case Failure(t) ⇒ logger.error(t.toStringWithCauses, t)
+        //}
       new RunningAgent(webServer, mainActor, terminated, ready.commandHandler, closer, injector)
     }
   }

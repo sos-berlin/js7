@@ -8,12 +8,11 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AbortImmediately, 
 import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentAddress
 import javax.inject.Singleton
+import org.scalatest.FreeSpec
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -22,7 +21,7 @@ import scala.concurrent.duration._
  * @author Joacim Zschimmer
  */
 final class AgentClientCommandMarshallingTest
-extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with AgentTest {
+extends FreeSpec with ScalaFutures with AgentTest {
 
   override protected def extraAgentModule = new AbstractModule {
     def configure() = {}

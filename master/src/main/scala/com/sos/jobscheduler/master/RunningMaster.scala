@@ -49,10 +49,9 @@ abstract class RunningMaster private(
   val terminated: Future[Completed],
   closer: Closer,
   @TestOnly val injector: Injector)
+  (implicit ec: ExecutionContext)
 extends AutoCloseable
 {
-  private implicit val executionContext = injector.instance[ExecutionContext]
-
   def executeCommand(command: MasterCommand): Future[command.MyResponse]
 
   def addOrder(order: Order[Order.NotStarted]): Future[Completed] =
@@ -68,17 +67,15 @@ object RunningMaster {
   val StartedAt = Instant.now()
   private val logger = Logger(getClass)
 
-  def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit): Unit = {
+  def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit = {
     val master = apply(configuration) await timeout
-    implicit val executionContext = master.injector.instance[ExecutionContext]
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
     body(master)
     master.terminated await timeout
   }
 
-  def runForTest(directory: Path)(body: RunningMaster ⇒ Unit): Unit = {
+  def runForTest(directory: Path)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit = {
     val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
-    implicit val executionContext = injector.instance[ExecutionContext]
     val master = RunningMaster(injector) await 99.s
     try {
       body(master)
@@ -90,13 +87,13 @@ object RunningMaster {
     }
   }
 
-  def apply(configuration: MasterConfiguration): Future[RunningMaster] =
+  def apply(configuration: MasterConfiguration)(implicit ec: ExecutionContext): Future[RunningMaster] =
     apply(new MasterModule(configuration))
 
-  def apply(module: Module): Future[RunningMaster] =
+  def apply(module: Module)(implicit ec: ExecutionContext): Future[RunningMaster] =
     apply(Guice.createInjector(PRODUCTION, module))
 
-  def apply(injector: Injector): Future[RunningMaster] = {
+  def apply(injector: Injector)(implicit ec: ExecutionContext): Future[RunningMaster] = {
     val masterConfiguration = injector.instance[MasterConfiguration]
     logger.info(s"config=${masterConfiguration.configDirectoryOption getOrElse ""} data=${masterConfiguration.dataDirectory}")
 
@@ -105,70 +102,64 @@ object RunningMaster {
       case _ ⇒
     }
 
-    implicit val executionContext = injector.instance[ExecutionContext]
-    implicit val actorSystem = injector.instance[ActorSystem]
+    val actorSystem = injector.instance[ActorSystem]
     val eventIdGenerator = injector.instance[EventIdGenerator]
     val eventCollector = injector.instance[EventCollector]
     val closer = injector.instance[Closer]
     val webServer = injector.instance[MasterWebServer]
 
     val (orderKeeper, actorStopped) = CatchingActor.actorOf[Completed](
-      _ ⇒ Props {
-        new MasterOrderKeeper(
-          masterConfiguration,
-          injector.instance[ScheduledOrderGeneratorKeeper])(
-          injector.instance[TimerService],
-          eventIdGenerator,
-          eventCollector,
-          injector.instance[StampedKeyedEventBus]) },
-      onStopped = _ ⇒ Success(Completed))
+        _ ⇒ Props {
+          new MasterOrderKeeper(
+            masterConfiguration,
+            injector.instance[ScheduledOrderGeneratorKeeper])(
+            injector.instance[TimerService],
+            eventIdGenerator,
+            eventCollector,
+            injector.instance[StampedKeyedEventBus]) },
+        onStopped = _ ⇒ Success(Completed)
+      )(actorSystem)
 
-    val workflowClient = {
-      val ec = executionContext
-      new WorkflowClient {
-        import masterConfiguration.akkaAskTimeout
+    val workflowClient: WorkflowClient = new WorkflowClient {
+      import masterConfiguration.akkaAskTimeout
 
-        implicit def executionContext = ec
+      implicit def executionContext = ec
 
-        def namedWorkflow(path: WorkflowPath): Future[Option[Workflow.Named]] =
-          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[Workflow.Named]]
+      def namedWorkflow(path: WorkflowPath): Future[Option[Workflow.Named]] =
+        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[Workflow.Named]]
 
-        def namedWorkflows: Future[Stamped[Seq[Workflow.Named]]] =
-          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[Workflow.Named]]]
+      def namedWorkflows: Future[Stamped[Seq[Workflow.Named]]] =
+        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[Workflow.Named]]]
 
-        //def workflowPaths =  TODO optimize
-        //(orderKeeper ? MasterOrderKeeper.Command.GetWorkflowPaths).mapTo[Stamped[Seq[WorkflowPath]]]
+      //def workflowPaths =  TODO optimize
+      //(orderKeeper ? MasterOrderKeeper.Command.GetWorkflowPaths).mapTo[Stamped[Seq[WorkflowPath]]]
 
-        def workflowCount =
-          (orderKeeper ? MasterOrderKeeper.Command.GetWorkflowCount).mapTo[Int]
-      }
+      def workflowCount = (orderKeeper ? MasterOrderKeeper.Command.GetWorkflowCount).mapTo[Int]
     }
 
-    val orderClient = {
-      val ec = executionContext
-      new OrderClient {
-        import masterConfiguration.akkaAskTimeout
+    val orderClient = new OrderClient {
+      import masterConfiguration.akkaAskTimeout
 
-        implicit def executionContext = ec
+      def executionContext = ec
 
-        def events[E <: Event](request: EventRequest[E]): Future[Stamped[TearableEventSeq[Seq, KeyedEvent[E]]]] =
-          eventIdGenerator.stampTearableEventSeq(eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true))
+      def events[E <: Event](request: EventRequest[E]): Future[Stamped[TearableEventSeq[Seq, KeyedEvent[E]]]] =
+        eventIdGenerator.stampTearableEventSeq(eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true))
 
-        def order(orderId: OrderId): Future[Option[Order[Order.State]]] =
-          (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]]
+      def order(orderId: OrderId): Future[Option[Order[Order.State]]] =
+        (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]]
 
-        def orders: Future[Stamped[Seq[Order[Order.State]]]] =
-          (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]]
+      def orders: Future[Stamped[Seq[Order[Order.State]]]] =
+        (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]]
 
-        def orderCount =
-          (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int]
-      }
+      def orderCount =
+        (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int]
     }
 
     webServer.setClients(workflowClient, orderClient)
     val webServerReady = webServer.start()
 
     val terminated = actorStopped
+      .map(identity)  // Change to implicit ExecutionContext (needed?)
       .andThen { case Failure(t) ⇒
         logger.error(t.toStringWithCauses, t)
       }

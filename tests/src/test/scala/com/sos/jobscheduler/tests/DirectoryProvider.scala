@@ -44,7 +44,7 @@ private class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
       runMaster(master ⇒
         body(master, agents)))
 
-  def runMaster(body: RunningMaster ⇒ Unit): Unit =
+  def runMaster(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     RunningMaster.runForTest(directory)(body)
 
   def runAgents(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =

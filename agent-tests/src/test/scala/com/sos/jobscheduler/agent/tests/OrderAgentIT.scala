@@ -24,6 +24,7 @@ import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer

@@ -27,7 +27,6 @@ final class MainActor(
   injector: Injector,
   readyPromise: Promise[Ready],
   stoppedPromise: Promise[Completed])
-  (implicit executionContext: ExecutionContext)
 extends Actor {
 
   import agentConfiguration.akkaAskTimeout
@@ -35,6 +34,7 @@ extends Actor {
 
   override val supervisorStrategy = CatchingSupervisorStrategy(stoppedPromise)
 
+  private implicit val executionContext = injector.instance[ExecutionContext]
   private val agentActor = watch(actorOf(Props { injector.instance[AgentActor] }, "agent"))
   private val agentHandle = new AgentHandle(agentActor)(akkaAskTimeout)
 
