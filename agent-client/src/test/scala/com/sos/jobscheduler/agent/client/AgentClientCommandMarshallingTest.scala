@@ -43,7 +43,7 @@ extends FreeSpec with BeforeAndAfterAll with ScalaFutures with HasCloser with Ag
       def detailed = throw new NotImplementedError
     }
   }
-  override implicit val patienceConfig = PatienceConfig(timeout = 123.s.toConcurrent)
+  override implicit val patienceConfig = PatienceConfig(timeout = 10.s.toConcurrent)
   private lazy val client = SimpleAgentClient(agentUri = AgentAddress(agent.localUri.toString)).closeWithCloser
 
   List[(AgentCommand, AgentCommand.Response)](

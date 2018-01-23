@@ -6,6 +6,7 @@ import com.google.common.io.Closer
 import com.google.inject
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.{Guice, Injector, Module}
+import com.sos.jobscheduler.agent.RunningAgent._
 import com.sos.jobscheduler.agent.command.CommandHandler
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
@@ -44,22 +45,24 @@ final class RunningAgent private(
 extends AutoCloseable {
 
   private implicit val executionContext = injector.instance[ExecutionContext]
-
   val localUri: Uri = webServer.localUri
+
+  logger.debug("Ready")
 
   def close() = closer.close()
 
-  def terminate(): Future[Completed] =
+  def terminate(): Future[Completed] = {
+    logger.debug("terminate")
     for {
       _ <- executeCommand(AgentCommand.Terminate())
       t ← terminated
     } yield t
+  }
 
   /** Circumvents the CommandHandler which is possibly changed by a test via DI. */
   private def executeCommand(command: AgentCommand): Future[AgentCommand.Response] =
     promiseFuture[AgentCommand.Response](promise ⇒
       mainActor ! MainActor.Input.ExternalCommand(Anonymous.id, AgentCommand.Terminate(), promise))
-
 }
 
 object RunningAgent {
