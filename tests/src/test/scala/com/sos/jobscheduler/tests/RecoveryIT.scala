@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -15,7 +15,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
@@ -58,16 +58,16 @@ final class RecoveryIT extends FreeSpec {
             lastEventId = eventCollector.oldestEventId
           }
           runAgents(directoryProvider) { _ ⇒
-            master.executeCommand(MasterCommand.AddOrderIfNew(FastOrder)) await 99.s
-            lastEventId = lastEventIdOf(eventCollector.when[OrderFinished.type](EventRequest.singleClass(after = lastEventId, 99.s), _.key == FastOrderId) await 99.s)
-            lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestWorkflowPath.string) await 99.s)
-            lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestWorkflowPath.string) await 99.s)
+            master.addOrder(FastOrder) await 99.s
+            lastEventId = lastEventIdOf(eventCollector.await[OrderFinished.type](after = lastEventId, predicate = _.key == FastOrderId))
+            lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
+            lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
           }
           assert((readEvents(directoryProvider.agents(0).data / "state/journal") map { case Stamped(_, keyedEvent) ⇒ keyedEvent }) ==
             Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId.Anonymous)))
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(directoryProvider) { _ ⇒
-            lastEventId = lastEventIdOf(eventCollector.when[OrderProcessed](EventRequest.singleClass(after = lastEventId, 99.s), _.key.string startsWith TestWorkflowPath.string) await 99.s)
+            lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
           }
         }
 
@@ -77,10 +77,7 @@ final class RecoveryIT extends FreeSpec {
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ ⇒
             runMaster(directoryProvider) { master ⇒
-              val finishedEventSeq = eventCollector.when[OrderFinished.type](EventRequest.singleClass(after = myLastEventId, 99.s), _.key.string startsWith TestWorkflowPath.string) await 99.s
-              val orderId = (finishedEventSeq: @unchecked) match {
-                case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[OrderFinished.type]] ⇒ eventSeq.stampeds.toVector.last.value.key
-              }
+              val orderId = eventCollector.await[OrderFinished.type](after = myLastEventId, predicate = _.key.string startsWith TestWorkflowPath.string).last.value.key
               assert(master.orderClient.order(orderId).await(99.s) ==
                 Some(Order(
                   orderId,
@@ -88,9 +85,9 @@ final class RecoveryIT extends FreeSpec {
                   Order.Finished,
                   payload = Payload(
                     Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")))))
-              val EventSeq.NonEmpty(eventSeq) = eventCollector.when[OrderEvent](EventRequest.singleClass(after = EventId.BeforeFirst, 0.s), _.key == orderId) await 99.s
+              val stampeds = eventCollector.await[OrderEvent](_.key == orderId)
               withClue(s"$orderId") {
-                assert((deleteRestartedJobEvents(eventSeq map { _.value.event }) collect {
+                assert((deleteRestartedJobEvents(stampeds.map(_.value.event).iterator) collect {
                     case o @ OrderAdded(_, Order.Scheduled(_), _) ⇒ o.copy(state = Order.Scheduled(SomeTimestamp))
                     case o ⇒ o
                   }).toVector
@@ -104,7 +101,7 @@ final class RecoveryIT extends FreeSpec {
   }
 
   private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster ⇒ Unit): Unit =
-    directoryProvider.runMaster { master ⇒
+    RunningMaster.runForTest(directoryProvider.directory) { master ⇒
       eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
       body(master)
@@ -112,7 +109,7 @@ final class RecoveryIT extends FreeSpec {
     }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
-    directoryProvider.runAgents { agents ⇒
+    multipleAutoClosing(directoryProvider.agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
       body(agents)
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
     }
@@ -209,9 +206,6 @@ private object RecoveryIT {
     result.toVector
   }
 
-  private def lastEventIdOf[E <: Event](eventSeq: TearableEventSeq[Iterator, KeyedEvent[E]]): EventId =
-    (eventSeq: @unchecked) match {
-      case eventSeq: EventSeq.NonEmpty[Iterator, KeyedEvent[E]] ⇒
-        eventSeq.stampeds.toVector.last.eventId
-    }
+  private def lastEventIdOf[E <: Event](stamped: TraversableOnce[Stamped[KeyedEvent[E]]]): EventId =
+    stamped.toVector.last.eventId
 }
