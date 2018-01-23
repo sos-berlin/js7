@@ -3,8 +3,8 @@ package com.sos.jobscheduler.shared.workflow
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.order.OrderEvent.OrderActorEvent
+import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfErrorGoto}
 import com.sos.jobscheduler.data.workflow.{EventInstruction, Instruction, OrderContext, Position, PositionInstruction, Workflow, WorkflowPath, WorkflowPosition}
@@ -21,27 +21,8 @@ final class OrderEventSource(
   private val context = new OrderContext {
     // This and idToOrder are mutable, do not use in Future !!!
     def idToOrder                                         = OrderEventSource.this.idToOrder
-    def nextPosition(order: Order[Order.Processed.type])  = OrderEventSource.this.nextPosition(order)
     def childOrderEnded(order: Order[Order.State])        = OrderEventSource.this.childOrderEnded(order)
     def instruction(workflowPosition: WorkflowPosition)   = OrderEventSource.this.instruction(workflowPosition)
-  }
-
-  def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
-    val order = idToOrder(orderId)
-    (order.state, order.outcome) match {
-      //case (Order.Processed, Outcome.Bad(AgentRestarted)) ⇒
-      //  Some(order.id <-: OrderMoved(order.position))  // Repeat
-
-      case _ ⇒
-        instruction(order.workflowPosition) match {
-          case instr: EventInstruction ⇒
-            instr.toEvent(order, context)
-
-          case instruction ⇒
-            logger.trace(s"❓ $instruction")
-            None
-        }
-    }
   }
 
   private def childOrderEnded(order: Order[Order.State]): Boolean =
@@ -54,11 +35,35 @@ final class OrderEventSource(
       case _ ⇒ false
     }
 
-  private def nextPosition(order: Order[Order.Processed.type]): Option[Position] =
-    applyTransitionInstructions(order withPosition order.position.increment)
+  def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
+    val order = idToOrder(orderId)
+    (order.state, order.outcome) match {
+      //case (Order.Processed, Outcome.Bad(AgentRestarted)) ⇒
+      //  Some(order.id <-: OrderMoved(order.position))  // Repeat
 
-  private[workflow] def applyTransitionInstructions(order: Order[Order.Processed.type]): Option[Position] =
-    applyTransitionInstructions(order, Nil) match {
+      case _ ⇒
+        instruction(order.workflowPosition) match {
+          case instr: EventInstruction ⇒
+            instr.toEvent(order, context) flatMap {
+              case oId <-: OrderMoved(pos) ⇒
+                for {
+                  o ← idToOrder(oId).ifState[Order.Processed.type]
+                  pos ← applyMoveInstructions(o.withPosition(pos))
+                } yield oId <-: OrderMoved(pos)
+
+              case o ⇒
+                Some(o)
+            }
+
+          case instruction ⇒
+            logger.trace(s"❓ $instruction")
+            None
+        }
+    }
+  }
+
+  private[workflow] def applyMoveInstructions(order: Order[Order.Processed.type]): Option[Position] =
+    applyMoveInstructions(order, Nil) match {
       case Valid(Some(n)) ⇒ Some(n)
       case Valid(None) ⇒ Some(order.position)
       case Invalid(message) ⇒
@@ -67,14 +72,14 @@ final class OrderEventSource(
     }
 
   @tailrec
-  private def applyTransitionInstructions(order: Order[Order.Processed.type], visited: List[Position]): Validated[String, Option[Position]] =
+  private def applyMoveInstructions(order: Order[Order.Processed.type], visited: List[Position]): Validated[String, Option[Position]] =
     applySingleTransitionInstruction(order) match {
       case Some(position) ⇒
         if (visited contains position)
           Invalid(s"${order.id} is in a workflow loop: " +
             visited.reverse.map(pos ⇒ pathToWorkflow(order.workflowPath).labeledInstruction(pos).toShortString).mkString(" -> "))
         else
-          applyTransitionInstructions(order.withPosition(position), position :: visited)
+          applyMoveInstructions(order.withPosition(position), position :: visited)
       case None ⇒ Valid(Some(order.position))
     }
 

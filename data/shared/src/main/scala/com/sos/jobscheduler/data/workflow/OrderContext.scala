@@ -9,8 +9,6 @@ trait OrderContext {
 
   def idToOrder: PartialFunction[OrderId, Order[Order.State]]
 
-  def nextPosition(order: Order[Order.Processed.type]): Option[Position]
-
   def childOrderEnded(order: Order[Order.State]): Boolean
 
   def instruction(workflowPosition: WorkflowPosition): Instruction

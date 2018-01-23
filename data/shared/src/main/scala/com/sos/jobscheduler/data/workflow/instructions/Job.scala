@@ -15,15 +15,13 @@ final case class Job(job: AgentJobPath) extends EventInstruction
 {
   def toEvent(order: Order[Order.State], context: OrderContext) =
     // Order.Ready: Job start has to be done by the caller
-    for {
-      order ← order.ifState[Order.Processed.type]
-      event ←
+    for (order ← order.ifState[Order.Processed.type]) yield
+      order.id <-: OrderMoved(
         if (order.outcome == Outcome.Bad(AgentRestarted))
-          Some(order.id <-: OrderMoved(order.position))  // Repeat
+          order.position  // Repeat
         else
-          for (to ← context.nextPosition(order)) yield
-            order.id <-: OrderMoved(to)
-    } yield event
+          order.position.increment)
+
 
   def agentPath = job.agentPath
 

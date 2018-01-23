@@ -110,9 +110,9 @@ final class OrderEventSourceTest extends FreeSpec {
     // and so forth...
   }
 
-  "applyTransitionInstructions" - {
+  "applyMoveInstructions" - {
     def position(eventSource: OrderEventSource, order: Order[Order.State], position: Position) =
-      eventSource.applyTransitionInstructions(order.copy(state = Order.Processed).withPosition(position))
+      eventSource.applyMoveInstructions(order.copy(state = Order.Processed).withPosition(position))
 
     "Goto, IfErrorGoto" in {
       val workflow = Workflow(Vector(
@@ -133,7 +133,7 @@ final class OrderEventSourceTest extends FreeSpec {
       assert(position(eventSource, errorOrder, Position(5)) == Some(Position(3)))   // error
       assert(position(eventSource, okayOrder, Position(6)) == Some(Position(6)))    // ImplicitEnd
       intercept[RuntimeException] {
-        eventSource.applyTransitionInstructions(okayOrder.copy(state = Order.Processed) withInstructionNr 99)
+        eventSource.applyMoveInstructions(okayOrder.copy(state = Order.Processed) withInstructionNr 99)
       }
     }
 
