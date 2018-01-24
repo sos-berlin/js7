@@ -90,19 +90,19 @@ object DirectoryProvider {
       <script language="shell">{script(sleep, resultVariable)}</script>
     </job>
 
-  val StdoutOutput = if (isWindows) "TEST" else "TEST ☘"
+  val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"
 
   private def script(sleep: Duration, resultVariable: Option[String]) =
     if (isWindows)
       (s"""
         |@echo off
-        |echo $StdoutOutput
+        |echo ${StdoutOutput.trim}
         |ping -n ${(sleep + 999999.µs).toSecondsString} 127.0.0.1 >nul""" +
         resultVariable.fold("")(o ⇒ s"""|echo result=SCRIPT-VARIABLE-%SCHEDULER_PARAM_${o.toUpperCase}% >>"%SCHEDULER_RETURN_VALUES%"""")
       ).stripMargin
     else
       (s"""
-        |echo $StdoutOutput
+        |echo ${StdoutOutput.trim}
         |sleep ${sleep.toSecondsString}""" +
         resultVariable.fold("")(o ⇒ s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
       ).stripMargin

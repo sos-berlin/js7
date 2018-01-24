@@ -29,7 +29,7 @@ final class IfReturnCodeTest extends FreeSpec {
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
       directoryProvider.master.jsonFile(TestNamedWorkflow.path).contentString = TestNamedWorkflow.workflow.asJson.toPrettyString
-      for (a ← directoryProvider.agents) a.job(TestJobPath).xml = <job tasks="3"><script language="shell">exit</script></job>
+      for (a ← directoryProvider.agents) a.job(TestJobPath).xml = <job tasks="3"><script language="shell">:</script></job>
 
       directoryProvider.run { (master, _) ⇒
         val eventCollector = new TestEventCollector

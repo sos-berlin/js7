@@ -28,7 +28,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
       for ((path, workflow) ← TestWorkflows) directoryProvider.master.txtFile(path).contentString = workflow
-      for (a ← directoryProvider.agents) a.job(TestJobPath).xml = <job><script language="shell">exit</script></job>
+      for (a ← directoryProvider.agents) a.job(TestJobPath).xml = <job><script language="shell">:</script></job>
 
       directoryProvider.run { (master, _) ⇒
         val eventCollector = new TestEventCollector

@@ -7,7 +7,8 @@ import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
-import java.nio.file.Paths
+import java.io.File
+import java.nio.file.{Files, Paths}
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
 import org.scalatest.FreeSpec
@@ -18,7 +19,11 @@ import org.scalatest.FreeSpec
 final class JavaJsonCodecsTest extends FreeSpec {
 
   "Path" in {
-    testJson(Paths.get("/tmp/test"), """ "/tmp/test" """)
+    if (File.separatorChar == '\\') {
+      testJson(Paths.get("/tmp/test"), """ "\\tmp\\test" """)
+    } else {
+      testJson(Paths.get("/tmp/test"), """ "/tmp/test" """)
+    }
   }
 
   "Instant" - {  // See also Timestamp
