@@ -62,6 +62,8 @@ object CommandLineArguments {
     val m = new mutable.LinkedHashMap[String, Vector[Argument]] {
       override def default(key: String) = Vector()//throw new IllegalArgumentException(if (key.nonEmpty) s"Missing option -$key" else s"Missing argument")
     }
+    for (a ← args.lastOption if a endsWith "\r")
+      throw new IllegalArgumentException("The last argument must not end with a CR (\\r)")
     for (a ← parseArgs(args)) {
       m.get(a.key) match {
         case None ⇒ m += a.key → Vector(a)
