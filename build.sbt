@@ -32,12 +32,11 @@ import sbt.Keys.testOptions
 import sbt.librarymanagement.DependencyFilter.artifactFilter
 import sbt.{CrossVersion, Def}
 
-val fastSbt = sys.env contains "FAST_SBT"
-
 val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o ⇒ new File(o))
 val publishRepositoryName            = sys.props.get("publishRepository.name")
 val publishRepositoryUri             = sys.props.get("publishRepository.uri")
-def isForDevelopment                 = sys.props contains "dev"
+val testParallel                     = sys.props contains "test-parallel"
+val isForDevelopment                 = sys.props contains "dev"
 
 // Under Windows, compile engine-job-api first, to allow taskserver-dotnet accessing the class files of engine-job-api.
 addCommandAlias("clean-publish"  , "; clean ;build; publish-all")
@@ -81,7 +80,7 @@ val commonSettings = Seq(
   testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQ"),       // D: Durations, F: Print full stack strace, http://www.scalatest.org/user_guide/using_scalatest_with_sbt
   testOptions in ForkedTest += Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQ"),  // D: Durations, F: Print full stack strace, http://www.scalatest.org/user_guide/using_scalatest_with_sbt
   logBuffered in Test := false,  // Recommended for ScalaTest
-  testForkedParallel in Test := fastSbt,  // Experimental in sbt 0.13.13
+  testForkedParallel in Test := testParallel,  // Experimental in sbt 0.13.13
   sources in (Compile, doc) := Nil, // No ScalaDoc
   test in publishM2 := {},
   // Publish
@@ -95,7 +94,7 @@ val universalPluginSettings = Seq(
       (universalArchiveOptions in (Universal, packageZipTarball)).value)  // Under cygwin, tar shall not interpret C:
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
-  max = if (fastSbt) math.max(1, sys.runtime.availableProcessors * 3/8) else 1)
+  max = if (testParallel) math.max(1, sys.runtime.availableProcessors * 3/8) else 1)
 
 resolvers += Resolver.mavenLocal
 
