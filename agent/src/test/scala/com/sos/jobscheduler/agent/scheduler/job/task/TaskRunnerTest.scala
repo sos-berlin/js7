@@ -4,7 +4,7 @@ import com.google.common.io.Closer
 import com.google.inject.Guice
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
-import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerIT._
+import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerTest._
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, ShellReturnValuesProvider}
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
 import com.sos.jobscheduler.base.utils.MapDiff
@@ -27,7 +27,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
+final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll {
 
   private lazy val injector = Guice.createInjector(new AgentModule(AgentConfiguration.forTest()))
 
@@ -50,7 +50,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
             </params>
             <script language="shell">{TestScript}</script>
           </job>))
-      val shellFile = newTemporaryShellFile("TaskRunnerIT")
+      val shellFile = newTemporaryShellFile("TaskRunnerTest")
       shellFile.contentString = jobConfiguration.script.string.trim
       val shellReturnValuesProvider = new ShellReturnValuesProvider
       val taskConfiguration = TaskConfiguration(jobConfiguration, shellFile, shellReturnValuesProvider)
@@ -84,7 +84,7 @@ final class TaskRunnerIT extends FreeSpec with BeforeAndAfterAll {
   }
 }
 
-object TaskRunnerIT {
+object TaskRunnerTest {
   private val TestScript =
     if (isWindows) """
       |@echo off

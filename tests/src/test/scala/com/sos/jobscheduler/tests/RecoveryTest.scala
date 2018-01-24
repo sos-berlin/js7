@@ -26,7 +26,7 @@ import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import com.sos.jobscheduler.shared.event.journal.{GzipCompression, JournalMeta, JsonFileIterator}
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
-import com.sos.jobscheduler.tests.RecoveryIT._
+import com.sos.jobscheduler.tests.RecoveryTest._
 import java.nio.file.Path
 import java.time.Instant
 import org.scalatest.FreeSpec
@@ -38,7 +38,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class RecoveryIT extends FreeSpec {
+final class RecoveryTest extends FreeSpec {
 
   private val eventCollector = new TestEventCollector
 
@@ -125,7 +125,7 @@ final class RecoveryIT extends FreeSpec {
   }
 }
 
-private object RecoveryIT {
+private object RecoveryTest {
   private val logger = Logger(getClass)
 
   private val AgentPaths = List(AgentPath("/agent-111"), AgentPath("/agent-222"))

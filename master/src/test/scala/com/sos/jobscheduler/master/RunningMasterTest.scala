@@ -23,7 +23,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, EventSeq, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
-import com.sos.jobscheduler.master.RunningMasterIT._
+import com.sos.jobscheduler.master.RunningMasterTest._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.{MasterOrderKeeper, OrderGeneratorPath}
@@ -42,10 +42,10 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class RunningMasterIT extends FreeSpec {
+final class RunningMasterTest extends FreeSpec {
 
   "test" in {
-    autoClosing(new TestEnvironment(AgentPaths, temporaryDirectory / "RunningMasterIT")) { env ⇒
+    autoClosing(new TestEnvironment(AgentPaths, temporaryDirectory / "RunningMasterTest")) { env ⇒
       val agentConfigs = AgentPaths map { agentPath ⇒
         env.agentXmlFile(agentPath, JobPath("/test")).xml =
           <job>
@@ -132,7 +132,7 @@ final class RunningMasterIT extends FreeSpec {
   }
 }
 
-private object RunningMasterIT {
+private object RunningMasterTest {
   private val TestDuration = 10.s
   private val TestWorkflowPath = WorkflowPath("/test")
   private val TestOrderId = OrderId("ORDER-ID")

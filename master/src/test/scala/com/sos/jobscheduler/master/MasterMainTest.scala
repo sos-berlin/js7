@@ -15,7 +15,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class MasterMainIT extends FreeSpec {
+final class MasterMainTest extends FreeSpec {
 
   private lazy val httpPort = FreeTcpPortFinder.findRandomFreeTcpPort()
 

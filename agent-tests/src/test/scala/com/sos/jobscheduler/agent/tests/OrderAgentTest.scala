@@ -7,7 +7,7 @@ import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Batch, DetachOrder, Login, RegisterAsMaster}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider.provideAgentDirectory
-import com.sos.jobscheduler.agent.tests.OrderAgentIT._
+import com.sos.jobscheduler.agent.tests.OrderAgentTest._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -29,7 +29,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class OrderAgentIT extends FreeSpec {
+final class OrderAgentTest extends FreeSpec {
 
   "AgentCommand AttachOrder" in {
     provideAgentDirectory { directory ⇒
@@ -101,7 +101,7 @@ final class OrderAgentIT extends FreeSpec {
   }
 }
 
-private object OrderAgentIT {
+private object OrderAgentTest {
   private val TestScript =
     if (isWindows) """
       |@echo off

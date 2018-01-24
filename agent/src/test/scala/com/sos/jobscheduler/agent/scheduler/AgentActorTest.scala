@@ -4,7 +4,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, DetachOrder, GetOrders, RegisterAsMaster}
-import com.sos.jobscheduler.agent.scheduler.AgentActorIT._
+import com.sos.jobscheduler.agent.scheduler.AgentActorTest._
 import com.sos.jobscheduler.agent.scheduler.order.TestAgentActorProvider
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
@@ -24,12 +24,12 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class AgentActorIT extends FreeSpec {
+final class AgentActorTest extends FreeSpec {
 
   private implicit val askTimeout = Timeout(60.seconds)
 
   for (n ← List(10) ++ (sys.props contains "test.speed" option 1000)) {
-    s"AgentActorIT, $n orders" in {
+    s"AgentActorTest, $n orders" in {
       TestAgentActorProvider.provide { provider ⇒
         import provider.{agentDirectory, eventCollector, executeCommand}
         for (jobPath ← TestJobPaths)
@@ -72,7 +72,7 @@ final class AgentActorIT extends FreeSpec {
   }
 }
 
-object AgentActorIT {
+object AgentActorTest {
   private val AScript =
     if (isWindows) """
       |@echo off

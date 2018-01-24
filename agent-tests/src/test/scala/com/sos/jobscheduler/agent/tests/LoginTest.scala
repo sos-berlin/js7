@@ -18,7 +18,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 /**
   * @author Joacim Zschimmer
   */
-final class LoginIT extends FreeSpec with BeforeAndAfterAll with TestAgentProvider {
+final class LoginTest extends FreeSpec with BeforeAndAfterAll with TestAgentProvider {
 
   override def afterAll() = closer closeThen { super.afterAll() }
 

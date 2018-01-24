@@ -18,7 +18,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration.InvalidAuthen
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
 import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
-import com.sos.jobscheduler.agent.web.AgentWebServerIT._
+import com.sos.jobscheduler.agent.web.AgentWebServerTest._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.CirceJsonSupport._
@@ -47,7 +47,7 @@ import scala.reflect.ClassTag
 /**
  * @author Joacim Zschimmer
  */
-final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
+final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
   private lazy val List(httpPort, httpsPort) = findRandomFreeTcpPorts(2)
   private lazy val agentConfiguration = AgentConfiguration
@@ -57,7 +57,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   private lazy val agent = RunningAgent(agentConfiguration) await 10.s
   private implicit lazy val actorSystem = {
     val config = ConfigFactory.parseMap(Map("akka.http.server.verbose-error-messages" → true).asJava)
-    ActorSystem("AgentWebServerIT", config) withCloser { _.terminate() await 99.s }
+    ActorSystem("AgentWebServerTest", config) withCloser { _.terminate() await 99.s }
   }
   private implicit lazy val materializer = ActorMaterializer()
   private lazy val http = Http()
@@ -180,7 +180,7 @@ final class AgentWebServerIT extends FreeSpec with HasCloser with BeforeAndAfter
   }
 }
 
-private object AgentWebServerIT {
+private object AgentWebServerTest {
   private val Api = "agent/api"
   private val ClientKeystoreRef = KeystoreReference(
     TestAgentDirectoryProvider.PublicHttpJksResource.url,

@@ -8,7 +8,7 @@ import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.test.{TestAgentDirectoryProvider, TestAgentProvider}
-import com.sos.jobscheduler.agent.tests.TextAgentClientIT._
+import com.sos.jobscheduler.agent.tests.TextAgentClientTest._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.web.auth.OurAuthenticator
 import com.sos.jobscheduler.common.auth.{HashedPassword, User, UserAndPassword, UserId}
@@ -27,7 +27,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
  * @author Joacim Zschimmer
  */
-final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider with TestAgentDirectoryProvider {
+final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider with TestAgentDirectoryProvider {
 
   override protected lazy val agentConfiguration = {
     val c = newAgentConfiguration()
@@ -107,7 +107,7 @@ final class TextAgentClientIT extends FreeSpec with BeforeAndAfterAll with HasCl
     new TextAgentClient(agentUri = AgentAddress(agent.localUri.toString), output, login, Some(keystoreReference))
 }
 
-private object TextAgentClientIT {
+private object TextAgentClientTest {
   private val ExpectedTerminate = AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(10.seconds))
   private val TestUserId = UserId("SHA512-USER")
   private val Password = SecretString("SHA512-PASSWORD")

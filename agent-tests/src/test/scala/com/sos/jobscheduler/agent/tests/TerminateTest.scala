@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AttachOrder, Login, RegisterAsMaster, Terminate}
 import com.sos.jobscheduler.agent.test.TestAgentDirectoryProvider
-import com.sos.jobscheduler.agent.tests.TerminateIT._
+import com.sos.jobscheduler.agent.tests.TerminateTest._
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -33,11 +33,11 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
+final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
 
   "Terminate" in {
     withCloser { implicit closer ⇒
-      implicit val actorSystem = ActorSystem("TerminateIT")
+      implicit val actorSystem = ActorSystem("TerminateTest")
       closer onClose actorSystem.terminate()
       provideAgent { (client, agent) ⇒
         val eventCollector = newEventCollector(agent.injector)
@@ -71,7 +71,7 @@ final class TerminateIT extends FreeSpec with BeforeAndAfterAll  {
   }
 }
 
-object TerminateIT {
+object TerminateTest {
   private val AScript =
     if (isWindows) """
       |@echo off
@@ -88,7 +88,7 @@ object TerminateIT {
           <script language="shell">{AScript}</script>
         </job>
       val agent = RunningAgent.startForTest(AgentConfiguration.forTest(configAndData = Some(agentDirectory))) map { _.closeWithCloser } await 10.s
-      implicit val actorRefFactory: ActorRefFactory = newActorSystem("TerminateIT")(closer)
+      implicit val actorRefFactory: ActorRefFactory = newActorSystem("TerminateTest")(closer)
       val client = AgentClient(
         agentUri = agent.localUri.toString,
         licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))
