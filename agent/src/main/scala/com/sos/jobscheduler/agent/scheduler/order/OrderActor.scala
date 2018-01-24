@@ -287,7 +287,7 @@ private[order] object OrderActor {
 
   sealed trait Input
   object Input {
-    final case class AddChild(order: Order[Order.Ready.type]) extends Input
+    final case class AddChild(order: Order[Order.Ready]) extends Input
     final case class AddPublished(order: Order[Order.Offered]) extends Input
     final case class StartProcessing(job: Job, jobActor: ActorRef) extends Input
     final case object Terminate extends Input

@@ -47,7 +47,7 @@ final class OrderEventSource(
             instr.toEvent(order, context) flatMap {
               case oId <-: OrderMoved(pos) ⇒
                 for {
-                  o ← idToOrder(oId).ifState[Order.Processed.type]
+                  o ← idToOrder(oId).ifState[Order.Processed]
                   pos ← applyMoveInstructions(o.withPosition(pos))
                 } yield oId <-: OrderMoved(pos)
 
@@ -62,7 +62,7 @@ final class OrderEventSource(
     }
   }
 
-  private[workflow] def applyMoveInstructions(order: Order[Order.Processed.type]): Option[Position] =
+  private[workflow] def applyMoveInstructions(order: Order[Order.Processed]): Option[Position] =
     applyMoveInstructions(order, Nil) match {
       case Valid(Some(n)) ⇒ Some(n)
       case Valid(None) ⇒ Some(order.position)
@@ -72,7 +72,7 @@ final class OrderEventSource(
     }
 
   @tailrec
-  private def applyMoveInstructions(order: Order[Order.Processed.type], visited: List[Position]): Validated[String, Option[Position]] =
+  private def applyMoveInstructions(order: Order[Order.Processed], visited: List[Position]): Validated[String, Option[Position]] =
     applySingleTransitionInstruction(order) match {
       case Some(position) ⇒
         if (visited contains position)
@@ -83,7 +83,7 @@ final class OrderEventSource(
       case None ⇒ Valid(Some(order.position))
     }
 
-  private def applySingleTransitionInstruction(order: Order[Order.Processed.type]): Option[Position] = {
+  private def applySingleTransitionInstruction(order: Order[Order.Processed]): Option[Position] = {
     val workflow = pathToWorkflow(order.workflowPath)
     workflow.instruction(order.position) match {
       case Goto(label) ⇒

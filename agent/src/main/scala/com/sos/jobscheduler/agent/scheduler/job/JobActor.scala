@@ -180,7 +180,7 @@ object JobActor {
     final case class StartWithConfigurationFile(path: Path)
     final case class StartWithConfiguration(conf: JobConfiguration)
     final case class ReadConfigurationFile(path: Path)
-    final case class ProcessOrder(order: Order[Order.InProcess.type], stdChannels: StdChannels) extends Command
+    final case class ProcessOrder(order: Order[Order.InProcess], stdChannels: StdChannels) extends Command
   }
 
   object Response {

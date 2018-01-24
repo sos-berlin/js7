@@ -58,7 +58,7 @@ object OrderEventHandler {
 
   sealed trait FollowUp
   object FollowUp {
-    final case class AddChild(order: Order[Order.Ready.type]) extends FollowUp
+    final case class AddChild(order: Order[Order.Ready]) extends FollowUp
     final case class AddOffered(order: Order[Order.Offered]) extends FollowUp
     final case class TryAgain(orderId: OrderId) extends FollowUp
     final case class Remove(orderId: OrderId) extends FollowUp

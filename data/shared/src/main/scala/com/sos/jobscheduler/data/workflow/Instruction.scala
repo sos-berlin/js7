@@ -28,7 +28,7 @@ trait EventInstruction extends Instruction {
 }
 
 trait PositionInstruction extends Instruction {
-  def nextPosition(order: Order[Order.Processed.type], context: OrderContext): Option[Position]
+  def nextPosition(order: Order[Order.Processed], context: OrderContext): Option[Position]
 }
 
 trait JumpInstruction extends Instruction {

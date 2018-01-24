@@ -14,7 +14,7 @@ import scala.collection.immutable.{IndexedSeq, Seq}
 final case class IfReturnCode(returnCodes: Seq[ReturnCode], workflows: IndexedSeq[Workflow]) extends PositionInstruction {
   require(workflows.size >= 1 && workflows.size <= 2)
 
-  def nextPosition(order: Order[Order.Processed.type], context: OrderContext) = {
+  def nextPosition(order: Order[Order.Processed], context: OrderContext) = {
     assert(order == context.idToOrder(order.id).withPosition(order.position))
     Some(order.outcome) collect {
       case Outcome.Good(okay) ⇒

@@ -44,19 +44,19 @@ final class OrderTest extends FreeSpec {
     }
 
     "castState" in {
-      assert(order.castState[Order.Ready.type] eq order)
+      assert(order.castState[Order.Ready] eq order)
       assert(order.castState[Order.Idle] eq order)
       assert(order.castState[Order.State] eq order)
       intercept[IllegalStateException] {
-        order.castState[Order.Processed.type]
+        order.castState[Order.Processed]
       }
     }
 
     "ifState" in {
-      assert(order.ifState[Order.Ready.type] == Some(order))
+      assert(order.ifState[Order.Ready] == Some(order))
       assert(order.ifState[Order.Idle] == Some(order))
       assert(order.ifState[Order.State] == Some(order))
-      assert(order.ifState[Order.Processed.type] == None)
+      assert(order.ifState[Order.Processed] == None)
     }
 
     "JSON" in {

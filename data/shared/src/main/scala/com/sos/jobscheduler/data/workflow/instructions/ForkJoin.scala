@@ -37,7 +37,7 @@ extends EventInstruction
     branches collectFirst { case fj: ForkJoin.Branch if fj.id == branchId ⇒ fj.workflow }
 
   def toEvent(order: Order[Order.State], context: OrderContext) =
-    order.ifState[Order.Ready.type].map(order ⇒
+    order.ifState[Order.Ready].map(order ⇒
       order.id <-: OrderForked(
         for (branch ← branches) yield
           OrderForked.Child(branch.id, order.id / branch.id.childId, MapDiff.empty)))

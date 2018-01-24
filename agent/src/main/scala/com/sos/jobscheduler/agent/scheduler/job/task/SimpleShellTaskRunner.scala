@@ -63,13 +63,13 @@ extends TaskRunner {
         Future.successful(Completed)
     }
 
-  def processOrder(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[TaskStepEnded] =
+  def processOrder(order: Order[Order.InProcess], stdChannels: StdChannels): Future[TaskStepEnded] =
     for (returnCode ← runProcess(order, stdChannels)) yield
       TaskStepSucceeded(
         MapDiff.diff(order.variables, order.variables ++ fetchReturnValuesThenDeleteFile()),
         Outcome.Good(returnCode.isSuccess))
 
-  private def runProcess(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[ReturnCode] =
+  private def runProcess(order: Order[Order.InProcess], stdChannels: StdChannels): Future[ReturnCode] =
     for {
       richProcess ← startProcess(order, stdChannels) andThen {
         case Success(richProcess) ⇒ logger.info(s"System process '$richProcess' started for ${order.id}, ${conf.jobPath}, script ${conf.shellFile}")
@@ -90,7 +90,7 @@ extends TaskRunner {
     result
   }
 
-  private def startProcess(order: Order[Order.InProcess.type], stdChannels: StdChannels): Future[RichProcess] = {
+  private def startProcess(order: Order[Order.InProcess], stdChannels: StdChannels): Future[RichProcess] = {
     if (killedBeforeStart)
       Future.failed(new RuntimeException(s"$agentTaskId killed before start"))
     else {

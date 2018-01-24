@@ -13,7 +13,7 @@ import com.sos.jobscheduler.data.workflow.{Instruction, OrderContext}
 object Instructions
 {
   private[instructions] def ifProcessedThenOrderMoved(order: Order[Order.State], context: OrderContext) =
-    order.ifState[Order.Processed.type].map(order ⇒
+    order.ifState[Order.Processed].map(order ⇒
       order.id <-: OrderMoved(order.position.increment))
 
   private[workflow] implicit val jsonCodec: TypedJsonCodec[Instruction] = TypedJsonCodec[Instruction](

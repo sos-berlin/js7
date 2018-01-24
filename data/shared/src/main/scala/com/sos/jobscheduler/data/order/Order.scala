@@ -11,7 +11,6 @@ import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.{InstructionNr, Position, WorkflowPath, WorkflowPosition}
 import io.circe.generic.JsonCodec
-import io.circe.LowPriorityDecoders
 import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
 
@@ -26,7 +25,7 @@ final case class Order[+S <: Order.State](
   payload: Payload = Payload.empty,
   parent: Option[OrderId] = None)
 {
-  def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready.type]] =
+  def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready]] =
     for (child ← event.children) yield
       Order(child.orderId, workflowPosition.copy(position = workflowPosition.position / child.branchId / InstructionNr.First), Ready, attachedTo,
         Payload(child.variablesDiff.applyTo(payload.variables)),
@@ -110,11 +109,11 @@ final case class Order[+S <: Order.State](
 
   def outcome = payload.outcome
 
-  def castAfterEvent(event: OrderProcessingStarted.type): Order[Order.InProcess.type] =
-    castState[Order.InProcess.type]
+  def castAfterEvent(event: OrderProcessingStarted.type): Order[Order.InProcess] =
+    castState[Order.InProcess]
 
-  def castAfterEvent(event: OrderProcessed.type): Order[Order.Processed.type] =
-    castState[Order.Processed.type]
+  def castAfterEvent(event: OrderProcessed.type): Order[Order.Processed] =
+    castState[Order.Processed]
 
   def castState[A <: State: ClassTag]: Order[A] =
     ifState[A] getOrElse (
@@ -187,11 +186,14 @@ object Order {
 
   final case object StartNow extends NotStarted
 
-  case object Ready extends Started with Idle
+  sealed trait Ready extends Started with Idle
+  case object Ready extends Ready
 
-  case object InProcess extends Started
+  sealed trait InProcess extends Started
+  case object InProcess extends InProcess
 
-  case object Processed extends Transitionable
+  sealed trait Processed extends Transitionable
+  case object Processed extends Processed
 
   @JsonCodec
   final case class Join(joinOrderIds: Seq[OrderId]) extends Transitionable
@@ -203,7 +205,8 @@ object Order {
   @JsonCodec
   final case class Awaiting(offeredOrderId: OrderId) extends Transitionable
 
-  case object Finished extends State
+  sealed trait Finished extends State
+  case object Finished extends Finished
 
   implicit val NotStartedJsonCodec: TypedJsonCodec[NotStarted] = TypedJsonCodec[NotStarted](
     Subtype[Scheduled],

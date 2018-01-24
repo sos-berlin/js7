@@ -47,11 +47,11 @@ object OrderEvent {
   }
 
   case object OrderProcessingStarted extends OrderCoreEvent {
-    //type State = InProcess.type
+    //type State = InProcess
   }
 
   sealed trait OrderStdWritten extends OrderEvent {
-    //type State = InProcess.type
+    //type State = InProcess
 
     def stdoutStderrType: StdoutStderrType
     protected def chunk: String
@@ -82,7 +82,7 @@ object OrderEvent {
   }
 
   final case class OrderProcessed(variablesDiff: MapDiff[String, String], outcome: Outcome) extends OrderCoreEvent {
-    //type State = Processed.type
+    //type State = Processed
   }
 
   final case class OrderForked(children: Seq[OrderForked.Child]) extends OrderActorEvent
@@ -119,7 +119,7 @@ object OrderEvent {
   }
 
   case object OrderFinished extends OrderActorEvent {
-    //type State = Finished.type
+    //type State = Finished
   }
 
   implicit val OrderEventJsonCodec = TypedJsonCodec[OrderEvent](

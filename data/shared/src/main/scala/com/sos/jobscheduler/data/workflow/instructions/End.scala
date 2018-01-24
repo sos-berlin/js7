@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.workflow.{EventInstruction, OrderContext, Posit
   */
 sealed trait End extends EventInstruction with PositionInstruction
 {
-  def nextPosition(order: Order[Order.Processed.type], context: OrderContext) =
+  def nextPosition(order: Order[Order.Processed], context: OrderContext) =
     for {
       returnPosition ← order.position.dropChild
       next ← context.instruction(order.workflowPath /: returnPosition) match {
@@ -23,7 +23,7 @@ sealed trait End extends EventInstruction with PositionInstruction
   def toEvent(order: Order[Order.State], context: OrderContext) =
     order.position.dropChild match {
       case None ⇒
-        for (order ← order.ifState[Order.Ready.type]) yield
+        for (order ← order.ifState[Order.Ready]) yield
           if (order.isAttachedToAgent)
             order.id <-: OrderDetachable
           else

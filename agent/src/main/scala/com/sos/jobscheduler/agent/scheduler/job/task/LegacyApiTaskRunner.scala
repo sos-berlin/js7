@@ -32,7 +32,7 @@ extends TaskRunner {
   private var _killed = false
   private val taskId = TaskId(-1) // ???
 
-  def processOrder(order: Order[Order.InProcess.type], stdChannels: StdChannels) = {
+  def processOrder(order: Order[Order.InProcess], stdChannels: StdChannels) = {
     // TODO stdoutStderrHandle is not used. No OrderStdWritten events are produced. Maybe LegacyApiTaskRunner will not be used anyway (requirement?).
     if (killed)
       Future.failed(newKilledException())

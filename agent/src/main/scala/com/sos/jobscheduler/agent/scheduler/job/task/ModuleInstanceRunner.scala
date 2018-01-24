@@ -43,7 +43,7 @@ final class ModuleInstanceRunner(jobConfiguration: JobConfiguration, taskId: Tas
        Vector("spooler_log", "spooler_task")))
      .mapTo[Boolean]
 
-  def processOrder(order: Order[Order.InProcess.type]): Future[TaskStepEnded] = {
+  def processOrder(order: Order[Order.InProcess]): Future[TaskStepEnded] = {
     val orderIDispatch = new OrderIDispatch(order.variables)
     spoolerTask.order = orderIDispatch
     moduleInstance.asyncCall("step", Nil)
