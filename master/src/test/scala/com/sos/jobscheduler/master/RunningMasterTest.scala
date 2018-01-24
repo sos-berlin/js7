@@ -91,13 +91,13 @@ final class RunningMasterTest extends FreeSpec {
         val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
         master.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
 
-        val EventSeq.NonEmpty(_) = master.eventCollector.when[OrderEvent.OrderDetachable.type](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
+        val EventSeq.NonEmpty(_) = master.eventCollector.when[OrderEvent.OrderDetachable](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
         val agentClients = for (a ← List(agent0, agent1)) yield AgentClient(a.localUri.toString)(actorSystem)
         //sleep(500.ms)  // MasterOrderKeeper allows GetOrders while journaling events (persistAsync). Wait until events are stored and orders are up-to-date. Time-dependend !!!
         assert(agentClients(0).orders() await 99.s map { _.id } contains TestOrderId)
         master.orderKeeper ! MasterOrderKeeper.Input.ContinueDetaching
 
-        master.eventCollector.when[OrderEvent.OrderFinished.type](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
+        master.eventCollector.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
         orderClient.order(TestOrderId) await 10.s shouldEqual
           Some(Order(
             TestOrderId,
@@ -110,15 +110,15 @@ final class RunningMasterTest extends FreeSpec {
 
         master.executeCommand(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations
         val expectedOrderCount = 1 + TestDuration.getSeconds.toInt  // Expecting one finished order per second
-        waitForCondition(TestDuration + 10.s, 100.ms) { eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].size == expectedOrderCount }
+        waitForCondition(TestDuration + 10.s, 100.ms) { eventGatherer.orderIdsOf[OrderEvent.OrderFinished].size == expectedOrderCount }
         logger.info("Events:\n" + ((eventGatherer.events map { _.toString }) mkString "\n"))
-        val orderIds = eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type].toVector
+        val orderIds = eventGatherer.orderIdsOf[OrderEvent.OrderFinished].toVector
         for (line ← (for (orderId ← orderIds.sorted) yield for (o ← orderClient.order(orderId)) yield s"$orderId -> $o") await 99.s)
           logger.info(line)
         assert(orderIds.size >= expectedOrderCount)
         val addedOrderIds = eventGatherer.orderIdsOf[OrderEvent.OrderAdded] filter orderIds.toSet
         assert(addedOrderIds.size == orderIds.size)
-        assert(eventGatherer.orderIdsOf[OrderEvent.OrderFinished.type] == addedOrderIds)
+        assert(eventGatherer.orderIdsOf[OrderEvent.OrderFinished] == addedOrderIds)
 
         master.executeCommand(MasterCommand.Terminate) await 99.s
         master.terminated await 99.s

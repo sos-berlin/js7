@@ -35,7 +35,7 @@ final class IfReturnCodeTest extends FreeSpec {
         val eventCollector = new TestEventCollector
         eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
         master.addOrder(TestOrder) await 99.s
-        eventCollector.await[OrderFinished.type](_.key == TestOrder.id)
+        eventCollector.await[OrderFinished](_.key == TestOrder.id)
         checkEventSeq(eventCollector.all[OrderEvent])
       }
     }

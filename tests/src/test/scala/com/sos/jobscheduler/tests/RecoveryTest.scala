@@ -59,7 +59,7 @@ final class RecoveryTest extends FreeSpec {
           }
           runAgents(directoryProvider) { _ ⇒
             master.addOrder(FastOrder) await 99.s
-            lastEventId = lastEventIdOf(eventCollector.await[OrderFinished.type](after = lastEventId, predicate = _.key == FastOrderId))
+            lastEventId = lastEventIdOf(eventCollector.await[OrderFinished](after = lastEventId, predicate = _.key == FastOrderId))
             lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
             lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
           }
@@ -77,7 +77,7 @@ final class RecoveryTest extends FreeSpec {
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ ⇒
             runMaster(directoryProvider) { master ⇒
-              val orderId = eventCollector.await[OrderFinished.type](after = myLastEventId, predicate = _.key.string startsWith TestWorkflowPath.string).last.value.key
+              val orderId = eventCollector.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestWorkflowPath.string).last.value.key
               assert(master.orderClient.order(orderId).await(99.s) ==
                 Some(Order(
                   orderId,

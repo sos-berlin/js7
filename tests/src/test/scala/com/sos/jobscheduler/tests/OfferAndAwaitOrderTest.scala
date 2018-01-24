@@ -42,12 +42,12 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         master.addOrder(PublishOrder) await 99.s
         eventCollector.await[OrderJoined]       (_.key == JoinBefore1Order.id)
         eventCollector.await[OrderJoined]       (_.key == JoinBefore2Order.id)
-        eventCollector.await[OrderFinished.type](_.key == JoinBefore1Order.id)
-        eventCollector.await[OrderFinished.type](_.key == JoinBefore2Order.id)
+        eventCollector.await[OrderFinished](_.key == JoinBefore1Order.id)
+        eventCollector.await[OrderFinished](_.key == JoinBefore2Order.id)
 
         master.addOrder(JoinAfterOrder) await 99.s
         eventCollector.await[OrderJoined]       (_.key == JoinAfterOrder.id)
-        eventCollector.await[OrderFinished.type](_.key == JoinAfterOrder.id)
+        eventCollector.await[OrderFinished](_.key == JoinAfterOrder.id)
 
         checkEventSeq(eventCollector.all[OrderEvent])
       }

@@ -109,10 +109,10 @@ final case class Order[+S <: Order.State](
 
   def outcome = payload.outcome
 
-  def castAfterEvent(event: OrderProcessingStarted.type): Order[Order.InProcess] =
+  def castAfterEvent(event: OrderProcessingStarted): Order[Order.InProcess] =
     castState[Order.InProcess]
 
-  def castAfterEvent(event: OrderProcessed.type): Order[Order.Processed] =
+  def castAfterEvent(event: OrderProcessed): Order[Order.Processed] =
     castState[Order.Processed]
 
   def castState[A <: State: ClassTag]: Order[A] =

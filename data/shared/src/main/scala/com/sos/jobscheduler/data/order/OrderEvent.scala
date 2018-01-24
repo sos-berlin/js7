@@ -41,12 +41,14 @@ object OrderEvent {
     //type State = Idle
   }
 
-  final case object OrderTransferredToMaster
+  sealed trait OrderTransferredToMaster
+  case object OrderTransferredToMaster
   extends OrderCoreEvent {
     //type State = Detached.type
   }
 
-  case object OrderProcessingStarted extends OrderCoreEvent {
+  sealed trait OrderProcessingStarted extends OrderCoreEvent
+  case object OrderProcessingStarted extends OrderProcessingStarted {
     //type State = InProcess
   }
 
@@ -107,18 +109,21 @@ object OrderEvent {
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
-  case object OrderDetachable extends OrderActorEvent {
+  sealed trait OrderDetachable extends OrderActorEvent
+  case object OrderDetachable extends OrderDetachable {
     //type State = Detachable.type
   }
 
   /**
     * Order has been removed from the Agent and is held by the Master.
     */
-  case object OrderDetached extends OrderCoreEvent {
+  sealed trait OrderDetached extends OrderCoreEvent
+  case object OrderDetached extends OrderDetached {
     //type State = Detached.type
   }
 
-  case object OrderFinished extends OrderActorEvent {
+  sealed trait OrderFinished extends OrderActorEvent
+  case object OrderFinished extends OrderFinished {
     //type State = Finished
   }
 

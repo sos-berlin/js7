@@ -23,7 +23,7 @@ private[order] final class OrderRegister(timerService: TimerService) extends Act
     orderEntry
   }
 
-  def handleOrderDetached(keyedEvent: KeyedEvent[OrderDetached.type]): Unit = {
+  def handleOrderDetached(keyedEvent: KeyedEvent[OrderDetached]): Unit = {
     this -= keyedEvent.key
   }
 
