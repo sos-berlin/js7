@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.master.data
 
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.data.MasterCommand._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -20,7 +19,7 @@ final class MasterCommandTest extends FreeSpec {
   "AddOrderIfNew" in {
     testJson[MasterCommand](
       AddOrderIfNew(Order(OrderId("ORDER-ID"), WorkflowPath("/JOBNET"), Order.StartNow,
-        payload = Payload(Map("VAR" → "VALUE"), Outcome.Good(ReturnCode(0))))),
+        payload = Payload(Map("VAR" → "VALUE")))),
       """{
         "TYPE": "AddOrderIfNew",
         "order": {
@@ -32,10 +31,6 @@ final class MasterCommandTest extends FreeSpec {
           "payload": {
             "variables": {
               "VAR": "VALUE"
-            },
-            "outcome": {
-              "TYPE": "Good",
-              "returnCode": 0
             }
           }
         }

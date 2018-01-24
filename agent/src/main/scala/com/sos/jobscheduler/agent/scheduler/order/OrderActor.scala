@@ -58,7 +58,7 @@ extends KeyedJournalingActor[OrderEvent] {
         val event = OrderProcessed(MapDiff.empty, RecoveryGeneratedOutcome)
         persist(event)(update)
 
-      case Order.Processed ⇒
+      case _: Order.Processed ⇒
         context.become(processed)
         // Next event 'OrderMoved' is initiated by AgentOrderKeeper
 
@@ -83,7 +83,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
     case command: Command ⇒
       command match {
-        case Command.Attach(Order(`orderId`, workflowPosition, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), payload, parent)) ⇒
+        case Command.Attach(Order(`orderId`, workflowPosition, state: Order.Idle, Some(Order.AttachedTo.Agent(agentPath)), parent, payload)) ⇒
           context.become(idle)
           persist(OrderAttached(workflowPosition, state, parent, agentPath, payload)) { event ⇒
             sender() ! Completed
@@ -149,7 +149,7 @@ extends KeyedJournalingActor[OrderEvent] {
         context.unwatch(jobActor)
 
       case Terminated(`jobActor`) ⇒
-        val bad = Outcome.Bad(Outcome.Bad.Other(s"Job Actor '${job.jobPath.string}' terminated unexpectedly"))
+        val bad = Outcome.Disrupted(Outcome.Disrupted.Other(s"Job Actor '${job.jobPath.string}' terminated unexpectedly"))
         finishProcessing(OrderProcessed(MapDiff.empty, bad), job, stdoutStderrStatistics)
 
       case command: Command ⇒
@@ -274,7 +274,7 @@ extends KeyedJournalingActor[OrderEvent] {
 }
 
 private[order] object OrderActor {
-  val RecoveryGeneratedOutcome = Outcome.Bad(Outcome.Bad.AgentRestarted)
+  val RecoveryGeneratedOutcome = Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)
 
   private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config) =
     Props { new OrderActor(orderId, journalActor = journalActor, config) }

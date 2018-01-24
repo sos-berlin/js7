@@ -98,8 +98,7 @@ extends OnUnmount {
 
               case _ ⇒
                 <.div(
-                  <.span(^.cls := "orders-Order-State", order.state),
-                  <.span(^.cls := "orders-Order-Outcome", order.outcome))
+                  <.span(^.cls := "orders-Order-State", order.state))
             })
         .ref {
           case null ⇒

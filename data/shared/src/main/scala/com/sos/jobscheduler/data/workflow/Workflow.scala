@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.Workflow._
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
-import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, IfErrorGoto, IfReturnCode, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, IfFailedGoto, IfReturnCode, ImplicitEnd, Job}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.{IndexedSeq, Seq}
@@ -71,7 +71,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
     Workflow(
       labeledInstructions.sliding(2).flatMap { // Peep-hole optimize
         case Seq(_ @: (jmp: JumpInstruction), Labeled(labels, _)) if labels contains jmp.to ⇒ Nil
-        case Seq(_ @: IfErrorGoto(errorTo), _ @: Goto(to)) if errorTo == to ⇒ Nil
+        case Seq(_ @: IfFailedGoto(errorTo), _ @: Goto(to)) if errorTo == to ⇒ Nil
         case Seq(a, _) ⇒ a :: Nil
         case Seq(_) ⇒ Nil  // Unused code in contrast to sliding's documentation?
       }.toVector ++

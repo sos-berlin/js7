@@ -22,14 +22,18 @@ final case class Order[+S <: Order.State](
   workflowPosition: WorkflowPosition,
   state: S,
   attachedTo: Option[AttachedTo] = None,
-  payload: Payload = Payload.empty,
-  parent: Option[OrderId] = None)
+  parent: Option[OrderId] = None,
+  payload: Payload = Payload.empty)
 {
   def newForkedOrders(event: OrderForked): Seq[Order[Order.Ready]] =
     for (child ← event.children) yield
-      Order(child.orderId, workflowPosition.copy(position = workflowPosition.position / child.branchId / InstructionNr.First), Ready, attachedTo,
-        Payload(child.variablesDiff.applyTo(payload.variables)),
-        parent = Some(id))
+      Order(
+        child.orderId,
+        workflowPosition.copy(position = workflowPosition.position / child.branchId / InstructionNr.First),
+        Ready,
+        attachedTo,
+        parent = Some(id),
+        Payload(child.variablesDiff.applyTo(payload.variables)))
 
   def newPublishedOrder(event: OrderOffered): Order[Offered] = copy(
     event.orderId,
@@ -44,6 +48,9 @@ final case class Order[+S <: Order.State](
 
   def update(event: OrderEvent.OrderCoreEvent): Order[State] =
     event match {
+      case _: OrderAdded | _: OrderAttached ⇒
+        throw new IllegalArgumentException("OrderAdded and OrderAttached are not handled by the Order itself")
+
       case OrderTransferredToAgent(o) ⇒
         copy(
           attachedTo = Some(AttachedTo.Agent(o)))
@@ -55,21 +62,19 @@ final case class Order[+S <: Order.State](
         state = InProcess)
 
       case OrderProcessed(diff, outcome_) ⇒ copy(
-        state = Processed,
-        payload = Payload(
-          variables = diff.applyTo(payload.variables),
-          outcome = outcome_))
+        state = Processed(outcome_),
+        payload = Payload(diff.applyTo(payload.variables)))
 
       case OrderForked(children) ⇒ copy(
         state = Join(children map (_.orderId)))
 
       case OrderJoined(variablesDiff, outcome_) ⇒
         copy(
-          state = Processed,
-          payload = Payload(variablesDiff applyTo variables, outcome_))
+          state = Processed(outcome_),
+          payload = Payload(variablesDiff applyTo variables))
 
       case _: OrderOffered ⇒ copy(
-        state = Processed)
+        state = Processed(Outcome.succeeded))
 
       case OrderAwaiting(orderId) ⇒ copy(
         state = Awaiting(orderId))
@@ -106,8 +111,6 @@ final case class Order[+S <: Order.State](
     workflowPosition = workflowPosition.copy(position = to))
 
   def variables = payload.variables
-
-  def outcome = payload.outcome
 
   def castAfterEvent(event: OrderProcessingStarted): Order[Order.InProcess] =
     castState[Order.InProcess]
@@ -146,10 +149,10 @@ final case class Order[+S <: Order.State](
 
 object Order {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Idle] =
-    Order(id, event.workflowPath, event.state, None, event.payload)
+    Order(id, event.workflowPath, event.state, payload = event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[Idle] =
-    Order(id, event.workflowPosition, event.state, Some(AttachedTo.Agent(event.agentPath)), event.payload)
+    Order(id, event.workflowPosition, event.state, Some(AttachedTo.Agent(event.agentPath)), payload = event.payload)
 
   sealed trait AttachedTo
   object AttachedTo {
@@ -192,8 +195,8 @@ object Order {
   sealed trait InProcess extends Started
   case object InProcess extends InProcess
 
-  sealed trait Processed extends Transitionable
-  case object Processed extends Processed
+  @JsonCodec
+  final case class Processed(outcome: Outcome) extends Transitionable
 
   @JsonCodec
   final case class Join(joinOrderIds: Seq[OrderId]) extends Transitionable
@@ -219,7 +222,7 @@ object Order {
   implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
     Subtype[Idle],
     Subtype(InProcess),
-    Subtype(Processed),
+    Subtype[Processed],
     Subtype[Join],
     Subtype[Offered],
     Subtype[Awaiting],

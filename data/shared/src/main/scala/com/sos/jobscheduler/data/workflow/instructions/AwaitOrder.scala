@@ -19,7 +19,7 @@ final case class AwaitOrder(orderId: OrderId) extends EventInstruction
           order ← order.ifState[Order.Awaiting]
           _ ← context.idToOrder.lift(orderId) flatMap (_.ifState[Order.Offered])
         } yield
-          order.id <-: OrderJoined(MapDiff.empty, Outcome.Default))
+          order.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded))
     .orElse(
       ifProcessedThenOrderMoved(order, context))
 

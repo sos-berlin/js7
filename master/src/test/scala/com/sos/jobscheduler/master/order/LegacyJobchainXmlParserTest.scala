@@ -4,7 +4,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfErrorGoto, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfFailedGoto, Job}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
 
@@ -29,13 +29,13 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
   "Workflow" in {
     assert(workflow == Workflow(Vector(
       "A" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-A"))),
-             IfErrorGoto(Label("ERROR")),
+             IfFailedGoto(Label("ERROR")),
       "B" @: Job(AgentJobPath(AgentPath("/FOLDER/AGENT"), JobPath("/FOLDER/JOB-B"))),
-             IfErrorGoto(Label("ERROR")),
+             IfFailedGoto(Label("ERROR")),
       "C" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-C"))),
              Goto(Label("D")),
       "E" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-E"))),
-             IfErrorGoto(Label("ERROR")),
+             IfFailedGoto(Label("ERROR")),
              Goto(Label("END")),
       "D" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-D"))),
              Goto(Label("E")),

@@ -164,26 +164,26 @@ private object RecoveryTest {
     OrderTransferredToAgent(AgentPaths(0)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.Good(ReturnCode(0))),
+    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.succeeded),
     OrderMoved(Position(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
+    OrderProcessed(MapDiff.empty, Outcome.succeeded),
     OrderMoved(Position(2)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
+    OrderProcessed(MapDiff.empty, Outcome.succeeded),
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderTransferredToMaster,
     OrderTransferredToAgent(AgentPaths(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.Good(ReturnCode(0))),
+    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.succeeded),
     OrderMoved(Position(4)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(ReturnCode(0))),
+    OrderProcessed(MapDiff(Map(), Set()), Outcome.succeeded),
     OrderMoved(Position(5)),
     OrderDetachable,
     OrderTransferredToMaster,
@@ -194,7 +194,7 @@ private object RecoveryTest {
     val result = mutable.Buffer[OrderEvent]()
     while (events.hasNext) {
       events.next() match {
-        case OrderProcessed(_, Outcome.Bad(Outcome.Bad.AgentRestarted)) ⇒
+        case OrderProcessed(_, Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) ⇒
           while (result.last != OrderEvent.OrderProcessingStarted) {
             result.remove(result.size - 1)
           }

@@ -17,9 +17,8 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.event.{EventId, EventRequest, EventSeq, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetachable
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import org.scalatest.FreeSpec
@@ -132,7 +131,5 @@ private object OrderAgentTest {
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
       attachedTo = Some(Order.AttachedTo.Detachable(TestAgentPath)),
-      payload = Payload(
-        variables = Map("x" → "X", "result" → "TEST-RESULT-BBB"),
-        outcome = Outcome.Good(ReturnCode(0))))
+      payload = Payload(Map("x" → "X", "result" → "TEST-RESULT-BBB")))
 }

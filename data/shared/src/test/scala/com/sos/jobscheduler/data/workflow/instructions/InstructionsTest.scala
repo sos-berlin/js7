@@ -91,10 +91,10 @@ final class InstructionsTest extends FreeSpec {
         }""")
     }
 
-    "IfErrorGoto" in {
-      testLabeled(IfErrorGoto(Label("A")), json"""
+    "IfFailedGoto" in {
+      testLabeled(IfFailedGoto(Label("A")), json"""
         {
-          "TYPE": "IfErrorGoto",
+          "TYPE": "IfFailedGoto",
           "to": "A"
         }""")
     }

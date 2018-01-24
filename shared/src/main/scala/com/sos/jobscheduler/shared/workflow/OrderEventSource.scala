@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfErrorGoto}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfFailedGoto}
 import com.sos.jobscheduler.data.workflow.{EventInstruction, Instruction, OrderContext, Position, PositionInstruction, Workflow, WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.shared.workflow.OrderEventSource._
 import scala.annotation.tailrec
@@ -20,9 +20,9 @@ final class OrderEventSource(
 {
   private val context = new OrderContext {
     // This and idToOrder are mutable, do not use in Future !!!
-    def idToOrder                                         = OrderEventSource.this.idToOrder
-    def childOrderEnded(order: Order[Order.State])        = OrderEventSource.this.childOrderEnded(order)
-    def instruction(workflowPosition: WorkflowPosition)   = OrderEventSource.this.instruction(workflowPosition)
+    def idToOrder                                   = OrderEventSource.this.idToOrder
+    def childOrderEnded(order: Order[Order.State])  = OrderEventSource.this.childOrderEnded(order)
+    def instruction(position: WorkflowPosition)     = OrderEventSource.this.instruction(position)
   }
 
   private def childOrderEnded(order: Order[Order.State]): Boolean =
@@ -37,28 +37,22 @@ final class OrderEventSource(
 
   def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId)
-    (order.state, order.outcome) match {
-      //case (Order.Processed, Outcome.Bad(AgentRestarted)) ⇒
-      //  Some(order.id <-: OrderMoved(order.position))  // Repeat
+    instruction(order.workflowPosition) match {
+      case instr: EventInstruction ⇒
+        instr.toEvent(order, context) flatMap {
+          case oId <-: OrderMoved(pos) ⇒
+            for {
+              o ← idToOrder(oId).ifState[Order.Processed]
+              pos ← applyMoveInstructions(o.withPosition(pos))
+            } yield oId <-: OrderMoved(pos)
 
-      case _ ⇒
-        instruction(order.workflowPosition) match {
-          case instr: EventInstruction ⇒
-            instr.toEvent(order, context) flatMap {
-              case oId <-: OrderMoved(pos) ⇒
-                for {
-                  o ← idToOrder(oId).ifState[Order.Processed]
-                  pos ← applyMoveInstructions(o.withPosition(pos))
-                } yield oId <-: OrderMoved(pos)
-
-              case o ⇒
-                Some(o)
-            }
-
-          case instruction ⇒
-            logger.trace(s"❓ $instruction")
-            None
+          case o ⇒
+            Some(o)
         }
+
+      case instruction ⇒
+        logger.trace(s"❓ $instruction")
+        None
     }
   }
 
@@ -89,8 +83,8 @@ final class OrderEventSource(
       case Goto(label) ⇒
         workflow.labelToPosition(order.position.parents, label)
 
-      case IfErrorGoto(label) ⇒
-        if (order.outcome.isError)
+      case IfFailedGoto(label) ⇒
+        if (order.state.outcome.isFailed)
           workflow.labelToPosition(order.position.parents, label)
         else
           Some(order.position.increment)

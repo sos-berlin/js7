@@ -93,10 +93,6 @@ final class AgentCommandTest extends FreeSpec {
               "TYPE": "Ready"
             },
             "payload": {
-              "outcome": {
-                "returnCode": 0,
-                "TYPE": "Good"
-              },
               "variables": {}
             },
             "attachedTo": {

@@ -48,7 +48,7 @@ extends EventInstruction
         if (order.isAttachedToAgent)
           Some(order.id <-: OrderDetachable)  //
         else if (order.state.joinOrderIds map context.idToOrder forall context.childOrderEnded)
-          Some(order.id <-: OrderJoined(MapDiff.empty, Outcome.Default))
+          Some(order.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded))
         else
           None))
     .orElse(
@@ -64,8 +64,8 @@ object ForkJoin {
     new ForkJoin(idAndWorkflows.map { case (id, workflow) ⇒ Branch(id, workflow) } .toVector)
 
   private def validateBranch(branch: Branch): Validated[RuntimeException, Branch] =
-    if (branch.workflow.instructions exists (o ⇒ o.isInstanceOf[Goto]  || o.isInstanceOf[IfErrorGoto]))
-      Invalid(new IllegalArgumentException(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto' or 'ifError'"))
+    if (branch.workflow.instructions exists (o ⇒ o.isInstanceOf[Goto]  || o.isInstanceOf[IfFailedGoto]))
+      Invalid(new IllegalArgumentException(s"Fork/Join branch '${branch.id}' cannot contain a jump instruction like 'goto' or 'ifFailed'"))
     else
       Valid(branch)
 

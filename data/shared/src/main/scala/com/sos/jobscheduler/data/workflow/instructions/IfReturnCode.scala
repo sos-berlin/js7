@@ -16,8 +16,8 @@ final case class IfReturnCode(returnCodes: Seq[ReturnCode], workflows: IndexedSe
 
   def nextPosition(order: Order[Order.Processed], context: OrderContext) = {
     assert(order == context.idToOrder(order.id).withPosition(order.position))
-    Some(order.outcome) collect {
-      case Outcome.Good(returnCode) ⇒
+    Some(order.state.outcome) collect {
+      case Outcome.Succeeded(returnCode) ⇒
         val index = if (returnCodes contains returnCode) 0 else 1
         if (workflows.indices contains index)
           Position(Position.Parent(order.position.nr, index) :: Nil, 0)

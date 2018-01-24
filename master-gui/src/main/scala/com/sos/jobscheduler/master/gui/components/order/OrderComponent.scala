@@ -47,7 +47,6 @@ object OrderComponent {
       <.table(^.cls := "order-table")(
         <.tbody(
           orderEntry.order.parent.whenDefined(showField("Parent" , _)),
-          showField("Outcome", orderEntry.order.outcome),
           showField("State"  , orderEntry.order.state match {
             case Order.Join(children) ⇒ VdomArray(<.div("Join"), children.toVdomArray(orderId ⇒ <.div(orderId)))
             case o ⇒ o

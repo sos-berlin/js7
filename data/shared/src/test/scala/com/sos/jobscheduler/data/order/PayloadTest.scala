@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.order
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -9,13 +10,10 @@ import org.scalatest.FreeSpec
 final class PayloadTest extends FreeSpec {
 
   "Payload" in {
-    testJson(Payload(Map("VAR" → "VALUE")),"""{
+    testJson(Payload(Map("VAR" → "VALUE")), json"""
+      {
         "variables": {
           "VAR": "VALUE"
-        },
-        "outcome": {
-          "TYPE": "Good",
-          "returnCode": 0
         }
       }""")
   }

@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.gui.common
 
 import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.gui.router.Router
@@ -53,6 +54,9 @@ object Renderers {
   private def orderStateTextToVdom(state: Order.State): VdomNode =
     state match {
       case Order.Scheduled(at)  ⇒ s"Scheduled for ${at.toReadableLocaleIsoString}"
+      case Order.Processed(Outcome.Succeeded(ReturnCode.Success)) ⇒ s"Processed"
+      case Order.Processed(o: Outcome.Undisrupted) ⇒ s"Processed rc=${o.returnCode.number}"
+      case Order.Processed(o: Outcome.Disrupted) ⇒ s"Processed $o"
       case Order.Join(children) ⇒ s"Join ${children.size}×"
       case _ ⇒ state.toString
     }
@@ -71,7 +75,9 @@ object Renderers {
       case Order.StartNow     ⇒ "━"
       case Order.InProcess    ⇒ <.i(^.cls := "material-icons text-prefix rotate-slowly gear", "settings")
       case _: Order.Join      ⇒ "⨁"
-      case Order.Processed    ⇒ "⬇"
+      case Order.Processed(_: Outcome.Succeeded) ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny") // "🔅"  "⬇"
+      case Order.Processed(_: Outcome.Failed) ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy") // "☁"
+      case Order.Processed(_: Outcome.Disrupted) ⇒ "💥" // "⬇"
       case Order.Ready        ⇒ "━"
       case Order.Finished     ⇒ "☆"
       case _                  ⇒ "·"
@@ -89,9 +95,9 @@ object Renderers {
 
   def outcomeSymbol(outcome: Outcome): VdomNode =
     outcome match {
-      case Outcome.Good(_)  ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny")   // "🔅"
-      //case ReturnCode(ReturnCode(1)) ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy")  // "☁ ️"
-      case Outcome.Bad(_) ⇒ "💥"
+      case Outcome.Succeeded(_)  ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny")   // "🔅"
+      //case ReturnCode(ReturnCode(1)) ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy")  // "☁"
+      case Outcome.Disrupted(_) ⇒ "💥"
       case _ ⇒ ""
     }
 }

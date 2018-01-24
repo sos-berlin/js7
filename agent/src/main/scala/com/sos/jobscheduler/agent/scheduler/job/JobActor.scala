@@ -17,7 +17,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.order.Outcome.Bad
+import com.sos.jobscheduler.data.order.Outcome.Disrupted
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.JobPath
 import com.sos.jobscheduler.taskserver.task.process.RichProcess.tryDeleteFile
@@ -143,7 +143,7 @@ extends Actor with Stash {
       case Success(o) ⇒ o
       case Failure(t) ⇒
         logger.error(s"TaskRunner.stepOne failed: ${t.toStringWithCauses}", t)
-        TaskStepFailed(Bad("TaskRunner.stepOne failed"))
+        TaskStepFailed(Disrupted("TaskRunner.stepOne failed"))
     }
 
   private def killAll(signal: ProcessSignal): Unit = {

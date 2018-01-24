@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data.order
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -79,10 +80,6 @@ final class OrderTest extends FreeSpec {
             "variables": {
               "var1": "value1",
               "var2": "value2"
-            },
-            "outcome": {
-              "TYPE": "Good",
-              "returnCode": 0
             }
           }
         }""")
@@ -122,9 +119,13 @@ final class OrderTest extends FreeSpec {
     }
 
     "Processed" in {
-      check(Processed,
+      check(Processed(Outcome.Succeeded(ReturnCode(7))),
         json"""{
-          "TYPE": "Processed"
+          "TYPE": "Processed",
+          "outcome": {
+            "TYPE": "Succeeded",
+            "returnCode": 7
+          }
         }""")
     }
 

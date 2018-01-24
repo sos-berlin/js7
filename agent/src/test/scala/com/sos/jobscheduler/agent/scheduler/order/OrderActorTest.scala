@@ -110,7 +110,7 @@ private object OrderActorTest {
   private val ExpectedOrderEvents = List(
     OrderAttached(TestOrder.workflowPosition, Order.Ready, None, AgentPath("/TEST-AGENT"), Payload.empty),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.Good(ReturnCode(0))),
+    OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.succeeded),
     OrderMoved(TestPosition),
     OrderDetached)
   private val Nl = System.lineSeparator

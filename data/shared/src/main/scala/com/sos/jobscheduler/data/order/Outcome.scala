@@ -7,44 +7,67 @@ import io.circe.generic.JsonCodec
 /**
   * @author Joacim Zschimmer
   */
-sealed trait Outcome {
-  /** Default semantic of error. */
-  def isError: Boolean = !isSuccess
+sealed trait Outcome
+{
+  def isSucceeded: Boolean
 
-  /** Default semantics of success. */
-  def isSuccess: Boolean
+  final def isFailed = !isSucceeded
 }
 
-object Outcome {
-  val Default = Good(ReturnCode.Success)
+object Outcome
+{
+  val succeeded = Succeeded(ReturnCode.Success)
+
+  /** The job has terminated. */
+  sealed trait Undisrupted extends Outcome {
+    def returnCode: ReturnCode
+  }
+
+  object Undisrupted {
+    private[Outcome] sealed trait Companion[A <: Undisrupted] {
+      def newInstance(returnCode: ReturnCode): A
+
+      // re-use memory for usual values.
+      private val usualValues: Vector[A] = (0 to 255).map(i ⇒ newInstance(ReturnCode(i))).toVector
+
+      def apply(returnCode: ReturnCode): A =
+        if (usualValues.indices contains returnCode.number)
+          usualValues(returnCode.number)
+        else
+          newInstance(returnCode)
+    }
+  }
 
   @JsonCodec
-  final case class Good private(returnCode: ReturnCode) extends Outcome {
-    def isSuccess = returnCode.isSuccess
+  final case class Succeeded private(returnCode: ReturnCode) extends Undisrupted {
+    def isSucceeded = returnCode.isSuccess
   }
-  object Good {
-    private val constants: Vector[Good] = (0 to 255).map(i ⇒ new Good(ReturnCode(i))).toVector
-
-    def apply(returnCode: ReturnCode): Good =
-      if (constants.indices contains returnCode.number)
-        constants(returnCode.number)  // Reduce memory
-      else
-        new Good(returnCode)
+  object Succeeded extends Undisrupted.Companion[Succeeded] {
+    def newInstance(returnCode: ReturnCode): Succeeded = new Succeeded(returnCode)
   }
 
   @JsonCodec
-  final case class Bad(reason: Bad.Reason) extends Outcome {
-    def isSuccess = false
+  final case class Failed private(returnCode: ReturnCode) extends Undisrupted {
+    def isSucceeded = false
   }
-  object Bad {
-    def apply(message: String): Bad =
-      Bad(Other(message))
+  object Failed extends Undisrupted.Companion[Failed] {
+    def newInstance(returnCode: ReturnCode): Failed = new Failed(returnCode)
+  }
+
+  /** No response from job - some other error has occurred. */
+  @JsonCodec
+  final case class Disrupted(reason: Disrupted.Reason) extends Outcome {
+    def isSucceeded = false
+  }
+  object Disrupted {
+    def apply(message: String): Disrupted =
+      Disrupted(Other(message))
 
     sealed trait Reason {
       def message: String
     }
-    final case object AgentRestarted extends Reason {
-      def message = "Agent has been restarted while order was processed"
+    final case object JobSchedulerRestarted extends Reason {
+      def message = "JobScheduler stopped while order was in-process"
     }
 
     @JsonCodec
@@ -52,12 +75,12 @@ object Outcome {
 
     object Reason {
       implicit val jsonCodec = TypedJsonCodec[Reason](
-        Subtype(AgentRestarted),
+        Subtype(JobSchedulerRestarted),
         Subtype[Other])
     }
   }
 
   implicit val jsonCodec = TypedJsonCodec[Outcome](
-    Subtype[Good],
-    Subtype[Bad])
+    Subtype[Succeeded],
+    Subtype[Disrupted])
 }

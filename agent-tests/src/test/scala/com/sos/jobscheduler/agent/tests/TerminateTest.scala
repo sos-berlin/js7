@@ -64,7 +64,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
 
         client.executeCommand(Terminate(sigkillProcessesAfter = Some(0.seconds))) await 99.s
         val stepEnded = whenStepEnded await 99.s
-        assert(stepEnded forall { _.outcome.asInstanceOf[Outcome.Good].isError })
+        assert(stepEnded forall { _.outcome.asInstanceOf[Outcome.Succeeded].isFailed })
         agent.terminated await 99.s
       }
     }

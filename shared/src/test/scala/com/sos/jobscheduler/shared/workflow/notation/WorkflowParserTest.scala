@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, Goto, IfErrorGoto, IfReturnCode, Job, Offer}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, Goto, IfFailedGoto, IfReturnCode, Job, Offer}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
@@ -85,19 +85,19 @@ final class WorkflowParserTest extends FreeSpec {
   "onError and goto" in {
     val source = """
       job "A" on "AGENT";
-      ifError ERROR;
+      ifFailed FAILURE;
       job "B" on "AGENT";
       goto END;
-      ERROR: job "Error" on "AGENT";
+      FAILURE: job "OnFailure" on "AGENT";
       END: end;"""
     assert(parse(source) == Workflow(
       Vector(
         Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A"))),
-        IfErrorGoto(Label("ERROR")),
+        IfFailedGoto(Label("FAILURE")),
         Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/B"))),
         Goto(Label("END")),
-        "ERROR" @:
-        Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/Error"))),
+        "FAILURE" @:
+        Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/OnFailure"))),
         "END" @:
         ExplicitEnd),
       Some(source)))

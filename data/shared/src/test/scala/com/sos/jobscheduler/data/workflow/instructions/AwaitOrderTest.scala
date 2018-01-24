@@ -18,7 +18,7 @@ final class AwaitOrderTest extends FreeSpec {
     val context = new OrderContext {
       def idToOrder = Map(awaitingOrder.id → awaitingOrder, offeredOrder.id → offeredOrder)
       def childOrderEnded(order: Order[Order.State]) = throw new NotImplementedError()
-      def instruction(workflowPosition: WorkflowPosition) = throw new NotImplementedError
+      def instruction(position: WorkflowPosition) = throw new NotImplementedError
     }
     assert(AwaitOrder(offeredOrder.id).toEvent(awaitingOrder, context) ==
       Some(awaitingOrder.id <-: OrderAwaiting(offeredOrder.id)))

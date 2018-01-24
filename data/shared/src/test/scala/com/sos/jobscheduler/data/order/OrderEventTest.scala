@@ -30,10 +30,6 @@ final class OrderEventTest extends FreeSpec {
         "payload": {
           "variables": {
             "VAR": "VALUE"
-          },
-          "outcome": {
-            "TYPE": "Good",
-            "returnCode": 0
           }
         }
       }""")
@@ -52,10 +48,6 @@ final class OrderEventTest extends FreeSpec {
         "payload": {
           "variables": {
             "VAR": "VALUE"
-          },
-          "outcome": {
-            "TYPE": "Good",
-            "returnCode": 0
           }
         }
       }""")
@@ -98,7 +90,7 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderProcessed" in {
-    check(OrderProcessed(MapDiff(changed = Map("VAR" → "VALUE"), deleted = Set("REMOVED")), Outcome.Good(ReturnCode(0))), json"""
+    check(OrderProcessed(MapDiff(changed = Map("VAR" → "VALUE"), deleted = Set("REMOVED")), Outcome.Succeeded(ReturnCode(0))), json"""
       {
         "TYPE": "OrderProcessed",
         "variablesDiff": {
@@ -108,7 +100,7 @@ final class OrderEventTest extends FreeSpec {
           "deleted": ["REMOVED"]
         },
         "outcome": {
-          "TYPE": "Good",
+          "TYPE": "Succeeded",
           "returnCode": 0
         }
       }""")
@@ -141,7 +133,7 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderJoined" in {
-    check(OrderJoined(MapDiff.empty, Outcome.Default), json"""
+    check(OrderJoined(MapDiff.empty, Outcome.succeeded), json"""
       {
         "TYPE": "OrderJoined",
         "variablesDiff": {
@@ -149,7 +141,7 @@ final class OrderEventTest extends FreeSpec {
           "deleted": []
         },
         "outcome": {
-          "TYPE": "Good",
+          "TYPE": "Succeeded",
           "returnCode": 0
         }
       }""")

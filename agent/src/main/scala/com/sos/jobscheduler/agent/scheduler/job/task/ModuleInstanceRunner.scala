@@ -50,10 +50,10 @@ final class ModuleInstanceRunner(jobConfiguration: JobConfiguration, taskId: Tas
       .map { stepResult ⇒
         TaskStepSucceeded(
           MapDiff.diff(order.variables, orderIDispatch.variables),
-          Outcome.Good(StepResult.fromXml(stepResult.asInstanceOf[String]).returnCode))
+          Outcome.Succeeded(StepResult.fromXml(stepResult.asInstanceOf[String]).returnCode))
       }
       .recover {
-        case t: Throwable ⇒ TaskStepFailed(Outcome.Bad(t.toString))  // We are exposing the exception message !!!
+        case t: Throwable ⇒ TaskStepFailed(Outcome.Disrupted(t.toString))  // We are exposing the exception message !!!
       }
   }
 

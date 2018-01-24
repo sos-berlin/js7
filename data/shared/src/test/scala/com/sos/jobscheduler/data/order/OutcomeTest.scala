@@ -9,34 +9,34 @@ import org.scalatest.FreeSpec
   */
 final class OutcomeTest extends FreeSpec {
 
-  "isSuccess" in {
-    assert(Outcome.Good(ReturnCode(0)).isSuccess)
-    assert(Outcome.Good(ReturnCode(1)).isError)
-    assert(!Outcome.Bad(Outcome.Bad.Other("error")).isSuccess)
-    assert(Outcome.Bad(Outcome.Bad.Other("error")) == Outcome.Bad("error"))
-    assert(!Outcome.Bad(Outcome.Bad.AgentRestarted).isSuccess)
+  "isSucceeded" in {
+    assert(Outcome.Succeeded(ReturnCode(0)).isSucceeded)
+    assert(Outcome.Succeeded(ReturnCode(1)).isFailed)
+    assert(!Outcome.Disrupted(Outcome.Disrupted.Other("error")).isSucceeded)
+    assert(Outcome.Disrupted(Outcome.Disrupted.Other("error")) == Outcome.Disrupted("error"))
+    assert(!Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted).isSucceeded)
   }
 
   "JSON" - {
-    "Good" in {
-      testJson[Outcome](Outcome.Good(ReturnCode(0)),"""{
-        "TYPE": "Good",
+    "Succeeded" in {
+      testJson[Outcome](Outcome.Succeeded(ReturnCode(0)),"""{
+        "TYPE": "Succeeded",
         "returnCode": 0
       }""")
     }
 
-    "Bad(AgenAborted)" in {
-      testJson[Outcome](Outcome.Bad(Outcome.Bad.AgentRestarted),"""{
-        "TYPE": "Bad",
+    "Disrupted(AgenAborted)" in {
+      testJson[Outcome](Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted),"""{
+        "TYPE": "Disrupted",
         "reason": {
-          "TYPE": "AgentRestarted"
+          "TYPE": "JobSchedulerRestarted"
         }
       }""")
     }
 
-    "Bad(Other)" in {
-      testJson[Outcome](Outcome.Bad(Outcome.Bad.Other("OTHER")),"""{
-        "TYPE": "Bad",
+    "Disrupted(Other)" in {
+      testJson[Outcome](Outcome.Disrupted(Outcome.Disrupted.Other("OTHER")),"""{
+        "TYPE": "Disrupted",
         "reason": {
           "TYPE": "Other",
           "message": "OTHER"

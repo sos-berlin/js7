@@ -278,7 +278,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     val orderEntry = orderRegister(order.id)
     event match {
       case event: OrderProcessed if event.outcome != OrderActor.RecoveryGeneratedOutcome ⇒
-        assert(order.state == Order.Processed)
+        assert(order.ifState[Order.Processed].isDefined)
         for (jobEntry ← orderEntry.jobOption map (_.jobPath) flatMap jobRegister.get whenEmpty
                           logger.error(s"OrderProcessed but missing job for ${order.id} ${order.workflowPosition} state=${order.state.getClass.simpleScalaName}")) {
           jobEntry.queue -= order.id
