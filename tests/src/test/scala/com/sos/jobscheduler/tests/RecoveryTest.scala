@@ -16,6 +16,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
@@ -163,26 +164,26 @@ private object RecoveryTest {
     OrderTransferredToAgent(AgentPaths(0)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.Good(true)),
+    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(2)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderTransferredToMaster,
     OrderTransferredToAgent(AgentPaths(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.Good(true)),
+    OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(4)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
-    OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(true)),
+    OrderProcessed(MapDiff(Map(), Set()), Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(5)),
     OrderDetachable,
     OrderTransferredToMaster,

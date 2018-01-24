@@ -1,28 +1,35 @@
 package com.sos.jobscheduler.data.order
 
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.data.job.ReturnCode
 import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
 sealed trait Outcome {
+  /** Default semantic of error. */
   def isError: Boolean = !isSuccess
+
+  /** Default semantics of success. */
   def isSuccess: Boolean
 }
 
 object Outcome {
-  val Default = Good(true)
+  val Default = Good(ReturnCode.Success)
 
   @JsonCodec
-  final case class Good private(returnValue: Boolean) extends Outcome {
-    def isSuccess = returnValue
+  final case class Good private(returnCode: ReturnCode) extends Outcome {
+    def isSuccess = returnCode.isSuccess
   }
   object Good {
-    private val False = new Good(false)
-    private val True = new Good(true)
+    private val constants: Vector[Good] = (0 to 255).map(i ⇒ new Good(ReturnCode(i))).toVector
 
-    def apply(returnValue: Boolean) = if (returnValue) True else False
+    def apply(returnCode: ReturnCode): Good =
+      if (constants.indices contains returnCode.number)
+        constants(returnCode.number)  // Reduce memory
+      else
+        new Good(returnCode)
   }
 
   @JsonCodec
@@ -54,4 +61,3 @@ object Outcome {
     Subtype[Good],
     Subtype[Bad])
 }
-

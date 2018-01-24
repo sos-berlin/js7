@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.order
 
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -9,8 +10,8 @@ import org.scalatest.FreeSpec
 final class OutcomeTest extends FreeSpec {
 
   "isSuccess" in {
-    assert(Outcome.Good(returnValue = true).isSuccess)
-    assert(!Outcome.Good(returnValue = false).isSuccess)
+    assert(Outcome.Good(ReturnCode(0)).isSuccess)
+    assert(Outcome.Good(ReturnCode(1)).isError)
     assert(!Outcome.Bad(Outcome.Bad.Other("error")).isSuccess)
     assert(Outcome.Bad(Outcome.Bad.Other("error")) == Outcome.Bad("error"))
     assert(!Outcome.Bad(Outcome.Bad.AgentRestarted).isSuccess)
@@ -18,9 +19,9 @@ final class OutcomeTest extends FreeSpec {
 
   "JSON" - {
     "Good" in {
-      testJson[Outcome](Outcome.Good(true),"""{
+      testJson[Outcome](Outcome.Good(ReturnCode(0)),"""{
         "TYPE": "Good",
-        "returnValue": true
+        "returnCode": 0
       }""")
     }
 

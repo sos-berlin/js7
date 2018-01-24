@@ -35,7 +35,7 @@ final class OrderEventSourceTest extends FreeSpec {
       job)                                      // 2
 
     "then branch executed" in {
-      assert(step(workflow, Outcome.Good(false)) == Some(OrderMoved(Position(2))))
+      assert(step(workflow, Outcome.Good(ReturnCode(1))) == Some(OrderMoved(Position(2))))
     }
 
     "again, all events" in {
@@ -51,7 +51,7 @@ final class OrderEventSourceTest extends FreeSpec {
     }
 
     "then branch not executed" in {
-      assert(step(workflow, Outcome.Good(false)) == Some(OrderMoved(Position(2))))
+      assert(step(workflow, Outcome.Good(ReturnCode(1))) == Some(OrderMoved(Position(2))))
     }
   }
 
@@ -64,11 +64,11 @@ final class OrderEventSourceTest extends FreeSpec {
       job)                                      // 2
 
     "then branch executed" in {
-      assert(step(workflow, Outcome.Good(true)) == Some(OrderMoved(Position(1, 0, 0))))
+      assert(step(workflow, Outcome.Good(ReturnCode(0))) == Some(OrderMoved(Position(1, 0, 0))))
     }
 
     "else branch executed" in {
-      assert(step(workflow, Outcome.Good(false)) == Some(OrderMoved(Position(1, 1, 0))))
+      assert(step(workflow, Outcome.Good(ReturnCode(1))) == Some(OrderMoved(Position(1, 1, 0))))
     }
   }
 
@@ -165,8 +165,8 @@ final class OrderEventSourceTest extends FreeSpec {
 object OrderEventSourceTest {
   private val TestWorkflowPath = ForkTestSetting.TestNamedWorkflow.path
   private val okayOrderId = OrderId("OKAY")
-  private val okayOrder = Order(okayOrderId, TestWorkflowPath, Order.Ready, payload = Payload(Map(), Outcome.Good(true)))
-  private val errorOrder = Order(OrderId("ERROR"), TestWorkflowPath, Order.Ready, payload = Payload(Map(), Outcome.Good(false)))
+  private val okayOrder = Order(okayOrderId, TestWorkflowPath, Order.Ready, payload = Payload(Map(), Outcome.Good(ReturnCode(0))))
+  private val errorOrder = Order(OrderId("ERROR"), TestWorkflowPath, Order.Ready, payload = Payload(Map(), Outcome.Good(ReturnCode(1))))
   private val job = Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB")))
 
   private def step(workflow: Workflow, outcome: Outcome): Option[OrderEvent] = {
@@ -179,7 +179,7 @@ object OrderEventSourceTest {
   final class SingleOrderProcess(val workflow: Workflow, val orderId: OrderId = OrderId("ORDER")) {
     private val process = new Process(workflow)
 
-    def jobStep(variablesDiff: MapDiff[String, String] = MapDiff.empty, outcome: Outcome = Outcome.Good(true)) =
+    def jobStep(variablesDiff: MapDiff[String, String] = MapDiff.empty, outcome: Outcome = Outcome.Good(ReturnCode(0))) =
       process.jobStep(orderId, variablesDiff, outcome)
 
     def step(): Option[OrderEvent] =
@@ -194,12 +194,12 @@ object OrderEventSourceTest {
     private val eventHandler = new OrderEventHandler(idToOrder)
     private val inProcess = mutable.Set[OrderId]()
 
-    def jobStep(orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty, outcome: Outcome = Outcome.Good(true)): Unit = {
+    def jobStep(orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty, outcome: Outcome = Outcome.Good(ReturnCode(0))): Unit = {
       update(orderId <-: OrderProcessingStarted)
       update(orderId <-: OrderProcessed(variablesDiff, outcome))
     }
 
-    def processed(orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty, outcome: Outcome = Outcome.Good(true)): Unit =
+    def processed(orderId: OrderId, variablesDiff: MapDiff[String, String] = MapDiff.empty, outcome: Outcome = Outcome.Good(ReturnCode(0))): Unit =
       update(orderId <-: OrderProcessed(variablesDiff, outcome))
 
     def run(orderId: OrderId): List[KeyedEvent[OrderEvent]] = {
@@ -263,7 +263,7 @@ object OrderEventSourceTest {
       }
   }
 
-  private def makeOrder(position: Position, state: Order.State, outcome: Outcome = Outcome.Good(true)) =
+  private def makeOrder(position: Position, state: Order.State, outcome: Outcome = Outcome.Good(ReturnCode(0))) =
     okayOrder.copy(
       state = state,
       payload = Payload(Map.empty, outcome = outcome))

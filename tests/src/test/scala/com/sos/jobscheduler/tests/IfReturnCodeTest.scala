@@ -12,6 +12,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, WorkflowPath}
@@ -73,13 +74,13 @@ object IfReturnCodeTest {
     OrderAdded(TestNamedWorkflow.path, Order.StartNow),
     OrderTransferredToAgent(TestAgentPath),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(1, 0, 0)),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(2)),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderTransferredToMaster,

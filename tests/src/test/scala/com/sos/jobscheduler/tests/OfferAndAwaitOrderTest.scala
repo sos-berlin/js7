@@ -11,6 +11,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
@@ -95,16 +96,16 @@ object OfferAndAwaitOrderTest {
     OrderAdded(JoiningWorkflowPath, Order.StartNow),
     OrderTransferredToAgent(TestAgentPath),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(1)),
     OrderDetachable,
     OrderTransferredToMaster,
     OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
-    OrderJoined(MapDiff.empty, Outcome.Good(true)),
+    OrderJoined(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(2)),
     OrderTransferredToAgent(TestAgentPath),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderTransferredToMaster,
@@ -122,7 +123,7 @@ object OfferAndAwaitOrderTest {
     OrderAdded(PublishingWorkflowPath, Order.StartNow),
     OrderTransferredToAgent(TestAgentPath),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(1)),
     OrderDetachable,
     OrderTransferredToMaster,
@@ -130,7 +131,7 @@ object OfferAndAwaitOrderTest {
     OrderMoved(Position(2)),
     OrderTransferredToAgent(TestAgentPath),
     OrderProcessingStarted,
-    OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderTransferredToMaster,

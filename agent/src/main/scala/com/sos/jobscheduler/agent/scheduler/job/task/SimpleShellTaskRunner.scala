@@ -67,7 +67,7 @@ extends TaskRunner {
     for (returnCode ← runProcess(order, stdChannels)) yield
       TaskStepSucceeded(
         MapDiff.diff(order.variables, order.variables ++ fetchReturnValuesThenDeleteFile()),
-        Outcome.Good(returnCode.isSuccess))
+        Outcome.Good(returnCode))
 
   private def runProcess(order: Order[Order.InProcess], stdChannels: StdChannels): Future[ReturnCode] =
     for {

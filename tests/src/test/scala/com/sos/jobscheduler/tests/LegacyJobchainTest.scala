@@ -104,10 +104,10 @@ object LegacyJobchainTest {
     TestOrder.id <-: OrderAdded(TestNamedWorkflow.path, Order.StartNow, Payload.empty),
     TestOrder.id <-: OrderTransferredToAgent(TestAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
-    TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.Good(true)),
+    TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(0))),
     TestOrder.id <-: OrderMoved(Position(4)),   // next_state="B"
     TestOrder.id <-: OrderProcessingStarted,
-    TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.Good(false)),
+    TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.Good(ReturnCode(1))),
     TestOrder.id <-: OrderMoved(Position(7)),   // error_state="FAILURE"
     TestOrder.id <-: OrderDetachable,
     TestOrder.id <-: OrderTransferredToMaster,

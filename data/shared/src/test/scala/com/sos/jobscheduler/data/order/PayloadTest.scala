@@ -15,7 +15,7 @@ final class PayloadTest extends FreeSpec {
         },
         "outcome": {
           "TYPE": "Good",
-          "returnValue": true
+          "returnCode": 0
         }
       }""")
   }

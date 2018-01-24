@@ -48,7 +48,7 @@ extends EventInstruction
         if (order.isAttachedToAgent)
           Some(order.id <-: OrderDetachable)  //
         else if (order.state.joinOrderIds map context.idToOrder forall context.childOrderEnded)
-          Some(order.id <-: OrderJoined(MapDiff.empty, Outcome.Good(true)))
+          Some(order.id <-: OrderJoined(MapDiff.empty, Outcome.Default))
         else
           None))
     .orElse(

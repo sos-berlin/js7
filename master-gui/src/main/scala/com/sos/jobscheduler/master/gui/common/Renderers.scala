@@ -89,8 +89,8 @@ object Renderers {
 
   def outcomeSymbol(outcome: Outcome): VdomNode =
     outcome match {
-      case Outcome.Good(true)  ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny")   // "🔅"
-      case Outcome.Good(false) ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy")  // "☁ ️"
+      case Outcome.Good(_)  ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny")   // "🔅"
+      //case ReturnCode(ReturnCode(1)) ⇒ <.i(^.cls := "material-icons text-prefix")("wb_cloudy")  // "☁ ️"
       case Outcome.Bad(_) ⇒ "💥"
       case _ ⇒ ""
     }

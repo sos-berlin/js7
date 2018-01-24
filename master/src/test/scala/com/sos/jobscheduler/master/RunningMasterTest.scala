@@ -21,6 +21,7 @@ import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterTest._
@@ -105,7 +106,7 @@ final class RunningMasterTest extends FreeSpec {
             Order.Finished,
             payload = Payload(
               Map("result" → "TEST-RESULT-VALUE-agent-222"),
-              Outcome.Good(true))))
+              Outcome.Good(ReturnCode(0)))))
         assert(orderClient.orderCount.await(99.s) >= 1)
 
         master.executeCommand(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations

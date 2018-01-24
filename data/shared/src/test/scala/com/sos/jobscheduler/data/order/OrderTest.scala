@@ -82,7 +82,7 @@ final class OrderTest extends FreeSpec {
             },
             "outcome": {
               "TYPE": "Good",
-              "returnValue": true
+              "returnCode": 0
             }
           }
         }""")

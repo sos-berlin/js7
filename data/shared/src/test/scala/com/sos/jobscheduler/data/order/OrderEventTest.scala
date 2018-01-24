@@ -6,6 +6,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -32,7 +33,7 @@ final class OrderEventTest extends FreeSpec {
           },
           "outcome": {
             "TYPE": "Good",
-            "returnValue": true
+            "returnCode": 0
           }
         }
       }""")
@@ -54,7 +55,7 @@ final class OrderEventTest extends FreeSpec {
           },
           "outcome": {
             "TYPE": "Good",
-            "returnValue": true
+            "returnCode": 0
           }
         }
       }""")
@@ -97,7 +98,7 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderProcessed" in {
-    check(OrderProcessed(MapDiff(changed = Map("VAR" → "VALUE"), deleted = Set("REMOVED")), Outcome.Good(true)), json"""
+    check(OrderProcessed(MapDiff(changed = Map("VAR" → "VALUE"), deleted = Set("REMOVED")), Outcome.Good(ReturnCode(0))), json"""
       {
         "TYPE": "OrderProcessed",
         "variablesDiff": {
@@ -108,7 +109,7 @@ final class OrderEventTest extends FreeSpec {
         },
         "outcome": {
           "TYPE": "Good",
-          "returnValue": true
+          "returnCode": 0
         }
       }""")
   }
@@ -149,7 +150,7 @@ final class OrderEventTest extends FreeSpec {
         },
         "outcome": {
           "TYPE": "Good",
-          "returnValue": true
+          "returnCode": 0
         }
       }""")
   }
