@@ -16,19 +16,19 @@ final class WorkflowsTest extends FreeSpec {
   "reduceForAgent A" in {
     assert(ForkTestSetting.TestWorkflow.reduceForAgent(AAgentPath) == Workflow(
       Vector(
-        Job(AAgentJobPath),
+        AJob,
         ForkJoin.of(
-          "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-          "🍋" → Workflow.of(Job(AAgentJobPath), Gap)),
-        Job(AAgentJobPath),
+          "🥕" → Workflow.of(AJob, AJob),
+          "🍋" → Workflow.of(AJob, Gap)),
+        AJob,
         ForkJoin.of(
-          "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-          "🍋" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath))),
-        Job(AAgentJobPath),
+          "🥕" → Workflow.of(AJob, AJob),
+          "🍋" → Workflow.of(AJob, AJob)),
+        AJob,
         ForkJoin.of(
-          "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
+          "🥕" → Workflow.of(AJob, AJob),
           "🍋" → Workflow.of(Gap               , Gap)),
-        Job(AAgentJobPath)),
+        AJob),
       source = None))
   }
 
@@ -38,13 +38,13 @@ final class WorkflowsTest extends FreeSpec {
         /*0*/ Gap,
         /*1*/ ForkJoin.of(
                 "🥕" → Workflow.of(Gap, Gap),
-                "🍋" → Workflow.of(Gap, Job(BAgentJobPath))),
+                "🍋" → Workflow.of(Gap, BJob)),
         /*2*/ Gap,
         /*3*/ Gap,
         /*4*/ Gap,
         /*5*/ ForkJoin.of(
                 "🥕" → Workflow.of(Gap, Gap),
-                "🍋" → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
+                "🍋" → Workflow.of(BJob, BJob)),
         /*6*/ Gap),
       source = None))
   }

@@ -13,8 +13,8 @@ object ForkTestSetting {
   val AAgentPath = AgentPath("/AGENT-A")
   val BAgentPath = AgentPath("/AGENT-B")
   val AgentPaths = List(AAgentPath, BAgentPath)
-  val AAgentJobPath = AgentJobPath(AAgentPath, JobPath("/JOB"))
-  val BAgentJobPath = AgentJobPath(BAgentPath, JobPath("/JOB"))
+  val AJob = Job(AgentJobPath(AAgentPath, JobPath("/JOB")))
+  val BJob = Job(AgentJobPath(BAgentPath, JobPath("/JOB")))
   val TestJobPath = JobPath("/JOB")
 
   val TestWorkflowNotation = """
@@ -35,30 +35,30 @@ object ForkTestSetting {
 
   val TestWorkflow = Workflow(
     Vector(
-      /*0*/ Job(AAgentJobPath),
+      /*0*/ AJob,
       /*1*/ ForkJoin.of(
-        "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        "🍋" → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath))),
-      /*2*/ Job(AAgentJobPath),
+        "🥕" → Workflow.of(AJob, AJob),
+        "🍋" → Workflow.of(AJob, BJob)),
+      /*2*/ AJob,
       /*3*/ ForkJoin.of(
-        "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        "🍋" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath))),
-      /*4*/ Job(AAgentJobPath),
+        "🥕" → Workflow.of(AJob, AJob),
+        "🍋" → Workflow.of(AJob, AJob)),
+      /*4*/ AJob,
       /*5*/ ForkJoin.of(
-        "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        "🍋" → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
-      /*6*/ Job(AAgentJobPath)),
+        "🥕" → Workflow.of(AJob, AJob),
+        "🍋" → Workflow.of(BJob, BJob)),
+      /*6*/ AJob),
     source = Some(TestWorkflowNotation/*Must be the source source of this workflow*/))
   //     A
   //  🥕   🍋
   //  Bx   By
-  //  Cx   Cy   ⟵ Cy runs on BAgentJobPath
+  //  Cx   Cy   ⟵ Cy runs on BAgentPath
   //     D
   //  Ex   Ey
   //  Fx   Fy
   //     G
-  //  Hx   Hy   ⟵ Hy runs on BAgentJobPath
-  //  Ix   Iy   ⟵ Iy runs on BAgentJobPath
+  //  Hx   Hy   ⟵ Hy runs on BAgentPath
+  //  Ix   Iy   ⟵ Iy runs on BAgentPath
   //     J
   //    END
 

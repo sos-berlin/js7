@@ -49,7 +49,7 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "jobOption" in {
-    assert(TestWorkflow.jobOption(Position(6)) == Job(AAgentJobPath).some)
+    assert(TestWorkflow.jobOption(Position(6)) == AJob.some)
     assert(TestWorkflow.jobOption(Position(7)) == None)  // ImplicitEnd
     intercept[IndexOutOfBoundsException] {
       assert(TestWorkflow.jobOption(Position(8)) == None)
@@ -88,67 +88,67 @@ final class WorkflowTest extends FreeSpec {
 
   "flatten" in {
     assert(ForkTestSetting.TestWorkflow.flatten == Vector[(Position, Instruction.Labeled)](
-      (Position(0         ), Job(AAgentJobPath)),
+      (Position(0         ), AJob),
       (Position(1         ), ForkTestSetting.TestWorkflow.instruction(1)),
-      (Position(1, "🥕", 0), Job(AAgentJobPath)),
-      (Position(1, "🥕", 1), Job(AAgentJobPath)),
+      (Position(1, "🥕", 0), AJob),
+      (Position(1, "🥕", 1), AJob),
       (Position(1, "🥕", 2), ImplicitEnd),
-      (Position(1, "🍋", 0), Job(AAgentJobPath)),
-      (Position(1, "🍋", 1), Job(BAgentJobPath)),
+      (Position(1, "🍋", 0), AJob),
+      (Position(1, "🍋", 1), BJob),
       (Position(1, "🍋", 2), ImplicitEnd),
-      (Position(2         ), Job(AAgentJobPath)),
+      (Position(2         ), AJob),
       (Position(3         ), ForkTestSetting.TestWorkflow.instruction(3)),
-      (Position(3, "🥕", 0), Job(AAgentJobPath)),
-      (Position(3, "🥕", 1), Job(AAgentJobPath)),
+      (Position(3, "🥕", 0), AJob),
+      (Position(3, "🥕", 1), AJob),
       (Position(3, "🥕", 2), ImplicitEnd),
-      (Position(3, "🍋", 0), Job(AAgentJobPath)),
-      (Position(3, "🍋", 1), Job(AAgentJobPath)),
+      (Position(3, "🍋", 0), AJob),
+      (Position(3, "🍋", 1), AJob),
       (Position(3, "🍋", 2), ImplicitEnd),
-      (Position(4         ), Job(AAgentJobPath)),
+      (Position(4         ), AJob),
       (Position(5         ), ForkTestSetting.TestWorkflow.instruction(5)),
-      (Position(5, "🥕", 0), Job(AAgentJobPath)),
-      (Position(5, "🥕", 1), Job(AAgentJobPath)),
+      (Position(5, "🥕", 0), AJob),
+      (Position(5, "🥕", 1), AJob),
       (Position(5, "🥕", 2), ImplicitEnd),
-      (Position(5, "🍋", 0), Job(BAgentJobPath)),
-      (Position(5, "🍋", 1), Job(BAgentJobPath)),
+      (Position(5, "🍋", 0), BJob),
+      (Position(5, "🍋", 1), BJob),
       (Position(5, "🍋", 2), ImplicitEnd),
-      (Position(6         ), Job(AAgentJobPath)),
+      (Position(6         ), AJob),
       (Position(7         ), ImplicitEnd)))
   }
 
   "isDefinedAt, instruction" in {
     val addressToInstruction = List(
-      Position(0) → Job(AAgentJobPath),
+      Position(0) → AJob,
       Position(1) → ForkJoin.of(
-        "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        "🍋" → Workflow.of(Job(AAgentJobPath), Job(BAgentJobPath))),
-      Position(1, "🥕", 0) → Job(AAgentJobPath),
-      Position(1, "🥕", 1) → Job(AAgentJobPath),
+        "🥕" → Workflow.of(AJob, AJob),
+        "🍋" → Workflow.of(AJob, BJob)),
+      Position(1, "🥕", 0) → AJob,
+      Position(1, "🥕", 1) → AJob,
       Position(1, "🥕", 2) → ImplicitEnd,
-      Position(1, "🍋", 0) → Job(AAgentJobPath),
-      Position(1, "🍋", 1) → Job(BAgentJobPath),
+      Position(1, "🍋", 0) → AJob,
+      Position(1, "🍋", 1) → BJob,
       Position(1, "🍋", 2) → ImplicitEnd,
-      Position(2) → Job(AAgentJobPath),
+      Position(2) → AJob,
       Position(3) → ForkJoin.of(
-        "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        "🍋" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath))),
-      Position(3, "🥕", 0) → Job(AAgentJobPath),
-      Position(3, "🥕", 1) → Job(AAgentJobPath),
+        "🥕" → Workflow.of(AJob, AJob),
+        "🍋" → Workflow.of(AJob, AJob)),
+      Position(3, "🥕", 0) → AJob,
+      Position(3, "🥕", 1) → AJob,
       Position(3, "🥕", 2) → ImplicitEnd,
-      Position(3, "🍋", 0) → Job(AAgentJobPath),
-      Position(3, "🍋", 1) → Job(AAgentJobPath),
+      Position(3, "🍋", 0) → AJob,
+      Position(3, "🍋", 1) → AJob,
       Position(3, "🍋", 2) → ImplicitEnd,
-      Position(4) → Job(AAgentJobPath),
+      Position(4) → AJob,
       Position(5) → ForkJoin.of(
-        "🥕" → Workflow.of(Job(AAgentJobPath), Job(AAgentJobPath)),
-        "🍋" → Workflow.of(Job(BAgentJobPath), Job(BAgentJobPath))),
-      Position(5, "🥕", 0) → Job(AAgentJobPath),
-      Position(5, "🥕", 1) → Job(AAgentJobPath),
+        "🥕" → Workflow.of(AJob, AJob),
+        "🍋" → Workflow.of(BJob, BJob)),
+      Position(5, "🥕", 0) → AJob,
+      Position(5, "🥕", 1) → AJob,
       Position(5, "🥕", 2) → ImplicitEnd,
-      Position(5, "🍋", 0) → Job(BAgentJobPath),
-      Position(5, "🍋", 1) → Job(BAgentJobPath),
+      Position(5, "🍋", 0) → BJob,
+      Position(5, "🍋", 1) → BJob,
       Position(5, "🍋", 2) → ImplicitEnd,
-      Position(6) → Job(AAgentJobPath),
+      Position(6) → AJob,
       Position(7) → ImplicitEnd)
 
     for ((address, instruction) ← addressToInstruction) {
