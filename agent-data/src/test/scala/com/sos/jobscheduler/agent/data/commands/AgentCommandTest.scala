@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.agent.data.commands
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Position
 import com.sos.jobscheduler.data.workflow.test.TestSetting.TestWorkflow
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
+import io.circe.Json
 import org.scalatest.FreeSpec
 import scala.concurrent.duration.DurationInt
 
@@ -15,7 +17,7 @@ final class AgentCommandTest extends FreeSpec {
 
   "Batch" in {
     check(AgentCommand.Batch(List(AgentCommand.NoOperation, AgentCommand.Logout)),
-      """{
+      json"""{
         "TYPE": "Batch",
         "commands": [
           { "TYPE": "NoOperation" },
@@ -26,33 +28,33 @@ final class AgentCommandTest extends FreeSpec {
 
   "AbortImmediately" in {
     check(AgentCommand.AbortImmediately,
-      """{ "TYPE": "AbortImmediately" }""")
+      json"""{ "TYPE": "AbortImmediately" }""")
   }
 
   "Login" in {
     check(AgentCommand.Login,
-      """{
+      json"""{
         "TYPE": "Login"
       }""")
   }
 
   "Logout" in {
     check(AgentCommand.Logout,
-      """{
+      json"""{
         "TYPE": "Logout"
       }""")
   }
 
   "NoOperation" in {
     check(AgentCommand.NoOperation,
-      """{
+      json"""{
         "TYPE": "NoOperation"
       }""")
   }
 
   "RegisterAsMaster" in {
     check(AgentCommand.RegisterAsMaster,
-      """{
+      json"""{
         "TYPE": "RegisterAsMaster"
       }""")
   }
@@ -60,7 +62,7 @@ final class AgentCommandTest extends FreeSpec {
   "Terminate" - {
     "JSON without sigkillProcessesAfter" in {
       check(AgentCommand.Terminate(sigtermProcesses = true),
-        """{
+        json"""{
           "TYPE":"Terminate",
           "sigtermProcesses": true
         }""")
@@ -68,7 +70,7 @@ final class AgentCommandTest extends FreeSpec {
 
     "JSON with sigkillProcessesAfter" in {
       check(AgentCommand.Terminate(sigtermProcesses = true, sigkillProcessesAfter = Some(30.seconds)),
-        """{
+        json"""{
           "TYPE":"Terminate",
           "sigtermProcesses": true,
           "sigkillProcessesAfter": 30
@@ -79,14 +81,14 @@ final class AgentCommandTest extends FreeSpec {
   "OrderCommand" - {
     "AttachOrder" in {
       check(AgentCommand.AttachOrder(
-        Order(
-          OrderId("ORDER-ID"),
-          TestWorkflow.path /: Position(3),
-          Order.Ready,
-          Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
-        AgentPath("/AGENT"),
-        TestWorkflow.workflow),
-        """{
+          Order(
+            OrderId("ORDER-ID"),
+            TestWorkflow.path /: Position(3),
+            Order.Ready,
+            Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
+          AgentPath("/AGENT"),
+          TestWorkflow.workflow),
+        json"""{
           "TYPE": "AttachOrder",
           "order": {
             "state": {
@@ -104,8 +106,8 @@ final class AgentCommandTest extends FreeSpec {
           },
           "workflow": {
             "instructions": [
-              { "TYPE": "Job", "job": { "agentPath": "/AGENT", "jobPath": "/A" } },
-              { "TYPE": "Job", "job": { "agentPath": "/AGENT", "jobPath": "/B" } },
+              { "TYPE": "Job", "jobPath": "/A", "agentPath": "/AGENT" },
+              { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" },
               { "TYPE": "ImplicitEnd" }
             ]
           }
@@ -114,7 +116,7 @@ final class AgentCommandTest extends FreeSpec {
 
     "DetachOrder" in {
       check(AgentCommand.DetachOrder(OrderId("ORDER-ID")),
-        """{
+        json"""{
           "TYPE": "DetachOrder",
           "orderId": "ORDER-ID"
         }""")
@@ -122,7 +124,7 @@ final class AgentCommandTest extends FreeSpec {
 
     "GetOrder" in {
       check(AgentCommand.GetOrder(OrderId("ORDER-ID")),
-         """{
+         json"""{
           "TYPE": "GetOrder",
           "orderId": "ORDER-ID"
         }""")
@@ -130,12 +132,12 @@ final class AgentCommandTest extends FreeSpec {
 
     "GetOrderIds" in {
       check(AgentCommand.GetOrderIds,
-        """{
+        json"""{
           "TYPE": "GetOrderIds"
         }""")
     }
   }
 
-  private def check(command: AgentCommand, jsonString: String): Unit =
-    testJson(command, jsonString)
+  private def check(command: AgentCommand, json: Json): Unit =
+    testJson(command, json)
 }

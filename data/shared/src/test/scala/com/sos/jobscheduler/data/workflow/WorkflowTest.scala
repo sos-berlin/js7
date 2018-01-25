@@ -18,9 +18,9 @@ final class WorkflowTest extends FreeSpec {
 
   "labelToPosition" in {
     val workflow = Workflow(Vector(
-      "A" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB"))),
+      "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")),
       IfReturnCode(List(ReturnCode(1)), Vector(Workflow(Vector(
-        "B" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB"))))))),
+        "B" @: Job(JobPath("/JOB"), AgentPath("/AGENT")))))),
       "B" @: ExplicitEnd))
     assert(workflow.labelToPosition(Nil, Label("A")) == Some(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("B")) == Some(Position(2)))
@@ -30,8 +30,8 @@ final class WorkflowTest extends FreeSpec {
   "Duplicate labels" in {
     assert(intercept[RuntimeException] {
       Workflow(Vector(
-        "A" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB"))),
-        "A" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB")))))
+        "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")),
+        "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT"))))
     }
     .toString contains "Duplicate labels")
   }
@@ -64,24 +64,24 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "reduce" in {
-    val agentJobPath = AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-A"))
+    val job = Job(JobPath("/JOB-A"), AgentPath("/AGENT"))
     val B = Label("B")
     val C = Label("C")
     val D = Label("D")
     val END = Label("END")
 
     val instructions = Vector[(Instruction.Labeled, Boolean)](
-      (()  @: Job(agentJobPath)) → true,
-      (()  @: Goto(B))           → true,
-      (C   @: Job(agentJobPath)) → true,
-      (()  @: Goto(D))           → true,   // reducible?
-      (()  @: IfFailedGoto(D))    → false,  // reducible
-      (()  @: Goto(D))           → false,  // reducible
-      (D   @: Job(agentJobPath)) → true,
-      (()  @: Goto(END))         → false,  // reducible
-      (END @: ExplicitEnd)       → true,
-      (B   @: Job(agentJobPath)) → true,
-      (()  @: Goto(C))           → true)
+      (()  @: job)              → true,
+      (()  @: Goto(B))          → true,
+      (C   @: job)              → true,
+      (()  @: Goto(D))          → true,   // reducible?
+      (()  @: IfFailedGoto(D))  → false,  // reducible
+      (()  @: Goto(D))          → false,  // reducible
+      (D   @: job)              → true,
+      (()  @: Goto(END))        → false,  // reducible
+      (END @: ExplicitEnd)      → true,
+      (B   @: job)              → true,
+      (()  @: Goto(C))          → true)
     val a = Workflow(instructions map (_._1))
     assert(a.reduce == Workflow(instructions collect { case (s, true) ⇒ s }))
   }
@@ -166,7 +166,7 @@ final class WorkflowTest extends FreeSpec {
     testJson(ForkTestSetting.TestWorkflow, json"""{
       "source": "job \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-B\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";",
       "instructions": [
-        { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
         {
           "TYPE": "ForkJoin",
           "branches": [
@@ -174,8 +174,8 @@ final class WorkflowTest extends FreeSpec {
               "id": "🥕",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                   { "TYPE": "ImplicitEnd" }
                 ]
               }
@@ -183,15 +183,15 @@ final class WorkflowTest extends FreeSpec {
               "id": "🍋",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }},
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
                   { "TYPE": "ImplicitEnd" }
                 ]
               }
             }
           ]
         },
-        { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
         {
           "TYPE": "ForkJoin",
           "branches": [
@@ -199,8 +199,8 @@ final class WorkflowTest extends FreeSpec {
               "id": "🥕",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                   { "TYPE": "ImplicitEnd" }
                 ]
               }
@@ -208,15 +208,15 @@ final class WorkflowTest extends FreeSpec {
               "id": "🍋",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                   { "TYPE": "ImplicitEnd" }
                 ]
               }
             }
           ]
         },
-        { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
         {
           "TYPE": "ForkJoin",
           "branches": [
@@ -224,8 +224,8 @@ final class WorkflowTest extends FreeSpec {
               "id": "🥕",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
                   { "TYPE": "ImplicitEnd" }
                 ]
               }
@@ -233,15 +233,15 @@ final class WorkflowTest extends FreeSpec {
               "id": "🍋",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }},
-                  { "TYPE": "Job", "job": { "agentPath": "/AGENT-B", "jobPath": "/JOB" }},
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
                   { "TYPE": "ImplicitEnd" }
                 ]
               }
             }
           ]
         },
-        { "TYPE": "Job", "job": { "agentPath": "/AGENT-A", "jobPath": "/JOB" }},
+        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
         { "TYPE": "ImplicitEnd" }
       ]
     }""")

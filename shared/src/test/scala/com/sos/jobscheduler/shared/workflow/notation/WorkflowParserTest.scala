@@ -7,7 +7,7 @@ import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, Goto, IfFailedGoto, IfReturnCode, Job, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Label, Workflow}
+import com.sos.jobscheduler.data.workflow.{JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
@@ -26,7 +26,7 @@ final class WorkflowParserTest extends FreeSpec {
     assert(parse(source) ==
       Workflow(
         Vector(
-          Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))),
+          Job(JobPath("/A"), AgentPath("/AGENT"))),
         Some(source)))
   }
 
@@ -35,7 +35,7 @@ final class WorkflowParserTest extends FreeSpec {
     assert(parse(source) ==
       Workflow(
         Vector(
-          Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))),
+          Job(JobPath("/A"), AgentPath("/AGENT"))),
         Some(source)))
   }
 
@@ -44,7 +44,7 @@ final class WorkflowParserTest extends FreeSpec {
     assert(parse(source) ==
       Workflow(
         Vector(
-          Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")), ReturnCodeMeaning.Success.of(0, 1, 3))),
+          Job(JobPath("/A"), AgentPath("/AGENT"), ReturnCodeMeaning.Success.of(0, 1, 3))),
         Some(source)))
   }
 
@@ -53,7 +53,7 @@ final class WorkflowParserTest extends FreeSpec {
     assert(parse(source) ==
       Workflow(
         Vector(
-          Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")), ReturnCodeMeaning.Failure.of(1, 3))),
+          Job(JobPath("/A"), AgentPath("/AGENT"), ReturnCodeMeaning.Failure.of(1, 3))),
         Some(source)))
   }
 
@@ -62,7 +62,7 @@ final class WorkflowParserTest extends FreeSpec {
     assert(parse(source) ==
       Workflow(
         Vector(
-          "A" @: Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))),
+          "A" @: Job(JobPath("/A"), AgentPath("/AGENT"))),
         Some(source)))
   }
 
@@ -72,7 +72,7 @@ final class WorkflowParserTest extends FreeSpec {
       Workflow(
         Vector(
           IfReturnCode(List(ReturnCode(1), ReturnCode(2), ReturnCode(3)), Vector(
-            Workflow.of(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/THEN"))))))),
+            Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT")))))),
         Some(source)))
   }
 
@@ -82,8 +82,8 @@ final class WorkflowParserTest extends FreeSpec {
       Workflow(
         Vector(
           IfReturnCode(List(ReturnCode(-1)), Vector(
-            Workflow.of(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/THEN")))),
-            Workflow.of(Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/ELSE"))))))),
+            Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT"))),
+            Workflow.of(Job(JobPath("/ELSE"), AgentPath("/AGENT")))))),
         Some(source)))
   }
 
@@ -107,12 +107,12 @@ final class WorkflowParserTest extends FreeSpec {
       END: end;"""
     assert(parse(source) == Workflow(
       Vector(
-        Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A"))),
+        Job(JobPath("/A"), AgentPath("/AGENT")),
         IfFailedGoto(Label("FAILURE")),
-        Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/B"))),
+        Job(JobPath("/B"), AgentPath("/AGENT")),
         Goto(Label("END")),
         "FAILURE" @:
-        Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/OnFailure"))),
+        Job(JobPath("/OnFailure"), AgentPath("/AGENT")),
         "END" @:
         ExplicitEnd),
       Some(source)))
@@ -140,7 +140,7 @@ final class WorkflowParserTest extends FreeSpec {
       """
     assert(parse(source) == Workflow(
       Vector(
-        Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))),
+        Job(JobPath("/A"), AgentPath("/AGENT"))),
       source = Some(source)))
   }
 

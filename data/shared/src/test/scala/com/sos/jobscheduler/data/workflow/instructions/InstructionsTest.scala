@@ -35,10 +35,8 @@ final class InstructionsTest extends FreeSpec {
       testLabeled(Job(JobPath("/JOB"), AgentPath("/AGENT")), json"""
         {
           "TYPE": "Job",
-          "job": {
-            "agentPath": "/AGENT",
-            "jobPath": "/JOB"
-          }
+          "jobPath": "/JOB",
+          "agentPath": "/AGENT"
         }""")
     }
 
@@ -46,10 +44,8 @@ final class InstructionsTest extends FreeSpec {
       testLabeled(Job(JobPath("/JOB"), AgentPath("/AGENT"), ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1)))), json"""
         {
           "TYPE": "Job",
-          "job": {
-            "agentPath": "/AGENT",
-            "jobPath": "/JOB"
-          },
+          "jobPath": "/JOB",
+          "agentPath": "/AGENT",
           "returnCodeMeaning": {
             "success": [ 0, 1 ]
           }
@@ -68,7 +64,7 @@ final class InstructionsTest extends FreeSpec {
                 "id": "A",
                 "workflow": {
                   "instructions": [
-                    { "TYPE": "Job", "job": { "agentPath": "/AGENT", "jobPath": "/JOB" } },
+                    { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT" },
                     { "TYPE": "ImplicitEnd" }
                   ]
                 }

@@ -7,14 +7,14 @@ import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderMoved, OrderProcessed, OrderStopped}
 import com.sos.jobscheduler.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import com.sos.jobscheduler.data.order.{Order, Outcome}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, EventInstruction, JobPath, OrderContext}
+import com.sos.jobscheduler.data.workflow.{EventInstruction, JobPath, OrderContext}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 
 /**
   * @author Joacim Zschimmer
   */
-final case class Job(job: AgentJobPath, returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default) extends EventInstruction
+final case class Job(jobPath: JobPath, agentPath: AgentPath, returnCodeMeaning: ReturnCodeMeaning = ReturnCodeMeaning.Default) extends EventInstruction
 {
   def toOrderProcessed(variablesDiff: MapDiff[String, String], returnCode: ReturnCode) =
     OrderProcessed(variablesDiff, Outcome.Undisrupted(returnCode, success = returnCodeMeaning.isSuccess(returnCode)))
@@ -35,12 +35,8 @@ final case class Job(job: AgentJobPath, returnCodeMeaning: ReturnCodeMeaning = R
         })
 
 
-  def agentPath = job.agentPath
-
-  def jobPath = job.jobPath
-
   def isExecutableOnAgent(agentPath: AgentPath): Boolean =
-    job.agentPath == agentPath
+    this.agentPath == agentPath
 
   override def toString = s"job ${jobPath.string} on ${agentPath.string}" + (
     returnCodeMeaning match {
@@ -52,19 +48,15 @@ final case class Job(job: AgentJobPath, returnCodeMeaning: ReturnCodeMeaning = R
 }
 
 object Job {
-  def apply(path: JobPath, agentPath: AgentPath) =
-    new Job(AgentJobPath(agentPath, path))
-
-  def apply(path: JobPath, agentPath: AgentPath, returnCodeMeaning: ReturnCodeMeaning) =
-    new Job(AgentJobPath(agentPath, path), returnCodeMeaning)
-
   implicit val jsonEncoder: ObjectEncoder[Job] = job ⇒
     JsonObject.fromIterable(
-      ("job" → job.job.asJson) ::
-        (job.returnCodeMeaning != ReturnCodeMeaning.Default list ("returnCodeMeaning" → job.returnCodeMeaning.asJson)))
+      ("jobPath" → job.jobPath.asJson) ::
+      ("agentPath" → job.agentPath.asJson) ::
+      (job.returnCodeMeaning != ReturnCodeMeaning.Default list ("returnCodeMeaning" → job.returnCodeMeaning.asJson)))
   implicit val jsonDecoder: Decoder[Job] = cursor ⇒
     for {
-      job ← cursor.get[AgentJobPath]("job")
+      jobPath ← cursor.get[JobPath]("jobPath")
+      agentPath ← cursor.get[AgentPath]("agentPath")
       rc ← cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)
-    } yield Job(job, rc)
+    } yield Job(jobPath, agentPath, rc)
 }

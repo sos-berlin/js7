@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Gap, Goto, IfFailedGoto, IfReturnCode, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Position, Workflow}
+import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow}
 import com.sos.jobscheduler.shared.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.shared.workflow.OrderEventSourceTest._
 import org.scalatest.FreeSpec
@@ -164,7 +164,7 @@ object OrderEventSourceTest {
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowPath, Order.Processed(Outcome.Succeeded(ReturnCode.StandardFailure)))
   private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowPath, Order.Processed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)))
 
-  private val job = Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB")))
+  private val job = Job(JobPath("/JOB"), AgentPath("/AGENT"))
 
   private def step(workflow: Workflow, outcome: Outcome): Option[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)
