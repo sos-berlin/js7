@@ -23,7 +23,20 @@ object Outcome
     def returnCode: ReturnCode
   }
 
+  sealed trait NotSucceeded extends Outcome
+  object NotSucceeded {
+    implicit val jsonCodec = TypedJsonCodec[NotSucceeded](
+      Subtype[Failed],
+      Subtype[Disrupted])
+  }
+
   object Undisrupted {
+    def apply(returnCode: ReturnCode, success: Boolean): Undisrupted =
+      if (success)
+        Succeeded(returnCode)
+      else
+        Failed(returnCode)
+
     private[Outcome] sealed trait Companion[A <: Undisrupted] {
       def newInstance(returnCode: ReturnCode): A
 
@@ -47,7 +60,7 @@ object Outcome
   }
 
   @JsonCodec
-  final case class Failed private(returnCode: ReturnCode) extends Undisrupted {
+  final case class Failed private(returnCode: ReturnCode) extends Undisrupted with NotSucceeded {
     def isSucceeded = false
   }
   object Failed extends Undisrupted.Companion[Failed] {
@@ -56,7 +69,7 @@ object Outcome
 
   /** No response from job - some other error has occurred. */
   @JsonCodec
-  final case class Disrupted(reason: Disrupted.Reason) extends Outcome {
+  final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded {
     def isSucceeded = false
   }
   object Disrupted {
@@ -82,5 +95,6 @@ object Outcome
 
   implicit val jsonCodec = TypedJsonCodec[Outcome](
     Subtype[Succeeded],
+    Subtype[Failed],
     Subtype[Disrupted])
 }

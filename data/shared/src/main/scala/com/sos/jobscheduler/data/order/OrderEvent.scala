@@ -106,6 +106,8 @@ object OrderEvent {
     //type State = Ready.type
   }
 
+  final case class OrderStopped(outcome: Outcome.NotSucceeded) extends OrderActorEvent
+
   /**
     * Agent has processed all steps and the Order should be fetched by the Master.
     */
@@ -143,5 +145,6 @@ object OrderEvent {
     Subtype(OrderDetachable),
     Subtype(OrderProcessingStarted),
     Subtype(deriveCirceCodec[OrderMoved]),
+    Subtype(deriveCirceCodec[OrderStopped]),
     Subtype(OrderFinished))
 }

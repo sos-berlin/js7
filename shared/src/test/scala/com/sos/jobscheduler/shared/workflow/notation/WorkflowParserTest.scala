@@ -5,7 +5,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, Goto, IfFailedGoto, IfReturnCode, Job, Offer}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, Goto, IfFailedGoto, IfReturnCode, Job, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
 import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
@@ -20,9 +20,6 @@ final class WorkflowParserTest extends FreeSpec {
   "parse" in {
     assert(parse(TestWorkflowNotation) == TestWorkflow)
   }
-
-  private val singleJobScript = Workflow(Vector(
-    Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))))
 
   "Single instruction with relative paths" in {
     val source = """job "A" on "AGENT";"""
@@ -39,6 +36,24 @@ final class WorkflowParserTest extends FreeSpec {
       Workflow(
         Vector(
           Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))),
+        Some(source)))
+  }
+
+  "job with successReturnCodes" in {
+    val source = """job "A" on "AGENT" successReturnCodes=(0, 1, 3);"""
+    assert(parse(source) ==
+      Workflow(
+        Vector(
+          Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")), ReturnCodeMeaning.Success.of(0, 1, 3))),
+        Some(source)))
+  }
+
+  "job with failureReturnCodes" in {
+    val source = """job "A" on "AGENT" failureReturnCodes=(1, 3);"""
+    assert(parse(source) ==
+      Workflow(
+        Vector(
+          Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")), ReturnCodeMeaning.Failure.of(1, 3))),
         Some(source)))
   }
 
@@ -123,7 +138,10 @@ final class WorkflowParserTest extends FreeSpec {
         //comment
         /*comment/**/job/***/"A"/**/on/**/"AGENT"/**/;/**///comment
       """
-    assert(parse(source) == singleJobScript.copy(source = Some(source)))
+    assert(parse(source) == Workflow(
+      Vector(
+        Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/A")))),
+      source = Some(source)))
   }
 
   private def parse(workflowString: String): Workflow =

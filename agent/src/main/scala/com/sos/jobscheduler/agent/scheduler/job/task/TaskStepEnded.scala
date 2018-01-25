@@ -1,19 +1,18 @@
 package com.sos.jobscheduler.agent.scheduler.job.task
 
 import com.sos.jobscheduler.base.utils.MapDiff
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Outcome
 
 /**
   * @author Joacim Zschimmer
   */
-sealed trait TaskStepEnded {
-  val outcome: Outcome
-}
+sealed trait TaskStepEnded
 
 final case class TaskStepSucceeded(
   variablesDiff: MapDiff[String, String],
-  outcome: Outcome.Succeeded)
+  returnCode: ReturnCode)
 extends TaskStepEnded
 
-final case class TaskStepFailed(outcome: Outcome.Disrupted)
+final case class TaskStepFailed(disrupted: Outcome.Disrupted)
 extends TaskStepEnded

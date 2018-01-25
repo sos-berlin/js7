@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.gui.components.workflow
 
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.instructions._
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Instruction, Position, WorkflowPath}
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.components.state.PreparedWorkflow
 import japgolly.scalajs.react.ScalaComponent
@@ -68,8 +68,8 @@ object WorkflowComponent {
       " ",
       pi._2.labels.map(_ + ": ").mkString,
       pi._2.instruction match {
-        case Job(AgentJobPath(agentPath, jobPath)) ⇒
-          VdomArray(agentPath, " · ", jobPath)
+        case job: Job ⇒
+          VdomArray(job.agentPath, " · ", job.jobPath)
 
         case _: ForkJoin ⇒
           "fork"

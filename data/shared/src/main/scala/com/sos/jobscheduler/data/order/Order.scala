@@ -82,6 +82,9 @@ final case class Order[+S <: Order.State](
       case OrderMoved(to) ⇒
         withPosition(to).copy(state = Ready)
 
+      case OrderStopped(message) ⇒ copy(
+        state = Stopped(message))
+
       case OrderDetachable ⇒
         attachedTo match {
           case None ⇒
@@ -192,6 +195,9 @@ object Order {
   sealed trait Ready extends Started with Idle
   case object Ready extends Ready
 
+  @JsonCodec
+  final case class Stopped(outcome: Outcome.NotSucceeded) extends Started //TODO with Idle: Idle auf Ready einengen!
+
   sealed trait InProcess extends Started
   case object InProcess extends InProcess
 
@@ -221,6 +227,7 @@ object Order {
 
   implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
     Subtype[Idle],
+    Subtype[Stopped],
     Subtype(InProcess),
     Subtype[Processed],
     Subtype[Join],

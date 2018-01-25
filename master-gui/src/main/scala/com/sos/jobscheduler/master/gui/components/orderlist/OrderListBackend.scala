@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.gui.components.orderlist
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.Instruction.@:
 import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, ImplicitEnd, Job}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Instruction, Position, WorkflowPath}
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.common.Renderers.forTable.orderStateToVdom
 import com.sos.jobscheduler.master.gui.common.Utils.memoize
@@ -137,10 +137,10 @@ extends OnUnmount {
               case _: ForkJoin ⇒
                 "fork"
 
-              case Job(AgentJobPath(agentPath, jobPath)) ⇒
+              case job: Job ⇒
                 VdomArray(
-                  <.div("job ", <.span(^.cls := "orders-Instruction-Job", jobPath.string)),
-                  <.div("at ", <.span(^.cls := "orders-Instruction-Agent", agentPath.string)))
+                  <.div("job ", <.span(^.cls := "orders-Instruction-Job", job.jobPath.string)),
+                  <.div("at ", <.span(^.cls := "orders-Instruction-Agent", job.agentPath.string)))
 
               case ImplicitEnd ⇒
                 "end"

@@ -132,6 +132,17 @@ extends KeyedJournalingActor[OrderEvent] {
       context.stop(self)
   }
 
+  private def stopped: Receive = journaling orElse {
+    case Command.Detach ⇒
+      detach()
+
+    case command: Command ⇒
+      executeOtherCommand(command)
+
+    case Input.Terminate ⇒
+      context.stop(self)
+  }
+
   private def processing(job: Job, jobActor: ActorRef, stdoutStderrStatistics: () ⇒ Option[String]): Receive =
     journaling orElse {
       case msg: Stdouterr ⇒
@@ -139,11 +150,11 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case JobActor.Response.OrderProcessed(`orderId`, moduleStepEnded) ⇒
         val event = moduleStepEnded match {
-          case TaskStepSucceeded(variablesDiff, good) ⇒
-            OrderProcessed(variablesDiff, good)
+          case TaskStepSucceeded(variablesDiff, returnCode) ⇒
+            job.toOrderProcessed(variablesDiff, returnCode)
 
-          case TaskStepFailed(bad) ⇒
-            OrderProcessed(MapDiff.empty, bad)
+          case TaskStepFailed(disrupted) ⇒
+            OrderProcessed(MapDiff.empty, disrupted)
         }
         finishProcessing(event, job, stdoutStderrStatistics)
         context.unwatch(jobActor)
@@ -174,6 +185,10 @@ extends KeyedJournalingActor[OrderEvent] {
   private def processed: Receive = journaling orElse {
     case Input.HandleEvent(event: OrderMoved) ⇒
       context.become(idle)
+      persist(event)(update)
+
+    case Input.HandleEvent(event: OrderStopped) ⇒
+      context.become(stopped)
       persist(event)(update)
 
     case Input.HandleEvent(OrderDetachable) ⇒

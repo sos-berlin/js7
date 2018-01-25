@@ -17,7 +17,6 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.order.Outcome.Succeeded
 import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, WorkflowPath}
 import com.sos.jobscheduler.taskserver.task.process.{RichProcess, StdChannels}
@@ -67,10 +66,7 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll {
         val stderrWriter = new TestStdoutStderrWriter
         val stdChannels = new StdChannels(charBufferSize = 10, stdoutWriter = stdoutWriter, stderrWriter = stderrWriter)
         val ended = taskRunner.processOrder(order, stdChannels) andThen { case _ ⇒ taskRunner.terminate() } await 30.s
-        assert(ended == TaskStepSucceeded(
-          variablesDiff = MapDiff(Map("result" → "TEST-RESULT-VALUE1")),
-          Succeeded(ReturnCode(0)))
-        )
+        assert(ended == TaskStepSucceeded(MapDiff(Map("result" → "TEST-RESULT-VALUE1")), ReturnCode(0)))
         if (newTaskRunner.isInstanceOf[LegacyApiTaskRunner.Factory]) {  // TODO LegacyApiTaskRunner does not use StdoutStderrWriter
           assert(stdoutWriter.string.isEmpty)
           assert(stderrWriter.string.isEmpty)

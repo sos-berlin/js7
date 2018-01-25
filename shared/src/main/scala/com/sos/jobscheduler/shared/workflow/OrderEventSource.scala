@@ -40,14 +40,10 @@ final class OrderEventSource(
     instruction(order.workflowPosition) match {
       case instr: EventInstruction ⇒
         instr.toEvent(order, context) flatMap {
-          case oId <-: OrderMoved(pos) ⇒
-            for {
-              o ← idToOrder(oId).ifState[Order.Processed]
-              pos ← applyMoveInstructions(o.withPosition(pos))
-            } yield oId <-: OrderMoved(pos)
+          case oId <-: (moved: OrderMoved) ⇒
+            applyMoveInstructions(oId, moved)
 
-          case o ⇒
-            Some(o)
+          case o ⇒ Some(o)
         }
 
       case instruction ⇒
@@ -55,6 +51,12 @@ final class OrderEventSource(
         None
     }
   }
+
+  private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Option[KeyedEvent[OrderMoved]] =
+    for {
+      o ← idToOrder(orderId).ifState[Order.Processed]/*should be*/
+      pos ← applyMoveInstructions(o.withPosition(orderMoved.to))
+    } yield orderId <-: OrderMoved(pos)
 
   private[workflow] def applyMoveInstructions(order: Order[Order.Processed]): Option[Position] =
     applyMoveInstructions(order, Nil) match {
@@ -67,7 +69,7 @@ final class OrderEventSource(
 
   @tailrec
   private def applyMoveInstructions(order: Order[Order.Processed], visited: List[Position]): Validated[String, Option[Position]] =
-    applySingleTransitionInstruction(order) match {
+    applySingleMoveInstruction(order) match {
       case Some(position) ⇒
         if (visited contains position)
           Invalid(s"${order.id} is in a workflow loop: " +
@@ -77,7 +79,7 @@ final class OrderEventSource(
       case None ⇒ Valid(Some(order.position))
     }
 
-  private def applySingleTransitionInstruction(order: Order[Order.Processed]): Option[Position] = {
+  private def applySingleMoveInstruction(order: Order[Order.Processed]): Option[Position] = {
     val workflow = pathToWorkflow(order.workflowPath)
     workflow.instruction(order.position) match {
       case Goto(label) ⇒

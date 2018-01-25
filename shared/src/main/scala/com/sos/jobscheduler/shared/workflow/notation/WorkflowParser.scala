@@ -9,8 +9,8 @@ import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, ForkJoin, Goto, IfFailedGoto, IfReturnCode, Job, Offer, End ⇒ EndInstr}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, Instruction, JobPath, Label, Position, Workflow}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, ForkJoin, Goto, IfFailedGoto, IfReturnCode, Job, Offer, ReturnCodeMeaning, End ⇒ EndInstr}
+import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, Label, Position, Workflow}
 import fastparse.all._
 import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration.Duration
@@ -62,16 +62,24 @@ object WorkflowParser {
       labeledInstruction.rep
         map (stmts ⇒ Workflow(stmts.toVector)))
 
-    private val agentJobPath = P[AgentJobPath](
-      ("job" ~ w ~ path[JobPath] ~ w ~ "on" ~ w ~ path[AgentPath])
-        map { case (j, a) ⇒ AgentJobPath(a, j) })
-
     private val labelDef = P[Label](
       label ~ h ~ ":" ~ w)
 
+    private val successReturnCodes = P[ReturnCodeMeaning.Success](
+      sequence(int)
+        map(numbers ⇒ ReturnCodeMeaning.Success(numbers.map(ReturnCode.apply).toSet)))
+
+    private val failureReturnCodes = P[ReturnCodeMeaning.Failure](
+      sequence(int)
+        map(numbers ⇒ ReturnCodeMeaning.Failure(numbers.map(ReturnCode.apply).toSet)))
+
+    private val returnCodeMeaning = P[ReturnCodeMeaning](
+      keyValue("successReturnCodes", successReturnCodes) |
+      keyValue("failureReturnCodes", failureReturnCodes))
+
     private val jobInstruction = P[Job](
-      agentJobPath
-        map Job.apply)
+      ("job" ~ w ~ path[JobPath] ~ w ~ "on" ~ w ~ path[AgentPath] ~ w ~ returnCodeMeaning.?)
+        map { case (jobPath_, agentPath_, rc) ⇒ Job(jobPath_, agentPath_, rc getOrElse ReturnCodeMeaning.Default) })
 
     private val endInstruction = P[EndInstr](
       ("end").!
@@ -134,8 +142,8 @@ object WorkflowParser {
     private def inParentheses[A](parser: Parser[A]): Parser[A] =
       P(h ~ "(" ~ w ~ parser ~ w ~ ")")
 
-    private def array[A](parser: Parser[A]): Parser[collection.Seq[A]] =
-      P("[" ~ commaSeq(parser) ~ "]")
+    private def sequence[A](parser: Parser[A]): Parser[collection.Seq[A]] =
+      P("(" ~ commaSeq(parser) ~ ")")
 
     private def commaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
       P(w ~ parser ~ (comma ~ parser).rep ~ w) map {

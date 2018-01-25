@@ -25,6 +25,13 @@ final class OutcomeTest extends FreeSpec {
       }""")
     }
 
+    "Failed" in {
+      testJson[Outcome](Outcome.Failed(ReturnCode(1)),"""{
+        "TYPE": "Failed",
+        "returnCode": 1
+      }""")
+    }
+
     "Disrupted(AgenAborted)" in {
       testJson[Outcome](Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted),"""{
         "TYPE": "Disrupted",

@@ -111,6 +111,17 @@ final class OrderTest extends FreeSpec {
         }""")
     }
 
+    "Stopped" in {
+      check(Stopped(Outcome.Failed(ReturnCode(1))),
+        json"""{
+          "TYPE": "Stopped",
+          "outcome": {
+            "TYPE": "Failed",
+            "returnCode": 1
+          }
+        }""")
+    }
+
     "InProcess" in {
       check(InProcess,
         json"""{

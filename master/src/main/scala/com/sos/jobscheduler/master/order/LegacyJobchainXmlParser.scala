@@ -4,8 +4,8 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfFailedGoto, Job}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Label, Workflow}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfFailedGoto, Job, ReturnCodeMeaning}
+import com.sos.jobscheduler.data.workflow.{JobPath, Label, Workflow}
 import javax.xml.transform.Source
 import scala.collection.immutable.Seq
 
@@ -25,7 +25,9 @@ object LegacyJobchainXmlParser {
               val label = attributeMap.as[Label]("state")
               attributeMap.get("job") match {
                 case Some(jobPathString) ⇒
-                  label @: Job(AgentJobPath(folderPath.resolve[AgentPath](attributeMap("agent")), folderPath.resolve[JobPath](jobPathString))) ::
+                  val jobPath = folderPath.resolve[JobPath](jobPathString)
+                  val agentPath = folderPath.resolve[AgentPath](attributeMap("agent"))
+                  label @: Job(jobPath, agentPath, ReturnCodeMeaning.NoFailure) ::
                     attributeMap.optionAs[Label]("error_state").map(o ⇒ () @: IfFailedGoto(o)).toList :::
                     attributeMap.optionAs[Label]("next_state").map(o ⇒ () @: Goto(o)).toList
                 case None ⇒

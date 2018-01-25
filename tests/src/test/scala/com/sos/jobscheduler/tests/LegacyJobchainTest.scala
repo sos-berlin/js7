@@ -20,8 +20,8 @@ import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfFailedGoto, Job}
-import com.sos.jobscheduler.data.workflow.{AgentJobPath, JobPath, Position, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfFailedGoto, Job, ReturnCodeMeaning}
+import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
@@ -90,11 +90,11 @@ object LegacyJobchainTest {
     </job_chain>.toString())
   private val TestNamedWorkflow = Workflow.Named(WorkflowPath("/WORKFLOW"), TestWorkflow)
   private val ExpectedWorkflow = Workflow(Vector(
-    "A" @: /*0*/ Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-0"))),
+    "A" @: /*0*/ Job(JobPath("/JOB-0"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),
            /*1*/ IfFailedGoto("FAILURE"),
            /*2*/ Goto("B"),
     "X" @: /*3*/ ExplicitEnd,
-    "B" @: /*4*/ Job(AgentJobPath(AgentPath("/AGENT"), JobPath("/JOB-1"))),
+    "B" @: /*4*/ Job(JobPath("/JOB-1"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),
            /*5*/ IfFailedGoto("FAILURE"),
     "END" @: /*6*/ ExplicitEnd,
     "FAILURE" @: /*7*/ ExplicitEnd))
