@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfFailedGoto}
+import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
 import com.sos.jobscheduler.data.workflow.{EventInstruction, Instruction, OrderContext, Position, PositionInstruction, Workflow, WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.shared.workflow.OrderEventSource._
 import scala.annotation.tailrec
@@ -85,7 +85,7 @@ final class OrderEventSource(
       case Goto(label) ⇒
         workflow.labelToPosition(order.position.parents, label)
 
-      case IfFailedGoto(label) ⇒
+      case IfNonZeroReturnCodeGoto(label) ⇒
         if (order.state.outcome.isFailed)
           workflow.labelToPosition(order.position.parents, label)
         else

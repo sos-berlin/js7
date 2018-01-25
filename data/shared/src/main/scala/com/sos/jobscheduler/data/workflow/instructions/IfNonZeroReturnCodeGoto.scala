@@ -7,8 +7,8 @@ import io.circe.generic.JsonCodec
   * @author Joacim Zschimmer
   */
 @JsonCodec
-final case class IfFailedGoto(to: Label) extends JumpInstruction {
+final case class IfNonZeroReturnCodeGoto(to: Label) extends JumpInstruction {
   def nodes = Nil
 
-  override def toString = s"ifFailed $to"
+  override def toString = s"ifNonZeroReturnCodeGoto $to"
 }

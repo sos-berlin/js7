@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, ForkJoin, Goto, IfFailedGoto, IfReturnCode, Job, Offer, ReturnCodeMeaning, End ⇒ EndInstr}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, ForkJoin, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, Job, Offer, ReturnCodeMeaning, End ⇒ EndInstr}
 import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, Label, Position, Workflow}
 import fastparse.all._
 import java.util.concurrent.TimeUnit.SECONDS
@@ -112,9 +112,9 @@ object WorkflowParser {
           IfReturnCode(returnCodes.map(o ⇒ ReturnCode(o)).toVector, Vector(then_) ++ else_)
       }
     )
-    private val ifFailedGotoInstruction = P[IfFailedGoto](
-      ("ifFailed" ~ w ~ label)
-        map { n ⇒ IfFailedGoto(n) })
+    private val ifNonZeroReturnCodeGotoInstruction = P[IfNonZeroReturnCodeGoto](
+      ("ifNonZeroReturnCodeGoto" ~ w ~ label)
+        map { n ⇒ IfNonZeroReturnCodeGoto(n) })
 
     private val gotoInstruction: Parser[Goto] =
       P(("goto" ~ w ~ label)
@@ -127,7 +127,7 @@ object WorkflowParser {
         offerInstruction |
         awaitInstruction |
         ifReturnCodeInstruction |
-        ifFailedGotoInstruction |
+        ifNonZeroReturnCodeGotoInstruction |
         gotoInstruction)
 
     private val labeledInstruction = P[Labeled](

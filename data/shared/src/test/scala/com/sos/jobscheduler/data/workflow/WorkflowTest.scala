@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Goto, IfFailedGoto, IfReturnCode, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, ImplicitEnd, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -42,9 +42,9 @@ final class WorkflowTest extends FreeSpec {
     }
   }
 
-  "Missing Label for IfFailedGoto" in {
+  "Missing Label for IfNonZeroReturnCodeGoto" in {
     intercept[RuntimeException] {
-      Workflow.of(IfFailedGoto(Label("A")))
+      Workflow.of(IfNonZeroReturnCodeGoto(Label("A")))
     }
   }
 
@@ -75,7 +75,7 @@ final class WorkflowTest extends FreeSpec {
       (()  @: Goto(B))          → true,
       (C   @: job)              → true,
       (()  @: Goto(D))          → true,   // reducible?
-      (()  @: IfFailedGoto(D))  → false,  // reducible
+      (()  @: IfNonZeroReturnCodeGoto(D))  → false,  // reducible
       (()  @: Goto(D))          → false,  // reducible
       (D   @: job)              → true,
       (()  @: Goto(END))        → false,  // reducible

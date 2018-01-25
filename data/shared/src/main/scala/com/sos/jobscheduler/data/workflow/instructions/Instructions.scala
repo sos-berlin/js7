@@ -23,7 +23,7 @@ object Instructions
     Subtype(ForkJoin.jsonCodec),
     Subtype[Offer],
     Subtype[IfReturnCode],
-    Subtype[IfFailedGoto],
+    Subtype[IfNonZeroReturnCodeGoto],
     Subtype[Goto],
     Subtype(objectCodec(Gap)))
 }

@@ -8,7 +8,7 @@ import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Gap, Goto, IfFailedGoto, IfReturnCode, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Gap, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow}
 import com.sos.jobscheduler.shared.workflow.OrderEventHandler.FollowUp
@@ -117,7 +117,7 @@ final class OrderEventSourceTest extends FreeSpec {
                  Gap,            // 2
         "C" @:   job,            // 3
         "END" @: ExplicitEnd,    // 4
-        "B" @:   IfFailedGoto("C"))) // 5
+        "B" @:   IfNonZeroReturnCodeGoto("C"))) // 5
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == Some(Position(0)))    // Job
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == Some(Position(6)))    // success
@@ -136,7 +136,7 @@ final class OrderEventSourceTest extends FreeSpec {
       val workflow = Workflow(Vector(
         "A" @: Goto("B"),           // 0
         "B" @: Goto("A"),           // 1
-        "C" @: IfFailedGoto("A")))   // 2
+        "C" @: IfNonZeroReturnCodeGoto("A")))   // 2
       val eventSource = newWorkflowEventSource(workflow, List(succeededOrder, failedOrder))
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(0)) == None)  // Loop
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(1)) == None)  // Loop
