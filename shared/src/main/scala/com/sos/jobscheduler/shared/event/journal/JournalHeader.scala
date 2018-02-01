@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.shared.event.journal
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 
 /**
@@ -13,5 +13,5 @@ final case class JournalHeader(
 object JournalHeader {
 
   implicit lazy val jsonCodec = TypedJsonCodec[JournalHeader](
-    Subtype.named(deriveCirceCodec[JournalHeader], "JobScheduler.Journal"))
+    Subtype.named(deriveCodec[JournalHeader], "JobScheduler.Journal"))
 }

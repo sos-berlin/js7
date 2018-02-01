@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.generic
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.As
 import io.circe.{Decoder, Encoder, Json}
 
@@ -21,6 +20,6 @@ object GenericInt {
       As(o ⇒ apply(o.toInt))
 
     implicit val JsonEncoder: Encoder[A] = o ⇒ Json.fromInt(o.number)
-    implicit val JsonDecoder: Decoder[A] = o ⇒ Right(apply(o.value.forceInt))
+    implicit val JsonDecoder: Decoder[A] = _.as[Int] map apply
   }
 }

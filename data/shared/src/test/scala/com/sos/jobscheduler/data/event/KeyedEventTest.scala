@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.event.KeyedEventTest._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -51,8 +51,8 @@ final class KeyedEventTest extends FreeSpec {
 
   private def check(event: KeyedEvent[TestEvent], jsonString: String): Unit = {
     implicit val testEventJsonFormat = TypedJsonCodec[TestEvent](
-      Subtype(deriveCirceCodec[StringEvent]),
-      Subtype(deriveCirceCodec[IntEvent]),
+      Subtype(deriveCodec[StringEvent]),
+      Subtype(deriveCodec[IntEvent]),
       Subtype(SimpleEvent))
     testJson(event, jsonString)
   }

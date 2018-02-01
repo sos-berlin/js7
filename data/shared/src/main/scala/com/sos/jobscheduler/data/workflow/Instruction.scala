@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.OrderActorEvent
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.{Decoder, Json, ObjectEncoder}
 import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 
@@ -52,11 +52,11 @@ object Instruction {
     def labelsString = labels.map(o ⇒ s"$o:").mkString(" ")
   }
   object Labeled {
-    implicit def jsonEncoder(implicit instrEncoder: Encoder[Instruction]): Encoder[Labeled] = {
+    implicit def jsonEncoder(implicit instrEncoder: ObjectEncoder[Instruction]): ObjectEncoder[Labeled] = {
       case Labeled(Seq(), instruction) ⇒
-        instruction.asJson
+        instruction.asJsonObject
       case Labeled(labels, instruction) ⇒
-        Json.fromJsonObject(("labels" → labels.asJson) +: instruction.asJson.asObject.get)
+        ("labels" → labels.asJson) +: instruction.asJsonObject
     }
 
     implicit def jsonDecoder(implicit instrDecoder: Decoder[Instruction]): Decoder[Labeled] =

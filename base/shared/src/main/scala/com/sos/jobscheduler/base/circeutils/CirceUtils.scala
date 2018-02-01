@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedObjectEncoder
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, HCursor, Json, JsonNumber, JsonObject, Printer}
+import io.circe.{Decoder, Encoder, HCursor, Json, JsonNumber, JsonObject, ObjectEncoder, Printer}
 import scala.collection.immutable.{ListMap, Seq}
 import shapeless.Lazy
 
@@ -94,17 +94,15 @@ object CirceUtils {
       io.circe.parser.parse(underlying).force
   }
 
-  final def deriveCirceCodec[A](implicit encode: Lazy[DerivedObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]]): CirceCodec[A] =
-    new Encoder[A] with Decoder[A] {
-      def apply(a: A) = encode.value.apply(a)
+  final def deriveCodec[A](implicit encode: Lazy[DerivedObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]]): CirceObjectCodec[A] =
+    new ObjectEncoder[A] with Decoder[A] {
+      def encodeObject(a: A) = encode.value.encodeObject(a)
       def apply(c: HCursor) = decode.value.tryDecode(c)
     }
 
-  def objectCodec[A](singleton: A): CirceCodec[A] =
-    new Encoder[A] with Decoder[A] {
-      private val empty = Json.fromJsonObject(JsonObject.empty)
-
-      def apply(a: A) = empty
+  def singletonCodec[A](singleton: A): CirceObjectCodec[A] =
+    new ObjectEncoder[A] with Decoder[A] {
+      def encodeObject(a: A) = JsonObject.empty
 
       def apply(c: HCursor) = Right(singleton)
     }

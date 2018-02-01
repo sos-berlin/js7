@@ -2,8 +2,8 @@ package com.sos.jobscheduler.data.workflow.instructions
 
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetachable, OrderForked, OrderJoined}
@@ -58,7 +58,7 @@ extends EventInstruction
 }
 
 object ForkJoin {
-  implicit lazy val jsonCodec: CirceCodec[ForkJoin] = deriveCirceCodec[ForkJoin]
+  implicit lazy val jsonCodec: CirceObjectCodec[ForkJoin] = deriveCodec[ForkJoin]
 
   def of(idAndWorkflows: (String, Workflow)*) =
     new ForkJoin(idAndWorkflows.map { case (id, workflow) ⇒ Branch(id, workflow) } .toVector)

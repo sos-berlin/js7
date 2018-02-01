@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow
 
 import cats.syntax.option.catsSyntaxOptionId
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Instruction._
@@ -193,7 +193,7 @@ object Workflow {
   object Named {
     implicit def fromPair(pair: (WorkflowPath, Workflow)) = Named(pair._1, pair._2)
 
-    implicit val jsonCodec = deriveCirceCodec[Named]
+    implicit val jsonCodec = deriveCodec[Named]
   }
 
   implicit val jsonEncoder: ObjectEncoder[Workflow] = {

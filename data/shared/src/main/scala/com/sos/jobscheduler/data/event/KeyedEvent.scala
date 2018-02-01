@@ -1,8 +1,7 @@
 package com.sos.jobscheduler.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.{Decoder, Encoder, ObjectEncoder}
 import scala.reflect.ClassTag
 
 /**
@@ -31,15 +30,14 @@ object KeyedEvent {
 
   def of[E <: Event { type Key = NoKey }](event: E) = new KeyedEvent[E](NoKey, event)
 
-  implicit def jsonEncoder[E <: Event](implicit eventEncoder: Encoder[E], keyEncoder: Encoder[E#Key]): Encoder[KeyedEvent[E]] =
+  implicit def jsonEncoder[E <: Event](implicit eventEncoder: ObjectEncoder[E], keyEncoder: Encoder[E#Key]): ObjectEncoder[KeyedEvent[E]] =
     keyedEvent ⇒ {
-      val json = keyedEvent.event.asJson
+      val jsonObject = keyedEvent.event.asJsonObject
       keyedEvent.key match {
-        case _: NoKey.type ⇒ json
+        case _: NoKey.type ⇒ jsonObject
         case key ⇒
-          val jsonObject = json.forceObject
           require(!jsonObject.contains(KeyFieldName), s"Serialized ${keyedEvent.getClass} must not contain a field '$KeyFieldName'")
-          Json.fromJsonObject((KeyFieldName → key.asJson) +: jsonObject)
+          (KeyFieldName → key.asJson) +: jsonObject
       }
     }
 

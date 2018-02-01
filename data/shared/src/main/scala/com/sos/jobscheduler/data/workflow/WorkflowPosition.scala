@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Encoder, Json}
+import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Json}
 import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 
@@ -18,8 +18,8 @@ object WorkflowPosition {
   implicit def apply(workflowPath: WorkflowPath): WorkflowPosition =
     WorkflowPosition(workflowPath, Position(InstructionNr.First))
 
-  implicit val jsonEncoder: Encoder[WorkflowPosition] =
-    absolute ⇒ Json.fromValues(absolute.workflowPath.asJson +: Position.toJsonSeq(absolute.position))
+  implicit val jsonEncoder: ArrayEncoder[WorkflowPosition] =
+    absolute ⇒ absolute.workflowPath.asJson +: Position.jsonEncoder.encodeArray(absolute.position)
 
   implicit val jsonDecoder: Decoder[WorkflowPosition] =
     cursor ⇒

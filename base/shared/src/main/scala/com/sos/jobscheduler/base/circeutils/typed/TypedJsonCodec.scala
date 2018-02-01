@@ -3,24 +3,22 @@ package com.sos.jobscheduler.base.circeutils.typed
 import com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodec._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
-import io.circe.{Decoder, Encoder, HCursor, Json}
+import io.circe.{Decoder, HCursor, Json, JsonObject, ObjectEncoder}
 import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
   */
 final class TypedJsonCodec[A](
-  val classToEncoder: Map[Class[_], Encoder[_ <: A]],
+  val classToEncoder: Map[Class[_], ObjectEncoder[_ <: A]],
   val nameToDecoder: Map[String, Decoder[_ <: A]],
   val nameToClass: Map[String, Class[_ <: A]])
-extends Encoder[A] with Decoder[A] {
-
-  def apply(a: A) = encode(a)
+extends ObjectEncoder[A] with Decoder[A] {
 
   def apply(c: HCursor) = decode(c)
 
-  def encode(a: A): Json =
-    classToEncoder(a.getClass).asInstanceOf[Encoder[A]].apply(a)
+  def encodeObject(a: A): JsonObject =
+    classToEncoder(a.getClass).asInstanceOf[ObjectEncoder[A]].encodeObject(a)
 
   def decode(c: HCursor): Decoder.Result[A] =
     c.get[String](TypeFieldName) flatMap (o ⇒ nameToDecoder(o).apply(c))

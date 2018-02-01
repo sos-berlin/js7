@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.workflow
 
 import cats.syntax.option.catsSyntaxOptionId
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Position._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -36,5 +37,7 @@ final class PositionTest extends FreeSpec {
     testJson(Position(7), """[ 7 ]""")
     testJson(Position(1) / "A" / 2, """[ 1, "A", 2 ]""")
     testJson(Position(1) / 2 / 3, """[ 1, 2, 3 ]""")
+
+    assert("""[ 1, 2 ]""".parseJson.as[Position].isLeft)
   }
 }

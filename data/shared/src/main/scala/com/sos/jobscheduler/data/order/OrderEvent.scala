@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.order
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
@@ -130,21 +130,21 @@ object OrderEvent {
   }
 
   implicit val OrderEventJsonCodec = TypedJsonCodec[OrderEvent](
-    Subtype(deriveCirceCodec[OrderAdded]),
-    Subtype(deriveCirceCodec[OrderAttached]),
-    Subtype(deriveCirceCodec[OrderTransferredToAgent]),
+    Subtype(deriveCodec[OrderAdded]),
+    Subtype(deriveCodec[OrderAttached]),
+    Subtype(deriveCodec[OrderTransferredToAgent]),
     Subtype(OrderTransferredToMaster),
-    Subtype(deriveCirceCodec[OrderStdoutWritten]),
-    Subtype(deriveCirceCodec[OrderStderrWritten]),
-    Subtype(deriveCirceCodec[OrderProcessed]),
-    Subtype(deriveCirceCodec[OrderForked]),
-    Subtype(deriveCirceCodec[OrderJoined]),
-    Subtype(deriveCirceCodec[OrderOffered]),
-    Subtype(deriveCirceCodec[OrderAwaiting]),
+    Subtype(deriveCodec[OrderStdoutWritten]),
+    Subtype(deriveCodec[OrderStderrWritten]),
+    Subtype(deriveCodec[OrderProcessed]),
+    Subtype(deriveCodec[OrderForked]),
+    Subtype(deriveCodec[OrderJoined]),
+    Subtype(deriveCodec[OrderOffered]),
+    Subtype(deriveCodec[OrderAwaiting]),
     Subtype(OrderDetached),
     Subtype(OrderDetachable),
     Subtype(OrderProcessingStarted),
-    Subtype(deriveCirceCodec[OrderMoved]),
-    Subtype(deriveCirceCodec[OrderStopped]),
+    Subtype(deriveCodec[OrderMoved]),
+    Subtype(deriveCodec[OrderStopped]),
     Subtype(OrderFinished))
 }

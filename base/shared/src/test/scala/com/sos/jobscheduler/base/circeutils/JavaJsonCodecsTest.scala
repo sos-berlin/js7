@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.base.circeutils
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs._
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils._
@@ -48,7 +48,7 @@ final class JavaJsonCodecsTest extends FreeSpec {
     "String" - {
       import JavaJsonCodecs.instant.StringInstantJsonCodec
       intelliJuseImport(StringInstantJsonCodec)
-      implicit val aJsonCodec = deriveCirceCodec[A]
+      implicit val aJsonCodec = deriveCodec[A]
 
       "No second fraction" in {
         val t = "2015-06-09T12:22:33Z"
@@ -132,7 +132,7 @@ final class JavaJsonCodecsTest extends FreeSpec {
 
   "Duration" - {
     case class A(duration: Duration)
-    implicit val aJsonCodec = deriveCirceCodec[A]
+    implicit val aJsonCodec = deriveCodec[A]
 
     "Seconds" in {
       val a = A(Duration.ofSeconds(3))

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.order
 
-import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
@@ -235,7 +235,7 @@ object Order {
     Subtype[Awaiting],
     Subtype(Finished))
 
-  implicit val NotStartedOrderJsonCodec: CirceCodec[Order[NotStarted]] = deriveCirceCodec[Order[NotStarted]]
-  implicit val IdleOrderJsonCodec: CirceCodec[Order[Idle]] = deriveCirceCodec[Order[Idle]]
-  implicit val jsonCodec: CirceCodec[Order[State]] = deriveCirceCodec[Order[State]]
+  implicit val NotStartedOrderJsonCodec: CirceObjectCodec[Order[NotStarted]] = deriveCodec[Order[NotStarted]]
+  implicit val IdleOrderJsonCodec: CirceObjectCodec[Order[Idle]] = deriveCodec[Order[Idle]]
+  implicit val jsonCodec: CirceObjectCodec[Order[State]] = deriveCodec[Order[State]]
 }

@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.shared.event.journal.tests
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.shared.event.journal.tests.TestEvent._
 
 /**
@@ -33,5 +33,5 @@ private[tests] final case class TestAggregate(key: String, string: String,
 }
 
 private[tests] object TestAggregate {
-  implicit val jsonCodec = deriveCirceCodec[TestAggregate]
+  implicit val jsonCodec = deriveCodec[TestAggregate]
 }

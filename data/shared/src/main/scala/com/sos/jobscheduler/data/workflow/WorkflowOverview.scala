@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 
 /**
   * @author Joacim Zschimmer
@@ -11,5 +11,5 @@ final case class WorkflowOverview(
 object WorkflowOverview {
   def fromWorkflow(workflow: Workflow.Named) = WorkflowOverview(path = workflow.path)
 
-  implicit val jsonCodec = deriveCirceCodec[WorkflowOverview]
+  implicit val jsonCodec = deriveCodec[WorkflowOverview]
 }

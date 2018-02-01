@@ -4,8 +4,7 @@ import cats.syntax.either.catsSyntaxEither
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Position._
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Encoder, Json}
-import scala.collection.immutable.Seq
+import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Encoder, Json}
 import scala.collection.mutable
 import scala.language.implicitConversions
 
@@ -86,28 +85,11 @@ object Position {
     def /(nr: InstructionNr) = Position(position.parents ::: Parent(position.nr, branchId) :: Nil, nr)
   }
 
-  implicit val jsonEncoder: Encoder[Position] =
-    pos ⇒ Json.fromValues(toJsonSeq(pos))
+  implicit val jsonEncoder: ArrayEncoder[Position] =
+    position ⇒ position.parents.toVector.flatMap(p ⇒ Array(p.nr.asJson, p.branchId.asJson)) :+ position.nr.asJson
 
-  implicit val jsonDecoder: Decoder[Position] = {
-    def decodeParents(pairs: Iterator[Vector[Json]]): Decoder.Result[List[Parent]] = {
-      var left: Option[Left[DecodingFailure, Nothing]] = None
-      val b = mutable.Buffer[Parent]()
-      val parentResults: Iterator[Decoder.Result[Parent]] = pairs map decodeParent
-      parentResults foreach {
-        case Left(error) ⇒ left = Some(Left(error))
-        case Right(parent) ⇒ b += parent
-      }
-      left getOrElse Right(b.toList)
-    }
-
-    def decodeParent(pair: Vector[Json]): Decoder.Result[Parent] =
-      for {
-        nr ← pair(0).as[InstructionNr]
-        branchId ← pair(1).as[BranchId]
-      } yield Parent(nr, branchId)
-
-    _.as[Vector[Json]] flatMap (parts ⇒
+  implicit val jsonDecoder: Decoder[Position] =
+    _.as[List[Json]] flatMap (parts ⇒
       if (parts.size % 2 != 1)
         Left(DecodingFailure("Not a valid Position", Nil))
       else
@@ -115,8 +97,21 @@ object Position {
           parents ← decodeParents(parts dropRight 1 grouped 2)
           nr ← parts.last.as[InstructionNr]
         } yield Position(parents, nr))
+
+  private def decodeParents(pairs: Iterator[List[Json]]): Decoder.Result[List[Parent]] = {
+    var left: Option[Left[DecodingFailure, Nothing]] = None
+    val b = mutable.ListBuffer[Parent]()
+    val parentResults: Iterator[Decoder.Result[Parent]] = pairs map decodeParent
+    parentResults foreach {
+      case Left(error) ⇒ left = Some(Left(error))
+      case Right(parent) ⇒ b += parent
+    }
+    left getOrElse Right(b.toList)
   }
 
-  private[workflow] def toJsonSeq(position: Position): Seq[Json] =
-    position.parents.toVector.flatMap(p ⇒ Array(p.nr.asJson, p.branchId.asJson)) :+ position.nr.asJson
+  private def decodeParent(pair: List[Json]): Decoder.Result[Parent] =
+    for {
+      nr ← pair.head.as[InstructionNr]
+      branchId ← pair(1).as[BranchId]
+    } yield Parent(nr, branchId)
 }

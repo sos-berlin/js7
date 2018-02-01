@@ -15,8 +15,8 @@ final class CirceUtilsTest extends FreeSpec {
   private case class A(a: Int, b: B)
   private case class B(string: String, array: Seq[Int], empty: Seq[Int])
 
-  private implicit val BCodec = deriveCirceCodec[B]
-  private implicit val ACodec = deriveCirceCodec[A]
+  private implicit val BCodec = deriveCodec[B]
+  private implicit val ACodec = deriveCodec[A]
 
   "PrettyPrinter" in {
     assert(ACodec(A(1, B("STRING", 1 :: 2 :: Nil, Nil))).asJson.toPrettyString ==
@@ -36,7 +36,7 @@ final class CirceUtilsTest extends FreeSpec {
   "listMapCodec" in {
     final case class A(a: Int, listMap: ListMap[Int, String])
     implicit val myListMapCodec = listMapCodec[Int, String]()
-    implicit val aCodec = deriveCirceCodec[A]
+    implicit val aCodec = deriveCodec[A]
     testJson(A(0, ListMap(1 → "eins", 2 → "zwei", 3 → "drei", 4 → "vier")),
       """{
         "a": 0,

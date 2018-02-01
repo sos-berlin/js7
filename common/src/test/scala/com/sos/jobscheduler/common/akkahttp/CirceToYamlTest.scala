@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.common.akkahttp.CirceToYaml._
 import io.circe.{Json, JsonObject}
 import org.scalatest.FreeSpec
@@ -38,7 +38,7 @@ final class CirceToYamlTest extends FreeSpec {
 
   ".toYamlString" in {
     case class A(x: Int, y: String)
-    implicit val jsonCodec = deriveCirceCodec[A]
+    implicit val jsonCodec = deriveCodec[A]
     assert(Set("x: 123\n" + "y: ABC\n", "y: ABC\n" + "x: 123\n") contains A(123, "ABC").toYamlString)
   }
 
@@ -48,7 +48,7 @@ final class CirceToYamlTest extends FreeSpec {
 
   ".toFlowYamlString" in {
     case class A(string: String, number: Int, `"quoted`: Boolean)
-    implicit val jsonCodec = deriveCirceCodec[A]
+    implicit val jsonCodec = deriveCodec[A]
     val a = A("test", 1, true)
 
     assert(a.toFlowYamlString == """{string: test, number: 1, '"quoted': true}""")

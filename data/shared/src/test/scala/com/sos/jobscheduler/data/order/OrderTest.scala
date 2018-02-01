@@ -5,9 +5,10 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.Order._
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
+import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 
 /**
@@ -196,5 +197,17 @@ final class OrderTest extends FreeSpec {
     }
 
     def check(o: Order.AttachedTo, j: String) = testJson(o, j)
+  }
+
+  if (sys.props contains "test.speed") "Speed" in {
+    val order = Order(OrderId("ORDER-1"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Ready, Some(Order.AttachedTo.Agent(AgentPath("/AGENT"))))
+    val json = (order: Order[Order.State]).asJson
+    testSpeed(100000, "asOrder")(json.as[Order[Order.State]])
+    def testSpeed(n: Int, ops: String)(what: ⇒ Unit): Unit = {
+      val start = Timestamp.epochMilli
+      for (_ ← 1 to n) what
+      val duration = Timestamp.epochMilli - start
+      println(s"${duration}ms/$n $ops ${(n * 1000L / duration).toString} $ops/s")
+    }
   }
 }

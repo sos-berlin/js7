@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import io.circe.{Decoder, Encoder}
+import io.circe.{Decoder, ObjectEncoder}
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 import scala.language.higherKinds
@@ -50,7 +50,7 @@ final class EventSeqTest extends FreeSpec {
       }""")
   }
 
-  private def checkTearableEventSeq[E: Encoder: Decoder](eventSeq: TearableEventSeq[Seq, E], json: String) = {
+  private def checkTearableEventSeq[E: ObjectEncoder: Decoder](eventSeq: TearableEventSeq[Seq, E], json: String) = {
     testJson(eventSeq, json)
     eventSeq match {
       case eventSeq: EventSeq[Seq, E] ⇒ testJson(eventSeq, json)

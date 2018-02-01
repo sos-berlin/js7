@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.event
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -24,7 +24,7 @@ final class StampedTest extends FreeSpec {
 
   "JSON with object" in {
     case class A(number: Int)
-    implicit val codec = deriveCirceCodec[A]
+    implicit val codec = deriveCodec[A]
     testJson(Stamped(EventId(777), A(111)),
       """{
         "eventId": 777,

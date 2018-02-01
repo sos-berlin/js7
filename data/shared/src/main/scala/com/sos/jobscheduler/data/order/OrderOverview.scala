@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.order
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.data.workflow.WorkflowPosition
 
 /**
@@ -14,5 +14,5 @@ final case class OrderOverview(
 object OrderOverview {
   def fromOrder(order: Order[Order.State]) = OrderOverview(order.id, order.workflowPosition, order.state)
 
-  implicit val jsonCodec = deriveCirceCodec[OrderOverview]
+  implicit val jsonCodec = deriveCodec[OrderOverview]
 }

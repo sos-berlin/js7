@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.data.commands
 
 import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.circeutils.CirceUtils.objectCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.singletonCodec
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
@@ -69,7 +69,7 @@ object AgentCommand {
   }
 
   case object Accepted extends AgentCommand.Response {
-    implicit val jsonCodec: CirceCodec[Accepted.type] = objectCodec(Accepted)
+    implicit val jsonCodec: CirceCodec[Accepted.type] = singletonCodec(Accepted)
   }
 
   case object AbortImmediately extends TerminateOrAbort {

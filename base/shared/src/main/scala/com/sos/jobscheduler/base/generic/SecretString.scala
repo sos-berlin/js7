@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.base.generic
 
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.As
 import io.circe.{Decoder, Encoder, Json}
 import scala.annotation.tailrec
@@ -29,7 +28,7 @@ object SecretString {
     // Import explicitly, it's secret.
 
     implicit val JsonEncoder: Encoder[SecretString] = o ⇒ Json.fromString(o.string)
-    implicit val JsonDecoder: Decoder[SecretString] = o ⇒ Right(SecretString(o.value.forceString))
+    implicit val JsonDecoder: Decoder[SecretString] = _.as[String] map SecretString.apply
   }
 
   implicit val StringAsSecretString: As[String, SecretString] =
