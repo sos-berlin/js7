@@ -129,7 +129,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
       proceedWithOrder(order.id)
 
     case JournalRecoverer.Output.JournalIsReady ⇒
-      logger.info(s"${workflowRegister.size} Workflows recovered, ${orderRegister.size} Orders recovered")
+      logger.info(s"${workflowRegister.size} Workflows and ${orderRegister.size} Orders recovered")
       context.become(ready)
       unstashAll()
       logger.info("Ready")
