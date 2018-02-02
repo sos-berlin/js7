@@ -233,16 +233,14 @@ with Stash {
           stash()
 
         case Stamped(agentEventId, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
-          //if (!orderRegister.contains(orderId))  OrderForked: The child events may arrive before OrderForked has been stored and processed, registering the child orders !!!
-          //  logger.error(s"Event for unknown $orderId received from $agentPath: $stamped")
-          //else {
-            val ownEvent = event match {
-              case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
-              case _ ⇒ event
-            }
-            persist(KeyedEvent(ownEvent)(orderId))(handleOrderEvent)
-            lastAgentEventId = agentEventId.some
-          //}
+          // OrderForked is (as all events) persisted and processed asynchronously,
+          // so events for child orders will probably arrive before OrderForked has registered the child orderId.
+          val ownEvent = event match {
+            case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+            case _ ⇒ event
+          }
+          persist(KeyedEvent(ownEvent)(orderId))(handleOrderEvent)
+          lastAgentEventId = agentEventId.some
       }
       for (agentEventId ← lastAgentEventId) {
         persist(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)) { e ⇒  // Sync
