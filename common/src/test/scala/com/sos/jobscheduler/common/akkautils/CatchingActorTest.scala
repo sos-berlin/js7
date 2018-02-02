@@ -11,6 +11,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Promise}
+import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
@@ -38,7 +39,7 @@ final class CatchingActorTest extends FreeSpec with BeforeAndAfterAll {
 
   "Exception" in {
     val (a, terminated) = CatchingActor.actorOf(props, loggingEnabled = false)
-    val throwable = new IllegalArgumentException
+    val throwable = new IllegalArgumentException("TEST") with NoStackTrace
     a ! throwable
     val gotThrowable = Await.ready(terminated, 99.seconds).value.get.failed.get
     assert(gotThrowable.isInstanceOf[CatchingSupervisorStrategy.ActorCrashedException])
