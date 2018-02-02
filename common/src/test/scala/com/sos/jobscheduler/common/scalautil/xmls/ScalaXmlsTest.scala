@@ -1,14 +1,13 @@
 package com.sos.jobscheduler.common.scalautil.xmls
 
 import akka.util.ByteString
-import com.google.common.base.Charsets.{ISO_8859_1, UTF_8}
-import com.google.common.io.Files.{toString ⇒ fileToString}
+import com.google.common.base.Charsets.ISO_8859_1
+import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits._
 import java.io.File
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
 
 /**
  * @author Joacim Zschimmer
@@ -19,8 +18,8 @@ final class ScalaXmlsTest extends FreeSpec {
     val file = File.createTempFile("sos", ".tmp")
     try {
       file.xml = <å/>
-      file.xml shouldEqual <å/>
-      fileToString(file, UTF_8) shouldEqual "<?xml version='1.0' encoding='UTF-8'?>\n<å/>"
+      assert(file.xml == <å/>)
+      assert(file.contentString == "<?xml version='1.0' encoding='UTF-8'?>\n<å/>")
     }
     finally file.delete()
   }
@@ -29,17 +28,17 @@ final class ScalaXmlsTest extends FreeSpec {
     val path: Path = File.createTempFile("sos", ".tmp").toPath
     try {
       path.xml = <å/>
-      path.xml shouldEqual <å/>
-      fileToString(path.toFile, UTF_8) shouldEqual "<?xml version='1.0' encoding='UTF-8'?>\n<å/>"
+      assert(path.xml == <å/>)
+      assert(path.contentString == "<?xml version='1.0' encoding='UTF-8'?>\n<å/>")
     }
     finally delete(path)
   }
 
   ".toByteString" in {
-    <å/>.toByteString shouldEqual ByteString("<?xml version='1.0' encoding='UTF-8'?><å/>")
+    assert(<å/>.toByteString == ByteString("<?xml version='1.0' encoding='UTF-8'?><å/>"))
   }
 
   ".toByteString xmlDecl=false" in {
-    <å/>.toByteString(xmlDecl = false, encoding = ISO_8859_1) shouldEqual ByteString("""<å/>""", ISO_8859_1.name)
+    assert(<å/>.toByteString(xmlDecl = false, encoding = ISO_8859_1) == ByteString("""<å/>""", ISO_8859_1.name))
   }
 }
