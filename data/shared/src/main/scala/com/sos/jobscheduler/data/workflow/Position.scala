@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
 import cats.syntax.either.catsSyntaxEither
-import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Position._
 import io.circe.syntax.EncoderOps
 import io.circe.{ArrayEncoder, Decoder, DecodingFailure, Encoder, Json}
@@ -41,11 +40,8 @@ object Position {
 
   final case class Parent(nr: InstructionNr, branchId: BranchId)
   object Parent {
-    def apply(nr: InstructionNr, childId: OrderId.ChildId): Parent =
-      Parent(nr, BranchId.Named(childId))
-
-    def apply(nr: InstructionNr, childId: String): Parent =
-      Parent(nr, BranchId.Named(OrderId.ChildId(childId)))
+    def apply(nr: InstructionNr, branchId: String): Parent =
+      Parent(nr, BranchId.Named(branchId))
 
     def apply(nr: InstructionNr, index: Int): Parent =
       Parent(nr, BranchId.Indexed(index))
@@ -53,16 +49,15 @@ object Position {
 
   sealed trait BranchId
   object BranchId {
-    def apply(childId: OrderId.ChildId): Named = Named(childId)
-    implicit def apply(branchId: String): Named = Named(OrderId.ChildId(branchId))
+    implicit def apply(branchId: String): Named = Named(branchId)
     implicit def apply(index: Int): Indexed = Indexed(index)
 
-    final case class Named(childId: OrderId.ChildId) extends BranchId {
-      override def toString = childId.toString
+    final case class Named(string: String) extends BranchId {
+      override def toString = string
     }
     object Named {
-      implicit val jsonEncoder: Encoder[Named] = o ⇒ Json.fromString(o.childId.string)
-      implicit val jsonDecoder: Decoder[Named] = _.as[String] map (o ⇒ Named(OrderId.ChildId(o)))
+      implicit val jsonEncoder: Encoder[Named] = o ⇒ Json.fromString(o.string)
+      implicit val jsonDecoder: Decoder[Named] = _.as[String] map Named.apply
     }
 
     final case class Indexed(number: Int) extends BranchId {

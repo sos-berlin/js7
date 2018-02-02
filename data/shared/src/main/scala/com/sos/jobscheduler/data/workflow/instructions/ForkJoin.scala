@@ -40,7 +40,7 @@ extends EventInstruction
     order.ifState[Order.Ready].map(order ⇒
       order.id <-: OrderForked(
         for (branch ← branches) yield
-          OrderForked.Child(branch.id, order.id / branch.id.childId, MapDiff.empty)))
+          OrderForked.Child(branch.id, order.id / branch.id.string, MapDiff.empty)))
     .orElse(
       order.ifState[Order.Join].flatMap(order ⇒
         //orderEntry.instruction match {

@@ -86,7 +86,7 @@ object WorkflowParser {
         map (_ ⇒ ExplicitEnd))
 
     private val forkInstruction = P[ForkJoin]{
-      val orderSuffix = P(quotedString map (o ⇒ Position.BranchId.Named(OrderId.ChildId(o))))
+      val orderSuffix = P(quotedString map (o ⇒ Position.BranchId.Named(o)))
       val forkBranch = P[ForkJoin.Branch](
         (orderSuffix ~ w ~ curlyWorkflow)
           map ForkJoin.Branch.fromPair)
