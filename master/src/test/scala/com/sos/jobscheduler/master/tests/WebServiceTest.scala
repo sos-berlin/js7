@@ -14,7 +14,6 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.client.{AkkaHttpClient, HttpMasterApi}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.order.MasterOrderKeeper
 import com.sos.jobscheduler.master.tests.WebServiceTest._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -33,8 +32,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
     super.beforeAll()
     //env.xmlFile(TestAgentPath).xml = <agent uri="http://0.0.0.0:0"/>
     env.txtFile(TestWorkflowPath).contentString = TestWorkflowNotation
-    val runningMaster = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
-    master = runningMaster
+    master = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
     api = new HttpMasterApi(master.localUri.toString, httpClient)
   }
@@ -47,7 +45,6 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "AddOrderIfNew" in {
-    master.orderKeeper ! MasterOrderKeeper.Input.SuspendDetaching  // Suspend order processing
     api.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
   }
 

@@ -29,7 +29,6 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Job}
 import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
@@ -177,8 +176,10 @@ object TestMasterAgent {
         }
       })
       master.terminated await 365 * 24.h
+      master.close()
       for (agent ← agents) agent.commandHandler.execute(AgentCommand.Terminate())
       agents map (_.terminated) await 60.s
+      agents foreach (_.close())
     }
   }
 

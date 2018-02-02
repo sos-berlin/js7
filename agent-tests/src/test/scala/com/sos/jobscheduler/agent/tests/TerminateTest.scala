@@ -95,6 +95,7 @@ object TerminateTest {
       client.executeCommand(Login) await 99.s
       client.executeCommand(RegisterAsMaster) await 99.s
       body(client, agent)
+      agent.close()
     }
   }
 

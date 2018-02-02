@@ -12,6 +12,7 @@ import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -68,29 +69,31 @@ object RunningMaster {
   private val logger = Logger(getClass)
 
   def run[A](configuration: MasterConfiguration, timeout: Option[Duration] = None)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit = {
-    val master = apply(configuration) await timeout
-    for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
-    body(master)
-    master.terminated await timeout
+    autoClosing(apply(configuration) await timeout) { master ⇒
+      for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
+      body(master)
+      master.terminated await timeout
+    }
   }
 
   def runForTest(directory: Path)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit = {
     val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
-    val master = RunningMaster(injector) await 99.s
-    try {
-      body(master)
-      master.executeCommand(MasterCommand.Terminate) await 99.s
-      master.terminated await 99.s
-    } catch { case NonFatal(t) if master.terminated.failed.isCompleted ⇒
-      t.addSuppressed(master.terminated.failed.successValue)
-      throw t
+    autoClosing(RunningMaster(injector) await 99.s) { master ⇒
+      try {
+        body(master)
+        master.executeCommand(MasterCommand.Terminate) await 99.s
+        master.terminated await 99.s
+      } catch { case NonFatal(t) if master.terminated.failed.isCompleted ⇒
+        t.addSuppressed(master.terminated.failed.successValue)
+        throw t
+      }
     }
   }
 
   def apply(configuration: MasterConfiguration)(implicit ec: ExecutionContext): Future[RunningMaster] =
     apply(new MasterModule(configuration))
 
-  def apply(module: Module)(implicit ec: ExecutionContext): Future[RunningMaster] =
+  private def apply(module: Module)(implicit ec: ExecutionContext): Future[RunningMaster] =
     apply(Guice.createInjector(PRODUCTION, module))
 
   def apply(injector: Injector)(implicit ec: ExecutionContext): Future[RunningMaster] = {
