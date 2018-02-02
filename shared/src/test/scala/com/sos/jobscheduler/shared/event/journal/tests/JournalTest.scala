@@ -103,8 +103,9 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
     }
   }
 
-  "Massive parallel" in {
-    for (_ ← 1 to 10) {
+  "Massive parallel" - {
+    val n = 1  // TODO More iterations for long-running test (tagged test or system property?)
+    for (runIndex ← 1 to n) s"#$runIndex" in {
       delete(journalFile)
       withTestActor { (_, actor) ⇒
         val prefixes = for (i ← 1 to 1000) yield i.toString
