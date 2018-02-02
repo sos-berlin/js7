@@ -73,29 +73,19 @@ final class RunningMasterTest extends FreeSpec {
             <period absolute_repeat="1"/>
           </run_time>
         </order>
-      env.xmlFile(AgentPath("/test-agent-111")).xml =
-        <agent uri={agent0.localUri.toString}/>
+      env.xmlFile(AgentPath("/test-agent-111")).xml = <agent uri={agent0.localUri.toString}/>
       val agent1Port = FreeTcpPortFinder.findRandomFreeTcpPort()
-      env.xmlFile(AgentPath("/test-agent-222")).xml =
-        <agent uri={s"http://127.0.0.1:$agent1Port"}/>
+      env.xmlFile(AgentPath("/test-agent-222")).xml = <agent uri={s"http://127.0.0.1:$agent1Port"}/>
 
       RunningMaster.run(MasterConfiguration.forTest(configAndData = env.masterDir)) { master ⇒
         import master.{injector, orderClient}
         val lastEventId = injector.instance[EventCollector].lastEventId
-        val actorSystem = injector.instance[ActorSystem]
         val eventGatherer = new TestEventGatherer(injector)
         val adHocOrder = Order(TestOrderId, TestWorkflowPath, Order.StartNow)
 
         sleep(3.s)  // Let OrderGenerator generate some orders
-        master.orderKeeper ! MasterOrderKeeper.Input.SuspendDetaching
         val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
         master.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
-
-        val EventSeq.NonEmpty(_) = master.eventCollector.when[OrderEvent.OrderDetachable](EventRequest.singleClass(after = lastEventId, 10.s), _.key == TestOrderId) await 99.s
-        val agentClients = for (a ← List(agent0, agent1)) yield AgentClient(a.localUri.toString)(actorSystem)
-        //sleep(500.ms)  // MasterOrderKeeper allows GetOrders while journaling events (persistAsync). Wait until events are stored and orders are up-to-date. Time-dependend !!!
-        assert(agentClients(0).orders() await 99.s map { _.id } contains TestOrderId)
-        master.orderKeeper ! MasterOrderKeeper.Input.ContinueDetaching
 
         master.eventCollector.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
         orderClient.order(TestOrderId) await 10.s shouldEqual
@@ -120,7 +110,6 @@ final class RunningMasterTest extends FreeSpec {
 
         master.executeCommand(MasterCommand.Terminate) await 99.s
         master.terminated await 99.s
-        master.close()
         agent1.terminate() await 99.s
         agent1.close()
       }

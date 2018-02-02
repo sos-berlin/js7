@@ -71,7 +71,6 @@ with Stash {
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private val idToOrder = orderRegister mapPartialFunction (_.order)
   private val orderProcessor = new OrderProcessor(pathToNamedWorkflow mapPartialFunction (_.workflow), idToOrder)
-  private var detachingSuspended = false
   protected val journalActor = context.watch(context.actorOf(
     JournalActor.props(
       journalMeta(compressWithGzip = masterConfiguration.config.getBoolean("jobscheduler.master.journal.gzip")),
@@ -229,9 +228,6 @@ with Stash {
       import agentEntry.agentPath
       var lastAgentEventId = none[EventId]
       stampeds foreach {
-        case Stamped(_, KeyedEvent(_, OrderEvent.OrderDetached)) if detachingSuspended ⇒
-          stash()
-
         case Stamped(agentEventId, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
           // OrderForked is (as all events) persisted and processed asynchronously,
           // so events for child orders will probably arrive before OrderForked has registered the child orderId.
@@ -260,19 +256,6 @@ with Stash {
     case msg @ JournalActor.Output.SerializationFailure(throwable) ⇒
       logger.error(msg.toString, throwable)
       // Ignore this ???
-
-    case Input.SuspendDetaching ⇒
-      if (!detachingSuspended) {
-        logger.warn("❗ SuspendDetaching")
-        detachingSuspended = true
-      }
-
-    case Input.ContinueDetaching ⇒
-      if (detachingSuspended) {
-        logger.info("❗ ContinueDetaching")
-        detachingSuspended = false
-        unstashAll()
-      }
 
     case Internal.Execute(callback) ⇒
       callback()
@@ -414,12 +397,6 @@ object MasterOrderKeeper {
     JournalMeta.gzipped(SnapshotJsonCodec, MasterKeyedEventJsonCodec, compressWithGzip = compressWithGzip)
 
   private val logger = Logger(getClass)
-
-  sealed trait Input
-  object Input {
-    case object SuspendDetaching extends Input    // For testing
-    case object ContinueDetaching extends Input   // For testing
-  }
 
   sealed trait Command
   object Command {
