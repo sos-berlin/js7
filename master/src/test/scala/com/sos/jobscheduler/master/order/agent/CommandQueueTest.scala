@@ -79,8 +79,8 @@ final class CommandQueueTest extends FreeSpec {
 object CommandQueueTest {
   private val logger = Logger(getClass)
   private val TestAgentPath = AgentPath("/AGENT")
-  private val TestWorkflow = Workflow.Named(WorkflowPath("/A"), Workflow(Vector(
-    Job(JobPath("/JOB"), TestAgentPath))))
+  private val TestWorkflow = Workflow.Named(WorkflowPath("/A"), Workflow.of(
+    Job(JobPath("/JOB"), TestAgentPath)))
   private def toQueuedInputResponse(order: Order[Order.Idle]) =
     QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath, TestWorkflow.workflow), Batch.Succeeded(Accepted))
 

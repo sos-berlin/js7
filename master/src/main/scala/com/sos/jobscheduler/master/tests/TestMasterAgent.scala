@@ -185,7 +185,7 @@ object TestMasterAgent {
   private val PathNames = Stream("🥕", "🍋", "🍊", "🍐", "🍏", "🍓", "🍒") ++ Iterator.from(8).map("🌶".+)
 
   private def makeWorkflow(conf: Conf): Workflow =
-    Workflow(Vector(
+    Workflow.of(
       Job(TestJobPath, conf.agentPaths.head),
       ForkJoin(
         for ((agentPath, pathName) ← conf.agentPaths.toVector zip PathNames) yield
@@ -194,7 +194,7 @@ object TestMasterAgent {
             Workflow(
               for (_ ← 1 to conf.workflowLength) yield
                 () @: Job(TestJobPath, agentPath)))),
-      ExplicitEnd))
+      ExplicitEnd)
 
   private case class Conf(
     directory: Path,
