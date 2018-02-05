@@ -32,6 +32,8 @@ import sbt.Keys.testOptions
 import sbt.librarymanagement.DependencyFilter.artifactFilter
 import sbt.{CrossVersion, Def}
 
+val _dummy_ = BuildUtils.initializeLogger()
+
 val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o ⇒ new File(o))
 val publishRepositoryName            = sys.props.get("publishRepository.name")
 val publishRepositoryUri             = sys.props.get("publishRepository.uri")
@@ -174,11 +176,13 @@ lazy val base = crossProject
     import Dependencies._
     libraryDependencies ++=
       "org.typelevel" %%% "cats-core" % catsVersion ++
+      "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
       javaxAnnotations % "compile" ++
-      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
+      "org.typelevel" %% "discipline" % "0.8" % "test"
   }
 lazy val baseJVM = base.jvm
 lazy val baseJs = base.js
