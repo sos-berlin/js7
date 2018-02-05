@@ -17,6 +17,7 @@ sealed trait Outcome
 object Outcome
 {
   val succeeded = Succeeded(ReturnCode.Success)
+  val RecoveryGeneratedOutcome = Disrupted(Disrupted.JobSchedulerRestarted)
 
   /** The job has terminated. */
   sealed trait Undisrupted extends Outcome {

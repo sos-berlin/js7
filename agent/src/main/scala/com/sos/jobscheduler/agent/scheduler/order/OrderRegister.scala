@@ -2,6 +2,8 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.ActorRef
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister._
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked.ops._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.data.event.KeyedEvent
@@ -61,6 +63,9 @@ private[order] object OrderRegister {
       assert(_order.workflowPath == o.workflowPath)
       _order = o
     }
+
+    def checkedJob: Checked[Job] =
+      workflow.checkedJob(order.position) mapProblemKey order.id
 
     def jobOption: Option[Job] =
       workflow.jobOption(order.position)

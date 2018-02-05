@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.base.utils
 
 import cats.data.Validated
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.exceptions.PublicException
+import com.sos.jobscheduler.base.problem.{Checked, Problem, ProblemException}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import java.io.{PrintWriter, StringWriter}
 import java.util.concurrent.atomic.AtomicBoolean
@@ -83,7 +85,7 @@ object ScalaUtils {
       val strings = mutable.Buffer[String]()
       var t: Throwable = delegate
       while (t != null) {
-        strings += t.toSimplifiedString
+        strings += t.toSimplifiedString.trim.stripSuffix(":")
         t = t.getCause
       }
       strings mkString ", caused by: "
@@ -91,7 +93,7 @@ object ScalaUtils {
 
     def toSimplifiedString: String = {
       lazy val msg = delegate.getMessage
-      if (msg != null && msg != "" && (RichThrowable.isIgnorableClass(delegate.getClass) || delegate.isInstanceOf[PublicException]))
+      if (msg != null && msg != "" && (RichThrowable.isIgnorableClass(delegate.getClass) || delegate.isInstanceOf[ProblemException]) || delegate.isInstanceOf[PublicException])
         msg
       else
         delegate.toString
@@ -133,10 +135,18 @@ object ScalaUtils {
   }
 
   implicit class RichPartialFunction[A, B](val underlying: PartialFunction[A, B]) extends AnyVal {
-    def getOrElse[BB >: B](key: A, default: ⇒ BB): BB = underlying.applyOrElse(key, (_: A) ⇒ default)
+    def checked(key: A): Checked[B] =
+      underlying.lift(key) match {
+        case Some(b) ⇒ Valid(b)
+        case None ⇒ Invalid(Problem(s"No such key '$key'"))
+      }
+
+    def getOrElse[BB >: B](key: A, default: ⇒ BB): BB =
+      underlying.applyOrElse(key, (_: A) ⇒ default)
 
     /** applyOrElse calls isDefined, not optimized. */
-    def map[C](f: B ⇒ C): PartialFunction[A, C] = mapPartialFunction(f)
+    def map[C](f: B ⇒ C): PartialFunction[A, C] =
+      mapPartialFunction(f)
 
     /** applyOrElse calls isDefined, not optimized. */
     def mapPartialFunction[C](f: B ⇒ C): PartialFunction[A, C] = {

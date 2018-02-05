@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.shared.workflow
 
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderActorEvent
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
@@ -14,14 +16,14 @@ final class OrderProcessor(
   pathToWorkflow: PartialFunction[WorkflowPath, Workflow],
   idToOrder: PartialFunction[OrderId, Order[Order.State]])
 {
-  private val eventHandler = new OrderEventHandler(idToOrder)
+  private val eventHandler = new OrderEventHandler(pathToWorkflow, idToOrder)
   private val eventSource = new OrderEventSource(pathToWorkflow, idToOrder)
 
-  def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] =
-    eventSource.nextEvent(orderId)
+  def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] =
+    eventSource.nextEvent(orderId) mapProblem (_ withPrefix s"Problem with '$orderId':")
 
-  def handleEvent(keyedEvent: KeyedEvent[OrderEvent]): Seq[FollowUp] =
-    eventHandler.handleEvent(keyedEvent)
+  def handleEvent(keyedEvent: KeyedEvent[OrderEvent]): Checked[Seq[FollowUp]] =
+    eventHandler.handleEvent(keyedEvent) mapProblem (_ withPrefix s"Problem with event $keyedEvent:")
 
   def offeredToAwaitingOrder(orderId: OrderId): Set[OrderId] =
     eventHandler.offeredToAwaitingOrder(orderId)

@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.data.order
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
@@ -33,23 +35,23 @@ final class OrderTest extends FreeSpec {
 
     "attachedToAgent" in {
       val agentPath = AgentPath("/A")
-      assert(order.attachedToAgent.isLeft)
-      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath)))     .attachedToAgent == Right(agentPath))
-      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentPath))).attachedToAgent.isLeft)
+      assert(order.attachedToAgent.isInvalid)
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath)))     .attachedToAgent == Valid(agentPath))
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentPath))).attachedToAgent.isInvalid)
     }
 
     "detachableFromAgent" in {
       val agentPath = AgentPath("/A")
-      assert(order.detachableFromAgent.isLeft)
-      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath)))     .detachableFromAgent.isLeft)
-      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentPath))).detachableFromAgent == Right(agentPath))
+      assert(order.detachableFromAgent.isInvalid)
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath)))     .detachableFromAgent.isInvalid)
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentPath))).detachableFromAgent == Valid(agentPath))
     }
 
     "castState" in {
       assert(order.castState[Order.Ready] eq order)
       assert(order.castState[Order.Idle] eq order)
       assert(order.castState[Order.State] eq order)
-      intercept[IllegalStateException] {
+      intercept[ProblemException] {
         order.castState[Order.Processed]
       }
     }
@@ -169,13 +171,13 @@ final class OrderTest extends FreeSpec {
 
   "isAttachable" in {
     val order = Order(OrderId("ORDER-ID"), WorkflowPath("/JOBNET"), Order.Ready, Some(AttachedTo.Detachable(AgentPath("/AGENT"))))
-    assert(order.detachableFromAgent == Right(AgentPath("/AGENT")))
+    assert(order.detachableFromAgent == Valid(AgentPath("/AGENT")))
 
     for (o ← Array(
           order.copy(attachedTo = Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
           order.copy(attachedTo = None))) {
-      val e: IllegalStateException = o.detachableFromAgent.left.get
-      assert(e.getMessage contains "ORDER-ID")
+      val problem = o.detachableFromAgent.asInstanceOf[Invalid[Problem]].e
+      assert(problem.toString contains "ORDER-ID")
     }
   }
 

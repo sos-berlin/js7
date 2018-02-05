@@ -55,7 +55,7 @@ extends KeyedJournalingActor[OrderEvent] {
 
       case Order.InProcess ⇒
         context.become(processed)
-        val event = OrderProcessed(MapDiff.empty, RecoveryGeneratedOutcome)
+        val event = OrderProcessed(MapDiff.empty, Outcome.RecoveryGeneratedOutcome)
         persist(event)(update)
 
       case _: Order.Processed ⇒
@@ -288,9 +288,8 @@ extends KeyedJournalingActor[OrderEvent] {
   override def toString = s"OrderActor(${orderId.string})"
 }
 
-private[order] object OrderActor {
-  val RecoveryGeneratedOutcome = Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)
-
+private[order] object OrderActor
+{
   private[order] def props(orderId: OrderId, journalActor: ActorRef, config: Config) =
     Props { new OrderActor(orderId, journalActor = journalActor, config) }
 

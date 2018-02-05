@@ -3,6 +3,7 @@ package com.sos.jobscheduler.agent.scheduler
 import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Status, Terminated}
 import akka.pattern.ask
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
@@ -123,9 +124,9 @@ extends KeyedEventJournalingActor[AgentEvent] {
       executeExternalCommand(cmd, jobs)
 
     case Input.RequestEvents(userId, input) ⇒
-      masterToOrderKeeper.get(userId) match {
-        case Some(actor) ⇒ actor ! (input: AgentOrderKeeper.Input)
-        case None ⇒ sender() ! Status.Failure(new NoSuchElementException(s"No Master registered for User '$userId'"))
+      masterToOrderKeeper.checked(userId) match {
+        case Valid(actor) ⇒ actor ! (input: AgentOrderKeeper.Input)
+        case Invalid(problem) ⇒ sender() ! Status.Failure(problem.throwable)
       }
 
     case msg: JobActor.Output.ReadyForOrder.type ⇒
@@ -177,11 +178,11 @@ extends KeyedEventJournalingActor[AgentEvent] {
         }
 
       case command: AgentCommand.OrderCommand ⇒
-        masterToOrderKeeper.get(userId) match {
-          case Some(actor) ⇒
+        masterToOrderKeeper.checked(userId) match {
+          case Valid(actor) ⇒
             actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
-          case None ⇒
-            response.failure(new NoSuchElementException(s"Unknown Master for User '$userId'"))
+          case Invalid(problem) ⇒
+            response.failure(problem.throwable)
         }
 
       case _ if terminating ⇒
@@ -245,8 +246,7 @@ object AgentActor {
   }
 
   private final class MasterRegister extends ActorRegister[UserId, ActorRef](identity) {
-    override def onUnknownKey(userId: UserId) =
-      throw new NoSuchElementException(s"No master registered for user '$userId'")
+    override def noSuchKeyMessage(userId: UserId) = s"No master registered for user '$userId'"
 
     override def insert(kv: (UserId, ActorRef)) = super.insert(kv)
 

@@ -1,8 +1,11 @@
 package com.sos.jobscheduler.data.workflow
 
+import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.Workflow._
@@ -83,8 +86,8 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
       case o: ForkJoin ⇒ o isPartiallyExecutableOnAgent agentPath
     } contains true
 
-  def isStartableOnAgent(address: Position, agentPath: AgentPath): Boolean =
-    isStartableOnAgent(instruction(address), agentPath)
+  def isStartableOnAgent(position: Position, agentPath: AgentPath): Boolean =
+    isStartableOnAgent(instruction(position), agentPath)
 
   private def isStartableOnAgent(instruction: Instruction, agentPath: AgentPath): Boolean =
     instruction match {
@@ -112,8 +115,14 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
   def isDefinedAt(nr: InstructionNr): Boolean =
     labeledInstructions.indices isDefinedAt nr.number
 
-  def jobOption(address: Position): Option[Job] =
-    Some(instruction(address)) collect { case o: Job ⇒ o }
+  def checkedJob(position: Position): Checked[Job] =
+    instruction(position) match {
+      case o: Job ⇒ Valid(o)
+      case o ⇒ Invalid(Problem(s"Expected a Job at workflow position $position (not: ${o.getClass.simpleScalaName})"))
+    }
+
+  def jobOption(position: Position): Option[Job] =
+    Some(instruction(position)) collect { case o: Job ⇒ o }
 
   def instruction(position: Position): Instruction =
     position match {
@@ -189,6 +198,8 @@ object Workflow {
   final case class Named(path: WorkflowPath, workflow: Workflow) {
     @deprecated
     def lastWorkflowPosition = path /: Position(workflow.lastNr)
+
+    def toPair: (WorkflowPath, Workflow) = path → workflow
   }
   object Named {
     implicit def fromPair(pair: (WorkflowPath, Workflow)) = Named(pair._1, pair._2)

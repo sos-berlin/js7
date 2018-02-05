@@ -1,8 +1,11 @@
 package com.sos.jobscheduler.data.order
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceObjectCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.problem.Checked.ops._
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
@@ -122,8 +125,10 @@ final case class Order[+S <: Order.State](
     castState[Order.Processed]
 
   def castState[A <: State: ClassTag]: Order[A] =
-    ifState[A] getOrElse (
-      throw new IllegalStateException(s"'$id' is expected to be ${implicitClass[A].simpleScalaName}, but is $state"))
+    checkedState[A].force
+
+  def checkedState[A <: State: ClassTag]: Checked[Order[A]] =
+    Checked.fromOption(ifState[A], Problem(s"'$id' should be in state ${implicitClass[A].simpleScalaName}, but is in state $state"))
 
   def ifState[A <: State: ClassTag]: Option[Order[A]] = {
     val cls = implicitClass[A]
@@ -131,22 +136,22 @@ final case class Order[+S <: Order.State](
       this.asInstanceOf[Order[A]]
   }
 
-  def isAttachedToAgent = attachedToAgent.isRight
+  def isAttachedToAgent = attachedToAgent.isValid
 
-  def attachedToAgent: Either[IllegalStateException, AgentPath] =
+  def attachedToAgent: Checked[AgentPath] =
     attachedTo match {
       case Some(AttachedTo.Agent(agentPath)) ⇒
-        Right(agentPath)
+        Valid(agentPath)
       case o ⇒
-        Left(new IllegalStateException(s"'$id' is expected to be AttachedTo.Agent, but not: $o"))
+        Invalid(Problem(s"'$id' should be AttachedTo.Agent, but is $o"))
     }
 
-  def detachableFromAgent: Either[IllegalStateException, AgentPath] =
+  def detachableFromAgent: Checked[AgentPath] =
     attachedTo match {
       case Some(AttachedTo.Detachable(agentPath)) ⇒
-        Right(agentPath)
+        Valid(agentPath)
       case o ⇒
-        Left(new IllegalStateException(s"'$id' is expected to be AttachedTo.Detachable, but not: $o"))
+        Invalid(Problem(s"'$id' should be AttachedTo.Detachable, but is $o"))
     }
 }
 

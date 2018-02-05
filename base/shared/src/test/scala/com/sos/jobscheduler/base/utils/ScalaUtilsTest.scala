@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.base.utils
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.exceptions.StandardPublicException
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicits._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -131,6 +133,14 @@ final class ScalaUtilsTest extends FreeSpec {
     assert(r == 11)
     f(22)
     assert(r == 11)
+  }
+
+  "PartialFunction.checked" in {
+    val pf: PartialFunction[Int, String] = {
+      case 1 ⇒ "1"
+    }
+    assert(pf.checked(1) == Valid("1"))
+    assert(pf.checked(2) == Invalid(Problem("No such key '2'")))
   }
 
   "PartialFunction.getOrElse" in {

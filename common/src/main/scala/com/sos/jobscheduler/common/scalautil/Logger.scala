@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.common.scalautil
 
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.log.ConvertingLogger
 import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
 import org.slf4j.LoggerFactory
@@ -31,4 +33,17 @@ object Logger {
   /** Removes '$' from Scalas companion object class. */
   def normalizeClassName(c: Class[_]): String =
     c.getName stripSuffix "$" replaceFirst("^com[.]sos[.]jobscheduler", "jobscheduler")
+
+  object ops {
+    implicit class RichScalaLogger(val underlying: ScalaLogger) extends AnyVal
+    {
+      def error(problem: Problem): Unit =
+        problem.throwableOption match {
+          case Some(t) ⇒
+            underlying.error(problem.toString, t.appendCurrentStackTrace)
+          case None ⇒
+            underlying.error(problem.toString)
+        }
+    }
+  }
 }

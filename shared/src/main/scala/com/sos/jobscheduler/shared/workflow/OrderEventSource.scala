@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.shared.workflow
 
-import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.Checked.ops._
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
@@ -35,45 +36,42 @@ final class OrderEventSource(
       case _ ⇒ false
     }
 
-  def nextEvent(orderId: OrderId): Option[KeyedEvent[OrderActorEvent]] = {
+  def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] = {
     val order = idToOrder(orderId)
     instruction(order.workflowPosition) match {
       case instr: EventInstruction ⇒
-        instr.toEvent(order, context) flatMap {
-          case oId <-: (moved: OrderMoved) ⇒
-            applyMoveInstructions(oId, moved)
+        instr.toEvent(order, context) match {
+          case Some(oId <-: (moved: OrderMoved)) ⇒
+            applyMoveInstructions(oId, moved) map Some.apply
 
-          case o ⇒ Some(o)
+          case o ⇒ Valid(o)
         }
 
       case instruction ⇒
         logger.trace(s"❓ $instruction")
-        None
+        Valid(None)
     }
   }
 
-  private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Option[KeyedEvent[OrderMoved]] =
+  private def applyMoveInstructions(orderId: OrderId, orderMoved: OrderMoved): Checked[KeyedEvent[OrderMoved]] =
     for {
-      o ← idToOrder(orderId).ifState[Order.Processed]/*should be*/
+      o ← idToOrder(orderId).checkedState[Order.Processed]/*should be*/
       pos ← applyMoveInstructions(o.withPosition(orderMoved.to))
     } yield orderId <-: OrderMoved(pos)
 
-  private[workflow] def applyMoveInstructions(order: Order[Order.Processed]): Option[Position] =
-    applyMoveInstructions(order, Nil) match {
-      case Valid(Some(n)) ⇒ Some(n)
-      case Valid(None) ⇒ Some(order.position)
-      case Invalid(message) ⇒
-        logger.error(message) // TODO
-        None
+  private[workflow] def applyMoveInstructions(order: Order[Order.Processed]): Checked[Position] =
+    applyMoveInstructions(order, Nil) map {
+      case Some(n) ⇒ n
+      case None ⇒ order.position
     }
 
   @tailrec
-  private def applyMoveInstructions(order: Order[Order.Processed], visited: List[Position]): Validated[String, Option[Position]] =
+  private def applyMoveInstructions(order: Order[Order.Processed], visited: List[Position]): Checked[Option[Position]] =
     applySingleMoveInstruction(order) match {
       case Some(position) ⇒
         if (visited contains position)
-          Invalid(s"${order.id} is in a workflow loop: " +
-            visited.reverse.map(pos ⇒ pathToWorkflow(order.workflowPath).labeledInstruction(pos).toShortString).mkString(" -> "))
+          Invalid(Problem(s"${order.id} is in a workflow loop: " +
+            visited.reverse.map(pos ⇒ pos + " " + pathToWorkflow(order.workflowPath).labeledInstruction(pos).toShortString).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)
       case None ⇒ Valid(Some(order.position))

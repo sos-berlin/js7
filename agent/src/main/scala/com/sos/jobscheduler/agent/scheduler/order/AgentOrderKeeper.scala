@@ -4,6 +4,7 @@ import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Stash, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.data.Validated.{Invalid, Valid}
 import com.softwaremill.tagging.Tagger
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Accepted, AttachOrder, DetachOrder, GetOrder, GetOrderIds, GetOrders, OrderCommand, Response}
@@ -15,19 +16,20 @@ import com.sos.jobscheduler.agent.scheduler.order.JobRegister.JobEntry
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister.OrderEntry
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
+import com.sos.jobscheduler.base.problem.Checked.ops._
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichOption}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.Exceptions.wrapException
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderDetached, OrderProcessed}
+import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.instructions.Job
@@ -192,8 +194,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private def processOrderCommand(cmd: OrderCommand): Future[Response] = cmd match {
     case cmd @ AttachOrder(order, workflow) if !terminating ⇒
       order.attachedToAgent match {
-        case Left(throwable) ⇒ Future.failed(throwable)
-        case Right(_) ⇒
+        case Invalid(problem) ⇒ Future.failed(problem.throwable)
+        case Valid(_) ⇒
           val workflowResponse = workflowRegister.get(order.workflowPath) map (_.workflow) match {
             case None ⇒
               persistFuture(KeyedEvent(WorkflowAttached(workflow))(order.workflowPath)) { stampedEvent ⇒
@@ -216,8 +218,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
       orderRegister.get(orderId) match {
         case Some(orderEntry) ⇒
           orderEntry.order.detachableFromAgent match {
-            case Left(throwable) ⇒ Future.failed(throwable)
-            case Right(_) ⇒
+            case Invalid(problem) ⇒ Future.failed(problem.throwable)
+            case Valid(_) ⇒
               orderEntry.detaching = true  // OrderActor is terminating
               (orderEntry.actor ? OrderActor.Command.Detach).mapTo[Completed] map { _ ⇒ Accepted }  // TODO ask will time-out when Journal blocks
           }
@@ -246,11 +248,11 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   }
 
   private def executeCommandForOrderId(orderId: OrderId)(body: OrderEntry ⇒ Future[Response]): Future[Response] =
-    orderRegister.get(orderId) match {
-      case Some(orderEntry) ⇒
+    orderRegister.checked(orderId) match {
+      case Invalid(problem) ⇒
+        Future.failed(problem.throwable)
+      case Valid(orderEntry) ⇒
         body(orderEntry)
-      case None ⇒
-        Future.failed(new IllegalArgumentException(s"Unknown $orderId"))
     }
 
   private def attachOrder(order: Order[Order.Idle], workflow: Workflow): Future[Completed] = {
@@ -276,25 +278,24 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
     val orderEntry = orderRegister(order.id)
-    event match {
-      case event: OrderProcessed if event.outcome != OrderActor.RecoveryGeneratedOutcome ⇒
-        assert(order.ifState[Order.Processed].isDefined)
-        for (jobEntry ← orderEntry.jobOption map (_.jobPath) flatMap jobRegister.get whenEmpty
-                          logger.error(s"OrderProcessed but missing job for ${order.id} ${order.workflowPosition} state=${order.state.getClass.simpleScalaName}")) {
-          jobEntry.queue -= order.id
-        }
+    val validatedFollowUps = orderProcessor.handleEvent(order.id <-: event)
+    for (followUps ← validatedFollowUps onProblem (p ⇒ logger.error(p))) {
+      followUps foreach {
+        case FollowUp.Processed(job) ⇒
+          assert(orderEntry.jobOption map (_.jobPath) contains job.jobPath)
+          for (jobEntry ← jobRegister.checked(job.jobPath) onProblem (p ⇒ logger.error(p withKey order.id))) {
+            jobEntry.queue -= order.id
+          }
 
-      case _ ⇒
-        orderProcessor.handleEvent(order.id <-: event) foreach {
-          case FollowUp.AddChild(childOrder) ⇒
-            val actor = newOrderActor(childOrder)
-            orderRegister.insert(childOrder, workflowRegister(childOrder.workflowPath).workflow, actor)
-            actor ! OrderActor.Input.AddChild(childOrder)
-            proceedWithOrder(childOrder.id)
+        case FollowUp.AddChild(childOrder) ⇒
+          val actor = newOrderActor(childOrder)
+          orderRegister.insert(childOrder, workflowRegister(childOrder.workflowPath).workflow, actor)
+          actor ! OrderActor.Input.AddChild(childOrder)
+          proceedWithOrder(childOrder.id)
 
-          case FollowUp.Remove(removeOrderId) ⇒
-            removeOrder(removeOrderId)
-        }
+        case FollowUp.Remove(removeOrderId) ⇒
+          removeOrder(removeOrderId)
+      }
     }
     orderEntry.order = order
   }
@@ -320,21 +321,19 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   private def onOrderAvailable(orderEntry: OrderEntry): Unit =
     if (!terminating) {
-      orderEntry.order.attachedToAgent match {
-        case Left(throwable) ⇒ logger.error(s"onOrderAvailable: $throwable")
-        case Right(_) ⇒
-          orderEntry.instruction match {
-            case job: Job ⇒
-              jobRegister.get(job.jobPath) match {
-                case Some(jobEntry) ⇒
-                  onOrderAvailableForJob(orderEntry.order.id, jobEntry)
-                case None ⇒
-                  logger.error(s"Missing '${job.jobPath}' for '${orderEntry.order.id}' at '${orderEntry.order.workflowPosition}'")
-              }
+      for (_ ← orderEntry.order.attachedToAgent onProblem (p ⇒ logger.error(s"onOrderAvailable: $p"))) {
+        orderEntry.instruction match {
+          case job: Job ⇒
+            jobRegister.get(job.jobPath) match {
+              case None ⇒
+                logger.error(s"Missing '${job.jobPath}' for '${orderEntry.order.id}' at '${orderEntry.order.workflowPosition}'")
+              case Some(jobEntry) ⇒
+                onOrderAvailableForJob(orderEntry.order.id, jobEntry)
+            }
 
-            case _ ⇒
-              tryExecuteInstruction(orderEntry.order, orderEntry.workflow)
-          }
+          case _ ⇒
+            tryExecuteInstruction(orderEntry.order, orderEntry.workflow)
+        }
       }
     }
 
@@ -356,8 +355,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
             logger.warn(s"Unknown $orderId was enqueued for ${jobEntry.jobPath}. Order has been removed?")  // TODO Why can this happen?
 
           case Some(orderEntry) ⇒
-            for (job ← orderEntry.jobOption whenEmpty logger.error(s"${orderEntry.order.id}: ${orderEntry.order.workflowPosition} is not a Job")) {
-                startProcessing(orderEntry, job, jobEntry)
+            for (job ← orderEntry.checkedJob onProblem (o ⇒ logger.error(o))) {
+              startProcessing(orderEntry, job, jobEntry)
             }
             jobEntry.waitingForOrder = false
         }
@@ -375,7 +374,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
   private def tryExecuteInstruction(order: Order[Order.State], workflow: Workflow): Unit = {
     assert(order.isAttachedToAgent)
-    for (KeyedEvent(orderId, event) ← orderProcessor.nextEvent(order.id)) {
+    for (KeyedEvent(orderId, event) ← orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten) {
       orderRegister(orderId).actor ! OrderActor.Input.HandleEvent(event)
     }
   }

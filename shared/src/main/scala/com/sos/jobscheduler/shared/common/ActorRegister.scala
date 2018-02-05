@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.shared.common
 
 import akka.actor.ActorRef
+import com.sos.jobscheduler.base.problem.Checked.ops.RichOption
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.shared.event.journal.RecoveredJournalingActors
 import java.util.NoSuchElementException
@@ -10,11 +12,11 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
-  private val keyToValue = mutable.Map[K, V]() withDefault onUnknownKey
+  private val keyToValue = mutable.Map[K, V]() withDefault (k ⇒ throw new NoSuchElementException(noSuchKeyMessage(k)))
   private val _actorToKey = mutable.Map[ActorRef, K]()
 
-  def onUnknownKey(k: K): Nothing =
-    throw new NoSuchElementException(s"No such element '$k'")
+  def noSuchKeyMessage(k: K): String =
+    s"No such key '$k'"
 
   protected def insert(kv: (K, V)): Unit = {
     if (keyToValue contains kv._1) throw new DuplicateKeyException(s"Duplicate ${kv._1}")
@@ -52,8 +54,11 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
   final def apply(actorRef: ActorRef): V =
     keyToValue(_actorToKey(actorRef))
 
-  final def get(orderId: K): Option[V] =
-    keyToValue.get(orderId)
+  final def checked(key: K): Checked[V] =
+    keyToValue.get(key) checked Problem(noSuchKeyMessage(key))
+
+  final def get(key: K): Option[V] =
+    keyToValue.get(key)
 
   final def get(actorRef: ActorRef): Option[V] =
     for (k ← _actorToKey.get(actorRef);

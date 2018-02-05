@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.master.order
 
-import cats.syntax.option._
 import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
+import cats.data.Validated.{Invalid, Valid}
+import cats.syntax.option._
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichPartialFunction}
@@ -15,6 +17,7 @@ import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -305,15 +308,23 @@ with Stash {
             logger.error(s"Unknown OrderId for event ${orderId <-: event}")
 
           case Some(orderEntry) ⇒
-            orderProcessor.handleEvent(orderId <-: event) foreach {
-              case FollowUp.AddChild(childOrder) ⇒
-                addOrderAndProceed(childOrder)
+            val validatedFollowUps = orderProcessor.handleEvent(orderId <-: event)
+            for (followUps ← validatedFollowUps onProblem (p ⇒ logger.error(p)))  {
+              followUps foreach {
+                case _: FollowUp.Processed if orderEntry.order.isAttachedToAgent ⇒
 
-              case FollowUp.AddOffered(offeredOrder) ⇒
-                addOrderAndProceed(offeredOrder)
+                case FollowUp.AddChild(childOrder) ⇒
+                  addOrderAndProceed(childOrder)
 
-              case FollowUp.Remove(removeOrderId) ⇒
-                orderRegister -= removeOrderId
+                case FollowUp.AddOffered(offeredOrder) ⇒
+                  addOrderAndProceed(offeredOrder)
+
+                case FollowUp.Remove(removeOrderId) ⇒
+                  orderRegister -= removeOrderId
+
+                case unexpected ⇒
+                  logger.error(s"Order '$orderId': Unexpected FollowUp $unexpected")
+              }
             }
             orderEntry.update(event)
             proceedWithOrder(orderEntry)
@@ -359,7 +370,8 @@ with Stash {
 
       case _ ⇒
     }
-    for (keyedEvent ← orderProcessor.nextEvent(order.id)) {
+
+    for (keyedEvent ← orderProcessor.nextEvent(order.id).onProblem(p ⇒ logger.error(p)).flatten) {
       persistAsync(keyedEvent)(handleOrderEvent)
     }
   }
@@ -374,9 +386,8 @@ with Stash {
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     orderRegister(orderId).order.detachableFromAgent match {
-      case Left(t) ⇒
-        logger.error(s"detachOrderFromAgent '$orderId': not AttachedTo.Detachable: $t")
-      case Right(agentPath) ⇒
+      case Invalid(problem) ⇒ logger.error(s"detachOrderFromAgent '$orderId': not AttachedTo.Detachable: $problem")
+      case Valid(agentPath) ⇒
         agentRegister(agentPath).actor ! AgentDriver.Input.DetachOrder(orderId)
     }
 
