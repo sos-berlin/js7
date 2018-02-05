@@ -72,10 +72,10 @@ extends TaskRunner {
   private def runProcess(order: Order[Order.InProcess], stdChannels: StdChannels): Future[ReturnCode] =
     for {
       richProcess ← startProcess(order, stdChannels) andThen {
-        case Success(richProcess) ⇒ logger.info(s"System process '$richProcess' started for ${order.id}, ${conf.jobPath}, script ${conf.shellFile}")
+        case Success(richProcess) ⇒ logger.info(s"Process '$richProcess' started for ${order.id}, ${conf.jobPath}, script ${conf.shellFile}")
       }
       returnCode ← richProcess.terminated andThen { case tried ⇒
-        logger.info(s"System process '$richProcess' terminated with $tried after ${richProcess.duration.pretty}")
+        logger.info(s"Process '$richProcess' terminated with $tried after ${richProcess.duration.pretty}")
       }
     } yield {
       richProcess.close()
