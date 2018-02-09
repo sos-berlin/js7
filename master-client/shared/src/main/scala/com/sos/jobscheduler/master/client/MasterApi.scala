@@ -20,7 +20,7 @@ trait MasterApi {
 
   def orders: Future[Stamped[Seq[Order[Order.State]]]]
 
-  def orderEvents(after: EventId, timeout: Duration): Future[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
+  def orderEvents(after: EventId, timeout: Duration): Future[Stamped[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]]
 
   def workflows: Future[Stamped[Seq[Workflow.Named]]]
 }

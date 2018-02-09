@@ -12,14 +12,16 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @param uri The host URI or empty for addressing base on "master/"
   */
-class HttpMasterApi(uri: String, httpClient: HttpClient)(implicit executionContext: ExecutionContext)
-extends MasterApi {
+trait HttpMasterApi extends MasterApi {
+  protected def uri: String
+  protected def httpClient: HttpClient
+  protected implicit def executionContext: ExecutionContext
 
-  private val uris = MasterUris(masterUri = if (uri.isEmpty) uri else uri.stripSuffix("/") + "/master")
+  private lazy val uris = MasterUris(masterUri = if (uri.isEmpty) uri else uri.stripSuffix("/") + "/master")
 
   final def executeCommand(command: MasterCommand): Future[command.MyResponse] =
     httpClient.post[MasterCommand, MasterCommand.Response](uris.command, command)
-      .map (_.asInstanceOf[command.MyResponse])
+      .map(_.asInstanceOf[command.MyResponse])
 
   final def overview: Future[MasterOverview] =
     httpClient.get[MasterOverview](uris.overview)
@@ -30,8 +32,8 @@ extends MasterApi {
   final def orders: Future[Stamped[Seq[Order[Order.State]]]] =
     httpClient.get[Stamped[Seq[Order[Order.State]]]](uris.order.list[Order[Order.State]])
 
-  final def orderEvents(after: EventId, timeout: Duration): Future[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]] =
-    httpClient.get[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]](
+  final def orderEvents(after: EventId, timeout: Duration): Future[Stamped[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]] =
+    httpClient.get[Stamped[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]](
       uris.order.events[OrderEvent](after = after, timeout = timeout),
       timeout = timeout + ToleratedEventDelay)
 

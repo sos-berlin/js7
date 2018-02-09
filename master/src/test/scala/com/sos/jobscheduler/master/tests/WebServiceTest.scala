@@ -11,7 +11,7 @@ import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
-import com.sos.jobscheduler.master.client.{AkkaHttpClient, HttpMasterApi}
+import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.WebServiceTest._
@@ -24,9 +24,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
 
   private lazy val env = new TestEnvironment(agentPaths = Nil, temporaryDirectory / "WebServiceTest")
-  private lazy val httpClient = new AkkaHttpClient.StandAlone
   private var master: RunningMaster = _
-  private var api: HttpMasterApi = _
+  private var api: AkkaHttpMasterApi = _
 
   override def beforeAll() = {
     super.beforeAll()
@@ -34,13 +33,13 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
     env.txtFile(TestWorkflowPath).contentString = TestWorkflowNotation
     master = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
-    api = new HttpMasterApi(master.localUri.toString, httpClient)
+    api = new AkkaHttpMasterApi(master.localUri.toString)
   }
 
   override def afterAll() = {
     if (master != null) master.close()
+    if (api != null) api.close()
     env.close()
-    httpClient.close()
     super.afterAll()
   }
 
