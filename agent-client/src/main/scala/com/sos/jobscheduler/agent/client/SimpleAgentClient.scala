@@ -20,8 +20,8 @@ final class SimpleAgentClient private(val agentUri: Uri) extends AgentClient wit
   protected def userAndPasswordOption = None
 
   override def close() = {
-    super.close()
-    actorSystem.terminate()
+    try super.close()
+    finally actorSystem.terminate()
   }
 }
 

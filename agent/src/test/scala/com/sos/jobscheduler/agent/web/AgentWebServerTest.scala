@@ -63,6 +63,7 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
   private lazy val http = Http()
 
   override protected def afterAll() = {
+    materializer.shutdown()
     close()
     super.afterAll()
   }

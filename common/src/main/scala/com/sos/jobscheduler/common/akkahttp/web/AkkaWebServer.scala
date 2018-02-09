@@ -59,6 +59,7 @@ trait AkkaWebServer extends AutoCloseable {
       connectionContext)
 
   def close() = {
+    materializer.shutdown()
     if (activeBindings != null) {
       (for (future ← activeBindings) yield
         for (binding ← future) yield

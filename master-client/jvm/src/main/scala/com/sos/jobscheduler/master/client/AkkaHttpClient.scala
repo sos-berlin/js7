@@ -23,21 +23,23 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-trait AkkaHttpClient extends HttpClient {
+trait AkkaHttpClient extends AutoCloseable with HttpClient {
   protected def actorSystem: ActorSystem
   protected implicit def executionContext: ExecutionContext
 
   private implicit lazy val materializer = ActorMaterializer()(actorSystem)
   private lazy val http = Http(actorSystem)
 
+  def close() = materializer.shutdown()
+
   def get[A: Decoder](uri: String, timeout: Duration): Future[A] =
     sendReceive[A](HttpRequest(GET, uri, Accept(`application/json`) :: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
 
   def post[A: Encoder, B: Decoder](uri: String, data: A): Future[B] =
-    (for {
+    for {
       entity ← Marshal(data).to[RequestEntity]
       result ← sendReceive[B](Gzip.encodeMessage(HttpRequest(POST, uri, Accept(`application/json`) :: Nil, entity)))
-    } yield result)
+    } yield result
 
   private def sendReceive[A: FromResponseUnmarshaller](request: HttpRequest): Future[A] =
     for {
@@ -54,15 +56,8 @@ trait AkkaHttpClient extends HttpClient {
 object AkkaHttpClient {
   private val ErrorMessageLengthMaximum = 10000
 
-  final class Standard(protected val actorSystem: ActorSystem)(implicit protected val executionContext: ExecutionContext)
-  extends AkkaHttpClient
-
-  final class StandAlone extends AkkaHttpClient with AutoCloseable {
-    protected val actorSystem = ActorSystem("AkkaHttpClient")
-    protected val executionContext = actorSystem.dispatcher
-
-    def close() = actorSystem.terminate()
-  }
+  //final class Standard(protected val actorSystem: ActorSystem)(implicit protected val executionContext: ExecutionContext)
+  //extends AkkaHttpClient
 
   final class HttpException(val status: StatusCode, message: String) extends RuntimeException(s"$status: $message".trim)
 }
