@@ -88,7 +88,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
     }
 
     def recoverEvent = {
-      case Stamped(_, e @ KeyedEvent(_: UserId, AgentEvent.MasterAdded)) ⇒
+      case Stamped(_, _, e @ KeyedEvent(_: UserId, AgentEvent.MasterAdded)) ⇒
         val keyedEvent = e.asInstanceOf[KeyedEvent[AgentEvent.MasterAdded.type]]
         update(keyedEvent)
     }
@@ -170,7 +170,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
         if (masterToOrderKeeper contains userId) {
           response.success(AgentCommand.Accepted)
         } else {
-          persist(KeyedEvent(AgentEvent.MasterAdded)(userId)) { case Stamped(_, keyedEvent) ⇒
+          persist(KeyedEvent(AgentEvent.MasterAdded)(userId)) { case Stamped(_, _, keyedEvent) ⇒
             update(keyedEvent)
             masterToOrderKeeper(userId) ! AgentOrderKeeper.Input.Start(jobs)
             response.success(AgentCommand.Accepted)

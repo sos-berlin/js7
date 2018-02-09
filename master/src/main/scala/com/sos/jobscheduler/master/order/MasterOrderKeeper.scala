@@ -231,14 +231,14 @@ with Stash {
       import agentEntry.agentPath
       var lastAgentEventId = none[EventId]
       stampeds foreach {
-        case Stamped(agentEventId, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
+        case Stamped(agentEventId, timestamp, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
           // OrderForked is (as all events) persisted and processed asynchronously,
           // so events for child orders will probably arrive before OrderForked has registered the child orderId.
           val ownEvent = event match {
             case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
             case _ ⇒ event
           }
-          persist(KeyedEvent(ownEvent)(orderId))(handleOrderEvent)
+          persist(KeyedEvent(ownEvent)(orderId), Some(timestamp))(handleOrderEvent)
           lastAgentEventId = agentEventId.some
       }
       for (agentEventId ← lastAgentEventId) {

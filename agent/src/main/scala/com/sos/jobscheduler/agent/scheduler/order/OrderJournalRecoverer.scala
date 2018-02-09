@@ -39,10 +39,10 @@ extends JournalRecoverer[Event] {
   }
 
   protected def recoverEvent = {
-    case Stamped(_, KeyedEvent(path: WorkflowPath, event: WorkflowEvent.WorkflowAttached)) ⇒
+    case Stamped(_, _, KeyedEvent(path: WorkflowPath, event: WorkflowEvent.WorkflowAttached)) ⇒
       workflowRegister.handleEvent(KeyedEvent(event)(path))
 
-    case stamped @ Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
+    case stamped @ Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
       event match {
         case OrderDetached ⇒
           (eventsForMaster ? stamped) await 2 * askTimeout.duration.toJavaDuration  // blocking !!!

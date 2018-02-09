@@ -89,13 +89,13 @@ object OrdersState {
       var evtCount = 0
       val nowMillis = Timestamp.epochMilli
       stampedEvents foreach {
-        case Stamped(_, KeyedEvent(orderId, event: OrderAdded)) ⇒
+        case Stamped(_, _, KeyedEvent(orderId, event: OrderAdded)) ⇒
           updated += orderId → OrderEntry(Order.fromOrderAdded(orderId, event), updatedAt = nowMillis)
           added.getOrElseUpdate(event.workflowPath, mutable.Buffer()) += orderId
           deleted -= orderId
           evtCount += 1
 
-        case Stamped(eId, KeyedEvent(orderId, event: OrderEvent)) ⇒
+        case Stamped(eId, _, KeyedEvent(orderId, event: OrderEvent)) ⇒
           updated.get(orderId) orElse idToEntry.get(orderId) match {
             case None ⇒ window.console.error("Unknown OrderId: " + eventToLog(eId, orderId, event))
             case Some(entry) ⇒
@@ -140,7 +140,7 @@ object OrdersState {
               evtCount += 1
           }
 
-        case Stamped(eId, KeyedEvent(orderId, event)) ⇒
+        case Stamped(eId, _, KeyedEvent(orderId, event)) ⇒
           window.console.warn("Ignored: " + eventToLog(eId, orderId, event))
 
         case _ ⇒

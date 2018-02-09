@@ -182,7 +182,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
       val orderEntry = orderRegister(orderId)
       onOrderAvailable(orderEntry)
 
-    case stamped @ Stamped(_, KeyedEvent(_: OrderId, event: OrderEvent)) if !terminating ⇒
+    case stamped @ Stamped(_, _, KeyedEvent(_: OrderId, event: OrderEvent)) if !terminating ⇒
       event match {
         case OrderDetached ⇒
           (eventsForMaster ? stamped) await 2 * askTimeout.duration.toJavaDuration  // blocking !!!

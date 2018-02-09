@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.event.collector
 
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.SyncTest._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -30,7 +31,7 @@ final class SyncTest extends FreeSpec {
         assert(!a.isCompleted)
         val b = sync.whenEventIsAvailable(bEventId, now + 99999.s)
         assert(!b.isCompleted)
-        queue.add(Stamped(aEventId, TestEvent))
+        queue.add(Stamped(aEventId, Timestamp.ofEpochMilli(0), TestEvent))
         sync.onNewEvent(aEventId)
         a await 1.s
         assert(a.isCompleted)
@@ -56,7 +57,7 @@ final class SyncTest extends FreeSpec {
         a await 400.ms
         assert(!a.successValue)  // false: Timed out
         assert(!b.isCompleted)
-        queue.add(Stamped(eventId, TestEvent))
+        queue.add(Stamped(eventId, Timestamp.ofEpochMilli(0), TestEvent))
         sync.onNewEvent(eventId)
         b await 1.s
         assert(b.isCompleted)

@@ -37,7 +37,7 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
       registered = true
       recoverFromSnapshot(o)
 
-    case Input.RecoverFromEvent(Stamped(_, KeyedEvent(k, event))) ⇒
+    case Input.RecoverFromEvent(Stamped(_, _, KeyedEvent(k, event))) ⇒
       assert(k == key)
       registered = true
       recoverFromEvent(event.asInstanceOf[E])

@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.order.agent
 
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -34,8 +35,8 @@ final class EventFetcherTest extends FreeSpec {
             case 1 ⇒
               assert(request.after == 100)
               EventSeq.NonEmpty(List(
-                Stamped(101, KeyedEvent(AEvent(1))),
-                Stamped(102, KeyedEvent(AEvent(2)))))
+                Stamped(101, Timestamp.ofEpochMilli(101), KeyedEvent(AEvent(1))),
+                Stamped(102, Timestamp.ofEpochMilli(102), KeyedEvent(AEvent(2)))))
             case 2 ⇒
               aBarrier.countDown()
               bBarrier.await()
@@ -44,7 +45,7 @@ final class EventFetcherTest extends FreeSpec {
             case 3 ⇒
               assert(request.after == 200)
               EventSeq.NonEmpty(List(
-                Stamped(201, KeyedEvent(AEvent(3)))))
+                Stamped(201, Timestamp.ofEpochMilli(201), KeyedEvent(AEvent(3)))))
             case 4 ⇒
               cBarrier.countDown()
               dBarrier.await()
@@ -62,8 +63,8 @@ final class EventFetcherTest extends FreeSpec {
     val whenCompleted = fetcher.start()
     aBarrier.await()
     assert(collector == List(
-      Stamped(101, KeyedEvent(AEvent(1))),
-      Stamped(102, KeyedEvent(AEvent(2)))))
+      Stamped(101, Timestamp.ofEpochMilli(101), KeyedEvent(AEvent(1))),
+      Stamped(102, Timestamp.ofEpochMilli(102), KeyedEvent(AEvent(2)))))
     bBarrier.countDown()
     cBarrier.await()
     assert(!whenCompleted.isCompleted)
@@ -71,9 +72,9 @@ final class EventFetcherTest extends FreeSpec {
     fetcher.close()
     whenCompleted await 3.s
     assert(collector == List(
-      Stamped(101, KeyedEvent(AEvent(1))),
-      Stamped(102, KeyedEvent(AEvent(2))),
-      Stamped(201, KeyedEvent(AEvent(3)))))
+      Stamped(101, Timestamp.ofEpochMilli(101), KeyedEvent(AEvent(1))),
+      Stamped(102, Timestamp.ofEpochMilli(102), KeyedEvent(AEvent(2))),
+      Stamped(201, Timestamp.ofEpochMilli(201), KeyedEvent(AEvent(3)))))
   }
 }
 

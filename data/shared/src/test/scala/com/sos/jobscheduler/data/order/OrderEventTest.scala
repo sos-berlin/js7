@@ -197,7 +197,8 @@ final class OrderEventTest extends FreeSpec {
 
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
-    val event = Stamped(12345678, KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/JOBNET"), Order.Ready, Payload(Map("VAR" → "VALUE")))))
+    val event = Stamped(12345678, Timestamp.ofEpochMilli(1),
+      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/JOBNET"), Order.Ready, Payload(Map("VAR" → "VALUE")))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
     for (_ ← 1 to 10) {

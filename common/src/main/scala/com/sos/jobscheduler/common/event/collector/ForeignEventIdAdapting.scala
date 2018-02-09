@@ -19,6 +19,6 @@ trait ForeignEventIdAdapting {
     if (lastEventId < stamped.eventId)
       stamped
     else
-      Stamped(lastEventId + 1, stamped.value)
+      Stamped(lastEventId + 1, stamped.timestamp, stamped.value)
   }
 }

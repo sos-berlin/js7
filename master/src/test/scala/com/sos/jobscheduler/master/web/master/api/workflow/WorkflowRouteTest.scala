@@ -56,7 +56,7 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        val Stamped(_, workflows) = responseAs[Stamped[Seq[WorkflowPath]]]
+        val Stamped(_, _, workflows) = responseAs[Stamped[Seq[WorkflowPath]]]
         assert(workflows == (pathToWorkflow.keys.toList))
       }
     }
@@ -68,7 +68,7 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
-        val Stamped(_, workflows) = responseAs[Stamped[Seq[Workflow.Named]]]
+        val Stamped(_, _, workflows) = responseAs[Stamped[Seq[Workflow.Named]]]
         assert(workflows == pathToWorkflow.values.toVector)
       }
     }

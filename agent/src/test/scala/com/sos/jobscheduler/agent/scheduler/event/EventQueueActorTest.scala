@@ -5,6 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.tagging.Tagger
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActorTest._
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -40,7 +41,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
     assert((requestEvents(after = EventId.BeforeFirst, timeout = 10.ms) await 99.s) == EventSeq.Empty(EventId.BeforeFirst))
 
     val aKeyedEvent = KeyedEvent(OrderDetachable)(OrderId("1"))
-    actor ! Stamped(111, aKeyedEvent)
+    actor ! Stamped(111, Timestamp.ofEpochMilli(0), aKeyedEvent)
     val aEventSeq = (requestEvents(after = EventId.BeforeFirst, timeout = 0.s) await 99.s).asInstanceOf[MyNonEmptyEventSeq]
     assert((aEventSeq.stampeds map { _.value }) == List(aKeyedEvent))
     val aEventId = aEventSeq.stampeds.last.eventId
@@ -49,7 +50,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
     val whenBEventSeq = requestEvents(after = aEventId, timeout = 99.s).mapTo[EventSeq.NonEmpty[Seq, KeyedEvent[OrderEvent]]]
     sleep(50.ms)
     val bKeyedEvent = KeyedEvent(OrderDetachable)(OrderId("1"))
-    actor ! Stamped(222, bKeyedEvent)
+    actor ! Stamped(222, Timestamp.ofEpochMilli(0), bKeyedEvent)
     val bEventSeq = whenBEventSeq await 99.s
     assert((bEventSeq.stampeds map { _.value }) == List(bKeyedEvent))
     assert(bEventSeq.stampeds.last.eventId > EventId.BeforeFirst)
@@ -69,7 +70,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
     for (_ ← 1 to 100) {
       val whenAEventSeq = requestEvents(after = lastEventId, timeout = 99.s)
       val keyedEvent = KeyedEvent(OrderDetachable)(OrderId("2"))
-      val sent = for (i ← 1 to 1000) yield Stamped(lastEventId + i, keyedEvent)
+      val sent = for (i ← 1 to 1000) yield Stamped(lastEventId + i, Timestamp.ofEpochMilli(i), keyedEvent)
       sent foreach actor.!
       val received = mutable.Buffer[Stamped[KeyedEvent[OrderEvent]]]()
       received ++= (whenAEventSeq await 99.s).asInstanceOf[MyNonEmptyEventSeq].stampeds
@@ -84,7 +85,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
 
   for (n ← sys.props.get("test.speed") map (_.toInt)) s"Speed test ×$n" in {
     val testEvent = KeyedEvent(OrderFinished)(OrderId("1"))
-    val events = for (i ← 0 until n) yield Stamped(1000000 + i, testEvent)
+    val events = for (i ← 0 until n) yield Stamped(1000000 + i, Timestamp.ofEpochMilli(i), testEvent)
     val stopwatch = new Stopwatch
     for (e ← events) actor ! e
     info(stopwatch.itemsPerSecondString(n, "events"))
@@ -93,7 +94,7 @@ final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
   if (sys.props contains "test.speed") s"Speed test OrderDetached" in {
     val n = 1000
     val orderDetached = KeyedEvent(OrderDetached)(OrderId("1"))
-    val events = for (i ← 0 until n) yield Stamped(1000000 + i, orderDetached)
+    val events = for (i ← 0 until n) yield Stamped(1000000 + i, Timestamp.ofEpochMilli(i), orderDetached)
     val stopwatch = new Stopwatch
     for (e ← events) (actor ? e) await 99.s
     info(stopwatch.itemsPerSecondString(n, "OrderDetached"))

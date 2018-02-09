@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.event.collector
 
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.ForeignEventIdAdaptingTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
@@ -24,8 +25,8 @@ final class ForeignEventIdAdaptingTest extends FreeSpec {
         protected val eventIdGenerator = new EventIdGenerator
       }
 
-    eventCollector.putForeignEventStamped(Stamped(EventId(1), KeyedEvent(AEvent)))
-    eventCollector.putForeignEventStamped(Stamped(EventId.MaxValue - 100, KeyedEvent(AEvent)))
+    eventCollector.putForeignEventStamped(Stamped(EventId(1), Timestamp.ofEpochMilli(1111), KeyedEvent(AEvent)))
+    eventCollector.putForeignEventStamped(Stamped(EventId.MaxValue - 100, Timestamp.ofEpochMilli(2222), KeyedEvent(AEvent)))
 
     val stampeds: Vector[Stamped[KeyedEvent[AEvent.type]]] =
       (for (eventSeq ← eventCollector.when(EventRequest.singleClass[AEvent.type](EventId.BeforeFirst, timeout = 0.s))) yield
@@ -33,7 +34,9 @@ final class ForeignEventIdAdaptingTest extends FreeSpec {
           case EventSeq.NonEmpty(iterator) ⇒ iterator.toVector
         }
       ) await  10.s
-    assert((stampeds map { _.value }) == Vector(KeyedEvent(AEvent), KeyedEvent(AEvent)))
+    assert(stampeds.map(o ⇒ o.timestamp → o.value) == Vector(
+      Timestamp.ofEpochMilli(1111) → KeyedEvent(AEvent),
+      Timestamp.ofEpochMilli(2222) → KeyedEvent(AEvent)))
   }
 }
 

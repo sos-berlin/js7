@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.shared.event.journal
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -29,6 +30,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
 
   private[event] final def persistKeyedEvent[EE <: E](
     keyedEvent: KeyedEvent[EE],
+    timestamp: Option[Timestamp] = None,
     noSync: Boolean = false,
     async: Boolean = false)(
     callback: Stamped[KeyedEvent[EE]] ⇒ Unit)
@@ -37,7 +39,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
       startCommit()
     }
     logger.trace(s"“$toString” Store ${keyedEvent.key} ${keyedEvent.event.getClass.simpleScalaName}")
-    journalActor.forward(JournalActor.Input.Store(Some(keyedEvent) :: Nil, self, noSync = noSync))
+    journalActor.forward(JournalActor.Input.Store(Some(keyedEvent) :: Nil, self, timestamp, noSync = noSync))
     callbacks += EventCallback(callback.asInstanceOf[Stamped[KeyedEvent[E]] ⇒ Unit])
   }
 
@@ -47,7 +49,7 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
   }
 
   protected final def deferAsync(callback: ⇒ Unit): Unit = {
-    journalActor.forward(JournalActor.Input.Store(None :: Nil, self, noSync = false))
+    journalActor.forward(JournalActor.Input.Store(None :: Nil, self, timestamp = None, noSync = false))
     callbacks += Deferred(() ⇒ callback)
   }
 

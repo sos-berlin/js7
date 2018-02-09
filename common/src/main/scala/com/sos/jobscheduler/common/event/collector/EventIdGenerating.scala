@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.event.collector
 
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped}
 
@@ -12,7 +13,8 @@ trait EventIdGenerating {
   protected val eventIdGenerator: EventIdGenerator
 
   protected final def putEvent(keyedEvent: AnyKeyedEvent): Unit = {
+    val timestamp = Timestamp.now
     val eventId = eventIdGenerator.next()
-    addStamped(Stamped(eventId, keyedEvent))
+    addStamped(Stamped(eventId, timestamp, keyedEvent))
   }
 }

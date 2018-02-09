@@ -25,7 +25,7 @@ trait JournalActorRecoverer[E <: Event] extends JournalRecoverer[E] {
   }
 
   protected final def recoverEvent = {
-    case stamped @ Stamped(_, KeyedEvent(key, event)) ⇒
+    case stamped @ Stamped(_, _, KeyedEvent(key, event)) ⇒
       keyToActor.get(key) match {
         case None ⇒
           recoverNewKey.getOrElse(stamped,

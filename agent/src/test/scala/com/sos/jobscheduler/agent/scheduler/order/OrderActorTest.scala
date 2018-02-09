@@ -213,7 +213,7 @@ private object OrderActorTest {
         orderChangeds += o
         checkTermination()
 
-      case Stamped(_, KeyedEvent(TestOrder.id, event: OrderEvent)) ⇒  // Duplicate to OrderChanged, in unknown order
+      case Stamped(_, _, KeyedEvent(TestOrder.id, event: OrderEvent)) ⇒  // Duplicate to OrderChanged, in unknown order
         event match {
           case OrderStdWritten(t, chunk) ⇒
             assert(events.last == OrderProcessingStarted)

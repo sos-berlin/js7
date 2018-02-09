@@ -148,9 +148,9 @@ object TestMasterAgent {
           var lastLineLength = 0
 
           def receive = {
-            case Stamped(_, KeyedEvent(_, _: OrderEvent.OrderAdded)) ⇒
+            case Stamped(_, _, KeyedEvent(_, _: OrderEvent.OrderAdded)) ⇒
               added += 1
-            case Stamped(_, KeyedEvent(orderId: OrderId, OrderFinished)) ⇒
+            case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished)) ⇒
               lastDuration = Some(now - Instant.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
               finished += 1
             case "PRINT" ⇒

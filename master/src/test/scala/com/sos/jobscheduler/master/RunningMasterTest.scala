@@ -152,7 +152,7 @@ private object RunningMasterTest {
       new Actor {
         injector.instance[StampedKeyedEventBus].subscribe(self, classOf[Event])
         def receive = {
-          case Stamped(_, e: AnyKeyedEvent) ⇒ _events.add(Entry(now, e))
+          case Stamped(_, _, e: AnyKeyedEvent) ⇒ _events.add(Entry(now, e))
         }
       }
     }

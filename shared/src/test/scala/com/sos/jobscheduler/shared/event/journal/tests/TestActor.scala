@@ -60,7 +60,7 @@ private[tests] final class TestActor(journalFile: Path, journalStopped: Promise[
     }
 
     def recoverNewKey = {
-      case stamped @ Stamped(_, KeyedEvent(key: String, _: TestEvent.Added)) ⇒
+      case stamped @ Stamped(_, _, KeyedEvent(key: String, _: TestEvent.Added)) ⇒
         recoverActorForNewKey(stamped, newAggregateActor(key))
 
       case _ ⇒

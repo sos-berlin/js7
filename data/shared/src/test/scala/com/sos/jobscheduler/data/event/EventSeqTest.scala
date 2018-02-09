@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.data.event
 
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, ObjectEncoder}
 import org.scalatest.FreeSpec
@@ -21,14 +22,15 @@ final class EventSeqTest extends FreeSpec {
   "JSON EventSeq.NonEmpty" in {
     checkTearableEventSeq(
       EventSeq.NonEmpty(List(
-        Stamped(1, KeyedEvent(TestEvent)("KEY")))),
+        Stamped(1, Timestamp.ofEpochMilli(123), KeyedEvent(TestEvent)("KEY")))),
       """{
         "TYPE": "NonEmpty",
         "stampeds": [
           {
+            "eventId": 1,
+            "timestamp": 123,
             "TYPE": "TestEvent",
-            "key": "KEY",
-            "eventId": 1
+            "key": "KEY"
             }
           ]
         }""")

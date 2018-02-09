@@ -47,7 +47,7 @@ final class OrderAgentTest extends FreeSpec {
           val order = Order(OrderId("TEST-ORDER"), TestWorkflow.path, Order.Ready, payload = Payload(Map("x" → "X")))
           agentClient.executeCommand(AttachOrder(order, TestAgentPath, TestWorkflow.workflow)) await 99.s shouldEqual AgentCommand.Accepted
           EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 10.s).repeat(agentClient.mastersEvents) {
-            case Stamped(_, KeyedEvent(order.id, OrderDetachable)) ⇒
+            case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) ⇒
           }
           val processedOrder = agentClient.order(order.id) await 99.s
           assert(processedOrder == toExpectedOrder(order))

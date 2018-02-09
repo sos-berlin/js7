@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
@@ -59,7 +60,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
-        val Stamped(_, EventSeq.NonEmpty(stampeds)) = responseAs[Stamped[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]]
+        val Stamped(_, _, EventSeq.NonEmpty(stampeds)) = responseAs[Stamped[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]]
         assert(stampeds == TestEvents)
       }
     }
@@ -70,7 +71,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
       s"$OrderUri/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        val Stamped(_, orders) = responseAs[Stamped[Seq[OrderOverview]]]
+        val Stamped(_, _, orders) = responseAs[Stamped[Seq[OrderOverview]]]
         assert(orders == (TestOrders.values.toList map OrderOverview.fromOrder))
       }
     }
@@ -81,7 +82,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
        s"$OrderUri/?return=Order")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        val Stamped(_, orders) = responseAs[Stamped[Seq[Order[Order.State]]]]
+        val Stamped(_, _, orders) = responseAs[Stamped[Seq[Order[Order.State]]]]
         assert(orders == TestOrders.values.toList)
       }
     }
@@ -106,7 +107,7 @@ object OrderRouteTest {
     Order(OrderId("2"), WorkflowPath("/test") /: Position(2), Order.Finished))
     .toKeyedMap { _.id }
   private val TestEvents = List(
-    Stamped(EventId(111222),
+    Stamped(EventId(111222), Timestamp.ofEpochMilli(1000),
       KeyedEvent(
         OrderAdded(WorkflowPath("/test"), Order.StartNow, Payload.empty))
         (OrderId("1"))))

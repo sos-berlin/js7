@@ -3,6 +3,7 @@ package com.sos.jobscheduler.shared.event.journal
 import akka.actor._
 import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -103,8 +104,8 @@ extends Actor with Stash {
     case msg: Input.RegisterMe ⇒
       handleRegisterMe(msg)
 
-    case Input.Store(keyedEvents, replyTo, noSync) ⇒
-      val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]]) }}
+    case Input.Store(keyedEvents, replyTo, timestampOption, noSync) ⇒
+      val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]], timestampOption) }}
       Try {
         stampedOptions.flatten map { _.asJson }
       } match {
@@ -266,7 +267,11 @@ object JournalActor {
     private[journal] final case class Start(recoveredJournalingActors: RecoveredJournalingActors)
     final case object StartWithoutRecovery
     final case class RegisterMe(key: Option[Any])
-    final case class Store(eventStampeds: Seq[Option[AnyKeyedEvent]], journalingActor: ActorRef, noSync: Boolean)
+    final case class Store(
+      eventStampeds: Seq[Option[AnyKeyedEvent]],
+      journalingActor: ActorRef,
+      timestamp: Option[Timestamp],
+      noSync: Boolean)
     final case object TakeSnapshot
     final case object Terminate
     private[journal] case object GetState

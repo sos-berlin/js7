@@ -45,8 +45,6 @@ object GenericTimestamp {
     def apply(string: String): A =
       parse(string)
 
-    def ofRoundedEpochMicros(o: Long) = ofEpochMilli(o / 1000)
-
     def ofEpochMilli(o: Long): A
 
     def ofEpochSecond(o: Long): A =

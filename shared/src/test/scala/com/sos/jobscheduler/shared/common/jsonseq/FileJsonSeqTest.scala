@@ -3,6 +3,7 @@ package com.sos.jobscheduler.shared.common.jsonseq
 import com.google.common.base.Ascii
 import com.google.common.io.Files.touch
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -79,7 +80,7 @@ final class FileJsonSeqTest extends FreeSpec {
         val stopwatch = new Stopwatch
         for (_ ← 1 to 2) {
           for (i ← 1 to n) {
-            Stamped(i, KeyedEvent(x)(i.toString)).asJson
+            Stamped(i, Timestamp.ofEpochMilli(0), KeyedEvent(x)(i.toString)).asJson
           }
           info("toJson: " + stopwatch.itemsPerSecondString(n, "documents"))
         }
@@ -101,7 +102,7 @@ final class FileJsonSeqTest extends FreeSpec {
             val stopwatch = new Stopwatch
             for (_ ← 1 to m) {
               for (i ← 1 to n) {
-                w.writeJson(Stamped(i, KeyedEvent(x)(i.toString)).asJson)
+                w.writeJson(Stamped(i, Timestamp.ofEpochMilli(0), KeyedEvent(x)(i.toString)).asJson)
               }
               w.flush()
               info("OutputStreamJsonSeqWriter: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -117,7 +118,7 @@ final class FileJsonSeqTest extends FreeSpec {
             val stopwatch = new Stopwatch
             for (_ ← 1 to m) {
               for (i ← 1 to n) {
-                w.writeJson(Stamped(i, KeyedEvent(x)(i.toString)).asJson)
+                w.writeJson(Stamped(i, Timestamp.ofEpochMilli(0), KeyedEvent(x)(i.toString)).asJson)
                 w.flush()
               }
               info("flush: " + stopwatch.itemsPerSecondString(n, "events"))
@@ -151,7 +152,7 @@ final class FileJsonSeqTest extends FreeSpec {
             for (_ ← 1 to 2) {
               val n = 100
               for (i ← 1 to n) {
-                w.writeJson(Stamped(i, KeyedEvent(x)(i.toString)).asJson)
+                w.writeJson(Stamped(i, Timestamp.ofEpochMilli(0), KeyedEvent(x)(i.toString)).asJson)
                 w.flush()
                 fileOut.getFD.sync()
               }

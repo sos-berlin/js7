@@ -34,10 +34,10 @@ extends JournalRecoverer[Event] {
   }
 
   def recoverEvent = {
-    case stamped @ Stamped(_, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent)) ⇒
+    case stamped @ Stamped(_, _, KeyedEvent(_: NoKey.type, _: OrderScheduleEvent)) ⇒
       orderScheduleGenerator ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)
 
-    case Stamped(_, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
+    case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
       event match {
         case event: OrderAdded ⇒
           idToOrder.insert(orderId → Order.fromOrderAdded(orderId, event))
@@ -51,7 +51,7 @@ extends JournalRecoverer[Event] {
           //logger.debug(s"$orderId recovered $t: ${chunk.trim}")
       }
 
-    case Stamped(_, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId))) ⇒
+    case Stamped(_, _, KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId))) ⇒
       _agentToEventId(agentPath) = agentEventId
   }
 

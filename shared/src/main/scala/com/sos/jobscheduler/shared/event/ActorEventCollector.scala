@@ -40,7 +40,7 @@ with AutoCloseable {
         }
 
         def receive = {
-          case event @ Stamped(_, _: AnyKeyedEvent) ⇒
+          case event @ Stamped(_, _, _: AnyKeyedEvent) ⇒
             addStamped(event.asInstanceOf[Stamped[AnyKeyedEvent]])
         }
       }

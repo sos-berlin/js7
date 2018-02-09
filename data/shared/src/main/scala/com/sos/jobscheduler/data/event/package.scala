@@ -40,7 +40,9 @@ package object event {
 
     def apply(eventId: Long) = eventId
 
-    def toTimestamp(id: EventId) = Timestamp ofRoundedEpochMicros id
+    def toTimestamp(eventId: EventId) = Timestamp ofEpochMilli(toEpochMilli(eventId))
+
+    def toEpochMilli(eventId: EventId) = eventId / IdsPerMillisecond
 
     def toString(eventId: EventId): String =
       s"$eventId (${toDateTimeString(eventId)})"

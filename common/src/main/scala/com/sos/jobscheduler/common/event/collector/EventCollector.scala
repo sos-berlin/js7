@@ -122,7 +122,7 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
             .map { o ⇒ lastEventId = o.eventId; o }
             .collect {
               case stamped if collect.isDefinedAt(stamped.value) ⇒
-                Stamped(stamped.eventId, collect(stamped.value))
+                stamped map collect
             }
             .take(limit)
         if (eventIterator.nonEmpty)
@@ -159,8 +159,8 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
           stamped.asInstanceOf[Stamped[KeyedEvent[E]]]
       }
       .collect {
-        case Stamped(eventId, KeyedEvent(`key`, event)) if predicate(event) ⇒
-          Stamped(eventId, event)
+        case Stamped(eventId, timestamp, KeyedEvent(`key`, event)) if predicate(event) ⇒
+          Stamped(eventId, timestamp, event)
       }
       .take(request.limit)
 
