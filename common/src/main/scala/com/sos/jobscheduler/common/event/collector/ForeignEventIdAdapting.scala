@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.event.collector
 
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped}
 
 /**
@@ -8,8 +7,6 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Stamped}
   */
 trait ForeignEventIdAdapting {
   this: EventCollector ⇒
-
-  protected val eventIdGenerator: EventIdGenerator
 
   final def putForeignEventStamped(stamped: Stamped[AnyKeyedEvent]): Unit = {
     addStamped(adapt(stamped))

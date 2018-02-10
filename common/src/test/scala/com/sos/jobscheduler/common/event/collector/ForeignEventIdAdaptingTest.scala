@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.event.collector
 
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.ForeignEventIdAdaptingTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -22,7 +21,6 @@ final class ForeignEventIdAdaptingTest extends FreeSpec {
       new EventCollector(initialOldestEventId = EventId.BeforeFirst, EventCollector.Configuration(queueSize = 1000, timeoutLimit = 1.h))
       with ForeignEventIdAdapting {
         protected val executionContext = ExecutionContext.global
-        protected val eventIdGenerator = new EventIdGenerator
       }
 
     eventCollector.putForeignEventStamped(Stamped(EventId(1), Timestamp.ofEpochMilli(1111), KeyedEvent(AEvent)))
