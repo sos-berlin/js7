@@ -16,9 +16,9 @@ import org.scalatest.Matchers._
 final class TypedJsonCodecTest extends FreeSpec {
 
   "encode and decode" in {
-    testJson[A](A0     , """{ "TYPE": "A0" }""")
-    testJson[A](A1(7)  , """{ "TYPE": "A1", "int": 7 }""")
-    testJson[A](A2("X"), """{ "TYPE": "A2", "string": "X" }""")
+    testJson[A](A0     , json"""{ "TYPE": "A0" }""")
+    testJson[A](A1(7)  , json"""{ "TYPE": "A1", "int": 7 }""")
+    testJson[A](A2("X"), json"""{ "TYPE": "A2", "string": "X" }""")
   }
 
   "encode unknown subclass" in {
