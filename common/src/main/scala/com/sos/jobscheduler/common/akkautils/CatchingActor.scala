@@ -15,6 +15,7 @@ import scala.util.{Failure, Try}
 final class CatchingActor[A](
   terminated: Promise[A],
   props: Props,
+  name: String,
   decider: Decider = CatchingSupervisorStrategy.defaultDecider,
   onStopped: ActorRef ⇒ Try[A],
   loggingEnabled: Boolean = false)
@@ -23,7 +24,7 @@ extends Actor {
   import context.{actorOf, parent, stop, watch}
 
   override val supervisorStrategy = CatchingSupervisorStrategy[A](terminated, loggingEnabled = loggingEnabled, decider = decider)
-  private val child = watch(actorOf(props, "catching"))
+  private val child = watch(actorOf(props, name))
 
   override def postStop() = {
     if (!terminated.isCompleted) {
@@ -63,7 +64,10 @@ object CatchingActor {
     (implicit actorRefFactory: ActorRefFactory)
   : (ActorRef, Future[A]) = {
     val terminated = Promise[A]()
-    val catchingProps = Props { new CatchingActor(terminated, props(terminated), decider, onStopped, loggingEnabled = loggingEnabled) }
+    val catchingProps = Props {
+      new CatchingActor(terminated, props(terminated),
+        name = if (name.isEmpty) "catching" else s"$name-catching",
+        decider, onStopped, loggingEnabled = loggingEnabled) }
     val a = if (name.nonEmpty) actorRefFactory.actorOf(catchingProps, name) else actorRefFactory.actorOf(catchingProps)
     (a, terminated.future)
   }
