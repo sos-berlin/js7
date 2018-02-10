@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.common.event.collector
 
-import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive1, Route, ValidationRejection}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
@@ -28,7 +27,7 @@ object EventDirectives {
       def tapply(inner: Tuple1[SomeEventRequest[E]] ⇒ Route) =
         parameter("return".?) {
           _ orElse defaultReturnType match {
-
+            case None ⇒ reject(ValidationRejection("Missing parameter return="))
             case Some(returnType) ⇒
               val eventSuperclass = implicitClass[E]
               val returnTypeNames = ReturnSplitter.split(returnType).asScala.toSet
@@ -39,12 +38,9 @@ object EventDirectives {
                 case eventClass_ if eventClass_ isAssignableFrom eventSuperclass ⇒ eventSuperclass
               }
               if (eventClasses.size != returnTypeNames.size)
-                complete(BadRequest → "Unrecognized event type")
+                reject(ValidationRejection(s"Unrecognized event type: return=$returnType"))
               else
                 eventRequestRoute[E](eventClasses, inner)
-
-            case None ⇒
-              reject
           }
         }
     }
@@ -56,7 +52,7 @@ object EventDirectives {
     parameter("limit" ? Int.MaxValue) {
 
       case 0 ⇒
-        reject(ValidationRejection(s"Invalid limit=0"))
+        reject(ValidationRejection("Invalid limit=0"))
 
       case limit if limit > 0 ⇒
         parameter("after".as[EventId]) { after ⇒

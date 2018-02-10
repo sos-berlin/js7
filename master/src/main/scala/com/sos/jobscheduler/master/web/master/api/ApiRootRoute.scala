@@ -23,15 +23,7 @@ trait ApiRootRoute {
   final val apiRootRoute: Route =
     pathEnd {
       get {
-        complete(
-          for (orderCount ← orderCountFuture) yield
-            MasterOverview(
-              version = BuildInfo.buildVersion,
-              buildId = BuildInfo.buildId,
-              startedAt = RunningMaster.StartedAt.toTimestamp,
-              orderCount = orderCount,
-              system = systemInformation(),
-              java = javaInformation))
+        overview
       } ~
       post {
         entity(as[MasterCommand]) { command ⇒
@@ -41,4 +33,15 @@ trait ApiRootRoute {
         }
       }
     }
+
+  private def overview: Route =
+    complete(
+      for (orderCount ← orderCountFuture) yield
+        MasterOverview(
+          version = BuildInfo.buildVersion,
+          buildId = BuildInfo.buildId,
+          startedAt = RunningMaster.StartedAt.toTimestamp,
+          orderCount = orderCount,
+          system = systemInformation(),
+          java = javaInformation))
 }

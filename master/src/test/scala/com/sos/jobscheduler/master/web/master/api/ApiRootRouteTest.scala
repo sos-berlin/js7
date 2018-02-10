@@ -4,7 +4,6 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
@@ -47,8 +46,4 @@ final class ApiRootRouteTest extends FreeSpec with ScalatestRouteTest with ApiRo
       assert(response == MasterCommand.Response.Accepted)
     }
   }
-}
-
-object ApiRootRouteTest {
-  intelliJuseImport(jsonUnmarshaller)
 }

@@ -1,9 +1,9 @@
 package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
-import com.sos.jobscheduler.data.event.EventId
-import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{WorkflowPath, Workflow}
+import com.sos.jobscheduler.data.event.{Event, EventId}
+import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.client.MasterUris._
 import com.sos.jobscheduler.master.client.Uris.{encodePath, encodeQuery}
 import scala.concurrent.duration.Duration
@@ -20,14 +20,14 @@ final class MasterUris private(masterUri: String) {
 
   val command = api()
 
+  def events[E <: Event: ClassTag](after: EventId, timeout: Duration): String =
+    api("event") + encodeQuery(
+      "return" → encodeClass[E],
+      "timeout" → s"${BigDecimal(timeout.toMillis) / 1000}",
+      "after" → after.toString)
+
   object order {
     def overview = api("order")
-
-    def events[E <: OrderEvent: ClassTag](after: EventId, timeout: Duration): String =
-      api("order") + encodeQuery(
-        "return" → encodeClass[E],
-        "timeout" → s"${BigDecimal(timeout.toMillis) / 1000}",
-        "after" → after.toString)
 
     def list[A: ClassTag]: String =
       api(encodePath("order", ""), "return" → encodeClass[A])

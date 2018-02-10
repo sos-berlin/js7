@@ -13,13 +13,16 @@ import com.sos.jobscheduler.master.web.master.gui.GuiRoute
 /**
   * @author Joacim Zschimmer
   */
-trait ApiRoute extends ApiRootRoute with OrderRoute with WorkflowRoute with GuiRoute {
+trait ApiRoute extends ApiRootRoute with EventRoute with OrderRoute with WorkflowRoute with GuiRoute {
 
   val apiRoute: Route =
     respondWithHeader(RawHeader("X-JobScheduler-Build-ID", BuildInfo.buildId)) {
       respondWithHeader(`Cache-Control`(`max-age`(0), `no-store`, `no-cache`)) {
         pathEnd {
           apiRootRoute
+        } ~
+        pathSegments("event") {
+          eventRoute
         } ~
         pathSegments("order") {
           orderRoute

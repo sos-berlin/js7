@@ -112,7 +112,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       def fetchEvents() =
         Callback.future {
           isRequestingEvents = true
-          MasterApi.orderEvents(after = after, timeout = timeout)
+          MasterApi.events[OrderEvent](after = after, timeout = timeout)
             .andThen { case _ ⇒
               isRequestingEvents = false  // TODO Falls requestOrdersAndEvents() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
             }
