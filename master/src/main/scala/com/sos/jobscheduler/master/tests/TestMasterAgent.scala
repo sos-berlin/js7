@@ -27,9 +27,10 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, IfReturnCode, Job}
 import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -195,7 +196,9 @@ object TestMasterAgent {
             Workflow(
               for (_ ← 1 to conf.workflowLength) yield
                 () @: Job(TestJobPath, agentPath)))),
-      ExplicitEnd)
+      IfReturnCode(List(ReturnCode(0), ReturnCode(1)), Vector(
+        Workflow.of(Job(TestJobPath, conf.agentPaths.head)),
+        Workflow.of(Job(TestJobPath, conf.agentPaths.head)))))
 
   private case class Conf(
     directory: Path,
