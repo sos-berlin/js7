@@ -71,8 +71,8 @@ final class WorkflowParserTest extends FreeSpec {
     assert(parse(source) ==
       Workflow(
         Vector(
-          IfReturnCode(List(ReturnCode(1), ReturnCode(2), ReturnCode(3)), Vector(
-            Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT")))))),
+          IfReturnCode(List(ReturnCode(1), ReturnCode(2), ReturnCode(3)),
+            Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT"))))),
         Some(source)))
   }
 
@@ -81,9 +81,9 @@ final class WorkflowParserTest extends FreeSpec {
     assert(parse(source) ==
       Workflow(
         Vector(
-          IfReturnCode(List(ReturnCode(-1)), Vector(
+          IfReturnCode(List(ReturnCode(-1)),
             Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT"))),
-            Workflow.of(Job(JobPath("/ELSE"), AgentPath("/AGENT")))))),
+            Some(Workflow.of(Job(JobPath("/ELSE"), AgentPath("/AGENT")))))),
         Some(source)))
   }
 

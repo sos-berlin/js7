@@ -37,6 +37,9 @@ fork(
     job "test" on "test-agent-2";
     job "test" on "test-agent-2";
   });
-job "test" on "test-agent-1";
 
-end;
+if (returnCode 0, 1) {
+  job "test" on "test-agent-1";
+} else {
+  job "test" on "test-agent-2";
+}

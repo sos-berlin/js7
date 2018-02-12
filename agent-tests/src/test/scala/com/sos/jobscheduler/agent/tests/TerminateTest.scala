@@ -48,11 +48,11 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
           client.executeCommand(AttachOrder(
             Order(
               orderId,
-              TestWorkflow.path,
+              SimpleTestWorkflow.path,
               Order.Ready,
               payload = Payload(Map("a" → "A"))),
             TestAgentPath,
-            TestWorkflow.workflow))
+            SimpleTestWorkflow.workflow))
         ) await 99.s
 
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =
@@ -83,7 +83,7 @@ object TerminateTest {
 
   private def provideAgent(body: (AgentClient, RunningAgent) ⇒ Unit)(implicit actorSystem: ActorSystem, closer: Closer): Unit = {
     TestAgentDirectoryProvider.provideAgentDirectory { agentDirectory ⇒
-      (agentDirectory / "config" / "live" / AJobPath.toXmlFile).xml =
+      (agentDirectory / "config" / "live" / AJob.jobPath.toXmlFile).xml =
         <job tasks="10">
           <script language="shell">{AScript}</script>
         </job>

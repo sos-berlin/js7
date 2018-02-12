@@ -6,8 +6,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, ImplicitEnd, Job}
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
+import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
@@ -19,8 +18,9 @@ final class WorkflowTest extends FreeSpec {
   "labelToPosition" in {
     val workflow = Workflow(Vector(
       "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")),
-      IfReturnCode(List(ReturnCode(1)), Vector(Workflow(Vector(
-        "B" @: Job(JobPath("/JOB"), AgentPath("/AGENT")))))),
+      IfReturnCode(List(ReturnCode(1)),
+        thenWorkflow = Workflow(Vector(
+          "B" @: Job(JobPath("/JOB"), AgentPath("/AGENT"))))),
       "B" @: ExplicitEnd))
     assert(workflow.labelToPosition(Nil, Label("A")) == Some(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("B")) == Some(Position(2)))
@@ -49,18 +49,19 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "jobOption" in {
-    assert(TestWorkflow.jobOption(Position(6)) == AJob.some)
-    assert(TestWorkflow.jobOption(Position(7)) == None)  // ImplicitEnd
-    intercept[IndexOutOfBoundsException] {
-      assert(TestWorkflow.jobOption(Position(8)) == None)
-    }
+    assert(ComplexTestWorkflow.jobOption(Position(0)) == Some(AJob))
+    assert(ComplexTestWorkflow.jobOption(Position(1)) == None)  // IfErrorCode
+    assert(ComplexTestWorkflow.jobOption(Position(2)) == None)  // ForkJoin
+    assert(ComplexTestWorkflow.jobOption(Position(3)) == Some(BJob))
+    assert(ComplexTestWorkflow.jobOption(Position(4)) == None)  // ImplicitEnd
+    assert(ComplexTestWorkflow.jobOption(Position(999)) == None)
   }
 
   "workflowOption" in {
-    assert(TestWorkflow.workflowOption(Position(0)) == TestWorkflow.some)
-    assert(TestWorkflow.workflowOption(Position(1)) == TestWorkflow.some)
-    assert(TestWorkflow.workflowOption(Position(1, "🥕", 1)) == Some(
-      TestWorkflow.instruction(1).asInstanceOf[ForkJoin].workflowOption(Position.BranchId("🥕")).get))
+    assert(ComplexTestWorkflow.workflowOption(Position(0)) == ComplexTestWorkflow.some)
+    assert(ComplexTestWorkflow.workflowOption(Position(1)) == ComplexTestWorkflow.some)
+    assert(ComplexTestWorkflow.workflowOption(Position(2, "🥕", 1)) == Some(
+      ComplexTestWorkflow.instruction(2).asInstanceOf[ForkJoin].workflowOption(Position.BranchId("🥕")).get))
   }
 
   "reduce" in {
@@ -87,68 +88,64 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "numberedInstruction" in {
-    assert(ForkTestSetting.TestWorkflow.numberedInstructions == Vector[(InstructionNr, Instruction.Labeled)](
+    assert(ComplexTestWorkflow.numberedInstructions == Vector[(InstructionNr, Instruction.Labeled)](
       (InstructionNr(0), AJob),
-      (InstructionNr(1), ForkTestSetting.TestWorkflow.instruction(1)),
-      (InstructionNr(2), AJob),
-      (InstructionNr(3), ForkTestSetting.TestWorkflow.instruction(3)),
-      (InstructionNr(4), AJob),
-      (InstructionNr(5), ForkTestSetting.TestWorkflow.instruction(5)),
-      (InstructionNr(6), AJob),
-      (InstructionNr(7), ImplicitEnd)))
+      (InstructionNr(1), ComplexTestWorkflow.instruction(1)),
+      (InstructionNr(2), ComplexTestWorkflow.instruction(2)),
+      (InstructionNr(3), BJob),
+      (InstructionNr(4), ImplicitEnd)))
   }
 
   "isDefinedAt, instruction" in {
     val addressToInstruction = List(
       Position(0) → AJob,
-      Position(1) → ForkJoin.of(
-        "🥕" → Workflow.of(AJob, AJob),
-        "🍋" → Workflow.of(AJob, BJob)),
-      Position(1, "🥕", 0) → AJob,
-      Position(1, "🥕", 1) → AJob,
-      Position(1, "🥕", 2) → ImplicitEnd,
-      Position(1, "🍋", 0) → AJob,
-      Position(1, "🍋", 1) → BJob,
-      Position(1, "🍋", 2) → ImplicitEnd,
-      Position(2) → AJob,
-      Position(3) → ForkJoin.of(
-        "🥕" → Workflow.of(AJob, AJob),
-        "🍋" → Workflow.of(AJob, AJob)),
-      Position(3, "🥕", 0) → AJob,
-      Position(3, "🥕", 1) → AJob,
-      Position(3, "🥕", 2) → ImplicitEnd,
-      Position(3, "🍋", 0) → AJob,
-      Position(3, "🍋", 1) → AJob,
-      Position(3, "🍋", 2) → ImplicitEnd,
-      Position(4) → AJob,
-      Position(5) → ForkJoin.of(
+      Position(1) → IfReturnCode(
+        ReturnCode(1) :: Nil,
+        thenWorkflow = Workflow.of(AJob),
+        elseWorkflow = Some(Workflow.of(BJob))),
+      Position(1, 0, 0) → AJob,
+      Position(1, 1, 0) → BJob,
+      Position(2) → ForkJoin.of(
         "🥕" → Workflow.of(AJob, AJob),
         "🍋" → Workflow.of(BJob, BJob)),
-      Position(5, "🥕", 0) → AJob,
-      Position(5, "🥕", 1) → AJob,
-      Position(5, "🥕", 2) → ImplicitEnd,
-      Position(5, "🍋", 0) → BJob,
-      Position(5, "🍋", 1) → BJob,
-      Position(5, "🍋", 2) → ImplicitEnd,
-      Position(6) → AJob,
-      Position(7) → ImplicitEnd)
+      Position(2, "🥕", 0) → AJob,
+      Position(2, "🥕", 1) → AJob,
+      Position(2, "🥕", 2) → ImplicitEnd,
+      Position(2, "🍋", 0) → BJob,
+      Position(2, "🍋", 1) → BJob,
+      Position(2, "🍋", 2) → ImplicitEnd,
+      Position(3) → BJob,
+      Position(4) → ImplicitEnd)
 
     for ((address, instruction) ← addressToInstruction) {
-      assert(TestWorkflow isDefinedAt address)
-      assert(TestWorkflow.instruction(address) == instruction, s" - $address")
+      assert(ComplexTestWorkflow isDefinedAt address)
+      assert(ComplexTestWorkflow.instruction(address) == instruction, s" - $address")
     }
-    assert(!TestWorkflow.isDefinedAt(Position(8)))
-  //assert(!TestWorkflow.isDefinedAt(Position(0, "🥕")))
-    assert(!TestWorkflow.isDefinedAt(Position(0, "🥕", 0)))
-  //assert(!TestWorkflow.isDefinedAt(Position(0, "🥕")))
-    assert(!TestWorkflow.isDefinedAt(Position(0, "🥕", 3)))
+    assert(!ComplexTestWorkflow.isDefinedAt(Position(0, "🥕", 0)))
+    assert(!ComplexTestWorkflow.isDefinedAt(Position(0, "🥕", 3)))
+    assert(!ComplexTestWorkflow.isDefinedAt(Position(999)))
   }
 
   "JSON" in {
-    testJson(ForkTestSetting.TestWorkflow, json"""{
-      "source": "job \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-B\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";",
+    testJson(ComplexTestWorkflow, json"""{
       "instructions": [
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+        { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
+        {
+          "TYPE": "IfReturnCode",
+          "returnCodes": [ 1 ],
+          "then": {
+            "instructions": [
+              { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
+              { "TYPE": "ImplicitEnd" }
+            ]
+          },
+          "else": {
+            "instructions": [
+              { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
+              { "TYPE": "ImplicitEnd" }
+            ]
+          }
+        },
         {
           "TYPE": "ForkJoin",
           "branches": [
@@ -156,74 +153,25 @@ final class WorkflowTest extends FreeSpec {
               "id": "🥕",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
+                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
                   { "TYPE": "ImplicitEnd" }
                 ]
               }
-            }, {
-              "id": "🍋",
-              "workflow": {
-                "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
-                  { "TYPE": "ImplicitEnd" }
-                ]
-              }
-            }
-          ]
-        },
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-        {
-          "TYPE": "ForkJoin",
-          "branches": [
+            },
             {
-              "id": "🥕",
-              "workflow": {
-                "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "ImplicitEnd" }
-                ]
-              }
-            }, {
               "id": "🍋",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
+                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
                   { "TYPE": "ImplicitEnd" }
                 ]
               }
             }
           ]
         },
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-        {
-          "TYPE": "ForkJoin",
-          "branches": [
-            {
-              "id": "🥕",
-              "workflow": {
-                "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "ImplicitEnd" }
-                ]
-              }
-            }, {
-              "id": "🍋",
-              "workflow": {
-                "instructions": [
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
-                  { "TYPE": "ImplicitEnd" }
-                ]
-              }
-            }
-          ]
-        },
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+        { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
         { "TYPE": "ImplicitEnd" }
       ]
     }""")

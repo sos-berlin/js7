@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.singletonCodec
-import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.FiniteDurationJsonEncoder
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.OrderMoved

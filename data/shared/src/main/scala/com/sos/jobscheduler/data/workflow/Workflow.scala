@@ -90,6 +90,11 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
           case fj: ForkJoin ⇒ fj.workflowOption(branch) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
         }
+      case Position(Position.Parent(nr, branch: Position.BranchId.Indexed) :: tail, tailNr) ⇒
+        instruction(nr) match {
+          case instr: IfReturnCode ⇒ instr.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
+          case _ ⇒ false
+        }
     }
 
   def isDefinedAt(nr: InstructionNr): Boolean =
@@ -112,7 +117,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
       case Position(Position.Parent(nr, branchId) :: tail, tailNr) ⇒
         (instruction(nr), branchId) match {
           case (instr: IfReturnCode, Position.BranchId.Indexed(index)) ⇒
-            instr.workflows.get(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
+            instr.workflow(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
           case (fj: ForkJoin, branchId: Position.BranchId.Named) ⇒
             fj.workflowOption(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
           case _ ⇒
@@ -125,7 +130,10 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
       .getOrElse(throw new IllegalArgumentException(s"Unknown workflow position $position"))
 
   def instruction(nr: InstructionNr): Instruction =
-    instructions(nr.number)
+    if (instructions.indices contains nr.number)
+      instructions(nr.number)
+    else
+      Gap
 
   def workflowOption(position: Position): Option[Workflow] =
     workflowOption(position.parents)
@@ -138,7 +146,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
           case (o: ForkJoin, branchId: Position.BranchId.Named) ⇒
             o.workflowOption(branchId) flatMap (_.workflowOption(tail))
           case (o: IfReturnCode, branchId: Position.BranchId.Indexed) ⇒
-            o.workflowOption(branchId) flatMap (_.workflowOption(tail))
+            o.workflow(branchId).toOption flatMap (_.workflowOption(tail))
           case _ ⇒
             None
         }

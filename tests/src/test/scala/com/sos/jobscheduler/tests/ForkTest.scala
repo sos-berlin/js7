@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichJson, _}
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -14,9 +14,11 @@ import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.Position
+import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.ForkTest._
 import io.circe.syntax.EncoderOps
@@ -56,6 +58,91 @@ final class ForkTest extends FreeSpec {
       case o ⇒
         fail(s"Unexpected EventSeq received: $o")
     }
+  }
+
+  "JSON" in {
+    testJson(ForkTestSetting.TestWorkflow, json"""{
+      "source": "job \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-B\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";",
+      "instructions": [
+        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+        {
+          "TYPE": "ForkJoin",
+          "branches": [
+            {
+              "id": "🥕",
+              "workflow": {
+                "instructions": [
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "ImplicitEnd" }
+                ]
+              }
+            }, {
+              "id": "🍋",
+              "workflow": {
+                "instructions": [
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
+                  { "TYPE": "ImplicitEnd" }
+                ]
+              }
+            }
+          ]
+        },
+        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+        {
+          "TYPE": "ForkJoin",
+          "branches": [
+            {
+              "id": "🥕",
+              "workflow": {
+                "instructions": [
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "ImplicitEnd" }
+                ]
+              }
+            }, {
+              "id": "🍋",
+              "workflow": {
+                "instructions": [
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "ImplicitEnd" }
+                ]
+              }
+            }
+          ]
+        },
+        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+        {
+          "TYPE": "ForkJoin",
+          "branches": [
+            {
+              "id": "🥕",
+              "workflow": {
+                "instructions": [
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+                  { "TYPE": "ImplicitEnd" }
+                ]
+              }
+            }, {
+              "id": "🍋",
+              "workflow": {
+                "instructions": [
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
+                  { "TYPE": "ImplicitEnd" }
+                ]
+              }
+            }
+          ]
+        },
+        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
+        { "TYPE": "ImplicitEnd" }
+      ]
+    }""")
   }
 }
 

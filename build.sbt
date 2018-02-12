@@ -180,6 +180,7 @@ lazy val base = crossProject
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
+      "io.circe" %%% "circe-generic-extras" % circeVersion ++
       javaxAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
       "org.typelevel" %% "discipline" % "0.8" % "test"
@@ -284,10 +285,7 @@ lazy val `master-data` = crossProject
     libraryDependencies ++= {
       import Dependencies._
       Seq(
-        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test",
-        "io.circe" %%% "circe-core" % circeVersion,
-        "io.circe" %%% "circe-parser" % circeVersion,
-        "io.circe" %%% "circe-generic" % circeVersion)
+        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
     })
 lazy val masterDataJVM = `master-data`.jvm
 lazy val masterDataJs = `master-data`.js
@@ -300,10 +298,7 @@ lazy val `master-client` = crossProject
     libraryDependencies ++= {
       import Dependencies._
       Seq(
-        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test",
-        "io.circe" %%% "circe-core" % circeVersion,
-        "io.circe" %%% "circe-parser" % circeVersion,
-        "io.circe" %%% "circe-generic" % circeVersion)
+        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
     })
   .jvmSettings(
     libraryDependencies ++= {
@@ -336,10 +331,7 @@ lazy val `master-gui` = project
         "be.doeraene" %%% "scalajs-jquery" % "0.9.2",
         "com.github.japgolly.scalajs-react" %%% "core" % "1.1.1",
         "com.github.japgolly.scalajs-react" %%% "extra" % "1.1.1",
-        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test",
-        "io.circe" %%% "circe-core" % circeVersion,
-        "io.circe" %%% "circe-parser" % circeVersion,
-        "io.circe" %%% "circe-generic" % circeVersion)
+        "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
     },
     jsDependencies ++= Seq(
       "org.webjars.bower" % "jquery" % "3.2.1"           / "dist/jquery.js" minified "dist/jquery.min.js",

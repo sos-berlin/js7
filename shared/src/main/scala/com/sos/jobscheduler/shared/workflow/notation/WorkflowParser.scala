@@ -109,7 +109,7 @@ object WorkflowParser {
         w ~ curlyWorkflow ~
         (w ~ "else" ~ w ~ curlyWorkflow ~ w).?
       ) map { case (returnCodes, then_, else_) ⇒
-          IfReturnCode(returnCodes.map(o ⇒ ReturnCode(o)).toVector, Vector(then_) ++ else_)
+        IfReturnCode(returnCodes.map(o ⇒ ReturnCode(o)).toVector, then_, else_)
       }
     )
     private val ifNonZeroReturnCodeGotoInstruction = P[IfNonZeroReturnCodeGoto](

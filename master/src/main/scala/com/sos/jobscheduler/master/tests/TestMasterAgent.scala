@@ -196,9 +196,9 @@ object TestMasterAgent {
             Workflow(
               for (_ ← 1 to conf.workflowLength) yield
                 () @: Job(TestJobPath, agentPath)))),
-      IfReturnCode(List(ReturnCode(0), ReturnCode(1)), Vector(
+      IfReturnCode(List(ReturnCode(0), ReturnCode(1)),
         Workflow.of(Job(TestJobPath, conf.agentPaths.head)),
-        Workflow.of(Job(TestJobPath, conf.agentPaths.head)))))
+        Some(Workflow.of(Job(TestJobPath, conf.agentPaths.head)))))
 
   private case class Conf(
     directory: Path,

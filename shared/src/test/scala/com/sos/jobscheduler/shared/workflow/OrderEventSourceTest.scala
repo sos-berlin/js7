@@ -32,10 +32,10 @@ final class OrderEventSourceTest extends FreeSpec {
 
   "if returnCode" - {
     val namedWorkflow = Workflow.Named(TestWorkflowPath, Workflow.of(
-      job,                                      // 0
-      IfReturnCode(List(ReturnCode(0)), Vector( // 1
-        Workflow.of(job))),  // then            // 1,0,0
-      job))                                     // 2
+      job,                              // 0
+      IfReturnCode(List(ReturnCode(0)), // 1
+        Workflow.of(job)),              // 1,0,0
+      job))                             // 2
 
     "then branch executed" in {
       assert(step(namedWorkflow, Outcome.Succeeded(ReturnCode(1))) == Some(OrderMoved(Position(2))))
@@ -60,11 +60,11 @@ final class OrderEventSourceTest extends FreeSpec {
 
   "if returnCode else" - {
     val namedWorkflow = Workflow.Named(TestWorkflowPath, Workflow.of(
-      job,                                      // 0
-      IfReturnCode(List(ReturnCode(0)), Vector( // 1
-        Workflow.of(job),    // then            // 1,0,0
-        Workflow.of(job))),  // else            // 1,1,0
-      job))                                     // 2
+      job,                                        // 0
+      IfReturnCode(List(ReturnCode(0)),           // 1
+        thenWorkflow = Workflow.of(job),          // 1,0,0
+        elseWorkflow = Some(Workflow.of(job))),   // 1,1,0
+      job))                                       // 2
 
     "then branch executed" in {
       assert(step(namedWorkflow, Outcome.succeeded) == Some(OrderMoved(Position(1, 0, 0))))
@@ -130,9 +130,7 @@ final class OrderEventSourceTest extends FreeSpec {
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(5)) == Valid(Position(6)))    // success
       assert(eventSource.applyMoveInstructions(failedOrder    withPosition Position(5)) == Valid(Position(3)))    // failure
       assert(eventSource.applyMoveInstructions(succeededOrder withPosition Position(6)) == Valid(Position(6)))    // ImplicitEnd
-      intercept[RuntimeException] {
-        eventSource.applyMoveInstructions(succeededOrder withInstructionNr 99)
-      }
+      eventSource.applyMoveInstructions(succeededOrder withInstructionNr 99).isInvalid
     }
 
     "Jump loops are detected" in {

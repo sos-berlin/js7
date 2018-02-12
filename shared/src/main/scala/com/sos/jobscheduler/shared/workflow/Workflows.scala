@@ -16,7 +16,9 @@ object Workflows {
     def reduceForAgent(agentPath: AgentPath): Workflow =
       Workflow(labeledInstructions map {
         case labels @: (instr: IfReturnCode) ⇒
-          labels @: instr.copy(workflows = instr.workflows map (_.reduceForAgent(agentPath)))
+          labels @: instr.copy(
+            thenWorkflow = instr.thenWorkflow.reduceForAgent(agentPath),
+            elseWorkflow = instr.elseWorkflow map (_.reduceForAgent(agentPath)))
 
         case labels @: (fj: ForkJoin) if fj isPartiallyExecutableOnAgent agentPath ⇒
           labels @: ForkJoin(

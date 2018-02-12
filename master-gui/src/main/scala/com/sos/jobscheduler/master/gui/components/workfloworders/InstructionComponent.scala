@@ -23,8 +23,8 @@ private[workfloworders] object InstructionComponent
           case _: ForkJoin ⇒
             "fork"
 
-          case IfReturnCode(returnCodes, _) ⇒
-            s"if (returnCode ${returnCodes map (_.number) mkString ", "})"
+          case instr: IfReturnCode ⇒
+            s"if (returnCode ${instr.returnCodes map (_.number) mkString ", "})"
 
           case job: Job ⇒
             VdomArray(

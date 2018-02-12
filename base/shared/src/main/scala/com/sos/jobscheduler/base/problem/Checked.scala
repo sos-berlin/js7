@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.base.problem
 
-import cats.{Eq, Monad}
-import cats.syntax.eq._
 import cats.data.Validated.{Invalid, Valid}
+import cats.syntax.eq._
+import cats.{Eq, Monad}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
 
@@ -76,7 +76,7 @@ object Checked
     }
 
     implicit class RichOption[A](val underlying: Option[A]) extends AnyVal {
-      def checked(problem: ⇒ Problem): Checked[A] =
+      def toChecked(problem: ⇒ Problem): Checked[A] =
         underlying match {
           case Some(a) ⇒ Valid(a)
           case None ⇒ Invalid(problem)

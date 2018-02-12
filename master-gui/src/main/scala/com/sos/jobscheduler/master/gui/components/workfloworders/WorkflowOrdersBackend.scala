@@ -74,15 +74,18 @@ extends OnUnmount {
                 b +: renderWorkflow(branch.workflow, parents ::: Position.Parent(nr, branch.id) :: Nil, depth + 2)
               }
 
-            case IfReturnCode(_, workflows) ⇒
+            case IfReturnCode(_, thenWorkflow, elseOption) ⇒
               y += InstructionHeight
-              renderWorkflow(workflows.head, parents ::: Position.Parent(nr, 0) :: Nil, depth + 1, stripImplicitEnd = true) ++
-                (if (workflows.indices contains 1) {
+              val then_ = renderWorkflow(thenWorkflow, parents ::: Position.Parent(nr, 0) :: Nil, depth + 1, stripImplicitEnd = true)
+              val else_ = elseOption match {
+                case Some(elseWorkflow) ⇒
                   val a = <.div(^.cls := "orders-Branch", moveElement(instructionXpx(depth), y), "else")
                   y += ElseHeight
-                  a +: renderWorkflow(workflows(1), parents ::: Position.Parent(nr, 0) :: Nil, depth + 1, stripImplicitEnd = true)
-                } else
-                  Nil)
+                  a +: renderWorkflow(elseWorkflow, parents ::: Position.Parent(nr, 0) :: Nil, depth + 1, stripImplicitEnd = true)
+                case None ⇒
+                  Nil
+              }
+              then_ ++ else_
 
             case _ ⇒
               y += InstructionHeight

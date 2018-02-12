@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Position
-import com.sos.jobscheduler.data.workflow.test.TestSetting.TestWorkflow
+import com.sos.jobscheduler.data.workflow.test.TestSetting.SimpleTestWorkflow
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.Json
 import org.scalatest.FreeSpec
@@ -83,11 +83,11 @@ final class AgentCommandTest extends FreeSpec {
       check(AgentCommand.AttachOrder(
           Order(
             OrderId("ORDER-ID"),
-            TestWorkflow.path /: Position(3),
+            SimpleTestWorkflow.path /: Position(3),
             Order.Ready,
             Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
           AgentPath("/AGENT"),
-          TestWorkflow.workflow),
+          SimpleTestWorkflow.workflow),
         json"""{
           "TYPE": "AttachOrder",
           "order": {

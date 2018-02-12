@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.shared.workflow
 
 import com.sos.jobscheduler.data.workflow.Instruction.simplify._
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, Gap, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, Gap}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.{Position, Workflow}
@@ -78,7 +78,7 @@ final class WorkflowsTest extends FreeSpec {
           assert(TestWorkflow.isStartableOnAgent(position, agentPath) == expected)
         }
         s".reduceForAgent.isStartableOnAgent($position $agentPath) = $expected" in {
-          //assert(TestWorkflow.workflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath))
+          //assert(SimpleTestWorkflow.workflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath))
           assert(TestWorkflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath) == expected)
         }
       }

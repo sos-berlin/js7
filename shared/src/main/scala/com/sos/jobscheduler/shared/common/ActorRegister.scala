@@ -55,7 +55,7 @@ class ActorRegister[K, V](valueToActorRef: V ⇒ ActorRef)  {
     keyToValue(_actorToKey(actorRef))
 
   final def checked(key: K): Checked[V] =
-    keyToValue.get(key) checked Problem(noSuchKeyMessage(key))
+    keyToValue.get(key) toChecked Problem(noSuchKeyMessage(key))
 
   final def get(key: K): Option[V] =
     keyToValue.get(key)
