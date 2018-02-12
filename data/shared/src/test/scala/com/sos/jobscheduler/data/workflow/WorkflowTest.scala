@@ -86,34 +86,16 @@ final class WorkflowTest extends FreeSpec {
     assert(a.reduce == Workflow(instructions collect { case (s, true) ⇒ s }))
   }
 
-  "flatten" in {
-    assert(ForkTestSetting.TestWorkflow.flatten == Vector[(Position, Instruction.Labeled)](
-      (Position(0         ), AJob),
-      (Position(1         ), ForkTestSetting.TestWorkflow.instruction(1)),
-      (Position(1, "🥕", 0), AJob),
-      (Position(1, "🥕", 1), AJob),
-      (Position(1, "🥕", 2), ImplicitEnd),
-      (Position(1, "🍋", 0), AJob),
-      (Position(1, "🍋", 1), BJob),
-      (Position(1, "🍋", 2), ImplicitEnd),
-      (Position(2         ), AJob),
-      (Position(3         ), ForkTestSetting.TestWorkflow.instruction(3)),
-      (Position(3, "🥕", 0), AJob),
-      (Position(3, "🥕", 1), AJob),
-      (Position(3, "🥕", 2), ImplicitEnd),
-      (Position(3, "🍋", 0), AJob),
-      (Position(3, "🍋", 1), AJob),
-      (Position(3, "🍋", 2), ImplicitEnd),
-      (Position(4         ), AJob),
-      (Position(5         ), ForkTestSetting.TestWorkflow.instruction(5)),
-      (Position(5, "🥕", 0), AJob),
-      (Position(5, "🥕", 1), AJob),
-      (Position(5, "🥕", 2), ImplicitEnd),
-      (Position(5, "🍋", 0), BJob),
-      (Position(5, "🍋", 1), BJob),
-      (Position(5, "🍋", 2), ImplicitEnd),
-      (Position(6         ), AJob),
-      (Position(7         ), ImplicitEnd)))
+  "numberedInstruction" in {
+    assert(ForkTestSetting.TestWorkflow.numberedInstructions == Vector[(InstructionNr, Instruction.Labeled)](
+      (InstructionNr(0), AJob),
+      (InstructionNr(1), ForkTestSetting.TestWorkflow.instruction(1)),
+      (InstructionNr(2), AJob),
+      (InstructionNr(3), ForkTestSetting.TestWorkflow.instruction(3)),
+      (InstructionNr(4), AJob),
+      (InstructionNr(5), ForkTestSetting.TestWorkflow.instruction(5)),
+      (InstructionNr(6), AJob),
+      (InstructionNr(7), ImplicitEnd)))
   }
 
   "isDefinedAt, instruction" in {
