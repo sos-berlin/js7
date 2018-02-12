@@ -1,4 +1,4 @@
-package com.sos.jobscheduler.master.gui.components.orderlist.workflowlist
+package com.sos.jobscheduler.master.gui.components.workflowlist
 
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.gui.router.Router

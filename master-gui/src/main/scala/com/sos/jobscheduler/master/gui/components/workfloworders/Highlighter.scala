@@ -1,8 +1,8 @@
-package com.sos.jobscheduler.master.gui.components.orderlist
+package com.sos.jobscheduler.master.gui.components.workfloworders
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.master.gui.components.orderlist.Highlighter._
+import com.sos.jobscheduler.master.gui.components.workfloworders.Highlighter._
 import japgolly.scalajs.react.Callback
 import org.scalajs.dom.html
 import scala.collection.mutable

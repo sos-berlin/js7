@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.gui.components.state
 
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.gui.components.orderlist.workflowlist.WorkflowListComponent
+import com.sos.jobscheduler.master.gui.components.workflowlist.WorkflowListComponent
 import org.scalajs.dom.window
 
 /**

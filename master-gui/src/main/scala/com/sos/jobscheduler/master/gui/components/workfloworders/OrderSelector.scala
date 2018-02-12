@@ -1,14 +1,13 @@
-package com.sos.jobscheduler.master.gui.components.orderlist
+package com.sos.jobscheduler.master.gui.components.workfloworders
 
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.master.gui.components.orderlist.OrderSelector._
-import japgolly.scalajs.react.BackendScope
+import com.sos.jobscheduler.master.gui.components.workfloworders.OrderSelector._
 import org.scalajs.dom.window
 
 /**
   * @author Joacim Zschimmer
   */
-private[orderlist] final class OrderSelector(scope: BackendScope[OrderListComponent.Props, Unit], highlighter: Highlighter)
+private[workfloworders] final class OrderSelector
 {
   private var mouseOverSelection: Option[Selection] = None
   private var clickedSelection: Option[Selection] = None
@@ -59,7 +58,7 @@ private[orderlist] final class OrderSelector(scope: BackendScope[OrderListCompon
   }
 
   private def highlight(selection: Selection): Unit = {
-    for (o ← selection.children + selection.orderId) highlighter.abortPhasingOut(o).runNow() // clean for :hover
+    //for (o ← selection.children + selection.orderId) highlighter.abortPhasingOut(o).runNow() // clean for :hover
     for (element ← Option(window.document.getElementById(elementId(selection.orderId)))) {
       element.classList.add(HighlightClass)
     }

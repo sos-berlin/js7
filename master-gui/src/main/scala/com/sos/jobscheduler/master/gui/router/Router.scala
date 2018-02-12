@@ -5,10 +5,10 @@ import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.gui.components.order.OrderComponent
-import com.sos.jobscheduler.master.gui.components.orderlist.OrderListComponent
-import com.sos.jobscheduler.master.gui.components.orderlist.workflowlist.WorkflowListComponent
 import com.sos.jobscheduler.master.gui.components.state.OrdersState.FetchedContent
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
+import com.sos.jobscheduler.master.gui.components.workflowlist.WorkflowListComponent
+import com.sos.jobscheduler.master.gui.components.workfloworders.WorkflowOrdersComponent
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.window
@@ -46,8 +46,7 @@ object Router {
         } else {
           val workflowPath = WorkflowPath(s"/$path")
           window.document.title = workflowPath.pretty
-          OrderListComponent(
-            workflowPath,
+          WorkflowOrdersComponent(
             state.pathToWorkflow(workflowPath),
             StateSnapshot(state.ordersState)(s ⇒ stateSnapshot.modState(_.copy(ordersState = s))))
         }

@@ -69,8 +69,7 @@ table.no-padding tbody tr td { padding: 0 }
 .container { width: 99%; }
 
 @media only screen and (min-width: 993px) {
-  .page-center { margin-left: 125px; Xmax-width: none; }
-  .container { Xmax-width: none; }
+  .page-center { margin-left: 125px; }
 }
 @media (max-width: 992px) {
   .hide-on-mobile { display: none !important; }
@@ -108,6 +107,7 @@ header, main, footer { padding-left: 150px; }
 .orders-Instruction-head { max-width: 200px; overflow: hidden; text-overflow: ellipsis; line-height: 1.2rem; }
 .orders-Instruction-Job { font-weight: bold; }
 .orders-Instruction-Agent { font-weight: bold; }
+.orders-Branch { position: absolute; padding: 4px; }
 .orders-Order-moving { position: absolute; transition: transform 700ms cubic-bezier(0.4, 0.0, 0.2, 1); }
 .orders-Order { position: relative; top: 7px; border: 3px solid transparent; padding: 0 4px;
   height: 42px; overflow-y: hidden/*no scrollbar*/;

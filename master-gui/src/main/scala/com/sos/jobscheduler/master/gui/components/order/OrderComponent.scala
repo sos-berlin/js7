@@ -38,7 +38,7 @@ object OrderComponent {
         <.div(^.float := "left")(
           renderCore(props.orderEntry)),
         <.div(^.float := "right")(
-          WorkflowComponent(props.orderEntry.order.workflowPath, props.workflow, props.orderEntry.order +: props.joinOrders)),
+          WorkflowComponent(props.workflow, props.orderEntry.order +: props.joinOrders)),
         <.div(^.clear := "both")(
           renderVariables(props.orderEntry.order.variables)),
           renderOutput(props.orderEntry.output))
@@ -46,7 +46,7 @@ object OrderComponent {
     private def renderCore(orderEntry: OrderEntry): VdomNode =
       <.table(^.cls := "order-table")(
         <.tbody(
-          orderEntry.order.parent.whenDefined(showField("Parent" , _)),
+          orderEntry.order.parent.whenDefined(showField("Parent", _)),
           showField("State"  , orderEntry.order.state match {
             case Order.Join(children) ⇒ VdomArray(<.div("Join"), children.toVdomArray(orderId ⇒ <.div(orderId)))
             case o ⇒ o

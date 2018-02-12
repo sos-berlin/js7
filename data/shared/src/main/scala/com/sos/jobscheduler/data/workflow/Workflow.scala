@@ -45,27 +45,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
   def lastNr: InstructionNr =
     instructions.length - 1
 
-  lazy val flatten: Seq[(Position, Instruction.Labeled)] =
-    toFlats(Nil)
-
-  private def toFlats(parents: List[Position.Parent]): Seq[(Position, Instruction.Labeled)] =
-    positionAndInstructions(parents)
-      .collect {
-        case pi @ (pos, _ @: ForkJoin(branches)) ⇒
-          Vector(pi) ++
-            (for {
-              branch ← branches
-              flats ← branch.workflow.toFlats(pos.parents ::: Position.Parent(pos.nr, branch.id) :: Nil)
-            } yield flats)
-
-        case o ⇒
-          Vector(o)
-      }.flatten
-
-  private def positionAndInstructions(parents: List[Position.Parent]): Seq[(Position, Instruction.Labeled)] =
-    for ((nr, s) ← numberedInstructions) yield Position(parents, nr) → s
-
-  private def numberedInstructions: Seq[(InstructionNr, Instruction.Labeled)] =
+  def numberedInstructions: Seq[(InstructionNr, Instruction.Labeled)] =
     labeledInstructions.zipWithIndex.map {
       case (s, i) ⇒ InstructionNr(i) → s
     }
