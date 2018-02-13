@@ -18,6 +18,11 @@ final class PositionTest extends FreeSpec {
     }
   }
 
+  "Parents" in {
+    assert((Position.Parents.Empty / 7) == Position(7))
+    assert((Position.Parents.NonEmpty(Position(1), Position.BranchId(2)) / 3) == Position(1, 2, 3))
+  }
+
   "Fork" in {
     val a = Position(1) / "A" / 2
     assert(a == Position(1, "A", 2))

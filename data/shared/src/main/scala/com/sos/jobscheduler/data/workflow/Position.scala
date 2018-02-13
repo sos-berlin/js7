@@ -12,7 +12,7 @@ import scala.language.implicitConversions
   */
 final case class Position(parents: List[Parent], nr: InstructionNr) {
 
-  def /(branchId: BranchId) = new BranchStage(this, branchId)
+  def /(branchId: BranchId) = Parents.NonEmpty(this, branchId)
   def /:(workflowPath: WorkflowPath) = new WorkflowPosition(workflowPath, this)
 
   def dropChild: Option[Position] =
@@ -72,8 +72,16 @@ object Position {
       cursor.as[Named]/*String*/ orElse cursor.as[Indexed]/*Number*/
   }
 
-  final class BranchStage private[Position](position: Position, branchId: BranchId) {
-    def /(nr: InstructionNr) = Position(position.parents ::: Parent(position.nr, branchId) :: Nil, nr)
+  sealed trait Parents {
+    def /(nr: InstructionNr): Position
+  }
+  object Parents {
+    final case class NonEmpty private[Position](position: Position, branchId: BranchId) extends Parents {
+      def /(nr: InstructionNr) = Position(position.parents ::: Parent(position.nr, branchId) :: Nil, nr)
+    }
+    case object Empty extends Parents {
+      def /(nr: InstructionNr) = Position(nr)
+    }
   }
 
   implicit val jsonEncoder: ArrayEncoder[Position] =
