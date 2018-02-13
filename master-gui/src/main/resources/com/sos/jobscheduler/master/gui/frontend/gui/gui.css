@@ -40,7 +40,7 @@
 .material-icons.md-light.md-inactive { color: rgba(255, 255, 255, 0.3); }
 
 .material-icons.top-line    { font-size: 1rem; vertical-align: text-bottom; }
-.material-icons.text-prefix { font-size: 1.4rem; vertical-align: text-bottom; }
+.material-icons.text-prefix { font-size: 1.3rem; vertical-align: text-bottom; }
 .app-connected .material-icons.rotate-slowly { animation: material-icons-rotate 7s linear infinite; }
 @keyframes material-icons-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .gear { color: #505050 }
@@ -109,15 +109,13 @@ header, main, footer { padding-left: 150px; }
 .orders-Instruction-Agent { font-weight: bold; }
 .orders-Branch { position: absolute; padding: 4px; }
 .orders-Order-moving { position: absolute; transition: transform 700ms cubic-bezier(0.4, 0.0, 0.2, 1); }
-.orders-Order { position: relative; top: 7px; border: 3px solid transparent; padding: 0 4px;
-  height: 42px; overflow-y: hidden/*no scrollbar*/;
+.orders-Order { position: relative; top: 5px; border: 3px solid transparent; padding: 0 2px; line-height: 1.1rem;
+  height: 36px; overflow-y: hidden/*no scrollbar*/;
   width: 220px; overflow-x: hidden; text-overflow: ellipsis;
   cursor: pointer; transition: background-color 100ms ease-in; }
-.orders-Order-OrderId { white-space: nowrap; font-weight: 600; }
+.orders-Order-OrderId { white-space: nowrap; font-weight: 600; padding-bottom: 2px; }
 .orders-Order-compact { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 36ex; }
 .orders-Order-State   { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 18ex; }
-.orders-Order-Outcome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 16ex; padding-left: 1em; }
-/*.orders-Order-Output  { width: 33ex; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }*/
 .orders-Order-changed { background-color: #fff8a0; }
 .orders-Order-changed-phaseout { background-color: transparent; transition: background-color 700ms ease-in; }
 .orders-Order-more { display: inline-grid; margin: 0 0 0 10px; }
@@ -136,8 +134,8 @@ header, main, footer { padding-left: 150px; }
 .Order-InProcess  { background-color: #ffc744; }
 /*.Order-Joined    { background-color: #ffe366; }*/
 /*.Order-highlight      { box-shadow: 0 0 7px 2px #f99b00; }*/
-.Order-highlight      { border-color: #70caf9; }
-.Order-join-highlight { border-color: #5ea4cd; }
+.Order-highlight      { border-color: #708af9; }
+.Order-child-highlight { border-color: #708af9; border-style: dotted }
 /*.Order-highlight { cursor: pointer; background-color: gold !important; }
 .Order-join-highlight { background-color: #FFA000 !important; }*/
 .orders-preview { position: fixed; float: right; background-color: #fffefc; z-index: 1; right: 10px }

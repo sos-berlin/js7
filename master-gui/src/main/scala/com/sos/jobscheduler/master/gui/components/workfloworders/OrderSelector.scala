@@ -93,7 +93,7 @@ private[workfloworders] final class OrderSelector
 
 object OrderSelector {
   private val HighlightClass = "Order-highlight"
-  private val ChildOrderHighlightClass = "Order-join-highlight"
+  private val ChildOrderHighlightClass = "Order-child-highlight"
 
   def elementId(orderId: OrderId) = orderId.toString  // With prefix "Order:"
 

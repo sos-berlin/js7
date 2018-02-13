@@ -22,10 +22,6 @@ final case class Position(parents: List[Parent], nr: InstructionNr) {
   def increment: Position = copy(nr = nr + 1)
 
   override def toString = "#" + (parents map (p ⇒ s"${p.nr.number}/${p.branchId}/") mkString "") + nr.number
-
-  def isNested = parents.nonEmpty
-
-  def depth: Int = parents.size
 }
 
 object Position {
