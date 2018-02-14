@@ -5,6 +5,7 @@ import cats.syntax.eq._
 import cats.{Eq, Monad}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -17,6 +18,12 @@ object Checked
     a match {
       case Some(o) ⇒ Valid(o)
       case None ⇒ Invalid(problem)
+    }
+
+  def catchNonFatal[A](f: ⇒ A): Checked[A] =
+    try Valid(f)
+    catch {
+      case NonFatal(t) ⇒ Invalid(Problem.fromEagerThrowable(t))
     }
 
   implicit val monad: Monad[Checked] = new Monad[Checked] {

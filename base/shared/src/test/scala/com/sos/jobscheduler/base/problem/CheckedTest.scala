@@ -15,14 +15,20 @@ final class CheckedTest extends FreeSpec  {
     assert(Checked.fromOption(none, Problem("PROBLEM")) == Invalid(Problem("PROBLEM")))
   }
 
+  "catchNonFatal" in {
+    assert(Checked.catchNonFatal(7) == Valid(7))
+    val t = new IllegalArgumentException("TEST")
+    assert(Checked.catchNonFatal(throw t).swap.getOrElse(null).throwable eq t)
+  }
+
   "flatMap" in {
     assert(Invalid(Problem("A")).flatMap((_: String) ⇒ throw new NotImplementedError) == Invalid(Problem("A")))
     assert(Valid("A").flatMap(_ ⇒ Valid(2)) == Valid(2))
   }
 
-  "mapProblemKey" in {
-    assert(Valid(1).mapProblemKey("X") == Valid(1))
-    assert(Invalid(Problem("X")).mapProblemKey(333) == Invalid(Problem("Problem with '333': X")))
+  "withProblemKey" in {
+    assert(Valid(1).withProblemKey("X") == Valid(1))
+    assert(Invalid(Problem("X")).withProblemKey(333) == Invalid(Problem("Problem with '333': X")))
   }
 
   "mapProblem" in {
