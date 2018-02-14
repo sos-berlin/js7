@@ -3,13 +3,13 @@ package com.sos.jobscheduler.master.order
 import akka.actor.ActorRef
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.event.journal.{JournalRecoverer, KeyedJournalingActor}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
-import com.sos.jobscheduler.shared.event.journal.{JournalRecoverer, KeyedJournalingActor}
 import java.nio.file.Path
 import scala.collection.mutable
 

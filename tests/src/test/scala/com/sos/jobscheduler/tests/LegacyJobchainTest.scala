@@ -13,6 +13,8 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.event.StampedKeyedEventBus
+import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.folder.FolderPath
@@ -24,8 +26,6 @@ import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfNon
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 import com.sos.jobscheduler.master.tests.TestEventCollector
-import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.tests.LegacyJobchainTest._
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec

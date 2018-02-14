@@ -11,6 +11,8 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.event.StampedKeyedEventBus
+import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.job.ReturnCode
@@ -18,8 +20,6 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, 
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.tests.TestEventCollector
-import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.tests.IfReturnCodeTest._
 import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec

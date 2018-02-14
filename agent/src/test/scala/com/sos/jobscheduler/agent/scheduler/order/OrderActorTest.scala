@@ -24,6 +24,8 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.common.utils.ByteUnits.toKBGB
+import com.sos.jobscheduler.core.event.StampedKeyedEventBus
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
@@ -32,8 +34,6 @@ import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Pay
 import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
-import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import com.typesafe.config.Config
 import java.nio.file.Path

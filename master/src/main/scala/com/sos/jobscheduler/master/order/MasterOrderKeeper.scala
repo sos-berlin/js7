@@ -21,6 +21,15 @@ import com.sos.jobscheduler.common.scalautil.Logger.ops._
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.core.common.ActorRegister
+import com.sos.jobscheduler.core.event.StampedKeyedEventBus
+import com.sos.jobscheduler.core.event.journal.JournalRecoverer.startJournalAndFinishRecovery
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
+import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalker.forEachTypedFile
+import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
+import com.sos.jobscheduler.core.workflow.OrderProcessor
+import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
+import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.folder.FolderPath
@@ -34,15 +43,6 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.MasterOrderKeeper._
 import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentXmlParser}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
-import com.sos.jobscheduler.shared.common.ActorRegister
-import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
-import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
-import com.sos.jobscheduler.shared.workflow.OrderEventHandler.FollowUp
-import com.sos.jobscheduler.shared.workflow.OrderProcessor
-import com.sos.jobscheduler.shared.workflow.Workflows.ExecutableWorkflow
-import com.sos.jobscheduler.shared.workflow.notation.WorkflowParser
 import java.nio.file.Path
 import java.time.Duration
 import scala.collection.immutable.Seq

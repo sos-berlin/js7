@@ -3,7 +3,6 @@ package com.sos.jobscheduler.master
 import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.Injector
 import com.sos.jobscheduler.agent.RunningAgent
-import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
@@ -19,16 +18,16 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
+import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, EventSeq, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterTest._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.order.{MasterOrderKeeper, OrderGeneratorPath}
+import com.sos.jobscheduler.master.order.OrderGeneratorPath
 import com.sos.jobscheduler.master.tests.TestEnvironment
-import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
 import java.net.InetSocketAddress
 import java.time.Instant
 import java.time.Instant.now

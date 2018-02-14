@@ -5,10 +5,10 @@ import akka.actor.{ActorRef, Stash, Status}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
+import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.order.OrderScheduleGenerator._
-import com.sos.jobscheduler.shared.event.journal.KeyedJournalingActor
 import java.time.Instant.now
 import java.time.{Duration, Instant}
 

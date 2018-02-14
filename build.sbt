@@ -105,7 +105,7 @@ lazy val jobscheduler = (project in file("."))
     agent,
     baseJVM,
     common,
-    shared,
+    core,
     dataJVM,
     `jobscheduler-docker`,
     `jobscheduler-install`,
@@ -140,7 +140,7 @@ lazy val `jobscheduler-install` = project
       ((mappings in Universal).value filter { case (_, path) ⇒ (path startsWith "lib/") && !isTestJar(path stripPrefix "lib/") }) ++
         recursiveFileMapping(baseDirectory.value / "../master/src/main/resources/com/sos/jobscheduler/master/installation") ++
         recursiveFileMapping(baseDirectory.value / "../agent/src/main/resources/com/sos/jobscheduler/agent/installation") ++
-        recursiveFileMapping(baseDirectory.value / "../shared/src/main/resources/com/sos/jobscheduler/shared/installation"))
+        recursiveFileMapping(baseDirectory.value / "../core/src/main/resources/com/sos/jobscheduler/core/installation"))
 
 lazy val `jobscheduler-docker` = project
   .settings(commonSettings)
@@ -238,7 +238,7 @@ lazy val common = project.dependsOn(baseJVM, dataJVM, testerJVM % "compile->test
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
 val masterGuiJs = "master-gui.js"
 
-lazy val master = project.dependsOn(masterDataJVM, masterClientJVM, shared, common, `agent-client`, testerJVM % "compile->test")
+lazy val master = project.dependsOn(masterDataJVM, masterClientJVM, core, common, `agent-client`, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   // Provide master-gui JavaScript code as resources placed in master-gui package
@@ -341,7 +341,7 @@ lazy val `master-gui` = project
       "org.webjars.bower" % "react" % "15.6.1"     / "react-dom-server.js"  minified "react-dom-server.min.js"  commonJSName "ReactDOMServer" dependsOn "react-dom.js",
       "org.webjars.npm"   % "react-transition-group" % "2.2.1" / "dist/react-transition-group.js" minified "dist/react-transition-group.min.js" dependsOn "react-dom.js"))
 
-lazy val shared = project.dependsOn(common, testerJVM % "compile->test")
+lazy val core = project.dependsOn(common, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {
@@ -352,7 +352,7 @@ lazy val shared = project.dependsOn(common, testerJVM % "compile->test")
       log4j % "test"
   }
 
-lazy val agent = project.dependsOn(`agent-data`, shared, common, dataJVM, taskserver, tunnel, testerJVM % "compile->test")
+lazy val agent = project.dependsOn(`agent-data`, core, common, dataJVM, taskserver, tunnel, testerJVM % "compile->test")
   .configs(ForkedTest).settings(forkedSettings)
   .settings(commonSettings)
   .settings {

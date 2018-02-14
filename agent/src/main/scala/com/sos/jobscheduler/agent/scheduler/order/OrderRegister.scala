@@ -6,12 +6,12 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked.ops._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
+import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.instructions.Job
-import com.sos.jobscheduler.shared.common.ActorRegister
 import scala.concurrent.ExecutionContext
 
 /**

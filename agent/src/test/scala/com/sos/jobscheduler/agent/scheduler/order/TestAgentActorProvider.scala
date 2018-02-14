@@ -20,7 +20,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCl
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.shared.event.{ActorEventCollector, StampedKeyedEventBus}
+import com.sos.jobscheduler.core.event.{ActorEventCollector, StampedKeyedEventBus}
 import java.nio.file.Path
 import scala.concurrent.{Future, Promise}
 

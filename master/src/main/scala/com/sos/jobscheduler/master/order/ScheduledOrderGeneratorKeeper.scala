@@ -4,11 +4,11 @@ import com.sos.jobscheduler.base.utils.Collections._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.xmls.FileSource
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorKeeper._
-import com.sos.jobscheduler.shared.filebased.TypedPathDirectoryWalker.forEachTypedFile
 import java.time.Instant
 import javax.inject.{Inject, Singleton}
 import scala.collection.immutable.Seq

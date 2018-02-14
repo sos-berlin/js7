@@ -21,12 +21,12 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.JavaInformations.javaInformation
 import com.sos.jobscheduler.common.system.SystemInformations.systemInformation
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.core.common.ActorRegister
+import com.sos.jobscheduler.core.event.StampedKeyedEventBus
+import com.sos.jobscheduler.core.event.journal.JournalRecoverer.startJournalAndFinishRecovery
+import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.workflow.JobPath
-import com.sos.jobscheduler.shared.common.ActorRegister
-import com.sos.jobscheduler.shared.event.StampedKeyedEventBus
-import com.sos.jobscheduler.shared.event.journal.JournalRecoverer.startJournalAndFinishRecovery
-import com.sos.jobscheduler.shared.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor}
 import javax.inject.Inject
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, Promise}
