@@ -173,15 +173,21 @@ object ScalaUtils {
 
   implicit class RichEither[L <: Throwable, R](val underlying: Either[L, R]) extends AnyVal {
     def toImmediateFuture: Future[R] =
-      withStackTrace.underlying match {
+      withStackTrace match {
         case Left(t) ⇒ Future.failed(t)
         case Right(o) ⇒ Future.successful(o)
       }
 
     def force: R =
-      withStackTrace.underlying match {
+      underlying match {
         case Left(t) ⇒ throw t.appendCurrentStackTrace
         case Right(o) ⇒ o
+      }
+
+    def toChecked: Checked[R] =
+      underlying match {
+        case Left(t) ⇒ Invalid(Problem.fromEagerThrowable(t.appendCurrentStackTrace))
+        case Right(o) ⇒ Valid(o)
       }
 
     def withStackTrace: Either[Throwable, R] =

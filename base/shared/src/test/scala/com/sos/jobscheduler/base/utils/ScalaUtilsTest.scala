@@ -188,6 +188,12 @@ final class ScalaUtilsTest extends FreeSpec {
     assert(Left[Throwable, Int](t).toImmediateFuture.failed.value.get.get eq t)
   }
 
+  "Either.toChecked" in {
+    assert(Right[Throwable, Int](7).toChecked == Valid(7))
+    val t = new IllegalArgumentException
+    assert(Left[Throwable, Int](t).toChecked.swap.getOrElse(null).throwable eq t)
+  }
+
   "Either.force" in {
     assert(Right[Throwable, Int](7).force == 7)
     val t = new IllegalArgumentException
