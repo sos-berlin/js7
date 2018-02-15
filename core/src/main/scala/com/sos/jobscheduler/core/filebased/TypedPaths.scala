@@ -1,46 +1,42 @@
 package com.sos.jobscheduler.core.filebased
 
-import com.google.common.annotations.VisibleForTesting
-import com.sos.jobscheduler.data.filebased.TypedPath
+import cats.data.Validated.Invalid
+import cats.syntax.flatMap._
+import com.sos.jobscheduler.base.problem.Checked.monad
+import com.sos.jobscheduler.base.problem.Checked.ops.RichOption
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.nio.file.Path
+import scala.collection.immutable.Iterable
 
 /**
   * @author Joacim Zschimmer
   */
 object TypedPaths {
 
-  def jsonFileToTypedPath[P <: TypedPath: TypedPath.Companion](path: Path, stripDirectory: Path): P =
-    fileToTypedPath[P](_.jsonFilenameExtension, path, stripDirectory)
-
-  def textFileToTypedPath[P <: TypedPath: TypedPath.Companion](path: Path, stripDirectory: Path): P =
-    fileToTypedPath[P](_.txtFilenameExtension, path, stripDirectory)
-
-  def xmlFileToTypedPath[P <: TypedPath: TypedPath.Companion](path: Path, stripDirectory: Path): P =
-    fileToTypedPath[P](_.xmlFilenameExtension, path, stripDirectory)
-
-  private def fileToTypedPath[P <: TypedPath: TypedPath.Companion]
-  (extension: TypedPath.Companion[P] ⇒ String, path: Path, stripDirectory: Path): P
-  = {
-    val normalizedPath = path.toString.replaceAllLiterally(path.getFileSystem.getSeparator, "/")
-    val normalizedDir = (if (stripDirectory.toString endsWith "/") s"$stripDirectory" else s"$stripDirectory/")
-      .replace(path.getFileSystem.getSeparator, "/")
-    if (!(normalizedPath startsWith normalizedDir)) throw new IllegalArgumentException("Path does not match directory")
-    val p = normalizedPath stripPrefix normalizedDir
-    assert(s"$normalizedDir$p" == normalizedPath)
-    relativeFilePathToTypedPath[P](extension, p)
+  def fileToTypedPath(companions: Iterable[TypedPath.AnyCompanion], path: Path, stripDirectory: Path): Checked[(TypedPath, SourceType)] = {
+    val normalizedPath = toSlashes(path)
+    var normalizedDir = toSlashes(stripDirectory)
+    if (!normalizedDir.endsWith("/")) normalizedDir += "/"
+    if (!normalizedPath.startsWith(normalizedDir))
+      Invalid(Problem(s"Path '$normalizedPath' does not start with '$normalizedDir'"))
+    else
+      relativeFilePathToTypedPath(companions, file = normalizedPath drop normalizedDir.length - 1)
   }
 
-  @VisibleForTesting
-  private[filebased] def relativeFilePathToTypedPath[P <: TypedPath: TypedPath.Companion]
-  (extension: TypedPath.Companion[P] ⇒ String, path: String): P
-  = {
-    val normalized = path.replaceAllLiterally("\\", "/")
-    if (normalized startsWith "/") throw new IllegalArgumentException(s"Relative path expected: $path")
-    val companion = implicitly[TypedPath.Companion[P]]
-    val ext = extension(companion)
-    if (!(normalized endsWith ext)) throw new IllegalArgumentException(s"Filename extension '$ext' expected: $path")
-    val p = normalized.stripSuffix(ext)
-    assert(s"$p$ext" == normalized)
-    companion.apply(s"/$p")
+  private def relativeFilePathToTypedPath(companions: Iterable[TypedPath.AnyCompanion], file: String): Checked[(TypedPath, SourceType)] =
+    (for (companion ← companions.iterator) yield
+      for (pathAndSourceType ← companion.fromFile(file))
+        yield pathAndSourceType)
+    .find(_.isValid)
+    .toChecked(Problem(s"File '${file.stripPrefix("/")}' is not recognized as a configuration file"))
+    .flatten
+
+  private def toSlashes(path: Path): String = {
+    var result = path.toString
+    if (result contains path.getFileSystem.getSeparator) {
+      result = result.replaceAllLiterally(path.getFileSystem.getSeparator, "/")
+    }
+    result
   }
 }

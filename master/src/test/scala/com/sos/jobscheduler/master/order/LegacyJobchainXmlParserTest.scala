@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.order
 
+import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
@@ -24,9 +25,9 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
       <job_chain_node.end state="ERROR"/>
     </job_chain>
 
-  private val workflow = LegacyJobchainXmlParser.parseXml(FolderPath("/FOLDER"), xml)
 
   "Workflow" in {
+    val workflow = LegacyJobchainXmlParser.parseXml(FolderPath("/FOLDER"), xml).force
     assert(workflow == Workflow(Vector(
       "A" @: Job(JobPath("/JOB-A"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),
              IfNonZeroReturnCodeGoto(Label("ERROR")),

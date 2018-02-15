@@ -25,7 +25,7 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.order.{MasterOrderKeeper, ScheduledOrderGeneratorKeeper}
+import com.sos.jobscheduler.master.order.MasterOrderKeeper
 import com.sos.jobscheduler.master.web.MasterWebServer
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
@@ -98,7 +98,7 @@ object RunningMaster {
 
   def apply(injector: Injector)(implicit ec: ExecutionContext): Future[RunningMaster] = {
     val masterConfiguration = injector.instance[MasterConfiguration]
-    logger.info(s"config=${masterConfiguration.configDirectoryOption getOrElse ""} data=${masterConfiguration.dataDirectory}")
+    logger.info(s"config=${masterConfiguration.configDirectory} data=${masterConfiguration.dataDirectory}")
 
     masterConfiguration.stateDirectory match {
       case o if !exists(o) ⇒ createDirectory(o)
@@ -114,8 +114,7 @@ object RunningMaster {
     val (orderKeeper, actorStopped) = CatchingActor.actorOf[Completed](
         _ ⇒ Props {
           new MasterOrderKeeper(
-            masterConfiguration,
-            injector.instance[ScheduledOrderGeneratorKeeper])(
+            masterConfiguration)(
             injector.instance[TimerService],
             eventIdGenerator,
             eventCollector,

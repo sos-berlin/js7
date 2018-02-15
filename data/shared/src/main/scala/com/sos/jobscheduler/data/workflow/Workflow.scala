@@ -7,8 +7,8 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.filebased.FileBased
 import com.sos.jobscheduler.data.workflow.Instruction._
-import com.sos.jobscheduler.data.workflow.Workflow._
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, ImplicitEnd, Job}
 import io.circe.syntax.EncoderOps
@@ -20,6 +20,7 @@ import scala.language.implicitConversions
   * @author Joacim Zschimmer
   */
 final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String]) {
+  import com.sos.jobscheduler.data.workflow.Workflow._
 
   assert(isCorrectlyEnded(labeledInstructions), "Missing implicit end instruction")
 
@@ -159,6 +160,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
 }
 
 object Workflow {
+
   private val empty = Workflow(Vector.empty)
 
   def apply(labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String] = None): Workflow =
@@ -183,13 +185,18 @@ object Workflow {
       (labeledInstructions.last.instruction.isInstanceOf[End] ||
        labeledInstructions.last.instruction.isInstanceOf[Goto])
 
-  final case class Named(path: WorkflowPath, workflow: Workflow) {
+  final case class Named(path: WorkflowPath, workflow: Workflow) extends FileBased {
     @deprecated
     def lastWorkflowPosition = path /: Position(workflow.lastNr)
 
     def toPair: (WorkflowPath, Workflow) = path → workflow
   }
-  object Named {
+  object Named extends FileBased.Companion {
+    type ThisFileBased = Named
+    type ThisTypedPath = WorkflowPath
+
+    val typedPathCompanion = WorkflowPath
+
     implicit def fromPair(pair: (WorkflowPath, Workflow)) = Named(pair._1, pair._2)
 
     implicit val jsonCodec = deriveCodec[Named]

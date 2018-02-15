@@ -1,12 +1,14 @@
 package com.sos.jobscheduler.master.tests
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryContentRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.master.tests.TestEnvironment._
+import io.circe.{Json, ObjectEncoder}
 import java.io.IOException
 import java.nio.file.Files.{createDirectories, createDirectory, deleteIfExists, exists}
 import java.nio.file.Path
@@ -35,20 +37,20 @@ extends AutoCloseable {
     catch { case t: IOException ⇒ logger.debug(s"Delete $temporaryDirectory: $t", t)}
   }
 
-  def jsonFile(path: TypedPath): Path =
-    masterDir / "config/live" resolve path.jsonFile
+  def writeJson[A: ObjectEncoder](path: TypedPath, a: A): Unit =
+    file(path, SourceType.Json).contentString = Json.fromJsonObject(implicitly[ObjectEncoder[A]].encodeObject(a)).toPrettyString
 
-  def txtFile(path: TypedPath): Path =
-    masterDir / "config/live" resolve path.txtFile
+  def writeTxt(path: TypedPath, content: String): Unit =
+    file(path, SourceType.Txt).contentString = content
 
-  def xmlFile(path: TypedPath): Path =
-    masterDir / "config/live" resolve path.xmlFile
+  def file(path: TypedPath, t: SourceType): Path =
+    masterDir / "config/live" resolve path.file(t)
 
   def masterDir: Path =
     temporaryDirectory / "master"
 
-  def agentXmlFile(agentPath: AgentPath, path: TypedPath): Path =
-    agentDir(agentPath) / "config/live" resolve path.xmlFile
+  def agentFile(agentPath: AgentPath, path: TypedPath, t: SourceType): Path =
+    agentDir(agentPath) / "config/live" resolve path.file(t)
 
   def agentDir(agentPath: AgentPath): Path = {
     require(FolderPath.parentOf(agentPath) == FolderPath.Root, "Directory layout is not suitable for nested Agent paths")

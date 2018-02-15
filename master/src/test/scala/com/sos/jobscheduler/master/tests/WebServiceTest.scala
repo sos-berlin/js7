@@ -30,7 +30,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   override def beforeAll() = {
     super.beforeAll()
     //env.xmlFile(TestAgentPath).xml = <agent uri="http://0.0.0.0:0"/>
-    env.txtFile(TestWorkflowPath).contentString = TestWorkflowNotation
+    env.writeTxt(TestWorkflowPath, TestWorkflowNotation)
     master = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
     api = new AkkaHttpMasterApi(master.localUri.toString)

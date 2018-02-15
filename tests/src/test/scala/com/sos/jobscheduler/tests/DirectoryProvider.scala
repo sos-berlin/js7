@@ -2,6 +2,7 @@ package com.sos.jobscheduler.tests
 
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{closeOnError, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -12,10 +13,10 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.TypedPath
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.tests.DirectoryProvider._
+import io.circe.{Json, ObjectEncoder}
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Files, Path}
 import java.time.Duration
@@ -67,14 +68,14 @@ object DirectoryProvider {
       Files.createDirectory(data)
     }
 
-    def job(jobPath: JobPath): Path =
-      live / jobPath.toXmlFile
+    def writeJson[A: ObjectEncoder](path: TypedPath, a: A): Unit =
+      file(path, SourceType.Json).contentString = Json.fromJsonObject(implicitly[ObjectEncoder[A]].encodeObject(a)).toPrettyString
 
-    def jsonFile(path: TypedPath): Path =
-      live resolve path.jsonFile
+    def writeTxt(path: TypedPath, content: String): Unit =
+      file(path, SourceType.Txt).contentString = content
 
-    def txtFile(path: TypedPath): Path =
-      live resolve path.txtFile
+    def file(path: TypedPath, t: SourceType): Path =
+      live resolve path.file(t)
   }
 
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {

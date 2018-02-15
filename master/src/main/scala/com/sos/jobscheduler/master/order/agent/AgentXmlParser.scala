@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.order.agent
 
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.data.agent.AgentPath
 import javax.xml.transform.Source
@@ -9,12 +10,14 @@ import javax.xml.transform.Source
   */
 object AgentXmlParser {
 
-  def parseXml(agentPath: AgentPath, source: Source): Agent =
-    ScalaXMLEventReader.parseDocument(source) { eventReader ⇒
-      import eventReader._
+  def parseXml(agentPath: AgentPath, source: Source): Checked[Agent] =
+    Checked.catchNonFatal {
+      ScalaXMLEventReader.parseDocument(source) { eventReader ⇒
+        import eventReader._
 
-      eventReader.parseElement("agent") {
-        Agent(agentPath, attributeMap("uri"))
+        eventReader.parseElement("agent") {
+          Agent(agentPath, attributeMap("uri"))
+        }
       }
     }
 }

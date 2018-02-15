@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.workflow.JobPath
@@ -20,11 +21,11 @@ final class JobConfigurationTest extends FreeSpec {
         <script language="shell">exit 0</script>
       </job>
     assert(JobConfiguration.parseXml(JobPath("/TEST-JOB"), jobXml) ==
-      JobConfiguration(
+      Valid(JobConfiguration(
         JobPath("/TEST-JOB"),
         JobScript("exit 0"),
         Map("NAME" → "VALUE", "a" → "aa"),
-        taskLimit = 20))
+        taskLimit = 20)))
   }
 
   if (sys.props contains "test.speed") "Speed" in {

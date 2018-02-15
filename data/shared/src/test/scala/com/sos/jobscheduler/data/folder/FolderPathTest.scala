@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.folder
 
-import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import com.sos.jobscheduler.data.folder.FolderPathTest._
 import org.scalatest.FreeSpec
 
@@ -92,5 +92,8 @@ private object FolderPathTest {
     def companion = TestPath
   }
 
-  private object TestPath extends TypedPath.Companion[TestPath]
+  private object TestPath extends TypedPath.Companion[TestPath] {
+    val sourceTypeToFilenameExtension = Map(
+      SourceType.Json → ".test.json")
+  }
 }

@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.scalautil.xmls
 
-import java.io.{InputStream, StringReader}
+import akka.util.ByteString
+import java.io.{ByteArrayInputStream, InputStream, StringReader}
 import javax.xml.transform.Source
 import javax.xml.transform.stream.StreamSource
 import scala.language.implicitConversions
@@ -19,4 +20,7 @@ object XmlSources {
 
   implicit def inputStreamSource(o: InputStream): StreamSource =
     new StreamSource(o)
+
+  def simpleByteStringSource(o: ByteString): StreamSource =
+    new ByteArrayInputStream(o.toArray[Byte])
 }

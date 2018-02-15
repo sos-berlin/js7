@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.order
 
+import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.workflow.WorkflowPath
@@ -11,12 +12,12 @@ import org.scalatest.FreeSpec
 /**
   * @author Joacim Zschimmer
   */
-final class OrderGeneratorXmlParserTest extends FreeSpec {
+final class ScheduledOrderGeneratorXmlParserTest extends FreeSpec {
 
   "parse" in {
-    val path = OrderGeneratorPath("/TEST")
+    val path = ScheduledOrderGeneratorPath("/TEST")
     val timeZone = ZoneId.of("Europe/Berlin")
-    val orderGenerator = OrderGeneratorXmlParser.parseXml(OrderGeneratorPath("/TEST"),
+    val orderGenerator = ScheduledOrderGeneratorXmlParser.parseXml(ScheduledOrderGeneratorPath("/TEST"),
       <order job_chain="/JOBCHAIN">
         <params>
           <param name="a" value="AAA"/>
@@ -25,7 +26,7 @@ final class OrderGeneratorXmlParserTest extends FreeSpec {
           <period absolute_repeat="10"/>
         </run_time>
       </order>,
-      timeZone)
+      timeZone).force
     assert(orderGenerator == ScheduledOrderGenerator(
       path,
       WorkflowPath("/JOBCHAIN"),

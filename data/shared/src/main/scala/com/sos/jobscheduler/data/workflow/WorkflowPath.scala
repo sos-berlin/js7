@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
-import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 
 final case class WorkflowPath(string: String)
 extends TypedPath {
@@ -11,7 +11,10 @@ extends TypedPath {
 }
 
 
-object WorkflowPath extends TypedPath.Companion[WorkflowPath] {
-
-  override lazy val xmlFilenameExtension = s".job_chain.xml"
+object WorkflowPath extends TypedPath.Companion[WorkflowPath]
+{
+  val sourceTypeToFilenameExtension = Map(
+    SourceType.Json → ".workflow.json",
+    SourceType.Txt → ".workflow.txt",
+    SourceType.Xml → ".job_chain.xml")
 }

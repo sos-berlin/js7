@@ -7,6 +7,7 @@ import com.sos.jobscheduler.agent.configuration.inject.AgentModule
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunnerTest._
 import com.sos.jobscheduler.agent.scheduler.job.{JobConfiguration, ShellReturnValuesProvider}
 import com.sos.jobscheduler.agent.task.StandardAgentTaskFactory
+import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.process.Processes.newTemporaryShellFile
@@ -49,7 +50,7 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll {
               <param name="var1" value="VALUE1"/>
             </params>
             <script language="shell">{TestScript}</script>
-          </job>))
+          </job>)).force
       val shellFile = newTemporaryShellFile("TaskRunnerTest")
       shellFile.contentString = jobConfiguration.script.string.trim
       val shellReturnValuesProvider = new ShellReturnValuesProvider

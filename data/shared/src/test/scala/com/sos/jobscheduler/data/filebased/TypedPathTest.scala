@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.data.filebased
 
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.filebased.TypedPathTest._
 import org.scalatest.FreeSpec
 
@@ -22,6 +24,14 @@ final class TypedPathTest extends FreeSpec {
     assert(APath.makeAbsolute("a/b") == APath("/a/b"))
     intercept[IllegalArgumentException] { APath.makeAbsolute("./b") }
   }
+
+  "fromFile" in {
+    assert(APath.fromFile("/x").isInvalid)
+    assert(APath.fromFile("/x.a.json") == Valid(APath("/x") → SourceType.Json))
+    assert(APath.fromFile("/x.a.txt") == Valid(APath("/x") → SourceType.Txt))
+    assert(APath.fromFile("/x.b.json") == Invalid(Problem("Not a APath: /x.b.json")))
+    assert(BPath.fromFile("/x.b.json") == Valid(BPath("/x") → SourceType.Json))
+  }
 }
 
 private object TypedPathTest {
@@ -29,7 +39,11 @@ private object TypedPathTest {
     validate()
     def companion = APath
   }
-  object APath extends TypedPath.Companion[APath]
+  object APath extends TypedPath.Companion[APath] {
+    val sourceTypeToFilenameExtension = Map(
+      SourceType.Json → s".a.json",
+      SourceType.Txt → s".a.txt")
+  }
 
   final case class BPath(string: String) extends TypedPath {
     validate()
@@ -37,5 +51,8 @@ private object TypedPathTest {
   }
   object BPath extends TypedPath.Companion[BPath] {
     override def isCommaAllowed = false
+
+    val sourceTypeToFilenameExtension: Map[SourceType, String] = Map(
+      SourceType.Json → ".b.json")
   }
 }

@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.common.scalautil
 
+import akka.util.ByteString
 import com.google.common.base.Charsets.UTF_8
 import com.google.common.io.{Closer, Files ⇒ GuavaFiles}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
@@ -40,6 +41,8 @@ object FileUtils {
 
       def /(filename: String): Path = delegate resolve filename
 
+      def byteString: ByteString = file.byteString
+
       def contentBytes: Array[Byte] = file.contentBytes
 
       def contentBytes_=(o: Array[Byte]): Unit = file.contentBytes = o
@@ -65,6 +68,8 @@ object FileUtils {
     implicit class RichFile(val delegate: File) extends AnyVal {
 
       def /(filename: String) = new File(delegate, filename)
+
+      def byteString: ByteString = ByteString(delegate.contentBytes)
 
       def contentBytes: Array[Byte] = GuavaFiles.toByteArray(delegate)
 

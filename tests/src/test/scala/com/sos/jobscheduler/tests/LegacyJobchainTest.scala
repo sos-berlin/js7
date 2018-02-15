@@ -1,14 +1,12 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -17,6 +15,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
+import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
@@ -27,7 +26,6 @@ import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, Workflow
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.LegacyJobchainTest._
-import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.higherKinds
@@ -45,9 +43,9 @@ final class LegacyJobchainTest extends FreeSpec {
   "Run workflow" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
       withCloser { implicit closer ⇒
-        directoryProvider.master.jsonFile(TestNamedWorkflow.path).contentString = TestWorkflow.asJson.toPrettyString
-        for (a ← directoryProvider.agents) a.job(Test0JobPath).xml = jobXml(ReturnCode(0))
-        for (a ← directoryProvider.agents) a.job(Test1JobPath).xml = jobXml(ReturnCode(1))
+        directoryProvider.master.writeJson(TestNamedWorkflow.path, TestWorkflow)
+        for (a ← directoryProvider.agents) a.file(Test0JobPath, SourceType.Xml).xml = jobXml(ReturnCode(0))
+        for (a ← directoryProvider.agents) a.file(Test1JobPath, SourceType.Xml).xml = jobXml(ReturnCode(1))
 
         directoryProvider.runAgents { _ ⇒
           directoryProvider.runMaster { master ⇒
@@ -75,7 +73,6 @@ final class LegacyJobchainTest extends FreeSpec {
 
 object LegacyJobchainTest {
 
-  private val logger = Logger(getClass)
   private val TestAgentPath = AgentPath("/AGENT")
   private val Test0JobPath = JobPath("/JOB-0")
   private val Test1JobPath = JobPath("/JOB-1")
@@ -87,7 +84,7 @@ object LegacyJobchainTest {
       <job_chain_node     state="B" agent="/AGENT" job="/JOB-1" error_state="FAILURE"/>
       <job_chain_node     state="END"/>
       <job_chain_node.end state="FAILURE"/>
-    </job_chain>.toString())
+    </job_chain>.toString()).force
   private val TestNamedWorkflow = Workflow.Named(WorkflowPath("/WORKFLOW"), TestWorkflow)
   private val ExpectedWorkflow = Workflow(Vector(
     "A" @: /*0*/ Job(JobPath("/JOB-0"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),

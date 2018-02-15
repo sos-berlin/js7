@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.core.workflow.notation
 
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
@@ -21,10 +23,10 @@ import scala.reflect.ClassTag
   */
 object WorkflowParser {
 
-  def parse(string: String): Either[String, Workflow] =
+  def parse(string: String): Checked[Workflow] =
     parser.whole.parse(string) match {
-      case Parsed.Success(result, _) ⇒ Right(result.copy(source = Some(string)))
-      case o: Parsed.Failure ⇒ Left(o.toString)
+      case Parsed.Success(result, _) ⇒ Valid(result.copy(source = Some(string)))
+      case o: Parsed.Failure ⇒ Invalid(Problem((o.toString)))
     }
 
   private object parser {

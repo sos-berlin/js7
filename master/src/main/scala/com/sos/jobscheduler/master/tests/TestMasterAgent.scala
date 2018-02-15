@@ -7,7 +7,6 @@ import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.Terminate
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.convert.AsJava.StringAsPath
 import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.common.commandline.CommandLineArguments
@@ -28,6 +27,7 @@ import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
@@ -37,8 +37,7 @@ import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.order.OrderGeneratorPath
-import io.circe.syntax.EncoderOps
+import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorPath
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
@@ -84,7 +83,7 @@ object TestMasterAgent {
         journalSyncOnCommit = conf.syncMaster)))
       injector.instance[Closer].closeWithCloser
       val agents = for (agentPath ← conf.agentPaths) yield {
-        env.agentXmlFile(agentPath, TestJobPath).xml =
+        env.agentFile(agentPath, TestJobPath, SourceType.Xml).xml =
           <job tasks={conf.tasksPerJob.toString}>
             <params>
               <param name="JOB-VARIABLE" value={s"VALUE-${ agentPath.withoutStartingSlash }"}/>
@@ -107,7 +106,7 @@ object TestMasterAgent {
             configAndData = Some(env.agentDir(agentPath))).copy(
             journalSyncOnCommit = conf.syncAgent))
           .map { _.closeWithCloser } await 99.s
-        env.xmlFile(agentPath).xml = <agent uri={agent.localUri.toString}/>
+        env.file(agentPath, SourceType.Xml).xml = <agent uri={agent.localUri.toString}/>
         agent
       }
       JavaShutdownHook.add("TestMasterAgent") {
@@ -122,9 +121,9 @@ object TestMasterAgent {
         Log4j.shutdown()
       } .closeWithCloser
 
-      env.jsonFile(TestWorkflowPath).contentString = makeWorkflow(conf).asJson.toPrettyString
+      env.writeJson(TestWorkflowPath, makeWorkflow(conf))
       for (i ← 1 to conf.orderGeneratorCount) {
-        env.xmlFile(OrderGeneratorPath(s"/test-$i")).xml =
+        env.file(ScheduledOrderGeneratorPath(s"/test-$i"), SourceType.Xml).xml =
           <order job_chain={TestWorkflowPath}>
             <params>
               <param name="VARIABLE" value={i.toString}/>

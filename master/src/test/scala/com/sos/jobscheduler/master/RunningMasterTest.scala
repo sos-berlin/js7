@@ -21,12 +21,13 @@ import com.sos.jobscheduler.common.utils.FreeTcpPortFinder
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterTest._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.order.OrderGeneratorPath
+import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorPath
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import java.net.InetSocketAddress
 import java.time.Instant
@@ -46,7 +47,7 @@ final class RunningMasterTest extends FreeSpec {
   "test" in {
     autoClosing(new TestEnvironment(AgentPaths, temporaryDirectory / "RunningMasterTest")) { env ⇒
       val agentConfigs = AgentPaths map { agentPath ⇒
-        env.agentXmlFile(agentPath, JobPath("/test")).xml =
+        env.agentFile(agentPath, JobPath("/test"), SourceType.Xml).xml =
           <job>
             <params>
               <param name="var1" value={s"VALUE-${agentPath.withoutStartingSlash}"}/>
@@ -57,13 +58,13 @@ final class RunningMasterTest extends FreeSpec {
       }
 
       val agent0 = RunningAgent.startForTest(agentConfigs(0)) await 10.s
-      env.xmlFile(TestWorkflowPath).xml =
+      env.file(TestWorkflowPath, SourceType.Xml).xml =
         <job_chain>
           <job_chain_node state="100" agent="test-agent-111" job="/test"/>
           <job_chain_node state="200" agent="test-agent-222" job="/test"/>
           <job_chain_node.end state="END"/>
         </job_chain>
-      env.xmlFile(OrderGeneratorPath("/test")).xml =
+      env.file(ScheduledOrderGeneratorPath("/test"), SourceType.Xml).xml =
         <order job_chain="test">
           <params>
             <param name="x" value="XXX"/>
@@ -72,9 +73,9 @@ final class RunningMasterTest extends FreeSpec {
             <period absolute_repeat="1"/>
           </run_time>
         </order>
-      env.xmlFile(AgentPath("/test-agent-111")).xml = <agent uri={agent0.localUri.toString}/>
+      env.file(AgentPath("/test-agent-111"), SourceType.Xml).xml = <agent uri={agent0.localUri.toString}/>
       val agent1Port = FreeTcpPortFinder.findRandomFreeTcpPort()
-      env.xmlFile(AgentPath("/test-agent-222")).xml = <agent uri={s"http://127.0.0.1:$agent1Port"}/>
+      env.file(AgentPath("/test-agent-222"), SourceType.Xml).xml = <agent uri={s"http://127.0.0.1:$agent1Port"}/>
 
       RunningMaster.run(MasterConfiguration.forTest(configAndData = env.masterDir)) { master ⇒
         import master.{injector, orderClient}

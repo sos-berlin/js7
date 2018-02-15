@@ -1,12 +1,10 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
-import cats.syntax.either.catsSyntaxEither
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
@@ -15,13 +13,13 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
+import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.IfReturnCodeTest._
-import io.circe.syntax.EncoderOps
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.higherKinds
@@ -30,9 +28,9 @@ final class IfReturnCodeTest extends FreeSpec {
 
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      directoryProvider.master.jsonFile(TestNamedWorkflow.path).contentString = TestNamedWorkflow.workflow.asJson.toPrettyString
-      for (a ← directoryProvider.agents) a.job(JobPath("/JOB")).xml = <job><script language="shell">:</script></job>
-      for (a ← directoryProvider.agents) a.job(JobPath("/JOB-RC")).xml =
+      directoryProvider.master.writeJson(TestNamedWorkflow.path, TestNamedWorkflow.workflow)
+      for (a ← directoryProvider.agents) a.file(JobPath("/JOB"), SourceType.Xml).xml = <job><script language="shell">:</script></job>
+      for (a ← directoryProvider.agents) a.file(JobPath("/JOB-RC"), SourceType.Xml).xml =
         <job>
           <script language="shell">{if (isWindows) "@exit %SCHEDULER_PARAM_RETURN_CODE%" else "exit $SCHEDULER_PARAM_RETURN_CODE"}</script>
         </job>
@@ -77,7 +75,7 @@ object IfReturnCodeTest {
     """.stripMargin
   private val TestNamedWorkflow = Workflow.Named(
     WorkflowPath("/WORKFLOW"),
-    WorkflowParser.parse(script) valueOr sys.error)
+    WorkflowParser.parse(script).force)
 
   private val ExpectedEvents = Map(
     ReturnCode(0) → Vector(

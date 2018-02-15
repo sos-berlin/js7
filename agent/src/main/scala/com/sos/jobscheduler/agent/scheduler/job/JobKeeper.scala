@@ -5,11 +5,12 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeper._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner}
 import com.sos.jobscheduler.agent.task.TaskRegister
+import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.LoggingOneForOneStrategy
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalker.forEachTypedFile
+import com.sos.jobscheduler.core.filebased.FileBasedReader
 import com.sos.jobscheduler.data.workflow.JobPath
 import java.nio.file.Path
 import scala.collection.{immutable, mutable}
@@ -39,13 +40,14 @@ extends Actor with Stash {
       message match {
         case Input.Start ⇒
           val pathToActor = mutable.Map[JobPath, ActorRef]()
-          forEachTypedFile(jobConfigurationDirectory, Set(JobPath)) {
-            case (file, jobPath: JobPath) ⇒
-              val a = watch(actorOf(
-                JobActor.props(jobPath, registeringNewTaskRunner, timerService),
-                encodeAsActorName(jobPath.withoutStartingSlash)))
-              pathToActor += jobPath → a
-              a ! JobActor.Command.StartWithConfigurationFile(file)
+          val fileBaseds = FileBasedReader.readDirectoryTreeFlattenProblems(Set(JobReader), jobConfigurationDirectory).force
+          for (job ← fileBaseds collect { case o: JobConfiguration ⇒ o }) {
+            logger.debug(s"Adding ${job.path}")
+            val a = watch(actorOf(
+              JobActor.props(job.path, registeringNewTaskRunner, timerService),
+              encodeAsActorName(job.path.withoutStartingSlash)))
+            pathToActor += job.path → a
+            a ! JobActor.Command.StartWithConfiguration(job)
           }
           unstashAll()
           starting(pathToActor.toMap, sender())

@@ -4,46 +4,42 @@ import akka.Done
 import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
 import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.option._
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
-import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
+import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversable}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichPartialFunction}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
-import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.Logger.ops._
-import com.sos.jobscheduler.common.scalautil.xmls.FileSource
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
-import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalker.forEachTypedFile
+import com.sos.jobscheduler.core.filebased.FileBasedReader.readDirectoryTreeFlattenProblems
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
-import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
+import com.sos.jobscheduler.master.agent.AgentReader
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.MasterOrderKeeper._
-import com.sos.jobscheduler.master.order.agent.{AgentDriver, AgentXmlParser}
+import com.sos.jobscheduler.master.order.agent.{Agent, AgentDriver}
+import com.sos.jobscheduler.master.workflow.WorkflowReader
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
-import java.nio.file.Path
 import java.time.Duration
 import scala.collection.immutable.Seq
 import scala.collection.mutable
@@ -53,8 +49,7 @@ import scala.concurrent.Future
   * @author Joacim Zschimmer
   */
 final class MasterOrderKeeper(
-  masterConfiguration: MasterConfiguration,
-  scheduledOrderGeneratorKeeper: ScheduledOrderGeneratorKeeper)
+  masterConfiguration: MasterConfiguration)
   (implicit
     timerService: TimerService,
     eventIdGenerator: EventIdGenerator,
@@ -69,60 +64,37 @@ with Stash {
   intelliJuseImport(dispatcher)
 
   private val journalFile = masterConfiguration.stateDirectory / "journal"
-  private val agentRegister = new AgentRegister
-  private val pathToNamedWorkflow = mutable.Map[WorkflowPath, Workflow.Named]()
-  private val orderRegister = mutable.Map[OrderId, OrderEntry]()
-  private val idToOrder = orderRegister mapPartialFunction (_.order)
-  private val orderProcessor = new OrderProcessor(pathToNamedWorkflow mapPartialFunction (_.workflow), idToOrder)
   protected val journalActor = context.watch(context.actorOf(
     JournalActor.props(
       journalMeta(compressWithGzip = masterConfiguration.config.getBoolean("jobscheduler.master.journal.gzip")),
       journalFile, syncOnCommit = masterConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus),
     "Journal"))
+
+  private val fileBaseds = readDirectoryTreeFlattenProblems(
+      readers = Set(WorkflowReader, AgentReader, new ScheduledOrderGeneratorReader(masterConfiguration.timeZone)),
+      directory = masterConfiguration.liveDirectory)
+    .force
+  private val pathToNamedWorkflow: Map[WorkflowPath, Workflow.Named] =
+    fileBaseds collect { case o: Workflow.Named ⇒ o } toKeyedMap (_.path)
+  private val agentRegister = new AgentRegister
+  for (agent ← fileBaseds collect { case o: Agent ⇒ o }) {
+    val actor = context.actorOf(
+      Props { new AgentDriver(agent.path, agent.uri, masterConfiguration.config) },
+      name = encodeAsActorName("Agent-" + agent.path.withoutStartingSlash))
+    agentRegister.insert(agent.path → AgentEntry(agent.path, actor))
+  }
+
+  private val orderRegister = mutable.Map[OrderId, OrderEntry]()
+  private val idToOrder = orderRegister mapPartialFunction (_.order)
+  private val orderProcessor = new OrderProcessor(pathToNamedWorkflow mapPartialFunction (_.workflow), idToOrder)
+  private val scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(
+    masterConfiguration,
+    fileBaseds collect { case o: ScheduledOrderGenerator ⇒ o })
   private val orderScheduleGenerator = context.actorOf(
     Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, scheduledOrderGeneratorKeeper)},
     "OrderScheduleGenerator")
+
   private var terminating = false
-
-  loadConfiguration()
-
-  private def loadConfiguration(): Unit = {
-    for (dir ← masterConfiguration.liveDirectoryOption) {
-      forEachTypedFile(dir, Set(WorkflowPath, AgentPath)) {
-        case (file, workflowPath: WorkflowPath) ⇒
-          logger.info(s"Adding $workflowPath")
-          val workflow = readWorkflow(workflowPath, file)
-          pathToNamedWorkflow.insert(workflowPath → Workflow.Named(workflowPath, workflow))
-
-        case (file, agentPath: AgentPath) ⇒
-          logger.info(s"Adding $agentPath")
-          val agent = autoClosing(new FileSource(file)) { src ⇒
-            AgentXmlParser.parseXml(agentPath, src)
-          }
-          val actor = context.actorOf(
-            Props { new AgentDriver(agent.path, agent.uri, masterConfiguration.config) },
-            name = encodeAsActorName("Agent-" + agentPath.withoutStartingSlash))
-          agentRegister.insert(agentPath → AgentEntry(agentPath, actor))
-      }
-    }
-  }
-
-  private def readWorkflow(workflowPath: WorkflowPath, file: Path): Workflow =
-    if (file.getFileName.toString endsWith WorkflowPath.jsonFilenameExtension)
-      file.contentString.parseJson.as[Workflow].force
-    else
-    if (file.getFileName.toString endsWith WorkflowPath.txtFilenameExtension)
-      WorkflowParser.parse(file.contentString) match {
-        case Right(workflow) ⇒ workflow
-        case Left(message) ⇒ sys.error(s"$file: $message")
-      }
-    else
-    if (file.getFileName.toString endsWith WorkflowPath.xmlFilenameExtension)
-      autoClosing(new FileSource(file)) { src ⇒
-        LegacyJobchainXmlParser.parseXml(FolderPath.parentOf(workflowPath), src)
-      }
-    else
-      sys.error(s"Unrecognized file type: $file")
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself

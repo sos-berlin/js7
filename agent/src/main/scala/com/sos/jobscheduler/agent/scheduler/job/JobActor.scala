@@ -26,7 +26,6 @@ import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.file.Path
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
-import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -60,14 +59,6 @@ extends Actor with Stash {
   }
 
   def receive = {
-    case Command.StartWithConfigurationFile(path: Path) ⇒
-      val conf = try JobConfiguration.parseXml(jobPath, path)
-        catch { case NonFatal(t) ⇒
-          logger.error(t.toString, t)
-          throw t
-        }
-      self.forward(Command.StartWithConfiguration(conf))
-
     case Command.StartWithConfiguration(conf) ⇒
       jobConfiguration = conf
       logger.debug("Job is ready")
@@ -177,7 +168,6 @@ object JobActor {
 
   sealed trait Command
   object Command {
-    final case class StartWithConfigurationFile(path: Path)
     final case class StartWithConfiguration(conf: JobConfiguration)
     final case class ReadConfigurationFile(path: Path)
     final case class ProcessOrder(order: Order[Order.InProcess], stdChannels: StdChannels) extends Command

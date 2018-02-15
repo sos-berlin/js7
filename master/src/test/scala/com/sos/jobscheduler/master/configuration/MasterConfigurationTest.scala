@@ -11,12 +11,12 @@ import scala.concurrent.duration.DurationInt
   */
 final class MasterConfigurationTest extends FreeSpec {
 
-  private val configuration = MasterConfiguration.fromCommandLine(Vector("-data-directory=DATA"))
+  private val configuration = MasterConfiguration.fromCommandLine(Vector("-config-directory=CONFIG", "-data-directory=DATA"))
 
   "Empty argument list" in {
     assert(configuration.copy(config = ConfigFactory.empty) == MasterConfiguration(
       dataDirectory = Paths.get("DATA").toAbsolutePath,
-      configDirectoryOption = None,
+      configDirectory = Paths.get("CONFIG").toAbsolutePath,
       webServerBindings = Vector(),
       ZoneId.systemDefault,
       akkaAskTimeout = 60.seconds,
@@ -31,5 +31,5 @@ final class MasterConfigurationTest extends FreeSpec {
   }
 
   private def conf(args: String*) =
-    MasterConfiguration.fromCommandLine(Vector("-data-directory=DATA") ++ args)
+    MasterConfiguration.fromCommandLine(Vector("-config-directory=CONFIG", "-data-directory=DATA") ++ args)
 }

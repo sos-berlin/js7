@@ -23,6 +23,7 @@ final class MasterMainTest extends FreeSpec {
     autoClosing(new TestEnvironment(Nil, temporaryDirectory / "MasterMainIT")) { env ⇒
       (for (runningMaster ← MasterMain.start(MasterConfiguration.fromCommandLine(List(
         "-data-directory=" + env.masterDir,
+        "-config-directory=" + env.masterDir / "config",
         "-http-port=" + httpPort))))
       yield {
         runningMaster.executeCommand(MasterCommand.Terminate) await 99.s

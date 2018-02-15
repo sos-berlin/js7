@@ -5,13 +5,13 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
+import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
@@ -27,8 +27,8 @@ final class OfferAndAwaitOrderTest extends FreeSpec
 {
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      for ((path, workflow) ← TestWorkflows) directoryProvider.master.txtFile(path).contentString = workflow
-      for (a ← directoryProvider.agents) a.job(TestJobPath).xml = <job><script language="shell">:</script></job>
+      for ((path, workflow) ← TestWorkflows) directoryProvider.master.writeTxt(path, workflow)
+      for (a ← directoryProvider.agents) a.file(TestJobPath, SourceType.Xml).xml = <job><script language="shell">:</script></job>
 
       directoryProvider.run { (master, _) ⇒
         val eventCollector = new TestEventCollector

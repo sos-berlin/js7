@@ -18,6 +18,7 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.{GzipCompression, JournalMeta, JsonFileIterator}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
@@ -46,7 +47,7 @@ final class RecoveryTest extends FreeSpec {
     var lastEventId = EventId.BeforeFirst
     autoClosing(new DirectoryProvider(AgentPaths)) { directoryProvider ⇒
       for ((agentPath, tree) ← directoryProvider.agentToTree)
-        tree.job(TestJobPath).xml = jobXml(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
+        tree.file(TestJobPath, SourceType.Xml).xml = jobXml(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
       withCloser { implicit closer ⇒
 
         (directoryProvider.master.live / "fast.job_chain.xml").xml = QuickJobChainElem
@@ -59,7 +60,7 @@ final class RecoveryTest extends FreeSpec {
           }
           runAgents(directoryProvider) { _ ⇒
             master.addOrder(FastOrder) await 99.s
-            lastEventId = lastEventIdOf(eventCollector.await[OrderFinished](after = lastEventId, predicate = _.key == FastOrderId))
+            lastEventId = lastEventIdOf(eventCollector.await[OrderFinished](after = lastEventId, predicate = _.key == FastOrder.id))
             lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
             lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
           }
@@ -133,8 +134,7 @@ private object RecoveryTest {
   private val FastWorkflowPath = WorkflowPath("/fast")
   private val TestJobPath = JobPath("/test")
 
-  private val FastOrderId = OrderId("FAST-ORDER")
-  private val FastOrder = Order(FastOrderId, FastWorkflowPath, Order.StartNow)
+  private val FastOrder = Order(OrderId("FAST-ORDER"), FastWorkflowPath, Order.StartNow)
   private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
 
   private val TestJobChainElem =

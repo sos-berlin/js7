@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.core.workflow.notation
 
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.common.time.Stopwatch.{measureTime, measureTimeParallel}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
@@ -146,7 +147,7 @@ final class WorkflowParserTest extends FreeSpec {
 
   private def parse(workflowString: String): Workflow =
     WorkflowParser.parse(workflowString) match {
-      case Right(workflow) ⇒ workflow
-      case Left(message) ⇒ throw new AssertionError(message) with NoStackTrace
+      case Valid(workflow) ⇒ workflow
+      case Invalid(problem) ⇒ throw new AssertionError(problem.toString, problem.throwableOption.orNull) with NoStackTrace
     }
 }
