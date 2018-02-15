@@ -65,7 +65,7 @@ private[order] object OrderRegister {
     }
 
     def checkedJob: Checked[Job] =
-      workflow.checkedJob(order.position) mapProblemKey order.id
+      workflow.checkedJob(order.position) withProblemKey order.id
 
     def jobOption: Option[Job] =
       workflow.jobOption(order.position)

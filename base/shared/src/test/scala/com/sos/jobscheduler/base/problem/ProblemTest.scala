@@ -20,9 +20,9 @@ final class ProblemTest extends FreeSpec {
     assert(problem.withKey("KEY").throwable.getMessage == "Problem with 'KEY': MESSAGE")
   }
 
-  "fromThrowable" in {
+  "fromLazyThrowable" in {
     val throwable = new RuntimeException("MESSAGE")
-    val problem = Problem.fromThrowable(throwable)
+    val problem = Problem.fromLazyThrowable(throwable)
     assert(problem.toString == "MESSAGE")
     assert(problem.throwableOption contains throwable)
     assert(problem.throwable eq throwable)
@@ -30,19 +30,19 @@ final class ProblemTest extends FreeSpec {
     assert(problem.withKey("KEY").toString == "Problem with 'KEY', caused by: MESSAGE")
     assert(problem.withKey("KEY").throwable.getMessage == "Problem with 'KEY':")
 
-    assert(Problem.fromThrowable(new RuntimeException).toString == "java.lang.RuntimeException")
+    assert(Problem.fromLazyThrowable(new RuntimeException).toString == "java.lang.RuntimeException")
   }
 
   "combine" in {
     assert((Problem("A") |+| Problem("B")) == Problem("A - B"))
     assert((Problem("A:") |+| Problem("B")) == Problem("A: B"))
     assert((Problem("A:   ") |+| Problem("B")) == Problem("A: B"))
-    assert((Problem("A") |+| Problem.fromThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A")
-    assert((Problem("A") |+| Problem.fromThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A, caused by: B")
-    assert((Problem.fromThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.getMessage == "A")
-    assert((Problem.fromThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "A, caused by: B")
-    assert((Problem.fromThrowable(new RuntimeException("A")) |+| Problem.fromThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A")
-    assert((Problem.fromThrowable(new RuntimeException("A")) |+| Problem.fromThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A, caused by: B")
+    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A")
+    assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A, caused by: B")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.getMessage == "A")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "A, caused by: B")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A")
+    assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A, caused by: B")
   }
 
   "Problem is lazy" in {

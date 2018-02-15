@@ -57,7 +57,7 @@ object Checked
     {
       def flatMap[B](f: A ⇒ Checked[B]): Checked[B] = monad.flatMap(underlying)(f)
 
-      def mapProblemKey(key: Any): Checked[A] =
+      def withProblemKey(key: Any): Checked[A] =
         mapProblem (_ withKey key)
 
       def mapProblem(f: Problem ⇒ Problem): Checked[A] =

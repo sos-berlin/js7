@@ -2,8 +2,8 @@ package com.sos.jobscheduler.base.problem
 
 import cats.Semigroup
 import cats.syntax.semigroup._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.problem.Problem._
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import scala.language.implicitConversions
 
 /**
@@ -25,7 +25,10 @@ object Problem
   def apply(messageFunction: ⇒ String): Problem =
     new FromString(() ⇒ messageFunction)
 
-  def fromThrowable(throwable: ⇒ Throwable): Problem =
+  def fromEagerThrowable(throwable: Throwable): Problem =
+    fromLazyThrowable(throwable)
+
+  def fromLazyThrowable(throwable: ⇒ Throwable): Problem =
     new FromThrowable(() ⇒ throwable)
 
   private class FromString(messageFunction: () ⇒ String) extends Problem {
@@ -58,10 +61,10 @@ object Problem
       Problem(combineMessages(a.toString, b.toString))
 
     case (a: FromString, b: FromThrowable) ⇒
-      Problem.fromThrowable(new ProblemException(a.toString, b.throwable))
+      Problem.fromLazyThrowable(new ProblemException(a.toString, b.throwable))
 
     case (a: FromThrowable, b: Problem) ⇒
-      Problem.fromThrowable {
+      Problem.fromLazyThrowable {
         val t = new ProblemException(a.toString, b.throwable)
         t.setStackTrace(a.throwable.getStackTrace)
         t
