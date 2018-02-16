@@ -17,7 +17,7 @@
   </appenders>
   <loggers>
     <root level="WARN">
-      <appenderRef level="WARN" ref="console"/>
+      <appenderRef level="OFF" ref="console"/>
       <appenderRef level="DEBUG" ref="file"/>
     </root>
     <logger level="DEBUG" name="jobscheduler"/>
