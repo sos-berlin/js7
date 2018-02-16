@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.task
 
-import akka.actor.ActorDSL._
-import akka.actor.Terminated
+import akka.actor.{Actor, Props, Terminated}
+import akka.pattern.ask
 import akka.util.Timeout
 import com.sos.jobscheduler.agent.configuration.{AgentConfiguration, Akkas}
 import com.sos.jobscheduler.agent.data.AgentTaskId
@@ -26,32 +26,24 @@ import java.time.Instant.now
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.JavaConverters._
 import scala.concurrent.Promise
-import scala.concurrent.duration.DurationLong
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
 final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfterAll with TestAgentDirectoryProvider {
 
+  private implicit val timeout = Timeout(99.seconds)
   private implicit lazy val actorSystem = Akkas.newActorSystem("TaskRegisterTest",
     ConfigFactory.parseMap(Map("akka.scheduler.tick-duration" → "100 millis").asJava))  // Our default of 1s slows down this test
   TestAgentDirectoryProvider
   private implicit lazy val agentConfiguration = AgentConfiguration.forTest(Some(agentDirectory)).finishAndProvideFiles
   private implicit lazy val timerService = new TimerService(idleTimeout = Some(1.s))
-  private implicit lazy val me = inbox()
   private lazy val actor = actorSystem.actorOf(TaskRegisterActor.props(agentConfiguration, timerService) )
-  private lazy val handle = {
-    implicit val askTimeout = Timeout(9.seconds)
-    new TaskRegister(actor)
-  }
+  private lazy val handle = new TaskRegister(actor)
   private lazy val aTask = new TestTask(AgentTaskId(1, 11))
   private lazy val bTask = new TestTask(AgentTaskId(2, 22))
   private lazy val cTask = new TestTask(AgentTaskId(3, 33))
-
-  override def beforeAll() = {
-    me.watch(actor)
-    super.beforeAll()
-  }
 
   override def afterAll() = {
     closer.close()
@@ -109,8 +101,17 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
   }
 
   "Terminate" in {
-    actor ! TaskRegisterActor.Command.Terminate(sigterm = true, sigkillProcessesAfter = now + 300.ms)
-    assert(me.receive() == Completed)
+    val terminated = Promise[Unit]()
+    actorSystem.actorOf(Props {
+      new Actor() {
+        context.watch(actor)
+        def receive = {
+          case Terminated(`actor`) ⇒ terminated.success(())
+        }
+      }
+    })
+    val terminateResponse = (actor ? TaskRegisterActor.Command.Terminate(sigterm = true, sigkillProcessesAfter = now + 300.ms)).await(99.s)
+    assert(terminateResponse == Completed)
     if (!isWindows) retryUntil(1.s, 10.ms) {
       assert(bTask.signalled == SIGTERM)
       assert(cTask.signalled == SIGTERM)
@@ -119,8 +120,7 @@ final class TaskRegisterTest extends FreeSpec with HasCloser with BeforeAndAfter
       assert(bTask.signalled == SIGKILL)
       assert(cTask.signalled == SIGKILL)
     }
-
-    assert(me.receive().asInstanceOf[Terminated].actor == actor)
+    terminated.future await 99.s
   }
 
   private def crashKillScript = autoClosing(scala.io.Source.fromFile(agentConfiguration.crashKillScriptFile)) { _.getLines.toSet }
