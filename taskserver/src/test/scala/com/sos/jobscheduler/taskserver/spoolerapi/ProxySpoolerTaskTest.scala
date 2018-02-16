@@ -4,7 +4,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.FileUtils._
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout}
+import com.sos.jobscheduler.data.system.{Stderr, Stdout}
 import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits._
 import com.sos.jobscheduler.minicom.remoting.calls.ProxyId
 import com.sos.jobscheduler.minicom.remoting.proxy.ProxyRemoting

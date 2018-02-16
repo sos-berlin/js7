@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.scheduler.order.StdouterrToEvent._
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
+import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.typesafe.config.Config
 import java.io.Writer
 import java.time.Instant.now
@@ -15,7 +15,7 @@ import scala.concurrent.{Future, Promise}
 /**
   * @author Joacim Zschimmer
   */
-private[order] class StdouterrToEvent(orderActorContext: ActorContext, config: Config, writeEvent: (StdoutStderrType, String) ⇒ Future[Completed]) {
+private[order] class StdouterrToEvent(orderActorContext: ActorContext, config: Config, writeEvent: (StdoutOrStderr, String) ⇒ Future[Completed]) {
 
   import orderActorContext.{dispatcher, self, system}
 
@@ -27,7 +27,7 @@ private[order] class StdouterrToEvent(orderActorContext: ActorContext, config: C
   private var lastEventAt = Instant.ofEpochMilli(0)
   private var timer: Cancellable = null
 
-  val writers = Map[StdoutStderrType, Writer](
+  val writers = Map[StdoutOrStderr, Writer](
     Stdout → new StdWriter(Stdout, self, size = chunkSize, passThroughSize = chunkSize / 2),
     Stderr → new StdWriter(Stderr, self, size = chunkSize, passThroughSize = chunkSize / 2))
 
@@ -68,7 +68,7 @@ private[order] class StdouterrToEvent(orderActorContext: ActorContext, config: C
 }
 
 object StdouterrToEvent {
-  private class StdWriter(stdoutOrStderr: StdoutStderrType, orderActorSelf: ActorRef, protected val size: Int, protected val passThroughSize: Int)
+  private class StdWriter(stdoutOrStderr: StdoutOrStderr, orderActorSelf: ActorRef, protected val size: Int, protected val passThroughSize: Int)
     extends BufferedStringWriter {
 
     def close() = flush()
@@ -87,7 +87,7 @@ object StdouterrToEvent {
   private[order] sealed trait Stdouterr
   private object Stdouterr {
     final case object BufferingStarted extends Stdouterr
-    final case class StdoutStderrWritten(typ: StdoutStderrType, chunk: String, completed: Promise[Completed]) extends Stdouterr
+    final case class StdoutStderrWritten(typ: StdoutOrStderr, chunk: String, completed: Promise[Completed]) extends Stdouterr
     final case object FlushStdoutStderr extends Stdouterr with DeadLetterSuppression  // May arrive after death, due to timer
   }
 }

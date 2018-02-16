@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.process.OperatingSystemSpecific.OS
 import com.sos.jobscheduler.common.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.data.system.StdoutOrStderr
 import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
@@ -46,7 +46,7 @@ object Processes {
 
   def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
 
-  def newLogFile(directory: Path, name: String, outerr: StdoutStderrType): Path = OS.newLogFile(directory, name, outerr)
+  def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr): Path = OS.newLogFile(directory, name, outerr)
 
   def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
 
@@ -71,7 +71,7 @@ object Processes {
     private val DefaultDurations = List(10.ms, 50.ms, 500.ms, 1440.ms) ensuring { o ⇒ (o map { _.toMillis }).sum.ms == 2.s }
 
     object TextFileBusyIOException {
-      private val matchesError26 = """.*\berror=26\b.*""".r.pattern.matcher _
+      private def matchesError26(o: String) = """.*\berror=26\b.*""".r.pattern.matcher(o)
       def unapply(e: IOException): Option[IOException] = matchesError26(e.getMessage).matches option e
     }
   }

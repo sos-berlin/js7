@@ -31,7 +31,7 @@ import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
+import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
@@ -136,7 +136,7 @@ private object OrderActorTest {
     eventJsonCodec = KeyedEvent.typedJsonCodec[OrderEvent](KeyedSubtype[OrderEvent]))
   private implicit val TestAkkaTimeout = Timeout(99.seconds)
 
-  private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutStderrType, String])
+  private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutOrStderr, String])
 
 
 
@@ -160,7 +160,7 @@ private object OrderActorTest {
 
     private val orderChangeds = mutable.Buffer[OrderActor.Output.OrderChanged]()
     private val events = mutable.Buffer[OrderEvent]()
-    private val stdoutStderr = (for (t ← StdoutStderrType.values) yield t → new StringBuilder).toMap
+    private val stdoutStderr = (for (t ← StdoutOrStderr.values) yield t → new StringBuilder).toMap
     private var jobActorTerminated = false
 
     keyedEventBus.subscribe(self, classOf[OrderEvent])

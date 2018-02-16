@@ -4,7 +4,7 @@ import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.{DurationDecoder, DurationEncoder, PathJsonCodec}
 import com.sos.jobscheduler.common.scalautil.FileUtils.EmptyPath
 import com.sos.jobscheduler.common.system.FileUtils._
-import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.data.system.StdoutOrStderr
 import com.sos.jobscheduler.data.workflow.JobPath
 import io.circe.generic.JsonCodec
 import java.nio.file.Path
@@ -21,7 +21,7 @@ final case class TaskServerArguments(
   workingDirectory: Path,
   logDirectory: Path,
   dotnet: DotnetConfiguration = DotnetConfiguration(),
-  stdFileMap: Map[StdoutStderrType, Path] = Map(),
+  stdFileMap: Map[StdoutOrStderr, Path] = Map(),
   logStdoutAndStderr: Boolean = false,
   killScriptOption: Option[ProcessKillScript] = None,
   rpcKeepaliveDurationOption: Option[Duration])
@@ -36,7 +36,7 @@ object TaskServerArguments {
   def forTest(
     tcpPort: Int = 999999999,
     directory: Path = EmptyPath,
-    stdFileMap: Map[StdoutStderrType, Path] = Map())
+    stdFileMap: Map[StdoutOrStderr, Path] = Map())
   = new TaskServerArguments(
       agentTaskId = AgentTaskId("1-1"),
       JobPath("/TEST-JOB-PATH"),

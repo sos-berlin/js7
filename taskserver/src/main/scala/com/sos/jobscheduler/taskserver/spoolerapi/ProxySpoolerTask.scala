@@ -3,7 +3,7 @@ package com.sos.jobscheduler.taskserver.spoolerapi
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.message.MessageCode
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
+import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.minicom.idispatch.IDispatch.implicits._
 import com.sos.jobscheduler.minicom.idispatch.annotation.invocable
 import com.sos.jobscheduler.minicom.idispatch.{AnnotatedInvocable, DISPID, OverridingInvocableIDispatch}
@@ -46,9 +46,9 @@ extends SpoolerTask with SpecializedProxyIDispatch with AnnotatedInvocable with 
   @invocable
   def stderr_text: String = fileText(Stderr)
 
-  private def fileText(s: StdoutStderrType) = taskServerArguments.stdFileMap.get(s) map { _.contentString(Encoding) } getOrElse ""
+  private def fileText(s: StdoutOrStderr) = taskServerArguments.stdFileMap.get(s) map { _.contentString(Encoding) } getOrElse ""
 
-  private def filePath(s: StdoutStderrType) = taskServerArguments.stdFileMap.get(s) map { _.toString } getOrElse ""
+  private def filePath(s: StdoutOrStderr) = taskServerArguments.stdFileMap.get(s) map { _.toString } getOrElse ""
 
   @invocable
   def create_subprocess(program_and_parameters: Option[AnyRef]) = throw new UnsupportedApiException("sos.spooler.Task.create_subprocess")

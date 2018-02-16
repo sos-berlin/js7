@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType}
+import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import com.typesafe.config.Config
@@ -245,7 +245,7 @@ extends KeyedJournalingActor[OrderEvent] {
       update(event)
     }
 
-  private def writeStdouterr(t: StdoutStderrType, chunk: String): Future[Completed] =
+  private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Completed] =
     promiseFuture[Completed] { promise ⇒
       persistAsync(OrderStdWritten(t)(chunk)) { _ ⇒
         promise.success(Completed)

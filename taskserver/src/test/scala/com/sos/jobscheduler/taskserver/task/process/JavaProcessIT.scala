@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.system.StdoutStderr._
+import com.sos.jobscheduler.data.system.{Stderr, Stdout}
 import com.sos.jobscheduler.taskserver.task.process.JavaProcessIT._
 import java.lang.System.{err, out}
 import org.scalatest.FreeSpec

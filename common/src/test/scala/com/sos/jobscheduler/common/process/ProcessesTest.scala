@@ -6,7 +6,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.autoDeleting
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.system.OperatingSystem.{isMac, isSolaris, isWindows}
-import com.sos.jobscheduler.data.system.StdoutStderr.Stdout
+import com.sos.jobscheduler.data.system.Stdout
 import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists

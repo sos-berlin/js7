@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.utils.Strings.TruncatedString
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
-import com.sos.jobscheduler.data.system.StdoutStderr._
+import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
@@ -55,13 +55,13 @@ object OrderEvent {
   sealed trait OrderStdWritten extends OrderEvent {
     //type State = InProcess
 
-    def stdoutStderrType: StdoutStderrType
+    def stdoutStderrType: StdoutOrStderr
     protected def chunk: String
 
     override def toString = s"${getClass.simpleScalaName}(${chunk.trim.truncateWithEllipsis(80, showLength = true)})"
   }
   object OrderStdWritten {
-    def apply(t: StdoutStderrType): String ⇒ OrderStdWritten =
+    def apply(t: StdoutOrStderr): String ⇒ OrderStdWritten =
       t match {
         case Stdout ⇒ OrderStdoutWritten.apply
         case Stderr ⇒ OrderStderrWritten.apply

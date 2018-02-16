@@ -3,7 +3,7 @@ package com.sos.jobscheduler.taskserver.common
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout}
+import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import java.io.{FileOutputStream, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files
@@ -20,7 +20,7 @@ final class StdoutStderrWellTest extends FreeSpec {
     withCloser { implicit closer ⇒
       val collectedLines = Map(Stdout → mutable.Buffer[String](), Stderr → mutable.Buffer[String]())
       val stdFiles = Map(Stdout → createTempFile("test-", ".tmp"), Stderr → createTempFile("test-", ".tmp").withCloser(Files.delete))
-      val List(out, err) = List(Stdout, Stderr) map { o ⇒ new OutputStreamWriter(new FileOutputStream(stdFiles(o)).closeWithCloser) }
+      val List(out, err) = StdoutOrStderr.values map { o ⇒ new OutputStreamWriter(new FileOutputStream(stdFiles(o)).closeWithCloser) }
       val well = new StdoutStderrWell(stdFiles, UTF_8, batchThreshold = 100, (t, batches) ⇒ collectedLines(t) ++= batches).closeWithCloser
 
       out.write("OUT\n")

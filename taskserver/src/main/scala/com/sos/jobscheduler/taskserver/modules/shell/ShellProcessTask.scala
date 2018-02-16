@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger, SetOnce}
 import com.sos.jobscheduler.common.utils.JavaShutdownHook
 import com.sos.jobscheduler.common.xml.VariableSets
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.data.system.StdoutOrStderr
 import com.sos.jobscheduler.taskserver.common.StdoutStderrWell
 import com.sos.jobscheduler.taskserver.data.TaskServerConfiguration._
 import com.sos.jobscheduler.taskserver.data.TaskServerMainTerminated
@@ -52,7 +52,7 @@ extends HasCloser with Task {
 
   private val monitorProcessor = MonitorProcessor.create(monitors, namedIDispatches).closeWithCloser
   private lazy val orderParamsFile = createTempFile("sos-", ".tmp")
-  private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, id = logFilenamePart) else Map[StdoutStderrType, Path]()
+  private lazy val processStdFileMap = if (stdFiles.isEmpty) RichProcess.createStdFiles(logDirectory, id = logFilenamePart) else Map[StdoutOrStderr, Path]()
   private var startCalled = false
   private val richProcessOnce = new SetOnce[RichProcess]
   private val logger = Logger.withPrefix[ShellProcessTask](toString)

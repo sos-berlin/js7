@@ -3,7 +3,7 @@ package com.sos.jobscheduler.common.process
 import com.sos.jobscheduler.common.process.OperatingSystemSpecific._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.OperatingSystem._
-import com.sos.jobscheduler.data.system.StdoutStderr.StdoutStderrType
+import com.sos.jobscheduler.data.system.StdoutOrStderr
 import java.nio.file.Files._
 import java.nio.file.attribute.PosixFilePermissions._
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
@@ -25,7 +25,7 @@ private[process] sealed trait OperatingSystemSpecific {
 
   def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), shellFileExtension, shellFileAttributes: _*)
 
-  def newLogFile(directory: Path, name: String, outerr: StdoutStderrType) = {
+  def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr) = {
     val file = directory resolve s"$name-$outerr.log"
     try createFile(file, outputFileAttributes: _*)
     catch { case t: FileAlreadyExistsException ⇒

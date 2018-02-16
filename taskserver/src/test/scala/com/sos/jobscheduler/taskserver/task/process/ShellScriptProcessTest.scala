@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.{KernelSupportsNestedS
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.system.StdoutStderr.Stdout
+import com.sos.jobscheduler.data.system.Stdout
 import com.sos.jobscheduler.taskserver.task.process.ShellScriptProcess.startShellScript
 import java.nio.file.Files._
 import org.scalatest.FreeSpec

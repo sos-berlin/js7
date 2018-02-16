@@ -11,7 +11,7 @@ import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.system.StdoutStderr.{Stderr, Stdout, StdoutStderrType, StdoutStderrTypes}
+import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
 import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}
 import java.lang.ProcessBuilder.Redirect
@@ -142,8 +142,8 @@ object RichProcess {
 
   private def toRedirect(pathOption: Option[Path]) = pathOption map { o ⇒ Redirect.to(o) } getOrElse INHERIT
 
-  def createStdFiles(directory: Path, id: String): Map[StdoutStderrType, Path] =
-    (StdoutStderrTypes map { o ⇒ o → newLogFile(directory, id, o) }).toMap
+  def createStdFiles(directory: Path, id: String): Map[StdoutOrStderr, Path] =
+    (StdoutOrStderr.values map { o ⇒ o → newLogFile(directory, id, o) }).toMap
 
   private def waitForProcessTermination(process: Process): ReturnCode = {
     logger.trace(s"waitFor ${processToString(process)} ...")
