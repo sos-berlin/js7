@@ -186,7 +186,7 @@ object Workflow {
        labeledInstructions.last.instruction.isInstanceOf[Goto])
 
   final case class Named(path: WorkflowPath, workflow: Workflow) extends FileBased {
-    @deprecated
+    /** For test. */
     def lastWorkflowPosition = path /: Position(workflow.lastNr)
 
     def toPair: (WorkflowPath, Workflow) = path → workflow

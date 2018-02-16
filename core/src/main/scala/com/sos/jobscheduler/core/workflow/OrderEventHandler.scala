@@ -77,7 +77,6 @@ object OrderEventHandler
     final case class Processed(job: Job) extends FollowUp
     final case class AddChild(order: Order[Order.Ready]) extends FollowUp
     final case class AddOffered(order: Order[Order.Offered]) extends FollowUp
-    final case class TryAgain(orderId: OrderId) extends FollowUp
     final case class Remove(orderId: OrderId) extends FollowUp
   }
 }

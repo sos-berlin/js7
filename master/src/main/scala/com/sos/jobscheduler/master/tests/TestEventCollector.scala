@@ -35,9 +35,9 @@ extends EventCollector(
           }
 
           def receive = {
-            case event: Stamped[AnyKeyedEvent] ⇒
-              logger.trace(event.toString)
-              addStamped(event)
+            case stamped: Stamped[AnyKeyedEvent] @unchecked ⇒
+              logger.trace(stamped.toString)
+              addStamped(stamped)
           }
         }
       },

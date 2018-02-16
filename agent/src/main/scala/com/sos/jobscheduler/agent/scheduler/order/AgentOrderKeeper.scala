@@ -295,6 +295,9 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
         case FollowUp.Remove(removeOrderId) ⇒
           removeOrder(removeOrderId)
+
+        case o: FollowUp.AddOffered ⇒
+          sys.error(s"Unexpeced FollowUp $o")  // Only Master handles this
       }
     }
     orderEntry.order = order

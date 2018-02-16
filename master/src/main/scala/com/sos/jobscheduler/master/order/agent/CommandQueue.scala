@@ -85,6 +85,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     responses.flatMap {
       case QueuedInputResponse(input, Batch.Succeeded(Accepted)) ⇒
         Some(input)
+      case QueuedInputResponse(_, Batch.Succeeded(o)) ⇒
+        sys.error(s"Unexpected response from agent: $o")
       case QueuedInputResponse(input, Batch.Failed(message)) ⇒
         logger.error(s"Agent has rejected the command ${input.toShortString}: $message")
         // Agent's state does not match master's state ???

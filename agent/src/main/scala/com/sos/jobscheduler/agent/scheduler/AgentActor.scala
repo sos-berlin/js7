@@ -7,6 +7,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.AgentActor._
+import com.sos.jobscheduler.agent.scheduler.AgentEvent.MasterEvent
 import com.sos.jobscheduler.agent.scheduler.job.task.TaskRunner
 import com.sos.jobscheduler.agent.scheduler.job.{JobActor, JobKeeper}
 import com.sos.jobscheduler.agent.scheduler.order.AgentOrderKeeper
@@ -196,7 +197,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
         (a ? AgentOrderKeeper.Input.Terminate).mapTo[Done])
     .map { _ ⇒ AgentCommand.Accepted }
 
-  private def update(keyedEvent: KeyedEvent[AgentEvent]): Unit =
+  private def update(keyedEvent: KeyedEvent[MasterEvent]): Unit =
     keyedEvent match {
       case KeyedEvent(userId: UserId, AgentEvent.MasterAdded) ⇒
         addOrderKeeper(userId)

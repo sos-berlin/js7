@@ -119,6 +119,7 @@ private object InvocableIDispatchTest {
       assert(dispatchTypes == Set(DISPATCH_METHOD))
       (dispId, arguments, namedArguments) match {
         case (DISPID(2), Nil, Nil) ⇒ "NOT OVERRIDDEN"
+        case _ ⇒ fail()
       }
     }
   }

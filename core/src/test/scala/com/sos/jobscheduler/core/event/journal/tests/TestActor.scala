@@ -40,7 +40,10 @@ private[tests] final class TestActor(journalFile: Path, journalStopped: Promise[
     super.preStart()
     val recoverer = new MyJournalRecoverer()
     recoverer.recoverAllAndTransferTo(journalActor = journalActor)
-    keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map { case (k: String @unchecked, a) ⇒ k → a }
+    keyToAggregate ++= recoverer.recoveredJournalingActors.keyToJournalingActor map {
+      case (k: String, a) ⇒ k → a
+      case o ⇒ sys.error(s"UNEXPECTED: $o")
+    }
   }
 
   private class MyJournalRecoverer extends JournalActorRecoverer[TestEvent] {

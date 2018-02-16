@@ -257,6 +257,8 @@ object OrderEventSourceTest {
 
             case FollowUp.Remove(removeOrderId) ⇒
               idToOrder -= removeOrderId
+
+            case o ⇒ sys.error(o.toString)
           }
       }
   }

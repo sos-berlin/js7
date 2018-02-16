@@ -21,6 +21,7 @@ final class ApiRootRouteTest extends FreeSpec with ScalatestRouteTest with ApiRo
   protected def executeCommand(command: MasterCommand) =
     command match {
       case MasterCommand.Terminate ⇒ Future.successful(MasterCommand.Response.Accepted)
+      case _ ⇒ fail()
     }
 
   protected def orderCountFuture = Future.successful(7)

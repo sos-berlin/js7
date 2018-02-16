@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.scalautil
 
 import akka.util.ByteString
 import com.google.common.base.Charsets.UTF_8
+import com.google.common.io.FileWriteMode.APPEND
 import com.google.common.io.{Closer, Files ⇒ GuavaFiles}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -79,11 +80,11 @@ object FileUtils {
 
       def contentString_=(o: String): Unit = write(o, UTF_8)
 
-      def contentString(encoding: Charset) = GuavaFiles.toString(delegate, encoding)
+      def contentString(encoding: Charset) = GuavaFiles.asCharSource(delegate, encoding).read()
 
-      def write(string: String, encoding: Charset = UTF_8): Unit =  GuavaFiles.write(string, delegate, encoding)
+      def write(string: String, encoding: Charset = UTF_8): Unit =  GuavaFiles.asCharSink(delegate, encoding).write(string)
 
-      def append(o: String, encoding: Charset = UTF_8): Unit = GuavaFiles.append(o, delegate, encoding)
+      def append(string: String, encoding: Charset = UTF_8): Unit = GuavaFiles.asCharSink(delegate, encoding, APPEND).write(string)
     }
   }
 
@@ -93,7 +94,7 @@ object FileUtils {
   def createShortNamedDirectory(directory: Path, prefix: String): Path = {
     try Files.createDirectory(directory / (prefix + newRandomFilenameString()))
     catch {
-      case e: FileAlreadyExistsException ⇒ createShortNamedDirectory(directory, prefix)
+      case _: FileAlreadyExistsException ⇒ createShortNamedDirectory(directory, prefix)
     }
   }
 

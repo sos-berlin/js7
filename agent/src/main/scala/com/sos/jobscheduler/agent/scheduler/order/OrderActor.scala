@@ -65,8 +65,11 @@ extends KeyedJournalingActor[OrderEvent] {
       case _: Order.Join ⇒
         context.become(joining)
 
-      case Order.Finished ⇒
-        sys.error(s"Unexpected order state: ${order.state}")   // A Finished order must be at Master
+      case _: Order.Stopped ⇒
+        context.become(stopped)
+
+      case (_: Order.Awaiting) | (_: Order.Stopped) | (_: Order.Offered) | Order.Finished ⇒
+        sys.error(s"Order is expected to be on Master, not on Agent: ${order.state}")   // A Finished order must be at Master
     }
     logger.debug(s"Recovered $order")
     sender() ! Output.RecoveryFinished(order)  // Sent via JournalRecoverer to AgentOrderKeeper
