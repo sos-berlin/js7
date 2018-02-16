@@ -70,6 +70,7 @@ object Subtype {
     of(cls, typeName(cls), encoder, decoder)
 
   private def of[A](cls: Class[_], typeName: String, encoder: ObjectEncoder[A], decoder: Decoder[A]) = {
+    import scala.language.existentials
     val typeField = TypeFieldName → Json.fromString(typeName)
     val myNameToDecoder = Map(typeName → decoder)
     val myNameClass = typeName → cls.asInstanceOf[Class[_ <: A]]

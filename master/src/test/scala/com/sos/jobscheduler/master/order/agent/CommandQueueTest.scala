@@ -6,7 +6,6 @@ import com.sos.jobscheduler.common.scalautil.Futures.SynchronousExecutionContext
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.order.agent.AgentDriver.Input
@@ -17,6 +16,7 @@ import org.scalatest.Matchers._
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Future
+import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer

@@ -8,6 +8,7 @@ import java.net.InetAddress
 import java.util.concurrent.CountDownLatch
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext
+import scala.language.reflectiveCalls
 import scala.util.Random
 import scala.util.control.NonFatal
 
