@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.agent.web
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes._
@@ -25,6 +24,7 @@ import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
@@ -57,7 +57,7 @@ final class AgentWebServerTest extends FreeSpec with HasCloser with BeforeAndAft
   private lazy val agent = RunningAgent(agentConfiguration) await 10.s
   private implicit lazy val actorSystem = {
     val config = ConfigFactory.parseMap(Map("akka.http.server.verbose-error-messages" → true).asJava)
-    ActorSystem("AgentWebServerTest", config) withCloser { _.terminate() await 99.s }
+    newActorSystem("AgentWebServerTest", config) withCloser { _.terminate() await 99.s }
   }
   private implicit lazy val materializer = ActorMaterializer()
   private lazy val http = Http()

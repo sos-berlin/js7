@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.client
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Uri
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.data.agent.AgentAddress
 
 /**
@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.agent.AgentAddress
 final class SimpleAgentClient private(val agentUri: Uri) extends AgentClient with AutoCloseable {
 
   protected val licenseKeys = Nil
-  protected val actorSystem = ActorSystem("SimpleAgentClient")
+  protected val actorSystem = newActorSystem("SimpleAgentClient")
   protected def executionContext = actorSystem.dispatcher
   protected def httpsConnectionContextOption = None
   protected def userAndPasswordOption = None

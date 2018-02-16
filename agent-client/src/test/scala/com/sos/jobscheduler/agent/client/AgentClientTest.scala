@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.agent.client
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpResponse, Uri}
 import com.sos.jobscheduler.agent.client.AgentClientTest._
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -13,7 +13,7 @@ import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 final class AgentClientTest extends FreeSpec with BeforeAndAfterAll {
 
   private val agentUri = Uri("https://example.com:9999")
-  private lazy val actorSystem = ActorSystem("AgentClientTest")
+  private lazy val actorSystem = newActorSystem("AgentClientTest")
   private lazy val agentClient = AgentClient(agentUri)(actorSystem)
 
   override def afterAll() = {

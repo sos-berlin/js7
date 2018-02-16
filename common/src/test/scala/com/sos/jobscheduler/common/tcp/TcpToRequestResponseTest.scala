@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.tcp
 
-import akka.actor.ActorSystem
 import akka.util.ByteString
+import com.sos.jobscheduler.common.akkautils.Akkas
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.tcp.TcpToRequestResponseTest._
 import org.scalatest.Matchers._
@@ -13,7 +13,7 @@ import scala.concurrent.Future
  */
 final class TcpToRequestResponseTest extends FreeSpec with BeforeAndAfterAll {
 
-  private lazy val actorSystem = ActorSystem(getClass.getSimpleName)
+  private lazy val actorSystem = Akkas.newActorSystem(getClass.getSimpleName)
 
   override protected def afterAll() = {
     actorSystem.terminate()

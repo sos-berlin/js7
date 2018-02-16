@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.akkautils
 
-import akka.actor.{Actor, ActorSystem, DeadLetterSuppression, Props}
+import akka.actor.{Actor, DeadLetterSuppression, Props}
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.akkautils.DeadLetterActorTest._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
@@ -13,7 +14,7 @@ import scala.collection.mutable
 final class DeadLetterActorTest extends FreeSpec {
 
   "DeadLetterActor.subscribe" in {
-    val actorSystem = ActorSystem(classOf[DeadLetterActorTest].getSimpleName)
+    val actorSystem = newActorSystem(classOf[DeadLetterActorTest].getSimpleName)
     val buffer = mutable.Buffer[String]()
     DeadLetterActor.subscribe(actorSystem, o ⇒ buffer += o)
     val actorRef = actorSystem.actorOf(Props[TestActor])

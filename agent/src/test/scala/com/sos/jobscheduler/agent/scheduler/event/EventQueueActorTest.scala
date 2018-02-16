@@ -1,11 +1,12 @@
 package com.sos.jobscheduler.agent.scheduler.event
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.Props
 import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.tagging.Tagger
 import com.sos.jobscheduler.agent.scheduler.event.EventQueueActorTest._
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -25,7 +26,7 @@ import scala.concurrent.{Future, Promise}
   */
 final class EventQueueActorTest extends FreeSpec with BeforeAndAfterAll {
 
-  private val actorSystem = ActorSystem("EventQueueActorTest")
+  private val actorSystem = newActorSystem("EventQueueActorTest")
   private val timerService = new TimerService(idleTimeout = Some(1.s))
   private val actor = actorSystem.actorOf(Props { new EventQueueActor(timerService) }, "EventQueueActor").taggedWith[EventQueueActor]
   private var lastEventId = EventId.BeforeFirst

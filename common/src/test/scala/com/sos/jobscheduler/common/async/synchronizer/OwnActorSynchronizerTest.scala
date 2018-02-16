@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.async.synchronizer
 
-import akka.actor.ActorSystem
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.Closers._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
@@ -17,7 +17,7 @@ final class OwnActorSynchronizerTest extends FreeSpec {
 
   "test" in {
     withCloser { implicit closer ⇒
-      val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.terminate() }
+      val actorSystem = newActorSystem("ShellProcessTaskTest") withCloser { _.terminate() }
       import actorSystem.dispatcher
       val synchronizer =
         new OwnActorSynchronizer[Int] {

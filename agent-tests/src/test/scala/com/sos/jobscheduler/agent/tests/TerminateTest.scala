@@ -37,7 +37,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
 
   "Terminate" in {
     withCloser { implicit closer ⇒
-      implicit val actorSystem = ActorSystem("TerminateTest")
+      implicit val actorSystem = newActorSystem("TerminateTest")
       closer onClose actorSystem.terminate()
       provideAgent { (client, agent) ⇒
         val eventCollector = newEventCollector(agent.injector)

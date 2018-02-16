@@ -52,7 +52,7 @@ addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts 
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
 addCommandAlias("TestMasterAgent", "master/runMain com.sos.jobscheduler.master.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
 
-scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
+scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
 val publishSettings = Seq(
   publishArtifact in (Compile, packageDoc) := false,
@@ -213,6 +213,7 @@ lazy val common = project.dependsOn(baseJVM, dataJVM, testerJVM % "compile->test
       akkaHttpTestkit % "test" ++
       akkaHttp ++
       akkaActor ++
+      akkaSlf4j ++
       scalaTags ++
       snakeYaml ++
       guava ++

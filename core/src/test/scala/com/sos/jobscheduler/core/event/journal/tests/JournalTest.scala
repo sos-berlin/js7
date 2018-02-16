@@ -7,6 +7,7 @@ import akka.util.Timeout
 import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.BuildInfo
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
@@ -21,7 +22,6 @@ import com.sos.jobscheduler.core.event.journal.tests.JournalTest._
 import com.sos.jobscheduler.core.event.journal.tests.TestJsonCodecs.TestKeyedEventJsonCodec
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
-import com.typesafe.config.ConfigFactory
 import io.circe.Json
 import java.io.{EOFException, FileInputStream}
 import java.nio.file.Files.{createTempDirectory, delete, deleteIfExists}
@@ -155,7 +155,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   private def withTestActor(body: (ActorSystem, ActorRef) ⇒ Unit): Unit = {
-    val actorSystem = ActorSystem("JournalTest", ConfigFactory.parseString("akka.scheduler.tick-duration: 1s"))
+    val actorSystem = newActorSystem("JournalTest")
     try {
       DeadLetterActor.subscribe(actorSystem, o ⇒ logger.warn(o))
       val whenJournalStopped = Promise[JournalActor.Stopped]()

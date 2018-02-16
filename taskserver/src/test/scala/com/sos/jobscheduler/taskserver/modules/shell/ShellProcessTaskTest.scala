@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.taskserver.modules.shell
 
-import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.data.AgentTaskId
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.{RichClosersAny, RichClosersAutoCloseable}
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -34,7 +34,7 @@ import scala.concurrent.ExecutionContext
  */
 final class ShellProcessTaskTest extends FreeSpec with HasCloser with BeforeAndAfterAll {
 
-  private lazy val actorSystem = ActorSystem("ShellProcessTaskTest") withCloser { _.terminate() }
+  private lazy val actorSystem = newActorSystem("ShellProcessTaskTest") withCloser { _.terminate() }
   private val synchronizedStartProcess = new StandardRichProcessStartSynchronizer()(actorSystem).closeWithCloser
 
   private implicit val executionContext = ExecutionContext.global
