@@ -44,7 +44,7 @@ final class MasterMain(conf: MasterConfiguration) extends HasCloser {
 
 object MasterMain {
   private val OrderScheduleDuration = 1 * 60.s
-  private val ShutdownTimeout = 5.s
+  private val ShutdownTimeout = 10.s
   private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {

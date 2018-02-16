@@ -71,7 +71,7 @@ trait AkkaWebServer extends AutoCloseable {
 }
 
 object AkkaWebServer {
-  private val ShutdownTimeout = 5.s
+  private val ShutdownTimeout = 10.s
   private val logger = Logger(getClass)
 
   trait HasUri {

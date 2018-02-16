@@ -14,7 +14,7 @@ import com.typesafe.config.{Config, ConfigFactory}
  * @author Joacim Zschimmer
  */
 object Akkas {
-  private val ShutdownDuration = 5.s
+  private val ShutdownDuration = 10.s
   private val logger = Logger(getClass)
 
   def newActorSystem(name: String, config: Config = ConfigFactory.empty)(implicit closer: Closer): ActorSystem =
