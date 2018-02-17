@@ -14,32 +14,37 @@ import com.typesafe.config.ConfigFactory
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createTempDirectory, delete}
 import java.nio.file.Paths
-import org.scalatest.FreeSpec
+import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.duration.DurationInt
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentConfigurationTest extends FreeSpec {
+final class AgentConfigurationTest extends FreeSpec with BeforeAndAfterAll {
 
   private val shellExt = if (isWindows) "cmd" else "sh"
+  private lazy val tmp = createTempDirectory("test-")
 
+  override def afterAll() = {
+    deleteDirectoryRecursively(tmp)
+    super.afterAll()
+  }
   "Empty argument list" in {
-    val c = AgentConfiguration(Nil).finishAndProvideFiles
-    assert(c.copy(config = ConfigFactory.empty) == AgentConfiguration(
-      dataDirectory = None,
-      configDirectory = None,
+    val c = AgentConfiguration(List(s"-data-directory=$tmp")).finishAndProvideFiles
+    assert(c.copy(config = ConfigFactory.empty, dataDirectory = Some(tmp)) == AgentConfiguration(
+      dataDirectory = Some(tmp),
+      configDirectory = Some(tmp / "config"),
       http = None,
       https = None,
       uriPathPrefix = "",
       externalWebServiceClasses = Nil,
       workingDirectory = WorkingDirectory,
-      logDirectory = temporaryDirectory,
+      logDirectory = tmp / "logs",
       environment = Map(),
       jobJavaOptions = Nil,
       dotnet = DotnetConfiguration(),
       rpcKeepaliveDuration = None,
-      killScript = Some(ProcessKillScript(temporaryDirectory / s"kill_task.$shellExt")),
+      killScript = Some(ProcessKillScript(tmp / "tmp" / s"kill_task.$shellExt")),
       startupTimeout = 900.s,
       commandTimeout = 60.s,
       akkaAskTimeout = 60.seconds,
@@ -85,13 +90,14 @@ final class AgentConfigurationTest extends FreeSpec {
   }
 
   "-kill-script= is missing (default)" - {
-    "Without -data-directory" in {
-      assert(conf().logDirectory == conf().temporaryDirectory)
-      assert(conf().logDirectory == temporaryDirectory)
-      val generatedFile = conf().logDirectory / s"kill_task.$shellExt"
-      assert(AgentConfiguration(List("-http-port=11111")).finishAndProvideFiles.killScript == Some(ProcessKillScript(generatedFile)))
-      delete(generatedFile)
-    }
+    //Deprecated:
+    //"Without -data-directory" in {
+    //  assert(conf().logDirectory == conf().temporaryDirectory)
+    //  assert(conf().logDirectory == temporaryDirectory)
+    //  val generatedFile = conf().logDirectory / s"kill_task.$shellExt"
+    //  assert(AgentConfiguration(List("-http-port=11111")).finishAndProvideFiles.killScript == Some(ProcessKillScript(generatedFile)))
+    //  delete(generatedFile)
+    //}
 
     "With -data-directory" in {
       val data = createTempDirectory("AgentConfigurationTest-")

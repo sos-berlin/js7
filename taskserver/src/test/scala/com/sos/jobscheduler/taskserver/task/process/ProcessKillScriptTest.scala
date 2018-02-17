@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.process.ProcessSignal.SIGKILL
 import com.sos.jobscheduler.common.process.Processes
 import com.sos.jobscheduler.common.process.Processes.{Pid, processToPidOption}
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
+import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -67,12 +68,14 @@ final class ProcessKillScriptTest extends FreeSpec {
 
   private def runKillScript(agentTaskId: AgentTaskId, pidOption: Option[Pid]): Unit = {
     autoClosing(new ProcessKillScriptProvider) { provider ⇒
+      val tmp = createTempDirectory("test-")
       val killScript = provider.provideTo(temporaryDirectory)
       val args = killScript.toCommandArguments(agentTaskId, pidOption)
       val killProcess = new ProcessBuilder(args.asJava).start()
       startLogStreams(killProcess, "Kill script") await 60.s
       killProcess.waitFor(60, SECONDS)
       assert(killProcess.exitValue == 0)
+      deleteDirectoryRecursively(tmp)
     }
   }
 }

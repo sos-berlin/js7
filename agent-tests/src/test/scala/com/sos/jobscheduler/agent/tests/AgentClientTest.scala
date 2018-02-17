@@ -23,7 +23,7 @@ final class AgentClientTest extends FreeSpec with ScalaFutures with AgentTest {
     //licenseKeys = List(LicenseKeyString("SOS-DEMO-1-D3Q-1AWS-ZZ-ITOT9Q6")))
 
   "get /" in {
-    val overview = client.overview await  2.s
+    val overview = client.overview await 99.s
     assert(!overview.isTerminating)
     assert(overview.version == AgentStartInformation.VersionString)
   }

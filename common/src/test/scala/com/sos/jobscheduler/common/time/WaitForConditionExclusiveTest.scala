@@ -2,14 +2,14 @@ package com.sos.jobscheduler.common.time
 
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition._
-import com.sos.jobscheduler.common.time.WaitForConditionTest._
+import com.sos.jobscheduler.common.time.WaitForConditionExclusiveTest._
 import java.lang.System.currentTimeMillis
 import java.time.Duration
 import java.time.Instant.now
 import org.scalatest.FreeSpec
 import org.scalatest.Matchers._
 
-final class WaitForConditionTest extends FreeSpec {
+final class WaitForConditionExclusiveTest extends FreeSpec {
 
   "Warm-up" in {
     realTimeIterator(Seq(now().toEpochMilli)) // Aufruf zum Warmwerden. Laden der Klasse kann eine Weile dauern
@@ -80,7 +80,7 @@ final class WaitForConditionTest extends FreeSpec {
   }
 }
 
-private object WaitForConditionTest {
+private object WaitForConditionExclusiveTest {
   def meterElapsedTime(f: ⇒ Unit): Duration = {
     val start = currentTimeMillis()
     f

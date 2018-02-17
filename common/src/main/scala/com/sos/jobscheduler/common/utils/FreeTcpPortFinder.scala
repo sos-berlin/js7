@@ -5,8 +5,8 @@ import java.net.{BindException, ServerSocket}
 
 object FreeTcpPortFinder {
 
-  val StandardTcpPortRange = 10000 until 20000
-  val AlternateTcpPortRange = 20000 until 30000   // Für JS1052IT, der viele Ports belegt, um zufällige Überschneidung zu verhindern
+  val StandardTcpPortRange = 20000 until 50000
+  val AlternateTcpPortRange = 50000 until 65000   // Für JS1052IT, der viele Ports belegt, um zufällige Überschneidung zu verhindern
 
   def findRandomFreeTcpPort(ports: Iterable[Int] = StandardTcpPortRange): Int =
     findRandomFreeTcpPorts(1, ports).head

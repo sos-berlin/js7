@@ -15,7 +15,7 @@ import scala.util.Failure
 /**
  * @author Joacim Zschimmer
  */
-final class FuturesTest extends FreeSpec {
+final class FuturesExclusiveTest extends FreeSpec {
 
   "successValue" in {
     val promise = Promise[Int]()
@@ -33,7 +33,6 @@ final class FuturesTest extends FreeSpec {
     assert(!stackTraceContainsCreationsStackTrace { future.value.get.get })
     assert(stackTraceContainsCreationsStackTrace { future.successValue })
   }
-
 
   "appendCurrentStackTrace failure exception is extended with future's creation stack trace" in {
     val future = Future[Int] { throw new TestException }
@@ -57,10 +56,10 @@ final class FuturesTest extends FreeSpec {
   "namedThreadFuture" in {
     val (n, warmUp) = sys.props.get("test.speed") map (o ⇒ (o.toInt, 1000)) getOrElse (100, 100)
     info(measureTime(n, "namedThreadFuture", warmUp = warmUp) {
-      val future = namedThreadFuture("FuturesTest") { "x" }
+      val future = namedThreadFuture("FuturesExclusiveTest") { "x" }
       assert(Await.result(future, 2.seconds) == "x")
     }.toString)
-    val future = namedThreadFuture("FuturesTest") { sys.error("TEST-ERROR") }
+    val future = namedThreadFuture("FuturesExclusiveTest") { sys.error("TEST-ERROR") }
     assert(Await.ready(future, 2.seconds).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
   }
 

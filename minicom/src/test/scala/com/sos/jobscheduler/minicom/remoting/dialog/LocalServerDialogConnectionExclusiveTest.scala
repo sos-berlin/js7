@@ -15,7 +15,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class LocalServerDialogConnectionTest extends FreeSpec {
+final class LocalServerDialogConnectionExclusiveTest extends FreeSpec {
 
   InetAddress.getLocalHost  // log4j calls this too. On MacOS this call delays some seconds, so we do it now, before the test.
 

@@ -12,7 +12,7 @@ object Dependencies {
   val log4jVersion = "2.10.0"
   val catsVersion = "1.0.1"
   val circeVersion = "0.9.1"
-  val scalaTestVersion = "3.0.4"
+  val scalaTestVersion = "3.0.5"
   val simulacrumVersion = "0.11.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion

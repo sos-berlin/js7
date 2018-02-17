@@ -28,6 +28,7 @@
   */
 import BuildUtils._
 import java.nio.file.Paths
+import sbt.ConcurrentRestrictions.Tag
 import sbt.Keys.testOptions
 import sbt.librarymanagement.DependencyFilter.artifactFilter
 import sbt.{CrossVersion, Def}
@@ -46,13 +47,24 @@ addCommandAlias("clean-build"    , "; clean; build")
 addCommandAlias("build"          , "; compile-all; test-all; pack")
 addCommandAlias("build-quickly"  , "; compile-all; pack")
 addCommandAlias("compile-all"    , "; engine-job-api/compile; compile")
-addCommandAlias("test-all"       , "; test:compile; test; ForkedTest:test")
+addCommandAlias("test-all",
+  "; test:compile" +
+  "; ForkedTest:compile" + (
+    if (testParallel)
+      "; StandardTest:test" +
+      "; ForkedTest:test" +
+      "; set Global/concurrentRestrictions += Tags.exclusive(Tags.Test)" +  //Tags.limit(Tags.Test, max = 1)" +  // Slow: Tags.limitAll(1)
+      "; ExclusiveTest:test"
+    else
+      "; test" +
+      "; ForkedTest:test"))
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
 addCommandAlias("TestMasterAgent", "master/runMain com.sos.jobscheduler.master.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
+val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQD")  // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 
 val publishSettings = Seq(
   publishArtifact in (Compile, packageDoc) := false,
@@ -75,14 +87,8 @@ val commonSettings = Seq(
   addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
   javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= Seq("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
-  javaOptions in ForkedTest += s"-Dlog4j.configurationFile=../project/log4j2.xml",  // TODO Is there a SettingKey for project directory???
   dependencyOverrides += Dependencies.guava, // Our Guava version should be okay
   dependencyOverrides ++= Seq(Dependencies.akkaActor, Dependencies.akkaStream), // akka-http requests a slightly older version of Akka
-  logBuffered in Test := false,
-  testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQ"),       // D: Durations, F: Print full stack strace, http://www.scalatest.org/user_guide/using_scalatest_with_sbt
-  testOptions in ForkedTest += Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQ"),  // D: Durations, F: Print full stack strace, http://www.scalatest.org/user_guide/using_scalatest_with_sbt
-  logBuffered in Test := false,  // Recommended for ScalaTest
-  testForkedParallel in Test := testParallel,  // Experimental in sbt 0.13.13
   sources in (Compile, doc) := Nil, // No ScalaDoc
   test in publishM2 := {},
   // Publish
@@ -94,9 +100,6 @@ val universalPluginSettings = Seq(
   universalArchiveOptions in (Universal, packageZipTarball) :=
     Seq("--force-local") .filter { _ ⇒ !isMac } ++
       (universalArchiveOptions in (Universal, packageZipTarball)).value)  // Under cygwin, tar shall not interpret C:
-
-concurrentRestrictions in Global += Tags.limit(Tags.Test,  // Parallelization
-  max = if (testParallel) math.max(1, sys.runtime.availableProcessors * 3/8) else 1)
 
 resolvers += Resolver.mavenLocal
 
@@ -158,6 +161,7 @@ lazy val `jobscheduler-docker` = project
 
 lazy val tester = crossProject
   .settings(commonSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -172,6 +176,7 @@ lazy val testerJs = tester.js
 lazy val base = crossProject
   .dependsOn(tester % "compile->test")
   .settings(commonSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -191,6 +196,7 @@ lazy val baseJs = base.js
 lazy val data = crossProject
   .dependsOn(base, tester % "compile->test")
   .settings(commonSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     libraryDependencies += {
       import Dependencies._
@@ -201,6 +207,7 @@ lazy val dataJs = data.js
 
 lazy val common = project.dependsOn(baseJVM, dataJVM, testerJVM % "compile->test")
   .settings(commonSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings {
     import Dependencies._
     libraryDependencies ++=
@@ -240,7 +247,7 @@ val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
 val masterGuiJs = "master-gui.js"
 
 lazy val master = project.dependsOn(masterDataJVM, masterClientJVM, core, common, `agent-client`, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   // Provide master-gui JavaScript code as resources placed in master-gui package
   .settings(
@@ -282,6 +289,7 @@ lazy val master = project.dependsOn(masterDataJVM, masterClientJVM, core, common
 lazy val `master-data` = crossProject
   .dependsOn(data, tester % "compile->test")
   .settings(commonSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     libraryDependencies ++= {
       import Dependencies._
@@ -295,6 +303,7 @@ lazy val `master-client` = crossProject
   .dependsOn(`master-data`, tester % "compile->test")
   .jvmConfigure(_.dependsOn(common))
   .settings(commonSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     libraryDependencies ++= {
       import Dependencies._
@@ -318,6 +327,7 @@ lazy val masterClientJs = `master-client`.js
 lazy val `master-gui` = project
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(dataJs, masterDataJs, masterClientJs)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,
     scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html
@@ -343,7 +353,7 @@ lazy val `master-gui` = project
       "org.webjars.npm"   % "react-transition-group" % "2.2.1" / "dist/react-transition-group.js" minified "dist/react-transition-group.min.js" dependsOn "react-dom.js"))
 
 lazy val core = project.dependsOn(common, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -354,7 +364,7 @@ lazy val core = project.dependsOn(common, testerJVM % "compile->test")
   }
 
 lazy val agent = project.dependsOn(`agent-data`, core, common, dataJVM, taskserver, tunnel, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -377,7 +387,7 @@ lazy val agent = project.dependsOn(`agent-data`, core, common, dataJVM, taskserv
   }
 
 lazy val `agent-client` = project.dependsOn(dataJVM, `tunnel-data`, common, `agent-test` % "compile->test", testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Client")
   .settings {
@@ -391,7 +401,7 @@ lazy val `agent-client` = project.dependsOn(dataJVM, `tunnel-data`, common, `age
   }
 
 lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, dataJVM, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "JobScheduler Agent - Value Classes")
   .settings {
@@ -406,7 +416,7 @@ lazy val `agent-data` = project.dependsOn(`tunnel-data`, common, dataJVM, tester
   }
 
 lazy val `agent-test` = project.dependsOn(agent, common, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -416,7 +426,7 @@ lazy val `agent-test` = project.dependsOn(agent, common, testerJVM % "compile->t
   }
 
 lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client` % "test->test", testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,
     description := "JobScheduler Agent Tests")
@@ -429,7 +439,7 @@ lazy val `agent-tests` = project.dependsOn(`agent` % "test->test", `agent-client
   }
 
 lazy val `http-client` = project.dependsOn(common, dataJVM, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -446,7 +456,7 @@ lazy val `http-client` = project.dependsOn(common, dataJVM, testerJVM % "compile
   }
 
 lazy val `http-server` = project.dependsOn(`http-client`, common, dataJVM, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -461,7 +471,7 @@ lazy val `http-server` = project.dependsOn(`http-client`, common, dataJVM, teste
   }
 
 lazy val `engine-job-api` = project.dependsOn(common, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(
     description := "JobScheduler Java Job API",
@@ -479,7 +489,7 @@ lazy val `engine-job-api` = project.dependsOn(common, testerJVM % "compile->test
   }
 
 lazy val minicom = project.dependsOn(common, `engine-job-api`, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -494,7 +504,7 @@ lazy val minicom = project.dependsOn(common, `engine-job-api`, testerJVM % "comp
   }
 
 lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, dataJVM, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC")
   .settings {
@@ -512,7 +522,7 @@ lazy val tunnel = project.dependsOn(`tunnel-data`, `http-server`, common, dataJV
   }
 
 lazy val `tunnel-data` = project.dependsOn(common, dataJVM, `http-server`/*HeartbeatView is here*/, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings(description := "HTTP TCP Tunnel for JobScheduler API RPC - value classes")
   .settings {
@@ -532,7 +542,7 @@ lazy val taskserver = project
     common,
     dataJVM,
     testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -548,7 +558,7 @@ lazy val taskserver = project
   }
 
 lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -558,7 +568,7 @@ lazy val `taskserver-moduleapi` = project.dependsOn(minicom, common, testerJVM %
   }
 
 lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine-job-api`, common, testerJVM % "compile->test")
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -627,7 +637,7 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
     }.taskValue)
 
 lazy val tests = project.dependsOn(master, agent, `agent-client`)
-  .configs(ForkedTest).settings(forkedSettings)
+  .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,
     skip in publish := true,
@@ -641,13 +651,32 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`)
       log4j % "test"
   }
 
-lazy val ForkedTest = config("ForkedTest") extend Test
-lazy val forkedSettings = inConfig(ForkedTest)(Defaults.testTasks) ++ Seq(
-  testOptions in ForkedTest := Seq(Tests.Filter(isIT)),
-  fork in ForkedTest := true,
-  testOptions in Test := Seq(Tests.Filter(name ⇒ !isIT(name))))
+Global / concurrentRestrictions ++= (if (testParallel) Nil else Seq(Tags.exclusive(Tags.Test)))
 
-def isIT(name: String): Boolean = name endsWith "IT"
+
+lazy val StandardTest  = config("StandardTest" ) extend Test
+lazy val ExclusiveTest = config("ExclusiveTest") extend Test
+lazy val ForkedTest    = config("ForkedTest"   ) extend Test
+lazy val testSettings =
+  inConfig(StandardTest )(Defaults.testTasks) ++
+  inConfig(ExclusiveTest)(Defaults.testTasks) ++
+  inConfig(ForkedTest   )(Defaults.testTasks) ++
+  Seq(
+    testOptions in Test          := Seq(scalaTestArguments, Tests.Filter(name ⇒ !isForkedTest(name))),  // Exclude ForkedTest from sbt command "test" because ForkedTest will fail when not forked
+    testOptions in StandardTest  := Seq(scalaTestArguments, Tests.Filter(isStandardTest)),
+    testOptions in ExclusiveTest := Seq(scalaTestArguments, Tests.Filter(isExclusiveTest)),
+    testOptions in ForkedTest    := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
+    javaOptions in ForkedTest    ++= Seq("-Xmx100m", "-Xms20m", s"-Dlog4j.configurationFile=../project/log4j2.xml"),  // SettingKey for ../project ???
+    testForkedParallel in ForkedTest := testParallel,  // Experimental in sbt 0.13.13
+    logBuffered in Test          := false,  // Recommended for ScalaTest
+    logBuffered in StandardTest  := false,
+    logBuffered in ExclusiveTest := false,
+    logBuffered in ForkedTest    := false,
+    fork in ForkedTest := true)
+
+def isStandardTest(name: String): Boolean = !isExclusiveTest(name) && !isForkedTest(name)
+def isExclusiveTest(name: String): Boolean = name endsWith "ExclusiveTest"
+def isForkedTest(name: String): Boolean = name endsWith "ForkedTest"
 
 def isTestJar(name: String) = // How to automatically determine/exclude test dependencies ???
   name.startsWith("com.typesafe.akka.akka-testkit_") ||

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.process
 
 import com.sos.jobscheduler.common.process.Processes._
-import com.sos.jobscheduler.common.process.ProcessesIT._
+import com.sos.jobscheduler.common.process.ProcessesForkedTest._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -22,7 +22,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   * @see https://bugs.openjdk.java.net/browse/JDK-8068370
   */
-final class ProcessesIT extends FreeSpec {
+final class ProcessesForkedTest extends FreeSpec {
 
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors
@@ -51,7 +51,7 @@ final class ProcessesIT extends FreeSpec {
   }
 }
 
-object ProcessesIT {
+object ProcessesForkedTest {
   private val logger = Logger(getClass)
 
   private def tryDelete(path: Path): Unit = {

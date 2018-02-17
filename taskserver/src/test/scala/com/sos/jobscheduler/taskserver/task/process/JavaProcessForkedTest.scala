@@ -12,7 +12,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.system.{Stderr, Stdout}
-import com.sos.jobscheduler.taskserver.task.process.JavaProcessIT._
+import com.sos.jobscheduler.taskserver.task.process.JavaProcessForkedTest._
 import java.lang.System.{err, out}
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -23,18 +23,18 @@ import scala.util.control.NonFatal
   *
   * @author Joacim Zschimmer
   */
-final class JavaProcessIT extends FreeSpec {
+final class JavaProcessForkedTest extends FreeSpec {
 
   "JavaProcess" in {
     withCloser { closer ⇒
-      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "JavaProcessIT")
+      val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "JavaProcessForkedTest")
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
       val stopwatch = new Stopwatch
       val process = JavaProcess.startJava(
         ProcessConfiguration(stdFileMap),
         options = List("-Xmx10m", s"-Dtest=$TestValue"),
         classpath = Some(JavaProcess.OwnClasspath),
-        mainClass = JavaProcessIT.getClass.getName stripSuffix "$", // Scala object class name ends with '$'
+        mainClass = JavaProcessForkedTest.getClass.getName stripSuffix "$", // Scala object class name ends with '$'
         arguments = Arguments)
       try {
         val returnCode = process.terminated await 99.s
@@ -60,7 +60,7 @@ final class JavaProcessIT extends FreeSpec {
   }
 }
 
-private object JavaProcessIT {
+private object JavaProcessForkedTest {
   private val TestValue = "TEST TEST"
   private val Arguments = Vector("a", "1 2")
 

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.event.collector
 
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.event.collector.EventCollectorTest._
+import com.sos.jobscheduler.common.event.collector.EventCollectorExclusiveTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
@@ -13,7 +13,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
+final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll {
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -85,7 +85,7 @@ final class EventCollectorTest extends FreeSpec with BeforeAndAfterAll {
   }
 }
 
-private object EventCollectorTest {
+private object EventCollectorExclusiveTest {
 
   private class MyEventCollector(configuration: EventCollector.Configuration = EventCollector.Configuration.ForTest)
     (implicit

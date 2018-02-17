@@ -2,7 +2,7 @@ package com.sos.jobscheduler.common.event.collector
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.event.EventIdGenerator
-import com.sos.jobscheduler.common.event.collector.SyncTest._
+import com.sos.jobscheduler.common.event.collector.SyncExclusiveTest._
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -19,7 +19,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class SyncTest extends FreeSpec {
+final class SyncExclusiveTest extends FreeSpec {
 
   "test" in {
     val queue = new KeyedEventQueue(initialOldestEventId = EventId.BeforeFirst, sizeLimit = 100)
@@ -85,6 +85,6 @@ final class SyncTest extends FreeSpec {
   }
 }
 
-object SyncTest {
+object SyncExclusiveTest {
   private object TestEvent extends NoKeyEvent
 }

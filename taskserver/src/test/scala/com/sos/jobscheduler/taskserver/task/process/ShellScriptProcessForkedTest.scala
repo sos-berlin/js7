@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-final class ShellScriptProcessIT extends FreeSpec {
+final class ShellScriptProcessForkedTest extends FreeSpec {
 
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors

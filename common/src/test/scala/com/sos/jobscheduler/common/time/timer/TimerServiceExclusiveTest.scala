@@ -8,7 +8,7 @@ import com.sos.jobscheduler.common.time.Stopwatch
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.common.time.WaitForCondition.waitForCondition
 import com.sos.jobscheduler.common.time.timer.TimerService._
-import com.sos.jobscheduler.common.time.timer.TimerServiceTest._
+import com.sos.jobscheduler.common.time.timer.TimerServiceExclusiveTest._
 import java.lang.System.nanoTime
 import java.time.Instant.now
 import java.time.{Duration, Instant}
@@ -27,7 +27,7 @@ import scala.util.{Random, Success}
 /**
   * @author Joacim Zschimmer
   */
-final class TimerServiceTest extends FreeSpec with ScalaFutures {
+final class TimerServiceExclusiveTest extends FreeSpec with ScalaFutures {
 
   private val availableProcessors = sys.runtime.availableProcessors
 
@@ -36,7 +36,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
     autoClosing(TimerService(idleTimeout = Some(1.s))) { timerService ⇒
       timerService.delayed(200.ms)
       assert(timerService.isRunning)
-      assert(waitForCondition(2.s, 10.ms) { !timerService.isRunning })
+      assert(waitForCondition(10.s, 10.ms) { !timerService.isRunning })
     }
   }
 
@@ -51,7 +51,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       sleep(500.ms)
       withClue(s"Run $nr: ") {
         val r = results.asScala.toVector
-        logger.info((r map { case (s, i) ⇒ (s, i - t) } mkString " ") + s" $timerService")
+        logger.info((r map { case (s, i) ⇒ (s, (i - t).pretty) } mkString " ") + s" $timerService")
         assert((r map { _._1 }) == Vector("A", "B", "C"))
         assert(r(0)._2 >= t && r(0)._2 <= t + 200.ms)
         assert(r(1)._2 >= t && r(1)._2 <= t + 400.ms)
@@ -146,7 +146,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
   "Massive parallel parallel timer enqueuing" in {
     autoClosing(TimerService()) { timerService ⇒
       timerService.delayed(20.ms) await 1.s  // Start clock thread
-      for (i ← 1 to 20) {
+      for (i ← 1 to 3) {
         val m = 10000
         val n = m * availableProcessors
         val latch = new CountDownLatch(n)
@@ -164,17 +164,19 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
     }
   }
 
-  "Massive wake clock-thread (JS-1567)" in {
-    val n = 1000
+  "Massive wake clock-thread" in {  // JS-1567
+    val n = 200
     val overview = testSerialTimers(delay = 1.ms, n, "1ms", test = true)
     overview should have ('count(0), 'completeCount(n))
     assert(overview.wakeCount >= n / 4 && overview.wakeCount <= n, "wakeCount")  // Should be nearly n on a fast machine
   }
 
+  if (sys.props contains "test.speed")
   "Performance of serial 0ms timer, not short-cut for this test" in {
     testSerialTimers(delay = 0.ms, 10000, "Normal", test = true)
   }
 
+  if (sys.props contains "test.speed")
   "Performance of serial 0ms timer" in {
     testSerialTimers(delay = 0.ms, 1000000, "Short-cut")
   }
@@ -187,12 +189,17 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
       val finished = Promise[Unit]()
       def addNextTimer(): Unit = {
         last = now
-        if (counter.incrementAndGet() < n) timerService.delay(delay, "test") onElapsed addNextTimer
-        else finished.success(())
+        if (counter.incrementAndGet() < n) {
+          timerService.delay(delay, "test") onElapsed addNextTimer
+        } else {
+          finished.success(())
+        }
       }
       addNextTimer()
       Future {
-        blocking { waitForCondition(60.s, 1.s) { now > last + delay + 1.s } }
+        blocking {
+          waitForCondition(60.s, 10.ms) { now > last + delay + 10.s  || finished.isCompleted }
+        }
         finished.tryFailure(new RuntimeException(s"STOPPED AFTER $counter ${(now - last).pretty}"))
       }
       Await.result(finished.future, 60.seconds)
@@ -203,7 +210,7 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
 
   "Future.timeoutAfter" in {
     autoClosing(TimerService()) { implicit timerService ⇒
-      def newFuture(a: Duration, timeout: Duration) = Future { sleep(a); "OK" } timeoutAfter (timeout, "test")
+      def newFuture(a: Duration, timeout: Duration) = Future { blocking { sleep(a) }; "OK" } timeoutAfter (timeout, "test")
       newFuture(100.ms, 200.ms) await 1.s shouldEqual "OK"
       intercept[Timer.ElapsedException] {
         newFuture(200.ms, 100.ms) await 1.s
@@ -269,15 +276,19 @@ final class TimerServiceTest extends FreeSpec with ScalaFutures {
         q.offer(true)
         q.take()
       })
-    val future = Future { blocking { while(q.take()) {} }}
+    val future = Future {
+      blocking {
+        while(q.take()) {}
+      }
+    }
     info("ArrayBlockingQueue " + measureTime(10000, "put") {
       q.put(true)
     })
     q.put(false)
-    future await 1.s
+    future await 10.s
   }
 }
 
-private object TimerServiceTest {
+private object TimerServiceExclusiveTest {
   private val logger = Logger(getClass)
 }

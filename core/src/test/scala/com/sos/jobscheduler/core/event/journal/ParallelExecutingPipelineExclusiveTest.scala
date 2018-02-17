@@ -9,9 +9,9 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class ParallelExecutingPipelineTest extends FreeSpec {
+final class ParallelExecutingPipelineExclusiveTest extends FreeSpec {
 
-  private val sleepDuration = 10.ms
+  private val sleepDuration = 1.ms
 
   "ParallelExecutionPipeline" in {
     val result = mutable.Buffer[Int]()
@@ -24,7 +24,7 @@ final class ParallelExecutingPipelineTest extends FreeSpec {
     pipeline.blockingAdd {  // Warm-up
       f(0)
     }
-    val n = 20 * sys.runtime.availableProcessors
+    val n = 1000 * sys.runtime.availableProcessors  // High number because with parallel testing, not all processors seem to be available for some time
     val t = now
     for (i ← 1 to n) {
        pipeline.blockingAdd {
