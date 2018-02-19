@@ -12,6 +12,7 @@ import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
 import java.time.Duration
 import scala.collection.immutable
+import scala.concurrent.blocking
 
 object Processes {
   private val logger = Logger(getClass)
@@ -62,7 +63,9 @@ object Processes {
       catch {
         case TextFileBusyIOException(e) if durations.hasNext ⇒
           logger.info(s"Retrying process start after error: $e")
-          sleep(durations.next())
+          blocking {
+            sleep(durations.next())
+          }
           startRobustly(durations)
       }
   }

@@ -18,7 +18,7 @@ import com.sos.jobscheduler.core.event.journal.{GzipCompression, JournalActor, J
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import java.nio.file.Path
 import scala.collection.mutable
-import scala.concurrent.Promise
+import scala.concurrent.{Promise, blocking}
 import scala.concurrent.duration.DurationInt
 
 /**
@@ -121,7 +121,7 @@ private[tests] final class TestActor(journalFile: Path, journalStopped: Promise[
       val key = keyToAggregate collectFirst { case (k, `actorRef`) ⇒ k }
       keyToAggregate --= key
       if (terminator != null && keyToAggregate.isEmpty) {
-        sleep(1.s)
+        blocking { sleep(1.s) }
         context.stop(self)
         terminator ! Done
       }
