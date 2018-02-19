@@ -29,7 +29,7 @@ final class TypedPathDirectoryWalkerTest extends FreeSpec {
         Valid(TypedFile(dir / "folder" / "test.job.xml", BJobPath, SourceType.Xml)),
         Invalid(Problem("File 'folder/test.alien.xml' is not recognized as a configuration file"))))
       assert(checkUniqueness(checkedTypedFiles) == Invalid(Problem(
-        s"Duplicate configuration files: $dir/test.job_chain.xml, $dir/test.workflow.json, $dir/test.workflow.txt")))
+        s"Duplicate configuration files: ${dir / "test.job_chain.xml"}, ${dir / "test.workflow.json"}, ${dir / "test.workflow.txt"}")))
     }
   }
 }

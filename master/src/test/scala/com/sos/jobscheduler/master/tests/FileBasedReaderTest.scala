@@ -39,7 +39,7 @@ final class FileBasedReaderTest extends FreeSpec {
 
       (directory / "A.workflow.txt").contentString = ""
       assert(readDirectoryTree(Set(WorkflowReader, AgentReader), directory) ==
-        Invalid(Problem(s"Duplicate configuration files: $directory/A.workflow.json, $directory/A.workflow.txt")))
+        Invalid(Problem(s"Duplicate configuration files: ${directory / "A.workflow.json"}, ${directory / "A.workflow.txt"}")))
     }
   }
 }
