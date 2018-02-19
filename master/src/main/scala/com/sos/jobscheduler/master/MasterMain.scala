@@ -49,7 +49,6 @@ object MasterMain {
 
   def main(args: Array[String]): Unit = {
     logger.info(s"Master ${BuildInfo.buildVersion}")  // Log early
-    import scala.concurrent.ExecutionContext.Implicits.global
     try
       start(MasterConfiguration.fromCommandLine(args.toImmutableSeq))
         .flatMap { _.terminated }

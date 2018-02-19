@@ -18,7 +18,6 @@ import com.sos.jobscheduler.taskserver.dotnet.DotnetEnvironment
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.util.{Failure, Success}
 
 /**
  * JobScheduler Agent.
@@ -30,26 +29,26 @@ object AgentMain {
   private val OnJavaShutdownSigkillProcessesAfter = 5.seconds
   private val ShutdownTimeout = OnJavaShutdownSigkillProcessesAfter + 2.seconds
 
-  def main(args: Array[String]): Unit =
-    try {
+  def main(args: Array[String]): Unit = {
+    val exitCode = try {
       logger.info(s"Agent ${BuildInfo.buildVersion}")  // Log early
       val agentConfiguration = AgentConfiguration(args)
       val (conf, dotnet) = tryProvideDotnet(agentConfiguration)
-      start(conf) andThen { case _ ⇒
-        dotnet.close()
-      } onComplete {
-        case Success(Completed) ⇒
-          println("JobScheduler Agent terminated")
-          logger.debug("Terminated")
-          Log4j.shutdown()
-          sys.runtime.exit(0)
-        case Failure(t) ⇒
-          exitJava(t)
-      }
+      try run(conf).awaitInfinite
+      finally dotnet.close()
+      val msg = "JobScheduler Agent terminated"
+      println(msg)
+      logger.debug(msg)
+      0
     }
     catch { case t: Throwable ⇒
-      exitJava(t)
+      println(s"JOBSCHEDULER AGENT TERMINATED DUE TO ERROR: ${t.toStringWithCauses}")
+      logger.error(t.toString, t)
+      1
     }
+    Log4j.shutdown()
+    sys.runtime.exit(exitCode)
+  }
 
   private def tryProvideDotnet(conf: AgentConfiguration): (AgentConfiguration, AutoCloseable) =
     conf match {
@@ -59,7 +58,7 @@ object AgentMain {
       case c ⇒ (c, EmptyAutoCloseable)
     }
 
-  def start(conf: AgentConfiguration): Future[Completed] = {
+  private def run(conf: AgentConfiguration): Future[Completed] = {
     (for (agent ← RunningAgent(conf)) yield {
       val hook = JavaShutdownHook.add("AgentMain") {
         // TODO Interfers with Akkas CoordinatedShutdown shutdown hook
@@ -69,13 +68,6 @@ object AgentMain {
         hook.remove()
       }
     }).flatten
-  }
-
-  private def exitJava(throwable: Throwable): Unit = {
-    println(s"JOBSCHEDULER AGENT TERMINATED DUE TO ERROR: ${throwable.toStringWithCauses}")
-    logger.error(throwable.toString, throwable)
-    Log4j.shutdown()
-    sys.runtime.exit(1)
   }
 
   private def onJavaShutdown(agent: RunningAgent): Unit = {

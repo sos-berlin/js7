@@ -161,7 +161,6 @@ object RunningMaster {
     val webServerReady = webServer.start()
 
     val terminated = actorStopped
-      .map(identity)  // Change to implicit ExecutionContext (needed?)
       .andThen { case Failure(t) ⇒
         logger.error(t.toStringWithCauses, t)
       }
