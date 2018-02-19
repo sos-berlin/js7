@@ -11,6 +11,7 @@ import scala.util.control.NonFatal
 private class DeadLetterActor(output: (⇒ String) ⇒ Unit) extends Actor {
   def receive = {
     case DeadLetter(_: DeadLetterSuppression, _, _) ⇒
+    case UnhandledMessage(_: DeadLetterSuppression, _, _) ⇒
 
     case o: DeadLetter ⇒
       callOutput(s"DeadLetter from ${o.sender} to ${o.recipient}: ${o.message}")
