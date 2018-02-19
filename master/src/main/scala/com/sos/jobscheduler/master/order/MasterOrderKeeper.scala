@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.order
 
 import akka.Done
-import akka.actor.{ActorRef, Props, Stash, Status, Terminated}
+import akka.actor.{ActorRef, PoisonPill, Props, Stash, Status, Terminated}
 import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.option._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -40,7 +40,6 @@ import com.sos.jobscheduler.master.order.MasterOrderKeeper._
 import com.sos.jobscheduler.master.order.agent.{Agent, AgentDriver}
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
-import java.time.Duration
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -93,8 +92,6 @@ with Stash {
   private val orderScheduleGenerator = context.actorOf(
     Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, scheduledOrderGeneratorKeeper)},
     "OrderScheduleGenerator")
-
-  private var terminating = false
 
   override def preStart() = {
     super.preStart()  // First let JournalingActor register itself
@@ -232,15 +229,12 @@ with Stash {
       logger.error(msg.toString, throwable)
       // Ignore this ???
 
-    case Internal.Execute(callback) ⇒
-      callback()
-
-    case Terminated(`journalActor`) if terminating ⇒
-      logger.info("Stop")
+    case Terminated(`journalActor`) ⇒
+      logger.error("JournalActor terminated")
       context.stop(self)
   }
 
-  def executeMasterCommand(command: MasterCommand): Unit = command match {
+  private def executeMasterCommand(command: MasterCommand): Unit = command match {
     case MasterCommand.ScheduleOrdersEvery(every) ⇒
       orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every.toJavaDuration)
       sender() ! MasterCommand.Response.Accepted
@@ -260,9 +254,12 @@ with Stash {
       }
 
     case MasterCommand.Terminate ⇒
-      terminating = true
+      logger.info("Terminating by command")
+      inhibitJournaling()
+      orderScheduleGenerator ! PoisonPill
       journalActor ! JournalActor.Input.Terminate
       sender() ! MasterCommand.Response.Accepted
+      context.become(terminating)
   }
 
   private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
@@ -366,6 +363,15 @@ with Stash {
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     pathToNamedWorkflow(workflowPosition.workflowPath).workflow.instruction(workflowPosition.position)
 
+  private def terminating: Receive = {
+    case _: MasterCommand ⇒
+      sender() ! Status.Failure(new RuntimeException(s"Master is terminating"))
+
+    case Terminated(`journalActor`) ⇒
+      logger.error("Stop")
+      context.stop(self)
+  }
+
   override def toString = "MasterOrderKeeper"
 }
 
@@ -391,11 +397,6 @@ object MasterOrderKeeper {
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command
     final case class Remove(orderId: OrderId) extends Command
-  }
-
-  private object Internal {
-    final case class Execute(callback: () ⇒ Unit)
-    final case class GenerateNextOrders(every: Duration)
   }
 
   private class AgentRegister extends ActorRegister[AgentPath, AgentEntry](_.actor) {

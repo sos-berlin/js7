@@ -24,6 +24,10 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
 
   private val callbacks = mutable.ListBuffer[Callback]()
   private var isStashing = false
+  private var journalingInhibited = false
+
+  protected def inhibitJournaling(): Unit =
+    journalingInhibited = true
 
   private[event] final def persistAsyncKeyedEvent[EE <: E](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ Unit): Unit =
     persistKeyedEvent(keyedEvent, async = true)(callback)
@@ -53,11 +57,13 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
     callbacks += Deferred(() ⇒ callback)
   }
 
-  private def startCommit(): Unit =
+  private def startCommit(): Unit = {
+    if (journalingInhibited) throw new IllegalStateException("Journaling has been stopped")  // Avoid deadlock when waiting for response of dead JournalActor
     if (!isStashing) {
       isStashing = true
       context.become(journaling, discardOld = false)
     }
+  }
 
   final def journaling: Receive = {
     case JournalActor.Output.Stored(stampedOptions) ⇒
