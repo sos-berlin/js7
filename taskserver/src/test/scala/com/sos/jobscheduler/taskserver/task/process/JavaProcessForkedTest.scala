@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.FileUtils._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch
@@ -26,6 +27,7 @@ import scala.util.control.NonFatal
 final class JavaProcessForkedTest extends FreeSpec {
 
   "JavaProcess" in {
+    logger.trace("JavaProcessForkedTest")  // Avoid "The following set of substitute loggers may have been accessed during the initialization phase"
     withCloser { closer ⇒
       val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "JavaProcessForkedTest")
       closer.onClose { RichProcess.tryDeleteFiles(stdFileMap.values) }
@@ -63,6 +65,7 @@ final class JavaProcessForkedTest extends FreeSpec {
 private object JavaProcessForkedTest {
   private val TestValue = "TEST TEST"
   private val Arguments = Vector("a", "1 2")
+  private val logger = Logger(getClass)
 
   def main(args: Array[String]): Unit = {
     if (args.toVector == Arguments) {

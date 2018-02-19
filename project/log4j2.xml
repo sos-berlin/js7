@@ -7,7 +7,9 @@
     <rollingRandomAccessFile name="file"
                              fileName="target/build.log"
                              filePattern="target/build-%d{yyyy-MM-dd}-%i.log.gz"
+                             append="true"
                              immediateFlush="false">
+      <!-- append=true for forked tests -->
       <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message%n"
                      charset="UTF-8"/>
       <policies>
