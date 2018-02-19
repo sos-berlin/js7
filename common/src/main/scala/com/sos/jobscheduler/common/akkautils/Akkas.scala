@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.common.akkautils
 
 import akka.actor.ActorSystem.Settings
-import akka.actor.{ActorSystem, Cancellable}
+import akka.actor.{ActorContext, ActorSystem, Cancellable}
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
+import com.sos.jobscheduler.common.scalautil.Logger
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
@@ -12,6 +13,7 @@ import scala.concurrent.duration._
  * @author Joacim Zschimmer
  */
 object Akkas {
+  private val logger = Logger(getClass)
 
   def newActorSystem(name: String, config: Config = ConfigFactory.empty) =
     ActorSystem(name,
@@ -89,6 +91,16 @@ object Akkas {
       }
     }
     sb.toString
+  }
+
+  /** When an actor name to be re-used, the previous actor may still terminate, occupying the name. */
+  def uniqueActorName(name: String)(implicit context: ActorContext): String = {
+    var _name = name
+    if (context.child(name).isDefined) {
+      _name = Iterator.from(2).map(i ⇒ s"$name~$i").find { nam ⇒ context.child(nam).isEmpty }.get
+      logger.debug(s"Duplicate actor name. Replacement actor name is ${context.self.path}/$name")
+    }
+    _name
   }
 
   def decodeActorName(o: String): String =

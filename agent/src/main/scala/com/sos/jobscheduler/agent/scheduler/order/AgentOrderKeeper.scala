@@ -18,8 +18,8 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.ops._
 import com.sos.jobscheduler.base.time.Timestamp.now
-import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
-import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
+import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
+import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
@@ -265,16 +265,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private def newOrderActor(order: Order[Order.State]) =
     watch(actorOf(
       OrderActor.props(order.id, journalActor = journalActor, config),
-      name = uniqueOrderActorName(order.id)))
-
-  private def uniqueOrderActorName(orderId: OrderId): String = {
-    var name = encodeAsActorName(s"Order-${orderId.string}")
-    if (context.child(name).isDefined) {  // May occur then a (child) order is attached again to this Agent and the Actor has not yet terminated
-      name = Iterator.from(2).map(i ⇒ s"$name~$i").find { nam ⇒ context.child(nam).isEmpty }.get
-      logger.debug(s"Duplicate Order actor name. Replacement actor name is $name")
-    }
-    name
-  }
+      name = uniqueActorName(encodeAsActorName("Order-" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
     val orderEntry = orderRegister(order.id)

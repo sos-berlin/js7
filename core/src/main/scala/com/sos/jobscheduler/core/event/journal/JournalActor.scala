@@ -5,6 +5,7 @@ import akka.util.ByteString
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import com.sos.jobscheduler.common.akkautils.Akkas.uniqueActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -192,7 +193,7 @@ extends Actor with Stash {
     val journalingActors = keyToJournalingActor.values.toSet ++ keylessJournalingActors
     context.actorOf(
       Props { new SnapshotWriter(temporaryJsonWriter.writeJson, journalingActors, snapshotJsonCodec) },
-      "SnapshotWriter")
+      uniqueActorName("SnapshotWriter"))
     context.become(takingSnapshot(commander = sender(), () ⇒ andThen, new Stopwatch))
   }
 
