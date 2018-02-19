@@ -54,7 +54,7 @@ extends AutoCloseable {
   def terminate(): Future[Completed] = {
     logger.debug("terminate")
     for {
-      _ <- executeCommand(AgentCommand.Terminate())
+      _ ← executeCommand(AgentCommand.Terminate())
       t ← terminated
     } yield t
   }
@@ -62,7 +62,7 @@ extends AutoCloseable {
   /** Circumvents the CommandHandler which is possibly replaced by a test via DI. */
   private def executeCommand(command: AgentCommand): Future[AgentCommand.Response] =
     promiseFuture[AgentCommand.Response](promise ⇒
-      mainActor ! MainActor.Input.ExternalCommand(Anonymous.id, AgentCommand.Terminate(), promise))
+      mainActor ! MainActor.Input.ExternalCommand(Anonymous.id, command, promise))
 }
 
 object RunningAgent {
