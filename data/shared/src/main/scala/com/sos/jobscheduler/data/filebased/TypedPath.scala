@@ -1,12 +1,16 @@
 package com.sos.jobscheduler.data.filebased
 
 import cats.syntax.flatMap._
+import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.Checked.ops.RichOption
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.filebased.TypedPath._
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
+import scala.collection.immutable.Iterable
 import scala.reflect.ClassTag
 
 trait TypedPath
@@ -33,6 +37,8 @@ extends AbsolutePath {
 }
 
 object TypedPath {
+  val VersionSeparator = "@"   // FIXME Provisorisch. Wenn das Zeichen nicht als Versionstrenner verwendet wird, gibt es ein Durcheinander
+
   implicit def ordering[P <: TypedPath]: Ordering[P] =
     (a, b) ⇒ a.string compare b.string
 
@@ -62,6 +68,26 @@ object TypedPath {
     final def makeAbsolute(path: String): P =
       apply(absoluteString(path))
   }
+
+  def jsonCodec(companions: Iterable[AnyCompanion]): CirceCodec[TypedPath] =
+    new Encoder[TypedPath] with Decoder[TypedPath] {
+      private val typeToCompanion = companions toKeyedMap (_.camelName)
+
+      def apply(a: TypedPath) = Json.fromString(a.toTypedString)
+
+      def apply(c: HCursor) =
+        for {
+          string ← c.as[String]
+          prefixAndPath ← string indexOf ':' match {
+            case i if i > 0 ⇒ Right((string take i, string.substring(i + 1)))
+            case _ ⇒ Left(DecodingFailure(s"Missing type prefix in TypedPath: $string", Nil))
+          }
+          prefix = prefixAndPath._1
+          path = prefixAndPath._2
+          typedPath ← typeToCompanion.get(prefix).map(_.apply(path))
+            .toRight(DecodingFailure(s"Unrecognized type prefix in TypedPath: $prefix", Nil))
+        } yield typedPath
+    }
 
   /**
    * Interprets a path as absolute.

@@ -1,8 +1,10 @@
 package com.sos.jobscheduler.data.filebased
 
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.filebased.TypedPathTest._
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 
 /**
@@ -31,6 +33,12 @@ final class TypedPathTest extends FreeSpec {
     assert(APath.fromFile("/x.a.txt") == Valid(APath("/x") → SourceType.Txt))
     assert(APath.fromFile("/x.b.json") == Invalid(Problem("Not a APath: /x.b.json")))
     assert(BPath.fromFile("/x.b.json") == Valid(BPath("/x") → SourceType.Json))
+  }
+
+  "typedPathCodec" in {
+    implicit val typedPathCodec = TypedPath.jsonCodec(List(APath, BPath))
+    testJson[TypedPath](APath("/a"), json""" "A:/a" """)
+    testJson[TypedPath](BPath("/b"), json""" "B:/b" """)
   }
 }
 
