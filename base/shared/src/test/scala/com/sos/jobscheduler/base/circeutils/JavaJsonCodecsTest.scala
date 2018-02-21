@@ -8,7 +8,7 @@ import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import java.io.File
-import java.nio.file.{Files, Paths}
+import java.nio.file.Paths
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
 import org.scalatest.FreeSpec
@@ -29,8 +29,8 @@ final class JavaJsonCodecsTest extends FreeSpec {
   "Instant" - {  // See also Timestamp
     case class A(instant: Instant)
 
+    if (sys.props contains "test.speed")
     "String/Number speed comparision" in {
-
       val millis = Instant.parse("2015-06-09T12:22:33.987Z").toEpochMilli
       val n = 100000
       run("milliseconds")(NumericInstantEncoder, InstantDecoder)

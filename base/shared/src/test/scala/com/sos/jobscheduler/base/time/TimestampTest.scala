@@ -1,11 +1,8 @@
 package com.sos.jobscheduler.base.time
 
-import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
-import io.circe.syntax.EncoderOps
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.{Decoder, Encoder}
-import java.time.Instant
 import org.scalatest.FreeSpec
 
 /**
@@ -37,6 +34,7 @@ final class TimestampTest extends FreeSpec {
     //testJson(Timestamp.ofEpochMilli(millis), json""" "2017-12-04T11:22:33.456Z" """)
   }
 
+  if (sys.props contains "test.speed")
   "JSON String/Number speed comparision" in {
     val n = 100000
     run("milliseconds")(Timestamp.NumericTimestampJsonEncoder, Timestamp.jsonDecoder)
