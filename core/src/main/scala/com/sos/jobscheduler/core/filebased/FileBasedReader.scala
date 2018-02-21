@@ -39,9 +39,9 @@ object FileBasedReader
 {
   private val logger = Logger(getClass)
 
-  def readDirectoryTreeFlattenProblems(readers: Iterable[FileBasedReader], directory: Path): Checked[Seq[FileBased]] = {
+  def readDirectoryTreeFlattenProblems(directory: Path, readers: Iterable[FileBasedReader]): Checked[Seq[FileBased]] = {
     val result: Checked[Checked[Vector[FileBased]]] =
-      for (checkedFileBasedIterator ← readDirectoryTree(readers, directory)) yield {
+      for (checkedFileBasedIterator ← readDirectoryTree(directory, readers)) yield {
         val checkedFileBaseds = checkedFileBasedIterator.toVector
         val problems = checkedFileBaseds collect { case Invalid(o) ⇒ o }
         problems.headOption match {
@@ -55,13 +55,15 @@ object FileBasedReader
     result.flatten
   }
 
-  def readDirectoryTree(readers: Iterable[FileBasedReader], directory: Path): Checked[Iterator[Checked[FileBased]]] = {
+  def readDirectoryTree(directory: Path, readers: Iterable[FileBasedReader]): Checked[Iterator[Checked[FileBased]]] = {
+    val typedSourceReader = new TypedSourceReader(readers)
     val typedFiles = TypedPathDirectoryWalker.typedFiles(directory, readers.map(_.typedPathCompanion))
-    for (typedFiles ← TypedPathDirectoryWalker.checkUniqueness(typedFiles)) yield {
-      val typedSources = typedFiles.iterator.map(_.map(o ⇒ TypedSource(o.file.byteString, o.path, o.sourceType)))
-      val typedSourceReader = new TypedSourceReader(readers)
-      typedSources.map(o ⇒ o flatMap typedSourceReader.apply)
-    }
+    for (typedFiles ← TypedPathDirectoryWalker.checkUniqueness(typedFiles)) yield
+      for (checkedTypedFile ← typedFiles.iterator) yield
+        for {
+          typedFile ← checkedTypedFile
+          fileBased ← typedSourceReader.apply(TypedSource(typedFile.file.byteString, typedFile.path, typedFile.sourceType))
+        } yield fileBased
   }
 
   final class TypedSourceReader(readers: Iterable[FileBasedReader]) {

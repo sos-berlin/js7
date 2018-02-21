@@ -12,6 +12,7 @@ import com.sos.jobscheduler.core.event.journal.JournalActor.{EventsHeader, Snaps
 import com.sos.jobscheduler.core.event.journal.JournalMeta.Header
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import io.circe.Json
+import java.nio.file.Files.exists
 import java.nio.file.{Files, Path}
 import scala.annotation.tailrec
 import scala.concurrent.blocking
@@ -34,40 +35,37 @@ trait JournalRecoverer[E <: Event] {
   private var snapshotCount = 0
   private var eventCount = 0
   private lazy val logger = Logger.withPrefix[JournalRecoverer[_]](journalFile.getFileName.toString)
+  lazy val hasJournal = exists(journalFile)
 
   final def recoverAll(): Unit = {
-    try
-      blocking {  // May take a long time
-        autoClosing(newJsonIterator()) { jsonIterator ⇒
-          var separator: Option[Json] = jsonIterator.hasNext option jsonIterator.next()
-          if (separator contains SnapshotsHeader) {
-            separator = recoverJsonsUntilSeparator(jsonIterator, recoverSnapshotJson)
-          }
-          if (separator contains EventsHeader) {
-            separator = recoverJsonsUntilSeparator(jsonIterator, recoverEventJson)
-          }
-          for (jsValue ← separator) {
-            sys.error(s"Unexpected JSON value in '$journalFile': $jsValue")
+    if (hasJournal) {
+      try
+        blocking {  // May take a long time
+          logger.info(s"Recovering from journal journalFile '$journalFile' (${toMB(Files.size(journalFile))})")
+          autoClosing(new JsonFileIterator(Header, convertInputStream(_, journalFile), journalFile)) { jsonIterator ⇒
+            var separator: Option[Json] = jsonIterator.hasNext option jsonIterator.next()
+            if (separator contains SnapshotsHeader) {
+              separator = recoverJsonsUntilSeparator(jsonIterator, recoverSnapshotJson)
+            }
+            if (separator contains EventsHeader) {
+              separator = recoverJsonsUntilSeparator(jsonIterator, recoverEventJson)
+            }
+            for (jsValue ← separator) {
+              sys.error(s"Unexpected JSON value in '$journalFile': $jsValue")
+            }
           }
         }
+      catch {
+        case t: Exception if journalMeta.isIncompleteException(t) ⇒
+          logger.info(s"Journal has not been completed. " + errorClause(t))
+        case t: Exception if journalMeta.isCorruptException(t) ⇒
+          logger.warn(s"Journal is corrupt or has not been completed. " + errorClause(t))
       }
-    catch {
-      case t: Exception if journalMeta.isIncompleteException(t) ⇒
-        logger.info(s"Journal has not been completed. " + errorClause(t))
-      case t: Exception if journalMeta.isCorruptException(t) ⇒
-        logger.warn(s"Journal is corrupt or has not been completed. " + errorClause(t))
-    }
-    logSomething()
-  }
-
-  private def newJsonIterator(): AutoCloseable with Iterator[Json] =
-    if (Files.exists(journalFile)) {
-      logger.info(s"Recovering from journal journalFile '$journalFile' (${toMB(Files.size(journalFile))})")
-      new JsonFileIterator(Header, convertInputStream(_, journalFile), journalFile)
+      logSomething()
     } else {
       logger.info(s"No journal journalFile '$journalFile' left")
-      JsonFileIterator.Empty
     }
+  }
 
   @tailrec
   private def recoverJsonsUntilSeparator(jsonIterator: Iterator[Json], recover: Json ⇒ Unit): Option[Json] =
@@ -133,7 +131,7 @@ object JournalRecoverer {
               for (a ← actors) {
                 a ! KeyedJournalingActor.Input.FinishRecovery
               }
-              logger.debug(s"Awaiting RecoveryFinished of ${actors.size} actors")
+              logger.debug(s"Awaiting RecoveryFinished from ${actors.size} actors")
               becomeWaitingForChildren(actors.size)
           }
 

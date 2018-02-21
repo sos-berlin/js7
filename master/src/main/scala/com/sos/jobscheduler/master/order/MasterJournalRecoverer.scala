@@ -7,6 +7,7 @@ import com.sos.jobscheduler.core.event.journal.{JournalRecoverer, KeyedJournalin
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
@@ -20,6 +21,7 @@ private[order] class MasterJournalRecoverer(protected val journalFile: Path, ord
 extends JournalRecoverer[Event] {
   protected val journalMeta = MasterOrderKeeper.journalMeta(compressWithGzip = false/*irrelevant, we read*/)
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
+  private val pathToFileBased = mutable.Map[TypedPath, FileBased]()
   private val _agentToEventId = mutable.Map[AgentPath, EventId]()
 
   def recoverSnapshot = {
@@ -31,6 +33,9 @@ extends JournalRecoverer[Event] {
 
     case AgentEventId(agentPath, eventId) ⇒
       _agentToEventId(agentPath) = eventId
+
+    case fileBased: FileBased ⇒
+      pathToFileBased += fileBased.path → fileBased
   }
 
   def recoverEvent = {
@@ -77,9 +82,14 @@ extends JournalRecoverer[Event] {
       case _ ⇒
     }
 
-  def orders = idToOrder.values.toVector
+  def orders: Vector[Order[Order.State]] =
+    idToOrder.values.toVector
 
-  def agentToEventId = _agentToEventId.toMap
+  def agentToEventId: Map[AgentPath, EventId] =
+    _agentToEventId.toMap
+
+  def fileBaseds: Vector[FileBased] =
+    pathToFileBased.values.toVector
 }
 
 object MasterJournalRecoverer {

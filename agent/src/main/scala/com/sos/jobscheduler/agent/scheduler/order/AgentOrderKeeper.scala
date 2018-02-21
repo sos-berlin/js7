@@ -19,7 +19,7 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.ops._
 import com.sos.jobscheduler.base.time.Timestamp.now
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
-import com.sos.jobscheduler.common.akkautils.{Akkas, SupervisorStrategies}
+import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
@@ -198,7 +198,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
         case Valid(_) ⇒
           val workflowResponse = workflowRegister.get(order.workflowPath) map (_.workflow) match {
             case None ⇒
-              persistFuture(KeyedEvent(WorkflowAttached(workflow))(order.workflowPath)) { stampedEvent ⇒
+              persist(KeyedEvent(WorkflowAttached(workflow))(order.workflowPath)) { stampedEvent ⇒
                 workflowRegister.handleEvent(stampedEvent.value)
                 Accepted
               }

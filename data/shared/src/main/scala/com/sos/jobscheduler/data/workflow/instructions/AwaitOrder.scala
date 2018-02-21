@@ -5,10 +5,12 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderJoined}
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.ifProcessedThenOrderMoved
 import com.sos.jobscheduler.data.workflow.{EventInstruction, OrderContext}
+import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
+@JsonCodec
 final case class AwaitOrder(orderId: OrderId) extends EventInstruction
 {
   def toEvent(order: Order[Order.State], context: OrderContext) =

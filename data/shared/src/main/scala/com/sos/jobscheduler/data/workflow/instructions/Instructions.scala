@@ -16,6 +16,7 @@ object Instructions
       order.id <-: OrderMoved(order.position.increment))
 
   private[workflow] implicit val jsonCodec: TypedJsonCodec[Instruction] = TypedJsonCodec[Instruction](
+    Subtype[AwaitOrder],
     Subtype[Job],
     Subtype.named(singletonCodec(ExplicitEnd), "End"),
     Subtype(singletonCodec(ImplicitEnd)),  // Serialized for easier external use of Workflow

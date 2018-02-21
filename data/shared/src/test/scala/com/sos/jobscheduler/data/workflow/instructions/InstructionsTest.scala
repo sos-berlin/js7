@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data.workflow.instructions
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, Label, Workflow}
@@ -30,6 +31,12 @@ final class InstructionsTest extends FreeSpec {
           "TYPE": "End"
         }""")
     }
+
+    testLabeled(AwaitOrder(OrderId("ORDER")),
+      json"""{
+        "TYPE": "AwaitOrder",
+        "orderId": "ORDER"
+      }""")
 
     "Job" in {
       testLabeled(Job(JobPath("/JOB"), AgentPath("/AGENT")), json"""

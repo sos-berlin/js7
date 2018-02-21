@@ -5,6 +5,7 @@ import cats.syntax.eq._
 import cats.{Eq, Monad}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
+import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 /**
@@ -74,6 +75,12 @@ object Checked
             sideEffect(problem)
             None
           case Valid(a) ⇒  Some(a)
+        }
+
+      def toFuture: Future[A] =
+        underlying match {
+          case Valid(o) ⇒ Future.successful(o)
+          case Invalid(problem) ⇒ Future.failed(problem.throwable)
         }
 
       def force: A = underlying match {

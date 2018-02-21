@@ -1,7 +1,10 @@
 package com.sos.jobscheduler.base.problem
 
 import cats.data.Validated.{Invalid, Valid}
+import cats.instances.list._
 import cats.syntax.option._
+import cats.syntax.traverse._
+import com.sos.jobscheduler.base.problem.Checked.monad
 import com.sos.jobscheduler.base.problem.Checked.ops._
 import org.scalatest.FreeSpec
 
@@ -41,5 +44,16 @@ final class CheckedTest extends FreeSpec  {
     var flag = false
     assert(Invalid(Problem("X")).onProblem(_ ⇒ flag = true) == none)
     assert(flag)
+  }
+
+  "traverse" in {
+    def validate(i: Int): Checked[String] = if ((i % 2) == 0) Valid(i.toString) else Invalid(Problem(s"odd $i"))
+    assert(List(1, 2, 3).traverse(validate) == Invalid(Problem("odd 1")))
+    assert(List(2, 4, 6).traverse(validate) == Valid(List("2", "4", "6")))
+  }
+
+  "sequence" in {
+    assert(List(Valid(1), Valid(2), Valid(3)).sequence[Checked, Int] == Valid(List(1, 2, 3)))
+    assert(List(Valid(1), Invalid(Problem("X")), Invalid(Problem("Y"))).sequence[Checked, Int] == Invalid(Problem("X")))
   }
 }

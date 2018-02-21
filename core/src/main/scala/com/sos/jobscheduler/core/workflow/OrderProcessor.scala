@@ -13,8 +13,8 @@ import scala.collection.immutable.Seq
   * @author Joacim Zschimmer
   */
 final class OrderProcessor(
-  pathToWorkflow: PartialFunction[WorkflowPath, Workflow],
-  idToOrder: PartialFunction[OrderId, Order[Order.State]])
+  pathToWorkflow: PartialFunction[WorkflowPath, Workflow],  // TODO WorkflowPath => Checked[Workflow]
+  idToOrder: PartialFunction[OrderId, Order[Order.State]])  // TODO OrderId => Checked[Order]
 {
   private val eventHandler = new OrderEventHandler(pathToWorkflow, idToOrder)
   private val eventSource = new OrderEventSource(pathToWorkflow, idToOrder)

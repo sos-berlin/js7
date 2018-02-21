@@ -7,15 +7,15 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorKeeper._
 import java.time.Instant
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{Iterable, Seq}
 
 /**
   * @author Joacim Zschimmer
   */
-final class ScheduledOrderGeneratorKeeper(masterConfiguration: MasterConfiguration, schedulerOrderGenerators: Seq[ScheduledOrderGenerator]) {
+final class ScheduledOrderGeneratorKeeper(masterConfiguration: MasterConfiguration, scheduledOrderGenerators: Iterable[ScheduledOrderGenerator]) {
 
   private val pathToOrderGenerator: Map[ScheduledOrderGeneratorPath, ScheduledOrderGenerator] =
-    schedulerOrderGenerators toKeyedMap (_.path)
+    scheduledOrderGenerators toKeyedMap (_.path)
 
   def generateOrders(instantInterval: InstantInterval): Seq[Order[Order.Scheduled]] =
     (for (orderGenerator ← pathToOrderGenerator.values;

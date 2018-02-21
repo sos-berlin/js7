@@ -9,7 +9,7 @@ trait AbsolutePath extends IsString {
 
   lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
 
-  lazy val nesting = string stripSuffix "/" count { _ == '/' }
+  def nesting = string stripSuffix "/" count { _ == '/' }
 
   final def withTrailingSlash: String = if (string endsWith "/") string else s"$string/"
 

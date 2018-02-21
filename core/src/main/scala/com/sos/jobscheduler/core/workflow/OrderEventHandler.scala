@@ -20,7 +20,7 @@ final class OrderEventHandler(
   pathToWorkflow: PartialFunction[WorkflowPath, Workflow],
   idToOrder: PartialFunction[OrderId, Order[Order.State]])
 {
-  private val _offeredToAwaitingOrder = mutable.Map[OrderId, Set[OrderId]]()
+  private val _offeredToAwaitingOrder = mutable.Map[OrderId, Set[OrderId]]()  // FIXME Verschwindet, wenn FileBased erneut eingelesen werden. Event OrderOffered?
 
   def offeredToAwaitingOrder(orderId: OrderId): Set[OrderId] =
     _offeredToAwaitingOrder.getOrElse(orderId, Set.empty)
