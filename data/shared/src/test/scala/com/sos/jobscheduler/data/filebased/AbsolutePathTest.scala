@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.data.filebased
 
+import cats.data.Validated.Invalid
+import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.data.filebased.AbsolutePathTest._
 import org.scalatest.FreeSpec
 
@@ -10,11 +12,15 @@ import org.scalatest.FreeSpec
 final class AbsolutePathTest extends FreeSpec {
 
   "validate" in {
-    intercept[IllegalArgumentException] { TestPath("") }
-    intercept[IllegalArgumentException] { TestPath("x") }
-    intercept[IllegalArgumentException] { TestPath("/x/") }
-    intercept[IllegalArgumentException] { TestPath("x/") }
-    intercept[IllegalArgumentException] { TestPath("/x//y") }
+    intercept[ProblemException] { TestPath("") }
+    intercept[ProblemException] { TestPath("x") }
+    intercept[ProblemException] { TestPath("/x/") }
+    intercept[ProblemException] { TestPath("x/") }
+    intercept[ProblemException] { TestPath("/x//y") }
+  }
+
+  "check" in {
+    assert(TestPath.checked("x") == Invalid(Problem("Absolute path expected in TestPath 'x'")))
   }
 
   "name" in {

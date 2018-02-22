@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.data.filebased
 
 import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.data.filebased.AbsolutePath._
 
 trait AbsolutePath extends IsString {
@@ -16,17 +18,7 @@ trait AbsolutePath extends IsString {
   final def withoutStartingSlash: String = string stripPrefix "/"
 
   /** Has to be called in every implementing constructor. */
-  protected def validate(): Unit = {
-    require(companion.isEmptyAllowed || string.nonEmpty, s"Name '$name' must not be the empty string in $errorString")
-    require(string.isEmpty || string.startsWith("/"), s"Absolute path expected in $errorString")
-    if (!companion.isSingleSlashAllowed || string != "/") {
-      require(!string.endsWith("/"), s"Trailing slash not allowed in $errorString")
-    }
-    require(!string.contains("//"), s"Double slash not allowed in $errorString")
-    require(companion.isCommaAllowed || !string.contains(","), s"Comma not allowed in $errorString")
-  }
-
-  private def errorString = s"${companion.name} '$string'"
+  final def validate() = companion.check(string).force
 }
 
 object AbsolutePath {
@@ -44,6 +36,25 @@ object AbsolutePath {
     def isEmptyAllowed = false
     def isSingleSlashAllowed = false
     def isCommaAllowed = true
+
+    final def checked(string: String): Checked[A] =
+      check(string) map (_ ⇒ apply(string))
+
+    private[AbsolutePath] def check(string: String): Checked[Unit] = {
+      def errorString = s"$name '$string'"
+      if (!isEmptyAllowed && string.isEmpty)
+        Problem(s"Must not be the empty string in $errorString")
+      else if (string.nonEmpty && !string.startsWith("/"))
+        Problem(s"Absolute path expected in $errorString")
+      else if (string.endsWith("/") && (!isSingleSlashAllowed || string != "/"))
+        Problem(s"Trailing slash not allowed in $errorString")
+      else if (string contains "//")
+        Problem(s"Double slash not allowed in $errorString")
+        else if (!isCommaAllowed && string.contains(","))
+        Problem(s"Comma not allowed in $errorString")
+      else
+        Checked(())
+    }
   }
 
   private[data] final case class Untyped(string: String) extends AbsolutePath {
