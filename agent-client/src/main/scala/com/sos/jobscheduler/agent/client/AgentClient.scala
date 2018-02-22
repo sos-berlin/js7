@@ -22,7 +22,7 @@ import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEve
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.base.utils.Strings.TruncatedString
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.decodeResponse

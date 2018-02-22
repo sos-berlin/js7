@@ -11,7 +11,7 @@ import akka.http.scaladsl.server.{Directive0, ExceptionHandler, RejectionHandler
 import com.sos.jobscheduler.base.exceptions.PublicException
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.base.utils.Strings.TruncatedString
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.{addHeader, passIf}
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel._

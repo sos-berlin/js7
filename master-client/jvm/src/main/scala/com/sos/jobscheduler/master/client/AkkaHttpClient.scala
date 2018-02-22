@@ -11,7 +11,7 @@ import akka.http.scaladsl.model.headers.{Accept, `Cache-Control`}
 import akka.http.scaladsl.model.{HttpRequest, RequestEntity, StatusCode}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.stream.ActorMaterializer
-import com.sos.jobscheduler.base.utils.Strings.TruncatedString
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.{decodeResponse, encodeGzip}

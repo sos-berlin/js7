@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
-import com.sos.jobscheduler.base.utils.Strings.TruncatedString
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._

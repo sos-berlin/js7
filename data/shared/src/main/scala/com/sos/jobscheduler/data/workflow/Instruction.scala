@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
-import com.sos.jobscheduler.base.utils.Strings.TruncatedString
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.OrderActorEvent

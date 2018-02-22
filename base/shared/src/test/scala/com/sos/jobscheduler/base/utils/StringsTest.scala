@@ -50,4 +50,12 @@ final class StringsTest extends FreeSpec {
     assert(("x" * 100).truncateWithEllipsis(50, showLength = true) == expected)
     assert(expected.length == 50)
   }
+
+  "replaceChar" in {
+    val empty = ""
+    assert(empty.replaceChar('-', '+') eq empty)
+    val a = "abc"
+    assert(a.replaceChar('-', '+') eq a)
+    assert(("a-b--c---").replaceChar('-', '+') == "a+b++c+++")
+  }
 }
