@@ -1,12 +1,10 @@
 package com.sos.jobscheduler.data.filebased
 
-import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.base.problem.Checked.ops.RichOption
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.filebased.TypedPath._
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
@@ -53,12 +51,11 @@ object TypedPath {
 
     final def typedPathClass: Class[P] = implicitClass[P]
 
-    def fromFile(string: String): Checked[(P, SourceType)] =
-      sourceTypeToFilenameExtension.collectFirst { case (t, ext) if string endsWith ext ⇒
-        Checked.catchNonFatal(apply(string dropRight ext.length) → t)
+    /** Converts a relative file path with normalized slahes (/) to a `TypedPath`. */
+    def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
+      sourceTypeToFilenameExtension.collectFirst { case (t, ext) if normalized endsWith ext ⇒
+        Checked.catchNonFatal(apply("/" + normalized.dropRight(ext.length)) → t)
       }
-      .toChecked(Problem(s"Not a $name: $string"))
-      .flatten
 
     /**
      * Interprets a path as absolute.
@@ -68,6 +65,9 @@ object TypedPath {
     final def makeAbsolute(path: String): P =
       apply(absoluteString(path))
   }
+
+  def fileToString(file: Path): String =
+    file.toString.replaceChar(file.getFileSystem.getSeparator.charAt(0), '/')
 
   def jsonCodec(companions: Iterable[AnyCompanion]): CirceCodec[TypedPath] =
     new Encoder[TypedPath] with Decoder[TypedPath] {

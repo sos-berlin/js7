@@ -4,7 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.RichGenericCompanion
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
-import com.sos.jobscheduler.core.filebased.TypedPaths.fileToTypedPath
+import com.sos.jobscheduler.core.filebased.TypedPaths.{UnrecognizedFileProblem, fileToTypedPath}
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.nio.file.Files.newDirectoryStream
 import java.nio.file.attribute.BasicFileAttributes
@@ -19,19 +19,26 @@ object TypedPathDirectoryWalker {
 
   private val NestingLimit = 100
 
-  def typedFiles(directory: Path, companions: Iterable[TypedPath.AnyCompanion]): Seq[Checked[TypedFile]] =
+  def typedFiles(directory: Path, companions: Iterable[TypedPath.AnyCompanion], ignoreAliens: Boolean = false): Seq[Checked[TypedFile]] =
     Vector.build[Checked[TypedFile]] { builder ⇒
       deepForEachPathAndAttributes(directory, nestingLimit = NestingLimit) { (file, attr) ⇒
         if (!attr.isDirectory) {
-          val checkedPathAndType = fileToTypedPath(companions, file, stripDirectory = directory)
-          builder += checkedPathAndType map (o ⇒ TypedFile(file, o._1, o._2))
+          if (!file.startsWith(directory)) {
+            builder += Problem(s"Path '$file' does not start with '$directory'")
+          } else {
+            val relFile = file.subpath(directory.getNameCount, file.getNameCount)
+            fileToTypedPath(companions, relFile) match {
+              case Invalid(_: UnrecognizedFileProblem) if ignoreAliens ⇒
+              case checkedPathAndType ⇒ builder += checkedPathAndType map (o ⇒ TypedFile(file, o._1, o._2))
+            }
+          }
         }
       }
     }
 
   def checkUniqueness(typedFiles: Seq[Checked[TypedFile]]): Checked[Seq[Checked[TypedFile]]] = {
     val duplicateFiles: Iterable[Path] =
-      typedFiles collect { case Valid(o) ⇒ o } groupBy (_.path) filter (_._2.length >= 2) flatMap (_._2 map (_.file))
+      typedFiles collect { case Valid(o) ⇒ o } groupBy (_.path) filter (_._2.lengthCompare(2) >= 0) flatMap (_._2 map (_.file))
     if (duplicateFiles.isEmpty)
       Valid(typedFiles)
     else
@@ -47,7 +54,7 @@ object TypedPathDirectoryWalker {
         val attrs = Files.readAttributes(path, classOf[BasicFileAttributes]) // IOException in case of invalid symbolic link
         callback(path, attrs)
         if (attrs.isDirectory) {
-          if (nestingLimit <= 0) throw new RuntimeException(s"Directory hierarchy is nested to deeply: $directory")
+          if (nestingLimit <= 0) throw new RuntimeException(s"Directory hierarchy is nested too deeply: $directory")
           deepForEachPathAndAttributes(path, nestingLimit - 1)(callback)
         }
       }

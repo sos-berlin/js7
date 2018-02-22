@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.problem
 
 import cats.Semigroup
+import cats.data.Validated.Invalid
 import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -29,6 +30,9 @@ sealed trait Problem
 
 object Problem
 {
+  implicit def toInvalid[A](problem: Problem): Invalid[Problem] =
+    Invalid(problem)
+
   def apply(messageFunction: ⇒ String): Problem =
     new FromString(() ⇒ messageFunction)
 
@@ -87,6 +91,16 @@ object Problem
   }
 
   implicit val semigroup: Semigroup[Problem] = {
+    case (a: Problem, b: FromThrowable) ⇒
+      Problem.fromLazyThrowable(new ProblemException(a.toString, b.throwable) with NoStackTrace)
+
+    case (a: FromThrowable, b: Problem) ⇒
+      Problem.fromLazyThrowable {
+        val t = new ProblemException(a.toString, b.throwable) with NoStackTrace
+        t.setStackTrace(a.throwable.getStackTrace)
+        t
+      }
+
     case (a: FromString, b: FromString) ⇒
       Multiple(a :: b :: Nil)
 
@@ -96,15 +110,8 @@ object Problem
     case (a: Multiple, b: FromString) ⇒
       Multiple(a.problems.toVector :+ b)
 
-    case (a: FromString, b: FromThrowable) ⇒
-      Problem.fromLazyThrowable(new ProblemException(a.toString, b.throwable) with NoStackTrace)
-
-    case (a: FromThrowable, b: Problem) ⇒
-      Problem.fromLazyThrowable {
-        val t = new ProblemException(a.toString, b.throwable) with NoStackTrace
-        t.setStackTrace(a.throwable.getStackTrace)
-        t
-      }
+    case (a: Multiple, b: Problem) ⇒
+      Multiple(a.problems.toVector :+ new FromString(() ⇒ b.toString))  // TODO If b is FromThrowable, then b.throwable is lost
   }
 
   private def combineMessages(a: String, b: String) =

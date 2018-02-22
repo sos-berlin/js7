@@ -18,9 +18,9 @@ import scala.collection.immutable.{Iterable, Seq}
   */
 object FileBaseds
 {
-  def readDirectory(directory: Path, readers: Iterable[FileBasedReader], existingFileBaseds: Iterable[FileBased]): Checked[Seq[FileBasedEvent]] = {
+  def readDirectory(directory: Path, readers: Iterable[FileBasedReader], existingFileBaseds: Iterable[FileBased], ignoreAliens: Boolean = false): Checked[Seq[FileBasedEvent]] = {
     val pathToFileBased = existingFileBaseds toKeyedMap (_.path)
-    val checkedFileBaseds = readDirectoryTreeFlattenProblems(directory, readers)
+    val checkedFileBaseds = readDirectoryTreeFlattenProblems(directory, readers, ignoreAliens = ignoreAliens)
     for {
       fileBaseds ← checkedFileBaseds
       fileBased ← fileBaseds.toVector traverse merge(pathToFileBased) map (_.flatten)

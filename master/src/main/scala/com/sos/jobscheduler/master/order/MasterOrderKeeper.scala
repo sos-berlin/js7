@@ -104,9 +104,9 @@ with Stash {
     val recoverer = new MasterJournalRecoverer(journalFile = journalFile, orderScheduleGenerator = orderScheduleGenerator)
     recoverer.recoverAll()
     if (!recoverer.hasJournal) {
-      readConfiguration()
+      readConfiguration().onProblem(o ⇒ logger.error(o))
     } else {
-      readScheduledOrderGeneratorConfiguration()
+      readScheduledOrderGeneratorConfiguration().onProblem(o ⇒ logger.error(o))
       changeFileBaseds(recoverer.fileBaseds)
       for ((agentPath, eventId) ← recoverer.agentToEventId) {
         agentRegister(agentPath).lastAgentEventId = eventId
@@ -249,13 +249,12 @@ with Stash {
         Future.successful(MasterCommand.Response.Accepted)
     }
 
-  private def readConfiguration(): Checked[Completed] = {
+  private def readConfiguration(): Checked[Unit] = {
     val existingFileBased = pathToNamedWorkflow.values.toImmutableIterable ++ agentRegister.values.map(_.agent) ++ scheduledOrderGenerators
     val readers = Set(WorkflowReader, AgentReader, new ScheduledOrderGeneratorReader(masterConfiguration.timeZone))
     for (events ← FileBaseds.readDirectory(masterConfiguration.liveDirectory, readers, existingFileBased)) yield {
       changeFileBaseds(events collect { case FileBasedAdded(o) ⇒ o })
       updateOrderProcessor()
-      Completed
     }
   }
 
@@ -272,7 +271,7 @@ with Stash {
   /** Separate handling for developer-only ScheduledOrderGenerator, which are not journaled and read at every restart. */
   private def readScheduledOrderGeneratorConfiguration(): Checked[Completed] = {
     val reader = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone)
-    for (events ← FileBaseds.readDirectory(masterConfiguration.liveDirectory, reader :: Nil, scheduledOrderGenerators)) yield {
+    for (events ← FileBaseds.readDirectory(masterConfiguration.liveDirectory, reader :: Nil, scheduledOrderGenerators, ignoreAliens = true)) yield {
       handleScheduledOrderGeneratorConfiguration(events collect { case FileBasedAdded(o: ScheduledOrderGenerator) ⇒ o })
       Completed
     }
@@ -423,7 +422,7 @@ object MasterOrderKeeper {
   private val SnapshotJsonCodec = TypedJsonCodec[Any](
     Subtype[Workflow.Named],
     Subtype[Agent],
-    Subtype[AgentEventId],
+    Subtype[AgentEventId],  // TODO case class AgentState(eventId: EventId)
     Subtype[OrderScheduleEndedAt],
     Subtype[Order[Order.State]])
 

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.data.filebased
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.base.problem.Problem
+import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
 import com.sos.jobscheduler.data.filebased.TypedPathTest._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -16,7 +16,7 @@ final class TypedPathTest extends FreeSpec {
     val jobPath = APath("/TEST")
     assert(jobPath.asTyped[APath] eq jobPath)
     assert(BPath("/TEST").asTyped[APath] == jobPath)
-    intercept[IllegalArgumentException] {
+    intercept[ProblemException] {
       APath("/TEST,1").asTyped[BPath]
     }
   }
@@ -28,11 +28,12 @@ final class TypedPathTest extends FreeSpec {
   }
 
   "fromFile" in {
-    assert(APath.fromFile("/x").isInvalid)
-    assert(APath.fromFile("/x.a.json") == Valid(APath("/x") → SourceType.Json))
-    assert(APath.fromFile("/x.a.txt") == Valid(APath("/x") → SourceType.Txt))
-    assert(APath.fromFile("/x.b.json") == Invalid(Problem("Not a APath: /x.b.json")))
-    assert(BPath.fromFile("/x.b.json") == Valid(BPath("/x") → SourceType.Json))
+    assert(APath.fromFile("x").isEmpty)
+    assert(APath.fromFile("x.a.json") == Some(Valid(APath("/x") → SourceType.Json)))
+    assert(APath.fromFile("x.a.txt") == Some(Valid(APath("/x") → SourceType.Txt)))
+    assert(APath.fromFile("x.b.json") == None)
+    assert(BPath.fromFile("x.b.json") == Some(Valid(BPath("/x") → SourceType.Json)))
+    assert(BPath.fromFile(".b.json") == Some(Invalid(Problem("Trailing slash not allowed in BPath '/'"))))
   }
 
   "typedPathCodec" in {

@@ -1,15 +1,12 @@
 package com.sos.jobscheduler.core.filebased
 
 import akka.util.ByteString
-import cats.data.Validated.{Invalid, Valid}
-import cats.syntax.flatMap._
-import com.sos.jobscheduler.base.problem.Checked.monad
+import cats.instances.vector._
+import cats.syntax.traverse._
 import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath
-import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.Logger.ops.RichScalaLogger
 import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
 import java.nio.file.Path
 import scala.collection.immutable.{Iterable, Seq}
@@ -29,7 +26,7 @@ trait FileBasedReader
   private def readUntyped(path: TypedPath, byteString: ByteString, sourceType: SourceType): Checked[ThisFileBased] = {
     assert(path.companion eq typedPathCompanion, "FileBasedReader readUntyped")
     read(path.asInstanceOf[ThisTypedPath], byteString).applyOrElse(sourceType,
-      (_: SourceType) ⇒ Invalid(Problem(s"Unrecognized SourceType $sourceType for path '$path'")))
+      (_: SourceType) ⇒ Problem(s"Unrecognized SourceType $sourceType for path '$path'"))
   }
 
   final def typedPathCompanion: TypedPath.Companion[ThisTypedPath] = fileBasedCompanion.typedPathCompanion
@@ -37,27 +34,15 @@ trait FileBasedReader
 
 object FileBasedReader
 {
-  private val logger = Logger(getClass)
+  def readDirectoryTreeFlattenProblems(directory: Path, readers: Iterable[FileBasedReader], ignoreAliens: Boolean = false): Checked[Seq[FileBased]] =
+    for {
+      checkedFileBasedIterator ← readDirectoryTree(directory, readers, ignoreAliens = ignoreAliens)
+      fileBaseds ← checkedFileBasedIterator.toVector.sequence
+    } yield fileBaseds
 
-  def readDirectoryTreeFlattenProblems(directory: Path, readers: Iterable[FileBasedReader]): Checked[Seq[FileBased]] = {
-    val result: Checked[Checked[Vector[FileBased]]] =
-      for (checkedFileBasedIterator ← readDirectoryTree(directory, readers)) yield {
-        val checkedFileBaseds = checkedFileBasedIterator.toVector
-        val problems = checkedFileBaseds collect { case Invalid(o) ⇒ o }
-        problems.headOption match {
-          case Some(o) ⇒
-            for (o ← problems) logger.error(o)
-            Invalid(o)
-          case None ⇒
-            Valid(checkedFileBaseds collect { case Valid(o) ⇒ o })
-        }
-      }
-    result.flatten
-  }
-
-  def readDirectoryTree(directory: Path, readers: Iterable[FileBasedReader]): Checked[Iterator[Checked[FileBased]]] = {
+  def readDirectoryTree(directory: Path, readers: Iterable[FileBasedReader], ignoreAliens: Boolean = false): Checked[Iterator[Checked[FileBased]]] = {
     val typedSourceReader = new TypedSourceReader(readers)
-    val typedFiles = TypedPathDirectoryWalker.typedFiles(directory, readers.map(_.typedPathCompanion))
+    val typedFiles = TypedPathDirectoryWalker.typedFiles(directory, readers.map(_.typedPathCompanion), ignoreAliens = ignoreAliens)
     for (typedFiles ← TypedPathDirectoryWalker.checkUniqueness(typedFiles)) yield
       for (checkedTypedFile ← typedFiles.iterator) yield
         for {

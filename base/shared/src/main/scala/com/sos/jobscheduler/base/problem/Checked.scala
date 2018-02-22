@@ -27,6 +27,15 @@ object Checked
       case NonFatal(t) ⇒ Invalid(Problem.fromEagerThrowable(t))
     }
 
+  //def problem(lazyMessage: ⇒ String): Invalid[Problem] =
+  //  Invalid(Problem(lazyMessage))
+  //
+  //def eagerThrowable(throwable: Throwable): Invalid[Problem] =
+  //  Invalid(Problem.fromEagerThrowable(throwable))
+  //
+  //def lazyThrowable(throwable: ⇒ Throwable): Invalid[Problem] =
+  //  Invalid(Problem.fromLazyThrowable(throwable))
+
   implicit val monad: Monad[Checked] = new Monad[Checked] {
     def pure[A](a: A) = Checked(a)
 

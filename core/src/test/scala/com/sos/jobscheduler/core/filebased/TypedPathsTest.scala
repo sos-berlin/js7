@@ -2,7 +2,6 @@ package com.sos.jobscheduler.core.filebased
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.core.filebased.TypedPaths._
 import com.sos.jobscheduler.data.filebased.SourceType
@@ -16,29 +15,27 @@ import org.scalatest.FreeSpec
 final class TypedPathsTest extends FreeSpec {
 
   "fileToTypedPath" in {
-    val dir = Paths.get("/some/dir")
-    assert(fileToTypedPath(Set(WorkflowPath), dir / "folder/test.workflow.json", stripDirectory = dir) ==
+    assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
-    assert(fileToTypedPath(Set(WorkflowPath, JobPath), dir / "folder/test.workflow.json", stripDirectory = dir) ==
+    assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
-    assert(fileToTypedPath(Set(WorkflowPath, JobPath), dir / "folder/test.job.json", stripDirectory = dir) ==
+    assert(fileToTypedPath(Set(WorkflowPath, JobPath), Paths.get("folder/test.job.json")) ==
       Invalid(Problem("File 'folder/test.job.json' is not recognized as a configuration file")))
-    assert(fileToTypedPath(Set(WorkflowPath), dir / "folder/test.workflow.txt", stripDirectory = dir) ==
+    assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.txt")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Txt))
-    assert(fileToTypedPath(Set(WorkflowPath), dir / "folder/test.job_chain.xml", stripDirectory = dir) ==
+    assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.job_chain.xml")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Xml))
-    assert(fileToTypedPath(Set(WorkflowPath), dir / "folder/test.workflow.wrong", stripDirectory = dir) ==
+    assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.wrong")) ==
       Invalid(Problem("File 'folder/test.workflow.wrong' is not recognized as a configuration file")))
-    assert(fileToTypedPath(Set(WorkflowPath), dir / "folder/test.workflow.json", stripDirectory = Paths.get(s"$dir/")) ==
+    assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
   }
 
   if (sys.props contains "test.speed") "speed" in {
-    val dir = Paths.get("/some/dir")
-    val path = dir / "folder/test.workflow.json"
+    val path = Paths.get("folder/test.workflow.json")
     for (_ ← 1 to 5) info(
       measureTime(100000, "fileToTypedPath") {
-      fileToTypedPath(Set(WorkflowPath), path, stripDirectory = dir)
+      fileToTypedPath(Set(WorkflowPath), path)
     }.toString)
   }
 }

@@ -15,7 +15,6 @@ import io.circe.syntax.EncoderOps
 import java.nio.file.Files.createDirectories
 import java.nio.file.Path
 import org.scalatest.FreeSpec
-import org.scalatest.Matchers._
 
 /**
   * @author Joacim Zschimmer
@@ -25,18 +24,19 @@ final class FileBasedReaderTest extends FreeSpec {
   "readDirectoryTree" in {
     provideDirectory { directory ⇒
       createFiles(directory)
-      readDirectoryTree(directory, Set(WorkflowReader, AgentReader)).force.toList should contain theSameElementsAs List(
+      assert(readDirectoryTree(directory, Set(WorkflowReader, AgentReader)).force.toSet == Set(
         Valid(ANamedWorkflow),
         Valid(BNamedWorkflow),
         Valid(CNamedWorkflow),
         Invalid(Problem("""Problem with 'Workflow:/D (txt)': Failure(End:1:1 ..."ERROR")""")),
         Invalid(Problem("""File 'folder/test.alien.json' is not recognized as a configuration file""")),
         Valid(AAgent),
-        Valid(BAgent))
+        Valid(BAgent)))
 
-      readDirectoryTreeFlattenProblems(directory, Set(WorkflowReader, AgentReader)) should (
-        equal (Invalid(Problem("""Problem with 'Workflow:/D (txt)': Failure(End:1:1 ..."ERROR")""")))
-        or equal (Invalid(Problem("""File 'folder/test.alien.json' is not recognized as a configuration file"""))))
+      assert(readDirectoryTreeFlattenProblems(directory, Set(WorkflowReader, AgentReader)) ==
+        Invalid(Problem.set(
+          """Problem with 'Workflow:/D (txt)': Failure(End:1:1 ..."ERROR")""",
+          """File 'folder/test.alien.json' is not recognized as a configuration file""")))
 
       (directory / "A.workflow.txt").contentString = ""
       assert(readDirectoryTree(directory, Set(WorkflowReader, AgentReader)) ==
