@@ -1,15 +1,21 @@
 package com.sos.jobscheduler.base.utils
 
+import cats.data.Validated.Valid
+import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import java.lang.Character.{isHighSurrogate, isIdentifierIgnorable, isSurrogate, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
+
+final case class Identifier private(string: String) extends IsString
 
 /**
   * @author Joacim Zschimmer
   */
 object Identifier {
-  def requireIdentifier(string: String): String = {
-    if (!isIdentifier(string)) throw new IllegalArgumentException(s"Not a valid identifier: $string")
-    string
-  }
+  def checked(string: String): Checked[Identifier] =
+    if (isIdentifier(string))
+      Valid(new Identifier(string))
+    else
+      Problem(s"Invalid character or character combination in identifier '$string'")
 
   /**
     * Like a Java identifier with minus character.

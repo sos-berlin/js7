@@ -2,7 +2,7 @@ package com.sos.jobscheduler.core.filebased
 
 import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.problem.Checked.monad
-import com.sos.jobscheduler.base.problem.Checked.ops.RichOption
+import com.sos.jobscheduler.base.problem.Checked.ops._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.nio.file.Path
@@ -17,7 +17,9 @@ object TypedPaths {
     val string = TypedPath.fileToString(file)
     companions.iterator
       .map(_.fromFile(string))
-      .collectFirst { case Some(o) ⇒ o }
+      .collectFirst { case Some(o) ⇒
+        o flatMap { case (typedPath, sourceType) ⇒ typedPath.checkedNameSyntax map (_ → sourceType)}
+      }
       .toChecked(UnrecognizedFileProblem(file))
       .flatten
   }

@@ -29,6 +29,8 @@ final class TypedPathsTest extends FreeSpec {
       Invalid(Problem("File 'folder/test.workflow.wrong' is not recognized as a configuration file")))
     assert(fileToTypedPath(Set(WorkflowPath), Paths.get("folder/test.workflow.json")) ==
       Valid(WorkflowPath("/folder/test") → SourceType.Json))
+    assert(fileToTypedPath(Set(WorkflowPath), Paths.get("a@b.workflow.json")) ==
+      Invalid(Problem("Problem with 'Workflow:/a@b': Invalid character or character combination in name 'a@b'")))
   }
 
   if (sys.props contains "test.speed") "speed" in {

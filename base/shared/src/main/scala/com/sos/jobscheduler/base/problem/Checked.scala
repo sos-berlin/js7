@@ -36,6 +36,9 @@ object Checked
   //def lazyThrowable(throwable: ⇒ Throwable): Invalid[Problem] =
   //  Invalid(Problem.fromLazyThrowable(throwable))
 
+  def firstProblem[A](seq: TraversableOnce[Checked[A]]): Option[Problem] =
+    seq collectFirst { case Invalid(problem) ⇒ problem }
+
   implicit val monad: Monad[Checked] = new Monad[Checked] {
     def pure[A](a: A) = Checked(a)
 

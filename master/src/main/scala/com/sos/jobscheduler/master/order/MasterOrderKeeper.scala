@@ -143,7 +143,7 @@ with Stash {
 
     case Command.AddOrderSchedule(orders) ⇒
       for (order ← orders) {
-        addOrder(order) onComplete {
+        addOrderWithUncheckedId(order) onComplete {
           case Success(_) ⇒
           case Failure(t) ⇒ logger.error(t.toString, t)
         }
@@ -290,6 +290,9 @@ with Stash {
   }
 
   private def addOrder(order: Order[Order.Idle]): Future[Completed] =
+    order.id.checkedNameSyntax.toFuture flatMap (_ ⇒ addOrderWithUncheckedId(order))
+
+  private def addOrderWithUncheckedId(order: Order[Order.Idle]): Future[Completed] =
     orderRegister.get(order.id) match {
       case None if pathToNamedWorkflow.isDefinedAt(order.workflowPath) ⇒
         persistAsync(KeyedEvent(OrderAdded(order.workflowPath, order.state, order.payload))(order.id)) { stamped ⇒

@@ -1,7 +1,9 @@
 package com.sos.jobscheduler.data.filebased
 
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked.firstProblem
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
@@ -27,6 +29,12 @@ extends AbsolutePath {
       c.apply(string)
   }
 
+  def checkedNameSyntax: Checked[this.type] =
+    firstProblem(withoutStartingSlash.split('/').iterator map nameValidator.checked) match {
+      case Some(problem) ⇒ problem withKey toString
+      case None ⇒ Valid(this)
+    }
+
   override def toString = toTypedString
 
   def pretty: String = s"${companion.camelName} $string"
@@ -35,7 +43,8 @@ extends AbsolutePath {
 }
 
 object TypedPath {
-  val VersionSeparator = "@"   // FIXME Provisorisch. Wenn das Zeichen nicht als Versionstrenner verwendet wird, gibt es ein Durcheinander
+  val VersionSeparator = "@"
+  private val nameValidator = new NameValidator(Set('-', '.'))
 
   implicit def ordering[P <: TypedPath]: Ordering[P] =
     (a, b) ⇒ a.string compare b.string

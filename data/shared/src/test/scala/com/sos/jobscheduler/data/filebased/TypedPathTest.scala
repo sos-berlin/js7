@@ -3,6 +3,7 @@ package com.sos.jobscheduler.data.filebased
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.problem.{Problem, ProblemException}
+import com.sos.jobscheduler.data.filebased.TypedPath.VersionSeparator
 import com.sos.jobscheduler.data.filebased.TypedPathTest._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -34,6 +35,16 @@ final class TypedPathTest extends FreeSpec {
     assert(APath.fromFile("x.b.json") == None)
     assert(BPath.fromFile("x.b.json") == Some(Valid(BPath("/x") → SourceType.Json)))
     assert(BPath.fromFile(".b.json") == Some(Invalid(Problem("Trailing slash not allowed in BPath '/'"))))
+  }
+
+  "checkedNameSyntax" in {
+    assert(APath("/folder/a-b").checkedNameSyntax == Valid(APath("/folder/a-b")))
+    assert(APath("/folder/a_b").checkedNameSyntax == Valid(APath("/folder/a_b")))
+    assert(APath("/folder/a.b").checkedNameSyntax == Valid(APath("/folder/a.b")))
+    assert(APath("/folder/a@b").checkedNameSyntax ==
+      Invalid(Problem("Problem with 'A:/folder/a@b': Invalid character or character combination in name 'a@b'")))
+    assert(APath(s"/folder/a${VersionSeparator}b").checkedNameSyntax ==
+      Invalid(Problem("Problem with 'A:/folder/a@b': Invalid character or character combination in name 'a@b'")))
   }
 
   "typedPathCodec" in {
