@@ -34,15 +34,40 @@ final class ProblemTest extends FreeSpec {
   }
 
   "combine" in {
-    assert((Problem("A") |+| Problem("B")) == Problem("A - B"))
+    assert((Problem("A") |+| Problem("B")) == Problem("A\n & B"))
     assert((Problem("A:") |+| Problem("B")) == Problem("A: B"))
-    assert((Problem("A:   ") |+| Problem("B")) == Problem("A: B"))
+    assert((Problem("A: ") |+| Problem("B")) == Problem("A: B"))
+    assert((Problem("A -") |+| Problem("B")) == Problem("A - B"))
+    assert((Problem("A - ") |+| Problem("B")) == Problem("A - B"))
     assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A")
     assert((Problem("A") |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A, caused by: B")
     assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.getMessage == "A")
     assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem("B")).throwableOption.get.toStringWithCauses == "A, caused by: B")
     assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.getMessage == "A")
     assert((Problem.fromLazyThrowable(new RuntimeException("A")) |+| Problem.fromLazyThrowable(new RuntimeException("B"))).throwableOption.get.toStringWithCauses == "A, caused by: B")
+  }
+
+  "Multiple" in {
+    Problem("A") |+| Problem("B") match {
+      case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("A"), Problem("B")))
+      case _ ⇒ fail()
+    }
+  }
+
+  "Multiple is flat" in {
+    Problem("A") |+| Problem("B") |+| Problem("C") match {
+      case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
+      case _ ⇒ fail()
+    }
+    val multiProblem: Problem = Problem.Multiple(List(new Problem.FromString(() ⇒ "A"), new Problem.FromString(() ⇒ "B")))
+    multiProblem |+| Problem("C") match {
+      case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
+      case _ ⇒ fail()
+    }
+    Problem("X") |+| multiProblem match {
+      case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("X"), Problem("A"), Problem("B")))
+      case _ ⇒ fail()
+    }
   }
 
   "Problem is lazy" in {

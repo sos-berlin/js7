@@ -4,7 +4,9 @@ import cats.Semigroup
 import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import scala.collection.immutable.Iterable
 import scala.language.implicitConversions
+import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
@@ -18,6 +20,11 @@ sealed trait Problem
   def withKey(key: Any): Problem = withPrefix(s"Problem with '$key':")
 
   def withPrefix(prefix: String): Problem = Problem(prefix) |+| this
+
+  override def equals(o: Any) = o match {
+    case o: Problem ⇒ toString == o.toString
+    case _ ⇒ false
+  }
 }
 
 object Problem
@@ -31,17 +38,40 @@ object Problem
   def fromLazyThrowable(throwable: ⇒ Throwable): Problem =
     new FromThrowable(() ⇒ throwable)
 
-  private class FromString(messageFunction: () ⇒ String) extends Problem {
-    private lazy val message = messageFunction()
+  sealed trait HasMessage extends Problem {
+    def message: String
+  }
+
+  class FromString protected[problem](messageFunction: () ⇒ String) extends HasMessage {
+    final lazy val message = messageFunction()
 
     def throwable = new ProblemException(message)
 
-    override def equals(o: Any) = o match {
-      case o: FromString ⇒ message == o.message
-      case _ ⇒ false
-    }
+    override def withPrefix(prefix: String) = new FromString(() ⇒ normalizePrefix(prefix) + messageFunction())
 
     override def hashCode = message.hashCode
+
+    override def toString = message
+  }
+
+  def set(problems: String*) = Multiple(problems.map(o ⇒ new FromString(() ⇒ o)).toSet)
+
+  final case class Multiple private[problem](problems: Iterable[FromString]) extends HasMessage {
+    require(problems.nonEmpty)
+
+    def throwable = new ProblemException(toString)
+
+    lazy val message = problems map (_.toString) reduce combineMessages
+
+    override def equals(o: Any) = o match {
+      case o: Multiple ⇒
+        (problems, o.problems) match {
+          case (problems: Set[FromString], _) ⇒ problems == o.problems.toSet  // Ignore ordering (used in tests)
+          case (_, o: Set[FromString])        ⇒ problems.toSet == o           // Ignore ordering (used in tests)
+          case _                              ⇒ problems == o.problems
+        }
+        case _ ⇒ super.equals(o)
+      }
 
     override def toString = message
   }
@@ -58,22 +88,36 @@ object Problem
 
   implicit val semigroup: Semigroup[Problem] = {
     case (a: FromString, b: FromString) ⇒
-      Problem(combineMessages(a.toString, b.toString))
+      Multiple(a :: b :: Nil)
+
+    case (a: FromString, b: Multiple) ⇒
+      Multiple(a +: b.problems.toVector)
+
+    case (a: Multiple, b: FromString) ⇒
+      Multiple(a.problems.toVector :+ b)
 
     case (a: FromString, b: FromThrowable) ⇒
-      Problem.fromLazyThrowable(new ProblemException(a.toString, b.throwable))
+      Problem.fromLazyThrowable(new ProblemException(a.toString, b.throwable) with NoStackTrace)
 
     case (a: FromThrowable, b: Problem) ⇒
       Problem.fromLazyThrowable {
-        val t = new ProblemException(a.toString, b.throwable)
+        val t = new ProblemException(a.toString, b.throwable) with NoStackTrace
         t.setStackTrace(a.throwable.getStackTrace)
         t
       }
   }
 
   private def combineMessages(a: String, b: String) =
-    if (a.trim.isEmpty) b
-    else if (b.trim.isEmpty) a
-    else if (a.matches(".*[.-:] *")) s"${a.trim} $b"
-    else s"${a.trim} - $b"
+    if (b.trim.isEmpty)
+      a
+    else
+      normalizePrefix(a) + b
+
+  private def normalizePrefix(prefix: String): String =
+    if (prefix matches ".*[:-] *")
+      if (prefix endsWith " ") prefix else prefix + " "
+    else if (prefix.trim.isEmpty && prefix.endsWith(" "))
+      prefix
+    else
+      prefix + "\n & "
 }
