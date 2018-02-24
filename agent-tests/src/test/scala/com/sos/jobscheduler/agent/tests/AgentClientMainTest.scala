@@ -20,7 +20,7 @@ import scala.concurrent.duration._
  */
 final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider {
 
-  override def afterAll() = closer.closeThen { super.afterAll() }
+  override def afterAll() = closer closeThen super.afterAll()
 
   override protected def extraAgentModule = new ScalaAbstractModule {
     def configure() = {
@@ -42,7 +42,7 @@ final class AgentClientMainTest extends FreeSpec with BeforeAndAfterAll with Has
   "main" in {
     val output = mutable.Buffer[String]()
     val commandYaml = """{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }"""
-    AgentClientMain.run(List(agent.localUri.toString, commandYaml, "/"), o ⇒ output += o)
+    AgentClientMain.run(List(agent.localUri.toString, commandYaml, "?"), o ⇒ output += o)
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
     assert(output(1) == "---")

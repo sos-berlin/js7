@@ -17,7 +17,7 @@ trait RootWebService extends AgentWebService {
   protected implicit def executionContext: ExecutionContext
 
   routeBuilder.addApiRoute { _ ⇒
-    pathEndOrSingleSlash {
+    pathEnd {
       get {
         respondWithHeader(`Cache-Control`(`max-age`(0))) {
           complete {

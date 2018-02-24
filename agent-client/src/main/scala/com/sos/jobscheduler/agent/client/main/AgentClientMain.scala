@@ -49,7 +49,7 @@ object AgentClientMain {
     CommandLineArguments.parse(args) { arguments ⇒
       val agentUri = AgentAddress.normalized(arguments.keylessValue(0))
       val operations = arguments.keylessValues.tail map {
-        case url if url startsWith "/" ⇒ Get(url)
+        case url if url.startsWith("?") || url.startsWith("/") ⇒ Get(url)
         case "-" ⇒ StdinCommand
         case command ⇒ StringCommand(command)
       }
