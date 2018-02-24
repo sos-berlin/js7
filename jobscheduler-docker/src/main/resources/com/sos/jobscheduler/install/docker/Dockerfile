@@ -1,4 +1,4 @@
-FROM openjdk:9-jre-slim
+FROM openjdk:10-jre-slim
 
 # UID of the 'jobscheduler'. The mounted volume /var/opt/jobscheduler must be rwx for this UID
 # Used as group ID, too.
