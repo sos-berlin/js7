@@ -6,9 +6,9 @@ import akka.http.scaladsl.model.{ContentTypes, HttpResponse, MessageEntity}
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import com.sos.jobscheduler.base.problem.Problem
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
+import com.sos.jobscheduler.common.http.AkkaHttpUtils._
 import org.scalatest.concurrent.ScalaFutures._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global

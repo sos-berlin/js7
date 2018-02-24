@@ -20,13 +20,12 @@ import com.sos.jobscheduler.agent.data.views.{TaskOverview, TaskRegisterOverview
 import com.sos.jobscheduler.agent.data.web.AgentUris
 import com.sos.jobscheduler.agent.scheduler.event.KeyedEventJsonFormats.keyedEventJsonCodec
 import com.sos.jobscheduler.agent.views.AgentOverview
+import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.common.CirceJsonSupport._
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.decodeResponse
-import com.sos.jobscheduler.common.auth.{UserAndPassword, UserId}
+import com.sos.jobscheduler.common.http.AkkaHttpUtils.{RichHttpResponse, decodeResponse}
+import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.soslicense.LicenseKeyString
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
@@ -54,6 +53,7 @@ trait AgentClient extends AutoCloseable {
   private lazy val logger = Logger.withPrefix[AgentClient](agentUri.toString)
   protected lazy val agentUris = AgentUris(agentUri.toString)
   private lazy val uriPrefixString = agentUris.prefixedUri.path.toString
+  private lazy val http = Http(actorSystem)
   private lazy val httpsConnectionContext = httpsConnectionContextOption getOrElse http.defaultClientHttpsContext
   private lazy val credentialsHeaders: List[HttpHeader] = userAndPasswordOption match {
     case Some(UserAndPassword(UserId(user), SecretString(password))) ⇒ Authorization(BasicHttpCredentials(user, password)) :: Nil
@@ -61,7 +61,6 @@ trait AgentClient extends AutoCloseable {
   }
   private val sessionTokenRef = new AtomicReference[Option[SessionToken]](None)
   private implicit lazy val materializer = ActorMaterializer()(actorSystem)
-  private lazy val http = Http(actorSystem)
 
   def close() = {
     materializer.shutdown()  // (Seems to be an asynchronous operation)

@@ -4,9 +4,9 @@ import com.google.common.base.Charsets._
 import com.google.common.io.ByteStreams.toByteArray
 import com.google.common.io.Resources
 import com.google.common.io.Resources.getResource
+import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.utils.JavaResource._
 import java.io.File
 import java.net.{URI, URL}
@@ -80,7 +80,6 @@ final case class JavaResource(path: String) {
   def /(tail: String) = JavaResource(s"${path stripSuffix "/"}/$tail")
 
   override def toString = path
-
 }
 
 object JavaResource {

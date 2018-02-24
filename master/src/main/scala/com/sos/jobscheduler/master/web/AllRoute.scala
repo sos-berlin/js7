@@ -4,7 +4,7 @@ import akka.actor.ActorRefFactory
 import akka.http.scaladsl.model.StatusCodes.TemporaryRedirect
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.master.web.master.MasterRoute
 
 /**

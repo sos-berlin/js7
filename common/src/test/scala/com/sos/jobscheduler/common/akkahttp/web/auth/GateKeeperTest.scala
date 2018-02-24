@@ -9,9 +9,10 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.testkit.TestDuration
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.SecretString
-import com.sos.jobscheduler.common.CirceJsonSupport._
-import com.sos.jobscheduler.common.auth.{HashedPassword, UserId}
+import com.sos.jobscheduler.common.auth.HashedPassword
+import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import io.circe.Json

@@ -20,12 +20,12 @@ import com.sos.jobscheduler.agent.views.{AgentOverview, AgentStartInformation}
 import com.sos.jobscheduler.agent.web.AgentWebServerTest._
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
-import com.sos.jobscheduler.common.CirceJsonSupport._
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.akkahttp.https.{Https, KeystoreReference}
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
+import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
+import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.common.scalautil.Futures.blockingFuture
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._

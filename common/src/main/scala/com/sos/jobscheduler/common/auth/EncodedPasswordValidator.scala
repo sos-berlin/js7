@@ -2,6 +2,7 @@ package com.sos.jobscheduler.common.auth
 
 import com.google.common.hash.HashCode
 import com.google.common.hash.Hashing.sha512
+import com.sos.jobscheduler.base.auth.{UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.auth.EncodedPasswordValidator._
 import com.sos.jobscheduler.common.configutils.Configs.ConvertibleConfig

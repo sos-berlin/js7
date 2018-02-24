@@ -3,10 +3,10 @@ package com.sos.jobscheduler.taskserver.task.process
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.base.process.ProcessSignal.{SIGKILL, SIGTERM}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
+import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.namedThreadFuture
-import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.{ClosedFuture, HasCloser, Logger}
 import com.sos.jobscheduler.common.system.OperatingSystem._
 import com.sos.jobscheduler.common.time.ScalaTime._

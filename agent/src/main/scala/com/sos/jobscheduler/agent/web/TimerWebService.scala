@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives._
 import com.sos.jobscheduler.agent.web.common.AgentWebService
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import scala.concurrent.ExecutionContext

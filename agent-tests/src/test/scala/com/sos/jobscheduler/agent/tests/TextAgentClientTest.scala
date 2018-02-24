@@ -9,9 +9,11 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.test.{TestAgentDirectoryProvider, TestAgentProvider}
 import com.sos.jobscheduler.agent.tests.TextAgentClientTest._
+import com.sos.jobscheduler.base.auth.{User, UserAndPassword, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.common.akkahttp.web.auth.OurAuthenticator
-import com.sos.jobscheduler.common.auth.{HashedPassword, User, UserAndPassword, UserId}
+import com.sos.jobscheduler.common.auth.HashedPassword
+import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
@@ -80,7 +82,7 @@ final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with Has
     val output = mutable.Buffer[String]()
     autoClosing(newTextAgentClient(output += _, Some(TestUserId → Password))) { client ⇒
       client.executeCommand("""{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: 10 }""")
-      client.get("")
+      client.getApi("")
     }
     assert(output.size == 3)
     assert(output(0) == "TYPE: Accepted")
@@ -113,7 +115,7 @@ private object TextAgentClientTest {
   private val Password = SecretString("SHA512-PASSWORD")
 
   private def interceptUnauthorized(body: ⇒ Unit) = {
-    val e = intercept[TextAgentClient.HttpException] {
+    val e = intercept[AkkaHttpClient.HttpException] {
       body
     }
     assert(e.status == Unauthorized)

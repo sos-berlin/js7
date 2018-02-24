@@ -1,16 +1,19 @@
 package com.sos.jobscheduler.master.client
 
-import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
+import com.sos.jobscheduler.common.akkautils.ProvideActorSystem
+import com.sos.jobscheduler.common.http.AkkaHttpClient
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpMasterApi(val uri: String) extends AutoCloseable with HttpMasterApi with AkkaHttpClient {
+final class AkkaHttpMasterApi(val uri: String) extends HttpMasterApi with AkkaHttpClient with ProvideActorSystem
+{
   protected def httpClient = this
-  protected val actorSystem = newActorSystem("AkkaHttpClient")
-  protected val executionContext = actorSystem.dispatcher
+  protected def executionContext = actorSystem.dispatcher
+  protected def userAndPassword = None
 
-  override def close() =
-    try super.close()
-    finally actorSystem.terminate()
+  closer.onClose { super.close() }
+
+  override def close() = closer.close()
 }

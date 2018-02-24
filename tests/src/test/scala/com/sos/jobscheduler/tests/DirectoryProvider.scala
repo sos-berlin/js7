@@ -20,13 +20,14 @@ import io.circe.{Json, ObjectEncoder}
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Files, Path}
 import java.time.Duration
+import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.{IndexedSeq, Seq}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * @author Joacim Zschimmer
   */
-private class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
+final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
 
   val directory = createTempDirectory("test-") withCloser deleteDirectoryRecursively
   val master = new Tree(directory / "master")
@@ -48,16 +49,48 @@ private class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
   def runMaster(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     RunningMaster.runForTest(directory)(body)
 
+  def startMaster()(implicit ec: ExecutionContext): Future[RunningMaster] =
+    RunningMaster.startForTest(directory)
+
   def runAgents(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
       body(agents)
       agents map (_.terminate()) await 99.s
     }
 
+  def startAgents()(implicit ec: ExecutionContext): Future[Seq[RunningAgent]] =
+    Future.sequence(agents map (_.conf) map RunningAgent.startForTest)
+
   def agent(agentName: String) = new Tree(directory / agentName)
 }
 
 object DirectoryProvider {
+  trait ForScalaTest extends BeforeAndAfterAll {
+    this: org.scalatest.Suite ⇒
+
+    protected def agentPaths: Seq[AgentPath]
+
+    import ExecutionContext.Implicits.global
+
+    protected lazy val directoryProvider = new DirectoryProvider(agentPaths)
+    protected lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
+    protected lazy val agent: RunningAgent = agents.head
+    protected lazy val master: RunningMaster = directoryProvider.startMaster() await 99.s
+
+    override def beforeAll() = {
+      super.beforeAll()
+      agents
+      master
+    }
+
+    override def afterAll() = {
+      directoryProvider.close()
+      for (a ← agents) a.close()
+      master.close()
+      super.afterAll()
+    }
+  }
+
   sealed class Tree(val directory: Path) {
     val config = directory / "config"
     val live = config / "live"

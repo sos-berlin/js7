@@ -43,7 +43,7 @@ trait TestAgentDirectoryProvider extends HasCloser {
 
 object TestAgentDirectoryProvider {
   // Following resources have been generated with the command line:
-  // common/src/main/resources/com/sos/jobscheduler/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh -data-directory=engine-agent/src/main/resources/com/sos/jobscheduler/agent/test -alias=agent-https
+  // common/src/main/resources/com/sos/jobscheduler/common/http/https/generate-self-signed-ssl-certificate-test-keystore.sh -data-directory=engine-agent/src/main/resources/com/sos/jobscheduler/agent/test -alias=agent-https
   val PrivateHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private-https.jks")
   val PublicHttpJksResource = JavaResource("com/sos/jobscheduler/agent/test/config/public-https.jks")
   val PrivateConfResource = JavaResource("com/sos/jobscheduler/agent/test/config/private/private.conf")

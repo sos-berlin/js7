@@ -9,7 +9,7 @@ import com.sos.jobscheduler.agent.task.{BaseAgentTask, TaskRegister, TaskRegiste
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.agent.web.views.TaskWebServiceTest._
 import com.sos.jobscheduler.base.process.ProcessSignal
-import com.sos.jobscheduler.common.CirceJsonSupport._
+import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._

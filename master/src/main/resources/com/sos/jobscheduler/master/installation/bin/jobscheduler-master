@@ -101,11 +101,33 @@ if $log4jLmax; then :
   javaOptions+=("-DAsyncLogger.WaitStrategy=Blocking")
 fi
 
+classpathString="$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
 execute=(
   "$java"
   "${javaOptions[@]}"
-  -classpath "$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
-  com.sos.jobscheduler.master.MasterMain "${masterOptions[@]}"
-)
+  -classpath "$classpathString"
+  com.sos.jobscheduler.master.MasterMain "${masterOptions[@]}")
 echo "${execute[@]}"
-exec "${execute[@]}"
+"${execute[@]}" &
+
+pid=$!
+echo PID $pid
+
+function terminate() {
+  # Add some seconds to start Java with MasterClientMain
+  terminateTimeout=30
+  "$java" -Xmx50m \
+    -Dlog4j.configurationFile=com/sos/jobscheduler/master/client/main/log4j2.xml \
+    -classpath "$classpathString" \
+    com.sos.jobscheduler.master.client.main.MasterClientMain \
+    http://127.0.0.1:$httpPort \
+    "{ TYPE: Terminate }" >/dev/null &
+  (sleep $terminateTimeout && kill $pid) &
+  killer=$!
+  wait $pid
+  kill $killer
+}
+
+trap "terminate" SIGTERM SIGINT SIGHUP
+wait $pid
+trap - SIGTERM SIGINT SIGHUP

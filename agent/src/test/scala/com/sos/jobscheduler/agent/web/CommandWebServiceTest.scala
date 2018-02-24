@@ -9,8 +9,8 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.web.CommandWebServiceTest._
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.common.CirceJsonSupport._
 import com.sos.jobscheduler.common.akkahttp.JsonString
+import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import java.time.Instant

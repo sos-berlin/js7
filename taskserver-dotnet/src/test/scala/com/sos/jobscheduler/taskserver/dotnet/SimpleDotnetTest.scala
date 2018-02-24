@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.taskserver.dotnet
 
+import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.log.LazyScalaLogger.AsLazyScalaLogger
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
-import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.utils.Exceptions.ignoreException

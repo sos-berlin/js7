@@ -6,12 +6,12 @@ import com.google.inject.Guice
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichArray
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.utils.SideEffect._
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
-import com.sos.jobscheduler.common.scalautil.SideEffect._
 import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.JavaShutdownHook

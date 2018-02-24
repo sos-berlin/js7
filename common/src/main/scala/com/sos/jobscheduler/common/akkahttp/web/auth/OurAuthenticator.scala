@@ -2,9 +2,10 @@ package com.sos.jobscheduler.common.akkahttp.web.auth
 
 import akka.http.scaladsl.server.directives.Credentials
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
+import com.sos.jobscheduler.base.auth.{SimpleUser, User, UserId}
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.auth.{HashedPassword, SimpleUser, User, UserId}
+import com.sos.jobscheduler.common.auth.HashedPassword
 
 /**
   * @author Joacim Zschimmer

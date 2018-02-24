@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.common.auth
 
 import com.google.common.hash.Hashing.sha512
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.SecretString
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicits._
 import com.sos.jobscheduler.common.auth.EncodedToHashedPassword._

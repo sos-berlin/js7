@@ -5,6 +5,7 @@ export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpath pathSeparator JAVA_HOME java
 
+waitForTaskTermination=10
 javaOptions=()
 agentOptions=()
 httpPort=4445
@@ -94,7 +95,7 @@ classpathString="$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
 execute=(
   "$java" \
   "${javaOptions[@]}" \
-  -classpath "$(export IFS="$pathSeparator"; echo "${classpath[*]}")" \
+  -classpath "$classpathString" \
   com.sos.jobscheduler.agent.main.AgentMain "${agentOptions[@]}"
 )
 echo "${execute[@]}"
@@ -106,24 +107,23 @@ pid=$!
 echo PID $pid
 
 function terminate() {
-  tasksTimeout=5
-  # Add enough time to start Java with AgentClientMain
-  agentTimeout=15
+  # Add some seconds to start Java with AgentClientMain
+  terminateTimeout=30
   "$java" -Xmx50m \
     -Dlog4j.configurationFile=com/sos/jobscheduler/agent/client/main/log4j2.xml \
     -classpath "$classpathString" \
     com.sos.jobscheduler.agent.client.main.AgentClientMain \
     http://127.0.0.1:$httpPort \
-    "{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: $tasksTimeout }" >/dev/null &
-  (sleep $agentTimeout && kill $pid)&
+    "{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: $waitForTaskTermination }" >/dev/null &
+  (sleep $terminateTimeout && kill $pid) &
   killer=$!
   wait $pid
   kill $killer
 }
 
-trap "terminate" SIGTERM
+trap "terminate" SIGTERM SIGINT SIGHUP
 wait $pid
-trap - SIGTERM
+trap - SIGTERM SIGINT SIGHUP
 
 returnCode=$?
 if [ -n "$crashKillScript" -a -s "$crashKillScript" ]; then :

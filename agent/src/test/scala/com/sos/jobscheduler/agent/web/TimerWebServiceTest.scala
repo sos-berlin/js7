@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.web
 import akka.http.scaladsl.model.MediaTypes._
 import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
-import com.sos.jobscheduler.common.CirceJsonSupport._
+import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCloseable
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{TimerOverview, TimerService, TimerServiceOverview}

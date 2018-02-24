@@ -6,8 +6,8 @@ import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
 import com.sos.jobscheduler.base.system.SystemInformation
-import com.sos.jobscheduler.common.CirceJsonSupport._
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
+import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
+import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.system.JavaInformation

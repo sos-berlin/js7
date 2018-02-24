@@ -2,11 +2,11 @@ package com.sos.jobscheduler.agent.configuration
 
 import akka.actor.ActorSystem
 import com.google.common.io.Closer
+import com.sos.jobscheduler.base.utils.SideEffect._
 import com.sos.jobscheduler.common.akkautils.DeadLetterActor
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.SideEffect._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -21,7 +21,7 @@ object Akkas {
     ActorSystem(name, config withFallback AgentConfiguration.DefaultsConfig) sideEffect { o ⇒
       DeadLetterActor.subscribe(o)
       closer.onClose {
-        logger.debug("ActorSystem terminate")
+        logger.debug(s"ActorSystem('${o.name}') terminate")
         o.terminate() await ShutdownDuration
       }
     }

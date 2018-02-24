@@ -4,7 +4,9 @@ import akka.actor.ActorSystem.Settings
 import akka.actor.{ActorContext, ActorSystem, Cancellable}
 import akka.http.scaladsl.model.Uri
 import akka.util.{ByteString, Timeout}
+import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.utils.JavaResource
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
@@ -14,14 +16,12 @@ import scala.concurrent.duration._
  */
 object Akkas {
   private val logger = Logger(getClass)
+  private val ConfigResource = JavaResource("com/sos/jobscheduler/common/akkautils/akka.conf")
 
-  def newActorSystem(name: String, config: Config = ConfigFactory.empty) =
-    ActorSystem(name,
-      config resolveWith
-        ConfigFactory.parseString("""
-          |akka.scheduler.tick-duration = 1.s
-          |akka.loggers = [ "akka.event.slf4j.Slf4jLogger" ]
-          |""".stripMargin))
+  def newActorSystem(name: String, config: Config = ConfigFactory.empty) = {
+    logger.debug(s"new ActorSystem('$name')")
+    ActorSystem(name, config resolveWith Configs.loadResource(ConfigResource))
+  }
 
   /**
    * Returns the a Timeout accepted for HTTP request, dependent on Akkas configuration akka.scheduler.tick-duration.

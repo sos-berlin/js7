@@ -3,9 +3,9 @@ package com.sos.jobscheduler.taskserver.configuration.inject
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
 import com.google.inject.{AbstractModule, Provides}
+import com.sos.jobscheduler.base.utils.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.configutils.Configs
 import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
-import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.utils.JavaResource
 import com.sos.jobscheduler.taskserver.configuration.inject.TaskServerMainModule._

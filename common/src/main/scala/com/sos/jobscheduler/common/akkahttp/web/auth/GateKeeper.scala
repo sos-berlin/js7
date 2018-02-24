@@ -3,10 +3,11 @@ package com.sos.jobscheduler.common.akkahttp.web.auth
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive0, Directive1, ExceptionHandler, RejectionHandler, Route}
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils._
+import com.sos.jobscheduler.base.auth.User.Anonymous
+import com.sos.jobscheduler.base.auth.{User, UserId}
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils._
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper._
-import com.sos.jobscheduler.common.auth.User.Anonymous
-import com.sos.jobscheduler.common.auth.{HashedPassword, User, UserId}
+import com.sos.jobscheduler.common.auth.HashedPassword
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService

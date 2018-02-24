@@ -5,8 +5,8 @@ import com.sos.jobscheduler.agent.command.SessionActor._
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand.{Login, Logout, Response, SessionCommand}
 import com.sos.jobscheduler.agent.web.common.LoginSession
+import com.sos.jobscheduler.base.auth.User
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
-import com.sos.jobscheduler.common.auth.User
 import com.sos.jobscheduler.data.session.SessionToken
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Try

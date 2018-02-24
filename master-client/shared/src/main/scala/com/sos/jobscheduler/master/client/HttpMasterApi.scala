@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.master.client
 
+import com.sos.jobscheduler.common.http.HttpClient
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.{Order, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow

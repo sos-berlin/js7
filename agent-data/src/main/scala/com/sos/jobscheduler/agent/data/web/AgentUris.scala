@@ -15,40 +15,44 @@ import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
  */
 final class AgentUris private(agentUri: AgentAddress) {
 
-  val prefixedUri = Uri(s"$agentUri/$AgentUriConstantPrefix")
+  val prefixedUri = Uri(s"$agentUri/agent")
 
-  def overview = toUri(Api)
+  def overview = toUri("api")
 
-  val command = toUri(s"$Api/command")
+  val command = toUri("api/command")
 
   object task {
-    def overview = toUri(s"$Api/task")
+    def overview = toUri("api/task")
 
-    def tasks = toUri(s"$Api/task/")
+    def tasks = toUri("api/task/")
 
-    def apply(id: AgentTaskId) = toUri(Path(s"$Api/task") / id.string)
+    def apply(id: AgentTaskId) = toUri(Path("api/task") / id.string)
   }
 
   object order {
     def apply(orderId: OrderId): Uri =
-      toUri(Uri(path = Path(s"$Api/order") / orderId.string))
+      toUri(Uri(path = Path("api/order") / orderId.string))
 
     def ids: Uri =
-      toUri(Uri(path = Path(s"$Api/order/")) withQuery Query("return" → "OrderId"))
+      toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "OrderId"))
 
     def events: Uri =
-      toUri(Uri(path = Path(s"$Api/order/")) withQuery Query("return" → "OrderEvent"))
+      toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "OrderEvent"))
 
     def orders: Uri =
-      toUri(Uri(path = Path(s"$Api/order/")) withQuery Query("return" → "Order"))
+      toUri(Uri(path = Path("api/order/")) withQuery Query("return" → "Order"))
   }
 
   def mastersEvents(request: EventRequest[OrderEvent]) =
-    toUri(Uri(path = Uri.Path(s"$Api/master/event")) withQuery Query(request.toQueryParameters: _*))
+    toUri(Uri(path = Uri.Path("api/master/event")) withQuery Query(request.toQueryParameters: _*))
 
   def apply(relativeUri: String) = toUri(Path(stripLeadingSlash(relativeUri)))
 
-  def api(relativeUri: String) = toUri(s"$Api/${stripLeadingSlash(relativeUri)}")
+  def api(relativeUri: String) =
+    if (relativeUri.isEmpty)
+      toUri("api")
+    else
+      toUri(s"api/${stripLeadingSlash(relativeUri)}")
 
   private def toUri(path: Path): Uri = toUri(Uri(path = path))
 
@@ -63,8 +67,6 @@ final class AgentUris private(agentUri: AgentAddress) {
 }
 
 object AgentUris {
-  private val AgentUriConstantPrefix = "agent"
-  private val Api = "api"
   val LicenseKeyHeaderName = "X-JobScheduler-LicenseKey"
 
   def apply(address: AgentAddress): AgentUris = new AgentUris(address)

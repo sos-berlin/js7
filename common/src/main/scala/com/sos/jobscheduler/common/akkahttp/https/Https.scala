@@ -2,9 +2,9 @@ package com.sos.jobscheduler.common.akkahttp.https
 
 import akka.http.scaladsl.HttpsConnectionContext
 import com.sos.jobscheduler.base.generic.SecretString
+import com.sos.jobscheduler.base.utils.SideEffect._
 import com.sos.jobscheduler.common.scalautil.AutoClosing._
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.common.scalautil.SideEffect.ImplicitSideEffect
 import java.security.KeyStore
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory}
 import scala.collection.JavaConverters._

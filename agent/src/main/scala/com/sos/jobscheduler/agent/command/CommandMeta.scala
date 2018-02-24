@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.command
 
-import com.sos.jobscheduler.common.auth.User
+import com.sos.jobscheduler.base.auth.User
 import com.sos.jobscheduler.data.session.SessionToken
 
 /**

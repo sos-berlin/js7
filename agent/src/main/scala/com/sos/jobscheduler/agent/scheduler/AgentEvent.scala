@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.scheduler
 
-import com.sos.jobscheduler.common.auth.UserId
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler
 
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import com.sos.jobscheduler.common.auth.UserId
 import io.circe.generic.JsonCodec
 
 /**

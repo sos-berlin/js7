@@ -9,10 +9,10 @@ import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.{AgentActor, AgentHandle}
 import com.sos.jobscheduler.agent.web.common.LoginSession
+import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.sos.jobscheduler.common.akkautils.CatchingSupervisorStrategy
-import com.sos.jobscheduler.common.auth.UserId
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.Logger
 import scala.concurrent.{ExecutionContext, Promise}

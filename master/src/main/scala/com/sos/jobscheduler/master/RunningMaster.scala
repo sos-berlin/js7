@@ -76,9 +76,8 @@ object RunningMaster {
     }
   }
 
-  def runForTest(directory: Path)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit = {
-    val injector = Guice.createInjector(new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")))
-    autoClosing(RunningMaster(injector) await 99.s) { master ⇒
+  def runForTest(directory: Path)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
+    autoClosing(startForTest(directory) await 99.s) { master ⇒
       try {
         body(master)
         master.executeCommand(MasterCommand.Terminate) await 99.s
@@ -88,7 +87,10 @@ object RunningMaster {
         throw t
       }
     }
-  }
+
+  def startForTest(directory: Path)(implicit ec: ExecutionContext): Future[RunningMaster] =
+    RunningMaster(Guice.createInjector(new MasterModule(
+      MasterConfiguration.forTest(configAndData = directory / "master"))))
 
   def apply(configuration: MasterConfiguration)(implicit ec: ExecutionContext): Future[RunningMaster] =
     apply(new MasterModule(configuration))

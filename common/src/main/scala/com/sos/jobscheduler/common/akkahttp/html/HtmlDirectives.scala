@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.headers.{Accept, `Cache-Control`}
 import akka.http.scaladsl.model.{HttpRequest, MediaRange, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive0, RejectionHandler, Route}
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpUtils.passIf
+import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.passIf
 import scala.concurrent.Future
 import scala.language.implicitConversions
 

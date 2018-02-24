@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.web
 
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpClientUtils.RichHttpResponse
+import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import org.scalatest.FreeSpec
