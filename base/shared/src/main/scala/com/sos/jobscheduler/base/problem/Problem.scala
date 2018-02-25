@@ -1,9 +1,10 @@
 package com.sos.jobscheduler.base.problem
 
-import cats.Semigroup
+import cats.{Eq, Semigroup}
 import cats.data.Validated.Invalid
 import cats.syntax.semigroup._
 import com.sos.jobscheduler.base.problem.Problem._
+import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import scala.collection.immutable.Iterable
 import scala.language.implicitConversions
@@ -58,7 +59,14 @@ object Problem
     override def toString = message
   }
 
-  def set(problems: String*) = Multiple(problems.map(o ⇒ new FromString(() ⇒ o)).toSet)
+  def set(problems: String*): Multiple =
+    multiple(problems.toSet)
+
+  def multiple(problems: String*): Multiple =
+    multiple(problems.toImmutableSeq)
+
+  def multiple(problems: Iterable[String]): Multiple =
+    Multiple(problems.map(o ⇒ new FromString(() ⇒ o)))
 
   final case class Multiple private[problem](problems: Iterable[FromString]) extends HasMessage {
     require(problems.nonEmpty)
@@ -113,6 +121,8 @@ object Problem
     case (a: Multiple, b: Problem) ⇒
       Multiple(a.problems.toVector :+ new FromString(() ⇒ b.toString))  // TODO If b is FromThrowable, then b.throwable is lost
   }
+
+  implicit val eqv: Eq[Problem] = Eq.fromUniversalEquals[Problem]
 
   private def combineMessages(a: String, b: String) =
     if (b.trim.isEmpty)

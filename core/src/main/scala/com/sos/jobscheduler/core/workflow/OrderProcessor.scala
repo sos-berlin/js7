@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.workflow
 
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderActorEvent

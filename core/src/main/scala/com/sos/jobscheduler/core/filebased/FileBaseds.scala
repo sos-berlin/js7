@@ -3,8 +3,8 @@ package com.sos.jobscheduler.core.filebased
 import cats.data.Validated.{Invalid, Valid}
 import cats.instances.vector._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.problem.Checked.monad
-import com.sos.jobscheduler.base.problem.Checked.ops._
+import cats.syntax.flatMap._
+import com.sos.jobscheduler.base.problem.Checked.flatMap
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.core.filebased.FileBasedReader.readDirectoryTreeFlattenProblems

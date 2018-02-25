@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 import akka.actor.ActorRef
 import com.sos.jobscheduler.agent.scheduler.order.OrderRegister._
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.ops._
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.core.common.ActorRegister

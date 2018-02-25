@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.order
 
-import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.common
 
 import akka.actor.ActorRef
-import com.sos.jobscheduler.base.problem.Checked.ops.RichOption
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.core.event.journal.RecoveredJournalingActors

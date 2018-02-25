@@ -1,7 +1,8 @@
 package com.sos.jobscheduler.core.workflow
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.problem.Checked.ops._
+import cats.syntax.flatMap._
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.workflow.OrderEventSource._

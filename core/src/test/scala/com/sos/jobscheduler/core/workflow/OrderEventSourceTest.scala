@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.core.workflow
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.MapDiff

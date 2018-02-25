@@ -2,8 +2,9 @@ package com.sos.jobscheduler.core.filebased
 
 import akka.util.ByteString
 import cats.instances.vector._
+import cats.syntax.flatMap._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits.RichPath

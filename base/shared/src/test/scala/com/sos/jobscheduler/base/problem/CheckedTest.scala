@@ -1,17 +1,23 @@
 package com.sos.jobscheduler.base.problem
 
 import cats.data.Validated.{Invalid, Valid}
+import cats.instances.int._
 import cats.instances.list._
+import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.syntax.traverse._
-import com.sos.jobscheduler.base.problem.Checked.monad
-import com.sos.jobscheduler.base.problem.Checked.ops._
+import com.sos.jobscheduler.base.problem.Checked._
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
 final class CheckedTest extends FreeSpec  {
+
+  "===" in {
+    assert(Checked(1) === Checked(1))
+    assert(Checked(Problem("X")) === Checked(Problem.fromEagerThrowable(new IllegalArgumentException("X"))))
+  }
 
   "fromOption" in {
     assert(Checked.fromOption(1.some, Problem("PROBLEM")) == Valid(1))
@@ -25,8 +31,8 @@ final class CheckedTest extends FreeSpec  {
   }
 
   "flatMap" in {
-    assert(Invalid(Problem("A")).flatMap((_: String) ⇒ throw new NotImplementedError) == Invalid(Problem("A")))
-    assert(Valid("A").flatMap(_ ⇒ Valid(2)) == Valid(2))
+    assert((Invalid(Problem("A")): Checked[String]).flatMap((_: String) ⇒ throw new NotImplementedError) == Invalid(Problem("A")))
+    assert((Valid("A"): Checked[String]).flatMap(_ ⇒ Valid(2)) == Valid(2))
   }
 
   "withProblemKey" in {
@@ -48,12 +54,12 @@ final class CheckedTest extends FreeSpec  {
 
   "traverse" in {
     def validate(i: Int): Checked[String] = if ((i % 2) == 0) Valid(i.toString) else Invalid(Problem(s"odd $i"))
-    assert(List(1, 2, 3).traverse(validate) == Invalid(Problem("odd 1")))
+    assert(List(1, 2, 3).traverse(validate) == Invalid(Problem.multiple("odd 1", "odd 3")))
     assert(List(2, 4, 6).traverse(validate) == Valid(List("2", "4", "6")))
   }
 
   "sequence" in {
     assert(List(Valid(1), Valid(2), Valid(3)).sequence[Checked, Int] == Valid(List(1, 2, 3)))
-    assert(List(Valid(1), Invalid(Problem("X")), Invalid(Problem("Y"))).sequence[Checked, Int] == Invalid(Problem("X")))
+    assert(List(Valid(1), Invalid(Problem("X")), Invalid(Problem("Y"))).sequence[Checked, Int] == Invalid(Problem.multiple("X", "Y")))
   }
 }

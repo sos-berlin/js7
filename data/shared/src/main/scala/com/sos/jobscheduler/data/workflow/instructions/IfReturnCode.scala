@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.base.problem.Checked.ops._
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.data.job.ReturnCode

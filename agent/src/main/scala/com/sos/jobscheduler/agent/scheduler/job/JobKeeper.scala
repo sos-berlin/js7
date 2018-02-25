@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.scheduler.job.JobKeeper._
 import com.sos.jobscheduler.agent.scheduler.job.task.{TaskConfiguration, TaskRunner}
 import com.sos.jobscheduler.agent.task.TaskRegister
-import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.LoggingOneForOneStrategy
 import com.sos.jobscheduler.common.scalautil.Logger

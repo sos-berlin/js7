@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.filebased
 
 import com.sos.jobscheduler.base.generic.IsString
-import com.sos.jobscheduler.base.problem.Checked.ops.RichChecked
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.data.filebased.AbsolutePath._
 
