@@ -99,7 +99,6 @@ final class TimerService(idleTimeout: Option[Duration], test: Boolean = false) e
             timer.complete()
         }
       }
-      if (stopped) logger.debug("Stopped")
       if (timedout) logger.debug("Timedout")
     }
 
