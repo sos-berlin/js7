@@ -37,7 +37,7 @@ val _dummy_ = BuildUtils.initializeLogger()
 val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o ⇒ new File(o))
 val publishRepositoryName            = sys.props.get("publishRepository.name")
 val publishRepositoryUri             = sys.props.get("publishRepository.uri")
-val testParallel                     = sys.props contains "test-parallel"
+val testParallel                     = sys.props contains "test.parallel"
 val isForDevelopment                 = sys.props contains "dev"
 
 // Under Windows, compile engine-job-api first, to allow taskserver-dotnet accessing the class files of engine-job-api.
@@ -113,6 +113,7 @@ lazy val jobscheduler = (project in file("."))
     `jobscheduler-docker`,
     `jobscheduler-install`,
     master,
+    `master-client`.jvm,
     `master-data`.jvm,
     `master-client`.jvm,
     `agent-client`,
@@ -179,13 +180,13 @@ lazy val base = crossProject
     libraryDependencies ++=
       "org.typelevel" %%% "cats-core" % catsVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
+      "org.typelevel" %%% "discipline" % disciplineVersion % "test" ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
       "io.circe" %%% "circe-generic-extras" % circeVersion ++
       javaxAnnotations % "compile" ++
-      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
-      "org.typelevel" %% "discipline" % "0.8" % "test"
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
 lazy val baseJVM = base.jvm
 lazy val baseJs = base.js
@@ -194,11 +195,13 @@ lazy val data = crossProject
   .dependsOn(base, tester % "compile->test")
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
-  .settings(
-    libraryDependencies += {
-      import Dependencies._
-      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
-    })
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
+      "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
+      "org.typelevel" %%% "discipline" % disciplineVersion % "test"
+  }
 lazy val dataJVM = data.jvm
 lazy val dataJs = data.js
 

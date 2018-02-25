@@ -14,6 +14,7 @@ object Dependencies {
   val circeVersion = "0.9.1"
   val scalaTestVersion = "3.0.5"
   val simulacrumVersion = "0.11.0"
+  val disciplineVersion = "0.8"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion

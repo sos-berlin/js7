@@ -1,6 +1,8 @@
 package com.sos.jobscheduler.data.event
 
+import cats.{Eq, Functor}
 import com.sos.jobscheduler.base.time.Timestamp
+import com.sos.jobscheduler.data.event.Stamped._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject, ObjectEncoder}
 import scala.collection.mutable
@@ -12,12 +14,19 @@ import scala.collection.mutable
   */
 final case class Stamped[+A](eventId: EventId, timestamp: Timestamp, value: A) {
 
-  def map[B](f: A ⇒ B): Stamped[B] = copy(value = f(value))
+  def map[B](f: A ⇒ B): Stamped[B] = functor.map(this)(f)
 
   override def toString = s"Stamped(${EventId.toDateTimeString(eventId)} $value)"
 }
 
 object Stamped {
+
+  implicit def _eq[A: Eq]: Eq[Stamped[A]] = Eq.fromUniversalEquals
+
+  implicit val functor: Functor[Stamped] = new Functor[Stamped] {
+    def map[A,B](fa: Stamped[A])(f: A ⇒ B) =
+      fa.copy(value = f(fa.value))
+  }
 
   implicit def jsonEncoder[A: Encoder]: ObjectEncoder[Stamped[A]] =
     stamped ⇒ {
