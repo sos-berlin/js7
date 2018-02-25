@@ -3,7 +3,7 @@ set -e
 
 export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
-declare classpath pathSeparator JAVA_HOME java
+declare classpathString java
 
 waitForTaskTermination=10
 javaOptions=()
@@ -32,6 +32,11 @@ for arg in "$@"; do
       ;;
     -java-option=*)
       a="${arg#*=}"
+      javaOptions+=("$a")
+      shift
+      ;;
+    -J*)
+      a="${arg#-J}"
       javaOptions+=("$a")
       shift
       ;;
@@ -91,7 +96,6 @@ if $log4jLmax; then :
   javaOptions+=("-DAsyncLogger.WaitStrategy=Blocking")
 fi
 
-classpathString="$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
 execute=(
   "$java" \
   "${javaOptions[@]}" \

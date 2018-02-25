@@ -3,7 +3,7 @@ set -e
 
 export JOBSCHEDULER_HOME=/opt/jobscheduler
 . "$JOBSCHEDULER_HOME"/bin/internal/set-context.sh
-declare classpath pathSeparator JAVA_HOME java
+declare classpathString java
 
 directory=/var/opt/jobscheduler/testMasterAgent
 log4jXml="com/sos/jobscheduler/master/tests/log4j2.xml"   # Java resource
@@ -46,11 +46,10 @@ javaOptions+=("-DAsyncLogger.WaitStrategy=Blocking")
 execute=(
   "$java"
   "${javaOptions[@]}"
-  -classpath "$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
+  -classpath "$classpathString"
   "com.sos.jobscheduler.master.tests.TestMasterAgent"
   "-directory=$directory"
   "${args[@]}"
 )
 echo "${execute[@]}"
-# Not "exec", for Java tools (and signal handling) don't like pid 0.
-"${execute[@]}"
+exec "${execute[@]}"

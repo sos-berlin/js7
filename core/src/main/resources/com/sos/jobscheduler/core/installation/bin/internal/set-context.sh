@@ -3,6 +3,7 @@
 # - JAVA_HOME
 # - java
 # - pathSeparator
+# - classpathString
 
 isWindows() {
   [ "$(uname -o)" = "Cygwin" ]
@@ -41,6 +42,8 @@ else
   classpath+=("$JOBSCHEDULER_HOME/lib/*")
   javaHome="$JAVA_HOME"
 fi
+
+classpathString="$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
 
 java=java
 if [ -n "$javaHome" ]; then :

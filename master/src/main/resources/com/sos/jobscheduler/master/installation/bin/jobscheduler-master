@@ -12,7 +12,7 @@ set -e
 
 export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)"
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
-declare classpath pathSeparator JAVA_HOME java
+declare classpathString java
 
 config=/var/opt/jobscheduler/master/config
 data=/var/opt/jobscheduler/master/data
@@ -39,6 +39,11 @@ for arg in "$@"; do :
       ;;
     -java-option=*)
       a="${arg#*=}"
+      javaOptions+=("$a")
+      shift
+      ;;
+    -J*)
+      a="${arg#-J}"
       javaOptions+=("$a")
       shift
       ;;
@@ -101,12 +106,12 @@ if $log4jLmax; then :
   javaOptions+=("-DAsyncLogger.WaitStrategy=Blocking")
 fi
 
-classpathString="$(export IFS="$pathSeparator"; echo "${classpath[*]}")"
 execute=(
   "$java"
   "${javaOptions[@]}"
   -classpath "$classpathString"
-  com.sos.jobscheduler.master.MasterMain "${masterOptions[@]}")
+  com.sos.jobscheduler.master.MasterMain
+  "${masterOptions[@]}")
 echo "${execute[@]}"
 "${execute[@]}" &
 
