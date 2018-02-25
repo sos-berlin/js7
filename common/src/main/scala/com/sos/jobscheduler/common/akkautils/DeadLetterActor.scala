@@ -22,8 +22,9 @@ private class DeadLetterActor(output: (⇒ String) ⇒ Unit) extends Actor {
 
   private def callOutput(string: ⇒ String) =
     try output(string)
-    catch { case NonFatal(t) ⇒
-      logger.warn(t.toString)
+    catch {
+      case NonFatal(t) ⇒ logger.warn(t.toString)
+      case t: OutOfMemoryError ⇒ logger.error(t.toString, t)
     }
 }
 
