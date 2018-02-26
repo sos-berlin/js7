@@ -185,6 +185,7 @@ lazy val base = crossProject
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
       "io.circe" %%% "circe-generic-extras" % circeVersion ++
+      "io.monix" %%% "monix" % monixVersion ++
       javaxAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
@@ -506,7 +507,6 @@ lazy val tunnel = project.dependsOn(common, data.jvm, tester.jvm % "compile->tes
       akkaHttp ++
       akkaStream ++
       akkaActor ++
-      akkaAgent ++
       akkaSlf4j ++
       scalactic ++
       intelliJAnnotations % "compile" ++
@@ -647,7 +647,7 @@ lazy val testSettings =
     testOptions in StandardTest  := Seq(scalaTestArguments, Tests.Filter(isStandardTest)),
     testOptions in ExclusiveTest := Seq(scalaTestArguments, Tests.Filter(isExclusiveTest)),
     testOptions in ForkedTest    := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
-    javaOptions in ForkedTest    ++= Seq("-Xmx100m", "-Xms20m", s"-Dlog4j.configurationFile=../project/log4j2.xml"),  // SettingKey for ../project ???
+    javaOptions in ForkedTest    ++= Seq("-Xmx100m", "-Xms20m", "-Dlog4j.configurationFile=../project/log4j2.xml"),  // SettingKey for ../project ???
     testForkedParallel in ForkedTest := testParallel,  // Experimental in sbt 0.13.13
     logBuffered in Test          := false,  // Recommended for ScalaTest
     logBuffered in StandardTest  := false,
