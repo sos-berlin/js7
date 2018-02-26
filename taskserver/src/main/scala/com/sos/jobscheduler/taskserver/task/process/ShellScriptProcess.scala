@@ -3,7 +3,7 @@ package com.sos.jobscheduler.taskserver.task.process
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.common.process.Processes._
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.common.scalautil.Futures.{blockingFuture, promiseFuture}
+import com.sos.jobscheduler.common.scalautil.Futures.{namedThreadFuture, promiseFuture}
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.taskserver.task.process.RichProcess._
 import java.io.{InputStreamReader, Reader, Writer}
@@ -76,7 +76,7 @@ object ShellScriptProcess {
   }
 
   private def readerTo(reader: Reader, charBufferSize: Int, writer: Writer)(implicit ec: ExecutionContext): Future[Completed] =
-    blockingFuture {
+    namedThreadFuture("stdout/stdin reader") {
       forEachChunkOfReader(reader, charBufferSize, writer)
       Completed
     }
@@ -84,14 +84,13 @@ object ShellScriptProcess {
   private def forEachChunkOfReader(reader: Reader, charBufferSize: Int, writer: Writer): Unit = {
     val array = new Array[Char](charBufferSize)
 
-    @tailrec def loop(): Unit = {
+    @tailrec def loop(): Unit =
       reader.read(array) match {
         case -1 ⇒
         case len ⇒
           writer.write(array, 0, len)
           loop()
       }
-    }
 
     try loop()
     finally writer.close()  // End of file reached
