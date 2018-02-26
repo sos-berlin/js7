@@ -70,6 +70,15 @@ final class ProblemTest extends FreeSpec {
     }
   }
 
+  "head" in {
+    val a = Problem("A")
+    assert(a.head eq a)
+    val ma = new Problem.FromString(() ⇒ "A")
+    val mb = new Problem.FromString(() ⇒ "B")
+    val m = new Problem.Multiple(List(ma, mb))
+    assert(m.head eq ma)
+  }
+
   "Problem is lazy" in {
     Problem(throw new Exception)
     Problem(throw new Exception).withKey("KEY")

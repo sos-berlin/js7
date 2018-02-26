@@ -23,6 +23,8 @@ sealed trait Problem
 
   def withPrefix(prefix: String): Problem = Problem(prefix) |+| this
 
+  def head: Problem = this
+
   override def equals(o: Any) = o match {
     case o: Problem ⇒ toString == o.toString
     case _ ⇒ false
@@ -50,9 +52,9 @@ object Problem
   class FromString protected[problem](messageFunction: () ⇒ String) extends HasMessage {
     final lazy val message = messageFunction()
 
-    def throwable = new ProblemException(message)
+    final def throwable = new ProblemException(message)
 
-    override def withPrefix(prefix: String) = new FromString(() ⇒ normalizePrefix(prefix) + messageFunction())
+    override final def withPrefix(prefix: String) = new FromString(() ⇒ normalizePrefix(prefix) + messageFunction())
 
     override def hashCode = message.hashCode
 
@@ -74,6 +76,8 @@ object Problem
     def throwable = new ProblemException(toString)
 
     lazy val message = problems map (_.toString) reduce combineMessages
+
+    override def head = problems.head
 
     override def equals(o: Any) = o match {
       case o: Multiple ⇒
