@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.data.folder
 
-import com.sos.jobscheduler.data.filebased.{AbsolutePath, SourceType, TypedPath}
+import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import java.nio.file.Paths
 
 final case class FolderPath(string: String) extends TypedPath {
@@ -33,7 +33,7 @@ final case class FolderPath(string: String) extends TypedPath {
         case path: FolderPath ⇒ this == path
       }
 
-  override def file(t: SourceType) = EmptyPath
+  override def toFile(t: SourceType) = EmptyPath
 }
 
 object FolderPath extends TypedPath.Companion[FolderPath] {
@@ -44,7 +44,6 @@ object FolderPath extends TypedPath.Companion[FolderPath] {
   val sourceTypeToFilenameExtension = Map.empty
 
   override def isSingleSlashAllowed = true
-  override def isCommaAllowed = false
 
   def fromTrailingSlash(string: String) = {
     require(string endsWith "/", "Trailing slash required for FolderPath")
@@ -63,10 +62,9 @@ object FolderPath extends TypedPath.Companion[FolderPath] {
    * An absolute `path` starting with "/" is used as given.
    * A relative `path` not starting with "/" is used relative to `defaultFolder`.
    */
-  private def absoluteString(defaultFolder: FolderPath, path: String): String = {
-    if (AbsolutePath.isAbsolute(path))
+  private def absoluteString(defaultFolder: FolderPath, path: String): String =
+    if (TypedPath.isAbsolute(path))
       path
     else
       s"${defaultFolder.withTrailingSlash}${path stripPrefix "./"}"
-  }
 }

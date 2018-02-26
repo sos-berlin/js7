@@ -108,7 +108,7 @@ object DirectoryProvider {
       file(path, SourceType.Txt).contentString = content
 
     def file(path: TypedPath, t: SourceType): Path =
-      live resolve path.file(t)
+      live resolve path.toFile(t)
   }
 
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {

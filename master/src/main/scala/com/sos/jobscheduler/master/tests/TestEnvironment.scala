@@ -44,13 +44,13 @@ extends AutoCloseable {
     file(path, SourceType.Txt).contentString = content
 
   def file(path: TypedPath, t: SourceType): Path =
-    masterDir / "config/live" resolve path.file(t)
+    masterDir / "config/live" resolve path.toFile(t)
 
   def masterDir: Path =
     temporaryDirectory / "master"
 
   def agentFile(agentPath: AgentPath, path: TypedPath, t: SourceType): Path =
-    agentDir(agentPath) / "config/live" resolve path.file(t)
+    agentDir(agentPath) / "config/live" resolve path.toFile(t)
 
   def agentDir(agentPath: AgentPath): Path = {
     require(FolderPath.parentOf(agentPath) == FolderPath.Root, "Directory layout is not suitable for nested Agent paths")

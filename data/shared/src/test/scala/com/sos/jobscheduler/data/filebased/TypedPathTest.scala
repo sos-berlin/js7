@@ -13,6 +13,36 @@ import org.scalatest.FreeSpec
   */
 final class TypedPathTest extends FreeSpec {
 
+  "validate" in {
+    intercept[ProblemException] { APath("") }
+    intercept[ProblemException] { APath("x") }
+    intercept[ProblemException] { APath("/x/") }
+    intercept[ProblemException] { APath("x/") }
+    intercept[ProblemException] { APath("/x//y") }
+  }
+
+  "check" in {
+    assert(APath.checked("x") == Invalid(Problem("Absolute path expected in APath 'x'")))
+  }
+
+  "name" in {
+    assert(APath("/name").name == "name")
+    assert(APath("/a/b/name").name == "name")
+  }
+
+  "nesting" in {
+    assert(APath("/a").nesting == 1)
+    assert(APath("/a/b").nesting == 2)
+  }
+
+  "withoutStartingSlash" in {
+    assert(APath("/a").withoutStartingSlash == "a")
+  }
+
+  "withTrailingSlash" in {
+    assert(APath("/a").withTrailingSlash == "/a/")
+  }
+
   "asTyped" in {
     val jobPath = APath("/TEST")
     assert(jobPath.asTyped[APath] eq jobPath)
@@ -41,8 +71,8 @@ final class TypedPathTest extends FreeSpec {
     assert(APath("/folder/a-b").checkedNameSyntax == Valid(APath("/folder/a-b")))
     assert(APath("/folder/a_b").checkedNameSyntax == Valid(APath("/folder/a_b")))
     assert(APath("/folder/a.b").checkedNameSyntax == Valid(APath("/folder/a.b")))
-    assert(APath("/folder/a@b").checkedNameSyntax ==
-      Invalid(Problem("Problem with 'A:/folder/a@b': Invalid character or character combination in name 'a@b'")))
+    assert(APath("/a@b/x@y").checkedNameSyntax ==
+      Invalid(Problem("Problem with 'A:/a@b/x@y': Invalid character or character combination in name 'a@b'\n & Invalid character or character combination in name 'x@y'")))
     assert(APath(s"/folder/a${VersionSeparator}b").checkedNameSyntax ==
       Invalid(Problem("Problem with 'A:/folder/a@b': Invalid character or character combination in name 'a@b'")))
   }
@@ -70,8 +100,6 @@ private object TypedPathTest {
     def companion = BPath
   }
   object BPath extends TypedPath.Companion[BPath] {
-    override def isCommaAllowed = false
-
     val sourceTypeToFilenameExtension: Map[SourceType, String] = Map(
       SourceType.Json → ".b.json")
   }

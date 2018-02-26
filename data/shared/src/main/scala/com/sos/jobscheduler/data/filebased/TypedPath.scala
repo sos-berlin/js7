@@ -1,9 +1,12 @@
 package com.sos.jobscheduler.data.filebased
 
-import cats.data.Validated.Valid
+import cats.data.Validated.{Invalid, Valid}
+import cats.instances.vector._
+import cats.syntax.traverse._
 import com.sos.jobscheduler.base.circeutils.CirceCodec
-import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.firstProblem
+import com.sos.jobscheduler.base.generic.IsString
+import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.base.utils.Strings.RichString
@@ -13,12 +16,22 @@ import java.nio.file.{Path, Paths}
 import scala.collection.immutable.Iterable
 import scala.reflect.ClassTag
 
-trait TypedPath
-extends AbsolutePath {
+trait TypedPath extends IsString {
 
   def companion: Companion[_ <: TypedPath]
 
-  def file(t: SourceType): Path =
+  lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
+
+  /** Has to be called in every implementing constructor. */
+  final def validate() = companion.check(string).force
+
+  def nesting = string stripSuffix "/" count { _ == '/' }
+
+  final def withTrailingSlash: String = if (string endsWith "/") string else s"$string/"
+
+  final def withoutStartingSlash: String = string stripPrefix "/"
+
+  def toFile(t: SourceType): Path =
     Paths.get(withoutStartingSlash + companion.sourceTypeToFilenameExtension(t))
 
   def asTyped[A <: TypedPath: TypedPath.Companion]: A = {
@@ -30,9 +43,9 @@ extends AbsolutePath {
   }
 
   def checkedNameSyntax: Checked[this.type] =
-    firstProblem(withoutStartingSlash.split('/').iterator map nameValidator.checked) match {
-      case Some(problem) ⇒ problem withKey toString
-      case None ⇒ Valid(this)
+    withoutStartingSlash.split('/').toVector traverse nameValidator.checked match {
+      case Invalid(problem) ⇒ problem withKey toString
+      case Valid(_) ⇒ Valid(this)
     }
 
   override def toString = toTypedString
@@ -51,8 +64,35 @@ object TypedPath {
 
   type AnyCompanion = Companion[_ <: TypedPath]
 
-  abstract class Companion[P <: TypedPath: ClassTag] extends AbsolutePath.Companion[P]
+  abstract class Companion[P <: TypedPath: ClassTag] extends IsString.Companion[P]
   {
+    val name = getClass.getSimpleName stripSuffix "$"
+    val NameOrdering: Ordering[P] = Ordering by { _.name }
+
+    def apply(o: String): P
+
+    def isEmptyAllowed = false
+    def isSingleSlashAllowed = false
+
+    final def checked(string: String): Checked[P] =
+      check(string) map (_ ⇒ apply(string))
+
+    private[TypedPath] def check(string: String): Checked[Unit] = {
+      def errorString = s"$name '$string'"
+      if (!isEmptyAllowed && string.isEmpty)
+        Problem(s"Must not be the empty string in $errorString")
+      else if (string.nonEmpty && !string.startsWith("/"))
+        Problem(s"Absolute path expected in $errorString")
+      else if (string.endsWith("/") && (!isSingleSlashAllowed || string != "/"))
+        Problem(s"Trailing slash not allowed in $errorString")
+      else if (string contains "//")
+        Problem(s"Double slash not allowed in $errorString")
+      else if (string.contains(","))
+        Problem(s"Comma not allowed in $errorString")
+      else
+        Checked(())
+    }
+
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
     implicit val implicitCompanion: Companion[P] = this
@@ -104,10 +144,13 @@ object TypedPath {
    * @param path A string starting with "./" is rejected
    */
   private def absoluteString(path: String): String =
-    if (AbsolutePath.isAbsolute(path))
+    if (isAbsolute(path))
       path
     else {
       require(!(path startsWith "./"), s"Relative path is not possible here: $path")
       s"/$path"
     }
+
+  def isAbsolute(path: String): Boolean =
+    path startsWith "/"
 }

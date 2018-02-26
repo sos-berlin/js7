@@ -36,9 +36,6 @@ object Checked
   //def lazyThrowable(throwable: ⇒ Throwable): Invalid[Problem] =
   //  Invalid(Problem.fromLazyThrowable(throwable))
 
-  def firstProblem[A](seq: TraversableOnce[Checked[A]]): Option[Problem] =
-    seq collectFirst { case Invalid(problem) ⇒ problem }
-
   implicit val flatMap: FlatMap[Checked] = new FlatMap[Checked]
   {
     def map[A, B](fa: Checked[A])(f: A ⇒ B) = fa match {
