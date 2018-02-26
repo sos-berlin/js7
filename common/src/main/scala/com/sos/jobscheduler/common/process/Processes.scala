@@ -51,7 +51,7 @@ object Processes {
 
   def directShellCommandArguments(argument: String): immutable.Seq[String] = OS.directShellCommandArguments(argument)
 
-  implicit class RobustlyStartProcess(val delegate: ProcessBuilder) extends AnyVal {
+  implicit final class RobustlyStartProcess(private val delegate: ProcessBuilder) extends AnyVal {
     /**
       * Like ProcessBuilder.start, but retries after IOException("error=26, Text file busy").
       *

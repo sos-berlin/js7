@@ -38,7 +38,7 @@ object Configs {
     ConfigFactory.load(resource.path, Required.setClassLoader(currentClassLoader), ConfigResolveOptions.defaults)
   }
 
-  implicit class ConvertibleConfig(val delegate: Config) extends ConvertiblePartialFunction[String, String] {
+  implicit final class ConvertibleConfig(private val delegate: Config) extends ConvertiblePartialFunction[String, String] {
     def isDefinedAt(path: String) = delegate.hasPath(path)
 
     def apply(path: String): String = delegate.getString(path)

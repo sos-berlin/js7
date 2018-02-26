@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto
   */
 object Workflows {
 
-  implicit class ExecutableWorkflow(val underlying: Workflow) extends AnyVal {
+  implicit final class ExecutableWorkflow(private val underlying: Workflow) extends AnyVal {
     import underlying._
 
     def reduceForAgent(agentPath: AgentPath): Workflow =

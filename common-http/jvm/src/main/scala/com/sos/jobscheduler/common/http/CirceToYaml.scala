@@ -15,7 +15,7 @@ import org.yaml.snakeyaml.{DumperOptions, Yaml}
 object CirceToYaml {
   private implicit val printer = Printer.noSpaces.copy(dropNullValues = true/*Suppress None*/)
 
-  implicit class ToYamlString[A](val delegate: A) extends AnyVal {
+  implicit final class ToYamlString[A](private val delegate: A) extends AnyVal {
     /**
       * Converts this with spray-json to YAML.
       */

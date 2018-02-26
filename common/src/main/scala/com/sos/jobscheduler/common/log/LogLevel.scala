@@ -27,7 +27,7 @@ object LogLevel {
       case _ ⇒ throw new IllegalArgumentException(s"Invalid LogLevel '$string'")
     }
 
-  implicit class LevelLogger(val delegate: slf4j.Logger) extends AnyVal {
+  implicit final class LevelLogger(private val delegate: slf4j.Logger) extends AnyVal {
     def isEnabled(level: LogLevel): Boolean =
       level match {
         case LogNone  ⇒ false
@@ -59,7 +59,7 @@ object LogLevel {
       }
   }
 
-  implicit class LevelScalaLogger(val delegate: ScalaLogger) extends AnyVal {
+  implicit final class LevelScalaLogger(private val delegate: ScalaLogger) extends AnyVal {
     def isEnabled(level: LogLevel): Boolean = delegate.underlying.isEnabled(level)
 
     def log(level: LogLevel, message: ⇒ String): Unit = {

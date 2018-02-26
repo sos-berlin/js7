@@ -18,7 +18,7 @@ object ScalaUtils {
   def implicitClass[A : ClassTag]: Class[A] = implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
 
 
-  implicit class RichJavaClass[A](val underlying: Class[A]) {
+  implicit final class RichJavaClass[A](private val underlying: Class[A]) {
     def scalaName: String = underlying.getName stripSuffix "$"
 
     def simpleScalaName: String = simpleName stripSuffix "$"
@@ -57,7 +57,7 @@ object ScalaUtils {
   object implicits {
     import scala.language.implicitConversions
 
-    implicit class ToStringFunction1[A, R](val delegate: A ⇒ R) {
+    implicit final class ToStringFunction1[A, R](private val delegate: A ⇒ R) {
       def withToString(string: String) = new (A ⇒ R) {
         def apply(a: A) = delegate(a)
         override def toString() = string
@@ -70,7 +70,7 @@ object ScalaUtils {
     override def toString = "identity"
   }
 
-  implicit class RichThrowable[A <: Throwable](val delegate: A) extends AnyVal {
+  implicit final class RichThrowable[A <: Throwable](private val delegate: A) extends AnyVal {
     def rootCause: Throwable = {
       @tailrec def cause(t: Throwable): Throwable =
         t.getCause match {
@@ -122,19 +122,19 @@ object ScalaUtils {
   def someUnless[A](a: A, none: A): Option[A] =
     if (a == none) None else Some(a)
 
-  implicit class RichAny[A](val delegate: A) extends AnyVal {
+  implicit final class RichAny[A](private val delegate: A) extends AnyVal {
     def substitute(substitution: (A, A)): A = substitute(substitution._1, substitution._2)
 
     @inline def substitute(when: A, _then: ⇒ A): A =
       if (delegate == when) _then else delegate
   }
 
-  implicit class SwitchOnAtomicBoolean(val delegate: AtomicBoolean) extends AnyVal {
+  implicit final class SwitchOnAtomicBoolean(private val delegate: AtomicBoolean) extends AnyVal {
     def switchOn(body: ⇒ Unit) = if (delegate.compareAndSet(false, true)) body
     def switchOff(body: ⇒ Unit) = if (delegate.compareAndSet(true, false)) body
   }
 
-  implicit class RichPartialFunction[A, B](val underlying: PartialFunction[A, B]) extends AnyVal {
+  implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B]) extends AnyVal {
     def checked(key: A): Checked[B] =
       underlying.lift(key) match {
         case Some(b) ⇒ Valid(b)
@@ -154,15 +154,15 @@ object ScalaUtils {
     }
   }
 
-  implicit class RichUnitPartialFunction[A](val delegate: PartialFunction[A, Unit]) extends AnyVal {
+  implicit final class RichUnitPartialFunction[A](private val delegate: PartialFunction[A, Unit]) extends AnyVal {
     def callIfDefined(a: A): Unit = delegate.getOrElse(a, ())
   }
 
-  implicit class SwitchStatement[A](val delegate: A) extends AnyVal {
+  implicit final class SwitchStatement[A](private val delegate: A) extends AnyVal {
     def switch[B](pf: PartialFunction[A, Unit]): Unit = pf.callIfDefined(delegate)
   }
 
-  implicit class RichOption[A](val underlying: Option[A]) extends AnyVal {
+  implicit final class RichOption[A](val underlying: Option[A]) extends AnyVal {
     def whenEmpty(f: ⇒ Unit): underlying.type = {
       if (underlying.isEmpty) {
         f
@@ -171,7 +171,7 @@ object ScalaUtils {
     }
   }
 
-  implicit class RichEither[L <: Throwable, R](val underlying: Either[L, R]) extends AnyVal {
+  implicit final class RichEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal {
     def toImmediateFuture: Future[R] =
       withStackTrace match {
         case Left(t) ⇒ Future.failed(t)
@@ -204,7 +204,7 @@ object ScalaUtils {
       }
   }
 
-  implicit class RichValidated[E <: Throwable, A](val underlying: Validated[E, A]) extends AnyVal {
+  implicit final class RichValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal {
     def force: A = underlying.valueOr(t ⇒ throw t.appendCurrentStackTrace)
   }
 }

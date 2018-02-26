@@ -28,7 +28,7 @@ object AkkaHttpUtils {
       case o ⇒ throw new RuntimeException(s"Unsupported Encoding: $o")
     }
 
-  implicit class RichResponseEntity(val underlying: ResponseEntity) extends AnyVal {
+  implicit final class RichResponseEntity(private val underlying: ResponseEntity) extends AnyVal {
     // TODO Fail if Content-Type is not a (UTF-8 or other) String.
     // TODO Parameter maxLength to truncateWithEllipsis.
     /**
@@ -46,7 +46,7 @@ object AkkaHttpUtils {
       underlying.dataBytes.runFold(ByteString.empty)(_ ++ _)  // Possible OutOfMemoryError
   }
 
-  implicit class RichHttpResponse(val underlying: HttpResponse) extends AnyVal {
+  implicit final class RichHttpResponse(private val underlying: HttpResponse) extends AnyVal {
     /**
       * Returns the HttpResponse content interpreted as UTF-8, ignoring any Content-Type.
       * May return a very big String.

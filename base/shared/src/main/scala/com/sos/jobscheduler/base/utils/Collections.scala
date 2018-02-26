@@ -10,12 +10,12 @@ import scala.language.{higherKinds, implicitConversions}
 
 object Collections {
   object implicits {
-    implicit class RichIndexedSeq[A](val underlying: IndexedSeq[A]) extends AnyVal {
+    implicit final class RichIndexedSeq[A](private val underlying: IndexedSeq[A]) extends AnyVal {
       def get(i: Int): Option[A] =
         if (underlying.indices contains i) Some(underlying(i)) else None
     }
 
-    implicit class RichTraversableOnce[A](val delegate: TraversableOnce[A]) extends AnyVal {
+    implicit final class RichTraversableOnce[A](private val delegate: TraversableOnce[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
         delegate match {
           case o: Seq[A] ⇒ o
@@ -34,7 +34,7 @@ object Collections {
       def compareElementWise(other: TraversableOnce[A])(implicit ordering: Ordering[A]): Int = compareIteratorsElementWise(delegate.toIterator, other.toIterator)
     }
 
-    implicit class RichSeq[A](val delegate: collection.Seq[A]) extends AnyVal {
+    implicit final class RichSeq[A](private val delegate: collection.Seq[A]) extends AnyVal {
       /**
         * Like `fold` but uses `neutral` only when `operation` cannot be applied, that is size &lt; 2.
         *
@@ -47,22 +47,22 @@ object Collections {
       }
     }
 
-    implicit class RichArray[A](val delegate: Array[A]) extends AnyVal {
+    implicit final class RichArray[A](private val delegate: Array[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
         Vector() ++ delegate
     }
 
-    implicit class RichJavaIterable[A](val delegate: java.lang.Iterable[A]) extends AnyVal {
+    implicit final class RichJavaIterable[A](private val delegate: java.lang.Iterable[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
         Vector() ++ delegate.asScala
     }
 
-    implicit class RichJavaIterator[A](val delegate: java.util.Iterator[A]) extends AnyVal {
+    implicit final class RichJavaIterator[A](private val delegate: java.util.Iterator[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
         Vector() ++ delegate.asScala
     }
 
-    implicit class RichTraversable[A](val delegate: Traversable[A]) extends AnyVal {
+    implicit final class RichTraversable[A](private val delegate: Traversable[A]) extends AnyVal {
       def toKeyedMap[K](toKey: A ⇒ K): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap
 
       def toKeyedMap[K](toKey: A ⇒ K, ifNot: Iterable[K] ⇒ Nothing): Map[K, A] = (delegate map { o ⇒ toKey(o) → o }).uniqueToMap(ifNot)
@@ -106,12 +106,12 @@ object Collections {
       }
     }
 
-    implicit class RichSet[A](val delegate: Set[A]) extends AnyVal {
+    implicit final class RichSet[A](private val delegate: Set[A]) extends AnyVal {
       def isDisjointWith(o: Set[A]): Boolean =
         delegate forall (k ⇒ !o.contains(k))
     }
 
-    implicit class RichPairTraversable[A, B](val delegate: Traversable[(A, B)]) extends AnyVal {
+    implicit final class RichPairTraversable[A, B](private val delegate: Traversable[(A, B)]) extends AnyVal {
       def uniqueToMap: Map[A, B] = {
         delegate.requireUniqueness { _._1 }
         delegate.toMap
@@ -126,7 +126,7 @@ object Collections {
         delegate groupBy { _._1 } map { case (key, seq) ⇒ key → (seq map { _._2 }).toImmutableSeq }
     }
 
-    implicit class InsertableMutableMap[K, V](val delegate: mutable.Map[K, V]) extends AnyVal {
+    implicit final class InsertableMutableMap[K, V](private val delegate: mutable.Map[K, V]) extends AnyVal {
       def insert(kv: (K, V)): Unit = {
         if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already known in ${delegate.stringPrefix}")
         delegate += kv
@@ -135,13 +135,13 @@ object Collections {
 
     implicit def javaStreamToIterator[A](stream: java.util.stream.Stream[A]): Iterator[A] = stream.iterator.asScala
 
-    implicit class RichJavaStream[A](val delegate: java.util.stream.Stream[A]) extends AnyVal {
+    implicit final class RichJavaStream[A](private val delegate: java.util.stream.Stream[A]) extends AnyVal {
       def toImmutableSeq: Seq[A] =
         Vector() ++ delegate.iterator.asScala
     }
   }
 
-  implicit class RichGenericCompanion[+CC[X] <: GenTraversable[X]](val delegate: GenericCompanion[CC]) extends AnyVal {
+  implicit final class RichGenericCompanion[+CC[X] <: GenTraversable[X]](private val delegate: GenericCompanion[CC]) extends AnyVal {
     def build[A](body: mutable.Builder[A, CC[A]] ⇒ Unit): CC[A] = {
       val b = delegate.newBuilder[A]
       body(b)
@@ -149,15 +149,15 @@ object Collections {
     }
   }
 
-  implicit class RichMap[K, V](val underlying: Map[K, V]) extends AnyVal {
+  implicit final class RichMap[K, V](private val underlying: Map[K, V]) extends AnyVal {
     def withNoSuchKey(noSuchKey: K ⇒ Nothing): Map[K, V] =
       underlying withDefault (k ⇒ noSuchKey(k))
   }
 
   // To satisfy IntelliJ IDEA 2016.2.5
-  //implicit class RichVector(delegate: Vector.type) extends RichGenericCompanion[Vector](delegate)
+  //implicit final class RichVector(delegate: Vector.type) extends RichGenericCompanion[Vector](delegate)
 
-  implicit class RichMapCompanion[CC[A, B] <: GenMap[A, B] with GenMapLike[A, B, CC[A, B]]](val delegate: GenMapFactory[CC]) extends AnyVal {
+  implicit final class RichMapCompanion[CC[A, B] <: GenMap[A, B] with GenMapLike[A, B, CC[A, B]]](private val delegate: GenMapFactory[CC]) extends AnyVal {
     def build[A, B](body: mutable.Builder[(A, B), CC[A, B]] ⇒ Unit): CC[A, B] = {
       val b = delegate.newBuilder[A, B]
       body(b)
@@ -165,13 +165,13 @@ object Collections {
     }
   }
 
-  //implicit class RichListMap[K, V](val underlying: ListMap[K, V]) extends AnyVal {
+  //implicit final class RichListMap[K, V](private val underlying: ListMap[K, V]) extends AnyVal {
   //  // ListMap is ordered
   //  def keySeq: Seq[K] = underlying.keys.toVector
   //  def valueSeq: Seq[V] = underlying.values.toVector
   //}
 
-  implicit class RichBufferedIterator[A](val delegate: BufferedIterator[A]) extends AnyVal {
+  implicit final class RichBufferedIterator[A](private val delegate: BufferedIterator[A]) extends AnyVal {
     def headOption: Option[A] = if (delegate.hasNext) Some(delegate.head) else None
   }
 

@@ -38,7 +38,7 @@ object FileUtils {
 
     implicit def fileToPath(file: File): Path = file.toPath
 
-    implicit class RichPath(val delegate: Path) extends AnyVal {
+    implicit final class RichPath(private val delegate: Path) extends AnyVal {
 
       def /(filename: String): Path = delegate resolve filename
 
@@ -66,7 +66,7 @@ object FileUtils {
       def pathSet: Set[Path] = autoClosing(Files.list(delegate)) { _.toSet }
     }
 
-    implicit class RichFile(val delegate: File) extends AnyVal {
+    implicit final class RichFile(private val delegate: File) extends AnyVal {
 
       def /(filename: String) = new File(delegate, filename)
 

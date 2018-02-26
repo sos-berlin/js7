@@ -20,7 +20,7 @@ object ScalaTime {
 
   @TestOnly @volatile var extraSleepCount = 0L
 
-  implicit class DurationRichInt(val delegate: Int) extends AnyVal {
+  implicit final class DurationRichInt(private val delegate: Int) extends AnyVal {
     /**
      * Duration, counted in microseconds.
      */
@@ -50,7 +50,7 @@ object ScalaTime {
     final def *(o: Duration) =  o multipliedBy delegate
   }
 
-  implicit class DurationRichLong(val delegate: Long) extends AnyVal {
+  implicit final class DurationRichLong(private val delegate: Long) extends AnyVal {
     /**
      * Duration, counted in microseconds.
      */
@@ -80,7 +80,7 @@ object ScalaTime {
     final def *(o: Duration) = o multipliedBy delegate
   }
 
-  implicit class DurationRichBigDecimal(val delegate: BigDecimal) extends AnyVal {
+  implicit final class DurationRichBigDecimal(private val delegate: BigDecimal) extends AnyVal {
     final def s: Duration = bigDecimalToDuration(delegate)
   }
 
@@ -124,7 +124,7 @@ object ScalaTime {
 
   def randomDuration(maximum: Duration): Duration = Duration ofNanos (maximum.toNanos * Random.nextFloat).toLong
 
-  implicit class RichDuration(val delegate: Duration) extends AnyVal with Ordered[RichDuration] {
+  implicit final class RichDuration(private val delegate: Duration) extends AnyVal with Ordered[RichDuration] {
     def unary_- = Duration.ZERO minus delegate
     def +(o: Duration): Duration = delegate plus o
     def -(o: Duration): Duration = delegate minus o
@@ -188,7 +188,7 @@ object ScalaTime {
     def compare(o: RichDuration) = delegate compareTo o.delegate
   }
 
-  implicit class RichInstant(val delegate: Instant) extends AnyVal with Ordered[RichInstant] {
+  implicit final class RichInstant(private val delegate: Instant) extends AnyVal with Ordered[RichInstant] {
     def +(o: Duration) = delegate plus o
     def -(o: Duration) = delegate minus o
     def -(o: Instant) = Duration.between(o, delegate)
@@ -208,7 +208,7 @@ object ScalaTime {
     override def toString = delegate.toString  // For ScalaTest
   }
 
-  implicit class RichLocalTime(val delegate: LocalTime) extends AnyVal with Ordered[RichLocalTime] {
+  implicit final class RichLocalTime(private val delegate: LocalTime) extends AnyVal with Ordered[RichLocalTime] {
     def compare(o: RichLocalTime) = delegate compareTo o.delegate
   }
 
@@ -220,7 +220,7 @@ object ScalaTime {
 //    def compare(a: LocalTime, b: LocalTime) = a compareTo b
 //  }
 
-  implicit class RichLocalDateTime(val delegate: LocalDateTime) extends AnyVal with Ordered[RichLocalDateTime] {
+  implicit final class RichLocalDateTime(private val delegate: LocalDateTime) extends AnyVal with Ordered[RichLocalDateTime] {
     def compare(o: RichLocalDateTime) = delegate compareTo o.delegate
     def toInstant(zone: ZoneId) = delegate.toInstant(zone.getRules.getOffset(delegate))
   }
@@ -285,11 +285,11 @@ object ScalaTime {
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 
-  implicit final class RichConcurrentDuration(val underlying: FiniteDuration) extends AnyVal {
+  implicit final class RichConcurrentDuration(private val underlying: FiniteDuration) extends AnyVal {
     def toJavaDuration = Duration.ofNanos(underlying.toNanos)
   }
 
-  implicit final class RichTimestamp(val underlying: Timestamp) extends AnyVal {
+  implicit final class RichTimestamp(private val underlying: Timestamp) extends AnyVal {
     def toInstant = Instant.ofEpochMilli(underlying.toEpochMilli)
   }
 }

@@ -38,7 +38,7 @@ object CirceUtils {
     implicit val CompactPrinter = CirceUtils.CompactPrinter
   }
 
-  implicit class RichJson(val underlying: Json) extends AnyVal {
+  implicit final class RichJson(private val underlying: Json) extends AnyVal {
 
     def toPrettyString: String =
       PrettyPrinter.pretty(underlying)
@@ -89,7 +89,7 @@ object CirceUtils {
       }
   }
 
-  implicit class RichCirceString(val underlying: String) extends AnyVal {
+  implicit final class RichCirceString(private val underlying: String) extends AnyVal {
     def parseJson: Json =
       io.circe.parser.parse(underlying).force
   }
@@ -140,7 +140,7 @@ object CirceUtils {
   //    Left(DecodingFailure(t.toStringWithCauses, Nil))
   //  }
 
-  implicit class JsonStringInterpolator(val sc: StringContext) extends AnyVal {
+  implicit final class JsonStringInterpolator(val sc: StringContext) extends AnyVal {
     def json(args: Any*): Json = {
       require(args.isEmpty, "json string interpolator accepts no variables")
       sc.parts.mkString("").parseJson

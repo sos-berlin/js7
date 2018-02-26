@@ -11,7 +11,7 @@ object StackTraces {
     * Applicable for `Try`  of another context, like from a `Future`.
     * Modifies the original `Try` if it is a `Failure`.
     */
-  implicit class StackTraceTry[A](val delegate: Try[A]) extends AnyVal {
+  implicit final class StackTraceTry[A](private val delegate: Try[A]) extends AnyVal {
     def appendCurrentStackTrace: Try[A] = {
       delegate match {
         case Failure(t) ⇒ t.appendStackTrace(new Exception().getStackTrace)
@@ -21,7 +21,7 @@ object StackTraces {
     }
   }
 
-  implicit class StackTraceThrowable[T <: Throwable](val delegate: T) extends AnyVal {
+  implicit final class StackTraceThrowable[T <: Throwable](val delegate: T) extends AnyVal {
     /**
       * Applicable for Throwables of another context, like from a `Future`.
       * Modifies the original `Throwable`.

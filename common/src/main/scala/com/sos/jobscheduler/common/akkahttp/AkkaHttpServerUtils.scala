@@ -12,7 +12,7 @@ import scala.annotation.tailrec
   */
 object AkkaHttpServerUtils {
   object implicits {
-    implicit class RichOption[A](val delegate: Option[A]) extends AnyVal {
+    implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal {
       def applyRoute(f: A ⇒ Route): Route =
         delegate match {
           case Some(a) ⇒ f(a)
@@ -141,7 +141,7 @@ object AkkaHttpServerUtils {
   //      }
   //  }
 
-  implicit class RichPath(val delegate: Uri.Path) extends AnyVal {
+  implicit final class RichPath(private val delegate: Uri.Path) extends AnyVal {
     import Uri.Path._
 
     /**

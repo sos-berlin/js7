@@ -109,7 +109,7 @@ final class LazyScalaLogger(delegate: Logger) {
 
 object LazyScalaLogger {
 
-  implicit class AsLazyScalaLogger(val delegate: Logger) extends AnyVal {
+  implicit final class AsLazyScalaLogger(private val delegate: Logger) extends AnyVal {
     /**
       * Converts eager-looking (because macro-based) com.typesafe.scalalogging.Logger
       * to LazyScalaLogger with lazy function signatures.

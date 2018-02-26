@@ -20,7 +20,7 @@ trait IDispatch extends IUnknown {
 
 object IDispatch {
   object implicits {
-    implicit class RichIDispatch(val delegate: IDispatch) extends AnyVal {
+    implicit final class RichIDispatch(private val delegate: IDispatch) extends AnyVal {
 
       def invokeGet(name: String): Any =
         invokeGet(delegate.getIdOfName(name))

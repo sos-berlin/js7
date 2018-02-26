@@ -25,7 +25,7 @@ object Utils {
     s"${EventId.toString(eventId)} $orderId ${event.getClass.getSimpleName}"
 
   object ops {
-    implicit class WhenTraversableOnce[M[X] <: TraversableOnce[X], A](val underlying: M[A]) extends AnyVal {
+    implicit final class WhenTraversableOnce[M[X] <: TraversableOnce[X], A](private val underlying: M[A]) extends AnyVal {
       def whenNonEmpty(implicit f: M[A] ⇒ TagMod): TagMod =
         if (underlying.nonEmpty)
           f(underlying)

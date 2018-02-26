@@ -11,7 +11,7 @@ object ConvertiblePartialFunctions {
   /**
     * Provides methods for conversion of the result of a PartialFunction (for example a Map).
     */
-  implicit class ImplicitConvertablePF[K, V](val delegate: PartialFunction[K, V]) extends AnyVal {
+  implicit final class ImplicitConvertablePF[K, V](private val delegate: PartialFunction[K, V]) extends AnyVal {
     def as[W](key: K)(implicit convert: As[V, W], renderKey: RenderKey): W =
       wrappedConvert(convert.apply, renderKey(key))(delegate(key))
 

@@ -10,7 +10,7 @@ import scala.collection.JavaConverters._
 object ScalaStax {
   private val logger = Logger(getClass)
 
-  implicit final class RichStartElement(val delegate: StartElement) extends AnyVal {
+  implicit final class RichStartElement(private val delegate: StartElement) extends AnyVal {
     def attributes: Iterator[Attribute] =
       delegate.getAttributes.asInstanceOf[java.util.Iterator[Attribute]].asScala
   }

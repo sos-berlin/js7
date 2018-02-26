@@ -28,7 +28,7 @@ object Renderers {
   implicit def orderIdToVdom(orderId: OrderId): VdomNode =
     <.a(^.cls := "hidden-link OrderId", ^.href := Router.hash(orderId))(orderId.string)
 
-  implicit class OptionalVdom[A](val underlying: Option[A]) extends AnyVal {
+  implicit final class OptionalVdom[A](private val underlying: Option[A]) extends AnyVal {
     def orMissing(implicit toVdom: A ⇒ VdomNode): VdomNode =
       underlying match {
         case None ⇒ "—"

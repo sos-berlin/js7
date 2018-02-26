@@ -69,7 +69,7 @@ object Checked
       case _ ⇒ false
     }
 
-  implicit class Ops[A](val underlying: Checked[A]) extends AnyVal
+  implicit final class Ops[A](private val underlying: Checked[A]) extends AnyVal
   {
     /** Same as Checked.flatMap - which is not recognized by Scala 2.12.4 in some circumstances. */
     def flatMap_[B](f: A ⇒ Checked[B]): Checked[B] = Checked.flatMap.flatMap(underlying)(f)
@@ -105,7 +105,7 @@ object Checked
     }
   }
 
-  implicit class RichOption[A](val underlying: Option[A]) extends AnyVal {
+  implicit final class RichOption[A](private val underlying: Option[A]) extends AnyVal {
     def toChecked(problem: ⇒ Problem): Checked[A] =
       underlying match {
         case Some(a) ⇒ Valid(a)

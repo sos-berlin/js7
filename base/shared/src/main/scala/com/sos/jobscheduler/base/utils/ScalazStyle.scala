@@ -9,7 +9,7 @@ package com.sos.jobscheduler.base.utils
  */
 object ScalazStyle {
 
-  implicit class OptionRichBoolean(val delegate: Boolean) extends AnyVal {
+  implicit final class OptionRichBoolean(private val delegate: Boolean) extends AnyVal {
 
     /**
       * Conditional `Option`.

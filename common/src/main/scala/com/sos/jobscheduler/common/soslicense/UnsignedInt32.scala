@@ -23,7 +23,7 @@ private[soslicense] final case class UnsignedInt32(toInt: Int) {
 private[soslicense] object UnsignedInt32 {
   private def truncate(i: Long) = UnsignedInt32((i & 0xffffffffL).toInt)
 
-  implicit class AsUnsignedInt(val delegate: Int) extends AnyVal {
+  implicit final class AsUnsignedInt(private val delegate: Int) extends AnyVal {
     def unsigned = UnsignedInt32(delegate)
   }
 }

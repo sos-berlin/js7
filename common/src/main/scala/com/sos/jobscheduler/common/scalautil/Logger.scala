@@ -35,7 +35,7 @@ object Logger {
     c.getName stripSuffix "$" replaceFirst("^com[.]sos[.]jobscheduler", "jobscheduler")
 
   object ops {
-    implicit class RichScalaLogger(val underlying: ScalaLogger) extends AnyVal
+    implicit final class RichScalaLogger(private val underlying: ScalaLogger) extends AnyVal
     {
       def error(problem: Problem): Unit =
         problem.throwableOption match {

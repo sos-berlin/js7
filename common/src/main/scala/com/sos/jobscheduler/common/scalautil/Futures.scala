@@ -63,7 +63,7 @@ object Futures {
 
   object implicits {
 
-    implicit class SuccessFuture[A](val delegate: Future[A]) extends AnyVal {
+    implicit final class SuccessFuture[A](private val delegate: Future[A]) extends AnyVal {
       /**
        * Like .value.get.get - in case of exception own stack trace is added.
        */
@@ -99,7 +99,7 @@ object Futures {
         Await.ready(delegate, Inf).successValue
     }
 
-    implicit class RichFutures[A, M[X] <: TraversableOnce[X]](val delegate: M[Future[A]]) extends AnyVal {
+    implicit final class RichFutures[A, M[X] <: TraversableOnce[X]](private val delegate: M[Future[A]]) extends AnyVal {
       /**
         * Awaits the futures completion for the duration or infinite.
         */
@@ -116,7 +116,7 @@ object Futures {
         Await.ready(Future.sequence(delegate)(cbf, ec), Inf).successValue
     }
 
-    implicit class SuccessPromise[A](val delegate: Promise[A]) extends AnyVal {
+    implicit final class SuccessPromise[A](private val delegate: Promise[A]) extends AnyVal {
       def successValue: A = delegate.future.successValue
     }
   }

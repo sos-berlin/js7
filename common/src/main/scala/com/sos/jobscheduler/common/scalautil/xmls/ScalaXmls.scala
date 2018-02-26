@@ -11,7 +11,7 @@ object ScalaXmls {
 
   object implicits {
 
-    implicit class RichXmlFile(val delegate: File) extends AnyVal {
+    implicit final class RichXmlFile(private val delegate: File) extends AnyVal {
 
       def xml = SafeXML.loadFile(delegate)
 
@@ -20,7 +20,7 @@ object ScalaXmls {
       }
     }
 
-    implicit class RichXmlPath(val delegate: Path) extends AnyVal {
+    implicit final class RichXmlPath(private val delegate: Path) extends AnyVal {
 
       def xml = SafeXML.loadFile(delegate)
 
@@ -29,7 +29,7 @@ object ScalaXmls {
       }
     }
 
-    implicit class RichElem(val delegate: xml.Elem) extends AnyVal {
+    implicit final class RichElem(private val delegate: xml.Elem) extends AnyVal {
       def toByteString: ByteString = toByteString(xmlDecl = true)
 
       def toByteString(encoding: Charset = UTF_8, xmlDecl: Boolean = true): ByteString = {

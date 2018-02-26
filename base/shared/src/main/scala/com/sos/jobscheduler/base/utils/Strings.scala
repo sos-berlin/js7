@@ -9,7 +9,7 @@ object Strings {
 
   private val Ellipsis = "..."
 
-  implicit class RichString(val underlying: String) extends AnyVal {
+  implicit final class RichString(private val underlying: String) extends AnyVal {
     ///** Truncate to `n`, replacing the tail with ellipsis and, if the string is long, the total character count. */
     def truncateWithEllipsis(n: Int): String =
       truncateWithEllipsis(n, showLength = false)

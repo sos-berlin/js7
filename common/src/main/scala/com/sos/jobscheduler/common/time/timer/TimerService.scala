@@ -268,7 +268,7 @@ object TimerService {
 
   private def timerToOverview(timer: Timer[_]) = TimerOverview(timer.at, name = timer.name)
 
-  implicit class TimeoutFuture[A](val delegate: Future[A]) extends AnyVal {
+  implicit final class TimeoutFuture[A](private val delegate: Future[A]) extends AnyVal {
     def timeoutAfter[B >: A](delay: Duration, name: String, completeWith: ⇒ Try[B] = Timer.ElapsedFailure)(implicit timerService: TimerService, ec: ExecutionContext): Future[B] =
       timeoutAt(nowPlus(delay), completeWith, name)
 
