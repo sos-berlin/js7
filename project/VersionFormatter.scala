@@ -1,9 +1,7 @@
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
+import java.time.Instant
+import java.time.format.DateTimeFormatter.ISO_INSTANT
 
 object VersionFormatter  {
-
-  private val BuildDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
   def buildVersion(version: String, versionCommitHash: Option[String], branch: String): String = {
     var result = version
@@ -20,7 +18,7 @@ object VersionFormatter  {
   private def branchAndCommitSuffix(branch: String, versionCommitHash: Option[String]) = {
     val parts = branch +:
       (versionCommitHash map { _ take 7 }) ++:
-      List(BuildDateTimeFormatter.format(ZonedDateTime.now))
+      List(ISO_INSTANT.format(Instant.now).take(16) + "Z")
     parts filter { _.nonEmpty } mkString ("(", " ", ")")
   }
 }

@@ -234,7 +234,7 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
   .enablePlugins(GitVersioning)
   .enablePlugins(BuildInfoPlugin)
   .settings(
-    buildInfoKeys := List[BuildInfoKey](
+    buildInfoKeys := BuildInfoKey.ofN(
       "buildVersion" → VersionFormatter.buildVersion(
         version = version.value,
         versionCommitHash = git.gitHeadCommit.value,
