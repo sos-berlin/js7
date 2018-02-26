@@ -71,8 +71,8 @@ final class TypedPathTest extends FreeSpec {
     assert(APath("/folder/a-b").checkedNameSyntax == Valid(APath("/folder/a-b")))
     assert(APath("/folder/a_b").checkedNameSyntax == Valid(APath("/folder/a_b")))
     assert(APath("/folder/a.b").checkedNameSyntax == Valid(APath("/folder/a.b")))
-    assert(APath("/a@b/x@y").checkedNameSyntax ==
-      Invalid(Problem("Problem with 'A:/a@b/x@y': Invalid character or character combination in name 'a@b'\n & Invalid character or character combination in name 'x@y'")))
+    assert(APath("/a@b/x@y").checkedNameSyntax ==  // Show only first problem
+      Invalid(Problem("Problem with 'A:/a@b/x@y': Invalid character or character combination in name 'a@b'")))
     assert(APath(s"/folder/a${VersionSeparator}b").checkedNameSyntax ==
       Invalid(Problem("Problem with 'A:/folder/a@b': Invalid character or character combination in name 'a@b'")))
   }

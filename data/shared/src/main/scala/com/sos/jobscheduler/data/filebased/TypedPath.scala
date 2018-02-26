@@ -44,7 +44,7 @@ trait TypedPath extends IsString {
 
   def checkedNameSyntax: Checked[this.type] =
     withoutStartingSlash.split('/').toVector traverse nameValidator.checked match {
-      case Invalid(problem) ⇒ problem withKey toString
+      case Invalid(problem) ⇒ problem.head withKey toString
       case Valid(_) ⇒ Valid(this)
     }
 
