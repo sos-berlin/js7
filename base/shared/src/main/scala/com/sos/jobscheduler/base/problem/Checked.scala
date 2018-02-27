@@ -13,6 +13,8 @@ import scala.util.control.NonFatal
   */
 object Checked
 {
+  val unit = Checked(())
+
   def apply[A](a: A): Checked[A] = Valid(a)
 
   def fromOption[A](a: Option[A], problem: Problem) =
@@ -102,7 +104,7 @@ object Checked
     }
   }
 
-  implicit final class RichOption[A](private val underlying: Option[A]) extends AnyVal {
+  implicit final class CheckedOption[A](private val underlying: Option[A]) extends AnyVal {
     def toChecked(problem: ⇒ Problem): Checked[A] =
       underlying match {
         case Some(a) ⇒ Valid(a)
