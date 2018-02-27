@@ -37,7 +37,7 @@ object Problem
     Invalid(problem)
 
   def apply(messageFunction: ⇒ String): Problem =
-    new FromString(() ⇒ messageFunction)
+    new Lazy(messageFunction)
 
   def fromEagerThrowable(throwable: Throwable): Problem =
     fromLazyThrowable(throwable)
@@ -49,12 +49,12 @@ object Problem
     def message: String
   }
 
-  class FromString protected[problem](messageFunction: () ⇒ String) extends HasMessage {
-    final lazy val message = messageFunction()
+  class Lazy protected[problem](messageFunction: ⇒ String) extends HasMessage {
+    final lazy val message = messageFunction
 
     final def throwable = new ProblemException(message)
 
-    override final def withPrefix(prefix: String) = new FromString(() ⇒ normalizePrefix(prefix) + messageFunction())
+    override final def withPrefix(prefix: String) = new Lazy(normalizePrefix(prefix) + message)
 
     override def hashCode = message.hashCode
 
@@ -68,9 +68,9 @@ object Problem
     multiple(problems.toImmutableSeq)
 
   def multiple(problems: Iterable[String]): Multiple =
-    Multiple(problems.map(o ⇒ new FromString(() ⇒ o)))
+    Multiple(problems.map(o ⇒ new Lazy(o)))
 
-  final case class Multiple private[problem](problems: Iterable[FromString]) extends HasMessage {
+  final case class Multiple private[problem](problems: Iterable[Lazy]) extends HasMessage {
     require(problems.nonEmpty)
 
     def throwable = new ProblemException(toString)
@@ -82,8 +82,8 @@ object Problem
     override def equals(o: Any) = o match {
       case o: Multiple ⇒
         (problems, o.problems) match {
-          case (problems: Set[FromString], _) ⇒ problems == o.problems.toSet  // Ignore ordering (used in tests)
-          case (_, o: Set[FromString])        ⇒ problems.toSet == o           // Ignore ordering (used in tests)
+          case (problems: Set[Lazy], _) ⇒ problems == o.problems.toSet  // Ignore ordering (used in tests)
+          case (_, o: Set[Lazy])        ⇒ problems.toSet == o           // Ignore ordering (used in tests)
           case _                              ⇒ problems == o.problems
         }
         case _ ⇒ super.equals(o)
@@ -113,17 +113,17 @@ object Problem
         t
       }
 
-    case (a: FromString, b: FromString) ⇒
+    case (a: Lazy, b: Lazy) ⇒
       Multiple(a :: b :: Nil)
 
-    case (a: FromString, b: Multiple) ⇒
+    case (a: Lazy, b: Multiple) ⇒
       Multiple(a +: b.problems.toVector)
 
-    case (a: Multiple, b: FromString) ⇒
+    case (a: Multiple, b: Lazy) ⇒
       Multiple(a.problems.toVector :+ b)
 
     case (a: Multiple, b: Problem) ⇒
-      Multiple(a.problems.toVector :+ new FromString(() ⇒ b.toString))  // TODO If b is FromThrowable, then b.throwable is lost
+      Multiple(a.problems.toVector :+ new Lazy(b.toString))  // TODO If b is FromThrowable, then b.throwable is lost
   }
 
   implicit val eqv: Eq[Problem] = Eq.fromUniversalEquals[Problem]

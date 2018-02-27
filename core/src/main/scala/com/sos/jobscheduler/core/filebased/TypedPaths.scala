@@ -24,5 +24,5 @@ object TypedPaths {
   }
 
   final case class UnrecognizedFileProblem(file: Path)
-  extends Problem.FromString(() ⇒ s"File '${file.toString.stripPrefix("/")}' is not recognized as a configuration file")
+  extends Problem.Lazy(s"File '${file.toString.stripPrefix("/")}' is not recognized as a configuration file")
 }

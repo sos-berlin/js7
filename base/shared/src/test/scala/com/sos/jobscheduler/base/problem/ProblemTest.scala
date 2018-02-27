@@ -59,7 +59,7 @@ final class ProblemTest extends FreeSpec {
       case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
       case _ ⇒ fail()
     }
-    val multiProblem: Problem = Problem.Multiple(List(new Problem.FromString(() ⇒ "A"), new Problem.FromString(() ⇒ "B")))
+    val multiProblem: Problem = Problem.Multiple(List(new Problem.Lazy("A"), new Problem.Lazy("B")))
     multiProblem |+| Problem("C") match {
       case Problem.Multiple(problems) ⇒ assert(problems == List(Problem("A"), Problem("B"), Problem("C")))
       case _ ⇒ fail()
@@ -73,8 +73,8 @@ final class ProblemTest extends FreeSpec {
   "head" in {
     val a = Problem("A")
     assert(a.head eq a)
-    val ma = new Problem.FromString(() ⇒ "A")
-    val mb = new Problem.FromString(() ⇒ "B")
+    val ma = new Problem.Lazy("A")
+    val mb = new Problem.Lazy("B")
     val m = new Problem.Multiple(List(ma, mb))
     assert(m.head eq ma)
   }
