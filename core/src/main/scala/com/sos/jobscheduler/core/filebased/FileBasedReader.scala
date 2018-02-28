@@ -35,13 +35,13 @@ trait FileBasedReader
 
 object FileBasedReader
 {
-  def readDirectoryTreeFlattenProblems(directory: Path, readers: Iterable[FileBasedReader], ignoreAliens: Boolean = false): Checked[Seq[FileBased]] =
+  def readDirectoryTree(readers: Iterable[FileBasedReader], directory: Path, ignoreAliens: Boolean = false): Checked[Seq[FileBased]] =
     for {
-      checkedFileBasedIterator ← readDirectoryTree(directory, readers, ignoreAliens = ignoreAliens)
+      checkedFileBasedIterator ← readDirectoryTreeWithProblems(directory, readers, ignoreAliens = ignoreAliens)
       fileBaseds ← checkedFileBasedIterator.toVector.sequence
     } yield fileBaseds
 
-  def readDirectoryTree(directory: Path, readers: Iterable[FileBasedReader], ignoreAliens: Boolean = false): Checked[Iterator[Checked[FileBased]]] = {
+  def readDirectoryTreeWithProblems(directory: Path, readers: Iterable[FileBasedReader], ignoreAliens: Boolean = false): Checked[Iterator[Checked[FileBased]]] = {
     val typedSourceReader = new TypedSourceReader(readers)
     val typedFiles = TypedPathDirectoryWalker.typedFiles(directory, readers.map(_.typedPathCompanion), ignoreAliens = ignoreAliens)
     for (typedFiles ← TypedPathDirectoryWalker.checkUniqueness(typedFiles)) yield

@@ -2,12 +2,15 @@ package com.sos.jobscheduler.master.fileBased
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursively
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.core.filebased.FileBaseds.readDirectory
+import com.sos.jobscheduler.core.filebased.FileBaseds
+import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.FileBasedEvent.FileBasedAdded
+import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedVersion, TypedPath}
 import com.sos.jobscheduler.data.workflow.instructions.ExplicitEnd
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.agent.AgentReader
@@ -29,22 +32,56 @@ final class FileBasedsTest extends FreeSpec {
   "readDirectory" in {
     provideDirectory { directory ⇒
       (directory / "A.workflow.json").contentString = ANamedWorkflow.workflow.asJson.toPrettyString
-      (directory / "C.workflow.txt").contentString = "// EMPTY"
+      (directory / "C.workflow.txt").contentString = CNamedWorkflow.workflow.source.get
+      (directory / "D.workflow.txt").contentString = ChangedDNamedWorkflow.workflow.source.get
       (directory / "A.agent.xml").xml = <agent uri="http://A"/>
       (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>
-      val existingFileBaseds = List(ANamedWorkflow, BNamedWorkflow, AAgent)
-      assert(readDirectory(directory, readers, existingFileBaseds).map(_.toSet) == Valid(Set(
+
+      val previousFileBaseds = List(ANamedWorkflow, BNamedWorkflow, DNamedWorkflow, AAgent)
+      val eventsChecked = FileBaseds.readDirectory(readers, directory, previousFileBaseds, FileBasedVersion("VERSION"))
+      assert(eventsChecked.map(_.toSet) == Valid(Set(
+        VersionAdded(FileBasedVersion("VERSION")),
+        FileBasedDeleted(BNamedWorkflow.path),
+        FileBasedAdded(BAgent),
         FileBasedAdded(CNamedWorkflow),
-        FileBasedAdded(BAgent))))
+        FileBasedChanged(ChangedDNamedWorkflow))))
     }
+  }
+
+  "Diff" in {
+    val diff = FileBaseds.Diff.fromEvents(
+      List(
+        FileBasedDeleted(BNamedWorkflow.path),
+        FileBasedAdded(BAgent),
+        FileBasedAdded(CNamedWorkflow),
+        FileBasedChanged(ChangedDNamedWorkflow)))
+
+    assert(diff == FileBaseds.Diff[TypedPath, FileBased](
+      List(BAgent, CNamedWorkflow),
+      List(ChangedDNamedWorkflow),
+      List(BNamedWorkflow.path)))
+
+    assert(diff.select[WorkflowPath, Workflow.Named] ==
+      FileBaseds.Diff[WorkflowPath, Workflow.Named](
+        List(CNamedWorkflow),
+        List(ChangedDNamedWorkflow),
+        List(BNamedWorkflow.path)))
+
+    assert(diff.select[AgentPath, Agent] ==
+      FileBaseds.Diff[AgentPath, Agent](
+        List(BAgent),
+        Nil,
+        Nil))
   }
 }
 
 object FileBasedsTest {
   private val readers = Set(WorkflowReader, AgentReader, new ScheduledOrderGeneratorReader(ZoneId.of("UTC")))
   private[fileBased] val ANamedWorkflow = Workflow.Named(WorkflowPath("/A"), Workflow.of())
-  private[fileBased] val BNamedWorkflow = Workflow.Named(WorkflowPath("/B"), Workflow(Vector("END" @: ExplicitEnd)))
-  private[fileBased] val CNamedWorkflow = Workflow.Named(WorkflowPath("/C"), Workflow.of().copy(source = Some("// EMPTY")))
+  private[fileBased] val BNamedWorkflow = Workflow.Named(WorkflowPath("/B"), Workflow(Vector("B-END" @: ExplicitEnd)))
+  private[fileBased] val CNamedWorkflow = Workflow.Named(WorkflowPath("/C"), WorkflowParser.parse("// EMPTY").force)
+  private[fileBased] val DNamedWorkflow = Workflow.Named(WorkflowPath("/D"), Workflow(Vector("D-END" @: ExplicitEnd)))
+  private[fileBased] val ChangedDNamedWorkflow = Workflow.Named(WorkflowPath("/D"), WorkflowParser.parse("CHANGED-D-END: end").force)
   private[fileBased] val AAgent = Agent(AgentPath("/A"), "http://A")
   private[fileBased] val BAgent = Agent(AgentPath("/folder/B"), "http://B")
 

@@ -11,9 +11,7 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.filebased.TypedPath._
-import io.circe.generic.JsonCodec
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject, ObjectEncoder}
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
 import scala.collection.immutable.Iterable
 import scala.reflect.ClassTag
@@ -33,6 +31,7 @@ trait TypedPath extends IsString {
 
   final def withoutStartingSlash: String = string stripPrefix "/"
 
+  /** The relative standard source file path. */
   def toFile(t: SourceType): Path =
     Paths.get(withoutStartingSlash + companion.sourceTypeToFilenameExtension(t))
 

@@ -26,7 +26,8 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.{RichHttpResponse, decodeResponse}
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
+import com.sos.jobscheduler.common.scalautil.{HasCloser, Logger}
 import com.sos.jobscheduler.common.soslicense.LicenseKeyString
 import com.sos.jobscheduler.data.event.{EventRequest, EventSeq, KeyedEvent}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
@@ -42,7 +43,7 @@ import scala.concurrent.{ExecutionContext, Future}
  *
  * @author Joacim Zschimmer
  */
-trait AgentClient extends AutoCloseable {
+trait AgentClient extends HasCloser {
 
   protected def actorSystem: ActorSystem
   protected implicit def executionContext: ExecutionContext
@@ -60,11 +61,7 @@ trait AgentClient extends AutoCloseable {
     case None ⇒ Nil
   }
   private val sessionTokenRef = new AtomicReference[Option[SessionToken]](None)
-  private implicit lazy val materializer = ActorMaterializer()(actorSystem)
-
-  def close() = {
-    materializer.shutdown()  // (Seems to be an asynchronous operation)
-  }
+  private implicit lazy val materializer = ActorMaterializer()(actorSystem) withCloser { _.shutdown() }
 
   final def executeCommand(command: AgentCommand): Future[command.Response] = {
     logger.debug(s"Execute $command")

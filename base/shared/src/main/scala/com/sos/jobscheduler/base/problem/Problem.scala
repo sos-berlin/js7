@@ -86,7 +86,7 @@ object Problem
         (problems, o.problems) match {
           case (problems: Set[Lazy], _) ⇒ problems == o.problems.toSet  // Ignore ordering (used in tests)
           case (_, o: Set[Lazy])        ⇒ problems.toSet == o           // Ignore ordering (used in tests)
-          case _                              ⇒ problems == o.problems
+          case _                        ⇒ problems == o.problems
         }
         case _ ⇒ super.equals(o)
       }

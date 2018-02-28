@@ -1,11 +1,12 @@
 package com.sos.jobscheduler.master.data
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
+import com.sos.jobscheduler.data.filebased.FileBasedVersion
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.master.data.MasterCommand._
-import io.circe.generic.JsonCodec
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -16,21 +17,19 @@ sealed trait MasterCommand {
 }
 
 object MasterCommand {
-  intelliJuseImport(FiniteDurationJsonEncoder)
+  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
 
-  @JsonCodec
   final case class AddOrderIfNew(order: Order[Order.NotStarted]) extends MasterCommand {
     type MyResponse = Response.Accepted
   }
 
-  @JsonCodec
   final case class ScheduleOrdersEvery(every: FiniteDuration) extends MasterCommand
 
   case object Terminate extends MasterCommand {
     type MyResponse = Response.Accepted
   }
 
-  case object ReadConfigurationDirectory extends MasterCommand {
+  final case class ReadConfigurationDirectory(version: FileBasedVersion) extends MasterCommand {
     type MyResponse = Response.Accepted
   }
 
@@ -45,8 +44,8 @@ object MasterCommand {
   }
 
   implicit val jsonCodec = TypedJsonCodec[MasterCommand](
-    Subtype[AddOrderIfNew],
-    Subtype[ScheduleOrdersEvery],
-    Subtype(ReadConfigurationDirectory),
+    Subtype(deriveCodec[AddOrderIfNew]),
+    Subtype(deriveCodec[ScheduleOrdersEvery]),
+    Subtype(deriveCodec[ReadConfigurationDirectory]),
     Subtype(Terminate))
 }

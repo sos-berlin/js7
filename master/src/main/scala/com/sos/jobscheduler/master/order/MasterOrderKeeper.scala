@@ -7,8 +7,8 @@ import cats.syntax.option._
 import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
-import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.utils.Collections.implicits.{InsertableMutableMap, RichTraversable, RichTraversableOnce}
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
@@ -24,19 +24,20 @@ import com.sos.jobscheduler.core.common.ActorRegister
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.JournalRecoverer.startJournalAndFinishRecovery
 import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, JournalRecoverer, KeyedEventJournalingActor, RecoveredJournalingActors}
-import com.sos.jobscheduler.core.filebased.FileBaseds
+import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.filebased.FileBased
-import com.sos.jobscheduler.data.filebased.FileBasedEvent.FileBasedAdded
+import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedEvent}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedVersion, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPosition}
-import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec
+import com.sos.jobscheduler.master.KeyedEventJsonCodecs.{MasterFileBasedJsonCodec, MasterKeyedEventJsonCodec, MasterTypedPathCompanions, MasterTypedPathJsonCodec}
 import com.sos.jobscheduler.master.agent.AgentReader
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -44,6 +45,7 @@ import com.sos.jobscheduler.master.order.MasterOrderKeeper._
 import com.sos.jobscheduler.master.order.agent.{Agent, AgentDriver}
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
+import monix.eval.Coeval
 import scala.collection.immutable.{Iterable, Seq}
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -73,13 +75,14 @@ with Stash {
       journalMeta(compressWithGzip = masterConfiguration.config.getBoolean("jobscheduler.master.journal.gzip")),
       journalFile, syncOnCommit = masterConfiguration.journalSyncOnCommit, eventIdGenerator, keyedEventBus),
     "Journal"))
+  private var hasRecovered = false
 
   private var pathToNamedWorkflow = Map.empty[WorkflowPath, Workflow.Named]
   private val agentRegister = new AgentRegister
   private var scheduledOrderGenerators = Vector.empty[ScheduledOrderGenerator]
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
   private val idToOrder = orderRegister mapPartialFunction (_.order)
-  private var orderProcessor = new OrderProcessor(PartialFunction.empty, PartialFunction.empty)
+  private var orderProcessor = new OrderProcessor(PartialFunction.empty, idToOrder)
   private val orderScheduleGenerator = context.actorOf(
     Props { new OrderScheduleGenerator(journalActor = journalActor, masterOrderKeeper = self, masterConfiguration)},
     "OrderScheduleGenerator")
@@ -95,26 +98,26 @@ with Stash {
   }
 
   protected def snapshots = Future.successful(
-    pathToNamedWorkflow.values.toImmutableIterable ++
-    agentRegister.values.map(_.agent) ++
+    fileBaseds.repo.eventsFor(MasterTypedPathCompanions) ++
     agentRegister.values.map(entry ⇒ AgentEventId(entry.agentPath, entry.lastAgentEventId)) ++
     orderRegister.values.map(_ .order))
 
   private def recover() = {
     val recoverer = new MasterJournalRecoverer(journalFile = journalFile, orderScheduleGenerator = orderScheduleGenerator)
     recoverer.recoverAll()
-    if (!recoverer.hasJournal) {
-      readConfiguration().onProblem(o ⇒ logger.error(o))
-    } else {
+    if (recoverer.hasJournal) {
+      hasRecovered = true
       readScheduledOrderGeneratorConfiguration().onProblem(o ⇒ logger.error(o))
-      changeFileBaseds(recoverer.fileBaseds)
+      fileBaseds.replaceRepo(recoverer.repo)
+      for (agent ← fileBaseds.repo.currentFileBaseds collect { case o: Agent ⇒ o }) {
+        registerAgent(agent)
+      }
       for ((agentPath, eventId) ← recoverer.agentToEventId) {
         agentRegister(agentPath).lastAgentEventId = eventId
       }
       for (order ← recoverer.orders) {
         orderRegister.insert(order.id → OrderEntry(order))
       }
-      updateOrderProcessor()
     }
     startJournalAndFinishRecovery(journalActor = journalActor,
       RecoveredJournalingActors(Map(OrderScheduleGenerator.Key → orderScheduleGenerator)))
@@ -122,12 +125,13 @@ with Stash {
 
   def receive = journaling orElse {
     case JournalRecoverer.Output.JournalIsReady ⇒
-      for (agentEntry ← agentRegister.values) {
-        agentEntry.actor ! AgentDriver.Input.Start(lastAgentEventId = agentEntry.lastAgentEventId)
-      }
-      orderRegister.valuesIterator foreach proceedWithOrder
+      agentRegister.values foreach { _.start() }
+      orderRegister.values foreach proceedWithOrder
       logger.info(s"${orderRegister.size} Orders recovered, ready")
       become(ready)
+      if (!hasRecovered) {
+        fileBaseds.readConfigurationAndPersistEvents(InitialVersion).force
+      }
       unstashAll()
 
     case _ ⇒ stash()
@@ -230,8 +234,8 @@ with Stash {
 
   private def executeMasterCommand(command: MasterCommand): Future[MasterCommand.Response] =
     command match {
-      case MasterCommand.ReadConfigurationDirectory ⇒
-        readConfiguration().map(_ ⇒ MasterCommand.Response.Accepted).toFuture
+      case MasterCommand.ReadConfigurationDirectory(version) ⇒
+        fileBaseds.readConfigurationAndPersistEvents(version).map(_ ⇒ MasterCommand.Response.Accepted).toFuture
 
       case MasterCommand.ScheduleOrdersEvery(every) ⇒
         orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every.toJavaDuration)
@@ -241,7 +245,7 @@ with Stash {
         addOrder(order) map (_ ⇒ MasterCommand.Response.Accepted)
 
       case MasterCommand.Terminate ⇒
-        logger.info("Terminating by command")
+        logger.info("Command Terminate")
         inhibitJournaling()
         orderScheduleGenerator ! PoisonPill
         journalActor ! JournalActor.Input.Terminate
@@ -249,29 +253,56 @@ with Stash {
         Future.successful(MasterCommand.Response.Accepted)
     }
 
-  private def readConfiguration(): Checked[Unit] = {
-    val existingFileBased = pathToNamedWorkflow.values.toImmutableIterable ++ agentRegister.values.map(_.agent) ++ scheduledOrderGenerators
-    val readers = Set(WorkflowReader, AgentReader, new ScheduledOrderGeneratorReader(masterConfiguration.timeZone))
-    for (events ← FileBaseds.readDirectory(masterConfiguration.liveDirectory, readers, existingFileBased)) yield {
-      changeFileBaseds(events collect { case FileBasedAdded(o) ⇒ o })
-      updateOrderProcessor()
+  private object fileBaseds extends FileBasedConfiguration {
+    protected val readers = Set(WorkflowReader, AgentReader, new ScheduledOrderGeneratorReader(masterConfiguration.timeZone))
+    protected def directory = masterConfiguration.liveDirectory
+
+    def readConfigurationAndPersistEvents(version: FileBasedVersion): Checked[Unit] =
+      for (eventsAndSideEffect ← readConfiguration(version)) yield {
+        val (events, sideEffect) = eventsAndSideEffect
+        val filteredEvents = events flatMap {
+          case e: FileBasedEvent if e.path.companion == ScheduledOrderGeneratorPath ⇒ Nil  // Discard ScheduledOrderGenerator events
+          case e ⇒ e :: Nil
+        }
+        for (event ← filteredEvents) {
+          persist(KeyedEvent(event)) { stamped ⇒
+            logEvent(stamped.value)
+          }
+        }
+        defer {
+          sideEffect()
+        }
+      }
+
+    override def replaceRepo(changed: Repo): Unit = {
+      super.replaceRepo(changed)
+      pathToNamedWorkflow = repo.currentVersion collect { case (k: WorkflowPath, v: Workflow.Named) ⇒ k → v }
+      orderProcessor = new OrderProcessor(pathToNamedWorkflow mapPartialFunction (_.workflow), idToOrder)
+      handleScheduledOrderGeneratorConfiguration(repo.currentFileBaseds collect { case o: ScheduledOrderGenerator ⇒ o })
     }
-  }
 
-  private def changeFileBaseds(fileBaseds: Iterable[FileBased]): Unit = {
-    pathToNamedWorkflow ++= fileBaseds collect { case o: Workflow.Named ⇒ o } toKeyedMap (_.path)
-    fileBaseds collect { case o: Agent ⇒ o } foreach registerAgent
-    handleScheduledOrderGeneratorConfiguration(fileBaseds collect { case o: ScheduledOrderGenerator ⇒ o })
-  }
+    protected def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[Coeval[Unit]]] =
+      onlyAdditionPossible(diff.select[WorkflowPath, Workflow.Named]) ++
+      updateAgents(diff.select[AgentPath, Agent])
 
-  private def updateOrderProcessor(): Unit = {
-    orderProcessor = new OrderProcessor(pathToNamedWorkflow mapPartialFunction (_.workflow), idToOrder)
+    private def updateAgents(diff: FileBaseds.Diff[AgentPath, Agent]): Seq[Checked[Coeval[Unit]]] =
+      onlyAdditionPossible(diff) :+
+        Valid(Coeval {
+          for (agent ← diff.added) {
+            registerAgent(agent).start()
+          }
+        })
   }
 
   /** Separate handling for developer-only ScheduledOrderGenerator, which are not journaled and read at every restart. */
   private def readScheduledOrderGeneratorConfiguration(): Checked[Completed] = {
     val reader = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone)
-    for (events ← FileBaseds.readDirectory(masterConfiguration.liveDirectory, reader :: Nil, scheduledOrderGenerators, ignoreAliens = true)) yield {
+    for (events ← FileBaseds.readDirectoryVersionless(
+            reader :: Nil,
+            masterConfiguration.liveDirectory,
+            scheduledOrderGenerators,
+            ignoreAliens = true))
+    yield {
       handleScheduledOrderGeneratorConfiguration(events collect { case FileBasedAdded(o: ScheduledOrderGenerator) ⇒ o })
       Completed
     }
@@ -282,11 +313,13 @@ with Stash {
     orderScheduleGenerator ! OrderScheduleGenerator.Input.Change(scheduledOrderGenerators)
   }
 
-  private def registerAgent(agent: Agent): Unit = {
+  private def registerAgent(agent: Agent): AgentEntry = {
     val actor = context.actorOf(
       Props { new AgentDriver(agent.path, agent.uri, masterConfiguration.config) },
       name = encodeAsActorName("Agent-" + agent.path.withoutStartingSlash))
-    agentRegister.insert(agent.path → AgentEntry(agent, actor))
+    val entry = AgentEntry(agent, actor)
+    agentRegister.insert(agent.path → entry)
+    entry
   }
 
   private def addOrder(order: Order[Order.Idle]): Future[Completed] =
@@ -294,18 +327,19 @@ with Stash {
 
   private def addOrderWithUncheckedId(order: Order[Order.Idle]): Future[Completed] =
     orderRegister.get(order.id) match {
-      case None if pathToNamedWorkflow.isDefinedAt(order.workflowPath) ⇒
-        persistAsync(KeyedEvent(OrderAdded(order.workflowPath, order.state, order.payload))(order.id)) { stamped ⇒
-          handleOrderEvent(stamped)
-          Completed
-        }
-
-      case None if !pathToNamedWorkflow.isDefinedAt(order.workflowPath) ⇒
-        Future.failed(new NoSuchElementException(s"Unknown Workflow '${order.workflowPath.string}'"))
-
       case Some(_) ⇒
         logger.debug(s"Discarding duplicate AddOrderIfNew: ${order.id}")
         Future.successful(Completed)
+
+      case None ⇒
+        pathToNamedWorkflow.checked(order.workflowPath) match {
+          case Invalid(problem) ⇒ Future.failed(problem.throwable)
+          case Valid(workflow) ⇒
+            persistAsync(KeyedEvent(OrderAdded(workflow.path, order.state, order.payload))(order.id)) { stamped ⇒
+              handleOrderEvent(stamped)
+              Completed
+            }
+        }
     }
 
   private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
@@ -422,12 +456,16 @@ with Stash {
 }
 
 object MasterOrderKeeper {
-  private val SnapshotJsonCodec = TypedJsonCodec[Any](
-    Subtype[Workflow.Named],
-    Subtype[Agent],
-    Subtype[AgentEventId],  // TODO case class AgentState(eventId: EventId)
-    Subtype[OrderScheduleEndedAt],
-    Subtype[Order[Order.State]])
+  @deprecated
+  private val InitialVersion = FileBasedVersion("(INITIAL)")  // ???
+
+  private val SnapshotJsonCodec =
+    TypedJsonCodec[Any](
+      Subtype[RepoEvent],  // These events describe complete objects
+      Subtype[Agent],
+      Subtype[AgentEventId],  // TODO case class AgentState(eventId: EventId)
+      Subtype[OrderScheduleEndedAt],
+      Subtype[Order[Order.State]])
 
   private[order] def journalMeta(compressWithGzip: Boolean) =
     JournalMeta.gzipped(SnapshotJsonCodec, MasterKeyedEventJsonCodec, compressWithGzip = compressWithGzip)
@@ -456,6 +494,9 @@ object MasterOrderKeeper {
     var lastAgentEventId: EventId = EventId.BeforeFirst)
   {
     def agentPath = agent.path
+
+    def start()(implicit sender: ActorRef): Unit =
+      actor ! AgentDriver.Input.Start(lastAgentEventId = lastAgentEventId)
   }
 
   private case class OrderEntry(
@@ -467,7 +508,7 @@ object MasterOrderKeeper {
     def update(event: OrderEvent): Unit =
       event match {
         case _: OrderStdWritten ⇒
-          logEvent(orderId, event)
+          logEvent(orderId <-: event)
 
         case event: OrderCoreEvent ⇒
           order = order.update(event)
@@ -476,12 +517,17 @@ object MasterOrderKeeper {
 
   private def logNotableEvent(orderId: OrderId, event: OrderEvent): Unit =
     event match {
-      case _ @  (_: OrderAdded | _: OrderTransferredToAgent | OrderTransferredToMaster | OrderFinished |
-                 _: OrderForked | _: OrderJoined | _: OrderOffered | _: OrderAwaiting ) ⇒
-        logEvent(orderId, event)
+      case _ @ (_: OrderAdded | _: OrderTransferredToAgent | OrderTransferredToMaster | OrderFinished |
+                _: OrderForked | _: OrderJoined | _: OrderOffered | _: OrderAwaiting ) ⇒
+        logEvent(orderId <-: event)
       case _ ⇒
     }
 
-  private def logEvent(orderId: OrderId, event: OrderEvent): Unit =
-    logger.info(s"🔶 ${KeyedEvent(event)(orderId)}")
+  private def logEvent(keyedEvent: AnyKeyedEvent): Unit = {
+    def string = keyedEvent match {
+      case KeyedEvent(_: NoKey, event) ⇒ event.toString
+      case _ ⇒ keyedEvent.toString
+    }
+    logger.info(s"🔶 $string")
+  }
 }

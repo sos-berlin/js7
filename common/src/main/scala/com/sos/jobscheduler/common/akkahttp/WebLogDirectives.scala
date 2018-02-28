@@ -52,7 +52,7 @@ object WebLogDirectives {
         extractRequest { request ⇒
           webLogger.debug(toLogMessage(request, e), e)
           if (verboseErrorMessages)
-            complete((InternalServerError, e.toSimplifiedString))
+            complete((InternalServerError, e.toStringWithCauses))  // .toSimplifiedString hides combined Problems (see Problem.semigroup)
           else
             complete(InternalServerError)
         }

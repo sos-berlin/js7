@@ -1,10 +1,12 @@
 package com.sos.jobscheduler.base.circeutils
 
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedObjectEncoder
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, HCursor, Json, JsonNumber, JsonObject, ObjectEncoder, Printer}
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ObjectEncoder, Printer}
 import scala.collection.immutable.{ListMap, Seq}
 import shapeless.Lazy
 
@@ -38,8 +40,8 @@ object CirceUtils {
     implicit val CompactPrinter = CirceUtils.CompactPrinter
   }
 
-  implicit final class RichJson(private val underlying: Json) extends AnyVal {
-
+  implicit final class RichJson(private val underlying: Json) extends AnyVal
+  {
     def toPrettyString: String =
       PrettyPrinter.pretty(underlying)
 
@@ -92,6 +94,14 @@ object CirceUtils {
   implicit final class RichCirceString(private val underlying: String) extends AnyVal {
     def parseJson: Json =
       io.circe.parser.parse(underlying).force
+  }
+
+  implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal {
+    def toDecoderResult: Decoder.Result[A] =
+      underlying match {
+        case Valid(o) ⇒ Right(o)
+        case Invalid(o) ⇒ Left(DecodingFailure(o.toString, Nil))  // Ignoring stacktrace ???
+      }
   }
 
   final def deriveCodec[A](implicit encode: Lazy[DerivedObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]]): CirceObjectCodec[A] =

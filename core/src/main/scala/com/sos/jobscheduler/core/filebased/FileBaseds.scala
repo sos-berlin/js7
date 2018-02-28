@@ -1,15 +1,10 @@
 package com.sos.jobscheduler.core.filebased
 
-import cats.data.Validated.{Invalid, Valid}
-import cats.instances.vector._
-import cats.syntax.traverse._
-import cats.syntax.flatMap._
-import com.sos.jobscheduler.base.problem.Checked.flatMap
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.core.filebased.FileBasedReader.readDirectoryTreeFlattenProblems
-import com.sos.jobscheduler.data.filebased.FileBasedEvent.FileBasedAdded
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedEvent, TypedPath}
+import com.sos.jobscheduler.core.filebased.FileBasedReader.readDirectoryTree
+import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedVersion, RepoEvent, TypedPath}
 import java.nio.file.Path
 import scala.collection.immutable.{Iterable, Seq}
 
@@ -18,24 +13,57 @@ import scala.collection.immutable.{Iterable, Seq}
   */
 object FileBaseds
 {
-  def readDirectory(directory: Path, readers: Iterable[FileBasedReader], existingFileBaseds: Iterable[FileBased], ignoreAliens: Boolean = false): Checked[Seq[FileBasedEvent]] = {
-    val pathToFileBased = existingFileBaseds toKeyedMap (_.path)
-    val checkedFileBaseds = readDirectoryTreeFlattenProblems(directory, readers, ignoreAliens = ignoreAliens)
-    for {
-      fileBaseds ← checkedFileBaseds
-      fileBased ← fileBaseds.toVector traverse merge(pathToFileBased) map (_.flatten)
-    } yield fileBased
+  def readDirectory(
+    readers: Iterable[FileBasedReader],
+    directory: Path,
+    previousFileBaseds: Iterable[FileBased],
+    version: FileBasedVersion)
+  : Checked[Seq[RepoEvent]] =
+    readDirectoryVersionless(readers, directory, previousFileBaseds)
+      .map(events ⇒ VersionAdded(version) +: events)
+
+  def readDirectoryVersionless(
+    readers: Iterable[FileBasedReader],
+    directory: Path,
+    previousFileBaseds: Iterable[FileBased],
+    ignoreAliens: Boolean = false
+  ): Checked[Seq[RepoEvent]] =
+    for (fileBaseds ← readDirectoryTree(readers, directory, ignoreAliens = ignoreAliens)) yield
+      toEvents(fileBaseds, previousFileBaseds)
+
+  private def toEvents(readFileBaseds: Iterable[FileBased], previousFileBaseds: Iterable[FileBased])
+  : Seq[RepoEvent] = {
+    val pathToFileBased = previousFileBaseds toKeyedMap (_.path)
+    val addedOrChangedEvents = readFileBaseds.toVector flatMap toAddedOrChanged(pathToFileBased)
+    val readPaths = readFileBaseds.map(_.path).toSet
+    val deletedEvents = previousFileBaseds map (_.path) filterNot readPaths map FileBasedDeleted.apply
+    deletedEvents.toVector ++ addedOrChangedEvents
   }
 
-  private def merge(pathToFileBased: Map[TypedPath, FileBased])(fileBased: FileBased): Checked[Option[FileBasedEvent]] =
-    pathToFileBased.get(fileBased.path) match {
-      case Some(existing) if existing == fileBased ⇒
-        Valid(None)
+  private def toAddedOrChanged(previousPathToFileBased: Map[TypedPath, FileBased])(fileBased: FileBased): Option[RepoEvent] =
+    previousPathToFileBased.get(fileBased.path) match {
+      case Some(`fileBased`) ⇒
+        None
 
       case Some(_) ⇒
-        Invalid(Problem(s"Duplicate: ${fileBased.path} (change is not yet implemented)"))
+        Some(FileBasedChanged(fileBased))
 
       case None ⇒
-        Valid(Some(FileBasedAdded(fileBased)))
+        Some(FileBasedAdded(fileBased))
     }
+
+  final case class Diff[P <: TypedPath, A <: FileBased](added: Seq[A], changed: Seq[A], deleted: Seq[P]) {
+    def select[P1 <: P, A1 <: A](implicit A1Path: TypedPath.Companion[P1], A1: FileBased.Companion[A1]): Diff[P1, A1] =
+      Diff(
+        added   collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
+        changed collect { case o if o.companion eq A1 ⇒ o.asInstanceOf[A1] },
+        deleted collect { case o if o.companion eq A1.typedPathCompanion ⇒ o.asInstanceOf[P1] })
+  }
+  object Diff {
+    def fromEvents(events: Seq[RepoEvent]) =
+      Diff[TypedPath, FileBased](
+        events collect { case o: FileBasedAdded ⇒ o.fileBased },
+        events collect { case o: FileBasedChanged ⇒ o.fileBased },
+        events collect { case o: FileBasedDeleted ⇒ o.path })
+  }
 }

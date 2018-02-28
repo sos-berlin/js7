@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.scheduler.AgentEvent
 import com.sos.jobscheduler.base.auth.UserId
+import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -17,17 +18,22 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.{GzipCompression, JournalMeta, JsonFileIterator}
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.filebased.SourceType
+import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
+import com.sos.jobscheduler.data.filebased.{FileBasedVersion, RepoEvent, SourceType}
 import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.instructions.Job
+import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.order.agent.Agent
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.RecoveryTest._
+import io.circe.syntax.EncoderOps
 import java.nio.file.Path
 import java.time.Instant
 import org.scalatest.FreeSpec
@@ -49,26 +55,30 @@ final class RecoveryTest extends FreeSpec {
       for ((agentPath, tree) ← directoryProvider.agentToTree)
         tree.file(TestJobPath, SourceType.Xml).xml = jobXml(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
       withCloser { implicit closer ⇒
-
-        (directoryProvider.master.live / "fast.job_chain.xml").xml = QuickJobChainElem
-        (directoryProvider.master.live / "test.job_chain.xml").xml = TestJobChainElem
+        for (w ← Array(TestNamedWorkflow, QuickNamedWorkflow)) directoryProvider.master.writeJson(w.path, w.workflow)
         (directoryProvider.master.live / "test.order.xml").xml = TestOrderGeneratorElem
 
         runMaster(directoryProvider) { master ⇒
+          assert(eventCollector.await[RepoEvent](_ ⇒ true).map(_.value).sortBy(_.toString) == Vector(
+            NoKey <-: VersionAdded(FileBasedVersion("(INITIAL)")),
+            NoKey <-: FileBasedAdded(TestNamedWorkflow),
+            NoKey <-: FileBasedAdded(QuickNamedWorkflow),
+            NoKey <-: FileBasedAdded(Agent(AgentPaths(0), s"http://127.0.0.1:${directoryProvider.agents(0).conf.http.get.address.getPort}")),
+            NoKey <-: FileBasedAdded(Agent(AgentPaths(1), s"http://127.0.0.1:${directoryProvider.agents(1).conf.http.get.address.getPort}"))).sortBy(_.toString))
           if (lastEventId == EventId.BeforeFirst) {
             lastEventId = eventCollector.oldestEventId
           }
           runAgents(directoryProvider) { _ ⇒
-            master.addOrder(FastOrder) await 99.s
-            lastEventId = lastEventIdOf(eventCollector.await[OrderFinished](after = lastEventId, predicate = _.key == FastOrder.id))
-            lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
-            lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
+            master.addOrder(QuickOrder) await 99.s
+            lastEventId = lastEventIdOf(eventCollector.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
+            lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestNamedWorkflow.path.string))
+            lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestNamedWorkflow.path.string))
           }
           assert((readEvents(directoryProvider.agents(0).data / "state/journal") map { case Stamped(_, _, keyedEvent) ⇒ keyedEvent }) ==
             Vector(KeyedEvent(AgentEvent.MasterAdded)(UserId.Anonymous)))
           logger.info("\n\n*** RESTARTING AGENTS ***\n")
           runAgents(directoryProvider) { _ ⇒
-            lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestWorkflowPath.string))
+            lastEventId = lastEventIdOf(eventCollector.await[OrderProcessed](after = lastEventId, predicate = _.key.string startsWith TestNamedWorkflow.path.string))
           }
         }
 
@@ -78,21 +88,22 @@ final class RecoveryTest extends FreeSpec {
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ ⇒
             runMaster(directoryProvider) { master ⇒
-              val orderId = eventCollector.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestWorkflowPath.string).last.value.key
+              val orderId = eventCollector.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestNamedWorkflow.path.string).last.value.key
               assert(master.orderClient.order(orderId).await(99.s) ==
                 Some(Order(
                   orderId,
-                  TestWorkflowPath /: Position(5),
+                  TestNamedWorkflow.path /: Position(5),
                   Order.Finished,
                   payload = Payload(
                     Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")))))
-              val stampeds = eventCollector.await[OrderEvent](_.key == orderId)
+
+              val orderStampeds = eventCollector.await[Event](_.key == orderId)
               withClue(s"$orderId") {
-                assert((deleteRestartedJobEvents(stampeds.map(_.value.event).iterator) collect {
+                assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
                     case o @ OrderAdded(_, Order.Scheduled(_), _) ⇒ o.copy(state = Order.Scheduled(SomeTimestamp))
                     case o ⇒ o
                   }).toVector
-                  == ExpectedEvents)
+                  == ExpectedOrderEvents)
               }
             }
           }
@@ -130,36 +141,28 @@ private object RecoveryTest {
   private val logger = Logger(getClass)
 
   private val AgentPaths = List(AgentPath("/agent-111"), AgentPath("/agent-222"))
-  private val TestWorkflowPath = WorkflowPath("/test")
-  private val FastWorkflowPath = WorkflowPath("/fast")
   private val TestJobPath = JobPath("/test")
 
-  private val FastOrder = Order(OrderId("FAST-ORDER"), FastWorkflowPath, Order.StartNow)
   private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
 
-  private val TestJobChainElem =
-    <job_chain>
-      <job_chain_node state="100" agent="agent-111" job="/test"/>
-      <job_chain_node state="110" agent="agent-111" job="/test"/>
-      <job_chain_node state="120" agent="agent-111" job="/test"/>
-      <job_chain_node state="200" agent="agent-222" job="/test"/>
-      <job_chain_node state="210" agent="agent-222" job="/test"/>
-      <job_chain_node.end state="END"/>
-    </job_chain>
-
+  private val TestNamedWorkflow = Workflow.Named(
+    WorkflowPath("/test"),
+    Workflow.of(
+      Job(TestJobPath, AgentPaths(0)),
+      Job(TestJobPath, AgentPaths(0)),
+      Job(TestJobPath, AgentPaths(0)),
+      Job(TestJobPath, AgentPaths(1)),
+      Job(TestJobPath, AgentPaths(1))))
   private val TestOrderGeneratorElem =
-    <order job_chain={TestWorkflowPath.string}>
+    <order job_chain={TestNamedWorkflow.path.string}>
       <run_time><period absolute_repeat="3"/></run_time>
     </order>
 
-  private val QuickJobChainElem =
-    <job_chain>
-      <job_chain_node state="100" agent="agent-111" job="/test"/>
-      <job_chain_node.end state="END"/>
-    </job_chain>
+  private val QuickNamedWorkflow = Workflow.Named(WorkflowPath("/quick"), Workflow.of(Job(TestJobPath, AgentPaths(0))))
+  private val QuickOrder = Order(OrderId("FAST-ORDER"), QuickNamedWorkflow.path, Order.StartNow)
 
-  private val ExpectedEvents = Vector(
-    OrderAdded(TestWorkflowPath, Scheduled(SomeTimestamp), Payload(Map())),
+  private val ExpectedOrderEvents = Vector(
+    OrderAdded(TestNamedWorkflow.path, Scheduled(SomeTimestamp), Payload(Map())),
     OrderTransferredToAgent(AgentPaths(0)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
@@ -188,9 +191,9 @@ private object RecoveryTest {
     OrderTransferredToMaster,
     OrderFinished)
 
-  /** Deletes restart sequences to make event sequence comparable with ExpectedEvents. */
-  private def deleteRestartedJobEvents(events: Iterator[OrderEvent]): Seq[OrderEvent] = {
-    val result = mutable.Buffer[OrderEvent]()
+  /** Deletes restart sequences to make event sequence comparable with ExpectedOrderEvents. */
+  private def deleteRestartedJobEvents(events: Iterator[Event]): Seq[Event] = {
+    val result = mutable.Buffer[Event]()
     while (events.hasNext) {
       events.next() match {
         case OrderProcessed(_, Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) ⇒

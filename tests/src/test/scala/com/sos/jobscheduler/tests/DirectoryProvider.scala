@@ -13,7 +13,7 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
+import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.tests.DirectoryProvider._
 import io.circe.{Json, ObjectEncoder}
@@ -103,6 +103,10 @@ object DirectoryProvider {
 
     def writeJson[A: ObjectEncoder](path: TypedPath, a: A): Unit =
       file(path, SourceType.Json).contentString = Json.fromJsonObject(implicitly[ObjectEncoder[A]].encodeObject(a)).toPrettyString
+
+    def writeFile[A <: FileBased: ObjectEncoder](fileBased: A): Unit =
+      file(fileBased.path, SourceType.Json).contentString =
+        Json.fromJsonObject(implicitly[ObjectEncoder[A]].encodeObject(fileBased)).toPrettyString
 
     def writeTxt(path: TypedPath, content: String): Unit =
       file(path, SourceType.Txt).contentString = content

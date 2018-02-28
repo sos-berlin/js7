@@ -139,5 +139,5 @@ object Repo {
     extends Problem.Lazy(s"Has been deleted: $versionedPath")
 
   final case class DuplicateVersionProblem private[Repo](version: FileBasedVersion)
-    extends Problem.Lazy(s"Duplicate version '$version'")
+    extends Problem.Lazy(s"Duplicate version '${version.string}'")
 }

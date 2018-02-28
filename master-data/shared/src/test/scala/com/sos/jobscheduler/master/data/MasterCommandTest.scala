@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.master.data
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.data.filebased.FileBasedVersion
 import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.data.MasterCommand._
@@ -48,9 +49,10 @@ final class MasterCommandTest extends FreeSpec {
   }
 
   "ReadConfigurationDirectory" in {
-    testJson[MasterCommand](ReadConfigurationDirectory,
+    testJson[MasterCommand](ReadConfigurationDirectory(FileBasedVersion("VERSION")),
       json"""{
-        "TYPE": "ReadConfigurationDirectory"
+        "TYPE": "ReadConfigurationDirectory",
+        "version": "VERSION"
       }""")
   }
 
