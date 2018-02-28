@@ -17,7 +17,7 @@ import scala.collection.immutable.{Iterable, Seq}
   */
 trait FileBasedReader
 {
-  val fileBasedCompanion: FileBased.Companion
+  val fileBasedCompanion: FileBased.Companion_
 
   protected/*IntelliJ*/ type ThisFileBased = fileBasedCompanion.ThisFileBased
   protected/*IntelliJ*/ type ThisTypedPath = fileBasedCompanion.ThisTypedPath

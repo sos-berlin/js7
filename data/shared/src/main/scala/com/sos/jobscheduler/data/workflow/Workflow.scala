@@ -156,7 +156,7 @@ final case class Workflow private(labeledInstructions: IndexedSeq[Instruction.La
 
   def withoutSource = copy(source = None)
 
-  override def toString = s"{ ${instructions.mkString("; ")} }"
+  override def toString = s"{ ${labeledInstructions.mkString("; ")} }"
 }
 
 object Workflow {
@@ -186,12 +186,16 @@ object Workflow {
        labeledInstructions.last.instruction.isInstanceOf[Goto])
 
   final case class Named(path: WorkflowPath, workflow: Workflow) extends FileBased {
+    type Self = Named
+
+    def companion = Named
+
     /** For test. */
     def lastWorkflowPosition = path /: Position(workflow.lastNr)
 
     def toPair: (WorkflowPath, Workflow) = path → workflow
   }
-  object Named extends FileBased.Companion {
+  object Named extends FileBased.Companion[Named] {
     type ThisFileBased = Named
     type ThisTypedPath = WorkflowPath
 

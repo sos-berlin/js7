@@ -19,11 +19,15 @@ final case class JobConfiguration(
   taskLimit: Int = JobConfiguration.DefaultTaskLimit)
 extends FileBased
 {
+  type Self = JobConfiguration
+
+  def companion = JobConfiguration
+
   def language = "shell"
 }
 
-object JobConfiguration extends FileBased.Companion {
-
+object JobConfiguration extends FileBased.Companion[JobConfiguration]
+{
   type ThisFileBased = JobConfiguration
   type ThisTypedPath = JobPath
 

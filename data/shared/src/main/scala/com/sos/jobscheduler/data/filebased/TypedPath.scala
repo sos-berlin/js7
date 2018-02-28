@@ -8,10 +8,12 @@ import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
-import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.data.filebased.TypedPath._
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
+import io.circe.generic.JsonCodec
+import io.circe.syntax.EncoderOps
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject, ObjectEncoder}
 import java.nio.file.{Path, Paths}
 import scala.collection.immutable.Iterable
 import scala.reflect.ClassTag
@@ -66,7 +68,10 @@ object TypedPath {
 
   abstract class Companion[P <: TypedPath: ClassTag] extends IsString.Companion[P]
   {
-    val name = getClass.getSimpleName stripSuffix "$"
+    type Versioned = TypedPath.Versioned[P]
+    final val Versioned = TypedPath.Versioned
+
+    val name = getClass.simpleScalaName
     val NameOrdering: Ordering[P] = Ordering by { _.name }
 
     def apply(o: String): P
@@ -90,7 +95,7 @@ object TypedPath {
       else if (string.contains(","))
         Problem(s"Comma not allowed in $errorString")
       else
-        Checked(())
+        Checked.unit
     }
 
     def sourceTypeToFilenameExtension: Map[SourceType, String]
@@ -113,7 +118,24 @@ object TypedPath {
      */
     final def makeAbsolute(path: String): P =
       apply(absoluteString(path))
+
+    override def toString = name
   }
+
+  type Versioned_ = Versioned[_ <: TypedPath]
+
+  final case class Versioned[P <: TypedPath](version: FileBasedVersion, path: P)
+  //object Versioned {
+  //  implicit def jsonEncoder[P <: TypedPath: Encoder]: ObjectEncoder[TypedPath.Versioned[P]] =
+  //    o ⇒ JsonObject("path" → o.path.asJson, "version" → o.version.asJson)
+  //
+  //  implicit def jsonDecoder[P <: TypedPath: Decoder]: Decoder[Versioned[P]] =
+  //    cursor ⇒
+  //      for {
+  //        path ← cursor.get[P]("path")
+  //        version ← cursor.get[FileBasedVersion]("version")
+  //      } yield Versioned(version, path)
+  //}
 
   def fileToString(file: Path): String =
     file.toString.replaceChar(file.getFileSystem.getSeparator.charAt(0), '/')

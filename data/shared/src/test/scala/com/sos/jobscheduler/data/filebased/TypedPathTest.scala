@@ -82,6 +82,16 @@ final class TypedPathTest extends FreeSpec {
     testJson[TypedPath](APath("/a"), json""" "A:/a" """)
     testJson[TypedPath](BPath("/b"), json""" "B:/b" """)
   }
+
+  //"Versioned" in {
+  //  testJson(
+  //    APath.Versioned(FileBasedVersion("VERSION"), APath("/PATH")),
+  //    json"""{
+  //      "path": "/PATH",
+  //      "version": "VERSION"
+  //    }"""
+  //  )
+  //}
 }
 
 private object TypedPathTest {

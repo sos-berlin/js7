@@ -8,9 +8,13 @@ import io.circe.generic.JsonCodec
   * @author Joacim Zschimmer
   */
 @JsonCodec
-final case class Agent(path: AgentPath, uri: String) extends FileBased
+final case class Agent(path: AgentPath, uri: String) extends FileBased {
+  type Self = Agent
+  def companion = Agent
+}
 
-object Agent extends FileBased.Companion {
+object Agent extends FileBased.Companion[Agent]
+{
   type ThisFileBased = Agent
   type ThisTypedPath = AgentPath
 

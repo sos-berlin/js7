@@ -13,8 +13,13 @@ final case class ScheduledOrderGenerator(
   variables: Map[String, String],
   schedule: OldSchedule)
 extends FileBased
+{
+  type Self = ScheduledOrderGenerator
 
-object ScheduledOrderGenerator extends FileBased.Companion {
+  def companion = ScheduledOrderGenerator
+}
+
+object ScheduledOrderGenerator extends FileBased.Companion[ScheduledOrderGenerator] {
   type ThisFileBased = ScheduledOrderGenerator
   type ThisTypedPath = ScheduledOrderGeneratorPath
 

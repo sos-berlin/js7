@@ -12,9 +12,8 @@ import com.sos.jobscheduler.data.workflow.JobPath
 object JobReader extends FileBasedReader {
   val fileBasedCompanion = JobConfiguration
 
-  def read(jobPath: JobPath, source: ByteString) =
-    {
-      case SourceType.Xml ⇒
-        JobConfiguration.parseXml(jobPath, simpleByteStringSource(source))
-    }
+  def read(jobPath: JobPath, source: ByteString) = {
+    case SourceType.Xml ⇒
+      JobConfiguration.parseXml(jobPath, simpleByteStringSource(source))
+  }
 }
