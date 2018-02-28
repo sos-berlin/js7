@@ -29,7 +29,7 @@ final class KeyedEventTypedJsonCodecTest extends FreeSpec {
     intercept[UnknownClassForJsonException] {
       (KeyedEvent(NotRegistered(1)): KeyedEvent[TestEvent]).asJson
     }.getMessage should include (
-      "Class com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest$NotRegistered is not registered with JsonTypeCodec[com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest$TestEvent]")
+      "Class com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodecTest$TestEvent]")
   }
 
   "decode unknown subclass" in {

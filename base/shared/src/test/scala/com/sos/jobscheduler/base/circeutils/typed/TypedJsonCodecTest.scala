@@ -25,7 +25,7 @@ final class TypedJsonCodecTest extends FreeSpec {
     intercept[UnknownClassForJsonException] {
       (NotRegistered(1): A).asJson(AJsonCodec)
     }.getMessage should include (
-      "Class com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$NotRegistered is not registered with JsonTypeCodec[com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$A]")
+      "Class com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$NotRegistered is not registered with TypedJsonCodec[com.sos.jobscheduler.base.circeutils.typed.TypedJsonCodecTest$A]")
   }
 
   "decode unknown subclass" in {

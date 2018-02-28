@@ -48,7 +48,7 @@ object TypedJsonCodec {
   }
 
   final class UnknownClassForJsonException(subclass: Class[_], superclass: Class[_])
-    extends NoSuchElementException(s"Class ${subclass.getName} is not registered with JsonTypeCodec[${superclass.getName}]")
+    extends NoSuchElementException(s"Class ${subclass.getName} is not registered with TypedJsonCodec[${superclass.getName}]")
 
   final class UnknownJsonTypeException(typeName: String, superclass: Class[_])
     extends RuntimeException(s"""Unexpected JSON {"$TypeFieldName": "$typeName"} for class '${superclass.simpleName}'""")
