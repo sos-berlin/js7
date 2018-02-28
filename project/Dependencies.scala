@@ -16,6 +16,7 @@ object Dependencies {
   val scalaTestVersion = "3.0.5"
   val simulacrumVersion = "0.11.0"
   val disciplineVersion = "0.8"
+  val monixVersion = "2.3.3"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
@@ -41,7 +42,6 @@ object Dependencies {
   val typesafeConfig      = "com.typesafe" % "config" % "1.3.2"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion
-  val akkaAgent           = "com.typesafe.akka" %% "akka-agent" % akkaVersion
   val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
   val akkaHttp            = "com.typesafe.akka" %% "akka-http" % akkaHttpVersion :: akkaStream :: akkaActor/*force version*/ :: Nil
   val akkaHttpTestkit     = "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion
@@ -71,7 +71,7 @@ object Dependencies {
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
 
-  implicit class PercentModuleIDSeq(val delegate: Seq[sbt.ModuleID]) extends AnyVal {
+  implicit final class PercentModuleIDSeq(private val delegate: Seq[sbt.ModuleID]) extends AnyVal {
     def %(configurations: String) = delegate map { _ % configurations }
   }
 }
