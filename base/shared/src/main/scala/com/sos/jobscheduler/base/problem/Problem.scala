@@ -1,8 +1,8 @@
 package com.sos.jobscheduler.base.problem
 
-import cats.{Eq, Semigroup}
 import cats.data.Validated.Invalid
 import cats.syntax.semigroup._
+import cats.{Eq, Semigroup}
 import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -29,6 +29,8 @@ sealed trait Problem
     case o: Problem ⇒ toString == o.toString
     case _ ⇒ false
   }
+
+  override def toString: String
 }
 
 object Problem

@@ -45,11 +45,11 @@ object Instruction {
   }
 
   final case class Labeled(labels: Seq[Label], instruction: Instruction) {
-    def toShortString = s"$labelsString ${instruction.toShortString}"
+    def toShortString = labelsString + instruction.toShortString
 
-    override def toString = s"$labelsString $instruction"
+    override def toString = labelsString + instruction
 
-    def labelsString = labels.map(o ⇒ s"$o:").mkString(" ")
+    def labelsString = labels.map(o ⇒ s"$o: ").mkString
   }
   object Labeled {
     implicit def jsonEncoder(implicit instrEncoder: ObjectEncoder[Instruction]): ObjectEncoder[Labeled] = {
