@@ -105,14 +105,14 @@ extends Actor with Stash {
     case msg: Input.RegisterMe ⇒
       handleRegisterMe(msg)
 
-    case Input.Store(keyedEvents, replyTo, timestampOption, noSync) ⇒
+    case Input.Store(keyedEvents, replyTo, timestampOption, noSync, item) ⇒
       val stampedOptions = keyedEvents map { _ map { e ⇒ eventIdGenerator.stamp(e.asInstanceOf[KeyedEvent[E]], timestampOption) }}
       Try {
         stampedOptions.flatten map { _.asJson }
       } match {
         case Success(jsons) ⇒
           writeToDisk(jsons, replyTo)
-          writtenBuffer += Written(stampedOptions, replyTo, sender())
+          writtenBuffer += Written(stampedOptions, replyTo, sender(), item)
           dontSync &= noSync
           statistics.countWillBeCommittedEvents(jsons.size) // ???
           self.forward(Internal.Commit(writtenBuffer.length))  // Commit after possibly outstanding Input.Store messages
@@ -124,9 +124,9 @@ extends Actor with Stash {
 
     case Internal.Commit(level) ⇒
       if (level < writtenBuffer.length) {
-        self.forward(Internal.Commit(writtenBuffer.length))  // storedBuffer has grown? Queue again to coalesce two commits
+        self.forward(Internal.Commit(writtenBuffer.length))  // writtenBuffer has grown? Queue again to coalesce two commits
       } else
-      if (level == writtenBuffer.length) {  // storedBuffer has not grown since last issued Commit
+      if (level == writtenBuffer.length) {  // writtenBuffer has not grown since last issued Commit
         val sync = syncOnCommit && !dontSync
         try flush(sync = sync)
         catch { case NonFatal(t) ⇒
@@ -135,8 +135,8 @@ extends Actor with Stash {
           throw tt;
         }
         logWrittenAsStored(sync)
-        for (Written(stampedOptions, replyTo, sender) ← writtenBuffer) {
-          replyTo.!(Output.Stored(stampedOptions))(sender)
+        for (Written(stampedOptions, replyTo, sender, item) ← writtenBuffer) {
+          replyTo.!(Output.Stored(stampedOptions, item))(sender)
           for (stampedOption ← stampedOptions; stamped ← stampedOption) {
             keyedEventBus.publish(stamped)
           }
@@ -256,6 +256,7 @@ extends Actor with Stash {
 }
 
 object JournalActor {
+  trait CallersItem
   val SnapshotsHeader = Json.fromString("SNAPSHOTS")
   val EventsHeader = Json.fromString("EVENTS")
 
@@ -272,7 +273,8 @@ object JournalActor {
       eventStampeds: Seq[Option[AnyKeyedEvent]],
       journalingActor: ActorRef,
       timestamp: Option[Timestamp],
-      noSync: Boolean)
+      noSync: Boolean,
+      item: CallersItem)
     final case object TakeSnapshot
     final case object Terminate
     private[journal] case object GetState
@@ -281,7 +283,7 @@ object JournalActor {
   sealed trait Output
   object Output {
     final case object Ready
-    final case class Stored(stamped: Seq[Option[Stamped[AnyKeyedEvent]]]) extends Output
+    final case class Stored(stamped: Seq[Option[Stamped[AnyKeyedEvent]]], item: CallersItem) extends Output
     final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(throwable: Throwable) extends Output
     final case object SnapshotTaken
@@ -296,5 +298,7 @@ object JournalActor {
 
   private case class Written(
     stampeds: Seq[Option[Stamped[AnyKeyedEvent]]],  // None means no-operation (for deferAsync)
-    replyTo: ActorRef, sender: ActorRef)
+    replyTo: ActorRef,
+    sender: ActorRef,
+    item: CallersItem)
 }
