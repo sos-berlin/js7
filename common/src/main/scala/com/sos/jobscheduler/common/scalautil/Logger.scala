@@ -5,10 +5,13 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import com.sos.jobscheduler.common.log.ConvertingLogger
 import com.typesafe.scalalogging.{Logger ⇒ ScalaLogger}
-import org.slf4j.LoggerFactory
+import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
 
 object Logger {
+
+  val Timing: Marker = MarkerFactory.getMarker("timing")
+  val Event: Marker = MarkerFactory.getMarker("event")
 
   def apply[A: ClassTag]: ScalaLogger =
     apply(implicitClass[A])

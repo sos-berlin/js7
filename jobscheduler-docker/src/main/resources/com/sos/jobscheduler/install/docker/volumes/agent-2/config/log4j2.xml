@@ -2,13 +2,13 @@
 <configuration status="warn" shutdownhook="disable">
   <appenders>
     <console name="console" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{WARN=magenta}%n"/>
+      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{WARN=magenta}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
                              fileName="${env:SCHEDULER_LOGS}/agent.log"
                              filePattern="${env:SCHEDULER_LOGS}/agent-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="false">
-      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message%n"
+      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
       <policies>
         <onstartuptriggeringpolicy/>

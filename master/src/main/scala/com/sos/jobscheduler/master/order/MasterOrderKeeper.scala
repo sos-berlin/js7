@@ -266,7 +266,7 @@ with Stash {
         }
         for (event ← filteredEvents) {
           persist(KeyedEvent(event)) { stamped ⇒
-            logEvent(stamped.value)
+            logNotableEvent(stamped)
           }
         }
         defer {
@@ -342,11 +342,12 @@ with Stash {
         }
     }
 
-  private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit =
+  private def handleOrderEvent(stamped: Stamped[KeyedEvent[OrderEvent]]): Unit = {
+    logNotableEvent(stamped)
     handleOrderEvent(stamped.value.key, stamped.value.event)
+  }
 
   private def handleOrderEvent(orderId: OrderId, event: OrderEvent): Unit = {
-    logNotableEvent(orderId, event)
     event match {
       case event: OrderAdded ⇒
         registerOrderAndProceed(Order.fromOrderAdded(orderId, event))
@@ -508,26 +509,17 @@ object MasterOrderKeeper {
     def update(event: OrderEvent): Unit =
       event match {
         case _: OrderStdWritten ⇒
-          logEvent(orderId <-: event)
-
-        case event: OrderCoreEvent ⇒
-          order = order.update(event)
+        case event: OrderCoreEvent ⇒ order = order.update(event)
       }
   }
 
-  private def logNotableEvent(orderId: OrderId, event: OrderEvent): Unit =
-    event match {
+  private def logNotableEvent(stamped: Stamped[AnyKeyedEvent]): Unit =
+    stamped.value.event match {
       case _ @ (_: OrderAdded | _: OrderTransferredToAgent | OrderTransferredToMaster | OrderFinished |
-                _: OrderForked | _: OrderJoined | _: OrderOffered | _: OrderAwaiting ) ⇒
-        logEvent(orderId <-: event)
+                _: OrderForked | _: OrderJoined | _: OrderOffered | _: OrderAwaiting | _: OrderStdWritten |
+                _: RepoEvent ) ⇒
+        def string = if (stamped.value.key == NoKey) stamped.value.event.toString else stamped.value.toString
+        logger.info(Logger.Event, s"${stamped.timestamp} 🔶 $string")
       case _ ⇒
     }
-
-  private def logEvent(keyedEvent: AnyKeyedEvent): Unit = {
-    def string = keyedEvent match {
-      case KeyedEvent(_: NoKey, event) ⇒ event.toString
-      case _ ⇒ keyedEvent.toString
-    }
-    logger.info(s"🔶 $string")
-  }
 }

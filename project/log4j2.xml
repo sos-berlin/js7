@@ -2,7 +2,7 @@
 <configuration status="WARN">
   <appenders>
     <console name="console" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{WARN=magenta}%n"/>
+      <patternLayout pattern="%highlight{%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{WARN=magenta}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
                              fileName="target/build.log"
@@ -10,7 +10,7 @@
                              append="true"
                              immediateFlush="false">
       <!-- append=true for forked tests -->
-      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} [%threadName] %logger - %message%n"
+      <patternLayout pattern="%d{EE HH:mm:ss.SSS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} [%threadName] %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
       <policies>
         <onStartupTriggeringPolicy/>
