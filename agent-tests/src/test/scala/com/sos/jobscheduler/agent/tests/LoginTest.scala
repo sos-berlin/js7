@@ -53,7 +53,7 @@ final class LoginTest extends FreeSpec with BeforeAndAfterAll with TestAgentProv
     // With Unauthorized or Forbidden, the client learns about the invalid session.
     withClient { client ⇒
       client.setSessionToken(SessionToken.apply(SecretString("DISCARDED")))
-      val throwable = intercept[AgentClient.HttpException] {
+      val throwable = intercept[AgentClient.HttpException] {  // TODO Has failed with akka.stream.StreamTcpException
         client.executeCommand(NoOperation) await 99.s
       }
       throwable.status should (equal(Unauthorized) or equal(Forbidden))

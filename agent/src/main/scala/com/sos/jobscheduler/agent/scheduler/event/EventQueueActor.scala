@@ -106,8 +106,13 @@ final class EventQueueActor(timerService: TimerService) extends Actor {
 
   private def add(stampedEvent: Stamped[KeyedEvent[OrderEvent]]): Unit = {
     val boxedEventId = Long.box(stampedEvent.eventId)
-    if (!eventQueue.isEmpty && eventQueue.lastKey >= stampedEvent.eventId)
-      throw new AssertionError(s"EventQueueActor: expected eventId > ${eventQueue.lastKey}: $stampedEvent")
+    if (!eventQueue.isEmpty && eventQueue.lastKey >= stampedEvent.eventId) {
+      val msg = s"EventQueueActor: expected eventId > ${eventQueue.lastKey}: $stampedEvent"
+      logger.error(msg)
+      for (lastEvent ← Option(eventQueue.lastKey) flatMap (o ⇒ Option(eventQueue.get(o))))
+        logger.error("Last event: " + lastEvent.toString)
+      throw new AssertionError(msg)
+    }
     eventQueue.put(boxedEventId, stampedEvent)
     val orderId = stampedEvent.value.key
     orderToEventIds.get(orderId) match {

@@ -106,7 +106,7 @@ final class RecoveryTest extends FreeSpec {
                   }).toVector
                   == ExpectedOrderEvents)
                 catch { case NonFatal(t) ⇒
-                  logger.error("Test failed due to unexpected events:\n" + orderStampeds.map(_.value.event).mkString("\n"))
+                  logger.error("Test failed due to unexpected events:\n" + orderStampeds.mkString("\n"))
                   throw t
                 }
               }

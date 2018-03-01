@@ -160,7 +160,7 @@ private object RunningMasterTest {
 
   private object TestEventGatherer {
     final case class Entry(instant: Instant, keyedEvent: AnyKeyedEvent) {
-      override def toString = s"$instant ${keyedEvent.key} ${keyedEvent.event}"
+      override def toString = s"$instant $keyedEvent"
     }
   }
 }
