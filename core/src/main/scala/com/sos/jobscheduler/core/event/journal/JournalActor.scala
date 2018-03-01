@@ -270,7 +270,7 @@ object JournalActor {
     final case object StartWithoutRecovery
     final case class RegisterMe(key: Option[Any])
     final case class Store(
-      eventStampeds: Seq[Option[AnyKeyedEvent]],
+      keyedEventOptions: Seq[Option[AnyKeyedEvent]],
       journalingActor: ActorRef,
       timestamp: Option[Timestamp],
       noSync: Boolean,
