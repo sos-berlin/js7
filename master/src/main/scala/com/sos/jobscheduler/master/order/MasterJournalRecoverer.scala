@@ -64,6 +64,9 @@ extends JournalRecoverer[Event] {
 
         case KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId)) ⇒
           _agentToEventId(agentPath) = agentEventId
+
+        case _ ⇒
+          sys.error(s"Unknown event in journal: $stamped")
       }
   }
 

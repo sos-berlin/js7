@@ -49,7 +49,7 @@ final case class Repo private(
         else
           Valid(copy(versions = version :: versions))
 
-      case _ ⇒
+      case event: FileBasedEvent ⇒
         if (versions.isEmpty)
           Problem(s"Missing first event VersionAdded for Repo")
         else
