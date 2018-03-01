@@ -8,6 +8,7 @@ import com.sos.jobscheduler.data.event.{Event, KeyedEventTypedJsonCodec}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath}
 import com.sos.jobscheduler.data.order.OrderEvent
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowPath}
+import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.order.OrderScheduleEvent
 import com.sos.jobscheduler.master.order.agent.Agent
 
@@ -31,6 +32,7 @@ object KeyedEventJsonCodecs
     */
   implicit val MasterKeyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
+      KeyedSubtype[MasterEvent],
       KeyedSubtype[RepoEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[WorkflowEvent],

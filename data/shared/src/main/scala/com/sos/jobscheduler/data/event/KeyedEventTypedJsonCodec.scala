@@ -81,9 +81,7 @@ object KeyedEventTypedJsonCodec {
       of[E](typeName[E])
     }
 
-    def apply[E <: Event: ClassTag](singleton: E)(
-      implicit keyEncoder: Encoder[E#Key], keyDecoder: Decoder[E#Key])
-    = {
+    def apply[E <: Event: ClassTag](singleton: E)(implicit ke: Encoder[E#Key], kd: Decoder[E#Key]) = {
       implicit val typedJsonCodec = TypedJsonCodec[E](Subtype(singleton))
       of[E](typeName[E])
     }

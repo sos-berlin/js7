@@ -45,9 +45,11 @@ extends EventCollector(
     keyedEventBus.subscribe(actor, classOf[Event])  // Subscribe before return
   }
 
-  def await[E <: Event: ClassTag](predicate: KeyedEvent[E] ⇒ Boolean, after: EventId = EventId.BeforeFirst)(implicit ec: ExecutionContext)
-  : Vector[Stamped[KeyedEvent[E]]]
-  =
+  def await[E <: Event: ClassTag](
+    predicate: KeyedEvent[E] ⇒ Boolean = (_: KeyedEvent[E]) ⇒ true,
+    after: EventId = EventId.BeforeFirst)(
+    implicit ec: ExecutionContext)
+  : Vector[Stamped[KeyedEvent[E]]] =
     when[E](EventRequest.singleClass[E](after = after, 99.s), predicate) await 99.s match {
       case EventSeq.NonEmpty(events) ⇒ events.toVector
       case o ⇒ sys.error(s"Unexpected EventSeq: $o")

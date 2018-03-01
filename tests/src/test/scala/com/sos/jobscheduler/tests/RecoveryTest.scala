@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.scheduler.AgentEvent
 import com.sos.jobscheduler.base.auth.UserId
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -29,11 +28,11 @@ import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.order.agent.Agent
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.RecoveryTest._
-import io.circe.syntax.EncoderOps
 import java.nio.file.Path
 import java.time.Instant
 import org.scalatest.FreeSpec
@@ -41,6 +40,7 @@ import org.scalatest.Matchers._
 import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -59,15 +59,16 @@ final class RecoveryTest extends FreeSpec {
         (directoryProvider.master.live / "test.order.xml").xml = TestOrderGeneratorElem
 
         runMaster(directoryProvider) { master ⇒
+          if (lastEventId == EventId.BeforeFirst) {
+            lastEventId = eventCollector.oldestEventId
+          }
+          eventCollector.await[MasterEvent.MasterReady](after = lastEventId)
           assert(eventCollector.await[RepoEvent](_ ⇒ true).map(_.value).sortBy(_.toString) == Vector(
             NoKey <-: VersionAdded(FileBasedVersion("(INITIAL)")),
             NoKey <-: FileBasedAdded(TestNamedWorkflow),
             NoKey <-: FileBasedAdded(QuickNamedWorkflow),
             NoKey <-: FileBasedAdded(Agent(AgentPaths(0), s"http://127.0.0.1:${directoryProvider.agents(0).conf.http.get.address.getPort}")),
             NoKey <-: FileBasedAdded(Agent(AgentPaths(1), s"http://127.0.0.1:${directoryProvider.agents(1).conf.http.get.address.getPort}"))).sortBy(_.toString))
-          if (lastEventId == EventId.BeforeFirst) {
-            lastEventId = eventCollector.oldestEventId
-          }
           runAgents(directoryProvider) { _ ⇒
             master.addOrder(QuickOrder) await 99.s
             lastEventId = lastEventIdOf(eventCollector.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
@@ -99,11 +100,15 @@ final class RecoveryTest extends FreeSpec {
 
               val orderStampeds = eventCollector.await[Event](_.key == orderId)
               withClue(s"$orderId") {
-                assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
+                try assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
                     case o @ OrderAdded(_, Order.Scheduled(_), _) ⇒ o.copy(state = Order.Scheduled(SomeTimestamp))
                     case o ⇒ o
                   }).toVector
                   == ExpectedOrderEvents)
+                catch { case NonFatal(t) ⇒
+                  logger.error("Test failed due to unexpected events:\n" + orderStampeds.map(_.value.event).mkString("\n"))
+                  throw t
+                }
               }
             }
           }
@@ -201,7 +206,8 @@ private object RecoveryTest {
             result.remove(result.size - 1)
           }
           result.remove(result.size - 1)
-          assert(events.next.isInstanceOf[OrderEvent.OrderMoved])  // Not if Agent restarted immediately after recovery (not expected)
+          val e = events.next()
+          assert(e.isInstanceOf[OrderEvent.OrderMoved])  // Not if Agent restarted immediately after recovery (not expected)
 
         case event ⇒ result += event
       }

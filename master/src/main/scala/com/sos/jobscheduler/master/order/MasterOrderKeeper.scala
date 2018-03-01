@@ -41,6 +41,7 @@ import com.sos.jobscheduler.master.KeyedEventJsonCodecs.{MasterFileBasedJsonCode
 import com.sos.jobscheduler.master.agent.AgentReader
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.order.MasterOrderKeeper._
 import com.sos.jobscheduler.master.order.agent.{Agent, AgentDriver}
 import com.sos.jobscheduler.master.workflow.WorkflowReader
@@ -127,12 +128,16 @@ with Stash {
     case JournalRecoverer.Output.JournalIsReady ⇒
       agentRegister.values foreach { _.start() }
       orderRegister.values foreach proceedWithOrder
-      logger.info(s"${orderRegister.size} Orders recovered, ready")
+      logger.info(s"${orderRegister.size} Orders recovered")
       become(ready)
-      if (!hasRecovered) {
-        fileBaseds.readConfigurationAndPersistEvents(InitialVersion).force
-      }
       unstashAll()
+      if (!hasRecovered) {
+        fileBaseds.readConfigurationAndPersistEvents(InitialVersion).force  // Persists events
+      }
+      defer {  // Publish after configuration events has been persisted and published
+        logger.info("Ready")
+        keyedEventBus.publish(eventIdGenerator.stamp(MasterEvent.MasterReady))
+      }
 
     case _ ⇒ stash()
   }
