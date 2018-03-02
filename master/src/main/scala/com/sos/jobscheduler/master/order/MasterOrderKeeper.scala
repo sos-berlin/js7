@@ -201,6 +201,7 @@ with Stash {
     case AgentDriver.Output.EventsFromAgent(stampeds) ⇒
       val agentEntry = agentRegister(sender())
       import agentEntry.agentPath
+      //TODO journal transaction {
       var lastAgentEventId = none[EventId]
       stampeds foreach {
         case Stamped(agentEventId, timestamp, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
@@ -269,6 +270,7 @@ with Stash {
           case e: FileBasedEvent if e.path.companion == ScheduledOrderGeneratorPath ⇒ Nil  // Discard ScheduledOrderGenerator events
           case e ⇒ e :: Nil
         }
+        //TODO journal transaction {
         for (event ← filteredEvents) {
           persist(KeyedEvent(event)) { stamped ⇒
             logNotableEvent(stamped)
