@@ -47,9 +47,8 @@ import scala.util.control.NonFatal
   */
 final class RecoveryTest extends FreeSpec {
 
-  private val eventCollector = new TestEventCollector
-
-  "test" in {
+  "test" in { for (_ ← 1 to (if (sys.props contains "test.infinite") Int.MaxValue else 1)) {
+    val eventCollector = new TestEventCollector
     var lastEventId = EventId.BeforeFirst
     autoClosing(new DirectoryProvider(AgentPaths)) { directoryProvider ⇒
       for ((agentPath, tree) ← directoryProvider.agentToTree)
@@ -58,12 +57,12 @@ final class RecoveryTest extends FreeSpec {
         for (w ← Array(TestNamedWorkflow, QuickNamedWorkflow)) directoryProvider.master.writeJson(w.path, w.workflow)
         (directoryProvider.master.live / "test.order.xml").xml = TestOrderGeneratorElem
 
-        runMaster(directoryProvider) { master ⇒
+        runMaster(directoryProvider, eventCollector) { master ⇒
           if (lastEventId == EventId.BeforeFirst) {
             lastEventId = eventCollector.oldestEventId
           }
           eventCollector.await[MasterEvent.MasterReady](after = lastEventId)
-          assert(eventCollector.await[RepoEvent](_ ⇒ true).map(_.value).sortBy(_.toString) == Vector(
+          assert(eventCollector.await[RepoEvent]().map(_.value).sortBy(_.toString) == Vector(
             NoKey <-: VersionAdded(FileBasedVersion("(INITIAL)")),
             NoKey <-: FileBasedAdded(TestNamedWorkflow),
             NoKey <-: FileBasedAdded(QuickNamedWorkflow),
@@ -88,7 +87,7 @@ final class RecoveryTest extends FreeSpec {
           sys.runtime.gc()  // For a clean memory view
           logger.info(s"\n\n*** RESTARTING MASTER AND AGENTS #$i ***\n")
           runAgents(directoryProvider) { _ ⇒
-            runMaster(directoryProvider) { master ⇒
+            runMaster(directoryProvider, eventCollector) { master ⇒
               val orderId = eventCollector.await[OrderFinished](after = myLastEventId, predicate = _.key.string startsWith TestNamedWorkflow.path.string).last.value.key
               assert(master.orderClient.order(orderId).await(99.s) ==
                 Some(Order(
@@ -116,8 +115,9 @@ final class RecoveryTest extends FreeSpec {
       }
     }
   }
+  }
 
-  private def runMaster(directoryProvider: DirectoryProvider)(body: RunningMaster ⇒ Unit): Unit =
+  private def runMaster(directoryProvider: DirectoryProvider, eventCollector: TestEventCollector)(body: RunningMaster ⇒ Unit): Unit =
     RunningMaster.runForTest(directoryProvider.directory) { master ⇒
       eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
