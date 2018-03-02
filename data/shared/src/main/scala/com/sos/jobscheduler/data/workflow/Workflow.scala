@@ -203,7 +203,14 @@ object Workflow {
 
     implicit def fromPair(pair: (WorkflowPath, Workflow)) = Named(pair._1, pair._2)
 
-    implicit val jsonCodec = deriveCodec[Named]
+    implicit val jsonEncoder: ObjectEncoder[Workflow.Named] =
+      o ⇒ ("path" → o.path.asJson) +: o.workflow.asJsonObject
+
+    implicit val jsonDecoder: Decoder[Workflow.Named] = c ⇒
+      for {
+        path ← c.get[WorkflowPath]("path")
+        workflow ← c.as[Workflow]
+      } yield Named(path, workflow)
   }
 
   implicit val jsonEncoder: ObjectEncoder[Workflow] = {

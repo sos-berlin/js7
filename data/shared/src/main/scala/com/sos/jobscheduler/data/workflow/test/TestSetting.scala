@@ -1,9 +1,8 @@
 package com.sos.jobscheduler.data.workflow.test
 
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, IfReturnCode, Job}
+import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowPath}
 
 /**
@@ -21,17 +20,6 @@ private[jobscheduler] object TestSetting {
     Workflow.of(
       AJob,
       BJob))
-
-  val ComplexTestWorkflow = Workflow.of(
-    AJob,
-    IfReturnCode(
-      ReturnCode(1) :: Nil,
-      thenWorkflow = Workflow.of(AJob),
-      elseWorkflow = Some(Workflow.of(BJob))),
-    ForkJoin.of(
-      "🥕" → Workflow.of(AJob, AJob),
-      "🍋" → Workflow.of(BJob, BJob)),
-    BJob)
 
   val TestOrder = Order(OrderId("TEST"), SimpleTestWorkflow.path, Order.Ready, payload = Payload(Map("VARIABLE" → "VALUE")))
 }
