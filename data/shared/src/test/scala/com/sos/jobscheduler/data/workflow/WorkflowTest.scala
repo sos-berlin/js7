@@ -2,11 +2,8 @@ package com.sos.jobscheduler.data.workflow
 
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
-import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.FileBased
 import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, ImplicitEnd, Job}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
@@ -19,12 +16,12 @@ import org.scalatest.FreeSpec
 final class WorkflowTest extends FreeSpec {
 
   "labelToPosition" in {
-    val workflow = Workflow(Vector(
+    val workflow = Workflow.of(
       "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")),
       IfReturnCode(List(ReturnCode(1)),
-        thenWorkflow = Workflow(Vector(
-          "B" @: Job(JobPath("/JOB"), AgentPath("/AGENT"))))),
-      "B" @: ExplicitEnd))
+        thenWorkflow = Workflow.of(
+          "B" @: Job(JobPath("/JOB"), AgentPath("/AGENT")))),
+      "B" @: ExplicitEnd)
     assert(workflow.labelToPosition(Nil, Label("A")) == Some(Position(0)))
     assert(workflow.labelToPosition(Nil, Label("B")) == Some(Position(2)))
     assert(workflow.labelToPosition(Position.Parent(1, 0) :: Nil, Label("B")) == Some(Position(1, 0, 0)))
@@ -32,9 +29,9 @@ final class WorkflowTest extends FreeSpec {
 
   "Duplicate labels" in {
     assert(intercept[RuntimeException] {
-      Workflow(Vector(
+      Workflow.of(
         "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")),
-        "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT"))))
+        "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")))
     }
     .toString contains "Duplicate labels")
   }
@@ -86,8 +83,8 @@ final class WorkflowTest extends FreeSpec {
       (END @: ExplicitEnd)      → true,
       (B   @: job)              → true,
       (()  @: Goto(C))          → true)
-    val a = Workflow(instructions map (_._1))
-    assert(a.reduce == Workflow(instructions collect { case (s, true) ⇒ s }))
+    val a = Workflow(WorkflowPath("/W"), instructions map (_._1))
+    assert(a.reduce == Workflow(WorkflowPath("/W"), instructions collect { case (s, true) ⇒ s }))
   }
 
   "numberedInstruction" in {
@@ -130,10 +127,11 @@ final class WorkflowTest extends FreeSpec {
   }
 
   "JSON" - {
-    "Workflow" in {
+    "Workflow with path" in {
       testJson[Workflow](TestWorkflow,
         // Statement "ImplicitEnd" should not be used in explicit notation. JobScheduler generates this statement implicitly.
         json"""{
+          "path": "/TEST",
           "instructions": [
             { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
             {
@@ -181,38 +179,21 @@ final class WorkflowTest extends FreeSpec {
         }""")
     }
 
-    "Workflow.Named" in {
-      testJson(
-        Workflow.Named(WorkflowPath("/WORKFLOW"), Workflow.of(AJob)),
-        // Statement "ImplicitEnd" should not be used in explicit notation. JobScheduler generates this statement implicitly.
+    "Workflow without path" in {
+      testJson(Workflow.of(AJob),
         json"""{
-          "path": "/WORKFLOW",
           "instructions": [
             { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
             { "TYPE": "ImplicitEnd" }
           ]
         }""")
     }
-
-    //"Workflow.Named as FileBased" in {
-    //  implicit val x = TypedJsonCodec[FileBased](Subtype[Workflow.Named])
-    //  testJson[FileBased](
-    //    Workflow.Named(WorkflowPath("/WORKFLOW"), Workflow.of(AJob)),
-    //    // Statement "ImplicitEnd" should not be used in explicit notation. JobScheduler generates this statement implicitly.
-    //    json"""{
-    //      "TYPE": "Workflow",
-    //      "path": "/WORKFLOW",
-    //      "instructions": [
-    //        { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
-    //        { "TYPE": "ImplicitEnd" }
-    //      ]
-    //    }""")
-    //}
   }
 }
 
 object WorkflowTest {
   val TestWorkflow = Workflow.of(
+    WorkflowPath("/TEST"),
     AJob,
     IfReturnCode(
       ReturnCode(1) :: Nil,

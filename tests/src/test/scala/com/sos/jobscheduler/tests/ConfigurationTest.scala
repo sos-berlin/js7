@@ -34,40 +34,40 @@ final class ConfigurationTest extends FreeSpec {
       directoryProvider.runAgents { _ ⇒
         directoryProvider.runMaster { master ⇒
           eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
-          testAddWorkflow(master, ANamedWorkflow, OrderId("A"), Some(FileBasedVersion("0.1")))
+          testAddWorkflow(master, AWorkflow, OrderId("A"), Some(FileBasedVersion("0.1")))
           // Command is rejected due to duplicate version identifier
           assert(Try { master.executeCommand(ReadConfigurationDirectory(FileBasedVersion("0.1"))) await 99.s }
             .failed.get.getMessage contains "Duplicate version '0.1'")
-          testAddWorkflow(master, BNamedWorkflow, OrderId("B"), Some(FileBasedVersion("0.2")))
+          testAddWorkflow(master, BWorkflow, OrderId("B"), Some(FileBasedVersion("0.2")))
         }
         // Recovery
         directoryProvider.runMaster { master ⇒
           eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
           // Previously defined workflow is still known
-          testAddWorkflow(master, BNamedWorkflow, OrderId("B-2"), None)
+          testAddWorkflow(master, BWorkflow, OrderId("B-2"), None)
           // Add and use a new workflow
-          testAddWorkflow(master, CNamedWorkflow, OrderId("C"), Some(FileBasedVersion("0.3")))
+          testAddWorkflow(master, CWorkflow, OrderId("C"), Some(FileBasedVersion("0.3")))
 
           // Handling a workflow change is not implemented
-          directoryProvider.master.writeJson(C2NamedWorkflow.path, C2NamedWorkflow.workflow)
+          directoryProvider.master.writeJson(C2Workflow.path, C2Workflow)
           assert(Try { master.executeCommand(ReadConfigurationDirectory(FileBasedVersion("0.4"))) await 99.s }
             .failed.get.toStringWithCauses contains "Change of configuration file is not supported: Workflow:/C")
 
           // Handling a workflow deletion is not implemented
-          delete(directoryProvider.master.file(CNamedWorkflow.path, SourceType.Json))
+          delete(directoryProvider.master.file(CWorkflow.path, SourceType.Json))
           assert(Try { master.executeCommand(ReadConfigurationDirectory(FileBasedVersion("0.4"))) await 99.s }
             .failed.get.toStringWithCauses contains "Deletion of configuration file is not supported: Workflow:/C")
         }
       }
 
-      def testAddWorkflow(master: RunningMaster, namedWorkflow: Workflow.Named, orderId: OrderId, version: Option[FileBasedVersion]): Unit = {
-        val order = Order(orderId, namedWorkflow.path, Order.StartNow)
+      def testAddWorkflow(master: RunningMaster, workflow: Workflow, orderId: OrderId, version: Option[FileBasedVersion]): Unit = {
+        val order = Order(orderId, workflow.path, Order.StartNow)
         for (v ← version) {
           // Command will be rejected because workflow is not yet defined
           assert(Try { master.addOrder(order) await 99.s }
-            .failed.get.getMessage contains s"No such key 'Workflow:${namedWorkflow.path.string}'")
+            .failed.get.getMessage contains s"No such key 'Workflow:${workflow.path.string}'")
           // Add Workflow
-          directoryProvider.master.writeJson(namedWorkflow.path, namedWorkflow.workflow)
+          directoryProvider.master.writeJson(workflow.path, workflow)
           master.executeCommand(ReadConfigurationDirectory(v)) await 99.s
         }
         master.addOrder(order) await 99.s
@@ -80,8 +80,8 @@ final class ConfigurationTest extends FreeSpec {
 object ConfigurationTest {
   private val TestAgentPath = AgentPath("/AGENT")
   private val TestWorkflow = Workflow.of(Job(JobPath("/JOB"), TestAgentPath))
-  private val ANamedWorkflow = Workflow.Named(WorkflowPath("/A"), TestWorkflow)
-  private val BNamedWorkflow = Workflow.Named(WorkflowPath("/B"), ANamedWorkflow.workflow)
-  private val CNamedWorkflow = Workflow.Named(WorkflowPath("/C"), ANamedWorkflow.workflow)
-  private val C2NamedWorkflow = Workflow.Named(WorkflowPath("/C"), Workflow.of(Job(JobPath("/JOB-2"), TestAgentPath)))
+  private val AWorkflow = TestWorkflow.copy(path = WorkflowPath("/A"))
+  private val BWorkflow = TestWorkflow.copy(path = WorkflowPath("/B"))
+  private val CWorkflow = TestWorkflow.copy(path = WorkflowPath("/C"))
+  private val C2Workflow = Workflow.of(WorkflowPath("/C"), Job(JobPath("/JOB-2"), TestAgentPath))
 }

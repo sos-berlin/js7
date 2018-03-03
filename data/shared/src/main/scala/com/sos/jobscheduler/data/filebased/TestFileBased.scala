@@ -8,6 +8,7 @@ import io.circe.generic.JsonCodec
 @JsonCodec
 final case class TestFileBased(path: TestPath, content: String) extends FileBased {
   type Self = TestFileBased
+
   def companion = TestFileBased
 }
 

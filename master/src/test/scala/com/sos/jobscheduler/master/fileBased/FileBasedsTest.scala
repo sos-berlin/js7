@@ -31,41 +31,41 @@ final class FileBasedsTest extends FreeSpec {
 
   "readDirectory" in {
     provideDirectory { directory ⇒
-      (directory / "A.workflow.json").contentString = ANamedWorkflow.workflow.asJson.toPrettyString
-      (directory / "C.workflow.txt").contentString = CNamedWorkflow.workflow.source.get
-      (directory / "D.workflow.txt").contentString = ChangedDNamedWorkflow.workflow.source.get
+      (directory / "A.workflow.json").contentString = AWorkflow.asJson.toPrettyString
+      (directory / "C.workflow.txt").contentString = CWorkflow.source.get
+      (directory / "D.workflow.txt").contentString = ChangedDWorkflow.source.get
       (directory / "A.agent.xml").xml = <agent uri="http://A"/>
       (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>
 
-      val previousFileBaseds = List(ANamedWorkflow, BNamedWorkflow, DNamedWorkflow, AAgent)
+      val previousFileBaseds = List(AWorkflow, BWorkflow, DWorkflow, AAgent)
       val eventsChecked = FileBaseds.readDirectory(readers, directory, previousFileBaseds, FileBasedVersion("VERSION"))
       assert(eventsChecked.map(_.toSet) == Valid(Set(
         VersionAdded(FileBasedVersion("VERSION")),
-        FileBasedDeleted(BNamedWorkflow.path),
+        FileBasedDeleted(BWorkflow.path),
         FileBasedAdded(BAgent),
-        FileBasedAdded(CNamedWorkflow),
-        FileBasedChanged(ChangedDNamedWorkflow))))
+        FileBasedAdded(CWorkflow),
+        FileBasedChanged(ChangedDWorkflow))))
     }
   }
 
   "Diff" in {
     val diff = FileBaseds.Diff.fromEvents(
       List(
-        FileBasedDeleted(BNamedWorkflow.path),
+        FileBasedDeleted(BWorkflow.path),
         FileBasedAdded(BAgent),
-        FileBasedAdded(CNamedWorkflow),
-        FileBasedChanged(ChangedDNamedWorkflow)))
+        FileBasedAdded(CWorkflow),
+        FileBasedChanged(ChangedDWorkflow)))
 
     assert(diff == FileBaseds.Diff[TypedPath, FileBased](
-      List(BAgent, CNamedWorkflow),
-      List(ChangedDNamedWorkflow),
-      List(BNamedWorkflow.path)))
+      List(BAgent, CWorkflow),
+      List(ChangedDWorkflow),
+      List(BWorkflow.path)))
 
-    assert(diff.select[WorkflowPath, Workflow.Named] ==
-      FileBaseds.Diff[WorkflowPath, Workflow.Named](
-        List(CNamedWorkflow),
-        List(ChangedDNamedWorkflow),
-        List(BNamedWorkflow.path)))
+    assert(diff.select[WorkflowPath, Workflow] ==
+      FileBaseds.Diff[WorkflowPath, Workflow](
+        List(CWorkflow),
+        List(ChangedDWorkflow),
+        List(BWorkflow.path)))
 
     assert(diff.select[AgentPath, Agent] ==
       FileBaseds.Diff[AgentPath, Agent](
@@ -77,11 +77,11 @@ final class FileBasedsTest extends FreeSpec {
 
 object FileBasedsTest {
   private val readers = Set(WorkflowReader, AgentReader, new ScheduledOrderGeneratorReader(ZoneId.of("UTC")))
-  private[fileBased] val ANamedWorkflow = Workflow.Named(WorkflowPath("/A"), Workflow.of())
-  private[fileBased] val BNamedWorkflow = Workflow.Named(WorkflowPath("/B"), Workflow(Vector("B-END" @: ExplicitEnd)))
-  private[fileBased] val CNamedWorkflow = Workflow.Named(WorkflowPath("/C"), WorkflowParser.parse("// EMPTY").force)
-  private[fileBased] val DNamedWorkflow = Workflow.Named(WorkflowPath("/D"), Workflow(Vector("D-END" @: ExplicitEnd)))
-  private[fileBased] val ChangedDNamedWorkflow = Workflow.Named(WorkflowPath("/D"), WorkflowParser.parse("CHANGED-D-END: end").force)
+  private[fileBased] val AWorkflow = Workflow.of(WorkflowPath("/A"))
+  private[fileBased] val BWorkflow = Workflow(WorkflowPath("/B"), Vector("B-END" @: ExplicitEnd))
+  private[fileBased] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C"), "// EMPTY").force
+  private[fileBased] val DWorkflow = Workflow(WorkflowPath("/D"), Vector("D-END" @: ExplicitEnd))
+  private[fileBased] val ChangedDWorkflow = WorkflowParser.parse(WorkflowPath("/D"), "CHANGED-D-END: end").force
   private[fileBased] val AAgent = Agent(AgentPath("/A"), "http://A")
   private[fileBased] val BAgent = Agent(AgentPath("/folder/B"), "http://B")
 

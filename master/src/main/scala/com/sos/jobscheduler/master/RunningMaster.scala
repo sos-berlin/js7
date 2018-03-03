@@ -129,11 +129,11 @@ object RunningMaster {
 
       implicit def executionContext = ec
 
-      def namedWorkflow(path: WorkflowPath): Future[Option[Workflow.Named]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[Workflow.Named]]
+      def workflow(path: WorkflowPath): Future[Option[Workflow]] =
+        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[Workflow]]
 
-      def namedWorkflows: Future[Stamped[Seq[Workflow.Named]]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[Workflow.Named]]]
+      def workflows: Future[Stamped[Seq[Workflow]]] =
+        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[Workflow]]]
 
       //def workflowPaths =  TODO optimize
       //(orderKeeper ? MasterOrderKeeper.Command.GetWorkflowPaths).mapTo[Stamped[Seq[WorkflowPath]]]

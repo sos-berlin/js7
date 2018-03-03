@@ -86,14 +86,14 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private def recover(): Unit = {
     val recoverer = new OrderJournalRecoverer(journalFile = journalFile, eventsForMaster)(askTimeout)
     recoverer.recoverAll()
-    for (namedWorkflow ← recoverer.namedWorkflows)
-      wrapException(s"Error when recovering ${namedWorkflow.path}") {
-        workflowRegister.recover(namedWorkflow)
+    for (workflow ← recoverer.workflows)
+      wrapException(s"Error when recovering ${workflow.path}") {
+        workflowRegister.recover(workflow)
       }
     for (recoveredOrder ← recoverer.orders)
       wrapException(s"Error when recovering ${recoveredOrder.id}") {
         val order = workflowRegister.reuseMemory(recoveredOrder)
-        val workflow = workflowRegister(order.workflowPath).workflow  // Workflow must be recovered
+        val workflow = workflowRegister(order.workflowPath)  // Workflow must be recovered
         val actor = newOrderActor(order)
         orderRegister.recover(order, workflow, actor)
         actor ! KeyedJournalingActor.Input.Recover(order)
@@ -107,7 +107,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   }
 
   def snapshots = {
-    val workflowSnapshots = workflowRegister.namedWorkflows
+    val workflowSnapshots = workflowRegister.workflows
     for (got ← (eventsForMaster ? EventQueueActor.Input.GetSnapshots).mapTo[EventQueueActor.Output.GotSnapshots])
       yield workflowSnapshots ++ got.snapshots  // Future: don't use mutable `this`
   }
@@ -196,9 +196,9 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
       order.attachedToAgent match {
         case Invalid(problem) ⇒ Future.failed(problem.throwable)
         case Valid(_) ⇒
-          val workflowResponse = workflowRegister.get(order.workflowPath) map (_.workflow) match {
+          val workflowResponse = workflowRegister.get(order.workflowPath) match {
             case None ⇒
-              persist(KeyedEvent(WorkflowAttached(workflow))(order.workflowPath)) { stampedEvent ⇒
+              persist(KeyedEvent(WorkflowAttached(workflow))) { stampedEvent ⇒
                 workflowRegister.handleEvent(stampedEvent.value)
                 Accepted
               }
@@ -280,7 +280,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
         case FollowUp.AddChild(childOrder) ⇒
           val actor = newOrderActor(childOrder)
-          orderRegister.insert(childOrder, workflowRegister(childOrder.workflowPath).workflow, actor)
+          orderRegister.insert(childOrder, workflowRegister(childOrder.workflowPath), actor)
           actor ! OrderActor.Input.AddChild(childOrder)
           proceedWithOrder(childOrder.id)
 
@@ -416,7 +416,7 @@ object AgentOrderKeeper {
   private val logger = Logger(getClass)
 
   private val SnapshotJsonFormat = TypedJsonCodec[Any](
-    Subtype[Workflow.Named],
+    Subtype[Workflow],
     Subtype[Order[Order.State]],
     Subtype[EventQueueActor.Snapshot])
 

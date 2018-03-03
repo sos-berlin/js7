@@ -17,7 +17,7 @@ object TypedPaths {
     companions.iterator
       .map(_.fromFile(string))
       .collectFirst { case Some(o) ⇒
-        o flatMap_ { case (typedPath, sourceType) ⇒ typedPath.checkedNameSyntax map (_ → sourceType) }
+        o flatMap_ { case (typedPath, sourceType) ⇒ typedPath.officialSyntaxChecked map (_ → sourceType) }
       }
       .toChecked(UnrecognizedFileProblem(file))
       .flatten

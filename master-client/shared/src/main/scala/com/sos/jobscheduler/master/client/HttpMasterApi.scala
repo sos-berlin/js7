@@ -39,8 +39,8 @@ trait HttpMasterApi extends MasterApi {
       uris.events[E](after = after, timeout = timeout),
       timeout = timeout + ToleratedEventDelay)
 
-  final def workflows: Future[Stamped[Seq[Workflow.Named]]] =
-    httpClient.get[Stamped[Seq[Workflow.Named]]](uris.workflow.list[Workflow.Named])
+  final def workflows: Future[Stamped[Seq[Workflow]]] =
+    httpClient.get[Stamped[Seq[Workflow]]](uris.workflow.list[Workflow])
 }
 
 object HttpMasterApi {

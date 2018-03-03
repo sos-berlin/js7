@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.data.folder
 
+import cats.data.Validated.Invalid
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import com.sos.jobscheduler.data.folder.FolderPathTest._
 import org.scalatest.FreeSpec
@@ -82,6 +84,14 @@ final class FolderPathTest extends FreeSpec {
     assert(FolderPath.parentOf(TestPath("/folder/a")) == FolderPath("/folder"))
     assert(FolderPath.parentOf(TestPath("/x/folder/a")) == FolderPath("/x/folder"))
     intercept[IllegalStateException] { FolderPath.parentOf(FolderPath("/")) }
+  }
+
+  "random" in {
+    assert(!FolderPath("/FOLDER").isGenerated)
+    val a = FolderPath.random[TestPath]
+    assert(a.isGenerated)
+    assert(a.string startsWith "/?/")
+    assert(a != FolderPath.random[TestPath])
   }
 }
 

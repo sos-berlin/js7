@@ -1,6 +1,5 @@
 package com.sos.jobscheduler.master.gui.common
 
-import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.ImplicitEnd
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{AJob, BJob}

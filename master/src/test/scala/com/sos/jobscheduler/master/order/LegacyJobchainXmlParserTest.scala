@@ -4,7 +4,6 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfNonZeroReturnCodeGoto, Job, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.{JobPath, Label, Workflow}
 import org.scalatest.FreeSpec
@@ -28,7 +27,7 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
 
   "Workflow" in {
     val workflow = LegacyJobchainXmlParser.parseXml(FolderPath("/FOLDER"), xml).force
-    assert(workflow == Workflow(Vector(
+    assert(workflow == Workflow.of(
       "A" @: Job(JobPath("/JOB-A"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),
              IfNonZeroReturnCodeGoto(Label("ERROR")),
       "B" @: Job(JobPath("/FOLDER/JOB-B"), AgentPath("/FOLDER/AGENT"), ReturnCodeMeaning.NoFailure),
@@ -41,6 +40,6 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
       "D" @: Job(JobPath("/JOB-D"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),
              Goto(Label("E")),
       "END" @: ExplicitEnd,
-      "ERROR" @: ExplicitEnd)))
+      "ERROR" @: ExplicitEnd))
   }
 }

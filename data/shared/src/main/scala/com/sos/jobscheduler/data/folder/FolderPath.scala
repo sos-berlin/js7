@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.data.folder
 
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
-import java.nio.file.Paths
+import java.util.UUID.randomUUID
 
 final case class FolderPath(string: String) extends TypedPath {
   import FolderPath._
@@ -33,14 +33,13 @@ final case class FolderPath(string: String) extends TypedPath {
         case path: FolderPath ⇒ this == path
       }
 
-  override def toFile(t: SourceType) = EmptyPath
+  override def toFile(t: SourceType) = throw new NotImplementedError("FolderPath.toFile")  // In Scala.js, don't use java.nio.file.Paths
 }
 
-object FolderPath extends TypedPath.Companion[FolderPath] {
-
-  private val EmptyPath = Paths.get("")
+object FolderPath extends TypedPath.Companion[FolderPath]
+{
   val Root = FolderPath("/")
-
+  val Internal = FolderPath(TypedPath.InternalPrefix stripSuffix "/")
   val sourceTypeToFilenameExtension = Map.empty
 
   override def isSingleSlashAllowed = true
@@ -67,4 +66,10 @@ object FolderPath extends TypedPath.Companion[FolderPath] {
       path
     else
       s"${defaultFolder.withTrailingSlash}${path stripPrefix "./"}"
+
+  def random[P <: TypedPath: TypedPath.Companion]: P =
+    Internal resolve[P] randomUUID.toString
+
+  def anonymous[P <: TypedPath: TypedPath.Companion]: P =
+    Internal resolve[P] "anonymous"
 }

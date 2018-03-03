@@ -20,6 +20,8 @@ object MasterCommand {
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
 
   final case class AddOrderIfNew(order: Order[Order.NotStarted]) extends MasterCommand {
+    order.workflowPath.requireNonAnonymous()
+
     type MyResponse = Response.Accepted
   }
 

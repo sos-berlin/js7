@@ -5,10 +5,9 @@ import com.sos.jobscheduler.common.time.Stopwatch.{measureTime, measureTimeParal
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, Job, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
-import com.sos.jobscheduler.data.workflow.{JobPath, Label, Workflow}
+import com.sos.jobscheduler.data.workflow.{JobPath, Label, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
 import scala.concurrent.duration._
 import scala.util.control.NoStackTrace
@@ -19,13 +18,14 @@ import scala.util.control.NoStackTrace
 final class WorkflowParserTest extends FreeSpec {
 
   "parse" in {
-    assert(parse(TestWorkflowNotation) == TestWorkflow)
+    assert(parse(TestWorkflowNotation) == TestWorkflow.copy(path = WorkflowPath.Anonymous))
   }
 
   "Single instruction with relative paths" in {
     val source = """job "A" on "AGENT";"""
     assert(parse(source) ==
       Workflow(
+        WorkflowPath.Anonymous,
         Vector(
           Job(JobPath("/A"), AgentPath("/AGENT"))),
         Some(source)))
@@ -35,6 +35,7 @@ final class WorkflowParserTest extends FreeSpec {
     val source = """job "A" on "AGENT";"""
     assert(parse(source) ==
       Workflow(
+        WorkflowPath.Anonymous,
         Vector(
           Job(JobPath("/A"), AgentPath("/AGENT"))),
         Some(source)))
@@ -44,6 +45,7 @@ final class WorkflowParserTest extends FreeSpec {
     val source = """job "A" on "AGENT" successReturnCodes=(0, 1, 3);"""
     assert(parse(source) ==
       Workflow(
+        WorkflowPath.Anonymous,
         Vector(
           Job(JobPath("/A"), AgentPath("/AGENT"), ReturnCodeMeaning.Success.of(0, 1, 3))),
         Some(source)))
@@ -53,6 +55,7 @@ final class WorkflowParserTest extends FreeSpec {
     val source = """job "A" on "AGENT" failureReturnCodes=(1, 3);"""
     assert(parse(source) ==
       Workflow(
+        WorkflowPath.Anonymous,
         Vector(
           Job(JobPath("/A"), AgentPath("/AGENT"), ReturnCodeMeaning.Failure.of(1, 3))),
         Some(source)))
@@ -62,6 +65,7 @@ final class WorkflowParserTest extends FreeSpec {
     val source = """A: job "A" on "AGENT";"""
     assert(parse(source) ==
       Workflow(
+        WorkflowPath.Anonymous,
         Vector(
           "A" @: Job(JobPath("/A"), AgentPath("/AGENT"))),
         Some(source)))
@@ -71,6 +75,7 @@ final class WorkflowParserTest extends FreeSpec {
     val source = """if (returnCode 1, 2, 3) { job "THEN" on "AGENT" }"""
     assert(parse(source) ==
       Workflow(
+        WorkflowPath.Anonymous,
         Vector(
           IfReturnCode(List(ReturnCode(1), ReturnCode(2), ReturnCode(3)),
             Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT"))))),
@@ -81,6 +86,7 @@ final class WorkflowParserTest extends FreeSpec {
     val source = """if (returnCode -1) { job "THEN" on "AGENT" } else { job "ELSE" on "AGENT" }"""
     assert(parse(source) ==
       Workflow(
+        WorkflowPath.Anonymous,
         Vector(
           IfReturnCode(List(ReturnCode(-1)),
             Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT"))),
@@ -90,12 +96,12 @@ final class WorkflowParserTest extends FreeSpec {
 
   "offer" in {
     val source = """offer orderId = "OFFERED", timeout = 60;"""
-    assert(parse(source) == Workflow(Vector(Offer(OrderId("OFFERED"), 60.seconds)), Some(source)))
+    assert(parse(source) == Workflow(WorkflowPath.Anonymous, Vector(Offer(OrderId("OFFERED"), 60.seconds)), Some(source)))
   }
 
   "await" in {
     val source = """await orderId = "OFFERED";"""
-    assert(parse(source) == Workflow(Vector(AwaitOrder(OrderId("OFFERED"))), Some(source)))
+    assert(parse(source) == Workflow(WorkflowPath.Anonymous, Vector(AwaitOrder(OrderId("OFFERED"))), Some(source)))
   }
 
   "onError and goto" in {
@@ -106,7 +112,8 @@ final class WorkflowParserTest extends FreeSpec {
       goto END;
       FAILURE: job "OnFailure" on "AGENT";
       END: end;"""
-    assert(parse(source) == Workflow(
+    assert(parse(source).copy(path = WorkflowPath("/X")) == Workflow(
+      WorkflowPath("/X"),
       Vector(
         Job(JobPath("/A"), AgentPath("/AGENT")),
         IfNonZeroReturnCodeGoto(Label("FAILURE")),
@@ -140,6 +147,7 @@ final class WorkflowParserTest extends FreeSpec {
         /*comment/**/job/***/"A"/**/on/**/"AGENT"/**/;/**///comment
       """
     assert(parse(source) == Workflow(
+      WorkflowPath.Anonymous,
       Vector(
         Job(JobPath("/A"), AgentPath("/AGENT"))),
       source = Some(source)))

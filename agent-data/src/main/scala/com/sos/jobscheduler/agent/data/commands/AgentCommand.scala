@@ -117,9 +117,10 @@ object AgentCommand {
   @JsonCodec
   final case class AttachOrder(order: Order[Order.Idle], workflow: Workflow)
   extends AttachOrDetachOrder {
-    type Response = Accepted.type
-
+    order.workflowPath.requireNonAnonymous()
     order.attachedToAgent.force  // throws
+
+    type Response = Accepted.type
 
     override def toShortString = s"AttachOrder($order)"
   }

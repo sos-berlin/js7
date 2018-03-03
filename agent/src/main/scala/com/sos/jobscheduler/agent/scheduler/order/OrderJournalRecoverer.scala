@@ -9,10 +9,11 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMa
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.journal.JournalRecoverer
+import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderCoreEvent, OrderDetached, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
 import java.nio.file.Path
 import scala.collection.mutable
 
@@ -28,7 +29,7 @@ extends JournalRecoverer[Event] {
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
 
   protected def recoverSnapshot = {
-    case workflow: Workflow.Named ⇒
+    case workflow: Workflow ⇒
       workflowRegister.recover(workflow)
 
     case order: Order[Order.State] ⇒
@@ -39,8 +40,8 @@ extends JournalRecoverer[Event] {
   }
 
   protected def recoverEvent = {
-    case Stamped(_, _, KeyedEvent(path: WorkflowPath, event: WorkflowEvent.WorkflowAttached)) ⇒
-      workflowRegister.handleEvent(KeyedEvent(event)(path))
+    case Stamped(_, _, KeyedEvent(_: NoKey, event: WorkflowEvent.WorkflowAttached)) ⇒
+      workflowRegister.handleEvent(KeyedEvent(event))
 
     case stamped @ Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
       event match {
@@ -93,6 +94,6 @@ extends JournalRecoverer[Event] {
       case _ ⇒
     }
 
-  def namedWorkflows = workflowRegister.namedWorkflows
+  def workflows = workflowRegister.workflows
   def orders = idToOrder.values
 }

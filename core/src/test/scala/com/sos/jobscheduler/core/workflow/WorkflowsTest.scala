@@ -1,9 +1,7 @@
 package com.sos.jobscheduler.core.workflow
 
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
-import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, Gap}
-import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting._
 import com.sos.jobscheduler.data.workflow.{Position, Workflow}
 import org.scalatest.FreeSpec
@@ -14,7 +12,7 @@ import org.scalatest.FreeSpec
 final class WorkflowsTest extends FreeSpec {
 
   "reduceForAgent A" in {
-    assert(ForkTestSetting.TestWorkflow.reduceForAgent(AAgentPath) == Workflow(
+    assert(TestWorkflow.reduceForAgent(AAgentPath) == Workflow(TestWorkflow.path,
       Vector(
         AJob,
         ForkJoin.of(
@@ -27,13 +25,13 @@ final class WorkflowsTest extends FreeSpec {
         AJob,
         ForkJoin.of(
           "🥕" → Workflow.of(AJob, AJob),
-          "🍋" → Workflow.of(Gap               , Gap)),
+          "🍋" → Workflow.of(Gap, Gap)),
         AJob),
-      source = None))
+      source = TestWorkflow.source))
   }
 
   "reduceForAgent B" in {
-    assert(ForkTestSetting.TestWorkflow.reduceForAgent(BAgentPath) == Workflow(
+    assert(TestWorkflow.reduceForAgent(BAgentPath) == Workflow(TestWorkflow.path,
       Vector(
         /*0*/ Gap,
         /*1*/ ForkJoin.of(
@@ -46,7 +44,7 @@ final class WorkflowsTest extends FreeSpec {
                 "🥕" → Workflow.of(Gap, Gap),
                 "🍋" → Workflow.of(BJob, BJob)),
         /*6*/ Gap),
-      source = None))
+      source = TestWorkflow.source))
   }
 
   "isStartableOnAgent" - {
@@ -78,7 +76,7 @@ final class WorkflowsTest extends FreeSpec {
           assert(TestWorkflow.isStartableOnAgent(position, agentPath) == expected)
         }
         s".reduceForAgent.isStartableOnAgent($position $agentPath) = $expected" in {
-          //assert(SimpleTestWorkflow.workflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath))
+          //assert(SimpleTestWorkflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath))
           assert(TestWorkflow.reduceForAgent(agentPath).isStartableOnAgent(position, agentPath) == expected)
         }
       }

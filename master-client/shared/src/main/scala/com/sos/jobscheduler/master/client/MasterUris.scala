@@ -73,9 +73,6 @@ object MasterUris {
 
   private def encodeClass(cls: Class[_]): String = {
     require(cls != classOf[Nothing], "Missing return=CLASS")
-    if (cls == classOf[Workflow.Named])
-      "Workflow"
-    else
-      cls.simpleScalaName
+    cls.simpleScalaName
   }
 }

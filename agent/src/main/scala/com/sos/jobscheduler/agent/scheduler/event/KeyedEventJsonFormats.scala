@@ -15,7 +15,7 @@ object KeyedEventJsonFormats {
   implicit val AgentKeyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[OrderEvent],
-      KeyedSubtype[WorkflowEvent])
+      KeyedSubtype.singleEvent[WorkflowEvent.WorkflowAttached])
 
   /**
     * All subtypes of `Event` are serialized as `Event`.

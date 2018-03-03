@@ -25,5 +25,5 @@ trait MasterApi {
 
   def orders: Future[Stamped[Seq[Order[Order.State]]]]
 
-  def workflows: Future[Stamped[Seq[Workflow.Named]]]
+  def workflows: Future[Stamped[Seq[Workflow]]]
 }

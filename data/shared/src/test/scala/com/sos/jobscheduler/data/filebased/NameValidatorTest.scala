@@ -7,7 +7,7 @@ import scala.collection.JavaConverters.asScalaIteratorConverter
 /**
   * @author Joacim Zschimmer
   */
-final class NameTest extends FreeSpec {
+final class NameValidatorTest extends FreeSpec {
 
   "isValid" in {
     assert(isValid("a"))

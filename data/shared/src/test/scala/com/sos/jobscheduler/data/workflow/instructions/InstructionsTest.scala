@@ -18,29 +18,33 @@ final class InstructionsTest extends FreeSpec {
 
   "JSON" - {
     "With Label" in {
-      testJson("A" @: ExplicitEnd: Labeled, json"""
-        {
+      testJson(
+        "A" @: ExplicitEnd: Labeled,
+        json"""{
           "TYPE": "End",
           "labels": [ "A" ]
         }""")
     }
 
     "Without Label" in {
-      testJson(() @: ExplicitEnd: Labeled, json"""
-        {
+      testJson(
+        () @: ExplicitEnd: Labeled,
+        json"""{
           "TYPE": "End"
         }""")
     }
 
-    testLabeled(AwaitOrder(OrderId("ORDER")),
+    testLabeled(
+      AwaitOrder(OrderId("ORDER")),
       json"""{
         "TYPE": "AwaitOrder",
         "orderId": "ORDER"
       }""")
 
     "Job" in {
-      testLabeled(Job(JobPath("/JOB"), AgentPath("/AGENT")), json"""
-        {
+      testLabeled(
+        Job(JobPath("/JOB"), AgentPath("/AGENT")),
+        json"""{
           "TYPE": "Job",
           "jobPath": "/JOB",
           "agentPath": "/AGENT"
@@ -48,8 +52,9 @@ final class InstructionsTest extends FreeSpec {
     }
 
     "Job returnCodeMeaning" in {
-      testLabeled(Job(JobPath("/JOB"), AgentPath("/AGENT"), ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1)))), json"""
-        {
+      testLabeled(
+        Job(JobPath("/JOB"), AgentPath("/AGENT"), ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1)))),
+        json"""{
           "TYPE": "Job",
           "jobPath": "/JOB",
           "agentPath": "/AGENT",
@@ -60,58 +65,63 @@ final class InstructionsTest extends FreeSpec {
     }
 
     "ForkJoin" in {
-      testLabeled(ForkJoin.of(
-        "A" → Workflow.of(Job(JobPath("/JOB"), AgentPath("/AGENT"))),
-        "B" → Workflow()), json"""
-        {
+      testLabeled(
+        ForkJoin.of(
+          "A" → Workflow.of(Job(JobPath("/A"), AgentPath("/AGENT"))),
+          "B" → Workflow.of(Job(JobPath("/B"), AgentPath("/AGENT")))),
+        json"""{
           "TYPE": "ForkJoin",
-          "branches":
-            [
-              {
-                "id": "A",
-                "workflow": {
-                  "instructions": [
-                    { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT" },
-                    { "TYPE": "ImplicitEnd" }
-                  ]
-                }
-              }, {
-                "id": "B",
-                "workflow": {
-                  "instructions": [
-                    { "TYPE": "ImplicitEnd" }
-                  ]
-                }
+          "branches": [
+            {
+              "id": "A",
+              "workflow": {
+                "instructions": [
+                  { "TYPE": "Job", "jobPath": "/A", "agentPath": "/AGENT" },
+                  { "TYPE": "ImplicitEnd" }
+                ]
               }
-            ]
+            }, {
+              "id": "B",
+              "workflow": {
+                "instructions": [
+                  { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" },
+                  { "TYPE": "ImplicitEnd" }
+                ]
+              }
+            }
+          ]
         }""")
     }
 
     "Gap" in {
-      testLabeled(Gap, json"""
-        {
+      testLabeled(
+        Gap,
+        json"""{
           "TYPE": "Gap"
         }""")
     }
 
     "ExplicitEnd" in {
-      testLabeled(ExplicitEnd, json"""
-        {
+      testLabeled(
+        ExplicitEnd,
+        json"""{
           "TYPE": "End"
         }""")
     }
 
     "Goto" in {
-      testLabeled(Goto(Label("A")), json"""
-        {
+      testLabeled(
+        Goto(Label("A")),
+        json"""{
           "TYPE": "Goto",
           "to": "A"
         }""")
     }
 
     "IfNonZeroReturnCodeGoto" in {
-      testLabeled(IfNonZeroReturnCodeGoto(Label("A")), json"""
-        {
+      testLabeled(
+        IfNonZeroReturnCodeGoto(Label("A")),
+        json"""{
           "TYPE": "IfNonZeroReturnCodeGoto",
           "to": "A"
         }""")

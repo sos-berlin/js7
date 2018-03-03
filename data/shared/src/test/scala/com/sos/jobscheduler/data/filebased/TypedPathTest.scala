@@ -67,13 +67,13 @@ final class TypedPathTest extends FreeSpec {
     assert(BPath.fromFile(".b.json") == Some(Invalid(Problem("Trailing slash not allowed in BPath '/'"))))
   }
 
-  "checkedNameSyntax" in {
-    assert(APath("/folder/a-b").checkedNameSyntax == Valid(APath("/folder/a-b")))
-    assert(APath("/folder/a_b").checkedNameSyntax == Valid(APath("/folder/a_b")))
-    assert(APath("/folder/a.b").checkedNameSyntax == Valid(APath("/folder/a.b")))
-    assert(APath("/a@b/x@y").checkedNameSyntax ==  // Show only first problem
+  "officialSyntaxChecked" in {
+    assert(APath("/folder/a-b").officialSyntaxChecked == Valid(APath("/folder/a-b")))
+    assert(APath("/folder/a_b").officialSyntaxChecked == Valid(APath("/folder/a_b")))
+    assert(APath("/folder/a.b").officialSyntaxChecked == Valid(APath("/folder/a.b")))
+    assert(APath("/a@b/x@y").officialSyntaxChecked ==  // Show only first problem
       Invalid(Problem("Problem with 'A:/a@b/x@y': Invalid character or character combination in name 'a@b'")))
-    assert(APath(s"/folder/a${VersionSeparator}b").checkedNameSyntax ==
+    assert(APath(s"/folder/a${VersionSeparator}b").officialSyntaxChecked ==
       Invalid(Problem("Problem with 'A:/folder/a@b': Invalid character or character combination in name 'a@b'")))
   }
 
@@ -81,6 +81,10 @@ final class TypedPathTest extends FreeSpec {
     implicit val typedPathCodec = TypedPath.jsonCodec(List(APath, BPath))
     testJson[TypedPath](APath("/a"), json""" "A:/a" """)
     testJson[TypedPath](BPath("/b"), json""" "B:/b" """)
+  }
+
+  "Internal" in {
+    assert(APath("/?/TEST").officialSyntaxChecked == Invalid(Problem("Internal path is not allowed here: A:/?/TEST")))
   }
 
   //"Versioned" in {

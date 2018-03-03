@@ -87,7 +87,7 @@ final class AgentCommandTest extends FreeSpec {
             Order.Ready,
             Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
           AgentPath("/AGENT"),
-          SimpleTestWorkflow.workflow),
+          SimpleTestWorkflow),
         json"""{
           "TYPE": "AttachOrder",
           "order": {
@@ -105,6 +105,7 @@ final class AgentCommandTest extends FreeSpec {
             "workflowPosition": [ "/WORKFLOW", 3 ]
           },
           "workflow": {
+            "path": "/WORKFLOW",
             "instructions": [
               { "TYPE": "Job", "jobPath": "/A", "agentPath": "/AGENT" },
               { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" },

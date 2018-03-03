@@ -20,7 +20,6 @@ import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.Instruction.simplify._
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfNonZeroReturnCodeGoto, Job, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
@@ -43,7 +42,7 @@ final class LegacyJobchainTest extends FreeSpec {
   "Run workflow" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
       withCloser { implicit closer ⇒
-        directoryProvider.master.writeJson(TestNamedWorkflow.path, TestWorkflow)
+        directoryProvider.master.writeJson(TestWorkflow.path, TestWorkflow)
         for (a ← directoryProvider.agents) a.file(Test0JobPath, SourceType.Xml).xml = jobXml(ReturnCode(0))
         for (a ← directoryProvider.agents) a.file(Test1JobPath, SourceType.Xml).xml = jobXml(ReturnCode(1))
 
@@ -84,9 +83,9 @@ object LegacyJobchainTest {
       <job_chain_node     state="B" agent="/AGENT" job="/JOB-1" error_state="FAILURE"/>
       <job_chain_node     state="END"/>
       <job_chain_node.end state="FAILURE"/>
-    </job_chain>.toString()).force
-  private val TestNamedWorkflow = Workflow.Named(WorkflowPath("/WORKFLOW"), TestWorkflow)
-  private val ExpectedWorkflow = Workflow(Vector(
+    </job_chain>.toString())
+    .force.copy(path = WorkflowPath("/WORKFLOW"))
+  private val ExpectedWorkflow = Workflow.of(WorkflowPath("/WORKFLOW"),
     "A" @: /*0*/ Job(JobPath("/JOB-0"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),
            /*1*/ IfNonZeroReturnCodeGoto("FAILURE"),
            /*2*/ Goto("B"),
@@ -94,11 +93,11 @@ object LegacyJobchainTest {
     "B" @: /*4*/ Job(JobPath("/JOB-1"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),
            /*5*/ IfNonZeroReturnCodeGoto("FAILURE"),
     "END" @: /*6*/ ExplicitEnd,
-    "FAILURE" @: /*7*/ ExplicitEnd))
+    "FAILURE" @: /*7*/ ExplicitEnd)
 
-  private val TestOrder = Order(OrderId("🔺"), TestNamedWorkflow.path, state = Order.StartNow)
+  private val TestOrder = Order(OrderId("🔺"), TestWorkflow.path, state = Order.StartNow)
   private val ExpectedEvents = Vector(
-    TestOrder.id <-: OrderAdded(TestNamedWorkflow.path, Order.StartNow, Payload.empty),
+    TestOrder.id <-: OrderAdded(TestWorkflow.path, Order.StartNow, Payload.empty),
     TestOrder.id <-: OrderTransferredToAgent(TestAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),

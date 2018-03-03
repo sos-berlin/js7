@@ -17,11 +17,11 @@ import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
   */
 object WorkflowReader extends FileBasedReader
 {
-  val fileBasedCompanion = Workflow.Named
+  val fileBasedCompanion = Workflow
 
   def read(workflowPath: WorkflowPath, source: ByteString) = {
     case sourceType if readWorkflow(workflowPath, source) isDefinedAt sourceType ⇒
-      readWorkflow(workflowPath, source)(sourceType) map (Workflow.Named(workflowPath, _))
+      readWorkflow(workflowPath, source)(sourceType) map (_.copy(path = workflowPath))
   }
 
   private def readWorkflow(workflowPath: WorkflowPath, source: ByteString): PartialFunction[SourceType, Checked[Workflow]] = {

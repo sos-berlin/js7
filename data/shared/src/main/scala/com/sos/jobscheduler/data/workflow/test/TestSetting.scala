@@ -15,11 +15,10 @@ private[jobscheduler] object TestSetting {
   val BJob = Job(JobPath("/B"), TestAgentPath)
   val TestJobPaths = Vector(AJob.jobPath, BJob.jobPath)
 
-  val SimpleTestWorkflow = Workflow.Named(
+  val SimpleTestWorkflow = Workflow.of(
     WorkflowPath("/WORKFLOW"),
-    Workflow.of(
-      AJob,
-      BJob))
+    AJob,
+    BJob)
 
   val TestOrder = Order(OrderId("TEST"), SimpleTestWorkflow.path, Order.Ready, payload = Payload(Map("VARIABLE" → "VALUE")))
 }

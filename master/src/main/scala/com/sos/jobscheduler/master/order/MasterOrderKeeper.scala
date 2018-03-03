@@ -78,7 +78,7 @@ with Stash {
     "Journal"))
   private var hasRecovered = false
 
-  private var pathToNamedWorkflow = Map.empty[WorkflowPath, Workflow.Named]
+  private var pathToWorkflow = Map.empty[WorkflowPath, Workflow]
   private val agentRegister = new AgentRegister
   private var scheduledOrderGenerators = Vector.empty[ScheduledOrderGenerator]
   private val orderRegister = mutable.Map[OrderId, OrderEntry]()
@@ -162,13 +162,13 @@ with Stash {
       }
 
     case Command.GetWorkflow(path) ⇒
-      sender() ! pathToNamedWorkflow.get(path)
+      sender() ! pathToWorkflow.get(path)
 
     case Command.GetWorkflows ⇒
-      sender() ! eventIdGenerator.stamp(pathToNamedWorkflow.values.toVector: Vector[Workflow.Named])
+      sender() ! eventIdGenerator.stamp(pathToWorkflow.values.toVector: Vector[Workflow])
 
     case Command.GetWorkflowCount ⇒
-      sender() ! (pathToNamedWorkflow.size: Int)
+      sender() ! (pathToWorkflow.size: Int)
 
     case Command.GetOrder(orderId) ⇒
       sender() ! (orderRegister.get(orderId) map { _.order })
@@ -283,13 +283,13 @@ with Stash {
 
     override def replaceRepo(changed: Repo): Unit = {
       super.replaceRepo(changed)
-      pathToNamedWorkflow = repo.currentVersion collect { case (k: WorkflowPath, v: Workflow.Named) ⇒ k → v }
-      orderProcessor = new OrderProcessor(pathToNamedWorkflow mapPartialFunction (_.workflow), idToOrder)
+      pathToWorkflow = repo.currentVersion collect { case (k: WorkflowPath, v: Workflow) ⇒ k → v }
+      orderProcessor = new OrderProcessor(pathToWorkflow, idToOrder)
       handleScheduledOrderGeneratorConfiguration(repo.currentFileBaseds collect { case o: ScheduledOrderGenerator ⇒ o })
     }
 
     protected def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[Coeval[Unit]]] =
-      onlyAdditionPossible(diff.select[WorkflowPath, Workflow.Named]) ++
+      onlyAdditionPossible(diff.select[WorkflowPath, Workflow]) ++
       updateAgents(diff.select[AgentPath, Agent])
 
     private def updateAgents(diff: FileBaseds.Diff[AgentPath, Agent]): Seq[Checked[Coeval[Unit]]] =
@@ -339,7 +339,7 @@ with Stash {
         Future.successful(Completed)
 
       case None ⇒
-        pathToNamedWorkflow.checked(order.workflowPath) match {
+        pathToWorkflow.checked(order.workflowPath) match {
           case Invalid(problem) ⇒ Future.failed(problem.throwable)
           case Valid(workflow) ⇒
             persistAsync(KeyedEvent(OrderAdded(workflow.path, order.state, order.payload))(order.id)) { stamped ⇒
@@ -434,11 +434,11 @@ with Stash {
   }
 
   private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit =
-    for (namedWorkflow ← pathToNamedWorkflow.get(order.workflowPath);
-         job ← namedWorkflow.workflow.jobOption(order.position);
+    for (workflow ← pathToWorkflow.get(order.workflowPath);
+         job ← workflow.jobOption(order.position);
          agentEntry ← agentRegister.get(job.agentPath))
     {
-      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, job.agentPath, namedWorkflow.workflow.reduceForAgent(job.agentPath))
+      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, job.agentPath, workflow.reduceForAgent(job.agentPath))
     }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
@@ -449,7 +449,7 @@ with Stash {
     }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
-    pathToNamedWorkflow(workflowPosition.workflowPath).workflow.instruction(workflowPosition.position)
+    pathToWorkflow(workflowPosition.workflowPath).instruction(workflowPosition.position)
 
   private def terminating: Receive = {
     case _: MasterCommand ⇒

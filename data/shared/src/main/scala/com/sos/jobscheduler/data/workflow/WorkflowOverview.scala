@@ -9,7 +9,7 @@ final case class WorkflowOverview(
   path: WorkflowPath)
 
 object WorkflowOverview {
-  def fromWorkflow(workflow: Workflow.Named) = WorkflowOverview(path = workflow.path)
+  def fromWorkflow(workflow: Workflow) = WorkflowOverview(path = workflow.path)
 
   implicit val jsonCodec = deriveCodec[WorkflowOverview]
 }

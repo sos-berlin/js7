@@ -6,10 +6,10 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
-import com.sos.jobscheduler.core.filebased.FileBasedReader.{readDirectoryTreeWithProblems, readDirectoryTree}
+import com.sos.jobscheduler.core.filebased.FileBasedReader.{readDirectoryTree, readDirectoryTreeWithProblems}
 import com.sos.jobscheduler.master.agent.AgentReader
 import com.sos.jobscheduler.master.fileBased.FileBasedReaderTest._
-import com.sos.jobscheduler.master.fileBased.FileBasedsTest.{AAgent, ANamedWorkflow, BAgent, BNamedWorkflow, CNamedWorkflow, provideDirectory}
+import com.sos.jobscheduler.master.fileBased.FileBasedsTest.{AAgent, AWorkflow, BAgent, BWorkflow, CWorkflow, provideDirectory}
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.createDirectories
@@ -25,9 +25,9 @@ final class FileBasedReaderTest extends FreeSpec {
     provideDirectory { directory ⇒
       createFiles(directory)
       assert(readDirectoryTreeWithProblems(directory, Set(WorkflowReader, AgentReader)).force.toSet == Set(
-        Valid(ANamedWorkflow),
-        Valid(BNamedWorkflow),
-        Valid(CNamedWorkflow),
+        Valid(AWorkflow),
+        Valid(BWorkflow),
+        Valid(CWorkflow),
         Invalid(Problem("""Problem with 'Workflow:/D (txt)': Failure(End:1:1 ..."ERROR")""")),
         Invalid(Problem("""File 'folder/test.alien.json' is not recognized as a configuration file""")),
         Valid(AAgent),
@@ -48,7 +48,7 @@ final class FileBasedReaderTest extends FreeSpec {
 object FileBasedReaderTest {
   private def createFiles(directory: Path): Unit = {
     createDirectories(directory / "ignored.agent.xml")  // Empty directory named like an agent is ignored
-    (directory / "A.workflow.json").contentString = ANamedWorkflow.workflow.asJson.toPrettyString
+    (directory / "A.workflow.json").contentString = AWorkflow.asJson.toPrettyString
     (directory / "B.job_chain.xml").xml = <job_chain><job_chain_node.end state="B-END"/></job_chain>
     (directory / "C.workflow.txt").contentString = "// EMPTY"
     (directory / "D.workflow.txt").contentString = "ERROR"

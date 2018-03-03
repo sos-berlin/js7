@@ -45,26 +45,26 @@ final class CommandQueueTest extends FreeSpec {
 
     // The first Input is sent alone to the Agent regardless of batchSize.
     val aOrder = toOrder("A")
-    commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath, TestWorkflow.workflow))
+    commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath, TestWorkflow))
     expected += toQueuedInputResponse(aOrder) :: Nil
     assert(commandQueue.succeeded == expected)
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
-    for (o ← twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath, TestWorkflow.workflow))
+    for (o ← twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath, TestWorkflow))
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentPath, TestWorkflow.workflow))
+    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentPath, TestWorkflow))
     expected += twoOrders map toQueuedInputResponse
     assert(commandQueue.succeeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
-    for (o ← fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath, TestWorkflow.workflow))
+    for (o ← fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath, TestWorkflow))
     expected += fiveOrders take 1 map toQueuedInputResponse
     assert(commandQueue.succeeded == expected)
 
     // After the Agent has processed the Input, three of the queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual fiveOrders.take(1).map(o ⇒ Input.AttachOrder(o, TestAgentPath, TestWorkflow.workflow))
+    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual fiveOrders.take(1).map(o ⇒ Input.AttachOrder(o, TestAgentPath, TestWorkflow))
     expected += fiveOrders drop 1 take 3 map toQueuedInputResponse
     assert(commandQueue.succeeded == expected)
 
@@ -79,10 +79,10 @@ final class CommandQueueTest extends FreeSpec {
 object CommandQueueTest {
   private val logger = Logger(getClass)
   private val TestAgentPath = AgentPath("/AGENT")
-  private val TestWorkflow = Workflow.Named(WorkflowPath("/A"), Workflow.of(
-    Job(JobPath("/JOB"), TestAgentPath)))
+  private val TestWorkflow = Workflow.of(WorkflowPath("/A"),
+    Job(JobPath("/JOB"), TestAgentPath))
   private def toQueuedInputResponse(order: Order[Order.Idle]) =
-    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath, TestWorkflow.workflow), Batch.Succeeded(Accepted))
+    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath, TestWorkflow), Batch.Succeeded(Accepted))
 
   private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.path, Order.StartNow)
 }

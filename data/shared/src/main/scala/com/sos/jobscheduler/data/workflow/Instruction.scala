@@ -38,11 +38,8 @@ trait JumpInstruction extends Instruction {
 object Instruction {
   val @: = Labeled
 
-  /** Only for tests and application. */
-  object simplify {
-    implicit def fromInstruction(instruction: Instruction): Labeled =
-      Labeled(Nil, instruction)
-  }
+  implicit def toLabeled(instruction: Instruction): Labeled =
+    Labeled(Nil, instruction)
 
   final case class Labeled(labels: Seq[Label], instruction: Instruction) {
     def toShortString = labelsString + instruction.toShortString

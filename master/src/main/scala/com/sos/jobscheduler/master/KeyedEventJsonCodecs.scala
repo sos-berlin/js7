@@ -24,7 +24,7 @@ object KeyedEventJsonCodecs
   implicit val MasterTypedPathJsonCodec: CirceCodec[TypedPath] = TypedPath.jsonCodec(MasterTypedPathCompanions)
 
   implicit val MasterFileBasedJsonCodec: TypedJsonCodec[FileBased] = TypedJsonCodec(
-    Subtype.named[Workflow.Named]("Workflow"),  // TODO Test is missing
+    Subtype.named[Workflow]("Workflow"),  // TODO Test is missing
     Subtype[Agent])
 
   /**
@@ -35,7 +35,7 @@ object KeyedEventJsonCodecs
       KeyedSubtype[MasterEvent],
       KeyedSubtype[RepoEvent],
       KeyedSubtype[OrderEvent],
-      KeyedSubtype[WorkflowEvent],
+      KeyedSubtype.singleEvent[WorkflowEvent.WorkflowAttached],
       KeyedSubtype.singleEvent[AgentEventIdEvent],
       KeyedSubtype[OrderScheduleEvent])
 }

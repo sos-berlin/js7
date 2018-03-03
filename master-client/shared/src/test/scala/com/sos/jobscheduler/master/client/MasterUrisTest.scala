@@ -46,7 +46,7 @@ final class MasterUrisTest extends FreeSpec {
     }
 
     "list" in {
-      assert(masterUris.workflow.list[Workflow.Named] == "http://example.com/master/api/workflow/?return=Workflow")
+      assert(masterUris.workflow.list[Workflow] == "http://example.com/master/api/workflow/?return=Workflow")
     }
   }
 }

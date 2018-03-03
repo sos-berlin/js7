@@ -11,25 +11,26 @@ import scala.collection.mutable
   */
 private[order] final class WorkflowRegister {
 
-  private val pathToNamedWorkflow = mutable.Map[WorkflowPath, Workflow.Named]()
+  private val _pathToWorkflow = mutable.Map[WorkflowPath, Workflow]()
     .withDefault { workflowPath ⇒ throw new NoSuchElementException(s"Unknown $workflowPath") }
 
-  def recover(namedWorkflow: Workflow.Named): Unit = {
-    pathToNamedWorkflow.insert(namedWorkflow.path → namedWorkflow)
+  def pathToWorkflow: PartialFunction[WorkflowPath, Workflow] = _pathToWorkflow
+
+  def recover(workflow: Workflow): Unit = {
+    _pathToWorkflow.insert(workflow.path → workflow)
   }
 
   def handleEvent(keyedEvent: KeyedEvent[WorkflowEvent]): Unit = {
-    val path = keyedEvent.key
     keyedEvent.event match {
       case WorkflowEvent.WorkflowAttached(workflow) ⇒
-        pathToNamedWorkflow += path → Workflow.Named(path, workflow)   // Multiple orders with same Workflow may occur. TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed.
+        _pathToWorkflow += workflow.path → workflow   // Multiple orders with same Workflow may occur. TODO Every Order becomes its own copy of its Workflow? Workflow will never be removed.
     }
   }
 
   /** Reuses string from workflow to avoid duplicate strings */
   def reuseMemory[S <: Order.State](order: Order[S]): Order[S] = {
     // A more general place for object identification may be the JSON deserializer: it needs access to an reusable object pool
-    val reusedPath = pathToNamedWorkflow(order.workflowPath).path
+    val reusedPath = _pathToWorkflow(order.workflowPath).path
     val wp = reusedPath /: order.position
     if (order.workflowPosition eq wp)
       order
@@ -39,20 +40,15 @@ private[order] final class WorkflowRegister {
     }
   }
 
-  def pathToWorkflow: PartialFunction[WorkflowPath, Workflow] = {
-    case workflowPath if pathToNamedWorkflow contains workflowPath ⇒
-      pathToNamedWorkflow(workflowPath).workflow
-  }
+  def get(path: WorkflowPath): Option[Workflow] =
+    _pathToWorkflow.get(path)
 
-  def get(path: WorkflowPath): Option[Workflow.Named] =
-    pathToNamedWorkflow.get(path)
+  def apply(path: WorkflowPath): Workflow =
+    _pathToWorkflow(path)
 
-  def apply(path: WorkflowPath): Workflow.Named =
-    pathToNamedWorkflow(path)
-
-  def namedWorkflows: Vector[Workflow.Named] =
-    pathToNamedWorkflow.values.toVector
+  def workflows: Vector[Workflow] =
+    _pathToWorkflow.values.toVector
 
   def size: Int =
-    pathToNamedWorkflow.size
+    _pathToWorkflow.size
 }

@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfNonZeroReturnCodeGoto, Job, ReturnCodeMeaning}
-import com.sos.jobscheduler.data.workflow.{JobPath, Label, Workflow}
+import com.sos.jobscheduler.data.workflow.{JobPath, Label, Workflow, WorkflowPath}
 import javax.xml.transform.Source
 import scala.collection.immutable.Seq
 
@@ -42,7 +42,7 @@ object LegacyJobchainXmlParser {
                 attributeMap.as[Label]("state") @: ExplicitEnd :: Nil
               }
           }
-          Workflow(items.values.flatten).reduce
+          Workflow(WorkflowPath.Anonymous, items.values.flatten).reduce
         }
       }
     }

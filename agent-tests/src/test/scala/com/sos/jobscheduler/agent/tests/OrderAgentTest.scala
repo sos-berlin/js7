@@ -45,7 +45,7 @@ final class OrderAgentTest extends FreeSpec {
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.path, Order.Ready, payload = Payload(Map("x" → "X")))
-          agentClient.executeCommand(AttachOrder(order, TestAgentPath, SimpleTestWorkflow.workflow)) await 99.s shouldEqual AgentCommand.Accepted
+          agentClient.executeCommand(AttachOrder(order, TestAgentPath, SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
           EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 10.s).repeat(agentClient.mastersEvents) {
             case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) ⇒
           }
@@ -59,7 +59,7 @@ final class OrderAgentTest extends FreeSpec {
     }
   }
 
-  for (testSpeed ← sys.props.get("test.speed")) s"Speed test $testSpeed orders × ${/*SimpleTestWorkflow.workflow.jobNodeCount*/"·"} jobs" in {
+  for (testSpeed ← sys.props.get("test.speed")) s"Speed test $testSpeed orders × ${/*SimpleTestWorkflow.jobNodeCount*/"·"} jobs" in {
     val n = testSpeed.toInt
     provideAgentDirectory { directory ⇒
       val jobDir = directory / "config" / "live"
@@ -78,7 +78,7 @@ final class OrderAgentTest extends FreeSpec {
             Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.path, Order.Ready, payload = Payload(Map("x" → "X")))
 
           val stopwatch = new Stopwatch
-          agentClient.executeCommand(Batch(orders map { AttachOrder(_, SimpleTestWorkflow.workflow) })) await 99.s
+          agentClient.executeCommand(Batch(orders map { AttachOrder(_, SimpleTestWorkflow) })) await 99.s
 
           val awaitedOrderIds = (orders map { _.id }).toSet
           val ready = mutable.Set[OrderId]()

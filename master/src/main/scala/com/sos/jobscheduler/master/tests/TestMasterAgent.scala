@@ -193,8 +193,8 @@ object TestMasterAgent {
           ForkJoin.Branch(
             pathName,
             Workflow(
-              for (_ ← 1 to conf.workflowLength) yield
-                () @: Job(TestJobPath, agentPath)))),
+              WorkflowPath.Anonymous,
+              Vector.fill(conf.workflowLength) { Job(TestJobPath, agentPath) }))),
       IfReturnCode(List(ReturnCode(0), ReturnCode(1)),
         Workflow.of(Job(TestJobPath, conf.agentPaths.head)),
         Some(Workflow.of(Job(TestJobPath, conf.agentPaths.head)))))

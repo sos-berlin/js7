@@ -8,7 +8,6 @@ import io.circe.{Decoder, ObjectEncoder}
   */
 trait FileBased {
   type Self <: FileBased
-  type ThisTypedPath <: TypedPath
 
   def path: TypedPath
   def companion: FileBased.Companion[Self]

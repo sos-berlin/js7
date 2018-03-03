@@ -28,11 +28,13 @@ object OrderEvent {
 
   final case class OrderAdded(workflowPath: WorkflowPath, state: Idle, payload: Payload = Payload.empty)
   extends OrderCoreEvent {
+    workflowPath.requireNonAnonymous()
     //type State = Idle
   }
 
   final case class OrderAttached(workflowPosition: WorkflowPosition, state: Idle, parent: Option[OrderId], agentPath: AgentPath, payload: Payload)
   extends OrderCoreEvent {
+    workflowPosition.workflowPath.requireNonAnonymous()
     //type State = Idle
   }
 

@@ -6,9 +6,8 @@ import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
-import com.sos.jobscheduler.data.workflow.{WorkflowPath, Workflow}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.WorkflowClient
-import io.circe
 import scala.concurrent.ExecutionContext
 
 /**
@@ -30,7 +29,7 @@ trait WorkflowRoute {
             complete(workflowClient.workflowOverviews)
 
           case Some("Workflow") | Some("Workflow") | None ⇒
-            complete(workflowClient.namedWorkflows)
+            complete(workflowClient.workflows)
 
           case _ ⇒
             reject
@@ -48,19 +47,16 @@ trait WorkflowRoute {
   private def singleWorkflow(path: WorkflowPath): Route =
     parameter("return".?) {
       case Some("Workflow") | Some("Workflow") | None ⇒
-        completeAs(path, _.workflow)
+        complete {
+          workflowClient.workflow(path) map {
+            case Some(workflow) ⇒
+              workflow: ToResponseMarshallable
+            case None ⇒
+              BadRequest → s"$path does not exist\n": ToResponseMarshallable
+          }
+        }
 
       case o ⇒
         complete((BadRequest → s"Unrecognized parameter return=$o\n"))
-    }
-
-  private def completeAs[A: circe.Encoder](path: WorkflowPath, as: Workflow.Named ⇒ A) =
-    complete {
-      workflowClient.namedWorkflow(path) map {
-        case Some(o) ⇒
-          as(o): ToResponseMarshallable
-        case None ⇒
-          BadRequest → s"$path does not exist\n": ToResponseMarshallable
-      }
     }
 }

@@ -56,10 +56,10 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
     Callback.future {
       MasterApi.workflows transform {
         case Failure(err) ⇒ setError(err)
-        case Success(stamped: Stamped[Seq[Workflow.Named]]) ⇒
+        case Success(stamped: Stamped[Seq[Workflow]]) ⇒
           Try {
             scope.modState(_.copy(
-              pathToWorkflow = stamped.value.map(o ⇒ o.path → PreparedWorkflow(o.path, o.workflow)).toMap
+              pathToWorkflow = stamped.value.map(o ⇒ o.path → PreparedWorkflow(o.path, o)).toMap
                 .withNoSuchKey(k ⇒ throw new NoSuchElementException(s"Unknown $k"))))
           }
       }

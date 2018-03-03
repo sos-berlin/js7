@@ -16,27 +16,34 @@ object ScalazStyle {
       * <p>`(true option a) == Some(a)`
       * <br>`(false option a) == None`
       */
-    final def option[A](a: ⇒ A): Option[A] = if (delegate) Some(a) else None
+    def ?[A](a: ⇒ A): Option[A] = option(a)
+
+    /**
+      * Conditional `Option`.
+      * <p>`(true option a) == Some(a)`
+      * <br>`(false option a) == None`
+      */
+    def option[A](a: ⇒ A): Option[A] = if (delegate) Some(a) else None
 
     /**
       * Conditional `List`.
       * <p>`(true option a) == List(a)`
       * <br>`(false option a) == Nil`
       */
-    final def list[A](a: ⇒ A): List[A] = if (delegate) List(a) else Nil
+    def list[A](a: ⇒ A): List[A] = if (delegate) List(a) else Nil
 
     /**
       * Conditional `Vector`.
       * <p>`(true option a) == Vector(a)`
       * <br>`(false option a) == Vector()`
       */
-    final def vector[A](a: ⇒ A): Vector[A] = if (delegate) Vector(a) else Vector()
+    def vector[A](a: ⇒ A): Vector[A] = if (delegate) Vector(a) else Vector()
 
     /**
       * Conditional `Set`.
       * <p>`(true option a) == Set(a)`
       * <br>`(false option a) == Set()`
       */
-    final def set[A](a: ⇒ A): Set[A] = if (delegate) Set(a) else Set()
+    def set[A](a: ⇒ A): Set[A] = if (delegate) Set(a) else Set()
   }
 }

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.data.event.Stamped
-import com.sos.jobscheduler.data.workflow.{WorkflowPath, Workflow, WorkflowsOverview}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath, WorkflowsOverview}
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -11,12 +11,12 @@ import scala.concurrent.{ExecutionContext, Future}
 trait WorkflowClient {
   protected implicit def executionContext: ExecutionContext
 
-  def namedWorkflow(workflowPath: WorkflowPath): Future[Option[Workflow.Named]]
+  def workflow(workflowPath: WorkflowPath): Future[Option[Workflow]]
 
-  def namedWorkflows: Future[Stamped[Seq[Workflow.Named]]]
+  def workflows: Future[Stamped[Seq[Workflow]]]
 
   def workflowOverviews: Future[Stamped[Seq[WorkflowPath]]] =
-    for (o ← namedWorkflows) yield
+    for (o ← workflows) yield
       o map (_ map (_.path))
 
   def workflowsOverview: Future[WorkflowsOverview] =

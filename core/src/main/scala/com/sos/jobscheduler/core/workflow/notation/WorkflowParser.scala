@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, ForkJoin, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, Job, Offer, ReturnCodeMeaning, End ⇒ EndInstr}
-import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, Label, Position, Workflow}
+import com.sos.jobscheduler.data.workflow.{Instruction, JobPath, Label, Position, Workflow, WorkflowPath}
 import fastparse.all._
 import java.util.concurrent.TimeUnit.SECONDS
 import scala.concurrent.duration.Duration
@@ -24,8 +24,11 @@ import scala.reflect.ClassTag
 object WorkflowParser {
 
   def parse(string: String): Checked[Workflow] =
+    parse(WorkflowPath.Anonymous, string)
+
+  def parse(path: WorkflowPath, string: String): Checked[Workflow] =
     parser.whole.parse(string) match {
-      case Parsed.Success(result, _) ⇒ Valid(result.copy(source = Some(string)))
+      case Parsed.Success(result, _) ⇒ Valid(result.copy(path = path, source = Some(string)))
       case o: Parsed.Failure ⇒ Invalid(Problem((o.toString)))
     }
 
@@ -62,7 +65,7 @@ object WorkflowParser {
 
     private lazy val workflow = P[Workflow](
       labeledInstruction.rep
-        map (stmts ⇒ Workflow(stmts.toVector)))
+        map (stmts ⇒ Workflow(WorkflowPath.Anonymous, stmts.toVector)))
 
     private val labelDef = P[Label](
       label ~ h ~ ":" ~ w)

@@ -52,7 +52,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
               Order.Ready,
               payload = Payload(Map("a" → "A"))),
             TestAgentPath,
-            SimpleTestWorkflow.workflow))
+            SimpleTestWorkflow))
         ) await 99.s
 
         val whenStepEnded: Future[Seq[OrderEvent.OrderProcessed]] =

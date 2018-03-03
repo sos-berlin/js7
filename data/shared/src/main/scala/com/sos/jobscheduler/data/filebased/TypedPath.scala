@@ -43,11 +43,16 @@ trait TypedPath extends IsString {
       c.apply(string)
   }
 
-  def checkedNameSyntax: Checked[this.type] =
-    withoutStartingSlash.split('/').toVector traverse nameValidator.checked match {
-      case Invalid(problem) ⇒ problem.head withKey toString
-      case Valid(_) ⇒ Valid(this)
-    }
+  def officialSyntaxChecked: Checked[this.type] =
+    if (string startsWith InternalPrefix)
+      Problem(s"Internal path is not allowed here: $this")
+    else
+      withoutStartingSlash.split('/').toVector traverse officialSyntaxNameValidator.checked match {
+        case Invalid(problem) ⇒ problem.head withKey toString
+        case Valid(_) ⇒ Valid(this)
+      }
+
+  def isGenerated = string startsWith InternalPrefix
 
   override def toString = toTypedString
 
@@ -58,7 +63,8 @@ trait TypedPath extends IsString {
 
 object TypedPath {
   val VersionSeparator = "@"
-  private val nameValidator = new NameValidator(Set('-', '.'))
+  val InternalPrefix = "/?/"
+  private val officialSyntaxNameValidator = new NameValidator(Set('-', '.'))
 
   implicit def ordering[P <: TypedPath]: Ordering[P] =
     (a, b) ⇒ a.string compare b.string
