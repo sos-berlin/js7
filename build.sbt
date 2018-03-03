@@ -34,6 +34,8 @@ import sbt.{CrossVersion, Def}
 
 val _dummy_ = BuildUtils.initializeLogger()
 
+val testParallelization: Int = 1 * sys.runtime.availableProcessors
+
 val publishRepositoryCredentialsFile = sys.props.get("publishRepository.credentialsFile") map (o ⇒ new File(o))
 val publishRepositoryName            = sys.props.get("publishRepository.name")
 val publishRepositoryUri             = sys.props.get("publishRepository.uri")
@@ -44,19 +46,18 @@ val isForDevelopment                 = sys.props contains "dev"
 addCommandAlias("clean-publish"  , "; clean ;build; publish-all")
 addCommandAlias("clean-build"    , "; clean; build")
 addCommandAlias("build"          , "; compile-all; test-all; pack")
-addCommandAlias("build-quickly"  , "; compile-all; pack")
-addCommandAlias("compile-all"    , "; engine-job-api/compile; compile")
+addCommandAlias("build-only"     , "; compile-only; pack")
+addCommandAlias("compile-all"    , "; engine-job-api/Test/compile; Test/compile; ForkedTest:compile")
+addCommandAlias("compile-only"   , "; engine-job-api/compile; compile")
 addCommandAlias("test-all",
-  "; test:compile" +
-  "; ForkedTest:compile" + (
-    if (testParallel)
-      "; StandardTest:test" +
-      "; ForkedTest:test" +
-      "; set Global/concurrentRestrictions += Tags.exclusive(Tags.Test)" +  //Tags.limit(Tags.Test, max = 1)" +  // Slow: Tags.limitAll(1)
-      "; ExclusiveTest:test"
-    else
-      "; test" +
-      "; ForkedTest:test"))
+  if (testParallel)
+    "; StandardTest:test" +
+    "; ForkedTest:test" +
+    "; set Global/concurrentRestrictions += Tags.exclusive(Tags.Test)" +  //Tags.limit(Tags.Test, max = 1)" +  // Slow: Tags.limitAll(1)
+    "; ExclusiveTest:test"
+  else
+    "; test" +
+    "; ForkedTest:test")
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
@@ -632,8 +633,11 @@ lazy val tests = project.dependsOn(master, agent, `agent-client`)
       log4j % "test"
   }
 
-Global / concurrentRestrictions ++= (if (testParallel) Nil else Seq(Tags.exclusive(Tags.Test)))
-
+Global / concurrentRestrictions += (
+  if (testParallel)
+    Tags.limit(Tags.Test, max = testParallelization)
+  else
+    Tags.exclusive(Tags.Test))
 
 lazy val StandardTest  = config("StandardTest" ) extend Test
 lazy val ExclusiveTest = config("ExclusiveTest") extend Test
@@ -648,7 +652,7 @@ lazy val testSettings =
     testOptions in ExclusiveTest := Seq(scalaTestArguments, Tests.Filter(isExclusiveTest)),
     testOptions in ForkedTest    := Seq(scalaTestArguments, Tests.Filter(isForkedTest)),
     javaOptions in ForkedTest    ++= Seq("-Xmx100m", "-Xms20m", "-Dlog4j.configurationFile=../project/log4j2.xml"),  // SettingKey for ../project ???
-    testForkedParallel in ForkedTest := testParallel,  // Experimental in sbt 0.13.13
+    testForkedParallel in ForkedTest := testParallel,
     logBuffered in Test          := false,  // Recommended for ScalaTest
     logBuffered in StandardTest  := false,
     logBuffered in ExclusiveTest := false,
