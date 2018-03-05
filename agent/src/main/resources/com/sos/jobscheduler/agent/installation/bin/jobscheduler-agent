@@ -5,7 +5,7 @@ export JOBSCHEDULER_HOME="$(cd "$(dirname -- "$0")/../bin/.." && pwd || kill $$)
 . "$JOBSCHEDULER_HOME/bin/internal/set-context.sh"
 declare classpathString java
 
-waitForTaskTermination=10
+terminateCommand="{ TYPE: Terminate, sigtermProcesses: false }"
 javaOptions=()
 agentOptions=()
 httpPort=4445
@@ -118,7 +118,7 @@ function terminate() {
     -classpath "$classpathString" \
     com.sos.jobscheduler.agent.client.main.AgentClientMain \
     http://127.0.0.1:$httpPort \
-    "{ TYPE: Terminate, sigtermProcesses: true, sigkillProcessesAfter: $waitForTaskTermination }" >/dev/null &
+    "$terminateCommand" >/dev/null &
   (sleep $terminateTimeout && kill $pid) &
   killer=$!
   wait $pid
