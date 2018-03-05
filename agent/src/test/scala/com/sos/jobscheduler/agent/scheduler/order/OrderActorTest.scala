@@ -29,11 +29,13 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta}
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAttached, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
 import com.sos.jobscheduler.data.workflow.instructions.Job
-import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.taskserver.modules.shell.StandardRichProcessStartSynchronizer
 import com.typesafe.config.Config
 import java.nio.file.Path
@@ -74,7 +76,7 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
     def line(x: String, i: Int) = (s" $x$i" * ((i+n/100-1)/(n/100))).trim ensuring { _.length < 8000 }  // Windows: Maximum command line length is 8191 characters
     val expectedStderr = (for (i ← 1 to n) yield line("e", i) + Nl).mkString
     val expectedStdout = (for (i ← 1 to n) yield line("o", i) + Nl).mkString
-    val jobConfiguration = JobConfiguration(TestJobPath,
+    val jobConfiguration = JobConfiguration(TestJobId,
       JobScript(
         (if (isWindows) "@echo off\n" else "") +
         (for (i ← 1 to n) yield
@@ -101,8 +103,10 @@ final class OrderActorTest extends FreeSpec with HasCloser with BeforeAndAfterAl
 }
 
 private object OrderActorTest {
-  private val TestOrder = Order(OrderId("TEST-ORDER"), WorkflowPath("/JOBNET"), Order.Ready)
+  private val TestVersion = VersionId("VERSION")
+  private val TestOrder = Order(OrderId("TEST-ORDER"), WorkflowPath("/WORKFLOW") % TestVersion, Order.Ready)
   private val TestJobPath = JobPath("/test")
+  private val TestJobId = TestJobPath % TestVersion
   private val TestAgentPath = AgentPath("/TEST-AGENT")
   private val TestJob = Job(TestJobPath, TestAgentPath)
   private val TestPosition = Position(777)
@@ -114,7 +118,7 @@ private object OrderActorTest {
     OrderDetached)
   private val Nl = System.lineSeparator
 
-  private val TestJobConfiguration = JobConfiguration(TestJobPath,
+  private val TestJobConfiguration = JobConfiguration(TestJobId,
     JobScript(
       if (isWindows) """
         |@echo off

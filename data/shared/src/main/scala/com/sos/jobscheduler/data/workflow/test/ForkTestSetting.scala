@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.data.workflow.test
 
 import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, Job}
-import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 
 /**
   * @author Joacim Zschimmer
@@ -33,7 +34,7 @@ object ForkTestSetting {
     """.stripMargin.trim
 
   val TestWorkflow = Workflow(
-    WorkflowPath("/WORKFLOW"),
+    WorkflowPath("/WORKFLOW") % "(initial)" ,
     Vector(
       /*0*/ AJob,
       /*1*/ ForkJoin.of(

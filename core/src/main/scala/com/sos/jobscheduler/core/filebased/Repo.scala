@@ -4,21 +4,26 @@ import cats.data.Validated.Valid
 import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
+import com.sos.jobscheduler.base.utils.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.jobscheduler.base.utils.ScalaUtils._
+import com.sos.jobscheduler.common.scalautil.Memoizer
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedAddedOrChanged, FileBasedChanged, FileBasedDeleted, FileBasedEvent, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedVersion, RepoEvent, TypedPath}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedId_, RepoEvent, TypedPath, VersionId}
 import scala.collection.immutable
 import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
   */
-final case class Repo private(
-  versions: List[FileBasedVersion],
-  pathToVersionToFileBased: Map[TypedPath, Map[FileBasedVersion, Option[FileBased]]])
+final case class Repo private(versions: List[VersionId], idToFileBased: Map[FileBasedId_, Option[FileBased]])
 {
+  assert(versions.nonEmpty || idToFileBased.isEmpty)
+
   import Repo._
+  lazy val pathToVersionToFileBased: Map[TypedPath, Map[VersionId, Option[FileBased]]] =
+    idToFileBased.map { case (id, fileBased) ⇒ (id.path, id.versionId, fileBased) }
+      .groupBy (_._1)
+      .mapValues (_ toKeyedMap (_._2) mapValues (_._3))
 
   lazy val currentVersion: Map[TypedPath, FileBased] =
     for {
@@ -27,10 +32,32 @@ final case class Repo private(
       fileBased ← fileBasedOption
     } yield path → fileBased
 
+  private val typeToIdToFileBased: FileBased.Companion_ ⇒ Map[FileBasedId_, Option[FileBased]] =
+    Memoizer { companion ⇒
+      idToFileBased.collect {
+        case (id, fileBased) if id.path.companion == companion ⇒
+          id → fileBased
+      }.toMap
+    }
+
+  private val typeToPathToCurrentFileBased: FileBased.Companion_ ⇒ Map[TypedPath, FileBased] =
+    Memoizer { companion ⇒
+      currentVersion collect {
+        case (path, fileBased) if fileBased.companion == companion ⇒
+          path → fileBased
+      }
+    }
+
+  //def typed[A <: FileBased](implicit A: FileBased.Companion[A]): Map[FileBasedId[A#Path], Option[A]] =
+  //  typeToIdToFileBased(A).asInstanceOf[Map[FileBasedId[A#Path], Option[A]]]
+
+  def currentTyped[A <: FileBased](implicit A: FileBased.Companion[A]): Map[A#Path, A] =
+    typeToPathToCurrentFileBased(A).asInstanceOf[Map[A#Path, A]]
+
+  def versionId: VersionId = versions.headOption getOrElse VersionId.Anonymous
+
   def currentFileBaseds: immutable.Iterable[FileBased] =
     currentVersion.values.toImmutableIterable
-
-  assert(versions.nonEmpty || pathToVersionToFileBased.isEmpty)
 
   def applyEvents(events: Seq[RepoEvent]): Checked[Repo] = {
     var result = Checked(this)
@@ -53,34 +80,33 @@ final case class Repo private(
         if (versions.isEmpty)
           Problem(s"Missing first event VersionAdded for Repo")
         else
-          Valid(event match {
-            case FileBasedAddedOrChanged(fileBased) ⇒
-              addEntry(fileBased.path, Some(fileBased))
+          event match {
+            case event @ FileBasedAddedOrChanged(fileBased) ⇒
+              if (fileBased.id.versionId != versionId)
+                Problem(s"Version in ${event.toShortString} does not match current version '${versionId.string}'")
+              else
+                Valid(addEntry(fileBased.path, Some(fileBased)))
 
             case FileBasedDeleted(path) ⇒
-              addEntry(path, None)
-          })
+              Valid(addEntry(path, None))
+          }
     }
 
   private def addEntry(path: TypedPath, fileBasedOption: Option[FileBased]): Repo = {
     val version = versions.head
-    copy(pathToVersionToFileBased =
-      pathToVersionToFileBased
-        .updated(path, pathToVersionToFileBased.getOrElse(path, Map.empty)
-          .updated(version, fileBasedOption)))
+    copy(idToFileBased = idToFileBased + ((path % version) → fileBasedOption))
   }
 
-  def get(versioned: TypedPath.Versioned[TypedPath]): Checked[FileBased] = {
+  def idTo[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[A] =
     for {
-      versionToFileBased ← pathToVersionToFileBased.checked(versioned.path)
-      fileBasedOption ← versionToFileBased.checked(versioned.version) orElse (
+      versionToFileBased ← pathToVersionToFileBased.checked(id.path)
+      fileBasedOption ← versionToFileBased.checked(id.versionId) orElse (
         for {
-          history ← historyBefore(versioned.version)
-          fb ← versionToFileBased.fileBasedOption(history) toChecked Problem(s"Not found: $versioned")
+          history ← historyBefore(id.versionId)
+          fb ← versionToFileBased.fileBasedOption(history) toChecked Problem(s"No such '$id'")
         } yield fb): Checked[Option[FileBased]]
-      fileBased ← fileBasedOption.toChecked(DeletedProblem(versioned))
-    } yield fileBased
-  }
+      fileBased ← fileBasedOption.toChecked(DeletedProblem(id))
+    } yield fileBased.cast[A]
 
   def eventsFor(is: TypedPath.AnyCompanion ⇒ Boolean): Seq[RepoEvent] =
     toEvents collect {
@@ -89,10 +115,10 @@ final case class Repo private(
     }
 
   def toEvents: Seq[RepoEvent] = {
-    val versionToFileBasedOptions: Map[FileBasedVersion, Seq[Either[TypedPath, FileBased]]] =
-      pathToVersionToFileBased.toVector
+    val versionToFileBasedOptions: Map[VersionId, Seq[Either[FileBased/*added/changed*/, TypedPath/*deleted*/]]] =
+      pathToVersionToFileBased.toVector.sortBy(_._1)/*for testing*/
         .flatMap { case (path, versionToFileBasedOpt) ⇒
-          versionToFileBasedOpt map { case (v, opt) ⇒ v → (opt map Right.apply getOrElse Left(path)) }
+          versionToFileBasedOpt map { case (v, opt) ⇒ v → (opt map Left.apply getOrElse Right(path)) }
         }
         .groupBy(_._1).mapValues(_ map (_._2))
     versions.tails
@@ -102,25 +128,22 @@ final case class Repo private(
         case version :: history ⇒
           Vector(VersionAdded(version)) ++
             versionToFileBasedOptions.getOrElse(version, Nil).map {
-              case Left(path) ⇒
-                FileBasedDeleted(path)
-              case Right(fileBased) ⇒
+              case Left(fileBased) ⇒
                 val vToF = pathToVersionToFileBased(fileBased.path)
                 if (vToF.fileBasedOption(history).flatten.isDefined)
                   FileBasedChanged(fileBased)
                 else
                   FileBasedAdded(fileBased)
+              case Right(path) ⇒
+                FileBasedDeleted(path)
             }
       }
       .toVector.reverse.flatten
   }
 
-  //def currentVersionAsAddedEvents: Seq[FileBasedAdded] =
-  //  currentVersion.values.map(FileBasedAdded.apply).toVector
-
-  private[filebased] def historyBefore(version: FileBasedVersion): Checked[List[FileBasedVersion]] =
-    versions.dropWhile(version.!=) match {
-      case Nil ⇒ Problem(s"No such '$version'")
+  private[filebased] def historyBefore(versionId: VersionId): Checked[List[VersionId]] =
+    versions.dropWhile(versionId.!=) match {
+      case Nil ⇒ Problem(s"No such '$versionId'")
       case _ :: tail ⇒ Valid(tail)
     }
 }
@@ -128,16 +151,16 @@ final case class Repo private(
 object Repo {
   val empty = new Repo(Nil, Map.empty)
 
-  private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: Map[FileBasedVersion, Option[FileBased]])
+  private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: Map[VersionId, Option[FileBased]])
   extends AnyVal {
     /** None: no such version; Some(None): deleted */
-    def fileBasedOption(history: List[FileBasedVersion]): Option[Option[FileBased]] =
+    def fileBasedOption(history: List[VersionId]): Option[Option[FileBased]] =
       history.collectFirst { case v if versionToFileBasedOption contains v ⇒ versionToFileBasedOption(v) }
   }
 
-  final case class DeletedProblem private[Repo](versionedPath: TypedPath.Versioned_)
-    extends Problem.Lazy(s"Has been deleted: $versionedPath")
+  final case class DeletedProblem private[Repo](id: FileBasedId_)
+    extends Problem.Lazy(s"Has been deleted: $id")
 
-  final case class DuplicateVersionProblem private[Repo](version: FileBasedVersion)
-    extends Problem.Lazy(s"Duplicate version '${version.string}'")
+  final case class DuplicateVersionProblem private[Repo](versionId: VersionId)
+    extends Problem.Lazy(s"Duplicate VersionId '${versionId.string}'")
 }

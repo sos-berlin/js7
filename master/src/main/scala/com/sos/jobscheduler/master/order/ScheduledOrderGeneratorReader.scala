@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.order
 import akka.util.ByteString
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.stringToSource
 import com.sos.jobscheduler.core.filebased.FileBasedReader
-import com.sos.jobscheduler.data.filebased.SourceType
+import com.sos.jobscheduler.data.filebased.{FileBasedId, SourceType}
 import java.time.ZoneId
 
 /**
@@ -11,9 +11,9 @@ import java.time.ZoneId
   */
 final class ScheduledOrderGeneratorReader(timeZone: ZoneId) extends FileBasedReader
 {
-  val fileBasedCompanion = ScheduledOrderGenerator
+  val companion = ScheduledOrderGenerator
 
-  def read(path: ScheduledOrderGeneratorPath, source: ByteString) = {
-    case SourceType.Xml ⇒ ScheduledOrderGeneratorXmlParser.parseXml(path, source.utf8String, timeZone)
+  def read(id: FileBasedId[ScheduledOrderGeneratorPath], source: ByteString) = {
+    case SourceType.Xml ⇒ ScheduledOrderGeneratorXmlParser.parseXml(id, source.utf8String, timeZone)
   }
 }

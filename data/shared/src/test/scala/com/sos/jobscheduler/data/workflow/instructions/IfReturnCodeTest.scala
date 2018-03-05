@@ -2,8 +2,8 @@ package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.ReturnCode
-import com.sos.jobscheduler.data.workflow.{JobPath, Workflow}
+import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 

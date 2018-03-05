@@ -82,8 +82,9 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
 
 object OrderRouteTest {
   private val OrderUri = "/api/order"
+  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
   private val TestOrders: Map[OrderId, Order[Order.State]] = List(
-    Order(OrderId("/PATH/1"), WorkflowPath("/test"), Order.StartNow),
-    Order(OrderId("2"), WorkflowPath("/test") /: Position(2), Order.Finished))
+    Order(OrderId("/PATH/1"), TestWorkflowId, Order.StartNow),
+    Order(OrderId("2"), TestWorkflowId /: Position(2), Order.Finished))
     .toKeyedMap { _.id }
 }

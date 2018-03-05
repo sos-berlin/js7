@@ -143,6 +143,14 @@ final class ScalaUtilsTest extends FreeSpec {
     assert(pf.checked(2) == Invalid(Problem("No such key '2'")))
   }
 
+  "PartialFunction.toChecked" in {
+    val pf: PartialFunction[Int, String] = {
+      case 1 ⇒ "1"
+    }
+    assert(pf.toChecked(1) == Valid("1"))
+    assert(pf.toChecked(2) == Invalid(Problem("No such key '2'")))
+  }
+
   "PartialFunction.getOrElse" in {
     val pf: PartialFunction[Int, String] = {
       case 1 ⇒ "1"

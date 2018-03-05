@@ -7,8 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAutoCl
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
-import com.sos.jobscheduler.data.job.TaskId
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.{JobPath, TaskId}
 import java.nio.file.Files.{delete, exists, size}
 import java.nio.file.{Files, Paths}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}

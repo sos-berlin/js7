@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.master.gui.components.workflowlist
 
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.gui.router.Router
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.html_<^._
@@ -23,12 +23,14 @@ object WorkflowListComponent {
       <.div(
         <.div(^.cls := "sheet-headline")(
           s"${props.entries.size} Workflows"),
-        props.entries.sortBy(_.path).toVdomArray(e ⇒ EntryComponent(e)))
+        props.entries.sortBy(_.id).toVdomArray(e ⇒ EntryComponent(e)))
   }
 
   final case class Props(entries: Seq[Props.Entry])
   object Props {
-    final case class Entry(path: WorkflowPath, workflow: Workflow, orderCount: Option[Int])
+    final case class Entry(workflow: Workflow, orderCount: Option[Int]) {
+      def id = workflow.id
+    }
     object Entry {
       implicit val reuse: Reusability[Entry] = Reusability.byRef[Entry]
     }
@@ -38,8 +40,8 @@ object WorkflowListComponent {
   private val EntryComponent = ScalaComponent.builder[Props.Entry]("WorkflowList.Workflow")
     .render_P { entry ⇒
       <.div(
-        <.a(^.cls := "hidden-link", ^.href := Router.hash(entry.path))(
-          <.b(entry.path.string)),
+        <.a(^.cls := "hidden-link", ^.href := Router.hash(entry.workflow.id))(
+          <.b(entry.id.pretty)),
         entry.orderCount.whenDefined(n ⇒ s" · $n orders"))
     }
     .configure(Reusability.shouldComponentUpdate)

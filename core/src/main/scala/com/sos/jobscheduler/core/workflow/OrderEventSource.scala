@@ -10,14 +10,14 @@ import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
-import com.sos.jobscheduler.data.workflow.{EventInstruction, Instruction, OrderContext, Position, PositionInstruction, Workflow, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{EventInstruction, Instruction, OrderContext, Position, PositionInstruction, Workflow, WorkflowId, WorkflowPosition}
 import scala.annotation.tailrec
 
 /**
   * @author Joacim Zschimmer
   */
 final class OrderEventSource(
-  pathToWorkflow: PartialFunction[WorkflowPath, Workflow],
+  idToWorkflow: WorkflowId ⇒ Checked[Workflow],
   idToOrder: PartialFunction[OrderId, Order[Order.State]])
 {
   private val context = new OrderContext {
@@ -72,42 +72,42 @@ final class OrderEventSource(
       case Some(position) ⇒
         if (visited contains position)
           Invalid(Problem(s"${order.id} is in a workflow loop: " +
-            visited.reverse.map(pos ⇒ pos + " " + pathToWorkflow(order.workflowPath).labeledInstruction(pos).toShortString).mkString(" --> ")))
+            visited.reverse.map(pos ⇒ pos + " " + idToWorkflow(order.workflowId).force.labeledInstruction(pos).toShortString).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)
       case None ⇒ Valid(Some(order.position))
     }
 
-  private def applySingleMoveInstruction(order: Order[Order.Processed]): Option[Position] = {
-    val workflow = pathToWorkflow(order.workflowPath)
-    workflow.instruction(order.position) match {
-      case Goto(label) ⇒
-        workflow.labelToPosition(order.position.parents, label)
-
-      case IfNonZeroReturnCodeGoto(label) ⇒
-        if (order.state.outcome.isFailed)
+  private def applySingleMoveInstruction(order: Order[Order.Processed]): Option[Position] =
+    idToWorkflow(order.workflowId).toOption flatMap { workflow ⇒
+      workflow.instruction(order.position) match {
+        case Goto(label) ⇒
           workflow.labelToPosition(order.position.parents, label)
-        else
-          Some(order.position.increment)
 
-      case instr: PositionInstruction ⇒
-        instr.nextPosition(order, context)
+        case IfNonZeroReturnCodeGoto(label) ⇒
+          if (order.state.outcome.isFailed)
+            workflow.labelToPosition(order.position.parents, label)
+          else
+            Some(order.position.increment)
 
-      //case _: End if order.position.isNested ⇒
-      //  order.position.dropChild flatMap (returnPosition ⇒
-      //    workflow.instruction(returnPosition) match {
-      //      case _: IfReturnCode ⇒
-      //        nextPosition(order withPosition returnPosition)
-      //      case _ ⇒
-      //        None
-      //    })
+        case instr: PositionInstruction ⇒
+          instr.nextPosition(order, context)
 
-      case _ ⇒ None
-    }
+        //case _: End if order.position.isNested ⇒
+        //  order.position.dropChild flatMap (returnPosition ⇒
+        //    workflow.instruction(returnPosition) match {
+        //      case _: IfReturnCode ⇒
+        //        nextPosition(order withPosition returnPosition)
+        //      case _ ⇒
+        //        None
+        //    })
+
+        case _ ⇒ None
+      }
   }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
-    pathToWorkflow(workflowPosition.workflowPath).instruction(workflowPosition.position)
+    idToWorkflow(workflowPosition.workflowId).force.instruction(workflowPosition.position)
 }
 
 object OrderEventSource {

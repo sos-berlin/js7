@@ -6,8 +6,8 @@ import com.sos.jobscheduler.base.utils.DuplicateKeyException
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.common.ActorRegister
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.JobPath
 import scala.collection.mutable
 
 /**

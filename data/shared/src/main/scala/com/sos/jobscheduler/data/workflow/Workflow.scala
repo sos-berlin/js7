@@ -7,30 +7,30 @@ import com.sos.jobscheduler.base.utils.Collections.implicits.{RichIndexedSeq, Ri
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.FileBased
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, VersionId}
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.Instruction._
+import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, ImplicitEnd, Job}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.{IndexedSeq, Seq}
 import scala.language.implicitConversions
-import com.sos.jobscheduler.base.utils.Strings._
 
 /**
   * @author Joacim Zschimmer
   */
-final case class Workflow private(path: WorkflowPath, labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String])
+final case class Workflow private(id: WorkflowId, labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String])
 extends FileBased
 {
-  import com.sos.jobscheduler.data.workflow.Workflow._
+  assert(isCorrectlyEnded(labeledInstructions), "Missing implicit end instruction")
 
   type Self = Workflow
 
-  def companion = Workflow
+  val companion = Workflow
 
-  assert(isCorrectlyEnded(labeledInstructions), "Missing implicit end instruction")
+  def withId(id: FileBasedId[WorkflowPath]) = copy(id = id)
 
   val instructions: IndexedSeq[Instruction] = labeledInstructions map (_.instruction)
   private val _labelToNumber: Map[Label, InstructionNr] =
@@ -52,7 +52,7 @@ extends FileBased
     } yield Position(parents, nr)
 
   def lastWorkflowPosition: WorkflowPosition =
-    path /: Position(lastNr)
+    id /: Position(lastNr)
 
   def lastNr: InstructionNr =
     instructions.length - 1
@@ -167,19 +167,19 @@ extends FileBased
 
   def withoutSource = copy(source = None)
 
-  override def toString = (if (path != WorkflowPath.Anonymous) s"$path " else "") + s"{ ${labeledInstructions.mkString("; ")} }"
+  override def toString = (if (path != WorkflowPath.Anonymous) s"$id " else "") + s"{ ${labeledInstructions.mkString("; ")} }"
 }
 
 object Workflow extends FileBased.Companion[Workflow] {
   type ThisFileBased = Workflow
-  type ThisTypedPath = WorkflowPath
+  type Path = WorkflowPath
 
   val typedPathCompanion = WorkflowPath
-  private val empty = Workflow(FolderPath.Internal.resolve[WorkflowPath]("empty"), Vector.empty)
+  private val empty = Workflow(FolderPath.Internal.resolve[WorkflowPath]("empty") % VersionId.Anonymous, Vector.empty)
 
-  def apply(path: WorkflowPath, labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String] = None): Workflow =
+  def apply(id: WorkflowId, labeledInstructions: IndexedSeq[Instruction.Labeled], source: Option[String] = None): Workflow =
     new Workflow(
-      path,
+      id,
       labeledInstructions = labeledInstructions ++ !isCorrectlyEnded(labeledInstructions) ? (() @: ImplicitEnd),
       source)
 
@@ -187,10 +187,10 @@ object Workflow extends FileBased.Companion[Workflow] {
     if (instructions.isEmpty)
       empty
     else
-      of(WorkflowPath.Anonymous, instructions: _*)
+      of(WorkflowPath.NoId, instructions: _*)
 
-  def of(path: WorkflowPath, instructions: Instruction.Labeled*): Workflow =
-    Workflow(path, instructions.toVector)
+  def of(id: WorkflowId, instructions: Instruction.Labeled*): Workflow =
+    Workflow(id, instructions.toVector)
 
   def isCorrectlyEnded(labeledInstructions: IndexedSeq[Labeled]): Boolean =
     labeledInstructions.nonEmpty &&
@@ -198,16 +198,16 @@ object Workflow extends FileBased.Companion[Workflow] {
        labeledInstructions.last.instruction.isInstanceOf[Goto])
 
   implicit val jsonEncoder: ObjectEncoder[Workflow] = {
-    case Workflow(path, instructions, source) ⇒
+    case Workflow(id, instructions, source) ⇒
       JsonObject(
-        "path" → (!path.isGenerated ? path).asJson,
+        "id" → (!id.isAnonymous ? id).asJson,
         "instructions" → instructions.asJson,
         "source" → source.asJson)
   }
   implicit val jsonDecoder: Decoder[Workflow] =
     cursor ⇒ for {
-      path ← cursor.get[Option[WorkflowPath]]("path") map (_ getOrElse WorkflowPath.Anonymous)
+      id ← cursor.get[Option[WorkflowId]]("id") map (_ getOrElse WorkflowPath.Anonymous % VersionId.Anonymous)
       instructions ← cursor.get[IndexedSeq[Labeled]]("instructions")
       source ← cursor.get[Option[String]]("source")
-    } yield Workflow(path, instructions, source)
+    } yield Workflow(id, instructions, source)
 }

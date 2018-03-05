@@ -20,7 +20,7 @@ import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.WaitForCondition.retryUntil
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.JobPath
 import com.typesafe.config.ConfigFactory
 import java.time.Instant.now
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}

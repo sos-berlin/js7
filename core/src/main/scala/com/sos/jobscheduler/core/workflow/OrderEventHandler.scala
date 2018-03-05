@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderForked, OrderJoined, OrderOffered, OrderProcessed}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Job
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 
@@ -18,7 +18,7 @@ import scala.collection.mutable
   * @author Joacim Zschimmer
   */
 final class OrderEventHandler(
-  pathToWorkflow: PartialFunction[WorkflowPath, Workflow],
+  idToWorkflow: WorkflowId ⇒ Checked[Workflow],
   idToOrder: PartialFunction[OrderId, Order[Order.State]])
 {
   private val _offeredToAwaitingOrder = mutable.Map[OrderId, Set[OrderId]]()  // FIXME Verschwindet, wenn FileBased erneut eingelesen werden. Event OrderOffered?
@@ -38,7 +38,8 @@ final class OrderEventHandler(
     event match {
       case event: OrderProcessed if event.outcome != Outcome.RecoveryGeneratedOutcome ⇒
         for {
-          job ← pathToWorkflow(previousOrder.workflowPath).checkedJob(previousOrder.position)
+          workflow ← idToWorkflow(previousOrder.workflowId)
+          job ← workflow.checkedJob(previousOrder.position)
             .mapProblem(_ withPrefix s"Problem with '${previousOrder.id}' in state Processed:")
         } yield
           FollowUp.Processed(job) :: Nil

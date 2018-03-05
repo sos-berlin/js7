@@ -33,10 +33,10 @@ extends OnUnmount {
         <.div(<.i("Fetching orders..."))
 
       case content: FetchedContent ⇒
-        val sequence = content.workflowToOrderSeq.getOrElse(props.preparedWorkflow.path, Vector.empty)
+        val sequence = content.workflowToOrderSeq.getOrElse(props.preparedWorkflow.id, Vector.empty)
         <.div(
           <.div(^.cls := "sheet-headline")(
-            props.preparedWorkflow.path),
+            props.preparedWorkflow.id),
           <.div(sequence.length.toString, " orders"),
           ordersState.error.whenDefined(error ⇒ <.span(^.cls := "error")(error)),
           renderWorkflowContent(props.preparedWorkflow, content))
@@ -87,7 +87,7 @@ extends OnUnmount {
   private def renderOrders(preparedWorkflow: PreparedWorkflow, instructionsWithXY: Seq[(Position, Int, Int)], content: FetchedContent) =
     (for {
         (position, x0, y) ← instructionsWithXY
-        orderIds = content.workflowPositionToOrderIdSeq(preparedWorkflow.path /: position)
+        orderIds = content.workflowPositionToOrderIdSeq(preparedWorkflow.id /: position)
         n = min(orderIds.length, OrderPerInstructionLimit)
         (orderEntry, i) ← Array.tabulate[OrderEntry](n)(i ⇒ content.idToEntry(orderIds(i))).zipWithIndex
         x = orderXpx(x0, i)

@@ -2,10 +2,10 @@ package com.sos.jobscheduler.master.gui.components.workflow
 
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.workflow.instructions._
-import com.sos.jobscheduler.data.workflow.{Instruction, Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Instruction, Position, WorkflowId}
+import com.sos.jobscheduler.master.gui.common.FlatWorkflows.flattenWorkflow
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.components.state.PreparedWorkflow
-import com.sos.jobscheduler.master.gui.common.FlatWorkflows.flattenWorkflow
 import japgolly.scalajs.react.ScalaComponent
 import japgolly.scalajs.react.vdom.html_<^._
 import scala.collection.immutable.Seq
@@ -28,7 +28,7 @@ object WorkflowComponent {
   private def renderWorkflow(preparedWorkflow: PreparedWorkflow): VdomElement =
     <.table(^.cls := "no-padding")(  // Same layout as renderWorkflowWithOrders
       <.tbody(
-        <.tr(renderHeadlineTh(preparedWorkflow.path)),
+        <.tr(renderHeadlineTh(preparedWorkflow.id)),
         flattenWorkflow(preparedWorkflow.workflow).toVdomArray(flat ⇒
           <.tr(renderInstructionTd(flat)))))
 
@@ -36,7 +36,7 @@ object WorkflowComponent {
     <.table(^.cls := "no-padding")(
       <.colgroup(<.col(^.cls := "Workflow-symbol-col"), <.col),
       <.tbody(
-        <.tr(<.td, renderHeadlineTh(preparedWorkflow.path)),
+        <.tr(<.td, renderHeadlineTh(preparedWorkflow.id)),
         flattenWorkflow(preparedWorkflow.workflow).toVdomArray(posInstr ⇒
           (for {
              order ← orders collectFirst { case order if order.position == posInstr._1 ⇒ order }
@@ -46,10 +46,10 @@ object WorkflowComponent {
                <.td(<.div(^.cls := stateToClass(order.state), renderInstruction(posInstr)))): VdomNode
           ) getOrElse <.tr(<.td, renderInstructionTd(posInstr)))))
 
-  private def renderHeadlineTh(workflowPath: WorkflowPath) =
+  private def renderHeadlineTh(workflowId: WorkflowId) =
     <.td(
       <.h5(^.cls := "Instruction")(
-        "Workflow ", <.span(^.whiteSpace := "nowrap")(workflowPath.string)))
+        <.span(^.whiteSpace := "nowrap")(workflowId)))
 
   private def stateToClass(state: Order.State): String =
     state match {

@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.core.filebased.FileBasedReader.readDirectoryTree
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedVersion, RepoEvent, TypedPath}
+import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
 import java.nio.file.Path
 import scala.collection.immutable.{Iterable, Seq}
 
@@ -17,23 +17,15 @@ object FileBaseds
     readers: Iterable[FileBasedReader],
     directory: Path,
     previousFileBaseds: Iterable[FileBased],
-    version: FileBasedVersion)
+    versionId: VersionId,
+    ignoreAliens: Boolean = false)
   : Checked[Seq[RepoEvent]] =
-    readDirectoryVersionless(readers, directory, previousFileBaseds)
-      .map(events ⇒ VersionAdded(version) +: events)
-
-  def readDirectoryVersionless(
-    readers: Iterable[FileBasedReader],
-    directory: Path,
-    previousFileBaseds: Iterable[FileBased],
-    ignoreAliens: Boolean = false
-  ): Checked[Seq[RepoEvent]] =
-    for (fileBaseds ← readDirectoryTree(readers, directory, ignoreAliens = ignoreAliens)) yield
-      toEvents(fileBaseds, previousFileBaseds)
+    for (fileBaseds ← readDirectoryTree(readers, directory, versionId, ignoreAliens = ignoreAliens)) yield
+      VersionAdded(versionId) +: toEvents(fileBaseds, previousFileBaseds)
 
   private def toEvents(readFileBaseds: Iterable[FileBased], previousFileBaseds: Iterable[FileBased])
   : Seq[RepoEvent] = {
-    val pathToFileBased = previousFileBaseds toKeyedMap (_.path)
+    val pathToFileBased = previousFileBaseds toKeyedMap (_.path: TypedPath)
     val addedOrChangedEvents = readFileBaseds.toVector flatMap toAddedOrChanged(pathToFileBased)
     val readPaths = readFileBaseds.map(_.path).toSet
     val deletedEvents = previousFileBaseds map (_.path) filterNot readPaths map FileBasedDeleted.apply
@@ -42,7 +34,7 @@ object FileBaseds
 
   private def toAddedOrChanged(previousPathToFileBased: Map[TypedPath, FileBased])(fileBased: FileBased): Option[RepoEvent] =
     previousPathToFileBased.get(fileBased.path) match {
-      case Some(`fileBased`) ⇒
+      case Some(existing) if existing.withVersion(fileBased.id.versionId) == fileBased ⇒
         None
 
       case Some(_) ⇒

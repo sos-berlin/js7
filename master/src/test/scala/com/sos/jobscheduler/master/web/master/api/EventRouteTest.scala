@@ -57,5 +57,5 @@ object EventRouteTest {
 
   private val TestEvents = List(
     Stamped(EventId(111222), Timestamp.ofEpochMilli(1000),
-      OrderId("1") <-: OrderAdded(WorkflowPath("/test"), Order.StartNow, Payload.empty)))
+      OrderId("1") <-: OrderAdded(WorkflowPath("/test") % "VERSION", Order.StartNow, Payload.empty)))
 }

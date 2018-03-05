@@ -4,16 +4,15 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.xmls.{FileSource, ScalaXMLEventReader}
 import com.sos.jobscheduler.core.common.VariablesXmlParser
-import com.sos.jobscheduler.data.filebased.FileBased
-import com.sos.jobscheduler.data.workflow.JobPath
-import java.nio.file.Path
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
+import com.sos.jobscheduler.data.job.{JobId, JobPath}
 import javax.xml.transform.Source
 
 /**
   * @author Joacim Zschimmer
   */
 final case class JobConfiguration(
-  path: JobPath,
+  id: JobId,
   script: JobScript,
   variables: Map[String, String] = Map(),
   taskLimit: Int = JobConfiguration.DefaultTaskLimit)
@@ -21,7 +20,9 @@ extends FileBased
 {
   type Self = JobConfiguration
 
-  def companion = JobConfiguration
+  val companion = JobConfiguration
+
+  def withId(id: FileBasedId[JobPath]) = copy(id = id)
 
   def language = "shell"
 }
@@ -29,18 +30,18 @@ extends FileBased
 object JobConfiguration extends FileBased.Companion[JobConfiguration]
 {
   type ThisFileBased = JobConfiguration
-  type ThisTypedPath = JobPath
+  type Path = JobPath
 
   def typedPathCompanion = JobPath
 
   private val DefaultTaskLimit = 1
 
-  def parseXml(jobPath: JobPath, file: Path): Checked[JobConfiguration] =
-      autoClosing(new FileSource(file)) { src ⇒
-        JobConfiguration.parseXml(jobPath, src)
-      }
+  def parseXml(id: JobId, file: java.nio.file.Path): Checked[JobConfiguration] =
+    autoClosing(new FileSource(file)) { src ⇒
+      JobConfiguration.parseXml(id, src)
+    }
 
-  def parseXml(jobPath: JobPath, source: Source): Checked[JobConfiguration] =
+  def parseXml(id: JobId, source: Source): Checked[JobConfiguration] =
     Checked.catchNonFatal {
       ScalaXMLEventReader.parseDocument(source) { eventReader ⇒
         import eventReader._
@@ -69,7 +70,7 @@ object JobConfiguration extends FileBased.Companion[JobConfiguration]
               //case "delay_after_error" ⇒
             }
           JobConfiguration(
-            jobPath,
+            id,
             variables = elements.option[Map[String, String]]("params") getOrElse Map(),
             script = elements.one[JobScript],
             taskLimit = taskLimit)

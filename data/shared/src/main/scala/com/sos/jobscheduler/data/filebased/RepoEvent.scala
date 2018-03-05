@@ -11,26 +11,25 @@ import io.circe.{Decoder, Encoder, ObjectEncoder}
 sealed trait RepoEvent extends NoKeyEvent
 
 object RepoEvent {
-  final case class VersionAdded(version: FileBasedVersion) extends RepoEvent
+  final case class VersionAdded(versionId: VersionId) extends RepoEvent
 
   sealed trait FileBasedEvent extends RepoEvent {
     def path: TypedPath
   }
 
-  sealed trait FileBasedAddedOrChanged extends FileBasedEvent {
+  sealed trait FileBasedAddedOrChanged extends FileBasedEvent with Product {
     def fileBased: FileBased
+    final def path = id.path
+    def id = fileBased.id
+    def toShortString = s"$productPrefix($id)"
   }
   object FileBasedAddedOrChanged {
     def unapply(o: FileBasedAddedOrChanged) = Some(o.fileBased)
   }
 
-  final case class FileBasedAdded(fileBased: FileBased) extends FileBasedAddedOrChanged {
-    def path = fileBased.path
-  }
+  final case class FileBasedAdded(fileBased: FileBased) extends FileBasedAddedOrChanged
 
-  final case class FileBasedChanged(fileBased: FileBased) extends FileBasedAddedOrChanged {
-    def path = fileBased.path
-  }
+  final case class FileBasedChanged(fileBased: FileBased) extends FileBasedAddedOrChanged
 
   final case class FileBasedDeleted(path: TypedPath) extends FileBasedEvent
 

@@ -20,10 +20,13 @@ import org.scalatest.FreeSpec
 final class OrderEventTest extends FreeSpec {
 
   "OrderAdded" in {
-    check(OrderAdded(WorkflowPath("/JOBNET"), Order.StartNow, Payload(Map("VAR" → "VALUE"))), json"""
+    check(OrderAdded(WorkflowPath("/WORKFLOW") % "VERSION", Order.StartNow, Payload(Map("VAR" → "VALUE"))), json"""
       {
         "TYPE": "OrderAdded",
-        "workflowPath": "/JOBNET",
+        "workflowId": {
+          "path": "/WORKFLOW",
+          "versionId": "VERSION"
+        },
         "state": {
           "TYPE": "StartNow"
         },
@@ -36,10 +39,13 @@ final class OrderEventTest extends FreeSpec {
   }
 
   "OrderAttached" in {
-    check(OrderAttached(WorkflowPath("/JOBNET") /: Position(2), Order.Ready, Some(OrderId("PARENT")), AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))), json"""
-      {
+    check(
+      OrderAttached(
+        (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(2),
+        Order.Ready, Some(OrderId("PARENT")), AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))),
+      json"""{
         "TYPE": "OrderAttached",
-        "workflowPosition": [ "/JOBNET", 2 ],
+        "workflowPosition": [ { "path": "/WORKFLOW", "versionId": "VERSION" }, 2 ],
         "state": {
           "TYPE": "Ready"
         },
@@ -198,7 +204,7 @@ final class OrderEventTest extends FreeSpec {
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
     val event = Stamped(12345678, Timestamp.ofEpochMilli(1),
-      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/JOBNET"), Order.Ready, Payload(Map("VAR" → "VALUE")))))
+      KeyedEvent[OrderEvent](OrderId("ORDER"), OrderAdded(WorkflowPath("/WORKFLOW") % "VERSION", Order.Ready, Payload(Map("VAR" → "VALUE")))))
     val jsonString = event.asJson.compactPrint
     println(f"${"Serialize"}%-20s Deserialize")
     for (_ ← 1 to 10) {

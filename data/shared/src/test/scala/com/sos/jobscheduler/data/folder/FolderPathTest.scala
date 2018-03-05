@@ -99,6 +99,7 @@ private object FolderPathTest {
 
   private case class TestPath(string: String) extends TypedPath {
     validate()
+
     def companion = TestPath
   }
 

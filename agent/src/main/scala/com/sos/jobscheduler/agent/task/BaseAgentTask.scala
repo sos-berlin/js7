@@ -5,7 +5,7 @@ import com.sos.jobscheduler.agent.data.views.TaskOverview
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.process.ProcessSignal
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.JobPath
 import scala.concurrent.Future
 
 /**

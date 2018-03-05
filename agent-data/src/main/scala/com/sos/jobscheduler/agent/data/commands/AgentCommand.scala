@@ -117,7 +117,7 @@ object AgentCommand {
   @JsonCodec
   final case class AttachOrder(order: Order[Order.Idle], workflow: Workflow)
   extends AttachOrDetachOrder {
-    order.workflowPath.requireNonAnonymous()
+    order.workflowId.requireNonAnonymous()
     order.attachedToAgent.force  // throws
 
     type Response = Accepted.type

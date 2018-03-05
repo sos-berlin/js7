@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.agent.scheduler.job
 
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.JobPath
 import java.nio.file.Files.exists
 import org.scalatest.FreeSpec
 
@@ -10,7 +10,7 @@ import org.scalatest.FreeSpec
   */
 final class FilePoolTest extends FreeSpec {
 
-  private val filePool = new FilePool(JobConfiguration(JobPath("/test"), JobScript("TEST"), taskLimit = 3))
+  private val filePool = new FilePool(JobConfiguration(JobPath("/TEST") % "VERSION", JobScript("TEST"), taskLimit = 3))
   private var a: FilePool.FileSet = null
   private var b: FilePool.FileSet = null
   private var c: FilePool.FileSet = null

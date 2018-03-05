@@ -8,7 +8,7 @@ import com.sos.jobscheduler.base.utils.HasKey
 import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Closers._
 import com.sos.jobscheduler.common.time.ScalaTime.RichInstant
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.taskserver.TaskServer
 import java.time.Instant.now
 import scala.concurrent.Future

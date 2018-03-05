@@ -6,7 +6,6 @@ import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
   * @author Joacim Zschimmer
   */
 final case class AgentPath(string: String) extends TypedPath {
-  validate()
 
   def companion = AgentPath
 }

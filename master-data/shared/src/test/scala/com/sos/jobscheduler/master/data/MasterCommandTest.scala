@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.data
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.filebased.FileBasedVersion
+import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.data.MasterCommand._
@@ -20,13 +20,13 @@ final class MasterCommandTest extends FreeSpec {
 
   "AddOrderIfNew" in {
     testJson[MasterCommand](
-      AddOrderIfNew(Order(OrderId("ORDER-ID"), WorkflowPath("/JOBNET"), Order.StartNow,
+      AddOrderIfNew(Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") % "VERSION", Order.StartNow,
         payload = Payload(Map("VAR" → "VALUE")))),
       json"""{
         "TYPE": "AddOrderIfNew",
         "order": {
           "id": "ORDER-ID",
-          "workflowPosition": [ "/JOBNET", 0 ],
+          "workflowPosition": [ { "path": "/WORKFLOW", "versionId": "VERSION" }, 0 ],
           "state": {
             "TYPE": "StartNow"
           },
@@ -49,10 +49,10 @@ final class MasterCommandTest extends FreeSpec {
   }
 
   "ReadConfigurationDirectory" in {
-    testJson[MasterCommand](ReadConfigurationDirectory(FileBasedVersion("VERSION")),
+    testJson[MasterCommand](ReadConfigurationDirectory(VersionId("VERSION")),
       json"""{
         "TYPE": "ReadConfigurationDirectory",
-        "version": "VERSION"
+        "versionId": "VERSION"
       }""")
   }
 

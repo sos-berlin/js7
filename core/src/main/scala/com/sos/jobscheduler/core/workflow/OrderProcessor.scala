@@ -6,18 +6,18 @@ import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.OrderEvent.OrderActorEvent
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
 import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
   */
 final class OrderProcessor(
-  pathToWorkflow: PartialFunction[WorkflowPath, Workflow],  // TODO WorkflowPath => Checked[Workflow]
+  idToWorkflow: WorkflowId ⇒ Checked[Workflow],
   idToOrder: PartialFunction[OrderId, Order[Order.State]])  // TODO OrderId => Checked[Order]
 {
-  private val eventHandler = new OrderEventHandler(pathToWorkflow, idToOrder)
-  private val eventSource = new OrderEventSource(pathToWorkflow, idToOrder)
+  private val eventHandler = new OrderEventHandler(idToWorkflow, idToOrder)
+  private val eventSource = new OrderEventSource(idToWorkflow, idToOrder)
 
   def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     eventSource.nextEvent(orderId) mapProblem (_ withPrefix s"Problem with '$orderId':")

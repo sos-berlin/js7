@@ -181,6 +181,7 @@ lazy val base = crossProject
     libraryDependencies ++=
       "org.typelevel" %%% "cats-core" % catsVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
+      "org.typelevel" %%% "cats-effect" % catsEffectVersion ++
       "org.typelevel" %%% "discipline" % disciplineVersion % "test" ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++

@@ -4,16 +4,16 @@ import akka.util.ByteString
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.simpleByteStringSource
 import com.sos.jobscheduler.core.filebased.FileBasedReader
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.JobId
 
 /**
   * @author Joacim Zschimmer
   */
 object JobReader extends FileBasedReader {
-  val fileBasedCompanion = JobConfiguration
+  val companion = JobConfiguration
 
-  def read(jobPath: JobPath, source: ByteString) = {
+  def read(jobId: JobId, source: ByteString) = {
     case SourceType.Xml ⇒
-      JobConfiguration.parseXml(jobPath, simpleByteStringSource(source))
+      JobConfiguration.parseXml(jobId, simpleByteStringSource(source))
   }
 }

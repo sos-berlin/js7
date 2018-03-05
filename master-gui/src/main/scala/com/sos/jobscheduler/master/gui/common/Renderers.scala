@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.job.ReturnCode
 import com.sos.jobscheduler.data.order.{Order, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.master.gui.router.Router
 import japgolly.scalajs.react.vdom.Implicits._
 import japgolly.scalajs.react.vdom.html_<^.{<, ^}
@@ -22,8 +22,11 @@ object Renderers {
   implicit def typedPathToVdom(o: TypedPath): VdomNode =
     VdomArray(o.companion.camelName, " ", o.string)
 
+  implicit def workflowIdToVdom(id: WorkflowId): VdomNode =
+    <.a(^.cls := "hidden-link", ^.href := Router.hash(id), id.pretty)
+
   implicit def workflowPathToVdom(o: WorkflowPath): VdomNode =
-    <.a(^.cls := "hidden-link", ^.href := Router.hash(o), "Workflow ", o.string)
+    <.a(^.cls := "hidden-link", ^.href := Router.hash(o), o.pretty)
 
   implicit def orderIdToVdom(orderId: OrderId): VdomNode =
     <.a(^.cls := "hidden-link OrderId", ^.href := Router.hash(orderId))(orderId.string)

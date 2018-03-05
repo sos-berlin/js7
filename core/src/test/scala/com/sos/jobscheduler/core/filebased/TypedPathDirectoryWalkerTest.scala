@@ -8,7 +8,8 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalker.{TypedFile, checkUniqueness, typedFiles}
 import com.sos.jobscheduler.core.filebased.TypedPathDirectoryWalkerTest._
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.workflow.{JobPath, WorkflowPath}
+import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
 import org.scalatest.FreeSpec

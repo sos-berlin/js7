@@ -13,7 +13,7 @@ import scala.language.implicitConversions
 final case class Position(parents: List[Parent], nr: InstructionNr) {
 
   def /(branchId: BranchId) = Parents.NonEmpty(this, branchId)
-  def /:(workflowPath: WorkflowPath) = new WorkflowPosition(workflowPath, this)
+  def /:(workflowId: WorkflowId) = new WorkflowPosition(workflowId, this)
 
   def dropChild: Option[Position] =
     for (last ← parents.lastOption) yield

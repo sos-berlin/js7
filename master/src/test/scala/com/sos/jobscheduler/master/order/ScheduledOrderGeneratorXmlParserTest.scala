@@ -15,9 +15,9 @@ import org.scalatest.FreeSpec
 final class ScheduledOrderGeneratorXmlParserTest extends FreeSpec {
 
   "parse" in {
-    val path = ScheduledOrderGeneratorPath("/TEST")
+    val id = ScheduledOrderGeneratorPath("/TEST") % "VERSION"
     val timeZone = ZoneId.of("Europe/Berlin")
-    val orderGenerator = ScheduledOrderGeneratorXmlParser.parseXml(ScheduledOrderGeneratorPath("/TEST"),
+    val orderGenerator = ScheduledOrderGeneratorXmlParser.parseXml(id,
       <order job_chain="/JOBCHAIN">
         <params>
           <param name="a" value="AAA"/>
@@ -28,7 +28,7 @@ final class ScheduledOrderGeneratorXmlParserTest extends FreeSpec {
       </order>,
       timeZone).force
     assert(orderGenerator == ScheduledOrderGenerator(
-      path,
+      id,
       WorkflowPath("/JOBCHAIN"),
       Map("a" → "AAA"),
       OldSchedule(timeZone, EveryDay(PeriodSeq(List(RepeatPeriod.wholeDay(10.s)))))))

@@ -136,11 +136,15 @@ object ScalaUtils {
 
   implicit final class RichPartialFunction[A, B](private val underlying: PartialFunction[A, B]) extends AnyVal {
     def checked(key: A): Checked[B] =
-      underlying.lift(key) match {
+      toChecked(key)
+
+    def toChecked: A ⇒ Checked[B] = {
+      val lifted = underlying.lift
+      key ⇒ lifted(key) match {
         case Some(b) ⇒ Valid(b)
         case None ⇒ Invalid(Problem(s"No such key '$key'"))
       }
-
+    }
     def getOrElse[BB >: B](key: A, default: ⇒ BB): BB =
       underlying.applyOrElse(key, (_: A) ⇒ default)
 

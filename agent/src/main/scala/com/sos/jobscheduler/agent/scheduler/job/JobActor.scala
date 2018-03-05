@@ -17,9 +17,9 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime.RichConcurrentDuration
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.Outcome.Disrupted
 import com.sos.jobscheduler.data.order.{Order, OrderId}
-import com.sos.jobscheduler.data.workflow.JobPath
 import com.sos.jobscheduler.taskserver.task.process.RichProcess.tryDeleteFile
 import com.sos.jobscheduler.taskserver.task.process.StdChannels
 import java.io.{FileOutputStream, OutputStreamWriter}

@@ -14,7 +14,7 @@ import com.sos.jobscheduler.common.process.Processes.Pid
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.JobPath
 import io.circe.Json
 import java.time.Instant
 import org.scalatest.FreeSpec

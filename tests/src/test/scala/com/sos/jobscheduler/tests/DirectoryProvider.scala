@@ -101,12 +101,12 @@ object DirectoryProvider {
       Files.createDirectory(data)
     }
 
-    def writeJson[A: ObjectEncoder](path: TypedPath, a: A): Unit =
-      file(path, SourceType.Json).contentString = Json.fromJsonObject(implicitly[ObjectEncoder[A]].encodeObject(a)).toPrettyString
-
-    def writeFile[A <: FileBased: ObjectEncoder](fileBased: A): Unit =
+    def writeJson[A <: FileBased { type Self = A }: ObjectEncoder](fileBased: A): Unit = {
+      require(!fileBased.id.path.isAnonymous, "writeJson: Missing path")
+      require(fileBased.id.versionId.isAnonymous, "writeJson accepts only VersionId.Anonymous")
       file(fileBased.path, SourceType.Json).contentString =
-        Json.fromJsonObject(implicitly[ObjectEncoder[A]].encodeObject(fileBased)).toPrettyString
+        Json.fromJsonObject(implicitly[ObjectEncoder[A]].encodeObject(fileBased.withoutId)).toPrettyString
+    }
 
     def writeTxt(path: TypedPath, content: String): Unit =
       file(path, SourceType.Txt).contentString = content

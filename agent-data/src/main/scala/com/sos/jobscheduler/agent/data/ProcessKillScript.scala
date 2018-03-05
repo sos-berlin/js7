@@ -2,8 +2,7 @@ package com.sos.jobscheduler.agent.data
 
 import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.common.process.Processes.Pid
-import com.sos.jobscheduler.data.job.TaskId
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.{JobPath, TaskId}
 import java.nio.file.{Path, Paths}
 import scala.collection.immutable
 

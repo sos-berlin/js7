@@ -6,7 +6,6 @@ import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
   * @author Joacim Zschimmer
   */
 final case class ScheduledOrderGeneratorPath(string: String) extends TypedPath {
-  validate()
 
   def companion = ScheduledOrderGeneratorPath
 }

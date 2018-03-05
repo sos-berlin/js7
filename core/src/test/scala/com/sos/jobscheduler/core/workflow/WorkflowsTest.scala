@@ -12,7 +12,7 @@ import org.scalatest.FreeSpec
 final class WorkflowsTest extends FreeSpec {
 
   "reduceForAgent A" in {
-    assert(TestWorkflow.reduceForAgent(AAgentPath) == Workflow(TestWorkflow.path,
+    assert(TestWorkflow.reduceForAgent(AAgentPath) == Workflow(TestWorkflow.id,
       Vector(
         AJob,
         ForkJoin.of(
@@ -31,7 +31,7 @@ final class WorkflowsTest extends FreeSpec {
   }
 
   "reduceForAgent B" in {
-    assert(TestWorkflow.reduceForAgent(BAgentPath) == Workflow(TestWorkflow.path,
+    assert(TestWorkflow.reduceForAgent(BAgentPath) == Workflow(TestWorkflow.id,
       Vector(
         /*0*/ Gap,
         /*1*/ ForkJoin.of(

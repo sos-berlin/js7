@@ -30,7 +30,7 @@ final class ForkTest extends FreeSpec {
   "test" in {
     autoClosing(new DirectoryProvider(List(AAgentPath, BAgentPath))) { directoryProvider ⇒
       withCloser { implicit closer ⇒
-        directoryProvider.master.writeJson(TestWorkflow.path, TestWorkflow)
+        directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
         for (a ← directoryProvider.agents) a.file(TestJobPath, SourceType.Xml).xml = jobXml(100.ms)
 
         directoryProvider.runAgents { _ ⇒
@@ -61,7 +61,10 @@ final class ForkTest extends FreeSpec {
 
   "JSON" in {
     testJson(ForkTestSetting.TestWorkflow, json"""{
-      "path": "/WORKFLOW",
+      "id": {
+         "path": "/WORKFLOW",
+         "versionId": "(initial)"
+       },
       "source": "job \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; });\njob \"JOB\" on \"AGENT-A\";\nfork(\n  \"🥕\" { job \"JOB\" on \"AGENT-A\"; job \"JOB\" on \"AGENT-A\"; },\n  \"🍋\" { job \"JOB\" on \"AGENT-B\"; job \"JOB\" on \"AGENT-B\"; });\njob \"JOB\" on \"AGENT-A\";",
       "instructions": [
         { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
@@ -147,11 +150,11 @@ final class ForkTest extends FreeSpec {
 }
 
 object ForkTest {
-  private val TestOrder = Order(OrderId("🔺"), TestWorkflow.path, state = Order.StartNow, payload = Payload(Map("VARIABLE" → "VALUE")))
+  private val TestOrder = Order(OrderId("🔺"), TestWorkflow.id, state = Order.StartNow, payload = Payload(Map("VARIABLE" → "VALUE")))
   private val XOrderId = OrderId(s"🔺/🥕")
   private val YOrderId = OrderId(s"🔺/🍋")
   private val ExpectedEvents = Vector(
-    TestOrder.id <-: OrderAdded(TestWorkflow.path, Order.StartNow, Payload(Map("VARIABLE" → "VALUE"))),
+    TestOrder.id <-: OrderAdded(TestWorkflow.id, Order.StartNow, Payload(Map("VARIABLE" → "VALUE"))),
     TestOrder.id <-: OrderTransferredToAgent(AAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderStdoutWritten(StdoutOutput),

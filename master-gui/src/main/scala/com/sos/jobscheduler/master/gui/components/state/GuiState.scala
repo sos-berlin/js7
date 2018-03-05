@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.gui.components.state
 
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.WorkflowId
 import com.sos.jobscheduler.master.gui.components.workflowlist.WorkflowListComponent
 import org.scalajs.dom.window
 
@@ -10,15 +10,15 @@ import org.scalajs.dom.window
   */
 final case class GuiState(
   ordersState: OrdersState,
-  pathToWorkflow: Map[WorkflowPath, PreparedWorkflow],
+  idToWorkflow: Map[WorkflowId, PreparedWorkflow],
   appState: AppState,
   isConnected: Boolean,
   uriHash: String = window.document.location.hash)
   //hashToPosition: Map[String, Position] = Map.empty)
 {
   lazy val workflowListProps = WorkflowListComponent.Props(
-    (for ((path, prepared) ← pathToWorkflow) yield
-      WorkflowListComponent.Props.Entry(path, prepared.workflow, ordersState.orderCountByWorkflow(path))).toImmutableSeq
+    (for (prepared ← idToWorkflow.values) yield
+      WorkflowListComponent.Props.Entry(prepared.workflow, ordersState.orderCountByWorkflow(prepared.id))).toImmutableSeq
   )
 
   def updateUriHash = copy(

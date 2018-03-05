@@ -22,8 +22,9 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.SourceType
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
-import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterTest._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
@@ -81,7 +82,7 @@ final class RunningMasterTest extends FreeSpec {
         import master.{injector, orderClient}
         val lastEventId = injector.instance[EventCollector].lastEventId
         val eventGatherer = new TestEventGatherer(injector)
-        val adHocOrder = Order(TestOrderId, TestWorkflowPath, Order.StartNow)
+        val adHocOrder = Order(TestOrderId, TestWorkflowId, Order.StartNow)
 
         sleep(3.s)  // Let OrderGenerator generate some orders
         val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
@@ -91,7 +92,7 @@ final class RunningMasterTest extends FreeSpec {
         orderClient.order(TestOrderId) await 10.s shouldEqual
           Some(Order(
             TestOrderId,
-            TestWorkflowPath /: Position(2),
+            TestWorkflowId /: Position(2),
             Order.Finished,
             payload = Payload(Map("result" → "TEST-RESULT-VALUE-agent-222"))))
         assert(orderClient.orderCount.await(99.s) >= 1)
@@ -122,6 +123,7 @@ final class RunningMasterTest extends FreeSpec {
 private object RunningMasterTest {
   private val TestDuration = 10.s
   private val TestWorkflowPath = WorkflowPath("/test")
+  private val TestWorkflowId = TestWorkflowPath % "(initial)"
   private val TestOrderId = OrderId("ORDER-ID")
   private val AgentPaths = List(AgentPath("/agent-111"), AgentPath("/agent-222"))
   private val logger = Logger(getClass)

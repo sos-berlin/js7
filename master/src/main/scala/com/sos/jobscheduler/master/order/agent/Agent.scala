@@ -1,22 +1,26 @@
 package com.sos.jobscheduler.master.order.agent
 
-import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.filebased.FileBased
+import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
 import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
 @JsonCodec
-final case class Agent(path: AgentPath, uri: String) extends FileBased {
+final case class Agent(id: AgentId, uri: String) extends FileBased
+{
   type Self = Agent
-  def companion = Agent
+
+  val companion = Agent
+
+  def withId(id: FileBasedId[AgentPath]) = copy(id = id)
 }
 
 object Agent extends FileBased.Companion[Agent]
 {
   type ThisFileBased = Agent
-  type ThisTypedPath = AgentPath
+  type Path = AgentPath
 
   val typedPathCompanion = AgentPath
 }

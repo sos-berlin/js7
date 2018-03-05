@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.{Timer, TimerService}
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
+import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.order.OrderScheduleGenerator._
@@ -27,6 +28,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
   import context.dispatcher
 
   private var scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(masterConfiguration, Nil)
+  private var versionId: VersionId = null
   private var generatedUntil: Instant = null
   private var recovered = false
   private var timer: Timer[Unit] = Timer.empty
@@ -53,8 +55,9 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
   }
 
   def receive = journaling orElse {
-    case Input.Change(scheduledOrderGenerators) ⇒
+    case Input.Change(scheduledOrderGenerators, version_) ⇒
       scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(masterConfiguration, scheduledOrderGenerators)
+      versionId = version_
 
     case Input.ScheduleEvery(every) ⇒
       val nw = Instant.ofEpochSecond(now.getEpochSecond)  // Last full second
@@ -76,7 +79,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
     case Internal.Generate(every) ⇒
       val interval = InstantInterval(generatedUntil, every)
       logger.info(s"Generating orders for time interval $interval")
-      val orders = scheduledOrderGeneratorKeeper.generateOrders(interval)
+      val orders = scheduledOrderGeneratorKeeper.generateOrders(interval, versionId)
       masterOrderKeeper ! MasterOrderKeeper.Command.AddOrderSchedule(orders)
       context.become(addingOrderSchedule(interval.until, every))
   }
@@ -114,7 +117,7 @@ object OrderScheduleGenerator {
   private val logger = Logger(getClass)
 
   object Input {
-    final case class Change(scheduledOrderGenerators: Iterable[ScheduledOrderGenerator])
+    final case class Change(scheduledOrderGenerators: Iterable[ScheduledOrderGenerator], versionId: VersionId)
     final case class ScheduleEvery(every: Duration)
   }
 

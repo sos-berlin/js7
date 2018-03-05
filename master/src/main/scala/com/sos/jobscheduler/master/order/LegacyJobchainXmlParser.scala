@@ -4,9 +4,10 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXMLEventReader
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfNonZeroReturnCodeGoto, Job, ReturnCodeMeaning}
-import com.sos.jobscheduler.data.workflow.{JobPath, Label, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
 import javax.xml.transform.Source
 import scala.collection.immutable.Seq
 
@@ -42,7 +43,7 @@ object LegacyJobchainXmlParser {
                 attributeMap.as[Label]("state") @: ExplicitEnd :: Nil
               }
           }
-          Workflow(WorkflowPath.Anonymous, items.values.flatten).reduce
+          Workflow(WorkflowPath.NoId, items.values.flatten).reduce
         }
       }
     }

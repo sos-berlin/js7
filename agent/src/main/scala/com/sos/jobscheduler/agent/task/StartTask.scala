@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.agent.task
 
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.JobPath
 import io.circe.generic.JsonCodec
 
 /**

@@ -12,7 +12,7 @@ sealed trait End extends EventInstruction with PositionInstruction
   def nextPosition(order: Order[Order.Processed], context: OrderContext) =
     for {
       returnPosition ← order.position.dropChild
-      next ← context.instruction(order.workflowPath /: returnPosition) match {
+      next ← context.instruction(order.workflowId /: returnPosition) match {
         case _: ForkJoin ⇒ None
         case _: EventInstruction ⇒ Some(returnPosition)
         case _: PositionInstruction ⇒ Some(returnPosition.increment)  // Skip IfErrorCode (don't execute again!)
@@ -30,7 +30,7 @@ sealed trait End extends EventInstruction with PositionInstruction
             order.id <-: OrderFinished
 
       case Some(returnPosition) ⇒
-        context.instruction(order.workflowPath /: returnPosition) match {
+        context.instruction(order.workflowId /: returnPosition) match {
           case _: ForkJoin ⇒
             //if (order.attachedToAgent forall forkjoin.isJoinableOnAgent)
             if (order.isAttachedToAgent)

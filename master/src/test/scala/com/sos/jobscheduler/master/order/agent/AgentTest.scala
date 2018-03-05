@@ -11,9 +11,12 @@ import org.scalatest.FreeSpec
 final class AgentTest extends FreeSpec
 {
   "JSON" in {
-    testJson(Agent(AgentPath("/AGENT"), "http://127.0.0.1"),
+    testJson(Agent(AgentPath("/AGENT") % "VERSION", "http://127.0.0.1"),
       json"""{
-        "path": "/AGENT",
+        "id": {
+          "path": "/AGENT",
+          "versionId": "VERSION"
+        },
         "uri": "http://127.0.0.1"
       }""")
   }

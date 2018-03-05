@@ -12,49 +12,63 @@ import org.scalatest.FreeSpec
   */
 final class RepoEventTest extends FreeSpec {
 
-  "JSON" in {
-    testJson[RepoEvent](
-      RepoEvent.VersionAdded(FileBasedVersion("VERSION")),
-      json"""{
-        "TYPE": "VersionAdded",
-        "version": "VERSION"
-      }""")
+  "JSON" - {
+    "VersionAdded" in {
+      testJson[RepoEvent](
+        RepoEvent.VersionAdded(VersionId("VERSION")),
+        json"""{
+          "TYPE": "VersionAdded",
+          "versionId": "VERSION"
+        }""")
+    }
 
-    testJson[RepoEvent](
-      RepoEvent.FileBasedAdded(TestFileBased(TestPath("/TEST"), "CONTENT")),
-      json"""{
-        "TYPE": "FileBasedAdded",
-        "fileBased": {
-          "TYPE": "TestFileBased",
-          "path": "/TEST",
-          "content": "CONTENT"
-        }
-      }""")
+    "FileBasedAdded" in {
+      testJson[RepoEvent](
+        RepoEvent.FileBasedAdded(AFileBased(APath("/TEST") % "VERSION", "CONTENT")),
+        json"""{
+          "TYPE": "FileBasedAdded",
+          "fileBased": {
+            "TYPE": "AFileBased",
+            "id": {
+              "path": "/TEST",
+              "versionId": "VERSION"
+            },
+            "content": "CONTENT"
+          }
+        }""")
+    }
 
-    testJson[RepoEvent](
-      RepoEvent.FileBasedChanged(TestFileBased(TestPath("/TEST"), "CONTENT")),
-      json"""{
-        "TYPE": "FileBasedChanged",
-        "fileBased": {
-          "TYPE": "TestFileBased",
-          "path": "/TEST",
-          "content": "CONTENT"
-        }
-      }""")
+    "FileBasedChanged" in {
+      testJson[RepoEvent](
+        RepoEvent.FileBasedChanged(AFileBased(APath("/TEST")  % "VERSION", "CONTENT")),
+        json"""{
+          "TYPE": "FileBasedChanged",
+          "fileBased": {
+            "TYPE": "AFileBased",
+            "id": {
+              "path": "/TEST",
+              "versionId": "VERSION"
+            },
+            "content": "CONTENT"
+          }
+        }""")
+    }
 
-    testJson[RepoEvent](
-      RepoEvent.FileBasedDeleted(TestPath("/TEST")),
-      json"""{
-        "TYPE": "FileBasedDeleted",
-        "path": "Test:/TEST"
-      }""")
+    "FileBasedDeleted" in {
+      testJson[RepoEvent](
+        RepoEvent.FileBasedDeleted(APath("/TEST")),
+        json"""{
+          "TYPE": "FileBasedDeleted",
+          "path": "A:/TEST"
+        }""")
+    }
   }
 }
 
 object RepoEventTest {
   private implicit val fileBasedJsonCodec: TypedJsonCodec[FileBased] = TypedJsonCodec(
-    Subtype[TestFileBased])
+    Subtype[AFileBased])
 
-  private implicit val typedPathCodec: CirceCodec[TypedPath] = TypedPath.jsonCodec(List(TestPath))
+  private implicit val typedPathCodec: CirceCodec[TypedPath] = TypedPath.jsonCodec(List(APath))
   implicit val fileBasedEventJsonCodec: TypedJsonCodec[RepoEvent] = RepoEvent.jsonCodec
 }

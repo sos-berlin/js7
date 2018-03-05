@@ -11,6 +11,7 @@ object Dependencies {
   val slf4jVersion = "1.7.25"
   val log4jVersion = "2.10.0"
   val catsVersion = "1.0.1"
+  val catsEffectVersion = "0.9"
   val kittensVersion = "1.0.0-RC2"
   val circeVersion = "0.9.1"
   val scalaTestVersion = "3.0.5"

@@ -5,7 +5,6 @@ import java.util.UUID.randomUUID
 
 final case class FolderPath(string: String) extends TypedPath {
   import FolderPath._
-  validate()
 
   def companion = FolderPath
 

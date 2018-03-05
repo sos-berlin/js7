@@ -4,6 +4,7 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.instances.vector._
 import cats.syntax.traverse._
 import com.sos.jobscheduler.base.circeutils.CirceCodec
+import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
@@ -18,12 +19,17 @@ import scala.reflect.ClassTag
 
 trait TypedPath extends IsString {
 
+  validate()
+
   def companion: Companion[_ <: TypedPath]
 
   lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
 
   /** Has to be called in every implementing constructor. */
   final def validate() = companion.check(string).force
+
+  def requireNonAnonymous(): Unit =
+    companion.checked(string).force
 
   def nesting = string stripSuffix "/" count { _ == '/' }
 
@@ -35,12 +41,16 @@ trait TypedPath extends IsString {
   def toFile(t: SourceType): Path =
     Paths.get(withoutStartingSlash + companion.sourceTypeToFilenameExtension(t))
 
-  def asTyped[A <: TypedPath: TypedPath.Companion]: A = {
-    val c = implicitly[TypedPath.Companion[A]]
-    if (c == companion)
-      this.asInstanceOf[A]
+  def asTyped[P <: TypedPath](implicit P: TypedPath.Companion[P]): P = {
+    if (P == companion)
+      this.asInstanceOf[P]
     else
-      c.apply(string)
+      P.apply(string)
+  }
+
+  def cast[P <: TypedPath](implicit P: TypedPath.Companion[P]): P = {
+    if (P != companion) throw new ClassCastException(s"Expected ${companion.name} but is: $toString")
+    this.asInstanceOf[P]
   }
 
   def officialSyntaxChecked: Checked[this.type] =
@@ -52,6 +62,8 @@ trait TypedPath extends IsString {
         case Valid(_) ⇒ Valid(this)
       }
 
+  def isAnonymous = this == companion.Anonymous
+
   def isGenerated = string startsWith InternalPrefix
 
   override def toString = toTypedString
@@ -62,7 +74,7 @@ trait TypedPath extends IsString {
 }
 
 object TypedPath {
-  val VersionSeparator = "@"
+  val VersionSeparator = "%"
   val InternalPrefix = "/?/"
   private val officialSyntaxNameValidator = new NameValidator(Set('-', '.'))
 
@@ -73,19 +85,22 @@ object TypedPath {
 
   abstract class Companion[P <: TypedPath: ClassTag] extends IsString.Companion[P]
   {
-    type Versioned = TypedPath.Versioned[P]
-    final val Versioned = TypedPath.Versioned
-
     val name = getClass.simpleScalaName
     val NameOrdering: Ordering[P] = Ordering by { _.name }
+    lazy val Anonymous: P = apply(InternalPrefix + "anonymous")
+    lazy val NoId: FileBasedId[P] = Anonymous % VersionId.Anonymous
 
     def apply(o: String): P
 
     def isEmptyAllowed = false
     def isSingleSlashAllowed = false
 
+    /** Must be non-anonymous, too. */
     final def checked(string: String): Checked[P] =
-      check(string) map (_ ⇒ apply(string))
+      if (string == Anonymous.string)
+        Problem(s"Anonymous $name?")
+      else
+        check(string) map (_ ⇒ apply(string))
 
     private[TypedPath] def check(string: String): Checked[Unit] = {
       def errorString = s"$name '$string'"
@@ -113,7 +128,7 @@ object TypedPath {
     /** Converts a relative file path with normalized slahes (/) to a `TypedPath`. */
     def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =
       sourceTypeToFilenameExtension.collectFirst { case (t, ext) if normalized endsWith ext ⇒
-        Checked.catchNonFatal(apply("/" + normalized.dropRight(ext.length)) → t)
+        checked("/" + normalized.dropRight(ext.length)) map (_ → t)
       }
 
     /**
@@ -125,22 +140,20 @@ object TypedPath {
       apply(absoluteString(path))
 
     override def toString = name
+
+    override implicit val jsonEncoder: Encoder[P] = o ⇒ {
+      if (o == Anonymous) throw new IllegalArgumentException(s"JSON serialize $name.Anonymous?")
+      Json.fromString(o.string)
+    }
+
+    override implicit val jsonDecoder: Decoder[P] =
+      _.as[String] flatMap (o ⇒ checked(o).toDecoderResult)
   }
 
-  type Versioned_ = Versioned[_ <: TypedPath]
-
-  final case class Versioned[P <: TypedPath](version: FileBasedVersion, path: P)
-  //object Versioned {
-  //  implicit def jsonEncoder[P <: TypedPath: Encoder]: ObjectEncoder[TypedPath.Versioned[P]] =
-  //    o ⇒ JsonObject("path" → o.path.asJson, "version" → o.version.asJson)
-  //
-  //  implicit def jsonDecoder[P <: TypedPath: Decoder]: Decoder[Versioned[P]] =
-  //    cursor ⇒
-  //      for {
-  //        path ← cursor.get[P]("path")
-  //        version ← cursor.get[FileBasedVersion]("version")
-  //      } yield Versioned(version, path)
-  //}
+  implicit final class ImplicitTypedPath[P <: TypedPath](private val underlying: P) extends AnyVal {
+    def %(version: String): FileBasedId[P] = %(VersionId(version))
+    def %(v: VersionId): FileBasedId[P] = FileBasedId(underlying, v)
+  }
 
   def fileToString(file: Path): String =
     file.toString.replaceChar(file.getFileSystem.getSeparator.charAt(0), '/')

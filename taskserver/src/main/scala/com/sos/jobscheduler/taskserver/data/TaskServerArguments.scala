@@ -4,8 +4,8 @@ import com.sos.jobscheduler.agent.data.{AgentTaskId, ProcessKillScript}
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.{DurationDecoder, DurationEncoder, PathJsonCodec}
 import com.sos.jobscheduler.common.scalautil.FileUtils.EmptyPath
 import com.sos.jobscheduler.common.system.FileUtils._
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.system.StdoutOrStderr
-import com.sos.jobscheduler.data.workflow.JobPath
 import io.circe.generic.JsonCodec
 import java.nio.file.Path
 import java.time.Duration

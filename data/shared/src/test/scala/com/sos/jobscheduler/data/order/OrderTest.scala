@@ -21,7 +21,7 @@ final class OrderTest extends FreeSpec {
   "Order" - {
     val order = Order(
       OrderId("ID"),
-      WorkflowPath("/JOBNET"),
+      WorkflowPath("/WORKFLOW") % "VERSION",
       Order.Ready,
       payload = Payload(Map(
         "var1" → "value1",
@@ -70,7 +70,7 @@ final class OrderTest extends FreeSpec {
           parent = Some(OrderId("PARENT"))),
         json"""{
           "id": "ID",
-          "workflowPosition": [ "/JOBNET", 0 ],
+          "workflowPosition": [ { "path": "/WORKFLOW", "versionId": "VERSION" }, 0 ],
           "state": {
             "TYPE": "Ready"
           },
@@ -170,7 +170,7 @@ final class OrderTest extends FreeSpec {
   }
 
   "isAttachable" in {
-    val order = Order(OrderId("ORDER-ID"), WorkflowPath("/JOBNET"), Order.Ready, Some(AttachedTo.Detachable(AgentPath("/AGENT"))))
+    val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") % "VERSION", Order.Ready, Some(AttachedTo.Detachable(AgentPath("/AGENT"))))
     assert(order.detachableFromAgent == Valid(AgentPath("/AGENT")))
 
     for (o ← Array(
@@ -202,7 +202,7 @@ final class OrderTest extends FreeSpec {
   }
 
   if (sys.props contains "test.speed") "Speed" in {
-    val order = Order(OrderId("ORDER-1"), WorkflowPath("/WORKFLOW") /: Position(1), Order.Ready, Some(Order.AttachedTo.Agent(AgentPath("/AGENT"))))
+    val order = Order(OrderId("ORDER-1"), (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(1), Order.Ready, Some(Order.AttachedTo.Agent(AgentPath("/AGENT"))))
     val json = (order: Order[Order.State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[Order.State]])
     def testSpeed(n: Int, ops: String)(what: ⇒ Unit): Unit = {

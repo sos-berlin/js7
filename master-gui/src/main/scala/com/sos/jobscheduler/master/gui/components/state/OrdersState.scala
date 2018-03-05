@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.{WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPosition}
 import com.sos.jobscheduler.master.gui.common.Utils._
 import com.sos.jobscheduler.master.gui.components.state.OrdersState._
 import org.scalajs.dom.window
@@ -19,8 +19,8 @@ final case class OrdersState(
   step: Int,
   error: Option[String] = None)
 {
-  def orderCountByWorkflow(path: WorkflowPath): Option[Int] =
-    content.orderCountByWorkflow(path)
+  def orderCountByWorkflow(workflowId: WorkflowId): Option[Int] =
+    content.orderCountByWorkflow(workflowId)
 
   def updateOrders(stamped: Stamped[Seq[Order[Order.State]]]): OrdersState = {
     val orders = stamped.value
@@ -28,7 +28,7 @@ final case class OrdersState(
     copy(
       content = OrdersState.FetchedContent(
         idToEntry = updatedIdToEntry,
-        workflowToOrderSeq = updatedIdToEntry.values groupBy (_.order.workflowPath) mapValues (_.map(_.order.id).toVector.sorted),
+        workflowToOrderSeq = updatedIdToEntry.values groupBy (_.order.workflowId) mapValues (_.map(_.order.id).toVector.sorted),
         eventId = stamped.eventId, eventCount = 0),
       error = None,
       step = step + 1)
@@ -38,16 +38,16 @@ final case class OrdersState(
 object OrdersState {
   val Empty = OrdersState(Initial, step = 0, error = None)
 
-  private type WorkflowToOrderIds = Map[WorkflowPath, Vector[OrderId]]
+  private type WorkflowToOrderIds = Map[WorkflowId, Vector[OrderId]]
   sealed trait Content {
-    def orderCountByWorkflow(workflowPath: WorkflowPath): Option[Int]
+    def orderCountByWorkflow(workflowId: WorkflowId): Option[Int]
   }
 
   object Initial extends Content {
-    def orderCountByWorkflow(workflowPath: WorkflowPath) = None
+    def orderCountByWorkflow(workflowId: WorkflowId) = None
   }
   object FetchingContent extends Content {
-    def orderCountByWorkflow(workflowPath: WorkflowPath) = None
+    def orderCountByWorkflow(workflowId: WorkflowId) = None
   }
 
   final case class FetchedContent(
@@ -57,22 +57,22 @@ object OrdersState {
     eventCount: Int)
   extends Content
   {
-    private val positionCache = mutable.Map[WorkflowPath, mutable.Map[WorkflowPosition, Vector[OrderId]]]()
+    private val positionCache = mutable.Map[WorkflowId, mutable.Map[WorkflowPosition, Vector[OrderId]]]()
 
-    def orderCountByWorkflow(workflowPath: WorkflowPath) =
-      Some(workflowToOrderSeq(workflowPath).size)
+    def orderCountByWorkflow(workflowId: WorkflowId) =
+      Some(workflowToOrderSeq(workflowId).size)
 
     def workflowPositionToOrderIdSeq(address: WorkflowPosition): Vector[OrderId] =
-      positionCache.getOrElseUpdate(address.workflowPath, {
+      positionCache.getOrElseUpdate(address.workflowId, {
         val m = mutable.Map.empty[WorkflowPosition, VectorBuilder[OrderId]]
-        for (orderId ← workflowToOrderSeq.getOrElse(address.workflowPath, Vector.empty)) {
+        for (orderId ← workflowToOrderSeq.getOrElse(address.workflowId, Vector.empty)) {
           m.getOrElseUpdate(idToEntry(orderId).order.workflowPosition, new VectorBuilder[OrderId]) += orderId
         }
         m map { case (k, v) ⇒ k → v.result }
       }).getOrElseUpdate(address, Vector.empty)
 
     private def restoreCache(from: FetchedContent, dirty: collection.Set[WorkflowPosition]): this.type = {
-      for ((workflowPath, positionToOrderIds) ← from.positionCache -- dirty.map(_.workflowPath)) {
+      for ((workflowPath, positionToOrderIds) ← from.positionCache -- dirty.map(_.workflowId)) {
         val m = mutable.Map.empty[WorkflowPosition, Vector[OrderId]]
         for ((position, orderIds) ← positionToOrderIds -- dirty) {
           m(position) = orderIds
@@ -84,14 +84,14 @@ object OrdersState {
 
     def handleEvents(stampedEvents: Seq[Stamped[KeyedEvent[OrderEvent]]]): FetchedContent = {
       val updated = mutable.Map[OrderId, OrderEntry]()
-      val added = mutable.Map[WorkflowPath, mutable.Buffer[OrderId]]()
+      val added = mutable.Map[WorkflowId, mutable.Buffer[OrderId]]()
       val deleted = mutable.Set[OrderId]()
       var evtCount = 0
       val nowMillis = Timestamp.epochMilli
       stampedEvents foreach {
         case Stamped(_, _, KeyedEvent(orderId, event: OrderAdded)) ⇒
           updated += orderId → OrderEntry(Order.fromOrderAdded(orderId, event), updatedAt = nowMillis)
-          added.getOrElseUpdate(event.workflowPath, mutable.Buffer()) += orderId
+          added.getOrElseUpdate(event.workflowId, mutable.Buffer()) += orderId
           deleted -= orderId
           evtCount += 1
 
@@ -122,14 +122,14 @@ object OrdersState {
                   for (childOrder ← entry.order.newForkedOrders(event)) {
                     updated += childOrder.id → OrderEntry(childOrder, updatedAt = nowMillis)
                     deleted -= childOrder.id
-                    added.getOrElseUpdate(entry.order.workflowPath, mutable.Buffer()) += childOrder.id
+                    added.getOrElseUpdate(entry.order.workflowId, mutable.Buffer()) += childOrder.id
                   }
 
                 case _: OrderJoined ⇒
                   for (order ← entry.order.ifState[Order.Join]) {
                     deleted ++= order.state.joinOrderIds
                     updated --= order.state.joinOrderIds
-                    val w = entry.order.workflowPath
+                    val w = entry.order.workflowId
                     for (a ← added.get(w)) {
                       added(w) = a filterNot order.state.joinOrderIds.toSet
                     }
@@ -164,12 +164,12 @@ object OrdersState {
 
   private def concatOrderIds(
     wToO: WorkflowToOrderIds,
-    added: mutable.Map[WorkflowPath, mutable.Buffer[OrderId]])
+    added: mutable.Map[WorkflowId, mutable.Buffer[OrderId]])
   : WorkflowToOrderIds =
       wToO ++
-        (for ((workflowPath, orderIds) ← added) yield
-          workflowPath →
-            (wToO.get(workflowPath) match {
+        (for ((workflowId, orderIds) ← added) yield
+          workflowId →
+            (wToO.get(workflowId) match {
               case Some(a) ⇒ a ++ orderIds
               case None ⇒ orderIds.toVector
             })

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.core.filebased.FileBasedReader
 import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.folder.FolderPath
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 
 /**
@@ -17,16 +17,16 @@ import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
   */
 object WorkflowReader extends FileBasedReader
 {
-  val fileBasedCompanion = Workflow
+  val companion = Workflow
 
-  def read(workflowPath: WorkflowPath, source: ByteString) = {
-    case sourceType if readWorkflow(workflowPath, source) isDefinedAt sourceType ⇒
-      readWorkflow(workflowPath, source)(sourceType) map (_.copy(path = workflowPath))
-  }
+  def read(workflowId: WorkflowId, source: ByteString) =
+    Function.unlift { sourceType: SourceType ⇒
+      readWorkflow(FolderPath.parentOf(workflowId.path), source).lift(sourceType) map (_ map (_.copy(id = workflowId)))
+    }
 
-  private def readWorkflow(workflowPath: WorkflowPath, source: ByteString): PartialFunction[SourceType, Checked[Workflow]] = {
+  private def readWorkflow(folderPath: FolderPath, source: ByteString): PartialFunction[SourceType, Checked[Workflow]] = {
     case SourceType.Json ⇒ source.utf8String.parseJson.as[Workflow].toChecked
     case SourceType.Txt ⇒ WorkflowParser.parse(source.utf8String)
-    case SourceType.Xml ⇒ LegacyJobchainXmlParser.parseXml(FolderPath.parentOf(workflowPath), simpleByteStringSource(source))
+    case SourceType.Xml ⇒ LegacyJobchainXmlParser.parseXml(folderPath, simpleByteStringSource(source))
   }
 }

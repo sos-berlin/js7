@@ -1,16 +1,33 @@
 package com.sos.jobscheduler.data.filebased
 
-import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, ObjectEncoder}
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 
 /**
   * @author Joacim Zschimmer
   */
 trait FileBased {
   type Self <: FileBased
+  type Path = companion.Path
+  type Id = FileBasedId[Path]
 
-  def path: TypedPath
-  def companion: FileBased.Companion[Self]
+  val companion: FileBased.Companion[Self]
+  def id: FileBasedId[Path]
+  def withId(id: FileBasedId[Path]): Self
+
+  final def path: Path = id.path
+
+  final def isAnonymous = id.isAnonymous
+
+  final def withoutVersion: Self = withVersion(VersionId.Anonymous)
+
+  final def withoutId: Self = withId(id = companion.typedPathCompanion.NoId)
+
+  final def withVersion(v: VersionId): Self = withId(id = id.copy(versionId = v))
+
+  def cast[A <: FileBased](implicit A: FileBased.Companion[A]): A = {
+    if (A != companion) throw new ClassCastException(s"Expected ${companion.typedPathCompanion.name} but is: $path")
+    this.asInstanceOf[A]
+  }
 }
 
 object FileBased {
@@ -18,28 +35,14 @@ object FileBased {
 
   trait Companion[A <: FileBased] {
     type ThisFileBased <: A
-    type ThisTypedPath <: TypedPath
-    type Versioned = FileBased.Versioned[A]
+    type Path <: TypedPath
 
-    def typedPathCompanion: TypedPath.Companion[ThisTypedPath]
+    val name = getClass.simpleScalaName
+
+    def typedPathCompanion: TypedPath.Companion[Path]
 
     implicit def self: Companion[A] = this
-  }
 
-  type Versioned_ = Versioned[FileBased]
-
-  final case class Versioned[A <: FileBased](version: FileBasedVersion, fileBased: A) {
-    def versionedPath = fileBased.path.companion.Versioned(version, fileBased.path)
-  }
-  object Versioned {
-    implicit def jsonEncoder[A <: FileBased: ObjectEncoder]: ObjectEncoder[Versioned[A]] =
-      o ⇒ ("version" → o.version.asJson) +: o.fileBased.asJsonObject
-
-    implicit def jsonDecoder[A <: FileBased: Decoder]: Decoder[Versioned[A]] =
-      cursor ⇒
-        for {
-          version ← cursor.get[FileBasedVersion]("version")
-          fileBased ← cursor.as[A]
-        } yield Versioned(version, fileBased)
+    override def toString = name
   }
 }

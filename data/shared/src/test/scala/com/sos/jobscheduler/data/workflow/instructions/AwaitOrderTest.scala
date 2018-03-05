@@ -30,10 +30,11 @@ final class AwaitOrderTest extends FreeSpec {
 }
 
 object AwaitOrderTest {
+  private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
   val OfferingOrderId = OrderId("OFFERED")
-  val offeringOrder = Order(OfferingOrderId, WorkflowPath("/WORKFLOW"), Order.Ready)
+  val offeringOrder = Order(OfferingOrderId, TestWorkflowId, Order.Ready)
   val OfferedOrderId = OrderId("OFFERED")
-  val offeredOrder = Order(OfferedOrderId, WorkflowPath("/WORKFLOW"), Order.Ready)
+  val offeredOrder = Order(OfferedOrderId, TestWorkflowId, Order.Ready)
   val awaitingOrderId = OrderId("AWAITING")
-  val awaitingOrder = Order(awaitingOrderId, WorkflowPath("/WORKFLOW"), Order.Ready)
+  val awaitingOrder = Order(awaitingOrderId, TestWorkflowId, Order.Ready)
 }

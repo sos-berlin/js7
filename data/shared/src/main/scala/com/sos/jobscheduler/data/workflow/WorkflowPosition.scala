@@ -8,18 +8,19 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowPosition(workflowPath: WorkflowPath, position: Position) {
+final case class WorkflowPosition(workflowId: WorkflowId, position: Position) {
 
-  override def toString = s"$workflowPath/$position"
+  override def toString = s"$workflowId/$position"
 }
 
 object WorkflowPosition {
 
-  implicit def apply(workflowPath: WorkflowPath): WorkflowPosition =
-    WorkflowPosition(workflowPath, Position(InstructionNr.First))
+  implicit def apply(workflowId: WorkflowId): WorkflowPosition =
+    WorkflowPosition(workflowId, Position(InstructionNr.First))
 
   implicit val jsonEncoder: ArrayEncoder[WorkflowPosition] =
-    absolute ⇒ absolute.workflowPath.asJson +: Position.jsonEncoder.encodeArray(absolute.position)
+    absolute ⇒ absolute.workflowId.asJson +: Position.jsonEncoder.encodeArray(absolute.position)
+    //absolute ⇒ Json.fromString(absolute.workflowId.string) +: Position.jsonEncoder.encodeArray(absolute.position)
 
   implicit val jsonDecoder: Decoder[WorkflowPosition] =
     cursor ⇒
@@ -30,8 +31,13 @@ object WorkflowPosition {
             Left(DecodingFailure("Empty JSON array as Position.WorkflowPosition?", Nil))
           else
             for {
-              w ← jsons.head.as[WorkflowPath]
+              workflowId ← jsons(0).as[WorkflowId]
               p ← Json.fromValues(jsons.tail).as[Position]
-            } yield WorkflowPosition(w, p)
+            } yield WorkflowPosition(workflowId, p)
+            //for {
+            //  idString ← jsons(0).as[String]
+            //  workflowId ← WorkflowId.checked(idString).toDecoderResult
+            //  p ← Json.fromValues(jsons.tail).as[Position]
+            //} yield WorkflowPosition(workflowId, p)
       } yield absolute
 }

@@ -48,7 +48,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
           client.executeCommand(AttachOrder(
             Order(
               orderId,
-              SimpleTestWorkflow.path,
+              SimpleTestWorkflow.id,
               Order.Ready,
               payload = Payload(Map("a" → "A"))),
             TestAgentPath,

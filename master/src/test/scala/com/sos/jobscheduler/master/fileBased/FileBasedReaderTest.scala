@@ -7,9 +7,10 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.core.filebased.FileBasedReader.{readDirectoryTree, readDirectoryTreeWithProblems}
+import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.master.agent.AgentReader
 import com.sos.jobscheduler.master.fileBased.FileBasedReaderTest._
-import com.sos.jobscheduler.master.fileBased.FileBasedsTest.{AAgent, AWorkflow, BAgent, BWorkflow, CWorkflow, provideDirectory}
+import com.sos.jobscheduler.master.fileBased.FileBasedsTest.{AAgent, AWorkflow, BAgent, BWorkflow, CWorkflow, V0, provideDirectory}
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.createDirectories
@@ -24,22 +25,22 @@ final class FileBasedReaderTest extends FreeSpec {
   "readDirectoryTreeWithProblems" in {
     provideDirectory { directory ⇒
       createFiles(directory)
-      assert(readDirectoryTreeWithProblems(directory, Set(WorkflowReader, AgentReader)).force.toSet == Set(
-        Valid(AWorkflow),
-        Valid(BWorkflow),
-        Valid(CWorkflow),
+      assert(readDirectoryTreeWithProblems(Set(WorkflowReader, AgentReader), directory, V0).force.toSet == Set(
+        Valid(AWorkflow withVersion V0),
+        Valid(BWorkflow withVersion V0),
+        Valid(CWorkflow withVersion V0),
         Invalid(Problem("""Problem with 'Workflow:/D (txt)': Failure(End:1:1 ..."ERROR")""")),
         Invalid(Problem("""File 'folder/test.alien.json' is not recognized as a configuration file""")),
-        Valid(AAgent),
-        Valid(BAgent)))
+        Valid(AAgent withVersion V0),
+        Valid(BAgent withVersion V0)))
 
-      assert(readDirectoryTree(Set(WorkflowReader, AgentReader), directory) ==
+      assert(readDirectoryTree(Set(WorkflowReader, AgentReader), directory, VersionId("VERSION")) ==
         Invalid(Problem.set(
           """Problem with 'Workflow:/D (txt)': Failure(End:1:1 ..."ERROR")""",
           """File 'folder/test.alien.json' is not recognized as a configuration file""")))
 
       (directory / "A.workflow.txt").contentString = ""
-      assert(readDirectoryTreeWithProblems(directory, Set(WorkflowReader, AgentReader)) ==
+      assert(readDirectoryTreeWithProblems(Set(WorkflowReader, AgentReader), directory, VersionId("VERSION")) ==
         Invalid(Problem(s"Duplicate configuration files: ${directory / "A.workflow.json"}, ${directory / "A.workflow.txt"}")))
     }
   }

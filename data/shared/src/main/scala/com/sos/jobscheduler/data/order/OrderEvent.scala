@@ -10,7 +10,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
-import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{Position, WorkflowId, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 
@@ -26,15 +26,15 @@ object OrderEvent {
   sealed trait OrderCoreEvent extends OrderEvent
   sealed trait OrderActorEvent extends OrderCoreEvent
 
-  final case class OrderAdded(workflowPath: WorkflowPath, state: Idle, payload: Payload = Payload.empty)
+  final case class OrderAdded(workflowId: WorkflowId, state: Idle, payload: Payload = Payload.empty)
   extends OrderCoreEvent {
-    workflowPath.requireNonAnonymous()
+    workflowId.requireNonAnonymous()
     //type State = Idle
   }
 
   final case class OrderAttached(workflowPosition: WorkflowPosition, state: Idle, parent: Option[OrderId], agentPath: AgentPath, payload: Payload)
   extends OrderCoreEvent {
-    workflowPosition.workflowPath.requireNonAnonymous()
+    workflowPosition.workflowId.requireNonAnonymous()
     //type State = Idle
   }
 

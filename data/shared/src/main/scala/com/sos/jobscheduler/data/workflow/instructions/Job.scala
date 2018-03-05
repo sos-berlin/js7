@@ -3,11 +3,11 @@ package com.sos.jobscheduler.data.workflow.instructions
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderMoved, OrderProcessed, OrderStopped}
 import com.sos.jobscheduler.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import com.sos.jobscheduler.data.order.{Order, Outcome}
-import com.sos.jobscheduler.data.workflow.{EventInstruction, JobPath, OrderContext}
+import com.sos.jobscheduler.data.workflow.{EventInstruction, OrderContext}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 

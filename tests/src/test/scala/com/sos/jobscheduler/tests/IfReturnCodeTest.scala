@@ -14,10 +14,10 @@ import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
-import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.IfReturnCodeTest._
 import org.scalatest.FreeSpec
@@ -28,7 +28,7 @@ final class IfReturnCodeTest extends FreeSpec {
 
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      directoryProvider.master.writeJson(TestWorkflow.path, TestWorkflow)
+      directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
       for (a ← directoryProvider.agents) a.file(JobPath("/JOB"), SourceType.Xml).xml = <job><script language="shell">:</script></job>
       for (a ← directoryProvider.agents) a.file(JobPath("/JOB-RC"), SourceType.Xml).xml =
         <job>
@@ -73,11 +73,11 @@ object IfReturnCodeTest {
       |};
       |job "JOB" on "AGENT";    // #2
     """.stripMargin
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW"), script).force
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "(initial)", script).force
 
   private val ExpectedEvents = Map(
     ReturnCode(0) → Vector(
-      OrderAdded(TestWorkflow.path, Order.StartNow, Payload(Map("RETURN_CODE" → "0"))),
+      OrderAdded(TestWorkflow.id, Order.StartNow, Payload(Map("RETURN_CODE" → "0"))),
       OrderTransferredToAgent(TestAgentPath),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -92,7 +92,7 @@ object IfReturnCodeTest {
       OrderTransferredToMaster,
       OrderFinished),
     ReturnCode(1) → Vector(
-      OrderAdded(TestWorkflow.path, Order.StartNow, Payload(Map("RETURN_CODE" → "1"))),
+      OrderAdded(TestWorkflow.id, Order.StartNow, Payload(Map("RETURN_CODE" → "1"))),
       OrderTransferredToAgent(TestAgentPath),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
@@ -107,12 +107,12 @@ object IfReturnCodeTest {
       OrderTransferredToMaster,
       OrderFinished),
     ReturnCode(2) →  Vector(
-      OrderAdded(TestWorkflow.path, Order.StartNow, Payload(Map("RETURN_CODE" → "2"))),
+      OrderAdded(TestWorkflow.id, Order.StartNow, Payload(Map("RETURN_CODE" → "2"))),
       OrderTransferredToAgent(TestAgentPath),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
       OrderStopped(Outcome.Failed(ReturnCode(2)))))
 
   private def newOrder(orderId: OrderId, returnCode: ReturnCode) =
-    Order(orderId, TestWorkflow.path, Order.StartNow, payload = Payload(Map("RETURN_CODE" → returnCode.number.toString)))
+    Order(orderId, TestWorkflow.id, Order.StartNow, payload = Payload(Map("RETURN_CODE" → returnCode.number.toString)))
 }

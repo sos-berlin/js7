@@ -12,7 +12,7 @@ import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
-import com.sos.jobscheduler.data.workflow.{InstructionNr, Position, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{InstructionNr, Position, WorkflowId, WorkflowPosition}
 import io.circe.generic.JsonCodec
 import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
@@ -43,8 +43,8 @@ final case class Order[+S <: Order.State](
     state = Offered(event.until),
     parent = None)
 
-  def workflowPath: WorkflowPath =
-    workflowPosition.workflowPath
+  def workflowId: WorkflowId =
+    workflowPosition.workflowId
 
   def position: Position =
     workflowPosition.position
@@ -157,7 +157,7 @@ final case class Order[+S <: Order.State](
 
 object Order {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Idle] =
-    Order(id, event.workflowPath, event.state, payload = event.payload)
+    Order(id, event.workflowId, event.state, payload = event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[Idle] =
     Order(id, event.workflowPosition, event.state, Some(AttachedTo.Agent(event.agentPath)), payload = event.payload)

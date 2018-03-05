@@ -10,7 +10,7 @@ import com.sos.jobscheduler.core.filebased.FileBaseds
 import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedVersion, TypedPath}
+import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.workflow.instructions.ExplicitEnd
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.agent.AgentReader
@@ -31,20 +31,23 @@ final class FileBasedsTest extends FreeSpec {
 
   "readDirectory" in {
     provideDirectory { directory ⇒
-      (directory / "A.workflow.json").contentString = AWorkflow.asJson.toPrettyString
-      (directory / "C.workflow.txt").contentString = CWorkflow.source.get
-      (directory / "D.workflow.txt").contentString = ChangedDWorkflow.source.get
-      (directory / "A.agent.xml").xml = <agent uri="http://A"/>
-      (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>
+      // We assume an existing version V0
+      val v0FileBaseds = List(AWorkflow, BWorkflow, DWorkflow, AAgent)
 
-      val previousFileBaseds = List(AWorkflow, BWorkflow, DWorkflow, AAgent)
-      val eventsChecked = FileBaseds.readDirectory(readers, directory, previousFileBaseds, FileBasedVersion("VERSION"))
+      // Write folder image for version V1, using different source types
+      (directory / "A.workflow.json").contentString = AWorkflow.asJson.toPrettyString  // Same
+      (directory / "C.workflow.txt").contentString = CWorkflow.source.get              // Same
+      (directory / "D.workflow.txt").contentString = D1Workflow.source.get             // Changed
+      (directory / "A.agent.xml").xml = <agent uri="http://A"/>                        // Same
+      (directory / "folder" / "B.agent.xml").xml = <agent uri="http://B"/>             // Added
+
+      val eventsChecked = FileBaseds.readDirectory(readers, directory, v0FileBaseds, V1)
       assert(eventsChecked.map(_.toSet) == Valid(Set(
-        VersionAdded(FileBasedVersion("VERSION")),
+        VersionAdded(V1),
         FileBasedDeleted(BWorkflow.path),
-        FileBasedAdded(BAgent),
-        FileBasedAdded(CWorkflow),
-        FileBasedChanged(ChangedDWorkflow))))
+        FileBasedAdded(BAgent withVersion V1),
+        FileBasedAdded(CWorkflow withVersion V1),
+        FileBasedChanged(D1Workflow withVersion V1))))
     }
   }
 
@@ -54,17 +57,17 @@ final class FileBasedsTest extends FreeSpec {
         FileBasedDeleted(BWorkflow.path),
         FileBasedAdded(BAgent),
         FileBasedAdded(CWorkflow),
-        FileBasedChanged(ChangedDWorkflow)))
+        FileBasedChanged(D1Workflow)))
 
     assert(diff == FileBaseds.Diff[TypedPath, FileBased](
       List(BAgent, CWorkflow),
-      List(ChangedDWorkflow),
+      List(D1Workflow),
       List(BWorkflow.path)))
 
     assert(diff.select[WorkflowPath, Workflow] ==
       FileBaseds.Diff[WorkflowPath, Workflow](
         List(CWorkflow),
-        List(ChangedDWorkflow),
+        List(D1Workflow),
         List(BWorkflow.path)))
 
     assert(diff.select[AgentPath, Agent] ==
@@ -77,13 +80,19 @@ final class FileBasedsTest extends FreeSpec {
 
 object FileBasedsTest {
   private val readers = Set(WorkflowReader, AgentReader, new ScheduledOrderGeneratorReader(ZoneId.of("UTC")))
-  private[fileBased] val AWorkflow = Workflow.of(WorkflowPath("/A"))
-  private[fileBased] val BWorkflow = Workflow(WorkflowPath("/B"), Vector("B-END" @: ExplicitEnd))
-  private[fileBased] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C"), "// EMPTY").force
-  private[fileBased] val DWorkflow = Workflow(WorkflowPath("/D"), Vector("D-END" @: ExplicitEnd))
-  private[fileBased] val ChangedDWorkflow = WorkflowParser.parse(WorkflowPath("/D"), "CHANGED-D-END: end").force
-  private[fileBased] val AAgent = Agent(AgentPath("/A"), "http://A")
-  private[fileBased] val BAgent = Agent(AgentPath("/folder/B"), "http://B")
+
+  private[fileBased] val V0 = VersionId("0")
+  private[fileBased] val V1 = VersionId("1")
+  private val u = VersionId("UNKNOWN")
+
+  private[fileBased] val AWorkflow = Workflow.of(WorkflowPath("/A") % u)
+  private[fileBased] val BWorkflow = Workflow(WorkflowPath("/B") % u, Vector("B-END" @: ExplicitEnd))
+  private[fileBased] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C") % u, "// EMPTY").force
+  private[fileBased] val DWorkflow = Workflow(WorkflowPath("/D") % u, Vector("D-END" @: ExplicitEnd))
+  private[fileBased] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D") % u, "CHANGED-D-END: end").force
+  private[fileBased] val AAgent = Agent(AgentPath("/A") % u, "http://A")
+  private[fileBased] val BAgent = Agent(AgentPath("/folder/B") % u, "http://B")
+
 
   private[fileBased] def provideDirectory[A](body: Path ⇒ A): A = {
     val dir = createTempDirectory("test-")

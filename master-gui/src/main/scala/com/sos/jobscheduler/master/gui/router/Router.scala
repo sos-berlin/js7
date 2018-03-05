@@ -1,9 +1,13 @@
 package com.sos.jobscheduler.master.gui.router
 
+import cats.data.Validated.{Invalid, Valid}
+import cats.syntax.flatMap._
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
-import com.sos.jobscheduler.data.filebased.TypedPath
+import com.sos.jobscheduler.data.filebased.{FileBasedId, TypedPath, VersionId}
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.WorkflowPath
+import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.master.gui.components.order.OrderComponent
 import com.sos.jobscheduler.master.gui.components.state.OrdersState.FetchedContent
 import com.sos.jobscheduler.master.gui.components.state.{GuiState, OrdersState}
@@ -39,16 +43,38 @@ object Router {
         WorkflowListComponent(state.workflowListProps)
 
       case h if h startsWith WorkflowPrefix ⇒
-        val path = decodeURIComponent(h.stripPrefix(WorkflowPrefix))
-        if (path startsWith "/") {
-          window.document.location.replace(hash(WorkflowPath(path)))
-          "..."
-        } else {
-          val workflowPath = WorkflowPath(s"/$path")
-          window.document.title = workflowPath.pretty
-          WorkflowOrdersComponent(
-            state.pathToWorkflow(workflowPath),
-            StateSnapshot(state.ordersState)(s ⇒ stateSnapshot.modState(_.copy(ordersState = s))))
+        val originalPathAndVersion = decodeURIComponent(h.stripPrefix(WorkflowPrefix))
+        val pathAndVersion = "/" + originalPathAndVersion.stripPrefix("/")
+        val checkedPathAndVersion: Checked[(WorkflowPath, Option[VersionId])] = {
+          val q = "?version="
+          pathAndVersion indexOf q match {
+            case -1 ⇒ for (path ← WorkflowPath.checked(pathAndVersion)) yield path → None
+            case i ⇒
+              for {
+                path ← WorkflowPath.checked(pathAndVersion take i)
+                version ← VersionId.checked(pathAndVersion drop i + q.length)
+              } yield path → Some(version)
+          }
+        }
+        checkedPathAndVersion match {
+          case Invalid(problem) ⇒ <.div(^.cls := "error", s"Unrecognized URI ${window.document.location}: $problem")
+          case Valid((path, None)) ⇒
+            if (originalPathAndVersion startsWith "/") {
+              window.document.location.replace(hash(path))
+              "..."
+            } else
+              <.div(^.cls := "error", "Missing VersionId")
+          case Valid((path, Some(version))) ⇒
+            val id = path % version
+            if (originalPathAndVersion startsWith "/") {
+              window.document.location.replace(hash(id))
+              "..."
+            } else {
+              window.document.title = id.pretty
+              WorkflowOrdersComponent(
+                state.idToWorkflow(id),
+                StateSnapshot(state.ordersState)(s ⇒ stateSnapshot.modState(_.copy(ordersState = s))))
+          }
         }
 
       case h if h startsWith OrderPrefix ⇒
@@ -57,7 +83,7 @@ object Router {
         state.ordersState.content match {
           case content: FetchedContent ⇒
             val orderEntry = content.idToEntry.getOrElse(orderId, sys.error(s"Unknown $orderId"))
-            val workflow = state.pathToWorkflow(orderEntry.order.workflowPath)
+            val workflow = state.idToWorkflow(orderEntry.order.workflowId)
             OrderComponent(orderEntry, content.idToEntry(_).order, workflow, isOwnPage = true)
 
           case _ ⇒
@@ -74,6 +100,9 @@ object Router {
     }
   }
 
+  def hash(workflowId: WorkflowId) =
+    WorkflowPrefix + encodeHashVersionedPath(workflowId)
+
   def hash(workflowPath: WorkflowPath) =
     WorkflowPrefix + encodeHashPath(workflowPath)
 
@@ -81,6 +110,13 @@ object Router {
     try OrderPrefix + encodeURI(orderId.string)
     catch { case t: Throwable ⇒
       window.console.error(s"$orderId: $t")
+      ""
+    }
+
+  private def encodeHashVersionedPath[P <: TypedPath](id: FileBasedId[P]): String =
+    try encodeURI(id.path.withoutStartingSlash) + "?version=" + encodeURI(id.versionId.string)
+    catch { case t: Throwable ⇒
+      window.console.error(s"$id: $t")
       ""
     }
 

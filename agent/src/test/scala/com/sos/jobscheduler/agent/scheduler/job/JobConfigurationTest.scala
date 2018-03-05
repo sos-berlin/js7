@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.scheduler.job
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.common.time.Stopwatch
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.job.JobPath
 import org.scalatest.FreeSpec
 
 /**
@@ -20,9 +20,9 @@ final class JobConfigurationTest extends FreeSpec {
         </params>
         <script language="shell">exit 0</script>
       </job>
-    assert(JobConfiguration.parseXml(JobPath("/TEST-JOB"), jobXml) ==
+    assert(JobConfiguration.parseXml(JobPath("/TEST-JOB") % "VERSION", jobXml) ==
       Valid(JobConfiguration(
-        JobPath("/TEST-JOB"),
+        JobPath("/TEST-JOB") % "VERSION",
         JobScript("exit 0"),
         Map("NAME" → "VALUE", "a" → "aa"),
         taskLimit = 20)))
@@ -37,10 +37,10 @@ final class JobConfigurationTest extends FreeSpec {
         }</params>
         <script language="shell">SCRIPT</script>
       </job>.toString
-    val jobPath = JobPath("/TEST")
+    val jobId = JobPath("/TEST") % "VERSION"
     for (_ ← 1 to 10) {
       info(Stopwatch.measureTime(n, "job") {
-        JobConfiguration.parseXml(jobPath, xmlString)
+        JobConfiguration.parseXml(jobId, xmlString)
       }.toString)
     }
   }

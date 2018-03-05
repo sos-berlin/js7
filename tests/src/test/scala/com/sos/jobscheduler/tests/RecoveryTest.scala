@@ -20,12 +20,13 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBasedVersion, RepoEvent, SourceType}
+import com.sos.jobscheduler.data.filebased.{RepoEvent, SourceType, VersionId}
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.Job
-import com.sos.jobscheduler.data.workflow.{JobPath, Position, Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
@@ -50,11 +51,11 @@ final class RecoveryTest extends FreeSpec {
   "test" in { for (_ ← 1 to (if (sys.props contains "test.infinite") Int.MaxValue else 1)) {
     val eventCollector = new TestEventCollector
     var lastEventId = EventId.BeforeFirst
-    autoClosing(new DirectoryProvider(AgentPaths)) { directoryProvider ⇒
+    autoClosing(new DirectoryProvider(AgentIds map (_.path))) { directoryProvider ⇒
       for ((agentPath, tree) ← directoryProvider.agentToTree)
         tree.file(TestJobPath, SourceType.Xml).xml = jobXml(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
       withCloser { implicit closer ⇒
-        for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.path, w)
+        for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.withoutVersion)
         (directoryProvider.master.live / "test.order.xml").xml = TestOrderGeneratorElem
 
         runMaster(directoryProvider, eventCollector) { master ⇒
@@ -63,11 +64,11 @@ final class RecoveryTest extends FreeSpec {
           }
           eventCollector.await[MasterEvent.MasterReady](after = lastEventId)
           assert(eventCollector.await[RepoEvent]().map(_.value).sortBy(_.toString) == Vector(
-            NoKey <-: VersionAdded(FileBasedVersion("(INITIAL)")),
+            NoKey <-: VersionAdded(VersionId("(initial)")),
             NoKey <-: FileBasedAdded(TestWorkflow),
             NoKey <-: FileBasedAdded(QuickWorkflow),
-            NoKey <-: FileBasedAdded(Agent(AgentPaths(0), s"http://127.0.0.1:${directoryProvider.agents(0).conf.http.get.address.getPort}")),
-            NoKey <-: FileBasedAdded(Agent(AgentPaths(1), s"http://127.0.0.1:${directoryProvider.agents(1).conf.http.get.address.getPort}"))).sortBy(_.toString))
+            NoKey <-: FileBasedAdded(Agent(AgentIds(0), s"http://127.0.0.1:${directoryProvider.agents(0).conf.http.get.address.getPort}")),
+            NoKey <-: FileBasedAdded(Agent(AgentIds(1), s"http://127.0.0.1:${directoryProvider.agents(1).conf.http.get.address.getPort}"))).sortBy(_.toString))
           runAgents(directoryProvider) { _ ⇒
             master.addOrder(QuickOrder) await 99.s
             lastEventId = lastEventIdOf(eventCollector.await[OrderFinished](after = lastEventId, predicate = _.key == QuickOrder.id))
@@ -92,7 +93,7 @@ final class RecoveryTest extends FreeSpec {
               assert(master.orderClient.order(orderId).await(99.s) ==
                 Some(Order(
                   orderId,
-                  TestWorkflow.path /: Position(5),
+                  TestWorkflow.id /: Position(5),
                   Order.Finished,
                   payload = Payload(
                     Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")))))
@@ -145,28 +146,28 @@ final class RecoveryTest extends FreeSpec {
 private object RecoveryTest {
   private val logger = Logger(getClass)
 
-  private val AgentPaths = List(AgentPath("/agent-111"), AgentPath("/agent-222"))
+  private val AgentIds = List(AgentPath("/agent-111"), AgentPath("/agent-222")) map (_ % "(initial)")
   private val TestJobPath = JobPath("/test")
 
   private val SomeTimestamp = Instant.parse("2017-07-23T12:00:00Z").toTimestamp
 
-  private val TestWorkflow = Workflow.of(WorkflowPath("/test"),
-    Job(TestJobPath, AgentPaths(0)),
-    Job(TestJobPath, AgentPaths(0)),
-    Job(TestJobPath, AgentPaths(0)),
-    Job(TestJobPath, AgentPaths(1)),
-    Job(TestJobPath, AgentPaths(1)))
+  private val TestWorkflow = Workflow.of(WorkflowPath("/test") % "(initial)",
+    Job(TestJobPath, AgentIds(0).path),
+    Job(TestJobPath, AgentIds(0).path),
+    Job(TestJobPath, AgentIds(0).path),
+    Job(TestJobPath, AgentIds(1).path),
+    Job(TestJobPath, AgentIds(1).path))
   private val TestOrderGeneratorElem =
     <order job_chain={TestWorkflow.path.string}>
       <run_time><period absolute_repeat="3"/></run_time>
     </order>
 
-  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick"), Job(TestJobPath, AgentPaths(0)))
-  private val QuickOrder = Order(OrderId("FAST-ORDER"), QuickWorkflow.path, Order.StartNow)
+  private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") % "(initial)", Job(TestJobPath, AgentIds(0).path))
+  private val QuickOrder = Order(OrderId("FAST-ORDER"), QuickWorkflow.id, Order.StartNow)
 
   private val ExpectedOrderEvents = Vector(
-    OrderAdded(TestWorkflow.path, Scheduled(SomeTimestamp), Payload(Map())),
-    OrderTransferredToAgent(AgentPaths(0)),
+    OrderAdded(TestWorkflow.id, Scheduled(SomeTimestamp), Payload(Map())),
+    OrderTransferredToAgent(AgentIds(0).path),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.succeeded),
@@ -181,7 +182,7 @@ private object RecoveryTest {
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderTransferredToMaster,
-    OrderTransferredToAgent(AgentPaths(1)),
+    OrderTransferredToAgent(AgentIds(1).path),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.succeeded),

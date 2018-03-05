@@ -1,11 +1,9 @@
-package com.sos.jobscheduler.data.workflow
+package com.sos.jobscheduler.data.job
 
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 
 final case class JobPath(string: String)
 extends TypedPath {
-
-  validate()
 
   def companion = JobPath
 

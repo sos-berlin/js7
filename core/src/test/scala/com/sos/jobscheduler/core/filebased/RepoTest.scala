@@ -4,8 +4,8 @@ import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.core.filebased.RepoTest._
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
-import com.sos.jobscheduler.data.filebased.{FileBasedVersion, TestFileBased, TestPath, TypedPath}
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.filebased.{AFileBased, APath, BFileBased, BPath, VersionId}
+import com.sos.jobscheduler.data.job.JobPath
 import org.scalatest.FreeSpec
 
 /**
@@ -18,8 +18,8 @@ final class RepoTest extends FreeSpec
   "empty" in {
     assert(Repo.empty.historyBefore(v("UNKNOWN")) == Invalid(Problem("No such 'version UNKNOWN'")))
 
-    assert(Repo.empty.get(TypedPath.Versioned(v("UNKNOWN-VERSION"), TestPath("/UNKNOWN-PATH"))) ==
-      Invalid(Problem("No such key 'Test:/UNKNOWN-PATH'")))
+    assert(Repo.empty.idTo[AFileBased](APath("/UNKNOWN-PATH") % "UNKNOWN-VERSION") ==
+      Invalid(Problem("No such key 'A:/UNKNOWN-PATH'")))
 
     assert(Repo.empty.applyEvent(FileBasedAdded(a1)) ==
       Invalid(Problem("Missing first event VersionAdded for Repo")))
@@ -30,25 +30,25 @@ final class RepoTest extends FreeSpec
     assert(repo.historyBefore(v("INITIAL")) == Valid(Nil))
     assert(repo.historyBefore(v("UNKNOWN")) == Invalid(Problem("No such 'version UNKNOWN'")))
 
-    assert(repo.get(TypedPath.Versioned(v("INITIAL"), TestPath("/UNKNOWN"))) ==
-      Invalid(Problem("No such key 'Test:/UNKNOWN'")))
+    assert(repo.idTo[AFileBased](APath("/UNKNOWN") % "INITIAL") ==
+      Invalid(Problem("No such key 'A:/UNKNOWN'")))
 
-    assert(repo.get(TypedPath.Versioned(v("UNKNOWN-VERSION"), TestPath("/UNKNOWN-PATH"))) ==
-      Invalid(Problem("No such key 'Test:/UNKNOWN-PATH'")))
+    assert(repo.idTo[AFileBased](APath("/UNKNOWN-PATH") % "UNKNOWN-VERSION") ==
+      Invalid(Problem("No such key 'A:/UNKNOWN-PATH'")))
 
     assert(repo.applyEvent(VersionAdded(v("INITIAL"))) ==
       Invalid(Repo.DuplicateVersionProblem(v("INITIAL"))))
   }
 
   "Event input" in {
-    assert(testRepo.get(TestPath.Versioned(v("1"), TestPath("/A"))) == Valid(a1))
-    assert(testRepo.get(TestPath.Versioned(v("2"), TestPath("/A"))) == Valid(a2))
-    assert(testRepo.get(TestPath.Versioned(v("3"), TestPath("/A"))) == Valid(a3))
-    assert(testRepo.get(TestPath.Versioned(v("4"), TestPath("/A"))) == Invalid(Problem("No such 'version 4'")))
-    assert(testRepo.get(TestPath.Versioned(v("1"), TestPath("/B"))) == Invalid(Problem("Not found: Versioned(version 1,Test:/B)")))
-    assert(testRepo.get(TestPath.Versioned(v("2"), TestPath("/B"))) == Valid(b2))
-    assert(testRepo.get(TestPath.Versioned(v("3"), TestPath("/B"))) == Invalid(Problem("Has been deleted: Versioned(version 3,Test:/B)")))
-    assert(testRepo.get(TestPath.Versioned(v("3"), TestPath("/C"))) == Valid(c2))
+    assert(testRepo.idTo[AFileBased](APath("/A") % "4") == Invalid(Problem("No such 'version 4'")))
+    assert(testRepo.idTo[BFileBased](BPath("/Ba") % V1) == Invalid(Problem("No such 'B:/Ba 1'")))
+    assert(testRepo.idTo[BFileBased](BPath("/Ba") % V3) == Invalid(Problem("Has been deleted: B:/Ba 3")))
+    assert(testRepo.idTo[AFileBased](APath("/A") % V1) == Valid(a1))
+    assert(testRepo.idTo[AFileBased](APath("/A") % V2) == Valid(a2))
+    assert(testRepo.idTo[AFileBased](APath("/A") % V3) == Valid(a3))
+    assert(testRepo.idTo[BFileBased](BPath("/Ba") % V2) == Valid(ba2))
+    assert(testRepo.idTo[BFileBased](BPath("/Bb") % V3) == Valid(bb2))
   }
 
   "Event output" in {
@@ -56,34 +56,49 @@ final class RepoTest extends FreeSpec
   }
 
   "eventsFor" in {
-    assert(testRepo.eventsFor(Set(TestPath)) == TestEvents)
-    assert(testRepo.eventsFor(Set(JobPath)) == List(VersionAdded(v("1")), VersionAdded(v("2")), VersionAdded(v("3"))))
+    assert(testRepo.eventsFor(Set(APath, BPath)) == TestEvents)
+    assert(testRepo.eventsFor(Set(APath)) == List(
+      VersionAdded(V1), FileBasedAdded(a1),
+      VersionAdded(V2), FileBasedChanged(a2),
+      VersionAdded(V3), FileBasedChanged(a3)))
+    assert(testRepo.eventsFor(Set(JobPath)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
   }
 
   "currentVersion" in {
     assert(testRepo.currentVersion == Map(
-      TestPath("/A") → a3,
-      TestPath("/C") → c2))
+      a3.path → a3,
+      bb2.path → bb2))
+  }
+
+  "versionId" in {
+    assert(testRepo.versionId == V3)
+    assert(Repo.empty.versionId.isAnonymous)
+  }
+
+  "idTo" in {
+    assert(testRepo.idTo[AFileBased](a1.id) == Valid(a1))
+  }
+
+  "currentTyped" in {
+    assert(testRepo.currentTyped[AFileBased] == Map(a3.path → a3))
+    assert(testRepo.currentTyped[BFileBased] == Map(bb2.path → bb2))
   }
 }
 
 object RepoTest {
-  private val a1 = TestFileBased(TestPath("/A"), "A-1")
-  private val a2 = TestFileBased(TestPath("/A"), "A-2")
-  private val b2 = TestFileBased(TestPath("/B"), "B-2")
-  private val c2 = TestFileBased(TestPath("/C"), "C-2")
-  private val a3 = TestFileBased(TestPath("/A"), "A-3")
+  private val V1 = VersionId("1")
+  private val V2 = VersionId("2")
+  private val V3 = VersionId("3")
+  private val a1 = AFileBased(APath("/A") % V1, "A-1")
+  private val a2 = AFileBased(APath("/A") % V2, "A-2")
+  private val ba2 = BFileBased(BPath("/Ba") % V2, "Ba-2")
+  private val bb2 = BFileBased(BPath("/Bb") % V2, "Bb-2")
+  private val a3 = AFileBased(APath("/A") % V3, "A-3")
 
   private val TestEvents = List(
-    VersionAdded(v("1")),
-    FileBasedAdded(a1),
-    VersionAdded(v("2")),
-    FileBasedChanged(a2),
-    FileBasedAdded(b2),
-    FileBasedAdded(c2),
-    VersionAdded(v("3")),
-    FileBasedChanged(a3),
-    FileBasedDeleted(TestPath("/B")))
+    VersionAdded(V1), FileBasedAdded(a1),
+    VersionAdded(V2), FileBasedChanged(a2), FileBasedAdded(ba2), FileBasedAdded(bb2),
+    VersionAdded(V3), FileBasedChanged(a3), FileBasedDeleted(ba2.path))
 
-  private def v(version: String) = FileBasedVersion(version)
+  private def v(version: String) = VersionId(version)
 }

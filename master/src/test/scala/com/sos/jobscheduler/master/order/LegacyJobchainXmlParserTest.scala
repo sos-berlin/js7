@@ -4,8 +4,9 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.folder.FolderPath
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfNonZeroReturnCodeGoto, Job, ReturnCodeMeaning}
-import com.sos.jobscheduler.data.workflow.{JobPath, Label, Workflow}
+import com.sos.jobscheduler.data.workflow.{Label, Workflow}
 import org.scalatest.FreeSpec
 
 /**

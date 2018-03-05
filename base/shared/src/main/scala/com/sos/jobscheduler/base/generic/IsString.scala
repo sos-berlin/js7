@@ -24,14 +24,14 @@ object IsString {
     case None ⇒ null
   }
 
-  implicit def jsonEncoder[A <: IsString]: Encoder[A] =
+  private implicit def jsonEncoder[A <: IsString]: Encoder[A] =
     o ⇒ Json.fromString(o.string)
 
   trait HasJsonCodec[A <: IsString] {
     def apply(o: String): A
 
-    implicit val JsonEncoder: Encoder[A] = jsonEncoder[A]
-    implicit val JsonDecoder: Decoder[A] = _.as[String] map apply
+    implicit val jsonEncoder: Encoder[A] = IsString.jsonEncoder[A]
+    implicit val jsonDecoder: Decoder[A] = _.as[String] map apply
     implicit val keyEncoder: KeyEncoder[A] = _.string
     implicit val keyDecoder: KeyDecoder[A] = o ⇒ Some(apply(o))
   }

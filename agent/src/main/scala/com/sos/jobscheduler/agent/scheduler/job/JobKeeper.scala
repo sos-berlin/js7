@@ -11,7 +11,8 @@ import com.sos.jobscheduler.common.akkautils.LoggingOneForOneStrategy
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.filebased.FileBasedReader
-import com.sos.jobscheduler.data.workflow.JobPath
+import com.sos.jobscheduler.data.filebased.VersionId
+import com.sos.jobscheduler.data.job.JobPath
 import java.nio.file.Path
 import scala.collection.{immutable, mutable}
 import scala.concurrent.ExecutionContext
@@ -40,7 +41,7 @@ extends Actor with Stash {
       message match {
         case Input.Start ⇒
           val pathToActor = mutable.Map[JobPath, ActorRef]()
-          val fileBaseds = FileBasedReader.readDirectoryTree(Set(JobReader), jobConfigurationDirectory).force
+          val fileBaseds = FileBasedReader.readDirectoryTree(Set(JobReader), jobConfigurationDirectory, TestVersion).force
           for (job ← fileBaseds collect { case o: JobConfiguration ⇒ o }) {
             logger.debug(s"Adding ${job.path}")
             val a = watch(actorOf(
@@ -117,6 +118,7 @@ extends Actor with Stash {
 }
 
 object JobKeeper {
+  private val TestVersion = VersionId("VERSION")
   private val logger = Logger(getClass)
 
   object Input {

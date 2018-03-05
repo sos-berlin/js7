@@ -5,7 +5,8 @@ import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.time.Stopwatch.measureTime
 import com.sos.jobscheduler.core.filebased.TypedPaths._
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.workflow.{JobPath, WorkflowPath}
+import com.sos.jobscheduler.data.job.JobPath
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import java.nio.file.Paths
 import org.scalatest.FreeSpec
 

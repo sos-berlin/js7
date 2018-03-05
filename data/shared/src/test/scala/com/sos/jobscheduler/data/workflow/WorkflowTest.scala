@@ -3,7 +3,7 @@ package com.sos.jobscheduler.data.workflow
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.ReturnCode
+import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, ImplicitEnd, Job}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
@@ -83,8 +83,9 @@ final class WorkflowTest extends FreeSpec {
       (END @: ExplicitEnd)      → true,
       (B   @: job)              → true,
       (()  @: Goto(C))          → true)
-    val a = Workflow(WorkflowPath("/W"), instructions map (_._1))
-    assert(a.reduce == Workflow(WorkflowPath("/W"), instructions collect { case (s, true) ⇒ s }))
+    val id = WorkflowPath("/WORKFLOW") % "VERSION"
+    val a = Workflow(id, instructions map (_._1))
+    assert(a.reduce == Workflow(id, instructions collect { case (s, true) ⇒ s }))
   }
 
   "numberedInstruction" in {
@@ -131,7 +132,10 @@ final class WorkflowTest extends FreeSpec {
       testJson[Workflow](TestWorkflow,
         // Statement "ImplicitEnd" should not be used in explicit notation. JobScheduler generates this statement implicitly.
         json"""{
-          "path": "/TEST",
+          "id": {
+            "path": "/TEST",
+            "versionId": "VERSION"
+          },
           "instructions": [
             { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
             {
@@ -193,7 +197,7 @@ final class WorkflowTest extends FreeSpec {
 
 object WorkflowTest {
   val TestWorkflow = Workflow.of(
-    WorkflowPath("/TEST"),
+    WorkflowPath("/TEST") % "VERSION",
     AJob,
     IfReturnCode(
       ReturnCode(1) :: Nil,

@@ -18,6 +18,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp.now
+import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -34,11 +35,12 @@ import com.sos.jobscheduler.core.event.journal.{JournalActor, JournalMeta, Journ
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderDetached
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowEvent.WorkflowAttached
 import com.sos.jobscheduler.data.workflow.instructions.Job
-import com.sos.jobscheduler.data.workflow.{JobPath, Workflow, WorkflowEvent}
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowEvent}
 import com.typesafe.config.Config
 import java.nio.file.Path
 import java.time.Duration
@@ -72,7 +74,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
   private val jobRegister = new JobRegister
   private val workflowRegister = new WorkflowRegister
   private val orderRegister = new OrderRegister(timerService)
-  private val orderProcessor = new OrderProcessor(workflowRegister.pathToWorkflow, orderRegister.idToOrder)
+  private val orderProcessor = new OrderProcessor(workflowRegister.idToWorkflow.checked, orderRegister.idToOrder)
   private val eventsForMaster = actorOf(Props { new EventQueueActor(timerService) }, "eventsForMaster").taggedWith[EventQueueActor]
 
   private var terminating = false
@@ -93,7 +95,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     for (recoveredOrder ← recoverer.orders)
       wrapException(s"Error when recovering ${recoveredOrder.id}") {
         val order = workflowRegister.reuseMemory(recoveredOrder)
-        val workflow = workflowRegister(order.workflowPath)  // Workflow must be recovered
+        val workflow = workflowRegister(order.workflowId)  // Workflow is expected to be recovered
         val actor = newOrderActor(order)
         orderRegister.recover(order, workflow, actor)
         actor ! KeyedJournalingActor.Input.Recover(order)
@@ -168,7 +170,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     case Internal.ContinueAttachOrder(cmd @ AttachOrder(order, workflow), promise) ⇒
       promise completeWith {
         if (!workflow.isDefinedAt(order.position))
-          Future.failed(new IllegalArgumentException(s"Unknown Position ${order.position} in ${order.workflowPath}"))
+          Future.failed(new IllegalArgumentException(s"Unknown Position ${order.workflowPosition}"))
         else
           if (orderRegister contains order.id) {
             // May occur after Master restart when Master is not sure about order has been attached previously.
@@ -196,7 +198,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
       order.attachedToAgent match {
         case Invalid(problem) ⇒ Future.failed(problem.throwable)
         case Valid(_) ⇒
-          val workflowResponse = workflowRegister.get(order.workflowPath) match {
+          val workflowResponse = workflowRegister.get(order.workflowId) match {
             case None ⇒
               persist(KeyedEvent(WorkflowAttached(workflow))) { stampedEvent ⇒
                 workflowRegister.handleEvent(stampedEvent.value)
@@ -205,7 +207,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
             case Some(w) if w.withoutSource == workflow.withoutSource ⇒
               Future.successful(Accepted)
             case Some(_) ⇒
-              Future.failed(new IllegalStateException(s"Changed ${order.workflowPath}"))
+              Future.failed(new IllegalStateException(s"Changed ${order.workflowId}"))
           }
           workflowResponse flatMap { case Accepted ⇒
             promiseFuture[Accepted.type] { promise ⇒
@@ -280,7 +282,7 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
 
         case FollowUp.AddChild(childOrder) ⇒
           val actor = newOrderActor(childOrder)
-          orderRegister.insert(childOrder, workflowRegister(childOrder.workflowPath), actor)
+          orderRegister.insert(childOrder, workflowRegister(childOrder.workflowId), actor)
           actor ! OrderActor.Input.AddChild(childOrder)
           proceedWithOrder(childOrder.id)
 

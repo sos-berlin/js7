@@ -60,7 +60,7 @@ private[order] object OrderRegister {
     def order = _order
 
     def order_=(o: Order[Order.State]) = {
-      assert(_order.workflowPath == o.workflowPath)
+      assert(_order.workflowId == o.workflowId)
       _order = o
     }
 

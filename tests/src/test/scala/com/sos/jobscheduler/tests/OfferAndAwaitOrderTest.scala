@@ -12,9 +12,10 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{<-:, EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.filebased.SourceType
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.{JobPath, Position, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.OfferAndAwaitOrderTest._
 import org.scalatest.FreeSpec
@@ -27,7 +28,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
 {
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
-      for ((path, workflow) ← TestWorkflows) directoryProvider.master.writeTxt(path, workflow)
+      for ((id, workflow) ← TestWorkflows) directoryProvider.master.writeTxt(id.path, workflow)
       for (a ← directoryProvider.agents) a.file(TestJobPath, SourceType.Xml).xml = <job><script language="shell">:</script></job>
 
       directoryProvider.run { (master, _) ⇒
@@ -39,7 +40,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         eventCollector.await[OrderAwaiting](_.key == JoinBefore1Order.id)
         eventCollector.await[OrderAwaiting](_.key == JoinBefore2Order.id)
 
-        master.addOrder(PublishOrder) await 99.s
+        master.addOrder(OfferedOrder) await 99.s
         eventCollector.await[OrderJoined]       (_.key == JoinBefore1Order.id)
         eventCollector.await[OrderJoined]       (_.key == JoinBefore2Order.id)
         eventCollector.await[OrderFinished](_.key == JoinBefore1Order.id)
@@ -61,7 +62,7 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         for (orderId ← Array(JoinBefore1Order.id, JoinBefore2Order.id, JoinAfterOrder.id)) {
           assert(keyedEvents.collect { case `orderId` <-: event ⇒ event } == ExpectedJoiningEvents, s" - $orderId")
         }
-        assert(keyedEvents.collect { case PublishOrderId <-: event ⇒ event }.map(cleanPublishedUntil) == ExpectedPublishingOrderEvents)
+        assert(keyedEvents.collect { case OfferedOrderId <-: event ⇒ event }.map(cleanPublishedUntil) == ExpectedPublishingOrderEvents)
       case o ⇒
         fail(s"Unexpected EventSeq received: $o")
     }
@@ -70,29 +71,29 @@ final class OfferAndAwaitOrderTest extends FreeSpec
 object OfferAndAwaitOrderTest {
   private val TestAgentPath = AgentPath("/AGENT")
   private val TestJobPath = JobPath("/JOB")
-  private val JoiningWorkflowPath = WorkflowPath("/A")
-  private val PublishingWorkflowPath = WorkflowPath("/B")
+  private val JoiningWorkflowId = WorkflowPath("/A") % "(initial)"
+  private val PublishingWorkflowId = WorkflowPath("/B") % "(initial)"
   private val TestWorkflows = List(
-    JoiningWorkflowPath → """
+    JoiningWorkflowId → """
        |job "JOB" on "AGENT";
        |await orderId = "OFFERED-ORDER-ID";
        |job "JOB" on "AGENT";
        |""".stripMargin,
-    PublishingWorkflowPath → """
+    PublishingWorkflowId → """
        |job "JOB" on "AGENT";
        |offer orderId = "OFFERED-ORDER-ID", timeout = 60;
        |job "JOB" on "AGENT";
        |""".stripMargin)
 
-  private val PublishOrderId = OrderId("🔵")
-  private val JoinBefore1Order = Order(OrderId("🥕"), JoiningWorkflowPath, state = Order.StartNow)
-  private val JoinBefore2Order = Order(OrderId("🍋"), JoiningWorkflowPath, state = Order.StartNow)
+  private val OfferedOrderId = OrderId("🔵")
+  private val JoinBefore1Order = Order(OrderId("🥕"), JoiningWorkflowId, state = Order.StartNow)
+  private val JoinBefore2Order = Order(OrderId("🍋"), JoiningWorkflowId, state = Order.StartNow)
   private val JoinAfterOrderId = OrderId("🍭")
-  private val JoinAfterOrder = Order(JoinAfterOrderId, JoiningWorkflowPath, state = Order.StartNow)
-  private val PublishOrder = Order(PublishOrderId, PublishingWorkflowPath, state = Order.StartNow)
+  private val JoinAfterOrder = Order(JoinAfterOrderId, JoiningWorkflowId, state = Order.StartNow)
+  private val OfferedOrder = Order(OfferedOrderId, PublishingWorkflowId, state = Order.StartNow)
 
   private val ExpectedJoiningEvents = Vector(
-    OrderAdded(JoiningWorkflowPath, Order.StartNow),
+    OrderAdded(JoiningWorkflowId, Order.StartNow),
     OrderTransferredToAgent(TestAgentPath),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -119,7 +120,7 @@ object OfferAndAwaitOrderTest {
     }
 
   private val ExpectedPublishingOrderEvents = Vector(
-    OrderAdded(PublishingWorkflowPath, Order.StartNow),
+    OrderAdded(PublishingWorkflowId, Order.StartNow),
     OrderTransferredToAgent(TestAgentPath),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),
