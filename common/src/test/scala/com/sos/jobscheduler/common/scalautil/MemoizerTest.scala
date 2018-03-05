@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.common.scalautil
 
-import com.sos.jobscheduler.common.scalautil.ConcurrentMemoizerTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
+import com.sos.jobscheduler.common.scalautil.MemoizerTest._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import java.util.concurrent.atomic.AtomicInteger
 import org.scalatest.FreeSpec
@@ -12,7 +12,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class ConcurrentMemoizerTest extends FreeSpec {
+final class MemoizerTest extends FreeSpec {
 
   "Unary" in {
     val called = mutable.Buffer[Int]()
@@ -20,7 +20,7 @@ final class ConcurrentMemoizerTest extends FreeSpec {
       called += a
       s"/$a/"
     }
-    val m: Int ⇒ String = ConcurrentMemoizer(f)
+    val m: Int ⇒ String = Memoizer(f)
     assert(m(1) == "/1/")
     assert(called == List(1))
     assert(m(2) == "/2/")
@@ -37,7 +37,7 @@ final class ConcurrentMemoizerTest extends FreeSpec {
       called += ((a, b))
       s"$a $b"
     }
-    val m: (Int, Boolean) ⇒ String = ConcurrentMemoizer(f)
+    val m: (Int, Boolean) ⇒ String = Memoizer(f)
     assert(m(1, false) == "1 false")
     assert(called == List((1, false)))
     assert(m(1, true) == "1 true")
@@ -49,12 +49,12 @@ final class ConcurrentMemoizerTest extends FreeSpec {
   }
 
   "Concurrency" in {
-    val calls = testConcurreny { f ⇒ ConcurrentMemoizer(f) }
+    val calls = testConcurreny { f ⇒ Memoizer(f) }
     assert(calls >= Arguments.size && calls < ParallelCount * Arguments.size)
   }
 
   "strict" in {
-    val calls = testConcurreny { f ⇒ ConcurrentMemoizer.strict(f) }
+    val calls = testConcurreny { f ⇒ Memoizer.strict(f) }
     assert(calls == Arguments.size)
   }
 
@@ -72,7 +72,7 @@ final class ConcurrentMemoizerTest extends FreeSpec {
   }
 }
 
-private object ConcurrentMemoizerTest {
+private object MemoizerTest {
   private val ParallelCount = 1000
   private val Arguments = 1 to 5
 }
