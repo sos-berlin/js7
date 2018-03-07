@@ -29,33 +29,24 @@ object Checked
       case NonFatal(t) ⇒ Invalid(Problem.fromEagerThrowable(t))
     }
 
-  //def problem(lazyMessage: ⇒ String): Invalid[Problem] =
-  //  Invalid(Problem(lazyMessage))
-  //
-  //def eagerThrowable(throwable: Throwable): Invalid[Problem] =
-  //  Invalid(Problem.fromEagerThrowable(throwable))
-  //
-  //def lazyThrowable(throwable: ⇒ Throwable): Invalid[Problem] =
-  //  Invalid(Problem.fromLazyThrowable(throwable))
-
   implicit val flatMap: FlatMap[Checked] = new FlatMap[Checked]
   {
     def map[A, B](fa: Checked[A])(f: A ⇒ B) = fa match {
       case Valid(a) ⇒ Valid(f(a))
-      case Invalid(o) => Invalid(o)
+      case Invalid(o) ⇒ Invalid(o)
     }
 
     def flatMap[A, B](fa: Checked[A])(f: A ⇒ Checked[B]) =
       fa match {
         case Valid(a) ⇒ f(a)
-        case Invalid(o) ⇒ Invalid(o)
+        case o @ Invalid(_) ⇒ o
       }
 
     def tailRecM[A, B](a: A)(f: A ⇒ Checked[Either[A, B]]): Checked[B] = {
       @tailrec def loop(a: A): Checked[B] = f(a) match {
         case Valid(Left(a2)) ⇒ loop(a2)
         case Valid(Right(b)) ⇒ Valid(b)
-        case Invalid(problem) ⇒ Invalid(problem)
+        case o @ Invalid(_) ⇒ o
       }
       loop(a)
     }
