@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.client
 
 import com.sos.jobscheduler.common.http.HttpClient
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.order.{Order, OrdersOverview}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.client.HttpMasterApi._
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
@@ -26,6 +26,9 @@ trait HttpMasterApi extends MasterApi {
 
   final def overview: Future[MasterOverview] =
     httpClient.get[MasterOverview](uris.overview)
+
+  final def addOrder(order: FreshOrder): Future[Boolean]  =
+    httpClient.postIgnoreResponse(uris.order.add, order) map (_ == 201/*Created*/)
 
   final def ordersOverview: Future[OrdersOverview] =
     httpClient.get[OrdersOverview](uris.order.overview)

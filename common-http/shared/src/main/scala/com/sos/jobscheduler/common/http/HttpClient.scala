@@ -11,4 +11,6 @@ trait HttpClient {
   def get[A: Decoder](uri: String, timeout: Duration = Duration.Inf): Future[A]
 
   def post[A: Encoder, B: Decoder](uri: String, data: A): Future[B]
+
+  def postIgnoreResponse[A: Encoder](uri: String, data: A): Future[/*StatusCode*/Int]
 }

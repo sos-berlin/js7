@@ -2,7 +2,6 @@ package com.sos.jobscheduler.common.event
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, Stamped, TearableEventSeq}
-import java.lang.System._
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.{Inject, Singleton}
 import scala.annotation.tailrec
@@ -13,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * @author Joacim Zschimmer
   */
 @Singleton
-final class EventIdGenerator @Inject extends Iterator[EventId] {
+final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Default) extends Iterator[EventId] {
 
   private val lastResult = new AtomicLong(EventId.BeforeFirst)
 
@@ -23,7 +22,7 @@ final class EventIdGenerator @Inject extends Iterator[EventId] {
 
   @tailrec
   def next(): EventId = {
-    val nowId = currentTimeMillis * EventId.IdsPerMillisecond
+    val nowId = clock.currentTimeMillis * EventId.IdsPerMillisecond
     val last = lastResult.get
     val nextId = if (last < nowId) nowId else last + 1
     if (lastResult.compareAndSet(last, nextId))

@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.web.master.api.order
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.StatusCodes.NotFound
+import akka.http.scaladsl.model.StatusCodes.{Created, NotFound, OK}
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkahttp.html.{HtmlDirectives, WebServiceContext}
-import com.sos.jobscheduler.data.order.OrderId
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.MasterKeyedEventJsonCodec.keyedEventJsonCodec
 import com.sos.jobscheduler.master.OrderClient
 import scala.concurrent.ExecutionContext
@@ -24,6 +24,18 @@ trait OrderRoute extends HtmlDirectives[WebServiceContext] {
   protected implicit def executionContext: ExecutionContext
 
   def orderRoute: Route =
+    post {
+      pathEnd {
+        entity(as[FreshOrder]) { order ⇒
+          complete {
+            orderClient.addOrder(order) map {
+              case true ⇒ Created
+              case false ⇒ OK  // Duplicate
+            }
+          }
+        }
+      }
+    } ~
     get {
       pathEnd {
         parameter("return".?) {

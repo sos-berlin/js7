@@ -2,6 +2,7 @@ package com.sos.jobscheduler.master.order
 
 import akka.Done
 import akka.actor.{ActorRef, PoisonPill, Props, Stash, Status, Terminated}
+import akka.pattern.pipe
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect.IO
 import cats.syntax.option._
@@ -35,7 +36,7 @@ import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEven
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedEvent}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.{MasterFileBasedJsonCodec, MasterKeyedEventJsonCodec, MasterTypedPathCompanions, MasterTypedPathJsonCodec}
@@ -152,7 +153,7 @@ with Stash {
     case Command.AddOrderSchedule(orders) ⇒
       for (order ← orders) {
         addOrderWithUncheckedId(order) onComplete {
-          case Success(_) ⇒
+          case Success(_: Boolean) ⇒
           case Failure(t) ⇒ logger.error(t.toString, t)
         }
       }
@@ -168,6 +169,9 @@ with Stash {
 
     case Command.GetWorkflowCount ⇒
       sender() ! (fileBaseds.pathToWorkflow.size: Int)
+
+    case Command.AddOrder(order) ⇒
+      addOrder(order.toOrder(fileBaseds.repo.versionId)) map Response.AddOrderAccepted.apply pipeTo sender()
 
     case Command.GetOrder(orderId) ⇒
       sender() ! (orderRegister.get(orderId) map { _.order })
@@ -338,14 +342,14 @@ with Stash {
     entry
   }
 
-  private def addOrder(order: Order[Order.Idle]): Future[Completed] =
+  private def addOrder(order: Order[Order.Idle]): Future[Boolean] =
     order.id.checkedNameSyntax.toFuture flatMap (_ ⇒ addOrderWithUncheckedId(order))
 
-  private def addOrderWithUncheckedId(order: Order[Order.Idle]): Future[Completed] =
+  private def addOrderWithUncheckedId(order: Order[Order.Idle]): Future[Boolean] =
     orderRegister.get(order.id) match {
       case Some(_) ⇒
         logger.debug(s"Discarding duplicate AddOrderIfNew: ${order.id}")
-        Future.successful(Completed)
+        Future.successful(false)
 
       case None ⇒
         fileBaseds.idToWorkflow(order.workflowId) match {
@@ -353,7 +357,7 @@ with Stash {
           case Valid(workflow) ⇒
             persistAsync(KeyedEvent(OrderAdded(workflow.id, order.state, order.payload))(order.id)) { stamped ⇒
               handleOrderEvent(stamped)
-              Completed
+              true
             }
         }
     }
@@ -495,10 +499,16 @@ object MasterOrderKeeper {
     final case class GetWorkflow(path: WorkflowPath) extends Command
     case object GetWorkflows extends Command
     case object GetWorkflowCount extends Command
+    final case class AddOrder(order: FreshOrder) extends Command
     final case class GetOrder(orderId: OrderId) extends Command
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command
     final case class Remove(orderId: OrderId) extends Command
+  }
+
+  sealed trait Reponse
+  object Response {
+    final case class AddOrderAccepted(created: Boolean)
   }
 
   private class AgentRegister extends ActorRegister[AgentPath, AgentEntry](_.actor) {

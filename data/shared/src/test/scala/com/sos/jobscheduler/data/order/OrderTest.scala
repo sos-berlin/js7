@@ -70,7 +70,13 @@ final class OrderTest extends FreeSpec {
           parent = Some(OrderId("PARENT"))),
         json"""{
           "id": "ID",
-          "workflowPosition": [ { "path": "/WORKFLOW", "versionId": "VERSION" }, 0 ],
+          "workflowPosition": {
+            "workflowId": {
+              "path": "/WORKFLOW",
+              "versionId": "VERSION"
+            },
+            "position": [ 0 ]
+          },
           "state": {
             "TYPE": "Ready"
           },

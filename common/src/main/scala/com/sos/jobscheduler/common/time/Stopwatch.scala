@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.common.time
 
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.RichFutures
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.Stopwatch._
 import java.lang.System.nanoTime
@@ -31,8 +30,6 @@ final class Stopwatch {
 }
 
 object Stopwatch {
-  private val logger = Logger(getClass)
-
   def measureTime(n: Int, ops: String = "ops", warmUp: Int = 1)(body: ⇒ Unit): Result = {
     for (_ ← 1 to warmUp) body
     val start = nanoTime

@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.tests
 
-import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersCloser
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
-import com.sos.jobscheduler.common.scalautil.HasCloser
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.utils.FreeTcpPortFinder.findRandomFreeTcpPort
 import com.sos.jobscheduler.master.client.main.MasterClientMain
@@ -12,11 +10,9 @@ import scala.collection.mutable
 /**
  * @author Joacim Zschimmer
  */
-final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with HasCloser with DirectoryProvider.ForScalaTest {
+final class MasterClientMainTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
 
   protected val agentPaths = Nil
-
-  override def afterAll() = closer closeThen super.afterAll()
 
   "main with Master URI only checks wether Master is responding (it is)" in {
     val output = mutable.Buffer[String]()

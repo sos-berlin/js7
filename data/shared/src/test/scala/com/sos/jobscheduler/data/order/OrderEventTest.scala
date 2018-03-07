@@ -45,7 +45,13 @@ final class OrderEventTest extends FreeSpec {
         Order.Ready, Some(OrderId("PARENT")), AgentPath("/AGENT"), Payload(Map("VAR" → "VALUE"))),
       json"""{
         "TYPE": "OrderAttached",
-        "workflowPosition": [ { "path": "/WORKFLOW", "versionId": "VERSION" }, 2 ],
+        "workflowPosition": {
+          "workflowId": {
+            "path": "/WORKFLOW",
+            "versionId": "VERSION"
+          },
+          "position": [ 2 ]
+        },
         "state": {
           "TYPE": "Ready"
         },

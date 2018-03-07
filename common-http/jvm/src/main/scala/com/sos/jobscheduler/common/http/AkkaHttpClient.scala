@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, Authorization, BasicHttpCredentials, `Cache-Control`}
-import akka.http.scaladsl.model.{HttpRequest, RequestEntity, StatusCode, Uri}
+import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{Http, HttpsConnectionContext}
 import akka.stream.ActorMaterializer
@@ -23,12 +23,17 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * @author Joacim Zschimmer
   */
-trait AkkaHttpClient extends AutoCloseable with HttpClient {
+trait AkkaHttpClient extends AutoCloseable with HttpClient
+{
   protected def actorSystem: ActorSystem
+
   protected implicit def executionContext: ExecutionContext
+
   protected def userAndPassword: Option[UserAndPassword]
+
   private implicit lazy val materializer = ActorMaterializer()(actorSystem)
   private lazy val http = Http(actorSystem)
+
   protected def httpsConnectionContext: HttpsConnectionContext = http.defaultClientHttpsContext
 
   def close() = materializer.shutdown()
@@ -43,10 +48,19 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient {
     post[A, B](Uri(uri), data)
 
   def post[A: Encoder, B: Decoder](uri: Uri, data: A): Future[B] =
+    post_[A, B](uri, data, Accept(`application/json`) :: Nil)
+
+  def postIgnoreResponse[A: Encoder](uri: String, data: A) =
+    postIgnoreResponse(Uri(uri), data)
+
+  def postIgnoreResponse[A: Encoder](uri: Uri, data: A) =
+    post_[A, HttpResponse](uri, data) map (_.status.intValue)
+
+  def post_[A: Encoder, B: FromResponseUnmarshaller](uri: Uri, data: A, headers: List[HttpHeader] = Nil): Future[B] =
     for {
       entity ← Marshal(data).to[RequestEntity]
-      result ← sendReceive[B](Gzip.encodeMessage(HttpRequest(POST, uri, Accept(`application/json`) :: Nil, entity)))
-    } yield result
+      response ← sendReceive[B](Gzip.encodeMessage(HttpRequest(POST, uri, headers, entity)))
+    } yield response
 
   private def sendReceive[A: FromResponseUnmarshaller](request: HttpRequest): Future[A] = {
     val authentication = userAndPassword map (o ⇒ Authorization(BasicHttpCredentials(o.userId.string, o.password.string)))
@@ -59,7 +73,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient {
           Unmarshal(decodeResponse(httpResponse)).to[A]
         else
           for (message ← decodeResponse(httpResponse).utf8StringFuture) yield
-            throw new HttpException(httpResponse.status, request.uri + ": " + message.truncateWithEllipsis(ErrorMessageLengthMaximum))
+            throw new HttpException(httpResponse.status, request.uri, message.truncateWithEllipsis(ErrorMessageLengthMaximum))
     } yield response
   }
 }
@@ -70,5 +84,6 @@ object AkkaHttpClient {
   //final class Standard(protected val actorSystem: ActorSystem)(implicit protected val executionContext: ExecutionContext)
   //extends AkkaHttpClient
 
-  final class HttpException(val status: StatusCode, message: String) extends RuntimeException(s"$status: $message".trim)
+  final class HttpException(val status: StatusCode, val uri: Uri, val message: String)
+  extends RuntimeException(s"$status: $uri: $message".trim)
 }

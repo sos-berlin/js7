@@ -27,8 +27,16 @@ final class JsHttpClient(requiredBuildId: String) extends HttpClient {
         timeout = if (timeout == Duration.Inf) 0 else min(timeout.toMillis, Int.MaxValue).toInt))
 
   def post[A: Encoder, B: Decoder](uri: String, data: A): Future[B] =
-    decodeResponse(
-      Ajax.post(uri, implicitly[Encoder[A]].apply(data).compactPrint, headers = Map("Content-Type" → "application/json")))
+    decodeResponse(post_(uri, data))
+
+  def postIgnoreResponse[A: Encoder](uri: String, data: A) =
+    post_(uri, data).map(_.status)
+
+  private def post_[A: Encoder](uri: String, data: A): Future[XMLHttpRequest] =
+    Ajax.post(
+      uri,
+      implicitly[Encoder[A]].apply(data).compactPrint,
+      headers = Map("Content-Type" → "application/json"))
 
   private def decodeResponse[A: Decoder](body: ⇒ Future[XMLHttpRequest]): Future[A] =
     for (xhr ← checkResponse(body)) yield circe.parser.decode[A](xhr.responseText) match {

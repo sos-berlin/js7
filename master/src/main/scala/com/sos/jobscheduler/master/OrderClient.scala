@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master
 
 import com.sos.jobscheduler.data.event.Stamped
-import com.sos.jobscheduler.data.order.{Order, OrderId, OrderOverview, OrdersOverview}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId, OrderOverview, OrdersOverview}
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -11,6 +11,8 @@ import scala.concurrent.{ExecutionContext, Future}
 trait OrderClient {
 
   protected implicit def executionContext: ExecutionContext
+
+  def addOrder(order: FreshOrder): Future[Boolean]
 
   def order(orderId: OrderId): Future[Option[Order[Order.State]]]
 

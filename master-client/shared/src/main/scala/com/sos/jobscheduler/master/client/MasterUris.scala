@@ -4,7 +4,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.common.http.Uris.{encodePath, encodeQuery}
 import com.sos.jobscheduler.data.event.{Event, EventId}
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.client.MasterUris._
 import org.scalactic.Requirements._
 import scala.concurrent.duration.Duration
@@ -29,6 +29,8 @@ final class MasterUris private(masterUri: String) {
 
   object order {
     def overview = api("/order")
+
+    def add = api("/order")
 
     def list[A: ClassTag]: String =
       api("/" + encodePath("order", ""), "return" → encodeClass[A])

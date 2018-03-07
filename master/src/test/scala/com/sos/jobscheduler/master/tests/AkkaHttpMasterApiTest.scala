@@ -7,23 +7,23 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
-import com.sos.jobscheduler.master.tests.WebServiceTest._
+import com.sos.jobscheduler.master.tests.AkkaHttpMasterApiTest._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer
   */
-final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
+final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
 
-  private lazy val env = new TestEnvironment(agentPaths = Nil, temporaryDirectory / "WebServiceTest")
+  private lazy val env = new TestEnvironment(agentPaths = Nil, temporaryDirectory / "AkkaHttpMasterApiTest")
   private var master: RunningMaster = _
   private var api: AkkaHttpMasterApi = _
 
@@ -43,8 +43,9 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
     super.afterAll()
   }
 
-  "AddOrderIfNew" in {
-    api.executeCommand(MasterCommand.AddOrderIfNew.fromOrder(adHocOrder)) await 10.s
+  "POST order" in {
+    assert(api.addOrder(FreshOrder(OrderId("ORDER-ID"), TestWorkflowId.path)).await(99.s) == true)
+    assert(api.addOrder(FreshOrder(OrderId("ORDER-ID"), TestWorkflowId.path)).await(99.s) == false)  // Duplicate
   }
 
   "overview" in {
@@ -56,16 +57,23 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "orders" in {
-    assert(api.orders.await(99.s).value == List(adHocOrder))
+    assert(api.orders.await(99.s).value == List(TestOrder))
   }
 
   "workflow" in {
     assert(api.workflows.await(99.s).value == List(TestWorkflow))
   }
+
+  "AddOrderIfNew" in {
+    // Deprecated
+    val order = Order(OrderId("ORDER-2"), TestWorkflowId, Order.StartNow)
+    api.executeCommand(MasterCommand.AddOrderIfNew.fromOrder(order)) await 10.s
+    assert(api.orders.await(99.s).value.toSet == Set(TestOrder, order))
+  }
 }
 
-private object WebServiceTest {
+private object AkkaHttpMasterApiTest {
   private val logger = Logger(getClass)
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "(initial)"
-  private val adHocOrder = Order(OrderId("ORDER-ID"), TestWorkflowId, Order.StartNow)
+  private val TestOrder = Order(OrderId("ORDER-ID"), TestWorkflowId, Order.StartNow)
 }

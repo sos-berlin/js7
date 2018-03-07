@@ -1,5 +1,7 @@
 package com.sos.jobscheduler.tests
 
+import com.google.inject.Module
+import com.google.inject.util.Modules.EMPTY_MODULE
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.base.circeutils.CirceUtils.RichJson
@@ -49,8 +51,8 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
   def runMaster(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     RunningMaster.runForTest(directory)(body)
 
-  def startMaster()(implicit ec: ExecutionContext): Future[RunningMaster] =
-    RunningMaster.startForTest(directory)
+  def startMaster(module: Module = EMPTY_MODULE)(implicit ec: ExecutionContext): Future[RunningMaster] =
+    RunningMaster.startForTest(directory, module)
 
   def runAgents(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
@@ -65,7 +67,7 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
 }
 
 object DirectoryProvider {
-  trait ForScalaTest extends BeforeAndAfterAll {
+  trait ForScalaTest extends BeforeAndAfterAll with HasCloser {
     this: org.scalatest.Suite ⇒
 
     protected def agentPaths: Seq[AgentPath]
@@ -75,7 +77,8 @@ object DirectoryProvider {
     protected lazy val directoryProvider = new DirectoryProvider(agentPaths)
     protected lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents() await 99.s
     protected lazy val agent: RunningAgent = agents.head
-    protected lazy val master: RunningMaster = directoryProvider.startMaster() await 99.s
+    protected val masterModule: Module = EMPTY_MODULE
+    protected lazy val master: RunningMaster = directoryProvider.startMaster(masterModule) await 99.s
 
     override def beforeAll() = {
       super.beforeAll()
@@ -84,6 +87,7 @@ object DirectoryProvider {
     }
 
     override def afterAll() = {
+      closer.close()
       directoryProvider.close()
       for (a ← agents) a.close()
       master.close()

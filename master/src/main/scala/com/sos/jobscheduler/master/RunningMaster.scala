@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.Uri
 import akka.pattern.ask
 import com.google.common.io.Closer
 import com.google.inject.Stage.PRODUCTION
+import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
@@ -20,7 +21,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -55,8 +56,11 @@ extends AutoCloseable
 {
   def executeCommand(command: MasterCommand): Future[command.MyResponse]
 
-  def addOrder(order: Order[Order.NotStarted]): Future[Completed] =
-    executeCommand(MasterCommand.AddOrderIfNew.fromOrder(order)) map (_ ⇒ Completed)
+  def addOrder(order: Order[Order.NotStarted]): Future[Boolean] =
+    addOrder(FreshOrder.fromOrder(order))
+
+  def addOrder(order: FreshOrder): Future[Boolean] =
+    orderClient.addOrder(order)
 
   val localUri: Uri = webServer.localUri
   val eventCollector = injector.instance[EventCollector]
@@ -88,9 +92,10 @@ object RunningMaster {
       }
     }
 
-  def startForTest(directory: Path)(implicit ec: ExecutionContext): Future[RunningMaster] =
-    RunningMaster(Guice.createInjector(new MasterModule(
-      MasterConfiguration.forTest(configAndData = directory / "master"))))
+  def startForTest(directory: Path, module: Module = EMPTY_MODULE)(implicit ec: ExecutionContext): Future[RunningMaster] =
+    RunningMaster(Guice.createInjector(
+      new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")),
+      module))
 
   def apply(configuration: MasterConfiguration)(implicit ec: ExecutionContext): Future[RunningMaster] =
     apply(new MasterModule(configuration))
@@ -130,15 +135,19 @@ object RunningMaster {
       implicit def executionContext = ec
 
       def workflow(path: WorkflowPath): Future[Option[Workflow]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).mapTo[Option[Workflow]]
+        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).
+          mapTo[Option[Workflow]]
 
       def workflows: Future[Stamped[Seq[Workflow]]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).mapTo[Stamped[Seq[Workflow]]]
+        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).
+          mapTo[Stamped[Seq[Workflow]]]
 
       //def workflowPaths =  TODO optimize
-      //(orderKeeper ? MasterOrderKeeper.Command.GetWorkflowPaths).mapTo[Stamped[Seq[WorkflowPath]]]
+      //(orderKeeper ? MasterOrderKeeper.Command.GetWorkflowPaths).
+      // mapTo[Stamped[Seq[WorkflowPath]]]
 
-      def workflowCount = (orderKeeper ? MasterOrderKeeper.Command.GetWorkflowCount).mapTo[Int]
+      def workflowCount = (orderKeeper ? MasterOrderKeeper.Command.GetWorkflowCount).
+        mapTo[Int]
     }
 
     val orderClient = new OrderClient {
@@ -146,17 +155,24 @@ object RunningMaster {
 
       def executionContext = ec
 
+      def addOrder(order: FreshOrder) =
+        (orderKeeper ? MasterOrderKeeper.Command.AddOrder(order))
+          .mapTo[MasterOrderKeeper.Response.AddOrderAccepted] map (_.created)
+
       def events[E <: Event](request: EventRequest[E]): Future[Stamped[TearableEventSeq[Seq, KeyedEvent[E]]]] =
         eventIdGenerator.stampTearableEventSeq(eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true))
 
       def order(orderId: OrderId): Future[Option[Order[Order.State]]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId)).mapTo[Option[Order[Order.State]]]
+        (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId))
+          .mapTo[Option[Order[Order.State]]]
 
       def orders: Future[Stamped[Seq[Order[Order.State]]]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetOrders).mapTo[Stamped[Seq[Order[Order.State]]]]
+        (orderKeeper ? MasterOrderKeeper.Command.GetOrders)
+          .mapTo[Stamped[Seq[Order[Order.State]]]]
 
       def orderCount =
-        (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount).mapTo[Int]
+        (orderKeeper ? MasterOrderKeeper.Command.GetOrderCount)
+          .mapTo[Int]
     }
 
     webServer.setClients(workflowClient, orderClient)

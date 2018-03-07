@@ -89,6 +89,12 @@ object CirceUtils {
         case Some(o) ⇒ o
         case None ⇒ throwUnexpected("array", underlying.getClass.simpleScalaName)
       }
+
+    def forceField(name: String): Json =
+      underlying.asObject match {
+        case Some(o) ⇒ o(name) getOrElse (throw new IllegalArgumentException(s"Unknown JSON field '$name'"))
+        case None ⇒ throw new IllegalArgumentException("Not a JsonObject")
+      }
   }
 
   implicit final class RichCirceString(private val underlying: String) extends AnyVal {
