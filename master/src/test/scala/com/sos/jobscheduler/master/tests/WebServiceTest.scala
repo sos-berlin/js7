@@ -44,7 +44,7 @@ final class WebServiceTest extends FreeSpec with BeforeAndAfterAll {
   }
 
   "AddOrderIfNew" in {
-    api.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
+    api.executeCommand(MasterCommand.AddOrderIfNew.fromOrder(adHocOrder)) await 10.s
   }
 
   "overview" in {

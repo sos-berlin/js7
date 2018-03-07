@@ -86,7 +86,7 @@ final class RunningMasterTest extends FreeSpec {
 
         sleep(3.s)  // Let OrderGenerator generate some orders
         val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
-        master.executeCommand(MasterCommand.AddOrderIfNew(adHocOrder)) await 10.s
+        master.executeCommand(MasterCommand.AddOrderIfNew.fromOrder(adHocOrder)) await 10.s
 
         master.eventCollector.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
         orderClient.order(TestOrderId) await 10.s shouldEqual

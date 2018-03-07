@@ -56,7 +56,7 @@ extends AutoCloseable
   def executeCommand(command: MasterCommand): Future[command.MyResponse]
 
   def addOrder(order: Order[Order.NotStarted]): Future[Completed] =
-    executeCommand(MasterCommand.AddOrderIfNew(order)) map (_ ⇒ Completed)
+    executeCommand(MasterCommand.AddOrderIfNew.fromOrder(order)) map (_ ⇒ Completed)
 
   val localUri: Uri = webServer.localUri
   val eventCollector = injector.instance[EventCollector]
