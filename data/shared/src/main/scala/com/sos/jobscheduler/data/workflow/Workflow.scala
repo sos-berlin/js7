@@ -201,7 +201,7 @@ object Workflow extends FileBased.Companion[Workflow] {
     case Workflow(id, instructions, source) ⇒
       JsonObject(
         "id" → (!id.isAnonymous ? id).asJson,
-        "instructions" → instructions.asJson,
+        "instructions" → instructions.reverse.dropWhile(_ == () @: ImplicitEnd).reverse.asJson,
         "source" → source.asJson)
   }
   implicit val jsonDecoder: Decoder[Workflow] =

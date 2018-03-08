@@ -117,8 +117,7 @@ final class AgentCommandTest extends FreeSpec {
             },
             "instructions": [
               { "TYPE": "Job", "jobPath": "/A", "agentPath": "/AGENT" },
-              { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" },
-              { "TYPE": "ImplicitEnd" }
+              { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" }
             ]
           }
         }""")

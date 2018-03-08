@@ -110,8 +110,6 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
                   "TYPE": "Job",
                   "jobPath": "/B",
                   "agentPath": "/AGENT"
-                }, {
-                  "TYPE": "ImplicitEnd"
                 }
               ]
             }

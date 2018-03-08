@@ -22,14 +22,12 @@ final class IfReturnCodeTest extends FreeSpec
         "returnCodes": [ 1, 3 ],
         "then": {
           "instructions": [
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/THEN" },
-            { "TYPE": "ImplicitEnd" }
+            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/THEN" }
           ]
         },
         "else": {
           "instructions": [
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/ELSE" },
-            { "TYPE": "ImplicitEnd" }
+            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/ELSE" }
           ]
         }
       }""")

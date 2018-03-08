@@ -76,16 +76,14 @@ final class InstructionsTest extends FreeSpec {
               "id": "A",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/A", "agentPath": "/AGENT" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "jobPath": "/A", "agentPath": "/AGENT" }
                 ]
               }
             }, {
               "id": "B",
               "workflow": {
                 "instructions": [
-                  { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" }
                 ]
               }
             }

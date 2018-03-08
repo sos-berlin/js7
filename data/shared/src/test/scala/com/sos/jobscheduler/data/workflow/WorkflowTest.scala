@@ -130,7 +130,6 @@ final class WorkflowTest extends FreeSpec {
   "JSON" - {
     "Workflow with path" in {
       testJson[Workflow](TestWorkflow,
-        // Statement "ImplicitEnd" should not be used in explicit notation. JobScheduler generates this statement implicitly.
         json"""{
           "id": {
             "path": "/TEST",
@@ -143,14 +142,12 @@ final class WorkflowTest extends FreeSpec {
               "returnCodes": [ 1 ],
               "then": {
                 "instructions": [
-                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
                 ]
               },
               "else": {
                 "instructions": [
-                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
                 ]
               }
             }, {
@@ -161,8 +158,7 @@ final class WorkflowTest extends FreeSpec {
                   "workflow": {
                     "instructions": [
                       { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
-                      { "TYPE": "ImplicitEnd" }
+                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
                     ]
                   }
                 }, {
@@ -170,15 +166,13 @@ final class WorkflowTest extends FreeSpec {
                   "workflow": {
                     "instructions": [
                       { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
-                      { "TYPE": "ImplicitEnd" }
+                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
                     ]
                   }
                 }
               ]
             },
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
-            { "TYPE": "ImplicitEnd" }
+            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
           ]
         }""")
     }
@@ -187,8 +181,7 @@ final class WorkflowTest extends FreeSpec {
       testJson(Workflow.of(AJob),
         json"""{
           "instructions": [
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
-            { "TYPE": "ImplicitEnd" }
+            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
           ]
         }""")
     }

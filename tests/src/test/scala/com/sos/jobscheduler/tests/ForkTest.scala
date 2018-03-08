@@ -76,8 +76,7 @@ final class ForkTest extends FreeSpec {
               "workflow": {
                 "instructions": [
                   { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
                 ]
               }
             }, {
@@ -85,8 +84,7 @@ final class ForkTest extends FreeSpec {
               "workflow": {
                 "instructions": [
                   { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" }
                 ]
               }
             }
@@ -101,8 +99,7 @@ final class ForkTest extends FreeSpec {
               "workflow": {
                 "instructions": [
                   { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
                 ]
               }
             }, {
@@ -110,8 +107,7 @@ final class ForkTest extends FreeSpec {
               "workflow": {
                 "instructions": [
                   { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
                 ]
               }
             }
@@ -126,8 +122,7 @@ final class ForkTest extends FreeSpec {
               "workflow": {
                 "instructions": [
                   { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
                 ]
               }
             }, {
@@ -135,15 +130,13 @@ final class ForkTest extends FreeSpec {
               "workflow": {
                 "instructions": [
                   { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
-                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" },
-                  { "TYPE": "ImplicitEnd" }
+                  { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-B" }
                 ]
               }
             }
           ]
         },
-        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" },
-        { "TYPE": "ImplicitEnd" }
+        { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT-A" }
       ]
     }""")
   }
