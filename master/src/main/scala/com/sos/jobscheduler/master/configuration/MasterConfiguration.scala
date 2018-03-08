@@ -38,6 +38,8 @@ final case class MasterConfiguration(
 
   def liveDirectory: Path = configDirectory / "live"
 
+  def orderGeneratorsDirectory: Path = configDirectory / "order-generators"
+
   def stateDirectory: Path = dataDirectory / "state"
 }
 

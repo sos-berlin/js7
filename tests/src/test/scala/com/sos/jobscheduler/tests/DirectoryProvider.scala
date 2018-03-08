@@ -98,10 +98,12 @@ object DirectoryProvider {
   sealed class Tree(val directory: Path) {
     val config = directory / "config"
     val live = config / "live"
+    val orderGenerators = config / "order-generators"
     val data = directory / "data"
 
     def createDirectories(): Unit = {
       Files.createDirectories(live)
+      Files.createDirectories(orderGenerators)
       Files.createDirectory(data)
     }
 

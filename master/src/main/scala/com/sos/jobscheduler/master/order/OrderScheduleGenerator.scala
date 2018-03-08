@@ -55,9 +55,8 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
   }
 
   def receive = journaling orElse {
-    case Input.Change(scheduledOrderGenerators, version_) ⇒
+    case Input.Change(scheduledOrderGenerators) ⇒
       scheduledOrderGeneratorKeeper = new ScheduledOrderGeneratorKeeper(masterConfiguration, scheduledOrderGenerators)
-      versionId = version_
 
     case Input.ScheduleEvery(every) ⇒
       val nw = Instant.ofEpochSecond(now.getEpochSecond)  // Last full second
@@ -79,7 +78,7 @@ extends KeyedJournalingActor[OrderScheduleEvent] with Stash {
     case Internal.Generate(every) ⇒
       val interval = InstantInterval(generatedUntil, every)
       logger.info(s"Generating orders for time interval $interval")
-      val orders = scheduledOrderGeneratorKeeper.generateOrders(interval, versionId)
+      val orders = scheduledOrderGeneratorKeeper.generateOrders(interval)
       masterOrderKeeper ! MasterOrderKeeper.Command.AddOrderSchedule(orders)
       context.become(addingOrderSchedule(interval.until, every))
   }
@@ -117,7 +116,7 @@ object OrderScheduleGenerator {
   private val logger = Logger(getClass)
 
   object Input {
-    final case class Change(scheduledOrderGenerators: Iterable[ScheduledOrderGenerator], versionId: VersionId)
+    final case class Change(scheduledOrderGenerators: Iterable[ScheduledOrderGenerator])
     final case class ScheduleEvery(every: Duration)
   }
 

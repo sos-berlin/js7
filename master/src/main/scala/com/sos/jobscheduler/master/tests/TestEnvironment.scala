@@ -7,6 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{SourceType, TypedPath}
 import com.sos.jobscheduler.data.folder.FolderPath
+import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorPath
 import com.sos.jobscheduler.master.tests.TestEnvironment._
 import io.circe.{Json, ObjectEncoder}
 import java.io.IOException
@@ -26,6 +27,7 @@ extends AutoCloseable {
   }
 
   createDirectories(masterDir / "config/live")
+  createDirectories(masterDir / "config/order-generators")
   for (agentPath ← agentPaths) {
     createDirectories(agentDir(agentPath) / "config/live")
     createDirectory(agentDir(agentPath) / "data")
@@ -43,8 +45,10 @@ extends AutoCloseable {
   def writeTxt(path: TypedPath, content: String): Unit =
     file(path, SourceType.Txt).contentString = content
 
-  def file(path: TypedPath, t: SourceType): Path =
-    masterDir / "config/live" resolve path.toFile(t)
+  def file(path: TypedPath, t: SourceType): Path = {
+    val dir = if (path.companion == ScheduledOrderGeneratorPath) "order-generators" else "live"
+    masterDir / "config" / dir resolve path.toFile(t)
+  }
 
   def masterDir: Path =
     temporaryDirectory / "master"

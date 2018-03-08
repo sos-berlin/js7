@@ -31,8 +31,6 @@ object MasterCommand {
   extends MasterCommand {
     workflowPath.requireNonAnonymous()
 
-    def toOrder(versionId: VersionId) = toFreshOrder.toOrder(versionId)
-
     def toFreshOrder = FreshOrder(id, workflowPath, scheduledAt, payload)
 
     type MyResponse = Response.Accepted

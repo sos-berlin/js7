@@ -55,7 +55,7 @@ final class RecoveryTest extends FreeSpec {
         tree.file(TestJobPath, SourceType.Xml).xml = jobXml(1.s, Map("var1" → s"VALUE-${agentPath.name}"), resultVariable = Some("var1"))
       withCloser { implicit closer ⇒
         for (w ← Array(TestWorkflow, QuickWorkflow)) directoryProvider.master.writeJson(w.withoutVersion)
-        (directoryProvider.master.live / "test.order.xml").xml = TestOrderGeneratorElem
+        (directoryProvider.master.orderGenerators / "test.order.xml").xml = TestOrderGeneratorElem
 
         runMaster(directoryProvider, eventCollector) { master ⇒
           if (lastEventId == EventId.BeforeFirst) {

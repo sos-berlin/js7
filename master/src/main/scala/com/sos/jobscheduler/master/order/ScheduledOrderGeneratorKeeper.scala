@@ -2,8 +2,7 @@ package com.sos.jobscheduler.master.order
 
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.filebased.VersionId
-import com.sos.jobscheduler.data.order.{Order, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderId, Payload}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.oldruntime.InstantInterval
 import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorKeeper._
@@ -18,15 +17,15 @@ final class ScheduledOrderGeneratorKeeper(masterConfiguration: MasterConfigurati
   private val pathToOrderGenerator: Map[ScheduledOrderGeneratorPath, ScheduledOrderGenerator] =
     scheduledOrderGenerators toKeyedMap (_.path)
 
-  def generateOrders(instantInterval: InstantInterval, versionId: VersionId): Seq[Order[Order.Fresh]] =
+  def generateOrders(instantInterval: InstantInterval): Seq[FreshOrder] =
     (for (orderGenerator ← pathToOrderGenerator.values;
           instant ← orderGenerator.schedule.instants(instantInterval)) yield
-      Order(
+      FreshOrder(
         toOrderId(orderGenerator.path, instant),
-        orderGenerator.workflowPath % versionId,
-        Order.Fresh(Some(instant.toTimestamp)),
-        payload = Payload(orderGenerator.variables)))
-    .toVector.sortBy { _.state.scheduledAt }
+        orderGenerator.workflowPath,
+        Some(instant.toTimestamp),
+        Payload(orderGenerator.variables)))
+    .toVector.sortBy { _.scheduledAt }
 }
 
 object ScheduledOrderGeneratorKeeper {
