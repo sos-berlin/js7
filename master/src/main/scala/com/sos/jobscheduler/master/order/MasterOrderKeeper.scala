@@ -48,6 +48,7 @@ import com.sos.jobscheduler.master.order.MasterOrderKeeper._
 import com.sos.jobscheduler.master.order.agent.{Agent, AgentDriver}
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
+import java.nio.file.Files
 import scala.collection.immutable.Seq
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -317,16 +318,21 @@ with Stash {
 
   /** Separate handling for developer-only ScheduledOrderGenerator, which are not journaled and read at every restart. */
   private def readScheduledOrderGeneratorConfiguration(): Checked[IO[Unit]] = {
-    val reader = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone)
-    for (events ← FileBaseds.readDirectory(
-            reader :: Nil,
-            masterConfiguration.orderGeneratorsDirectory,
-            scheduledOrderGenerators,
-            fileBaseds.repo.versionId))
-    yield {
-      IO {
-        scheduledOrderGenerators ++= events collect { case FileBasedAdded(o: ScheduledOrderGenerator) ⇒ o }
-        orderScheduleGenerator ! OrderScheduleGenerator.Input.Change(scheduledOrderGenerators)
+    val dir = masterConfiguration.orderGeneratorsDirectory
+    if (!Files.exists(dir))
+      Valid(IO.unit)
+    else {
+      val reader = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone)
+      for (events ← FileBaseds.readDirectory(
+              reader :: Nil,
+        dir,
+              scheduledOrderGenerators,
+              fileBaseds.repo.versionId))
+      yield {
+        IO {
+          scheduledOrderGenerators ++= events collect { case FileBasedAdded(o: ScheduledOrderGenerator) ⇒ o }
+          orderScheduleGenerator ! OrderScheduleGenerator.Input.Change(scheduledOrderGenerators)
+        }
       }
     }
   }
