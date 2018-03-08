@@ -301,8 +301,8 @@ extends KeyedEventJournalingActor[WorkflowEvent] with Stash {
     val order = orderEntry.order
     if (order.isAttachedToAgent) {
       order.state match {
-        case Order.Scheduled(instant) if now < instant ⇒
-          orderEntry.at(instant) {  // TODO Register only the next order in TimerService ?
+        case Order.Fresh(Some(scheduledAt)) if now < scheduledAt ⇒
+          orderEntry.at(scheduledAt) {  // TODO Register only the next order in TimerService ?
             self ! Internal.Due(orderId)
           }
 

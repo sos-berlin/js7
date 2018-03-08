@@ -15,7 +15,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderAdded
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.web.master.api.EventRouteTest._
 import org.scalatest.FreeSpec
@@ -57,5 +57,5 @@ object EventRouteTest {
 
   private val TestEvents = List(
     Stamped(EventId(111222), Timestamp.ofEpochMilli(1000),
-      OrderId("1") <-: OrderAdded(WorkflowPath("/test") % "VERSION", Order.StartNow, Payload.empty)))
+      OrderId("1") <-: OrderAdded(WorkflowPath("/test") % "VERSION", None, Payload.empty)))
 }

@@ -342,10 +342,10 @@ with Stash {
     entry
   }
 
-  private def addOrder(order: Order[Order.Idle]): Future[Boolean] =
+  private def addOrder(order: Order[Order.Fresh]): Future[Boolean] =
     order.id.checkedNameSyntax.toFuture flatMap (_ ⇒ addOrderWithUncheckedId(order))
 
-  private def addOrderWithUncheckedId(order: Order[Order.Idle]): Future[Boolean] =
+  private def addOrderWithUncheckedId(order: Order[Order.Fresh]): Future[Boolean] =
     orderRegister.get(order.id) match {
       case Some(_) ⇒
         logger.debug(s"Discarding duplicate AddOrderIfNew: ${order.id}")
@@ -355,7 +355,7 @@ with Stash {
         fileBaseds.idToWorkflow(order.workflowId) match {
           case Invalid(problem) ⇒ Future.failed(problem.throwable)
           case Valid(workflow) ⇒
-            persistAsync(KeyedEvent(OrderAdded(workflow.id, order.state, order.payload))(order.id)) { stamped ⇒
+            persistAsync(KeyedEvent(OrderAdded(workflow.id, order.state.scheduledAt, order.payload))(order.id)) { stamped ⇒
               handleOrderEvent(stamped)
               true
             }
@@ -495,7 +495,7 @@ object MasterOrderKeeper {
 
   sealed trait Command
   object Command {
-    final case class AddOrderSchedule(orders: Seq[Order[Order.Scheduled]]) extends Command
+    final case class AddOrderSchedule(orders: Seq[Order[Order.Fresh]]) extends Command
     final case class GetWorkflow(path: WorkflowPath) extends Command
     case object GetWorkflows extends Command
     case object GetWorkflowCount extends Command

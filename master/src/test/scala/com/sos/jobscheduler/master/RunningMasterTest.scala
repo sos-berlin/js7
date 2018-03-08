@@ -23,7 +23,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMasterTest._
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -82,11 +82,10 @@ final class RunningMasterTest extends FreeSpec {
         import master.{injector, orderClient}
         val lastEventId = injector.instance[EventCollector].lastEventId
         val eventGatherer = new TestEventGatherer(injector)
-        val adHocOrder = Order(TestOrderId, TestWorkflowId, Order.StartNow)
 
         sleep(3.s)  // Let OrderGenerator generate some orders
         val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
-        master.executeCommand(MasterCommand.AddOrderIfNew.fromOrder(adHocOrder)) await 10.s
+        master.addOrder(FreshOrder(TestOrderId, TestWorkflowId.path)) await 10.s
 
         master.eventCollector.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
         orderClient.order(TestOrderId) await 10.s shouldEqual

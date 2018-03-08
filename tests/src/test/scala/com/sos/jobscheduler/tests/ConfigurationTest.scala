@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{SourceType, VersionId}
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderStdoutWritten}
-import com.sos.jobscheduler.data.order.{Order, OrderId}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
@@ -78,7 +78,7 @@ final class ConfigurationTest extends FreeSpec {
       def addWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
         val workflow = testWorkflow(versionId)
         assert(workflow.isAnonymous)
-        val order = Order(orderId, path % VersionId.Anonymous, Order.StartNow)
+        val order = FreshOrder(orderId, path)
         // Command will be rejected because workflow is not yet defined
         assert(Try { master.addOrder(order) await 99.s }
           .failed.get.getMessage contains s"No such key 'Workflow:${path.string}'")
@@ -90,7 +90,7 @@ final class ConfigurationTest extends FreeSpec {
       }
 
       def runOrder(master: RunningMaster, workflowId: WorkflowId, orderId: OrderId): Unit = {
-        val order = Order(orderId, workflowId.path % VersionId.Anonymous, Order.StartNow)
+        val order = FreshOrder(orderId, workflowId.path)
         master.addOrder(order) await 99.s
         awaitOrder(orderId, workflowId)
       }

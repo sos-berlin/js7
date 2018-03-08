@@ -19,7 +19,7 @@ import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Goto, IfNonZeroReturnCodeGoto, Job, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
@@ -95,9 +95,9 @@ object LegacyJobchainTest {
     "END" @: /*6*/ ExplicitEnd,
     "FAILURE" @: /*7*/ ExplicitEnd)
 
-  private val TestOrder = Order(OrderId("🔺"), TestWorkflow.id, state = Order.StartNow)
+  private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
   private val ExpectedEvents = Vector(
-    TestOrder.id <-: OrderAdded(TestWorkflow.id, Order.StartNow, Payload.empty),
+    TestOrder.id <-: OrderAdded(TestWorkflow.id),
     TestOrder.id <-: OrderTransferredToAgent(TestAgentPath),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),

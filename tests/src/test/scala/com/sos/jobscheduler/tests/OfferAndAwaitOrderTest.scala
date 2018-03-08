@@ -14,7 +14,7 @@ import com.sos.jobscheduler.data.event.{<-:, EventSeq, KeyedEvent, TearableEvent
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderDetachable, OrderFinished, OrderJoined, OrderMoved, OrderOffered, OrderProcessed, OrderProcessingStarted, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.OfferAndAwaitOrderTest._
@@ -86,14 +86,14 @@ object OfferAndAwaitOrderTest {
        |""".stripMargin)
 
   private val OfferedOrderId = OrderId("🔵")
-  private val JoinBefore1Order = Order(OrderId("🥕"), JoiningWorkflowId, state = Order.StartNow)
-  private val JoinBefore2Order = Order(OrderId("🍋"), JoiningWorkflowId, state = Order.StartNow)
+  private val JoinBefore1Order = FreshOrder(OrderId("🥕"), JoiningWorkflowId.path)
+  private val JoinBefore2Order = FreshOrder(OrderId("🍋"), JoiningWorkflowId.path)
   private val JoinAfterOrderId = OrderId("🍭")
-  private val JoinAfterOrder = Order(JoinAfterOrderId, JoiningWorkflowId, state = Order.StartNow)
-  private val OfferedOrder = Order(OfferedOrderId, PublishingWorkflowId, state = Order.StartNow)
+  private val JoinAfterOrder = FreshOrder(JoinAfterOrderId, JoiningWorkflowId.path)
+  private val OfferedOrder = FreshOrder(OfferedOrderId, PublishingWorkflowId.path)
 
   private val ExpectedJoiningEvents = Vector(
-    OrderAdded(JoiningWorkflowId, Order.StartNow),
+    OrderAdded(JoiningWorkflowId),
     OrderTransferredToAgent(TestAgentPath),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -120,7 +120,7 @@ object OfferAndAwaitOrderTest {
     }
 
   private val ExpectedPublishingOrderEvents = Vector(
-    OrderAdded(PublishingWorkflowId, Order.StartNow),
+    OrderAdded(PublishingWorkflowId),
     OrderTransferredToAgent(TestAgentPath),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),

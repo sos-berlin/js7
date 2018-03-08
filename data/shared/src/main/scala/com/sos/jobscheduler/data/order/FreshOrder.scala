@@ -18,25 +18,16 @@ final case class FreshOrder(
 {
   workflowPath.requireNonAnonymous()
 
-  def toOrder(versionId: VersionId): Order[Order.NotStarted] = {
+  def toOrder(versionId: VersionId): Order[Order.Fresh] = {
     val firstPosition = Position(0)
-    val state = scheduledAt match {
-      case None ⇒ Order.StartNow
-      case Some(ts) ⇒ Order.Scheduled(ts)
-    }
-    Order(id, WorkflowPosition(workflowPath % versionId, firstPosition), state, payload = payload)
+    Order(id, WorkflowPosition(workflowPath % versionId, firstPosition), Order.Fresh(scheduledAt), payload = payload)
   }
 }
 
 object FreshOrder
 {
-  def fromOrder(order: Order[Order.NotStarted]): FreshOrder =  {
-    val scheduledAt = order.state match {
-      case Order.StartNow ⇒ None
-      case Order.Scheduled(ts) ⇒ Some(ts)
-    }
-    new FreshOrder(order.id, order.workflowId.path, scheduledAt, order.payload)
-  }
+  def fromOrder(order: Order[Order.Fresh]): FreshOrder =
+    new FreshOrder(order.id, order.workflowId.path, order.state.scheduledAt, order.payload)
 
   implicit val jsonCodec: ObjectEncoder[FreshOrder] =
     o ⇒ JsonObject(

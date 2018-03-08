@@ -45,7 +45,7 @@ final class OrderEventSourceTest extends FreeSpec {
 
     "again, all events" in {
       val process = new SingleOrderProcess(workflow)
-      process.update(OrderAdded(TestWorkflowId, Order.Ready))
+      process.update(OrderAdded(TestWorkflowId))
       process.jobStep()
       assert(process.step() == Some(OrderMoved(Position(1, 0, 0))))
       process.jobStep()
@@ -81,7 +81,7 @@ final class OrderEventSourceTest extends FreeSpec {
     val process = new Process(ForkWorkflow)
     val orderId = succeededOrderId
 
-    process.update(orderId <-: OrderAdded(TestWorkflowId, Order.StartNow))
+    process.update(orderId <-: OrderAdded(TestWorkflowId))
     assert(process.run(orderId) == List(
       orderId <-: OrderProcessingStarted,
       orderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -172,7 +172,7 @@ object OrderEventSourceTest {
 
   private def step(workflow: Workflow, outcome: Outcome): Option[OrderEvent] = {
     val process = new SingleOrderProcess(workflow)
-    process.update(OrderAdded(workflow.id, Order.Ready))
+    process.update(OrderAdded(workflow.id))
     process.jobStep(outcome = outcome)
     process.step()
   }

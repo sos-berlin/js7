@@ -18,15 +18,15 @@ final class ScheduledOrderGeneratorKeeper(masterConfiguration: MasterConfigurati
   private val pathToOrderGenerator: Map[ScheduledOrderGeneratorPath, ScheduledOrderGenerator] =
     scheduledOrderGenerators toKeyedMap (_.path)
 
-  def generateOrders(instantInterval: InstantInterval, versionId: VersionId): Seq[Order[Order.Scheduled]] =
+  def generateOrders(instantInterval: InstantInterval, versionId: VersionId): Seq[Order[Order.Fresh]] =
     (for (orderGenerator ← pathToOrderGenerator.values;
           instant ← orderGenerator.schedule.instants(instantInterval)) yield
       Order(
         toOrderId(orderGenerator.path, instant),
         orderGenerator.workflowPath % versionId,
-        Order.Scheduled(instant.toTimestamp),
+        Order.Fresh(Some(instant.toTimestamp)),
         payload = Payload(orderGenerator.variables)))
-    .toVector.sortBy { _.state.at }
+    .toVector.sortBy { _.state.scheduledAt }
 }
 
 object ScheduledOrderGeneratorKeeper {

@@ -85,5 +85,5 @@ object CommandQueueTest {
   private def toQueuedInputResponse(order: Order[Order.Idle]) =
     QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath, TestWorkflow), Batch.Succeeded(Accepted))
 
-  private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id, Order.StartNow)
+  private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id, Order.Fresh.StartImmediately)
 }

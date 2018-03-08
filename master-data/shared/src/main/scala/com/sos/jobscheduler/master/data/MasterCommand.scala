@@ -31,24 +31,24 @@ object MasterCommand {
   extends MasterCommand {
     workflowPath.requireNonAnonymous()
 
-    def toOrder(versionId: VersionId) = toNotStartedOrder.toOrder(versionId)
+    def toOrder(versionId: VersionId) = toFreshOrder.toOrder(versionId)
 
-    def toNotStartedOrder = FreshOrder(id, workflowPath, scheduledAt, payload)
+    def toFreshOrder = FreshOrder(id, workflowPath, scheduledAt, payload)
 
     type MyResponse = Response.Accepted
   }
   object AddOrderIfNew {
-    def fromNotStartedOrder(order: FreshOrder) =
+    def fromFreshOrder(order: FreshOrder) =
       AddOrderIfNew(order.id, order.workflowPath, order.scheduledAt, order.payload)
 
-    def fromOrder(order: Order[Order.NotStarted]): AddOrderIfNew =
-      fromNotStartedOrder(FreshOrder.fromOrder(order))
+    def fromOrder(order: Order[Order.Fresh]): AddOrderIfNew =
+      fromFreshOrder(FreshOrder.fromOrder(order))
 
     private[MasterCommand] implicit val jsonCodec: ObjectEncoder[AddOrderIfNew] =
-      _.toNotStartedOrder.asJsonObject
+      _.toFreshOrder.asJsonObject
 
     private[MasterCommand] implicit val jsonDecoder: Decoder[AddOrderIfNew] =
-      _.as[FreshOrder] map fromNotStartedOrder
+      _.as[FreshOrder] map fromFreshOrder
   }
 
   final case class ScheduleOrdersEvery(every: FiniteDuration) extends MasterCommand

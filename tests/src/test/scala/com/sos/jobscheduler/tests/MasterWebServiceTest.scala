@@ -74,7 +74,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "position": [ 0 ]
           },
           "state": {
-            "TYPE": "StartNow"
+            "TYPE": "Fresh"
           },
           "payload": {
             "variables": {}
@@ -123,12 +123,6 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
             "workflowId": {
               "path": "/WORKFLOW",
               "versionId": "(initial)"
-            },
-            "state": {
-              "TYPE": "StartNow"
-            },
-            "payload": {
-              "variables": {}
             }
           }
         ]

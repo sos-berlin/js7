@@ -22,9 +22,8 @@ import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{RepoEvent, SourceType, VersionId}
 import com.sos.jobscheduler.data.job.JobPath
-import com.sos.jobscheduler.data.order.Order.Scheduled
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
@@ -101,7 +100,7 @@ final class RecoveryTest extends FreeSpec {
               val orderStampeds = eventCollector.await[Event](_.key == orderId)
               withClue(s"$orderId") {
                 try assert((deleteRestartedJobEvents(orderStampeds.map(_.value.event).iterator) collect {
-                    case o @ OrderAdded(_, Order.Scheduled(_), _) ⇒ o.copy(state = Order.Scheduled(SomeTimestamp))
+                    case o @ OrderAdded(_, Some(_), _) ⇒ o.copy(scheduledAt = Some(SomeTimestamp))
                     case o ⇒ o
                   }).toVector
                   == ExpectedOrderEvents)
@@ -163,10 +162,10 @@ private object RecoveryTest {
     </order>
 
   private val QuickWorkflow = Workflow.of(WorkflowPath("/quick") % "(initial)", Job(TestJobPath, AgentIds(0).path))
-  private val QuickOrder = Order(OrderId("FAST-ORDER"), QuickWorkflow.id, Order.StartNow)
+  private val QuickOrder = FreshOrder(OrderId("FAST-ORDER"), QuickWorkflow.id.path)
 
   private val ExpectedOrderEvents = Vector(
-    OrderAdded(TestWorkflow.id, Scheduled(SomeTimestamp), Payload(Map())),
+    OrderAdded(TestWorkflow.id, Some(SomeTimestamp), Payload(Map())),
     OrderTransferredToAgent(AgentIds(0).path),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),

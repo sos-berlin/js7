@@ -98,18 +98,18 @@ final class OrderTest extends FreeSpec {
   }
 
   "State" - {
-    "Scheduled" in {
-      check(Scheduled(Timestamp.parse("2017-11-15T12:33:44.789Z")),
+    "Fresh scheduled" in {
+      check(Fresh(Some(Timestamp.parse("2017-11-15T12:33:44.789Z"))),
         json"""{
-          "TYPE": "Scheduled",
-          "at": 1510749224789
+          "TYPE": "Fresh",
+          "scheduledAt": 1510749224789
         }""")
     }
 
-    "StartNow" in {
-      check(StartNow,
+    "Fresh immediately" in {
+      check(Fresh(),
         json"""{
-          "TYPE": "StartNow"
+          "TYPE": "Fresh"
         }""")
     }
 

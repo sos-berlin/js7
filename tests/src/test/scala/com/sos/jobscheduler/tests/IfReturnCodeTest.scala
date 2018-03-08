@@ -16,7 +16,7 @@ import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
-import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.IfReturnCodeTest._
@@ -77,7 +77,7 @@ object IfReturnCodeTest {
 
   private val ExpectedEvents = Map(
     ReturnCode(0) → Vector(
-      OrderAdded(TestWorkflow.id, Order.StartNow, Payload(Map("RETURN_CODE" → "0"))),
+      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "0"))),
       OrderTransferredToAgent(TestAgentPath),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -92,7 +92,7 @@ object IfReturnCodeTest {
       OrderTransferredToMaster,
       OrderFinished),
     ReturnCode(1) → Vector(
-      OrderAdded(TestWorkflow.id, Order.StartNow, Payload(Map("RETURN_CODE" → "1"))),
+      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "1"))),
       OrderTransferredToAgent(TestAgentPath),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
@@ -107,12 +107,12 @@ object IfReturnCodeTest {
       OrderTransferredToMaster,
       OrderFinished),
     ReturnCode(2) →  Vector(
-      OrderAdded(TestWorkflow.id, Order.StartNow, Payload(Map("RETURN_CODE" → "2"))),
+      OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "2"))),
       OrderTransferredToAgent(TestAgentPath),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
       OrderStopped(Outcome.Failed(ReturnCode(2)))))
 
   private def newOrder(orderId: OrderId, returnCode: ReturnCode) =
-    Order(orderId, TestWorkflow.id, Order.StartNow, payload = Payload(Map("RETURN_CODE" → returnCode.number.toString)))
+    FreshOrder(orderId, TestWorkflow.id.path, payload = Payload(Map("RETURN_CODE" → returnCode.number.toString)))
 }

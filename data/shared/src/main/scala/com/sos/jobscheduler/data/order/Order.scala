@@ -157,7 +157,7 @@ final case class Order[+S <: Order.State](
 
 object Order {
   def fromOrderAdded(id: OrderId, event: OrderAdded): Order[Idle] =
-    Order(id, event.workflowId, event.state, payload = event.payload)
+    Order(id, event.workflowId, Fresh(event.scheduledAt), payload = event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[Idle] =
     Order(id, event.workflowPosition, event.state, Some(AttachedTo.Agent(event.agentPath)), payload = event.payload)
@@ -187,15 +187,18 @@ object Order {
   }
 
   sealed trait State
+
   sealed trait Idle extends State
-  sealed trait NotStarted extends Idle
-  sealed trait Started extends State
-  sealed trait Transitionable extends Started
 
   @JsonCodec
-  final case class Scheduled(at: Timestamp) extends NotStarted
+  final case class Fresh(scheduledAt: Option[Timestamp] = None) extends Idle
+  object Fresh {
+    val StartImmediately = Fresh(None)
+  }
 
-  final case object StartNow extends NotStarted
+  sealed trait Started extends State
+
+  sealed trait Transitionable extends Started
 
   sealed trait Ready extends Started with Idle
   case object Ready extends Ready
@@ -222,12 +225,8 @@ object Order {
   sealed trait Finished extends State
   case object Finished extends Finished
 
-  implicit val NotStartedJsonCodec: TypedJsonCodec[NotStarted] = TypedJsonCodec[NotStarted](
-    Subtype[Scheduled],
-    Subtype(StartNow))
-
   implicit val IdleJsonCodec: TypedJsonCodec[Idle] = TypedJsonCodec[Idle](
-    Subtype[NotStarted],
+    Subtype[Fresh],
     Subtype(Ready))
 
   implicit val StateJsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
@@ -240,7 +239,6 @@ object Order {
     Subtype[Awaiting],
     Subtype(Finished))
 
-  implicit val NotStartedOrderJsonCodec: CirceObjectCodec[Order[NotStarted]] = deriveCodec[Order[NotStarted]]
   implicit val IdleOrderJsonCodec: CirceObjectCodec[Order[Idle]] = deriveCodec[Order[Idle]]
   implicit val jsonCodec: CirceObjectCodec[Order[State]] = deriveCodec[Order[State]]
 }

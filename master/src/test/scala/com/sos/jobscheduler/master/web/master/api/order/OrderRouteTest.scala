@@ -98,7 +98,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
 object OrderRouteTest {
   private val TestWorkflowId = WorkflowPath("/WORKFLOW") % "VERSION"
   private val TestOrders: Map[OrderId, Order[Order.State]] = List(
-    Order(OrderId("/PATH/ORDER-1"), TestWorkflowId, Order.StartNow),
+    Order(OrderId("/PATH/ORDER-1"), TestWorkflowId, Order.Fresh.StartImmediately),
     Order(OrderId("ORDER-2"), TestWorkflowId /: Position(2), Order.Finished)
   ).toKeyedMap { _.id }
   private val DuplicateOrderId = OrderId("DUPLICATE")

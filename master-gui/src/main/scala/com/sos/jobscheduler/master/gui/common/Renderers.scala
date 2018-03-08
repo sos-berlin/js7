@@ -49,14 +49,14 @@ object Renderers {
       VdomArray(
         orderStateToSymbolFixedWidth(state),
         state match {
-           case Order.Scheduled(at) ⇒ at.toReadableLocaleIsoString: VdomNode
+           case Order.Fresh(Some(at)) ⇒ at.toReadableLocaleIsoString: VdomNode
            case _ ⇒ orderStateTextToVdom(state)
         })
   }
 
   private def orderStateTextToVdom(state: Order.State): VdomNode =
     state match {
-      case Order.Scheduled(at)  ⇒ s"Scheduled for ${at.toReadableLocaleIsoString}"
+      case Order.Fresh(Some(at))  ⇒ s"Scheduled for ${at.toReadableLocaleIsoString}"
       case Order.Processed(Outcome.Succeeded(ReturnCode.Success)) ⇒ s"Processed"
       case Order.Processed(o: Outcome.Undisrupted) ⇒ s"Processed rc=${o.returnCode.number}"
       case Order.Processed(o: Outcome.Disrupted) ⇒ s"Processed $o"
@@ -74,8 +74,8 @@ object Renderers {
 
   def orderStateToSymbol(state: Order.State): VdomNode =
     state match {
-      case _: Order.Scheduled ⇒ <.i(^.cls := "material-icons text-prefix", "access_alarm")
-      case Order.StartNow     ⇒ "━"
+      case Order.Fresh(Some(_)) ⇒ <.i(^.cls := "material-icons text-prefix", "access_alarm")
+      case Order.Fresh(None)  ⇒ "━"
       case Order.InProcess    ⇒ <.i(^.cls := "material-icons text-prefix rotate-slowly gear", "settings")
       case _: Order.Join      ⇒ "⨁"
       case Order.Processed(_: Outcome.Succeeded) ⇒ <.i(^.cls := "material-icons text-prefix sunny")("wb_sunny") // "🔅"  "⬇"
