@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.tests
 
+import akka.http.scaladsl.model.Uri
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.sos.jobscheduler.agent.RunningAgent
@@ -127,6 +128,7 @@ object DirectoryProvider {
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {
     val name = agentPath.name
     lazy val conf = AgentConfiguration.forTest(Some(directory)).copy(name = name)
+    lazy val localUri = Uri("http://127.0.0.1:" + conf.http.get.address.getPort)
   }
 
   def jobXml(sleep: Duration = 0.s, variables: Map[String, String] = Map.empty, resultVariable: Option[String] = None) =
