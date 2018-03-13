@@ -39,7 +39,7 @@ object WebLogDirectives {
     val verboseErrorMessages = config.getBoolean("jobscheduler.webserver.verbose-error-messages")
     val hasRemoteAddress = system.settings.config.getBoolean("akka.http.server.remote-address-header")
     val exceptionHandler = ExceptionHandler {
-      case e: PublicException =>
+      case e: PublicException ⇒
         extractRequest { request ⇒
           webLogger.debug(toLogMessage(request, e), e)
           complete((BadRequest, e.publicMessage))

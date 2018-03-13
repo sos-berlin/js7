@@ -10,12 +10,15 @@ import com.sos.jobscheduler.base.problem.Problem
 /**
   * @author Joacim Zschimmer
   */
-object StandardMarshallers {
+object StandardMarshallers
+{
+  private val ProblemStatusCode = BadRequest
+
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     stringMarshaller(`text/plain`, _.toString)
 
   implicit val problemToResponseMarshaller: ToResponseMarshaller[Problem] =
-    problemToEntityMarshaller map (entity ⇒ HttpResponse.apply(BadRequest, Nil, entity))
+    problemToEntityMarshaller map (entity ⇒ HttpResponse.apply(ProblemStatusCode, Nil, entity))
 
   def stringMarshaller[A](mediaType: MediaType.WithOpenCharset, toString: A ⇒ String): ToEntityMarshaller[A] =
     Marshaller.withOpenCharset(mediaType) { (a, charset) ⇒

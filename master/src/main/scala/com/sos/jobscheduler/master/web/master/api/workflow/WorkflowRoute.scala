@@ -1,11 +1,12 @@
 package com.sos.jobscheduler.master.web.master.api.workflow
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
+import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.WorkflowClient
 import scala.concurrent.ExecutionContext
@@ -48,15 +49,15 @@ trait WorkflowRoute {
     parameter("return".?) {
       case Some("Workflow") | Some("Workflow") | None ⇒
         complete {
-          workflowClient.workflow(path) map {
+          workflowClient.workflow(path).map[ToResponseMarshallable] {
             case Some(workflow) ⇒
-              workflow: ToResponseMarshallable
+              workflow
             case None ⇒
-              BadRequest → s"$path does not exist\n": ToResponseMarshallable
+              Problem(s"$path does not exist\n")
           }
         }
 
       case o ⇒
-        complete((BadRequest → s"Unrecognized parameter return=$o\n"))
+        complete(Problem(s"Unrecognized parameter return=$o\n"))
     }
 }

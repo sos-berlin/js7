@@ -9,7 +9,6 @@ import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.cast
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.KeyedJournalingActor
 import com.sos.jobscheduler.data.order.OrderEvent._
@@ -246,10 +245,8 @@ extends KeyedJournalingActor[OrderEvent] {
     }
 
   private def writeStdouterr(t: StdoutOrStderr, chunk: String): Future[Completed] =
-    promiseFuture[Completed] { promise ⇒
-      persistAsync(OrderStdWritten(t)(chunk)) { _ ⇒
-        promise.success(Completed)
-      }
+    persist(OrderStdWritten(t)(chunk)) { _ ⇒
+      Completed
     }
 
   private def update(event: OrderEvent) = {
