@@ -48,7 +48,7 @@ import scala.util.control.NonFatal
 final class RecoveryTest extends FreeSpec {
 
   "test" in {
-    for (_ ← 1 to (if (sys.props contains "test.infinite") Int.MaxValue else 1)) {
+    for (_ ← if (sys.props contains "test.infinite") Iterator.from(1) else Iterator(1)) {
       val eventCollector = new TestEventCollector
       var lastEventId = EventId.BeforeFirst
       autoClosing(new DirectoryProvider(AgentIds map (_.path))) { directoryProvider ⇒
@@ -112,13 +112,15 @@ final class RecoveryTest extends FreeSpec {
     }
   }
 
-  private def runMaster(directoryProvider: DirectoryProvider, eventCollector: TestEventCollector)(body: RunningMaster ⇒ Unit): Unit =
-    RunningMaster.runForTest(directoryProvider.directory) { master ⇒
-      eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
+  private def runMaster(directoryProvider: DirectoryProvider, eventCollector: TestEventCollector)(body: RunningMaster ⇒ Unit): Unit = {
+    val injector = RunningMaster.newInjector(directoryProvider.directory)
+    eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
+    RunningMaster.runForTest(injector) { master ⇒
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
     }
+  }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
     multipleAutoClosing(directoryProvider.agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒

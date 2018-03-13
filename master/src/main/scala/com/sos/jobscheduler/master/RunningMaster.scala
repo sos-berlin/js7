@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.http.scaladsl.model.Uri
 import akka.pattern.ask
 import com.google.common.io.Closer
-import com.google.inject.Stage.PRODUCTION
+import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.generic.Completed
@@ -79,7 +79,10 @@ object RunningMaster {
   }
 
   def runForTest(directory: Path)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
-    autoClosing(startForTest(directory) await 99.s) { master ⇒
+    runForTest(newInjector(directory))(body)
+
+  def runForTest(injector: Injector)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
+    autoClosing(RunningMaster(injector) await 99.s) { master ⇒
       try {
         body(master)
         master.executeCommand(MasterCommand.Terminate) await 99.s
@@ -90,10 +93,11 @@ object RunningMaster {
       }
     }
 
-  def startForTest(directory: Path, module: Module = EMPTY_MODULE)(implicit ec: ExecutionContext): Future[RunningMaster] =
-    RunningMaster(Guice.createInjector(
-      new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master")),
-      module))
+  def newInjector(directory: Path, module: Module = EMPTY_MODULE): Injector =
+    Guice.createInjector(DEVELOPMENT, newModule(directory), module)
+
+  private def newModule(directory: Path): Module =
+    new MasterModule(MasterConfiguration.forTest(configAndData = directory / "master"))
 
   def apply(configuration: MasterConfiguration)(implicit ec: ExecutionContext): Future[RunningMaster] =
     apply(new MasterModule(configuration))

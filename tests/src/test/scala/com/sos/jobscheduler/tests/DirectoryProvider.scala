@@ -53,7 +53,7 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
     RunningMaster.runForTest(directory)(body)
 
   def startMaster(module: Module = EMPTY_MODULE)(implicit ec: ExecutionContext): Future[RunningMaster] =
-    RunningMaster.startForTest(directory, module)
+    RunningMaster(RunningMaster.newInjector(directory, module))
 
   def runAgents(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒

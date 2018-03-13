@@ -135,7 +135,7 @@ with Stash {
         fileBaseds.readConfigurationAndPersistEvents(InitialVersion).force.unsafeRunSync()  // Persists events
       }
       readScheduledOrderGeneratorConfiguration().force.unsafeRunSync()
-      defer {  // Publish after configuration events has been persisted and published
+      defer {  // Publish after configuration events have been persisted and published
         logger.info("Ready")
         keyedEventBus.publish(eventIdGenerator.stamp(MasterEvent.MasterReady))
       }
