@@ -19,10 +19,10 @@ trait KeyedJournalingActor[E <: Event] extends JournalingActor[E] {
 
   protected final def snapshots = Future.successful(snapshot.toList)
 
-  protected final def persistAsync[EE <: E](event: EE, noSync: Boolean = false)(callback: EE ⇒ Unit): Unit =
+  protected final def persistAsync[EE <: E, A](event: EE, noSync: Boolean = false)(callback: EE ⇒ A): Future[A] =
     persist(event, noSync = noSync, async = true)(callback)
 
-  protected final def persist[EE <: E](event: EE, noSync: Boolean = false, async: Boolean = false)(callback: EE ⇒ Unit): Unit = {
+  protected final def persist[EE <: E, A](event: EE, noSync: Boolean = false, async: Boolean = false)(callback: EE ⇒ A): Future[A] = {
     registerMe()
     super.persistKeyedEvent(KeyedEvent(key, event), noSync = noSync,  async = async) { stampedEvent ⇒
       callback(stampedEvent.value.event.asInstanceOf[EE])

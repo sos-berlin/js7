@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.core.event.journal
 
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import scala.concurrent.Future
 
@@ -21,9 +20,5 @@ trait KeyedEventJournalingActor[E <: Event] extends JournalingActor[E] {
   protected final def persist[EE <: E, A](keyedEvent: KeyedEvent[EE], timestamp: Option[Timestamp] = None, async: Boolean = false)
     (callback: Stamped[KeyedEvent[EE]] ⇒ A)
   : Future[A] =
-    promiseFuture[A] { promise ⇒
-      super.persistKeyedEvent(keyedEvent, timestamp, async) { event ⇒
-        promise.success(callback(event))  // Exception should not be handled in Future
-      }
-    }
+    super.persistKeyedEvent(keyedEvent, timestamp, async)(callback)
 }

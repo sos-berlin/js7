@@ -2,14 +2,16 @@ package com.sos.jobscheduler.core.event.journal
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, RichThrowable}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
+import com.sos.jobscheduler.common.scalautil.Futures.promiseFuture
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.event.journal.JournalingActor._
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import scala.collection.immutable.Iterable
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -28,21 +30,24 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
     stashingCount = Inhibited
   }
 
-  private[event] final def persistAsyncKeyedEvent[EE <: E](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ Unit): Unit =
+  private[event] final def persistAsyncKeyedEvent[EE <: E, A](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ A): Future[A] =
     persistKeyedEvent(keyedEvent, async = true)(callback)
 
-  private[event] final def persistKeyedEvent[EE <: E](
+  private[event] final def persistKeyedEvent[EE <: E, A](
     keyedEvent: KeyedEvent[EE],
     timestamp: Option[Timestamp] = None,
     noSync: Boolean = false,
     async: Boolean = false)(
-    callback: Stamped[KeyedEvent[EE]] ⇒ Unit)
-  : Unit = {
-    start(async = async)
-    logger.trace(s"“$toString” Store ${keyedEvent.key} ${keyedEvent.event.getClass.simpleScalaName}")
-    journalActor.forward(JournalActor.Input.Store(Some(keyedEvent) :: Nil, self, timestamp, noSync = noSync,
-      EventCallback(async = async, callback.asInstanceOf[Stamped[KeyedEvent[E]] ⇒ Unit])))
-  }
+    callback: Stamped[KeyedEvent[EE]] ⇒ A)
+  : Future[A] =
+    promiseFuture[A] { promise ⇒
+      start(async = async)
+      logger.trace(s"“$toString” Store ${keyedEvent.key} ${keyedEvent.event.getClass.simpleScalaName}")
+      journalActor.forward(
+        JournalActor.Input.Store(Some(keyedEvent) :: Nil, self, timestamp, noSync = noSync,
+          EventCallback(async = async, event ⇒
+            promise complete Try { callback(event.asInstanceOf[Stamped[KeyedEvent[EE]]]) })))
+    }
 
   protected final def defer(callback: ⇒ Unit): Unit =
     defer_(async = false, callback)
@@ -88,7 +93,12 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
         (stampedOption, item) match {
           case (Some(stamped), EventCallback(_, callback)) ⇒
             logger.trace(s"“$toString” Stored ${EventId.toString(stamped.eventId)} ${stamped.value.key} ${stamped.value.event.getClass.simpleScalaName} -> $item")
-            callback(stamped.asInstanceOf[Stamped[KeyedEvent[E]]])
+            try callback(stamped.asInstanceOf[Stamped[KeyedEvent[E]]])
+            catch { case NonFatal(t) ⇒
+              logger.error(t.toStringWithCauses, t)
+              logger.error(s"Actor stop - $toString")
+              context.stop(self)
+            }
 
           case (None, Deferred(_, callback)) ⇒
             callback()
