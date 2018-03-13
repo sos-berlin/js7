@@ -9,7 +9,7 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import java.nio.file.Path
@@ -52,6 +52,9 @@ extends JournalRecoverer[Event] {
           event match {
             case event: OrderAdded ⇒
               idToOrder.insert(orderId → Order.fromOrderAdded(orderId, event))
+
+            case OrderFinished ⇒
+              idToOrder -= orderId
 
             case event: OrderCoreEvent ⇒
               handleForkJoinEvent(orderId, event)

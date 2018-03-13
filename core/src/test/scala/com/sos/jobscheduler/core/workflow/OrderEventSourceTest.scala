@@ -238,7 +238,9 @@ object OrderEventSourceTest {
 
         case event: OrderCoreEvent ⇒
           processEvent(keyedEvent)
-          idToOrder(orderId) = idToOrder(orderId).update(event)
+          if (event != OrderFinished) {
+            idToOrder(orderId) = idToOrder(orderId).update(event)
+          }
 
         case _ ⇒
           sys.error(s"Unhandled: $event")

@@ -18,7 +18,7 @@ services:
     depends_on:
       - "agent-1"
       - "agent-2"
-    command: ["master", "-java-option=-Xmx500m"]
+    command: ["master", "-java-option=-Xmx100m"]
     networks:
     - default
     ports:

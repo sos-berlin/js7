@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.core.workflow.OrderEventHandler._
 import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderForked, OrderJoined, OrderOffered, OrderProcessed}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderAwaiting, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderProcessed}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.instructions.Job
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
@@ -66,6 +66,9 @@ final class OrderEventHandler(
       case OrderAwaiting(offeredOrderId) ⇒
         _offeredToAwaitingOrder(offeredOrderId) = _offeredToAwaitingOrder.getOrElse(offeredOrderId, Set.empty) + orderId
         Valid(Nil)
+
+      case OrderFinished ⇒
+        Valid(FollowUp.Remove(orderId) :: Nil)
 
       case _ ⇒
         Valid(Nil)

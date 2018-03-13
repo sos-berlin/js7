@@ -127,7 +127,7 @@ with Stash {
   def receive = journaling orElse {
     case JournalRecoverer.Output.JournalIsReady ⇒
       agentRegister.values foreach { _.start() }
-      orderRegister.values foreach proceedWithOrder
+      orderRegister.values.toVector/*copy*/ foreach proceedWithOrder
       logger.info(s"${orderRegister.size} Orders recovered")
       become(ready)
       unstashAll()
@@ -183,7 +183,7 @@ with Stash {
     case Command.GetOrderCount ⇒
       sender() ! (orderRegister.size: Int)
 
-    case Command.Remove(orderId) ⇒
+    case Command.Remove(orderId) ⇒  // NOT TESTED
       orderRegister.get(orderId) match {
         case None ⇒ sender() ! Status.Failure(new NoSuchElementException(s"Unknown $orderId"))
         case Some(orderEntry) ⇒
@@ -512,7 +512,8 @@ object MasterOrderKeeper {
     final case class GetOrder(orderId: OrderId) extends Command
     final case object GetOrders extends Command
     final case object GetOrderCount extends Command
-    final case class Remove(orderId: OrderId) extends Command
+    @deprecated("NOT TESTED", "-")
+    private[MasterOrderKeeper] final case class Remove(orderId: OrderId) extends Command
   }
 
   sealed trait Reponse

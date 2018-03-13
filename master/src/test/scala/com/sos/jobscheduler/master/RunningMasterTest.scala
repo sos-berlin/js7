@@ -88,13 +88,14 @@ final class RunningMasterTest extends FreeSpec {
         master.addOrder(FreshOrder(TestOrderId, TestWorkflowId.path)) await 10.s
 
         master.eventCollector.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
-        orderClient.order(TestOrderId) await 10.s shouldEqual
-          Some(Order(
-            TestOrderId,
-            TestWorkflowId /: Position(2),
-            Order.Finished,
-            payload = Payload(Map("result" → "TEST-RESULT-VALUE-agent-222"))))
-        assert(orderClient.orderCount.await(99.s) >= 1)
+        //Order has been deleted after OrderFinished:
+        //orderClient.order(TestOrderId) await 10.s shouldEqual
+        //  Some(Order(
+        //    TestOrderId,
+        //    TestWorkflowId /: Position(2),
+        //    Order.Finished,
+        //    payload = Payload(Map("result" → "TEST-RESULT-VALUE-agent-222"))))
+        assert(orderClient.orderCount.await(99.s) == 0)
 
         master.executeCommand(MasterCommand.ScheduleOrdersEvery((TestDuration / 2).toFiniteDuration)) await 99.s  // Needing 2 consecutive order generations
         val expectedOrderCount = 1 + TestDuration.getSeconds.toInt  // Expecting one finished order per second

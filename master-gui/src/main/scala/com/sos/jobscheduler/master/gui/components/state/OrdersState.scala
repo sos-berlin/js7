@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.gui.components.state
 
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.data.event.{EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
+import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.{WorkflowId, WorkflowPosition}
 import com.sos.jobscheduler.master.gui.common.Utils._
@@ -134,6 +134,10 @@ object OrdersState {
                       added(w) = a filterNot order.state.joinOrderIds.toSet
                     }
                   }
+
+                case _: OrderFinished ⇒
+                  deleted += orderId
+                  updated -= orderId
 
                 case _ ⇒
               }

@@ -57,9 +57,6 @@ extends AutoCloseable
 {
   def executeCommand(command: MasterCommand): Future[command.MyResponse]
 
-  def addOrder(order: Order[Order.Fresh]): Future[Boolean] =
-    addOrder(FreshOrder.fromOrder(order))
-
   def addOrder(order: FreshOrder): Future[Boolean] =
     orderClient.addOrder(order)
 
