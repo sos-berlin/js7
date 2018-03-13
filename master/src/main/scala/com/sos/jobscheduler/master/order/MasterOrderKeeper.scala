@@ -261,6 +261,9 @@ with Stash {
       case cmd: MasterCommand.AddOrderIfNew ⇒
         addOrder(cmd.toFreshOrder) map (_ ⇒ MasterCommand.Response.Accepted)
 
+      case MasterCommand.EmergencyStop ⇒       // For completeness. RunningMaster has handled the command already
+        Future.failed(new NotImplementedError)
+
       case MasterCommand.Terminate ⇒
         logger.info("Command Terminate")
         inhibitJournaling()

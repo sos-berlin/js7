@@ -4,7 +4,7 @@ import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.client.AgentClientCommandMarshallingTest._
 import com.sos.jobscheduler.agent.command.{CommandHandler, CommandMeta}
 import com.sos.jobscheduler.agent.data.commands.AgentCommand
-import com.sos.jobscheduler.agent.data.commands.AgentCommand.{AbortImmediately, Accepted, Terminate}
+import com.sos.jobscheduler.agent.data.commands.AgentCommand.{EmergencyStop, Accepted, Terminate}
 import com.sos.jobscheduler.agent.test.AgentTest
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.Closers.implicits._
@@ -32,7 +32,7 @@ extends FreeSpec with ScalaFutures with AgentTest {
         Future {
           (command match {
             case ExpectedTerminate ⇒ Accepted
-            case AbortImmediately ⇒ Accepted
+            case EmergencyStop ⇒ Accepted
             case _ ⇒ throw new NotImplementedError
           })
           .asInstanceOf[command.Response]
@@ -47,7 +47,7 @@ extends FreeSpec with ScalaFutures with AgentTest {
 
   List[(AgentCommand, AgentCommand.Response)](
     ExpectedTerminate → Accepted,
-    AbortImmediately → Accepted)
+    EmergencyStop → Accepted)
   .foreach { case (command, response) ⇒
     command.getClass.simpleScalaName in {
       whenReady(client.executeCommand(command)) { o ⇒

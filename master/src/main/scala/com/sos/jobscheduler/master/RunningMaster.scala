@@ -13,6 +13,7 @@ import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
+import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -192,7 +193,17 @@ object RunningMaster {
     for (_ ← webServerReady) yield {
       def execCmd(command: MasterCommand): Future[command.MyResponse] = {
         import masterConfiguration.akkaAskTimeout
-        (orderKeeper ? command) map { _.asInstanceOf[command.MyResponse] }
+        (command match {
+          case MasterCommand.EmergencyStop ⇒
+            val msg = "Command EmergencyStop received: JOBSCHEDULER MASTER STOPS NOW"
+            logger.error(msg)
+            Log4j.shutdown()
+            sys.runtime.halt(99)
+            Future.successful(MasterCommand.Response.Accepted)  // unreachable
+
+          case _ ⇒
+            orderKeeper ? command
+        }) map (_.asInstanceOf[command.MyResponse])
       }
       val master = new RunningMaster(webServer, orderClient, orderKeeper, terminated, closer, injector) {
         def executeCommand(command: MasterCommand) = execCmd(command)

@@ -72,7 +72,7 @@ object AgentCommand {
     implicit val jsonCodec: CirceCodec[Accepted.type] = singletonCodec(Accepted)
   }
 
-  case object AbortImmediately extends TerminateOrAbort {
+  case object EmergencyStop extends TerminateOrAbort {
     /** The JVM is halted before responding. */
     type Response = Nothing
   }
@@ -158,7 +158,7 @@ object AgentCommand {
   implicit val CommandJsonFormat: TypedJsonCodec[AgentCommand] =
     TypedJsonCodec[AgentCommand](
       Subtype[Batch],
-      Subtype(AbortImmediately),
+      Subtype(EmergencyStop),
       Subtype(Login),
       Subtype(Logout),
       Subtype(NoOperation),

@@ -49,6 +49,10 @@ object MasterCommand {
       _.as[FreshOrder] map fromFreshOrder
   }
 
+  case object EmergencyStop extends MasterCommand {
+    type MyResponse = Response.Accepted
+  }
+
   final case class ScheduleOrdersEvery(every: FiniteDuration) extends MasterCommand
 
   case object Terminate extends MasterCommand {
@@ -70,6 +74,7 @@ object MasterCommand {
   }
 
   implicit val jsonCodec = TypedJsonCodec[MasterCommand](
+    Subtype(EmergencyStop),
     Subtype[AddOrderIfNew],
     Subtype(deriveCodec[ScheduleOrdersEvery]),
     Subtype(deriveCodec[ReadConfigurationDirectory]),

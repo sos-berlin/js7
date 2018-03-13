@@ -26,9 +26,9 @@ final class AgentCommandTest extends FreeSpec {
       }""")
   }
 
-  "AbortImmediately" in {
-    check(AgentCommand.AbortImmediately,
-      json"""{ "TYPE": "AbortImmediately" }""")
+  "EmergencyStop" in {
+    check(AgentCommand.EmergencyStop,
+      json"""{ "TYPE": "EmergencyStop" }""")
   }
 
   "Login" in {

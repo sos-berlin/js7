@@ -12,13 +12,6 @@ import scala.concurrent.duration._
 
 final class MasterCommandTest extends FreeSpec {
 
-  "Terminate" in {
-    testJson[MasterCommand](Terminate,
-      json"""{
-        "TYPE": "Terminate"
-      }""")
-  }
-
   "AddOrderIfNew" in {
     testJson[MasterCommand](
       AddOrderIfNew(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW"), scheduledAt = None, Payload.empty),
@@ -41,6 +34,21 @@ final class MasterCommandTest extends FreeSpec {
       }""")
   }
 
+  "EmergencyStop" in {
+    testJson[MasterCommand](EmergencyStop,
+      json"""{
+        "TYPE": "EmergencyStop"
+      }""")
+  }
+
+  "ReadConfigurationDirectory" in {
+    testJson[MasterCommand](ReadConfigurationDirectory(VersionId("VERSION")),
+      json"""{
+        "TYPE": "ReadConfigurationDirectory",
+        "versionId": "VERSION"
+      }""")
+  }
+
   "ScheduleOrdersEvery" in {
     testJson[MasterCommand](
       ScheduleOrdersEvery(12345.millis),
@@ -50,11 +58,10 @@ final class MasterCommandTest extends FreeSpec {
        }""")
   }
 
-  "ReadConfigurationDirectory" in {
-    testJson[MasterCommand](ReadConfigurationDirectory(VersionId("VERSION")),
+  "Terminate" in {
+    testJson[MasterCommand](Terminate,
       json"""{
-        "TYPE": "ReadConfigurationDirectory",
-        "versionId": "VERSION"
+        "TYPE": "Terminate"
       }""")
   }
 

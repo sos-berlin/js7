@@ -90,8 +90,8 @@ extends Actor {
       case command @ (_: OrderCommand | _: RegisterAsMaster.type | _: Terminate) ⇒
         agentHandle.executeCommand(command, meta.user.id, response)
 
-      case AbortImmediately ⇒
-        val msg = "Command AbortImmediately received: JOBSCHEDULER AGENTS ABORTS NOW"
+      case EmergencyStop ⇒
+        val msg = "Command EmergencyStop received: JOBSCHEDULER AGENT STOPS NOW"
         logger.error(msg)
         Log4j.shutdown()
         sys.runtime.halt(99)
