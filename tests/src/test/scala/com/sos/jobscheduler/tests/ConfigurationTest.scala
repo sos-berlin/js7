@@ -1,7 +1,6 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -38,12 +37,18 @@ final class ConfigurationTest extends FreeSpec {
         directoryProvider.runMaster { master ⇒
           eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
 
+          // Add Workflow
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
+
           // Command is rejected due to duplicate VersionId
           assert(Try { master.executeCommand(ReadConfigurationDirectory(V1)) await 99.s }
             .failed.get.getMessage contains s"Duplicate VersionId '${V1.string}'")
 
+          // Add Workflow
           addWorkflowAndRunOrder(master, V2, BWorkflowPath, OrderId("B"))
+
+          // Change Workflow
+          changeWorkflowAndRunOrder(master, V3, AWorkflowPath, OrderId("A-3"))
         }
         // Recovery
         directoryProvider.runMaster { master ⇒
@@ -52,36 +57,44 @@ final class ConfigurationTest extends FreeSpec {
           // Previously defined workflow is still known
           runOrder(master, BWorkflowPath % V2, OrderId("B-AGAIN"))
 
-          // V3 - Add and use a new workflow
-          addWorkflowAndRunOrder(master, V3, CWorkflowPath, OrderId("C"))
+          // V4 - Add and use a new workflow
+          addWorkflowAndRunOrder(master, V4, CWorkflowPath, OrderId("C"))
 
-          // Handling a workflow change is not implemented
-          directoryProvider.master.writeJson(testWorkflow(V4) withId CWorkflowPath % VersionId.Anonymous)
-          assert(Try { master.executeCommand(ReadConfigurationDirectory(V4)) await 99.s }
-            .failed.get.toStringWithCauses contains "Change of configuration file is not supported: Workflow:/C")
+          // Change workflow
+          directoryProvider.master.writeJson(testWorkflow(V5) withId CWorkflowPath % VersionId.Anonymous)
+          master.executeCommand(ReadConfigurationDirectory(V5)) await 99.s
 
-          // Handling a workflow deletion is not implemented
+          // Delete workflow
           delete(directoryProvider.master.file(CWorkflowPath, SourceType.Json))
-          assert(Try { master.executeCommand(ReadConfigurationDirectory(V4)) await 99.s }
-            .failed.get.toStringWithCauses contains "Deletion of configuration file is not supported: Workflow:/C")
+          master.executeCommand(ReadConfigurationDirectory(V6)) await 99.s
+          assert(Try { runOrder(master, CWorkflowPath % V6, OrderId("B-6")) }
+            .failed.get.getMessage contains s"Has been deleted: Workflow:${CWorkflowPath.string}")
 
           // Command is rejected due to duplicate VersionId
           assert(Try { master.executeCommand(ReadConfigurationDirectory(V2)) await 99.s }
             .failed.get.getMessage contains s"Duplicate VersionId '${V2.string}'")
 
-          // AWorkflowPath is still version V1
-          runOrder(master, AWorkflowPath % V1, OrderId("A-2"))
+          // AWorkflowPath is still version V3
+          runOrder(master, AWorkflowPath % V3, OrderId("A-3"))
           runOrder(master, BWorkflowPath % V2, OrderId("B-2"))
         }
       }
 
       def addWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
-        val workflow = testWorkflow(versionId)
-        assert(workflow.isAnonymous)
         val order = FreshOrder(orderId, path)
         // Command will be rejected because workflow is not yet defined
         assert(Try { master.addOrder(order) await 99.s }
           .failed.get.getMessage contains s"No such key 'Workflow:${path.string}'")
+        defineWorkflowAndRunOrder(master, versionId, path, orderId)
+      }
+
+      def changeWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit =
+        defineWorkflowAndRunOrder(master, versionId, path, orderId)
+
+      def defineWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
+        val workflow = testWorkflow(versionId)
+        assert(workflow.isAnonymous)
+        val order = FreshOrder(orderId, path)
         // Add Workflow
         directoryProvider.master.writeJson(workflow withId path % VersionId.Anonymous)
         master.executeCommand(ReadConfigurationDirectory(versionId)) await 99.s
@@ -114,6 +127,8 @@ object ConfigurationTest {
   private val V2 = VersionId("2")
   private val V3 = VersionId("3")
   private val V4 = VersionId("4")
+  private val V5 = VersionId("5")
+  private val V6 = VersionId("6")
   private val TestAgentPath = AgentPath("/AGENT")
 
   private def testWorkflow(versionId: VersionId) = Workflow.of(Job(JobPath(s"/JOB-V${versionId.string}"), TestAgentPath))

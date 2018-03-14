@@ -302,7 +302,6 @@ with Stash {
     }
 
     protected def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[IO[Unit]]] =
-      onlyAdditionPossible(diff.select[WorkflowPath, Workflow]) ++
       updateAgents(diff.select[AgentPath, Agent])
 
     private def updateAgents(diff: FileBaseds.Diff[AgentPath, Agent]): Seq[Checked[IO[Unit]]] =
@@ -326,17 +325,11 @@ with Stash {
       Valid(IO.unit)
     else {
       val reader = new ScheduledOrderGeneratorReader(masterConfiguration.timeZone)
-      for (events ← FileBaseds.readDirectory(
-              reader :: Nil,
-        dir,
-              scheduledOrderGenerators,
-              fileBaseds.repo.versionId))
-      yield {
+      for (events ← FileBaseds.readDirectory(reader :: Nil, dir, scheduledOrderGenerators, fileBaseds.repo.versionId)) yield
         IO {
           scheduledOrderGenerators ++= events collect { case FileBasedAdded(o: ScheduledOrderGenerator) ⇒ o }
           orderScheduleGenerator ! OrderScheduleGenerator.Input.Change(scheduledOrderGenerators)
         }
-      }
     }
   }
 
