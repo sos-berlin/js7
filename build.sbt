@@ -117,6 +117,7 @@ lazy val jobscheduler = (project in file("."))
     `master-client`.jvm,
     `master-data`.jvm,
     `master-client`.jvm,
+    //Requires node.js for testing: `master-gui`,
     `agent-client`,
     `agent-data`,
     `agent-test`,
@@ -276,21 +277,24 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
   .settings(commonSettings)
   // Provide master-gui JavaScript code as resources placed in master-gui package
   .settings(
+    resourceGenerators in Compile += Def.task {
+      val file = (resourceManaged in Compile).value / "com/sos/jobscheduler/master/web/master/gui-js.conf"
+      IO.write(file, "jsName=" + masterGuiJsFilename.value)
+      Seq(file)
+    }.taskValue,
     resources in Compile ++= Seq(
       new File((scalaJSLinkedFile in Compile in `master-gui`).value.path),            // master-gui-fastopt.js or master-gui-opt.js
       new File((scalaJSLinkedFile in Compile in `master-gui`).value.path + ".map"),   // master-gui-...opt.js.map
       (packageMinifiedJSDependencies in Compile in `master-gui`).value),              // master-gui-...opt-jsdeps.min.js
     mappings in (Compile, packageBin) :=
       (mappings in (Compile, packageBin)).value map { case (file, path) ⇒
-        val generatedJsName = Paths.get((scalaJSLinkedFile in Compile in `master-gui`).value.path).toFile.getName
-        val jsMapName = s"$generatedJsName.map"  // Keep original .js.map name
-        val minJsDepName = (packageMinifiedJSDependencies in Compile in `master-gui`).value.getName
+        val generatedJsName = masterGuiJsFilename.value
+        val sourcemapName = s"$generatedJsName.map"
+        val dependenciesJsName = (packageMinifiedJSDependencies in Compile in `master-gui`).value.getName
         path match {
-          case `generatedJsName` ⇒
-            println(s"$generatedJsName -> $masterGuiPath/$masterGuiJs")  // Show ...-fastopt.js or ...-opt.js
-            (file, s"$masterGuiPath/$masterGuiJs")  // Move to package and use the same name for fastOptJS and fullOptJS generated JavaScript file
-          case `jsMapName` | `minJsDepName`  ⇒
-            (file, s"$masterGuiPath/$path")
+          case `generatedJsName` | `sourcemapName` | `dependenciesJsName`  ⇒
+            //println(s"$o -> $masterGuiPath/$path")
+            (file, s"$masterGuiPath/$path")  // Move into right Java package
           case _ ⇒
             (file, path)
         }
@@ -310,6 +314,13 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
       akkaHttp/*force version?*/ % "test" ++
       log4j % "test"
   }
+
+lazy val masterGuiJsFilename = Def.task {
+  // Scala.js uses different filenames for the generated application.js.
+  // - master-gui-opt.js for optimized production
+  // - master-gui-fastopt.js for development
+  Paths.get((scalaJSLinkedFile in Compile in `master-gui`).value.path).toFile.getName
+}
 
 lazy val `master-data` = crossProject
   .dependsOn(data, tester % "compile->test")

@@ -35,15 +35,28 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
   private var isRequestingEvents = false
 
   def componentDidMount() =
-    Callback {
-      window.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
-      window.onhashchange = onHashChanged
-    } >>
-      scope.modState(o ⇒ o.copy(
-        ordersState = o.ordersState.copy(
-          content = OrdersState.FetchingContent))) >>
-      requestWorkflows >>
-      requestOrdersAndEvents
+    catchException(
+      Callback {
+        window.document.addEventListener("visibilitychange", onDocumentVisibilityChanged)
+        window.onhashchange = onHashChanged
+      } >>
+        scope.modState(o ⇒ o.copy(
+          ordersState = o.ordersState.copy(
+            content = OrdersState.FetchingContent))) >>
+        requestWorkflows >>
+        requestOrdersAndEvents)
+
+  private def catchException[A](callback: Callback): Callback =
+    callback.attemptTry flatMap {
+      case Success(()) ⇒
+        Callback.empty
+
+      case Failure(t) ⇒ // GUI failed
+        t.printStackTrace()
+        scope.modState(o ⇒ o.copy(
+          ordersState = o.ordersState.copy(
+            error = Some(t.toStringWithCauses))))
+    }
 
   def componentWillUnmount() = Callback {
     window.document.removeEventListener("visibilitychange", onDocumentVisibilityChanged, false)
@@ -164,18 +177,19 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
           }
         }
 
-      for {
-        state ← scope.state
-        callback ←
-          if (state.appState != AppState.RequestingEvents)
-            Callback.empty
-          else if (window.document.hidden) {
-            window.console.log(s"$Moon Standby...")
-            scope.modState(_.copy(
-              appState = AppState.Standby))
-          } else
-            fetchEvents()
-      } yield callback
+      catchException(
+        for {
+          state ← scope.state
+          callback ←
+            if (state.appState != AppState.RequestingEvents)
+              Callback.empty
+            else if (window.document.hidden) {
+              window.console.log(s"$Moon Standby...")
+              scope.modState(_.copy(
+                appState = AppState.Standby))
+            } else
+              fetchEvents()
+        } yield callback)
     }
 
   private def withProperState(forStep: Int)(body: GuiState ⇒ Callback): Callback =
@@ -231,7 +245,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
       callback ←
         state.ordersState.content match {
           case content: OrdersState.FetchedContent if !isRequestingEvents ⇒
-            Callback.log("Continuing requesting events...") >>
+            Callback.log("☀️ Continue...") >>
               scope.modState(_.copy(
                 appState = AppState.RequestingEvents)
               ) >>
