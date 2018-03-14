@@ -14,7 +14,8 @@ final class JournalHeaderTest extends FreeSpec {
       s"""{
         "TYPE": "JobScheduler.Journal",
         "version": "${JournalMeta.Header.version}",
-        "softwareVersion": "${BuildInfo.version}"
-        }""")
+        "softwareVersion": "${BuildInfo.version}",
+        "buildId": "${BuildInfo.buildId}"
+      }""")
   }
 }

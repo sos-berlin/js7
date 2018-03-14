@@ -8,7 +8,8 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
   */
 final case class JournalHeader(
   version: String,
-  softwareVersion: String)
+  softwareVersion: String,
+  buildId: String)
 
 object JournalHeader {
 

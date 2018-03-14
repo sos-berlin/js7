@@ -233,7 +233,8 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
         assert(header == Json.obj(
           "TYPE" → Json.fromString("JobScheduler.Journal"),
           "version" → Json.fromString(JournalMeta.Header.version),
-          "softwareVersion" → Json.fromString(BuildInfo.version)))
+          "softwareVersion" → Json.fromString(BuildInfo.version),
+          "buildId" → Json.fromString(BuildInfo.buildId)))
       }
       Vector.build[Json] { builder ⇒
         try iterator foreach builder.+=
