@@ -24,7 +24,7 @@ final case class OrdersState(
 
   def updateOrders(stamped: Stamped[Seq[Order[Order.State]]]): OrdersState = {
     val orders = stamped.value
-    val updatedIdToEntry = orders.map(v ⇒ v.id → OrderEntry(v, updatedAt = 0)).toMap
+    val updatedIdToEntry = orders.map(o ⇒ o.id → OrderEntry(o, updatedAt = 0)).toMap
     copy(
       content = OrdersState.FetchedContent(
         idToEntry = updatedIdToEntry,
@@ -65,7 +65,7 @@ object OrdersState {
     def workflowPositionToOrderIdSeq(address: WorkflowPosition): Vector[OrderId] =
       positionCache.getOrElseUpdate(address.workflowId, {
         val m = mutable.Map.empty[WorkflowPosition, VectorBuilder[OrderId]]
-        for (orderId ← workflowToOrderSeq.getOrElse(address.workflowId, Vector.empty)) {
+        for (orderId ← workflowToOrderSeq.getOrElse(address.workflowId, Nil)) {
           m.getOrElseUpdate(idToEntry(orderId).order.workflowPosition, new VectorBuilder[OrderId]) += orderId
         }
         m map { case (k, v) ⇒ k → v.result }
@@ -138,6 +138,8 @@ object OrdersState {
                 case _: OrderFinished ⇒
                   deleted += orderId
                   updated -= orderId
+                  for (orderIds ← added.get(entry.order.workflowId))
+                    orderIds -= orderId
 
                 case _ ⇒
               }
