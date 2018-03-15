@@ -34,19 +34,17 @@ import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedAdded
-import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
+import com.sos.jobscheduler.data.filebased.{RepoEvent, VersionId}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderAwaiting, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderOffered, OrderStdWritten, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.Job
-import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPosition}
 import com.sos.jobscheduler.master.KeyedEventJsonCodecs.{MasterFileBasedJsonCodec, MasterKeyedEventJsonCodec, MasterTypedPathCompanions, MasterTypedPathJsonCodec}
-import com.sos.jobscheduler.master.agent.AgentReader
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.order.MasterOrderKeeper._
 import com.sos.jobscheduler.master.order.agent.{Agent, AgentDriver}
-import com.sos.jobscheduler.master.workflow.WorkflowReader
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import java.nio.file.Files
 import scala.collection.immutable.Seq
@@ -64,8 +62,8 @@ final class MasterOrderKeeper(
     eventIdGenerator: EventIdGenerator,
     eventCollector: EventCollector,
     keyedEventBus: StampedKeyedEventBus)
-extends KeyedEventJournalingActor[Event]
-with Stash {
+extends Stash
+with KeyedEventJournalingActor[Event] {
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
@@ -273,49 +271,30 @@ with Stash {
         Future.successful(MasterCommand.Response.Accepted)
     }
 
-  private object fileBaseds extends FileBasedConfiguration {
-    protected val readers = Set(WorkflowReader, AgentReader)
-    protected def directory = masterConfiguration.liveDirectory
-    private var _repo = Repo.empty
+  private object fileBaseds extends MasterRepoReader
+  {
+    protected def masterConfiguration = MasterOrderKeeper.this.masterConfiguration
 
-    def repo = _repo
-
-    def readConfigurationAndPersistEvents(versionId: VersionId): Checked[IO[Unit]] =
-      for (eventsRepoAndSideEffect ← readConfiguration(repo, versionId)) yield
-        IO {
-          val (events, changedRepo, sideEffect) = eventsRepoAndSideEffect
-          //TODO journal transaction {
-          for (event ← events) {
-            persist(KeyedEvent(event)) { stamped ⇒
-              logNotableEvent(stamped)
-            }
-          }
-          defer {
-            replaceRepo(changedRepo)
-            sideEffect.unsafeRunSync()
-          }
+    protected def onConfigurationRead(events: Seq[RepoEvent], repo: Repo, sideEffect: IO[Unit]) = {
+      //TODO journal transaction {
+      for (event ← events) {
+        persist(KeyedEvent(event)) { stamped ⇒
+          logNotableEvent(stamped)
         }
+      }
+      defer {
+        replaceRepo(repo)
+        sideEffect.unsafeRunSync()
+      }
+    }
 
-    def replaceRepo(changed: Repo): Unit = {
-      _repo = changed
+    override def replaceRepo(repo: Repo) = {
+      super.replaceRepo(repo)
       orderProcessor = new OrderProcessor(idToWorkflow, idToOrder)
     }
 
-    protected def updateFileBaseds(diff: FileBaseds.Diff[TypedPath, FileBased]): Seq[Checked[IO[Unit]]] =
-      updateAgents(diff.select[AgentPath, Agent])
-
-    private def updateAgents(diff: FileBaseds.Diff[AgentPath, Agent]): Seq[Checked[IO[Unit]]] =
-      onlyAdditionPossible(diff) :+
-        Valid(IO {
-          for (agent ← diff.added) {
-            registerAgent(agent).start()
-          }
-        })
-
-    def idToWorkflow(workflowId: WorkflowId): Checked[Workflow] =
-      fileBaseds.repo.idTo[Workflow](workflowId)
-
-    def pathToWorkflow: Map[WorkflowPath, Workflow] = fileBaseds.repo.currentTyped[Workflow]
+    protected def onAgentAdded(agent: Agent) =
+      registerAgent(agent).start()
   }
 
   /** Separate handling for developer-only ScheduledOrderGenerator, which are not journaled and read at every restart. */

@@ -15,7 +15,7 @@ import scala.collection.immutable.{Iterable, Seq}
 /**
   * @author Joacim Zschimmer
   */
-private[order] trait FileBasedConfiguration
+private[order] trait FileBasedConfigurationReader
 {
   protected def readers: Iterable[FileBasedReader]
   protected def directory: Path
