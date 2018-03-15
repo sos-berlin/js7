@@ -20,9 +20,9 @@ private[order] trait FileBasedConfigurationReader
   protected def readers: Iterable[FileBasedReader]
   protected def directory: Path
 
-  protected def readConfiguration(repo: Repo, versionId: VersionId): Checked[(Seq[RepoEvent], Repo, IO[Unit])] =
+  protected def readConfiguration(repo: Repo, versionId: Option[VersionId]): Checked[(Seq[RepoEvent], Repo, IO[Unit])] =
     for {
-      events ← FileBaseds.readDirectory(readers, directory, repo.currentFileBaseds, versionId)
+      events ← FileBaseds.readDirectory(readers, directory, repo.currentFileBaseds, versionId getOrElse Repo.newVersionId())
       changedRepo ← repo.applyEvents(events)  // May return DuplicateVersionProblem
       hd ← handleDiff(FileBaseds.Diff.fromEvents(events))
     } yield (events, changedRepo, hd)

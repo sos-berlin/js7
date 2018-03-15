@@ -4,6 +4,7 @@ import cats.data.Validated.Valid
 import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.{RichTraversable, RichTraversableOnce}
 import com.sos.jobscheduler.base.utils.ScalaUtils._
 import com.sos.jobscheduler.common.scalautil.Memoizer
@@ -150,6 +151,9 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
 
 object Repo {
   val empty = new Repo(Nil, Map.empty)
+
+  def newVersionId(): VersionId =
+    VersionId("?" + Timestamp.now.toIsoString)
 
   private implicit class RichVersionToFileBasedOption(private val versionToFileBasedOption: Map[VersionId, Option[FileBased]])
   extends AnyVal {

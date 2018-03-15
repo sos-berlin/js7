@@ -9,6 +9,9 @@ import java.time.format.DateTimeFormatter
   */
 final case class Timestamp private(toEpochMilli: Long) extends GenericTimestamp[Timestamp] {
 
+  /** Returns an ISO-8601 string with milliseconds.
+    * For example "2017-12-04T11:22:33.456Z".
+    */
   def toIsoString = dateTimeFormatter.format(toInstant)
 
   def toInstant = Instant.ofEpochMilli(toEpochMilli)

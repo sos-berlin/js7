@@ -59,7 +59,7 @@ object MasterCommand {
     type MyResponse = Response.Accepted
   }
 
-  final case class ReadConfigurationDirectory(versionId: VersionId) extends MasterCommand {
+  final case class ReadConfigurationDirectory(versionId: Option[VersionId]) extends MasterCommand {
     type MyResponse = Response.Accepted
   }
 

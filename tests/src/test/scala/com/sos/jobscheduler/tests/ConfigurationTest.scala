@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
+import cats.syntax.option._
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -41,7 +42,7 @@ final class ConfigurationTest extends FreeSpec {
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
           // Command is rejected due to duplicate VersionId
-          assert(Try { master.executeCommand(ReadConfigurationDirectory(V1)) await 99.s }
+          assert(Try { master.executeCommand(ReadConfigurationDirectory(V1.some)) await 99.s }
             .failed.get.getMessage contains s"Duplicate VersionId '${V1.string}'")
 
           // Add Workflow
@@ -62,16 +63,16 @@ final class ConfigurationTest extends FreeSpec {
 
           // Change workflow
           directoryProvider.master.writeJson(testWorkflow(V5) withId CWorkflowPath % VersionId.Anonymous)
-          master.executeCommand(ReadConfigurationDirectory(V5)) await 99.s
+          master.executeCommand(ReadConfigurationDirectory(V5.some)) await 99.s
 
           // Delete workflow
           delete(directoryProvider.master.file(CWorkflowPath, SourceType.Json))
-          master.executeCommand(ReadConfigurationDirectory(V6)) await 99.s
+          master.executeCommand(ReadConfigurationDirectory(V6.some)) await 99.s
           assert(Try { runOrder(master, CWorkflowPath % V6, OrderId("B-6")) }
             .failed.get.getMessage contains s"Has been deleted: Workflow:${CWorkflowPath.string}")
 
           // Command is rejected due to duplicate VersionId
-          assert(Try { master.executeCommand(ReadConfigurationDirectory(V2)) await 99.s }
+          assert(Try { master.executeCommand(ReadConfigurationDirectory(V2.some)) await 99.s }
             .failed.get.getMessage contains s"Duplicate VersionId '${V2.string}'")
 
           // AWorkflowPath is still version V3
@@ -97,7 +98,7 @@ final class ConfigurationTest extends FreeSpec {
         val order = FreshOrder(orderId, path)
         // Add Workflow
         directoryProvider.master.writeJson(workflow withId path % VersionId.Anonymous)
-        master.executeCommand(ReadConfigurationDirectory(versionId)) await 99.s
+        master.executeCommand(ReadConfigurationDirectory(versionId.some)) await 99.s
         master.addOrder(order) await 99.s
         awaitOrder(order.id, path % versionId)
       }
