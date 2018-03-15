@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.session.SessionToken
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -125,9 +125,9 @@ object AgentCommand {
     override def toShortString = s"AttachOrder($order)"
   }
   object AttachOrder {
-    def apply(order: Order[Order.Idle], agentPath: AgentPath, workflow: Workflow) =
+    def apply(order: Order[Order.Idle], agentId: AgentId, workflow: Workflow) =
       new AttachOrder(
-        order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath))),
+        order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentId))),
         workflow)
   }
 

@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.event.Event
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.system.{Stderr, Stdout, StdoutOrStderr}
@@ -49,13 +49,13 @@ object OrderEvent {
       } yield OrderAdded(workflowId, scheduledAt, payload)
   }
 
-  final case class OrderAttached(workflowPosition: WorkflowPosition, state: Idle, parent: Option[OrderId], agentPath: AgentPath, payload: Payload)
+  final case class OrderAttached(workflowPosition: WorkflowPosition, state: Idle, parent: Option[OrderId], agentId: AgentId, payload: Payload)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
     //type State = Idle
   }
 
-  final case class OrderTransferredToAgent(agentPath: AgentPath)
+  final case class OrderTransferredToAgent(agentId: AgentId)
   extends OrderCoreEvent {
     //type State = Idle
   }

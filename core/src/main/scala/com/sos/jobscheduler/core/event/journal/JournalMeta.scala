@@ -14,7 +14,7 @@ extends StreamConversion
 
 object JournalMeta {
   val Header = JournalHeader(
-    version = "0.9",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
+    version = "0.10",   // TODO Vor der ersten Software-Freigabe zu "1" wechseln
     softwareVersion = BuildInfo.version,
     buildId = BuildInfo.buildId)
 

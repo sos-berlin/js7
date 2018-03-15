@@ -5,7 +5,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.core.event.journal.{JournalRecoverer, KeyedJournalingActor}
 import com.sos.jobscheduler.core.filebased.Repo
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
@@ -23,7 +23,7 @@ extends JournalRecoverer[Event] {
   protected val journalMeta = MasterOrderKeeper.journalMeta(compressWithGzip = false/*irrelevant, we read*/)
   private var _repo = Repo.empty
   private val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-  private val _agentToEventId = mutable.Map[AgentPath, EventId]()
+  private val _agentToEventId = mutable.Map[AgentId, EventId]()
 
   def recoverSnapshot = {
     case o: OrderScheduleEndedAt ⇒
@@ -65,8 +65,8 @@ extends JournalRecoverer[Event] {
               //logger.debug(s"$orderId recovered $t: ${chunk.trim}")
           }
 
-        case KeyedEvent(agentPath: AgentPath, AgentEventIdEvent(agentEventId)) ⇒
-          _agentToEventId(agentPath) = agentEventId
+        case KeyedEvent(agentId: AgentId, AgentEventIdEvent(agentEventId)) ⇒
+          _agentToEventId(agentId) = agentEventId
 
         case _ ⇒
           sys.error(s"Unknown event in journal: $stamped")
@@ -98,7 +98,7 @@ extends JournalRecoverer[Event] {
   def orders: Vector[Order[Order.State]] =
     idToOrder.values.toVector
 
-  def agentToEventId: Map[AgentPath, EventId] =
+  def agentToEventId: Map[AgentId, EventId] =
     _agentToEventId.toMap
 
   def repo = _repo

@@ -9,7 +9,7 @@ import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.order.Order._
 import com.sos.jobscheduler.data.order.OrderEvent._
 import com.sos.jobscheduler.data.workflow.{InstructionNr, Position, WorkflowId, WorkflowPosition}
@@ -92,8 +92,8 @@ final case class Order[+S <: Order.State](
         attachedTo match {
           case None ⇒
             throw new IllegalStateException(s"Event OrderDetachable but '$id' is AttachedTo.$attachedTo")
-          case Some(AttachedTo.Agent(agentPath)) ⇒
-            copy(attachedTo = Some(AttachedTo.Detachable(agentPath)))
+          case Some(AttachedTo.Agent(agentId)) ⇒
+            copy(attachedTo = Some(AttachedTo.Detachable(agentId)))
           case Some(AttachedTo.Detachable(_)) ⇒
             this
         }
@@ -138,18 +138,18 @@ final case class Order[+S <: Order.State](
 
   def isAttachedToAgent = attachedToAgent.isValid
 
-  def attachedToAgent: Checked[AgentPath] =
+  def attachedToAgent: Checked[AgentId] =
     attachedTo match {
-      case Some(AttachedTo.Agent(agentPath)) ⇒
-        Valid(agentPath)
+      case Some(AttachedTo.Agent(agentId)) ⇒
+        Valid(agentId)
       case o ⇒
         Invalid(Problem(s"'$id' should be AttachedTo.Agent, but is $o"))
     }
 
-  def detachableFromAgent: Checked[AgentPath] =
+  def detachableFromAgent: Checked[AgentId] =
     attachedTo match {
-      case Some(AttachedTo.Detachable(agentPath)) ⇒
-        Valid(agentPath)
+      case Some(AttachedTo.Detachable(agentId)) ⇒
+        Valid(agentId)
       case o ⇒
         Invalid(Problem(s"'$id' should be AttachedTo.Detachable, but is $o"))
     }
@@ -160,26 +160,26 @@ object Order {
     Order(id, event.workflowId, Fresh(event.scheduledAt), payload = event.payload)
 
   def fromOrderAttached(id: OrderId, event: OrderAttached): Order[Idle] =
-    Order(id, event.workflowPosition, event.state, Some(AttachedTo.Agent(event.agentPath)), payload = event.payload)
+    Order(id, event.workflowPosition, event.state, Some(AttachedTo.Agent(event.agentId)), payload = event.payload)
 
   sealed trait AttachedTo
   object AttachedTo {
     sealed trait AgentOrDetachable extends AttachedTo {
-      val agentPath: AgentPath
+      val agentId: AgentId
     }
     object AgentOrDetachable {
-      def unapply(o: AttachedTo): Option[AgentPath] =
+      def unapply(o: AttachedTo): Option[AgentId] =
         o match {
-          case o: AgentOrDetachable ⇒ Some(o.agentPath)
+          case o: AgentOrDetachable ⇒ Some(o.agentId)
           case _ ⇒ None
         }
     }
 
     @JsonCodec
-    final case class Agent(agentPath: AgentPath) extends AttachedTo
+    final case class Agent(agentId: AgentId) extends AttachedTo
 
     @JsonCodec
-    final case class Detachable(agentPath: AgentPath) extends AgentOrDetachable
+    final case class Detachable(agentId: AgentId) extends AgentOrDetachable
 
     implicit val jsonCodec = TypedJsonCodec[AttachedTo](
       Subtype[Agent],

@@ -34,17 +34,17 @@ final class OrderTest extends FreeSpec {
     }
 
     "attachedToAgent" in {
-      val agentPath = AgentPath("/A")
+      val agentId = AgentPath("/A") % "1"
       assert(order.attachedToAgent.isInvalid)
-      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath)))     .attachedToAgent == Valid(agentPath))
-      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentPath))).attachedToAgent.isInvalid)
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentId)))     .attachedToAgent == Valid(agentId))
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentId))).attachedToAgent.isInvalid)
     }
 
     "detachableFromAgent" in {
-      val agentPath = AgentPath("/A")
+      val agentId = AgentPath("/A") % "1"
       assert(order.detachableFromAgent.isInvalid)
-      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentPath)))     .detachableFromAgent.isInvalid)
-      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentPath))).detachableFromAgent == Valid(agentPath))
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Agent(agentId)))     .detachableFromAgent.isInvalid)
+      assert(order.copy(attachedTo = Some(Order.AttachedTo.Detachable(agentId))).detachableFromAgent == Valid(agentId))
     }
 
     "castState" in {
@@ -66,7 +66,7 @@ final class OrderTest extends FreeSpec {
     "JSON" in {
       check(
         order.copy(
-          attachedTo = Some(Order.AttachedTo.Agent(AgentPath("/AGENT"))),
+          attachedTo = Some(Order.AttachedTo.Agent(AgentPath("/AGENT") % "1")),
           parent = Some(OrderId("PARENT"))),
         json"""{
           "id": "ID",
@@ -82,7 +82,10 @@ final class OrderTest extends FreeSpec {
           },
           "attachedTo": {
             "TYPE": "Agent",
-            "agentPath": "/AGENT"
+            "agentId": {
+              "path": "/AGENT",
+              "versionId": "1"
+            }
           },
           "parent": "PARENT",
           "payload": {
@@ -176,11 +179,12 @@ final class OrderTest extends FreeSpec {
   }
 
   "isAttachable" in {
-    val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") % "VERSION", Order.Ready, Some(AttachedTo.Detachable(AgentPath("/AGENT"))))
-    assert(order.detachableFromAgent == Valid(AgentPath("/AGENT")))
+    val order = Order(OrderId("ORDER-ID"), WorkflowPath("/WORKFLOW") % "VERSION", Order.Ready,
+      Some(AttachedTo.Detachable(AgentPath("/AGENT") % "1")))
+    assert(order.detachableFromAgent == Valid(AgentPath("/AGENT") % "1"))
 
     for (o ← Array(
-          order.copy(attachedTo = Some(Order.AttachedTo.Agent(AgentPath("/AGENT")))),
+          order.copy(attachedTo = Some(Order.AttachedTo.Agent(AgentPath("/AGENT") % "1"))),
           order.copy(attachedTo = None))) {
       val problem = o.detachableFromAgent.asInstanceOf[Invalid[Problem]].e
       assert(problem.toString contains "ORDER-ID")
@@ -189,18 +193,24 @@ final class OrderTest extends FreeSpec {
 
   "AttachedTo" - {
     "Agent" in {
-      check(AttachedTo.Agent(AgentPath("/AGENT")),
+      check(AttachedTo.Agent(AgentPath("/AGENT") % "1"),
         """{
           "TYPE": "Agent",
-          "agentPath": "/AGENT"
+          "agentId": {
+            "path": "/AGENT",
+            "versionId": "1"
+          }
         }""")
     }
 
     "Detachable" in {
-      check(AttachedTo.Detachable(AgentPath("/AGENT")),
+      check(AttachedTo.Detachable(AgentPath("/AGENT") % "1"),
         """{
           "TYPE": "Detachable",
-          "agentPath": "/AGENT"
+          "agentId": {
+            "path": "/AGENT",
+            "versionId": "1"
+          }
         }""")
     }
 
@@ -208,7 +218,8 @@ final class OrderTest extends FreeSpec {
   }
 
   if (sys.props contains "test.speed") "Speed" in {
-    val order = Order(OrderId("ORDER-1"), (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(1), Order.Ready, Some(Order.AttachedTo.Agent(AgentPath("/AGENT"))))
+    val order = Order(OrderId("ORDER-1"), (WorkflowPath("/WORKFLOW") % "VERSION") /: Position(1), Order.Ready,
+      Some(Order.AttachedTo.Agent(AgentPath("/AGENT") % "1")))
     val json = (order: Order[Order.State]).asJson
     testSpeed(100000, "asOrder")(json.as[Order[Order.State]])
     def testSpeed(n: Int, ops: String)(what: ⇒ Unit): Unit = {

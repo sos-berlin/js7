@@ -51,7 +51,7 @@ final class TerminateTest extends FreeSpec with BeforeAndAfterAll  {
               SimpleTestWorkflow.id,
               Order.Ready,
               payload = Payload(Map("a" → "A"))),
-            TestAgentPath,
+            TestAgentPath % "(initial)",
             SimpleTestWorkflow))
         ) await 99.s
 

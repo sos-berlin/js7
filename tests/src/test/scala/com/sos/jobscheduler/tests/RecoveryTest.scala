@@ -163,7 +163,7 @@ private object RecoveryTest {
 
   private val ExpectedOrderEvents = Vector(
     OrderAdded(TestWorkflow.id, Some(SomeTimestamp), Payload(Map())),
-    OrderTransferredToAgent(AgentIds(0).path),
+    OrderTransferredToAgent(AgentIds(0)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-111")), Outcome.succeeded),
@@ -178,7 +178,7 @@ private object RecoveryTest {
     OrderMoved(Position(3)),
     OrderDetachable,
     OrderTransferredToMaster,
-    OrderTransferredToAgent(AgentIds(1).path),
+    OrderTransferredToAgent(AgentIds(1)),
     OrderProcessingStarted,
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(MapDiff(Map("result" → "SCRIPT-VARIABLE-VALUE-agent-222")), Outcome.succeeded),

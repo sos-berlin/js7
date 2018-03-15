@@ -138,13 +138,20 @@ object ScalaUtils {
     def checked(key: A): Checked[B] =
       toChecked(key)
 
-    def toChecked: A ⇒ Checked[B] = {
+    def checked(key: A, notFound: ⇒ Problem): Checked[B] =
+      toChecked_(_ ⇒ notFound)(key)
+
+    def toChecked: A ⇒ Checked[B] =
+      toChecked_(key ⇒ Problem(s"No such key '$key'"))
+
+    private def toChecked_(notFound: A ⇒ Problem): A ⇒ Checked[B] = {
       val lifted = underlying.lift
       key ⇒ lifted(key) match {
         case Some(b) ⇒ Valid(b)
-        case None ⇒ Invalid(Problem(s"No such key '$key'"))
+        case None ⇒ Invalid(notFound(key))
       }
     }
+
     def getOrElse[BB >: B](key: A, default: ⇒ BB): BB =
       underlying.applyOrElse(key, (_: A) ⇒ default)
 

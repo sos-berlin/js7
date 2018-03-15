@@ -45,7 +45,7 @@ final class OrderAgentTest extends FreeSpec {
           agentClient.executeCommand(RegisterAsMaster) await 99.s shouldEqual AgentCommand.Accepted  // Without Login, this registers all anonymous clients
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, payload = Payload(Map("x" → "X")))
-          agentClient.executeCommand(AttachOrder(order, TestAgentPath, SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
+          agentClient.executeCommand(AttachOrder(order, TestAgentPath % "(initial)", SimpleTestWorkflow)) await 99.s shouldEqual AgentCommand.Accepted
           EventRequest.singleClass(after = EventId.BeforeFirst, timeout = 10.s).repeat(agentClient.mastersEvents) {
             case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) ⇒
           }
@@ -130,6 +130,6 @@ private object OrderAgentTest {
   private def toExpectedOrder(order: Order[Order.State]) =
     order.copy(
       workflowPosition = order.workflowPosition.copy(position = Position(2)),
-      attachedTo = Some(Order.AttachedTo.Detachable(TestAgentPath)),
+      attachedTo = Some(Order.AttachedTo.Detachable(TestAgentPath % "(initial)")),
       payload = Payload(Map("x" → "X", "result" → "TEST-RESULT-BBB")))
 }

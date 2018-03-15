@@ -94,7 +94,7 @@ object OfferAndAwaitOrderTest {
 
   private val ExpectedJoiningEvents = Vector(
     OrderAdded(JoiningWorkflowId),
-    OrderTransferredToAgent(TestAgentPath),
+    OrderTransferredToAgent(TestAgentPath % "(initial)"),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),
     OrderMoved(Position(1)),
@@ -103,7 +103,7 @@ object OfferAndAwaitOrderTest {
     OrderAwaiting(OrderId("OFFERED-ORDER-ID")),
     OrderJoined(MapDiff.empty, Outcome.succeeded),
     OrderMoved(Position(2)),
-    OrderTransferredToAgent(TestAgentPath),
+    OrderTransferredToAgent(TestAgentPath % "(initial)"),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),
     OrderMoved(Position(3)),
@@ -121,7 +121,7 @@ object OfferAndAwaitOrderTest {
 
   private val ExpectedPublishingOrderEvents = Vector(
     OrderAdded(PublishingWorkflowId),
-    OrderTransferredToAgent(TestAgentPath),
+    OrderTransferredToAgent(TestAgentPath % "(initial)"),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),
     OrderMoved(Position(1)),
@@ -129,7 +129,7 @@ object OfferAndAwaitOrderTest {
     OrderTransferredToMaster,
     OrderOffered(OrderId("OFFERED-ORDER-ID"), TestPublishedUntil),
     OrderMoved(Position(2)),
-    OrderTransferredToAgent(TestAgentPath),
+    OrderTransferredToAgent(TestAgentPath % "(initial)"),
     OrderProcessingStarted,
     OrderProcessed(MapDiff.empty, Outcome.succeeded),
     OrderMoved(Position(3)),

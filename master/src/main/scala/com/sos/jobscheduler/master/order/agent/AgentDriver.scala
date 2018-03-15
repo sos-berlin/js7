@@ -10,7 +10,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, EventId, EventRequest, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.data.workflow.Workflow
@@ -27,12 +27,12 @@ import scala.util.{Failure, Success, Try}
   *
   * @author Joacim Zschimmer
   */
-final class AgentDriver(agentPath: AgentPath, uri: Uri, config: Config)
+final class AgentDriver(agentId: AgentId, uri: Uri, config: Config)
 (implicit timerService: TimerService, executionContext: ExecutionContext)
 extends Actor
 with Stash {
 
-  private val logger = Logger.withPrefix[AgentDriver](agentPath.string + " " + uri)
+  private val logger = Logger.withPrefix[AgentDriver](agentId.toSimpleString + " " + uri)
   private val client = AgentClient(uri)(context.system)
   private var startInputReceived = false
   private var eventFetcher: EventFetcher[OrderEvent] = null
@@ -210,7 +210,7 @@ with Stash {
       }
   }
 
-  override def toString = s"AgentDriver($agentPath: $uri)"
+  override def toString = s"AgentDriver(${agentId.toSimpleString}: $uri)"
 }
 
 private[master] object AgentDriver {
@@ -236,7 +236,7 @@ private[master] object AgentDriver {
       def toShortString: String
     }
 
-    final case class AttachOrder(order: Order[Order.Idle], agentPath: AgentPath,  workflow: Workflow) extends QueueableInput {
+    final case class AttachOrder(order: Order[Order.Idle], agentId: AgentId,  workflow: Workflow) extends QueueableInput {
       def orderId = order.id
       def toShortString = s"AttachOrder($orderId)"
     }

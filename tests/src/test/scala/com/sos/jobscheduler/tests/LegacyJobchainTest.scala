@@ -98,7 +98,7 @@ object LegacyJobchainTest {
   private val TestOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
   private val ExpectedEvents = Vector(
     TestOrder.id <-: OrderAdded(TestWorkflow.id),
-    TestOrder.id <-: OrderTransferredToAgent(TestAgentPath),
+    TestOrder.id <-: OrderTransferredToAgent(TestAgentPath % "(initial)"),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(4)),   // next_state="B"

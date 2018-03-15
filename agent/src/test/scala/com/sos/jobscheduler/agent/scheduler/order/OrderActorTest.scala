@@ -111,7 +111,7 @@ private object OrderActorTest {
   private val TestJob = Job(TestJobPath, TestAgentPath)
   private val TestPosition = Position(777)
   private val ExpectedOrderEvents = List(
-    OrderAttached(TestOrder.workflowPosition, Order.Ready, None, AgentPath("/TEST-AGENT"), Payload.empty),
+    OrderAttached(TestOrder.workflowPosition, Order.Ready, None, AgentPath("/TEST-AGENT") % "(initial)", Payload.empty),
     OrderProcessingStarted,
     OrderProcessed(MapDiff(Map("result" → "TEST-RESULT-FROM-JOB")), Outcome.succeeded),
     OrderMoved(TestPosition),
@@ -184,7 +184,8 @@ private object OrderActorTest {
 
     private def jobActorReady: Receive = {
       case JobActor.Output.ReadyForOrder ⇒  // JobActor has sent this to its parent (that's me) in response to OrderAvailable
-        orderActor ! OrderActor.Command.Attach(TestOrder.copy(attachedTo = Some(Order.AttachedTo.Agent(TestAgentPath))))
+        orderActor ! OrderActor.Command.Attach(TestOrder.copy(
+          attachedTo = Some(Order.AttachedTo.Agent(TestAgentPath % "(initial)"))))
         become(attaching)
     }
 

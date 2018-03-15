@@ -78,7 +78,7 @@ object IfReturnCodeTest {
   private val ExpectedEvents = Map(
     ReturnCode(0) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "0"))),
-      OrderTransferredToAgent(TestAgentPath),
+      OrderTransferredToAgent(TestAgentPath % "(initial)"),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.succeeded),
       OrderMoved(Position(1, 0/*then*/, 0)),
@@ -93,7 +93,7 @@ object IfReturnCodeTest {
       OrderFinished),
     ReturnCode(1) → Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "1"))),
-      OrderTransferredToAgent(TestAgentPath),
+      OrderTransferredToAgent(TestAgentPath % "(initial)"),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Succeeded(ReturnCode(1))),
       OrderMoved(Position(1, 1/*else*/, 0)),
@@ -108,7 +108,7 @@ object IfReturnCodeTest {
       OrderFinished),
     ReturnCode(2) →  Vector(
       OrderAdded(TestWorkflow.id, None, Payload(Map("RETURN_CODE" → "2"))),
-      OrderTransferredToAgent(TestAgentPath),
+      OrderTransferredToAgent(TestAgentPath % "(initial)"),
       OrderProcessingStarted,
       OrderProcessed(MapDiff.empty, Outcome.Failed(ReturnCode(2))),
       OrderStopped(Outcome.Failed(ReturnCode(2)))))

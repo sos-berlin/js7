@@ -98,6 +98,14 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
     copy(idToFileBased = idToFileBased + ((path % version) → fileBasedOption))
   }
 
+  def pathToCurrentId[P <: TypedPath](path: P): Checked[FileBasedId[P]] =
+    for {
+      vToF ← pathToVersionToFileBased.checked(path)
+      o ← vToF.fileBasedOption(versions) toChecked Problem(s"No such path '$path'")/*should no happen*/
+      fileBased ← o toChecked Problem(s"Has been deleted: $path")
+    } yield fileBased.id.asInstanceOf[FileBasedId[P]]
+
+  /** Returns the FileBased to a FileBasedId. */
   def idTo[A <: FileBased](id: FileBasedId[A#Path])(implicit A: FileBased.Companion[A]): Checked[A] =
     for {
       versionToFileBased ← pathToVersionToFileBased.checked(id.path)
@@ -109,12 +117,14 @@ final case class Repo private(versions: List[VersionId], idToFileBased: Map[File
       fileBased ← fileBasedOption.toChecked(DeletedProblem(id))
     } yield fileBased.cast[A]
 
+  /** Converts the Repo to an event sequence, regarding only a given type. */
   def eventsFor(is: TypedPath.AnyCompanion ⇒ Boolean): Seq[RepoEvent] =
     toEvents collect {
       case e: VersionAdded ⇒ e
       case e: FileBasedEvent if is(e.path.companion) ⇒ e
     }
 
+  /** Converts the Repo to an event sequence. */
   def toEvents: Seq[RepoEvent] = {
     val versionToFileBasedOptions: Map[VersionId, Seq[Either[FileBased/*added/changed*/, TypedPath/*deleted*/]]] =
       pathToVersionToFileBased.toVector.sortBy(_._1)/*for testing*/

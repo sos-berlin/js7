@@ -148,7 +148,7 @@ object ForkTest {
   private val YOrderId = OrderId(s"🔺/🍋")
   private val ExpectedEvents = Vector(
     TestOrder.id <-: OrderAdded(TestWorkflow.id, None, Payload(Map("VARIABLE" → "VALUE"))),
-    TestOrder.id <-: OrderTransferredToAgent(AAgentPath),
+    TestOrder.id <-: OrderTransferredToAgent(AAgentPath % "(initial)"),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderStdoutWritten(StdoutOutput),
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -164,7 +164,7 @@ object ForkTest {
       XOrderId <-: OrderMoved(Position(1, "🥕", 1)),                           YOrderId <-: OrderMoved(Position(1, "🍋", 1)),
     YOrderId <-: OrderDetachable,
                                                                                YOrderId <-: OrderTransferredToMaster,
-                                                                               YOrderId <-: OrderTransferredToAgent(BAgentPath),
+                                                                               YOrderId <-: OrderTransferredToAgent(BAgentPath % "(initial)"),
       XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),                           YOrderId <-: OrderStdoutWritten(StdoutOutput),
       XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),           YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -174,7 +174,7 @@ object ForkTest {
     TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(2)),
 
-    TestOrder.id <-: OrderTransferredToAgent(AAgentPath),
+    TestOrder.id <-: OrderTransferredToAgent(AAgentPath % "(initial)"),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderStdoutWritten(StdoutOutput),
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -196,7 +196,7 @@ object ForkTest {
     TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(4)),
 
-    TestOrder.id <-: OrderTransferredToAgent(AAgentPath),
+    TestOrder.id <-: OrderTransferredToAgent(AAgentPath % "(initial)"),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderStdoutWritten(StdoutOutput),
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -210,7 +210,7 @@ object ForkTest {
     TestOrder.id <-: OrderTransferredToMaster,
                                                                                YOrderId <-: OrderDetachable,
                                                                                YOrderId <-: OrderTransferredToMaster,
-                                                                               YOrderId <-: OrderTransferredToAgent(BAgentPath),
+                                                                               YOrderId <-: OrderTransferredToAgent(BAgentPath % "(initial)"),
       XOrderId <-: OrderProcessingStarted,                                     YOrderId <-: OrderProcessingStarted,
       XOrderId <-: OrderStdoutWritten(StdoutOutput),                           YOrderId <-: OrderStdoutWritten(StdoutOutput),
       XOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),           YOrderId <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),
@@ -224,7 +224,7 @@ object ForkTest {
     TestOrder.id <-: OrderJoined(MapDiff.empty, Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(6)),
 
-    TestOrder.id <-: OrderTransferredToAgent(AAgentPath),
+    TestOrder.id <-: OrderTransferredToAgent(AAgentPath % "(initial)"),
     TestOrder.id <-: OrderProcessingStarted,
     TestOrder.id <-: OrderStdoutWritten(StdoutOutput),
     TestOrder.id <-: OrderProcessed(MapDiff.empty, Outcome.succeeded),

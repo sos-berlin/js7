@@ -88,8 +88,8 @@ object Renderers {
 
   implicit def orderAttachedToVdom(attachedTo: Order.AttachedTo): VdomNode =
     attachedTo match {
-      case Order.AttachedTo.Agent(agentPath) ⇒ agentPath.string
-      case Order.AttachedTo.Detachable(agentPath) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentPath.string)
+      case Order.AttachedTo.Agent(agentId) ⇒ agentId.toSimpleString
+      case Order.AttachedTo.Detachable(agentId) ⇒ <.span(^.cls := "AttachedTo-Detachable")(agentId.toSimpleString)
       case _ ⇒ attachedTo.toString
     }
 

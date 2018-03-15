@@ -30,7 +30,7 @@ import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.AgentId
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedAdded
@@ -99,7 +99,7 @@ with KeyedEventJournalingActor[Event] {
 
   protected def snapshots = Future.successful(
     fileBaseds.repo.eventsFor(MasterTypedPathCompanions) ++
-    agentRegister.values.map(entry ⇒ AgentEventId(entry.agentPath, entry.lastAgentEventId)) ++
+    agentRegister.values.map(entry ⇒ AgentEventId(entry.agentId, entry.lastAgentEventId)) ++
     orderRegister.values.map(_ .order))
 
   private def recover() = {
@@ -111,8 +111,8 @@ with KeyedEventJournalingActor[Event] {
       for (agent ← fileBaseds.repo.currentFileBaseds collect { case o: Agent ⇒ o }) {
         registerAgent(agent)
       }
-      for ((agentPath, eventId) ← recoverer.agentToEventId) {
-        agentRegister(agentPath).lastAgentEventId = eventId
+      for ((agentId, eventId) ← recoverer.agentToEventId) {
+        agentRegister(agentId).lastAgentEventId = eventId
       }
       for (order ← recoverer.orders) {
         orderRegister.insert(order.id → OrderEntry(order))
@@ -202,7 +202,7 @@ with KeyedEventJournalingActor[Event] {
 
     case AgentDriver.Output.EventsFromAgent(stampeds) ⇒
       val agentEntry = agentRegister(sender())
-      import agentEntry.agentPath
+      import agentEntry.agentId
       //TODO journal transaction {
       var lastAgentEventId = none[EventId]
       stampeds foreach {
@@ -210,14 +210,14 @@ with KeyedEventJournalingActor[Event] {
           // OrderForked is (as all events) persisted and processed asynchronously,
           // so events for child orders will probably arrive before OrderForked has registered the child orderId.
           val ownEvent = event match {
-            case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentPath)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
+            case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
             case _ ⇒ event
           }
           persist(KeyedEvent(ownEvent)(orderId), Some(timestamp))(handleOrderEvent)
           lastAgentEventId = agentEventId.some
       }
       for (agentEventId ← lastAgentEventId) {
-        persist(KeyedEvent(AgentEventIdEvent(agentEventId))(agentPath)) { e ⇒  // Sync
+        persist(agentId <-: AgentEventIdEvent(agentEventId)) { e ⇒  // Sync
           agentEntry.lastAgentEventId = e.eventId
         }
       }
@@ -314,10 +314,10 @@ with KeyedEventJournalingActor[Event] {
 
   private def registerAgent(agent: Agent): AgentEntry = {
     val actor = context.actorOf(
-      Props { new AgentDriver(agent.path, agent.uri, masterConfiguration.config) },
-      name = encodeAsActorName("Agent-" + agent.path.withoutStartingSlash))
+      Props { new AgentDriver(agent.id, agent.uri, masterConfiguration.config) },
+      encodeAsActorName("Agent-" + agent.id.toSimpleString.stripPrefix("/")))
     val entry = AgentEntry(agent, actor)
-    agentRegister.insert(agent.path → entry)
+    agentRegister.insert(agent.id → entry)
     entry
   }
 
@@ -427,19 +427,23 @@ with KeyedEventJournalingActor[Event] {
     }
   }
 
-  private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit =
-    for (workflow ← fileBaseds.idToWorkflow(order.workflowId).toOption;
-         job ← workflow.jobOption(order.position);
-         agentEntry ← agentRegister.get(job.agentPath))
-    {
-      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, job.agentPath, workflow.reduceForAgent(job.agentPath))
-    }
+  private def tryAttachOrderToAgent(order: Order[Order.Idle]): Unit = {
+    (for {
+      workflow ← fileBaseds.idToWorkflow(order.workflowId)
+      job ← workflow.checkedJob(order.position)
+      agentId ← fileBaseds.repo.pathToCurrentId(job.agentPath)
+      agentEntry ← agentRegister.checked(agentId)
+    } yield {
+      agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentId, workflow.reduceForAgent(job.agentPath))
+      ()
+    }).onProblem(p ⇒ logger.error(p))
+  }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     orderRegister(orderId).order.detachableFromAgent match {
       case Invalid(problem) ⇒ logger.error(s"detachOrderFromAgent '$orderId': not AttachedTo.Detachable: $problem")
-      case Valid(agentPath) ⇒
-        agentRegister(agentPath).actor ! AgentDriver.Input.DetachOrder(orderId)
+      case Valid(agentId) ⇒
+        agentRegister(agentId).actor ! AgentDriver.Input.DetachOrder(orderId)
     }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
@@ -493,8 +497,8 @@ object MasterOrderKeeper {
     final case class AddOrderAccepted(created: Boolean)
   }
 
-  private class AgentRegister extends ActorRegister[AgentPath, AgentEntry](_.actor) {
-    override def insert(kv: (AgentPath, AgentEntry)) = super.insert(kv)
+  private class AgentRegister extends ActorRegister[AgentId, AgentEntry](_.actor) {
+    override def insert(kv: (AgentId, AgentEntry)) = super.insert(kv)
   }
 
   private case class AgentEntry(
@@ -502,6 +506,8 @@ object MasterOrderKeeper {
     actor: ActorRef,
     var lastAgentEventId: EventId = EventId.BeforeFirst)
   {
+    def agentId = agent.id
+    @deprecated
     def agentPath = agent.path
 
     def start()(implicit sender: ActorRef): Unit =

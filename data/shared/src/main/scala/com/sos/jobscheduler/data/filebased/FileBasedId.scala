@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.data.filebased
 
+import com.sos.jobscheduler.data.filebased.FileBasedId._
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject, ObjectEncoder}
 
@@ -8,7 +9,7 @@ import io.circe.{Decoder, Encoder, JsonObject, ObjectEncoder}
   */
 final case class FileBasedId[P <: TypedPath](path: P, versionId: VersionId)
 {
-  //def string = path.string + VersionSeparator + versionId.string
+  def toSimpleString = path.string + VersionSeparator + versionId.string
 
   def requireNonAnonymous(): this.type = {
     path.requireNonAnonymous()
@@ -24,6 +25,8 @@ final case class FileBasedId[P <: TypedPath](path: P, versionId: VersionId)
 }
 
 object FileBasedId {
+  private val VersionSeparator = "%"
+
   implicit def ordering[P <: TypedPath]: Ordering[FileBasedId[P]] =
     Ordering.by(o ⇒ (o.path, o.versionId))
 

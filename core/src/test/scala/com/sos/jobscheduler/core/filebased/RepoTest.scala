@@ -64,6 +64,14 @@ final class RepoTest extends FreeSpec
     assert(testRepo.eventsFor(Set(JobPath)) == List(VersionAdded(V1), VersionAdded(V2), VersionAdded(V3)))
   }
 
+  "pathToCurrentId" in {
+    assert(testRepo.pathToCurrentId(APath("/A")) == Valid(APath("/A") % V3))
+    assert(testRepo.pathToCurrentId(BPath("/A")) == Invalid(Problem("No such key 'B:/A'")))
+    assert(testRepo.pathToCurrentId(BPath("/Ba")) == Invalid(Problem("Has been deleted: B:/Ba")))
+    assert(testRepo.pathToCurrentId(BPath("/Bb")) == Valid(BPath("/Bb") % V2))
+    assert(testRepo.pathToCurrentId(APath("/X")) == Invalid(Problem("No such key 'A:/X'")))
+  }
+
   "currentVersion" in {
     assert(testRepo.currentVersion == Map(
       a3.path → a3,
