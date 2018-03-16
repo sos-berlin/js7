@@ -20,16 +20,19 @@ object TypedPathDirectoryWalker {
   private val NestingLimit = 100
 
   def typedFiles(directory: Path, companions: Iterable[TypedPath.AnyCompanion], ignoreAliens: Boolean = false): Seq[Checked[TypedFile]] =
-    Vector.build[Checked[TypedFile]] { builder ⇒
+    unorderedTypedFiles(directory, companions, ignoreAliens) sortBy (_._1) map (_._2)  // Sorted for deterministic test results
+
+  private def unorderedTypedFiles(directory: Path, companions: Iterable[TypedPath.AnyCompanion], ignoreAliens: Boolean) =
+    Vector.build[(Path, Checked[TypedFile])] { builder ⇒
       deepForEachPathAndAttributes(directory, nestingLimit = NestingLimit) { (file, attr) ⇒
         if (!attr.isDirectory) {
           if (!file.startsWith(directory)) {
-            builder += Problem(s"Path '$file' does not start with '$directory'")
+            builder += file → Problem(s"Path '$file' does not start with '$directory'")
           } else {
             val relFile = file.subpath(directory.getNameCount, file.getNameCount)
             fileToTypedPath(companions, relFile) match {
               case Invalid(_: UnrecognizedFileProblem) if ignoreAliens ⇒
-              case checkedPathAndType ⇒ builder += checkedPathAndType map (o ⇒ TypedFile(file, o._1, o._2))
+              case checkedPathAndType ⇒ builder += file → checkedPathAndType.map(o ⇒ TypedFile(file, o._1, o._2))
             }
           }
         }

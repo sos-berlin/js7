@@ -43,7 +43,7 @@ object FileBasedReader
   def readDirectoryTreeWithProblems(readers: Iterable[FileBasedReader], directory: Path, versionId: VersionId, ignoreAliens: Boolean = false): Checked[Iterator[Checked[FileBased]]] = {
     val typedSourceReader = new TypedSourceReader(readers, versionId)
     val typedFiles = TypedPathDirectoryWalker.typedFiles(directory, readers.map(_.typedPathCompanion), ignoreAliens = ignoreAliens)
-    for (typedFiles ← TypedPathDirectoryWalker.checkUniqueness(typedFiles)) yield
+    for (_ ← TypedPathDirectoryWalker.checkUniqueness(typedFiles)) yield
       for (checkedTypedFile ← typedFiles.iterator) yield
         for {
           typedFile ← checkedTypedFile

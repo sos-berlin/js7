@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.circeutils
 
 import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.circeutils.AnyJsonCodecs.anyToJson
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichEither, RichJavaClass}
 import io.circe.generic.decoding.DerivedDecoder
@@ -156,15 +157,31 @@ object CirceUtils {
   //    Left(DecodingFailure(t.toStringWithCauses, Nil))
   //  }
 
-  implicit final class JsonStringInterpolator(val sc: StringContext) extends AnyVal {
+  implicit final class JsonStringInterpolator(private val sc: StringContext) extends AnyVal {
     def json(args: Any*): Json = {
-      require(args.isEmpty, "json string interpolator accepts no variables")
-      sc.parts.mkString("").parseJson
+      sc.checkLengths(args)
+      val p = sc.parts.iterator
+      val builder = new StringBuilder(sc.parts.map(_.length).sum + 50)
+      builder.append(p.next())
+      for (arg ← args) {
+        builder.append(toJson(arg))
+        builder.append(p.next())
+      }
+      builder.toString.parseJson
     }
+
+    private def toJson(arg: Any): String =
+      arg match {
+        case arg: String ⇒
+          val j = Json.fromString(arg.toString).toString
+          j.substring(1, j.length - 1)  // Interpolation is expected to occur already in quotes: "$var"
+        case _ ⇒
+          anyToJson(arg).toString
+      }
 
     /** Dummy interpolator returning the string itself, to allow syntax checking by IntelliJ IDEA. */
     def jsonString(args: Any*): String = {
-      require(args.isEmpty, "jsonString string interpolator accepts no variables")
+      require(args.isEmpty, "jsonString string interpolator does not accept variables")
       sc.parts mkString ""
     }
   }

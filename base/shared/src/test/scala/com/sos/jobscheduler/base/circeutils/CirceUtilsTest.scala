@@ -49,12 +49,29 @@ final class CirceUtilsTest extends FreeSpec {
       }""")
   }
 
-  "json string interpolator" in {
-    assert(json"""{ "A": 7 }""" == Json.obj("A" → Json.fromInt(7)))
-    //val string = "STRING"
-    //assert(json"""{ "A": "$string" }""" == Json.obj("A" → Json.fromString("STRING")))
-    //val i = 7
-    //assert(json"""{ "A": $i }""" == Json.obj("A" → Json.fromInt(7)))
-    assert(jsonString"""{ "A": 7 }""" == """{ "A": 7 }""")
+  "json string interpolator" - {
+    "Simple string" in {
+      assert(json"""{ "A": "STRING" }""" == Json.obj("A" → Json.fromString("STRING")))
+      assert(json"""{ "A": "STRING\"\u007f." }""" == Json.obj("A" → Json.fromString("STRING\"\u007f.")))
+    }
+
+    "Interpolating String value" in {
+      for (string ← "STRING" :: "STRING\"" :: "STRING\"\u007f." :: Nil)
+        assert(json"""{ "A": "!$string" }""" == Json.obj("A" → Json.fromString("!" + string)))
+    }
+
+    "Interpolating Int value" in {
+      val i = 7
+      assert(json"""{ "A": $i }""" ==  Json.obj("A" → Json.fromInt(7)))
+    }
+
+    "Interpolating Array value" in {
+      val array = List(1, 2, 3)
+      assert(json"""{ "A": $array }""" ==  Json.obj("A" → Json.fromValues(array map Json.fromInt)))
+    }
+  }
+
+  "jsonString string interpolator" in {
+    assert(jsonString"""{ "A": 7 }""" == """{ "A": 7 }""")  // Only to let IDE highlight JSON error
   }
 }
