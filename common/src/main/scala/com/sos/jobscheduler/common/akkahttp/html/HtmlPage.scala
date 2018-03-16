@@ -14,6 +14,13 @@ import scalatags.Text.all._
   */
 trait HtmlPage {
   def wholePage: TypedTag[String]
+
+  override def toString: String = {
+    val sb = new StringBuilder(10000)
+    sb.append("<!DOCTYPE html>")
+    wholePage.writeTo(sb)
+    sb.toString
+  }
 }
 
 object HtmlPage {
@@ -22,15 +29,10 @@ object HtmlPage {
 
   implicit val marshaller: ToEntityMarshaller[HtmlPage] =
     Marshaller.withOpenCharset(`text/html`) { (htmlPage, charset) ⇒
-      try {
-        val sb = new StringBuilder(10000)
-        sb.append("<!DOCTYPE html>")
-        htmlPage.wholePage.writeTo(sb)
-        HttpEntity(ContentType(`text/html`, charset), ByteString.fromString(sb.toString, charset.nioCharset))
-      } catch {
-        case e: OutOfMemoryError ⇒
-          logger.error(e.toString)
-          throw new RuntimeException(e.toString, e)  // To avoid termination of Akka
+      try HttpEntity(ContentType(`text/html`, charset), ByteString.fromString(htmlPage.toString, charset.nioCharset))
+      catch { case e: OutOfMemoryError ⇒
+        logger.error(e.toString)
+        throw new RuntimeException(e.toString, e)  // To avoid termination of Akka
       }
     }
 
@@ -38,4 +40,10 @@ object HtmlPage {
     elements reduce { (a, b) ⇒ seqFrag(a, glue, b) }
 
   def seqFrag(frags: Frag*): Frag = SeqFrag(frags)
+
+  /** Caches the generated HTML string at first use. */
+  trait Cached extends HtmlPage {
+    private lazy val htmlString = super.toString
+    override def toString = htmlString
+  }
 }

@@ -16,18 +16,12 @@ import scalatags.Text.{TypedTag, tags2}
 /**
   * @author Joacim Zschimmer
   */
-object IndexHtml extends HtmlPage {
+object IndexHtml extends HtmlPage.Cached {
 
   private val logger = Logger(getClass)
   private lazy val resource = JavaResource("com/sos/jobscheduler/master/web/master/gui-js.conf")
 
-  val wholePage: TypedTag[String] = {
-    val jsName: Checked[String] =
-      (try Configs.loadResource(resource).optionAs[String]("jsName")
-      catch { case t: Throwable ⇒
-        logger.error(t.toString, t)
-        None
-      }) toChecked Problem("Error in JavaResource gui-js.conf")
+  def wholePage: TypedTag[String] =
     html(
       head(
         tags2.title("JobScheduler Master"),
@@ -55,5 +49,11 @@ object IndexHtml extends HtmlPage {
             case Valid(o) ⇒
               script(`type` := "text/javascript", src := s"master/gui/$o?v=$buildId")
           }))
-  }
+
+  private def jsName: Checked[String] =
+    (try Configs.loadResource(resource).optionAs[String]("jsName")
+    catch { case t: Throwable ⇒
+      logger.error(t.toString, t)
+      None
+    }) toChecked Problem("Error in JavaResource gui-js.conf")
 }
