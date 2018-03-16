@@ -13,7 +13,7 @@ final class TaskServerModule(
   taskServerMainTerminated: Option[Future[TaskServerMainTerminated.type]])
 extends AbstractModule {
 
-  def configure() = {
+  override def configure() = {
     bind(classOf[TaskServerArguments]) toInstance arguments
   }
 

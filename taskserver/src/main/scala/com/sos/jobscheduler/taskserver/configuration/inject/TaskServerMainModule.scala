@@ -24,8 +24,6 @@ import scala.concurrent.ExecutionContext
  */
 final class TaskServerMainModule(dotnet: DotnetConfiguration) extends AbstractModule {
 
-  def configure() = {}
-
   @Provides @Singleton
   private def moduleFactoryRegister(
     shellModuleFactory: ShellModule.Factory,

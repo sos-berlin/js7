@@ -11,8 +11,6 @@ import org.scalatest.FreeSpec
 final class GuiceImplicitsTest extends FreeSpec {
 
   private val injector = Guice.createInjector(new AbstractModule {
-    def configure() = ()
-
     @Provides @Singleton
     def long(): Long = 7
   })

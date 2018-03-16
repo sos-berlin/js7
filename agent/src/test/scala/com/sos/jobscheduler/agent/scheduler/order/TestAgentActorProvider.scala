@@ -59,7 +59,7 @@ object TestAgentActorProvider {
     implicit val eventIdGenerator = injector.instance[EventIdGenerator]
 
     val eventCollector = injector.createChildInjector(new AbstractModule {
-      def configure() = bind(classOf[EventCollector.Configuration]) toInstance
+      override def configure() = bind(classOf[EventCollector.Configuration]) toInstance
         new EventCollector.Configuration(queueSize = 100000, timeoutLimit = 99.s)
     }).instance[ActorEventCollector]
 

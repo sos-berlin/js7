@@ -31,7 +31,6 @@ final class TaskArgumentsTest extends FreeSpec {
     new DotnetModule.Factory(instanceFactory, classDllDirectory = Some(Paths.get("/TEST-DLLS")))
   }
   private val injector = Guice.createInjector(new AbstractModule {
-    def configure() = {}
     @Provides @Singleton
     def moduleFactoryRegister(shellModuleFactory: ShellModule.Factory): ModuleFactoryRegister =
         new ModuleFactoryRegister(List(

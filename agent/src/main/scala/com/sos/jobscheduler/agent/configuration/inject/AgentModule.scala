@@ -28,8 +28,6 @@ import scala.concurrent.{ExecutionContext, Future}
 final class AgentModule(originalAgentConfiguration: AgentConfiguration)
 extends AbstractModule {
 
-  protected def configure() = {}
-
   @Provides @Singleton
   def sessionRegister(): SessionRegister[LoginSession] =
     new SessionRegister[LoginSession]

@@ -39,8 +39,6 @@ final class TextAgentClientTest extends FreeSpec with BeforeAndAfterAll with Has
   }
 
   override protected def extraAgentModule = new AbstractModule {
-    def configure() = {}
-
     @Provides @Singleton
     def commandExecutor(): CommandHandler = new CommandHandler {
       def execute(command: AgentCommand, meta: CommandMeta): Future[command.Response] = {

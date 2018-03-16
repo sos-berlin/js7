@@ -6,18 +6,21 @@ import scala.language.implicitConversions
 object Dependencies {
   val scalaVersion = "2.12.4"
 
-  val akkaVersion = "2.5.9"
-  val akkaHttpVersion = "10.0.11"
+  val akkaVersion = "2.5.11"
+  val akkaHttpVersion = "10.1.0"
   val slf4jVersion = "1.7.25"
-  val log4jVersion = "2.10.0"
+  val log4jVersion = "2.11.0"
   val catsVersion = "1.0.1"
   val catsEffectVersion = "0.9"
-  val kittensVersion = "1.0.0-RC2"
-  val circeVersion = "0.9.1"
+  val kittensVersion = "1.0.0-RC3"
+  val circeVersion = "0.9.2"
   val scalaTestVersion = "3.0.5"
-  val simulacrumVersion = "0.11.0"
+  val simulacrumVersion = "0.12.0"
   val disciplineVersion = "0.8"
   val monixVersion = "2.3.3"
+  val scalaJsDomVersion = "0.9.5"
+  val scajaJsJQueryVersion = "0.9.3"
+  val scalaJsReactVersion = "1.1.1"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
@@ -25,22 +28,22 @@ object Dependencies {
   val log4jApi            = "org.apache.logging.log4j" % "log4j-api" % log4jVersion
   val log4jCore           = "org.apache.logging.log4j" % "log4j-core" % log4jVersion
   val log4jSlf4j          = "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion
-  val jansi               = "org.fusesource.jansi" % "jansi" % "1.16"
-  val lmaxDisruptor       = "com.lmax" % "disruptor" % "3.3.7"
+  val jansi               = "org.fusesource.jansi" % "jansi" % "1.17"
+  val lmaxDisruptor       = "com.lmax" % "disruptor" % "3.4.1"
   val log4j               = log4jSlf4j :: log4jApi :: log4jCore :: lmaxDisruptor /*:: jansi*/ :: Nil
 
   val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
-  val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
+  val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.1.0"
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
-  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0" :: slf4j :: Nil
+  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
 
   val tagging             = "com.softwaremill.common" %% "tagging" % "2.2.0"
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
-  val guice               = "com.google.inject" % "guice" % "4.1.0" :: javaxInject :: Nil
+  val guice               = "com.google.inject" % "guice" % "4.2.0" :: javaxInject :: Nil
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.3.2"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.3.3"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion
   val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
@@ -56,13 +59,13 @@ object Dependencies {
 
   val mockito             = "org.mockito" % "mockito-core" % "1.10.19"
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
-  val snakeYaml           = "org.yaml" % "snakeyaml" % "1.19"
+  val snakeYaml           = "org.yaml" % "snakeyaml" % "1.20"
 
   val javaxAnnotations    = "com.google.code.findbugs" % "jsr305" % "1.3.9"  // Everyone uses this version
 //val javaxAnnotations    = "com.google.code.findbugs" % "jsr305" % "3.0.0"
-  val guava               = "com.google.guava" % "guava" % "23.6-jre"
+  val guava               = "com.google.guava" % "guava" % "24.1-jre"
   val apacheCommonsBeanutils = "commons-beanutils" % "commons-beanutils" % "1.9.2"
-  val reflections         = "org.reflections" % "reflections" % "0.9.9"
+  val reflections         = "org.reflections" % "reflections" % "0.9.11"
   val groovy              = "org.codehaus.groovy" % "groovy" % "1.8.6"
 
   object webjars {

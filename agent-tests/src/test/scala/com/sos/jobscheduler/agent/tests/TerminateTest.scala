@@ -101,7 +101,7 @@ object TerminateTest {
 
   private def newEventCollector(injector: Injector) =
     injector.createChildInjector(new AbstractModule {
-      def configure() = bind(classOf[EventCollector.Configuration]) toInstance
+      override def configure() = bind(classOf[EventCollector.Configuration]) toInstance
         new EventCollector.Configuration(queueSize = 100000, timeoutLimit = 99.s)
     }).instance[ActorEventCollector]
 }

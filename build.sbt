@@ -87,8 +87,8 @@ val commonSettings = Seq(
   addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full),
   javacOptions in Compile ++= Seq("-encoding", "UTF-8", "-source", "1.8"),  // This is for javadoc, too
   javacOptions in (Compile, compile) ++= Seq("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
-  dependencyOverrides += Dependencies.guava, // Our Guava version should be okay
-  dependencyOverrides ++= Seq(Dependencies.akkaActor, Dependencies.akkaStream), // akka-http requests a slightly older version of Akka
+  dependencyOverrides += Dependencies.guava,
+  dependencyOverrides += Dependencies.scalaXml,
   sources in (Compile, doc) := Nil, // No ScalaDoc
   test in publishM2 := {},
   // Publish
@@ -267,7 +267,7 @@ lazy val `common-http` = crossProject
     //scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html
     //jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
     //scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1")
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
 val masterGuiJs = "master-gui.js"
@@ -356,7 +356,7 @@ lazy val `master-client` = crossProject
     scalacOptions += "-P:scalajs:sjsDefinedByDefault",  // Scala.js 0.6 behaves as Scala.js 1.0, https://www.scala-js.org/doc/interoperability/sjs-defined-js-classes.html
     jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
     scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.1")
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
 lazy val `master-clientJVM` = `master-client`.jvm
 lazy val `master-clientJs` = `master-client`.js
@@ -375,19 +375,19 @@ lazy val `master-gui` = project
       import Dependencies._
       Seq(
         "com.github.mpilquist" %% "simulacrum" % simulacrumVersion,
-        "org.scala-js" %%% "scalajs-dom" % "0.9.4",
-        "be.doeraene" %%% "scalajs-jquery" % "0.9.2",
-        "com.github.japgolly.scalajs-react" %%% "core" % "1.1.1",
-        "com.github.japgolly.scalajs-react" %%% "extra" % "1.1.1",
+        "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion,
+        "be.doeraene" %%% "scalajs-jquery" % scajaJsJQueryVersion,
+        "com.github.japgolly.scalajs-react" %%% "core" % scalaJsReactVersion,
+        "com.github.japgolly.scalajs-react" %%% "extra" % scalaJsReactVersion,
         "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
     },
     jsDependencies ++= Seq(
-      "org.webjars.bower" % "jquery" % "3.2.1"           / "dist/jquery.js" minified "dist/jquery.min.js",
+      "org.webjars.bower" % "jquery" % "3.3.1"           / "dist/jquery.js" minified "dist/jquery.min.js",
       "org.webjars"       % "materializecss" % "0.100.2" / "materialize.js" minified "materialize.min.js" dependsOn "dist/jquery.js",
       "org.webjars.bower" % "react" % "15.6.1"     / "react-with-addons.js" minified "react-with-addons.min.js" commonJSName "React",
       "org.webjars.bower" % "react" % "15.6.1"     / "react-dom.js"         minified "react-dom.min.js"         commonJSName "ReactDOM"       dependsOn "react-with-addons.js",
-      "org.webjars.bower" % "react" % "15.6.1"     / "react-dom-server.js"  minified "react-dom-server.min.js"  commonJSName "ReactDOMServer" dependsOn "react-dom.js",
-      "org.webjars.npm"   % "react-transition-group" % "2.2.1" / "dist/react-transition-group.js" minified "dist/react-transition-group.min.js" dependsOn "react-dom.js"))
+      "org.webjars.bower" % "react" % "15.6.1"     / "react-dom-server.js"  minified "react-dom-server.min.js"  commonJSName "ReactDOMServer" dependsOn "react-dom.js"))
+      //"org.webjars.npm"   % "react-transition-group" % "2.2.1" / "dist/react-transition-group.js" minified "dist/react-transition-group.min.js" dependsOn "react-dom.js"))
 
 lazy val core = project.dependsOn(common, tester.jvm % "compile->test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)

@@ -24,7 +24,7 @@ import scala.util.control.NonFatal
   */
 final class MasterModule(configuration: MasterConfiguration) extends AbstractModule {
 
-  def configure() = {
+  override def configure() = {
     bind(classOf[EventCollector]).to(classOf[ActorEventCollector]).asEagerSingleton()
   }
 
