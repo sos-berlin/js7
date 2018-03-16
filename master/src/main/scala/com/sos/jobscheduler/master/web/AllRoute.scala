@@ -5,12 +5,13 @@ import akka.http.scaladsl.model.StatusCodes.TemporaryRedirect
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
+import com.sos.jobscheduler.common.akkahttp.html.{HtmlDirectives, WebServiceContext}
 import com.sos.jobscheduler.master.web.master.MasterRoute
 
 /**
   * @author Joacim Zschimmer
   */
-trait AllRoute extends MasterRoute {
+trait AllRoute extends MasterRoute with HtmlDirectives[WebServiceContext] {
 
   protected implicit def actorRefFactory: ActorRefFactory
 

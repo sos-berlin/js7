@@ -160,11 +160,14 @@ with KeyedEventJournalingActor[Event] {
         sender() ! Done
       }
 
+    case Command.GetRepo ⇒
+      sender() ! eventIdGenerator.stampWithLast(fileBaseds.repo)
+
     case Command.GetWorkflow(path) ⇒
       sender() ! (fileBaseds.repo.currentTyped[Workflow].checked(path).toOption: Option[Workflow])
 
     case Command.GetWorkflows ⇒
-      sender() ! eventIdGenerator.stamp(fileBaseds.pathToWorkflow.values.toVector: Vector[Workflow])
+      sender() ! eventIdGenerator.stampWithLast(fileBaseds.pathToWorkflow.values.toVector: Vector[Workflow])
 
     case Command.GetWorkflowCount ⇒
       sender() ! (fileBaseds.pathToWorkflow.size: Int)
@@ -176,7 +179,7 @@ with KeyedEventJournalingActor[Event] {
       sender() ! (orderRegister.get(orderId) map { _.order })
 
     case Command.GetOrders ⇒
-      sender() ! eventIdGenerator.stamp((orderRegister.values map { _.order }).toVector: Vector[Order[Order.State]])
+      sender() ! eventIdGenerator.stampWithLast((orderRegister.values map { _.order }).toVector: Vector[Order[Order.State]])
 
     case Command.GetOrderCount ⇒
       sender() ! (orderRegister.size: Int)
@@ -481,6 +484,7 @@ object MasterOrderKeeper {
   sealed trait Command
   object Command {
     final case class AddOrderSchedule(orders: Seq[FreshOrder]) extends Command
+    final case object GetRepo extends Command
     final case class GetWorkflow(path: WorkflowPath) extends Command
     case object GetWorkflows extends Command
     case object GetWorkflowCount extends Command

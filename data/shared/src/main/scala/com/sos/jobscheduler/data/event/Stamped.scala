@@ -19,7 +19,10 @@ final case class Stamped[+A](eventId: EventId, timestamp: Timestamp, value: A) {
   override def toString = s"Stamped(${EventId.toDateTimeString(eventId)} $value)"
 }
 
-object Stamped {
+object Stamped
+{
+  def apply[A](eventId: EventId, value: A): Stamped[A] =
+    new Stamped(eventId, EventId.toTimestamp(eventId), value)
 
   implicit def _eq[A: Eq]: Eq[Stamped[A]] = Eq.fromUniversalEquals
 

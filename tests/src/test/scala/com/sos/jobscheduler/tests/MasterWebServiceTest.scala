@@ -10,7 +10,9 @@ import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.http.AkkaHttpClient
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.time.ScalaTime._
+import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.test.TestSetting.SimpleTestWorkflow
+import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import io.circe.{Encoder, Json}
 import javax.inject.Singleton
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -22,12 +24,11 @@ import scala.util.Try
 final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
 
   private val testStartedAt = System.currentTimeMillis - 24*3600*1000
-  protected val agentPaths = Nil
+  protected val agentPaths = AgentPath("/AGENT-A") :: Nil
+  private lazy val agentUri = directoryProvider.agents(0).localUri.toString
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "MasterWebServiceTest")
 
   override val masterModule = new AbstractModule {
-    def configure() = ()
-
     @Provides @Singleton def eventIdClock(): EventIdClock = new EventIdClock.Fixed(1000)
   }
 
@@ -41,6 +42,45 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     assert(overview.forceField("version").forceString == BuildInfo.buildVersion)
     assert(overview.forceField("startedAt").forceLong >= testStartedAt)
     assert(overview.forceField("startedAt").forceLong < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
+  }
+
+  "/master/api/workflow" - {
+    // TODO
+  }
+
+  "/master/api/agent" in {
+    testJson(
+      httpClient.get[Json](master.localUri + "/master/api/agent") await 99.s,
+      json"""{
+        "eventId": 1000004,
+        "count": 1
+      }""")
+  }
+
+  "/master/api/agent/" in {
+    testJson(
+      httpClient.get[Json](master.localUri + "/master/api/agent/") await 99.s,
+      json"""{
+        "eventId": 1000004,
+        "value": [ "/AGENT-A" ]
+      }""")
+  }
+
+  "/master/api/agent/?return=Agent" in {
+    testJson(
+      httpClient.get[Json](master.localUri + "/master/api/agent/?return=Agent") await 99.s,
+      json"""{
+        "eventId": 1000004,
+        "value": [
+          {
+            "id": {
+              "path": "/AGENT-A",
+              "versionId": "(initial)"
+            },
+            "uri": "$agentUri"
+          }
+        ]
+      }""")
   }
 
   "/master/api/order" - {
@@ -81,53 +121,64 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           }
         }""")
     }
+  }
 
-    "/master/api/event" in {
-      val x = httpClient.get[Json](master.localUri + s"/master/api/event?after=1000000") await 99.s
-      assert(x == json"""{
-        "eventId": 1000005,
-        "TYPE": "NonEmpty",
-        "stampeds": [
-          {
-            "eventId": 1000001,
-            "TYPE": "VersionAdded",
-            "versionId": "(initial)"
-          }, {
-            "eventId": 1000002,
-            "TYPE": "FileBasedAdded",
-            "fileBased": {
-              "TYPE": "Workflow",
-              "id": {
-                "path": "/WORKFLOW",
-                "versionId": "(initial)"
-              },
-              "instructions": [
-                {
-                  "TYPE": "Job",
-                  "jobPath": "/A",
-                  "agentPath": "/AGENT"
-                }, {
-                  "TYPE": "Job",
-                  "jobPath": "/B",
-                  "agentPath": "/AGENT"
-                }
-              ]
-            }
-          }, {
-            "eventId": 1000003,
-            "TYPE": "MasterReady"
-          }, {
-            "eventId": 1000004,
-            "key": "ORDER-ID",
-            "TYPE": "OrderAdded",
-            "workflowId": {
+  "/master/api/event" in {
+    val x = httpClient.get[Json](master.localUri + s"/master/api/event?after=1000000") await 99.s
+    assert(x == json"""{
+      "eventId": 1000006,
+      "TYPE": "NonEmpty",
+      "stampeds": [
+        {
+          "eventId": 1000001,
+          "TYPE": "VersionAdded",
+          "versionId": "(initial)"
+        }, {
+          "eventId": 1000002,
+          "TYPE": "FileBasedAdded",
+          "fileBased": {
+            "TYPE": "Agent",
+            "id": {
+              "path": "/AGENT-A",
+              "versionId": "(initial)"
+            },
+            "uri": "$agentUri"
+          }
+        },{
+          "eventId": 1000003,
+          "TYPE": "FileBasedAdded",
+          "fileBased": {
+            "TYPE": "Workflow",
+            "id": {
               "path": "/WORKFLOW",
               "versionId": "(initial)"
-            }
+            },
+            "instructions": [
+              {
+                "TYPE": "Job",
+                "jobPath": "/A",
+                "agentPath": "/AGENT"
+              }, {
+                "TYPE": "Job",
+                "jobPath": "/B",
+                "agentPath": "/AGENT"
+              }
+            ]
           }
-        ]
-      }""")
-    }
+        }, {
+          "eventId": 1000004,
+          "TYPE": "MasterReady"
+        }, {
+          "eventId": 1000005,
+          "key": "ORDER-ID",
+          "TYPE": "OrderAdded",
+          "workflowId": {
+            "path": "/WORKFLOW",
+            "versionId": "(initial)"
+          }
+        }
+      ]
+    }""")
   }
 
   private def postFailing[A: Encoder](uri: Uri, data: A): AkkaHttpClient.HttpException =

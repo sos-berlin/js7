@@ -1,10 +1,13 @@
 package com.sos.jobscheduler.common.akkahttp
 
+import akka.http.scaladsl.marshalling.ToResponseMarshaller
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpHeader, MediaType, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{ContentNegotiator, Directive0, Directive1, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
+import monix.eval.Task
+import monix.execution.Scheduler
 import scala.annotation.tailrec
 
 /**
@@ -120,6 +123,10 @@ object AkkaHttpServerUtils {
       if (parameterMap.isEmpty) route
       else reject(ValidationRejection(s"Invalid parameters: ${parameterMap.keys mkString ", "}"))
     }
+
+  /** Less red in IntelliJ IDE. **/
+  def completeTask[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): Route =
+    complete(task.runAsync)
 
   //implicit def asFromStringOptionDeserializer[A](implicit stringAsA: As[String, A]) =
   //  simpleFromStringOptionDeserializer(stringAsA.apply)

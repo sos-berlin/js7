@@ -8,7 +8,8 @@ import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.generic.Completed
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
@@ -21,7 +22,9 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
+import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -32,6 +35,7 @@ import com.sos.jobscheduler.master.web.MasterWebServer
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
 import java.time.{Duration, Instant}
+import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future, blocking}
@@ -131,6 +135,29 @@ object RunningMaster {
         onStopped = _ ⇒ Success(Completed)
       )(actorSystem)
 
+    val fileBasedApi: FileBasedApi = new FileBasedApi {
+      def overview[A <: FileBased : FileBased.Companion] =
+        for (stamped ← getRepo) yield
+          for (repo ← stamped) yield
+            FileBasedsOverview(repo.currentTyped[A].size)
+
+      def fileBaseds[A <: FileBased : FileBased.Companion]: Task[Stamped[Seq[A]]] =
+        for (stamped ← getRepo) yield
+          for (repo ← stamped) yield
+            repo.currentTyped[A].values.toVector
+
+      def fileBased[A <: FileBased : FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
+        for (stamped ← getRepo; repo = stamped.value) yield
+          for (a ← repo.currentTyped[A].checked(path)) yield
+            stamped.copy(value = a)
+
+      private def getRepo: Task[Stamped[Repo]] = {
+        import masterConfiguration.akkaAskTimeout
+        Task.defer(Task.fromFuture(
+          (orderKeeper ? MasterOrderKeeper.Command.GetRepo).mapTo[Stamped[Repo]]))
+      }
+    }
+
     val workflowClient: WorkflowClient = new WorkflowClient {
       import masterConfiguration.akkaAskTimeout
 
@@ -177,7 +204,7 @@ object RunningMaster {
           .mapTo[Int]
     }
 
-    webServer.setClients(workflowClient, orderClient)
+    webServer.setClients(fileBasedApi, workflowClient, orderClient)
     val webServerReady = webServer.start()
 
     val terminated = actorStopped
