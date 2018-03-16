@@ -1,14 +1,19 @@
 package com.sos.jobscheduler.common.akkahttp
 
 import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.StatusCodes.BadRequest
-import akka.http.scaladsl.model.{ContentTypes, HttpResponse, MessageEntity}
+import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
+import akka.http.scaladsl.model.{HttpResponse, MessageEntity}
 import akka.stream.ActorMaterializer
 import akka.util.ByteString
-import com.sos.jobscheduler.base.problem.Problem
+import cats.data.Validated.{Invalid, Valid}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.{RichCirceString, _}
+import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
 import com.sos.jobscheduler.common.http.AkkaHttpUtils._
+import com.sos.jobscheduler.common.http.CirceJsonSupport._
+import io.circe.generic.semiauto.deriveEncoder
 import org.scalatest.concurrent.ScalaFutures._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -30,12 +35,32 @@ final class StandardMarshallersTest extends FreeSpec with BeforeAndAfterAll {
   "problemToResponseMarshaller" in {
     val response = Marshal(Problem("PROBLEM")).to[HttpResponse].futureValue
     assert(response.status == BadRequest)
+    assert(response.entity.contentType == `text/plain(UTF-8)`)
     assert(response.entity.toStrict(9.seconds).futureValue.data == ByteString("PROBLEM"))
   }
 
   "problemToEntityMarshaller" in {
     val entity = Marshal(Problem("PROBLEM")).to[MessageEntity].futureValue
-    assert(entity.contentType == ContentTypes.`text/plain(UTF-8)`)
+    assert(entity.contentType == `text/plain(UTF-8)`)
     assert(entity.utf8StringFuture.futureValue == "PROBLEM")
+  }
+
+  "checkedToResponseMarshaller" - {
+    case class A(number: Int)
+    implicit val encoder = deriveEncoder[A]
+
+    "Valid" in {
+      val response = Marshal(Valid(A(7)): Checked[A]).to[HttpResponse].futureValue
+      assert(response.status == OK)
+      assert(response.entity.contentType == `application/json`)
+      assert(response.entity.toStrict(9.seconds).futureValue.data.utf8String.parseJson == json""" { "number": 7 } """)
+    }
+
+    "Invalid" in {
+      val response = Marshal(Invalid(Problem("PROBLEM")): Checked[A]).to[HttpResponse].futureValue
+      assert(response.status == BadRequest)
+      assert(response.entity.contentType == `text/plain(UTF-8)`)
+      assert(response.entity.toStrict(9.seconds).futureValue.data == ByteString("PROBLEM"))
+    }
   }
 }
