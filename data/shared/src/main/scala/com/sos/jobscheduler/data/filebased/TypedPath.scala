@@ -7,7 +7,7 @@ import com.sos.jobscheduler.base.circeutils.CirceCodec
 import com.sos.jobscheduler.base.circeutils.CirceUtils.CirceUtilsChecked
 import com.sos.jobscheduler.base.generic.IsString
 import com.sos.jobscheduler.base.problem.Checked.Ops
-import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.base.problem.{Checked, CheckedString, Problem}
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichJavaClass, implicitClass}
 import com.sos.jobscheduler.base.utils.Strings.RichString
@@ -76,6 +76,7 @@ trait TypedPath extends IsString {
 object TypedPath {
   val VersionSeparator = "%"
   val InternalPrefix = "/?/"
+  private val ForbiddenCharacters = Set[Char](VersionSeparator(0), ','/*reserved*/)
   private val officialSyntaxNameValidator = new NameValidator(Set('-', '.'))
 
   implicit def ordering[P <: TypedPath]: Ordering[P] =
@@ -112,8 +113,8 @@ object TypedPath {
         Problem(s"Trailing slash not allowed in $errorString")
       else if (string contains "//")
         Problem(s"Double slash not allowed in $errorString")
-      else if (string.contains(","))
-        Problem(s"Comma not allowed in $errorString")
+      else if (string exists ForbiddenCharacters)
+        Problem(s"Contains a forbidden character: $errorString")
       else
         Checked.unit
     }
@@ -121,6 +122,7 @@ object TypedPath {
     def sourceTypeToFilenameExtension: Map[SourceType, String]
 
     implicit val implicitCompanion: Companion[P] = this
+    implicit val checkedString: CheckedString[P] = string ⇒ Companion.this.checked(string)
     final val camelName: String = name stripSuffix "Path"
 
     final def typedPathClass: Class[P] = implicitClass[P]

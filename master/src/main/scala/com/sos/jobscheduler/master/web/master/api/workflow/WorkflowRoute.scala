@@ -1,11 +1,11 @@
 package com.sos.jobscheduler.master.web.master.api.workflow
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
+import com.sos.jobscheduler.common.akkahttp.StandardDirectives.remainingSegmentOrPath
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.master.WorkflowClient
@@ -36,12 +36,8 @@ trait WorkflowRoute {
             reject
         }
       } ~
-      path(Segment) { pathString ⇒
-        singleWorkflow(WorkflowPath(s"/$pathString"))
-      } ~
-      extractUnmatchedPath {
-        case Uri.Path.Slash(tail) if !tail.isEmpty ⇒ singleWorkflow(WorkflowPath("/" + tail.toString))  // Slashes not escaped
-        case _ ⇒ reject
+      path(remainingSegmentOrPath[WorkflowPath]) { workflowPath ⇒
+        singleWorkflow(workflowPath)
       }
     }
 
@@ -53,11 +49,11 @@ trait WorkflowRoute {
             case Some(workflow) ⇒
               workflow
             case None ⇒
-              Problem(s"$path does not exist\n")
+              Problem(s"$path does not exist")
           }
         }
 
       case o ⇒
-        complete(Problem(s"Unrecognized parameter return=$o\n"))
+        complete(Problem(s"Unrecognized parameter return=$o"))
     }
 }

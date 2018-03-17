@@ -39,6 +39,8 @@ final class TypedPathTest extends FreeSpec {
     intercept[ProblemException] { APath("/x/") }
     intercept[ProblemException] { APath("x/") }
     intercept[ProblemException] { APath("/x//y") }
+    intercept[ProblemException] { APath("/x,y") }
+    intercept[ProblemException] { APath("/x%y") }
   }
 
   "check" in {
@@ -106,8 +108,10 @@ final class TypedPathTest extends FreeSpec {
     assert(APath("/folder/a.b").officialSyntaxChecked == Valid(APath("/folder/a.b")))
     assert(APath("/a@b/x@y").officialSyntaxChecked ==  // Show only first problem
       Invalid(Problem("Problem with 'A:/a@b/x@y': Invalid character or character combination in name 'a@b'")))
-    assert(APath(s"/folder/a${VersionSeparator}b").officialSyntaxChecked ==
-      Invalid(Problem("Problem with 'A:/folder/a%b': Invalid character or character combination in name 'a%b'")))
+    assert(APath.checked(s"/folder/a${VersionSeparator}b") ==
+      Invalid(Problem("Contains a forbidden character: APath '/folder/a%b'")))
+    //Shadowed: assert(APath(s"/folder/a${VersionSeparator}b").officialSyntaxChecked ==
+    //  Invalid(Problem("Problem with 'A:/folder/a%b': Invalid character or character combination in name 'a%b'")))
   }
 
   "Internal" in {
