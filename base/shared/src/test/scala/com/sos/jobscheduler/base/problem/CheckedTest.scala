@@ -3,6 +3,7 @@ package com.sos.jobscheduler.base.problem
 import cats.data.Validated.{Invalid, Valid}
 import cats.instances.int._
 import cats.instances.list._
+import cats.instances.option._
 import cats.syntax.flatMap._
 import cats.syntax.option._
 import cats.syntax.traverse._
@@ -61,5 +62,12 @@ final class CheckedTest extends FreeSpec  {
   "sequence" in {
     assert(List(Valid(1), Valid(2), Valid(3)).sequence[Checked, Int] == Valid(List(1, 2, 3)))
     assert(List(Valid(1), Invalid(Problem("X")), Invalid(Problem("Y"))).sequence[Checked, Int] == Invalid(Problem.multiple("X", "Y")))
+  }
+
+  "evert" in {
+    assert(Valid(7.some).evert == Some(Valid(7)))
+    assert(Valid(None).evert == None)
+    assert((Invalid(Problem("X")): Checked[Option[Int]]).evert == Some(Invalid(Problem("X"))))
+    assert(Valid(7.some).evert == Some(Valid(7)))
   }
 }

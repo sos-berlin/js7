@@ -2,10 +2,11 @@ package com.sos.jobscheduler.base.problem
 
 import cats.data.Validated.{Invalid, Valid}
 import cats.syntax.eq._
-import cats.{Eq, FlatMap}
+import cats.{Applicative, Eq, FlatMap}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
 import scala.concurrent.Future
+import scala.language.higherKinds
 import scala.util.control.NonFatal
 
 /**
@@ -58,6 +59,17 @@ object Checked
       case (Invalid(xx), Invalid(yy)) ⇒ xx === yy
       case _ ⇒ false
     }
+
+  // Same as traverse or a CheckedT ???
+  def evert[A[_], V](checked: Checked[A[V]])(implicit A: Applicative[A]): A[Checked[V]] =
+    checked match {
+      case Valid(b) ⇒ A.map(b)(Valid.apply)
+      case o @ Invalid(_) ⇒ A.pure(o)
+    }
+
+  implicit final class EvertChecked[A[_], V](private val underlying: Checked[A[V]]) extends AnyVal {
+    def evert(implicit A: Applicative[A]): A[Checked[V]] = Checked.evert(underlying)
+  }
 
   implicit final class Ops[A](private val underlying: Checked[A]) extends AnyVal
   {
