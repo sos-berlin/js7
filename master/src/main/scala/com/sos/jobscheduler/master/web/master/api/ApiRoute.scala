@@ -12,7 +12,7 @@ import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRoute
 /**
   * @author Joacim Zschimmer
   */
-trait ApiRoute extends ApiRootRoute with EventRoute with OrderRoute with WorkflowRoute with AgentRoute {
+trait ApiRoute extends ApiRootRoute with EventRoute with OrderRoute with WorkflowRoute with AgentRoute with AgentProxyRoute {
 
   val apiRoute: Route =
     respondWithHeader(RawHeader("X-JobScheduler-Build-ID", BuildInfo.buildId)) {
@@ -31,6 +31,9 @@ trait ApiRoute extends ApiRootRoute with EventRoute with OrderRoute with Workflo
         } ~
         pathSegments("agent") {
           agentRoute
+        } ~
+        pathSegments("agent-proxy") {
+          agentProxyRoute
         }
       }
     }

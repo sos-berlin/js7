@@ -15,6 +15,7 @@ import com.sos.jobscheduler.master.FileBasedApi
 import com.sos.jobscheduler.master.order.agent.Agent
 import com.sos.jobscheduler.master.web.master.api.AgentRouteTest._
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
 
@@ -23,7 +24,7 @@ import scala.collection.immutable.Seq
   */
 final class AgentRouteTest extends FreeSpec with ScalatestRouteTest with AgentRoute {
 
-  protected implicit def executionContext = system.dispatcher
+  protected implicit def scheduler = Scheduler.global
   protected val fileBasedApi = new FileBasedApi {
     def overview[A <: FileBased: FileBased.Companion] =
       Task.now(Stamped(1, FileBasedsOverview(count = pathToAgent.values.size)))

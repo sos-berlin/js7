@@ -14,6 +14,7 @@ import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.{FileBasedApi, OrderClient, WorkflowClient}
 import com.typesafe.config.Config
 import javax.inject.{Inject, Singleton}
+import monix.execution.Scheduler
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -22,13 +23,14 @@ import scala.concurrent.{ExecutionContext, Future}
 private abstract class RouteProvider(gateKeeper: GateKeeper, injector: Injector)
 extends AllRoute {
 
-  private val actorSystem = injector.instance[ActorSystem]
+  protected val actorSystem = injector.instance[ActorSystem]
   protected def actorRefFactory = actorSystem
-  protected val masterConfiguration       = injector.instance[MasterConfiguration]
-  private val config                      = injector.instance[Config]
-  protected def eventCollector            = injector.instance[EventCollector]
-  protected def eventIdGenerator          = injector.instance[EventIdGenerator]
-  implicit protected val executionContext = injector.instance[ExecutionContext]
+  protected val masterConfiguration = injector.instance[MasterConfiguration]
+  private val config                = injector.instance[Config]
+  protected def eventCollector      = injector.instance[EventCollector]
+  protected def eventIdGenerator    = injector.instance[EventIdGenerator]
+  protected val executionContext    = injector.instance[ExecutionContext]
+  protected val scheduler           = injector.instance[Scheduler]
 
   def route(implicit actorRefFactory: ActorRefFactory): Route =
     handleErrorAndLog(config, actorSystem).apply {
@@ -46,7 +48,7 @@ object RouteProvider {
     masterConfiguration: MasterConfiguration,
     eventIdGenerator: EventIdGenerator,
     actorSystem: ActorSystem,
-    executionContext: ExecutionContext,
+    scheduler: Scheduler,
     injector: Injector)
   {
     def toRoute(

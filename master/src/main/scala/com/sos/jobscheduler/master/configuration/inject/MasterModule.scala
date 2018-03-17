@@ -15,7 +15,9 @@ import com.sos.jobscheduler.core.event.ActorEventCollector
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule._
 import com.typesafe.config.Config
+import java.util.concurrent.Executors
 import javax.inject.Singleton
+import monix.execution.Scheduler
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 
@@ -41,8 +43,17 @@ final class MasterModule(configuration: MasterConfiguration) extends AbstractMod
     GateKeeper.Configuration.fromSubConfig(configuration.config.getConfig("jobscheduler.master.webserver.auth"))
 
   @Provides @Singleton
-  def executionContext(actorSystem: ActorSystem): ExecutionContext =
-    actorSystem.dispatcher
+  def executionContext(scheduler: Scheduler): ExecutionContext =
+    scheduler
+
+  @Provides @Singleton
+  def monixScheduler(): Scheduler =
+    //if (sys.runtime.availableProcessors > 1 &&
+    //    !sys.props.contains("scala.concurrent.context.minThreads") &&
+    //    !sys.props.contains("scala.concurrent.context.numThreads"))
+      Scheduler.global
+    //else
+    //  Scheduler(Executors.newScheduledThreadPool(2))
 
   @Provides @Singleton
   def actorRefFactory(actorSystem: ActorSystem): ActorRefFactory =

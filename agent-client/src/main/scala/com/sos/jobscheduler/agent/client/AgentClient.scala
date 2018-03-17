@@ -89,10 +89,9 @@ trait AgentClient extends HasCloser {
     for {
       entity ← Marshal(command).to[RequestEntity]
       httpResponse ← sendReceive(
-        Gzip.encodeMessage(
-          HttpRequest(POST, agentUris.command, Accept(`application/json`) :: Nil, entity)),
+        HttpRequest(POST, agentUris.command, Accept(`application/json`) :: Nil, entity),
         sessionAction)
-      response ← Unmarshal(httpResponse).to[A]
+      response ← unmarshal[A](httpResponse)
     } yield
       response
 
@@ -131,19 +130,24 @@ trait AgentClient extends HasCloser {
 
   final def getUri[A: FromResponseUnmarshaller](uri: Uri): Future[A] =
     sendReceive(HttpRequest(GET, uri, Accept(`application/json`) :: `Cache-Control`(`no-cache`, `no-store`) :: Nil))
+      .flatMap(unmarshal[A])
 
-  private def sendReceive[A: FromResponseUnmarshaller](request: HttpRequest, sessionAction: SessionAction = SessionAction.Default): Future[A] =
+  final def sendReceive(request: HttpRequest): Future[HttpResponse] =
+    sendReceive(request, SessionAction.Default)
+
+  private def sendReceive(request: HttpRequest, sessionAction: SessionAction): Future[HttpResponse] =
     withCheckedAgentUri(request) { request ⇒
       val req = Gzip.encodeMessage(request.copy(
         headers = sessionCredentialsHeaders(sessionAction) ::: `Accept-Encoding`(gzip) :: request.headers.toList))
-      http.singleRequest(req, httpsConnectionContext) flatMap { httpResponse ⇒
-        if (httpResponse.status.isSuccess)
-          Unmarshal(decodeResponse(httpResponse)).to[A]
-        else
-          for (message ← decodeResponse(httpResponse).utf8StringFuture) yield
-            throw new HttpException(httpResponse.status, message truncateWithEllipsis ErrorMessageLengthMaximum)
-      }
+      http.singleRequest(req, httpsConnectionContext) map decodeResponse
     }
+
+  private def unmarshal[A: FromResponseUnmarshaller](httpResponse: HttpResponse): Future[A] =
+    if (httpResponse.status.isSuccess)
+      Unmarshal(httpResponse).to[A]
+    else
+      for (message ← httpResponse.utf8StringFuture) yield
+        throw new HttpException(httpResponse.status, message truncateWithEllipsis ErrorMessageLengthMaximum)
 
   private def sessionCredentialsHeaders(sessionAction: SessionAction): List[HttpHeader] =
     sessionAction match {

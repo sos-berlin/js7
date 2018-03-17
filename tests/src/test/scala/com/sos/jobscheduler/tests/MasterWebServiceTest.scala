@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.tests
 
-import akka.http.scaladsl.model.StatusCodes.InternalServerError
+import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError, NotFound}
 import akka.http.scaladsl.model.{HttpResponse, Uri}
 import com.google.inject.{AbstractModule, Provides}
+import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.BuildInfo
@@ -24,7 +25,7 @@ import scala.util.Try
 final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with DirectoryProvider.ForScalaTest {
 
   private val testStartedAt = System.currentTimeMillis - 24*3600*1000
-  protected val agentPaths = AgentPath("/AGENT-A") :: Nil
+  protected val agentPaths = AgentPath("/FOLDER/AGENT-A") :: Nil
   private lazy val agentUri = directoryProvider.agents(0).localUri.toString
   private lazy val httpClient = new SimpleAkkaHttpClient(label = "MasterWebServiceTest")
 
@@ -62,7 +63,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       httpClient.get[Json](master.localUri + "/master/api/agent/") await 99.s,
       json"""{
         "eventId": 1000004,
-        "value": [ "/AGENT-A" ]
+        "value": [ "/FOLDER/AGENT-A" ]
       }""")
   }
 
@@ -74,7 +75,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         "value": [
           {
             "id": {
-              "path": "/AGENT-A",
+              "path": "/FOLDER/AGENT-A",
               "versionId": "(initial)"
             },
             "uri": "$agentUri"
@@ -83,9 +84,62 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
       }""")
   }
 
+  "/master/api/agent/FOLDER/AGENT-A?return=Agent" in {
+    testJson(
+      httpClient.get[Json](master.localUri + "/master/api/agent/FOLDER/AGENT-A?return=Agent") await 99.s,
+      json"""{
+        "eventId": 1000004,
+        "id": {
+          "path": "/FOLDER/AGENT-A",
+          "versionId": "(initial)"
+        },
+        "uri": "$agentUri"
+      }""")
+  }
+
+  "/master/api/agent/FOLDER%2FAGENT-A?return=Agent" in {
+    testJson(
+      httpClient.get[Json](master.localUri + "/master/api/agent/FOLDER%2FAGENT-A?return=Agent") await 99.s,
+      json"""{
+        "eventId": 1000004,
+        "id": {
+          "path": "/FOLDER/AGENT-A",
+          "versionId": "(initial)"
+        },
+        "uri": "$agentUri"
+      }""")
+  }
+
+  "/master/api/agent-proxy/FOLDER%2FAGENT-A" in {
+    // Pass-through Agent. Slashes but the first in AgentPath must be coded as %2F.
+    val overview = httpClient.get[AgentOverview](master.localUri + "/master/api/agent-proxy/FOLDER%2FAGENT-A") await 99.s
+    assert(overview.version == BuildInfo.buildVersion)
+  }
+
+  "/master/api/agent-proxy/UNKNOWN returns 400" in {
+    assert(
+      intercept[AkkaHttpClient.HttpException] {
+        httpClient.get[Json](master.localUri + "/master/api/agent-proxy/UNKNOWN") await 99.s
+      }.status == BadRequest)
+  }
+
+  "/master/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
+    assert(
+      intercept[AkkaHttpClient.HttpException] {
+        httpClient.get[Json](master.localUri + "/master/api/agent-proxy/FOLDER%2FAGENT-A/task") await 99.s
+      }.status == NotFound)
+  }
+
+  "/master/api/agent-proxy/FOLDER%2F/AGENT-A/timer" in {
+    assert(
+      intercept[AkkaHttpClient.HttpException] {
+        httpClient.get[Json](master.localUri + "/master/api/agent-proxy/FOLDER%2FAGENT-A/timer") await 99.s
+      }.status == NotFound)
+  }
+
   "/master/api/order" - {
     "POST order with missing workflow" in {
-      val order =json"""{
+      val order = json"""{
         "id": "ORDER-ID",
         "workflowPath": "/MISSING"
       }"""
@@ -139,7 +193,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
           "fileBased": {
             "TYPE": "Agent",
             "id": {
-              "path": "/AGENT-A",
+              "path": "/FOLDER/AGENT-A",
               "versionId": "(initial)"
             },
             "uri": "$agentUri"
