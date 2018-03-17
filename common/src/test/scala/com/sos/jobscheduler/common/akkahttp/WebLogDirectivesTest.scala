@@ -21,7 +21,7 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest {
       } ~>
         check {
           assert(status == InternalServerError)
-          assert(entityAs[String] == "MESSAGE")
+          assert(entityAs[String] == "MESSAGE\n")
         }
   }
 
@@ -33,7 +33,7 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest {
       } ~>
         check {
           assert(status == InternalServerError)
-          assert(entityAs[String] endsWith "$anon$1: MESSAGE")
+          assert(entityAs[String] endsWith "$anon$1: MESSAGE\n")
         }
   }
 
@@ -46,7 +46,7 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest {
       } ~>
         check {
           assert(status == InternalServerError)
-          assert(entityAs[String] == "java.lang.RuntimeException")
+          assert(entityAs[String] == "java.lang.RuntimeException\n")
         }
   }
 
@@ -58,7 +58,7 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest {
       } ~>
         check {
           assert(status == BadRequest)
-          assert(entityAs[String] == "PUBLIC MESSAGE")
+          assert(entityAs[String] == "PUBLIC MESSAGE\n")
         }
   }
 }

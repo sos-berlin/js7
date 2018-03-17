@@ -71,7 +71,7 @@ trait OrderRoute {
         case Some(o) ⇒
           o: ToResponseMarshallable
         case None ⇒
-          Problem(s"Does not exist: $orderId\n"): ToResponseMarshallable
+          Problem(s"Does not exist: $orderId"): ToResponseMarshallable
       }
     }
 }

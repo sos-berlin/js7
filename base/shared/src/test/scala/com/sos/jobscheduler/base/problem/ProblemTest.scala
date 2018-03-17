@@ -1,13 +1,24 @@
 package com.sos.jobscheduler.base.problem
 
 import cats.syntax.semigroup._
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import com.sos.jobscheduler.tester.CirceJsonTester
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
 final class ProblemTest extends FreeSpec {
+
+  "JSON" in {
+    CirceJsonTester.testJson(
+      Problem("A problem"),
+      json"""{
+        "TYPE": "Problem",
+        "message": "A problem"
+      }""")
+  }
 
   "String" in {
     val problem = Problem("MESSAGE")

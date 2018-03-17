@@ -42,17 +42,17 @@ object WebLogDirectives {
       case e: PublicException ⇒
         extractRequest { request ⇒
           webLogger.debug(toLogMessage(request, e), e)
-          complete((BadRequest, e.publicMessage))
+          complete((BadRequest, e.publicMessage + "\n"))
         }
 
       case e: HttpStatusCodeException ⇒
-        complete((e.statusCode, e.message))
+        complete((e.statusCode, e.message + "\n"))
 
       case e ⇒
         extractRequest { request ⇒
           webLogger.debug(toLogMessage(request, e), e)
           if (verboseErrorMessages)
-            complete((InternalServerError, e.toStringWithCauses))  // .toSimplifiedString hides combined Problems (see Problem.semigroup)
+            complete((InternalServerError, e.toStringWithCauses + "\n"))  // .toSimplifiedString hides combined Problems (see Problem.semigroup)
           else
             complete(InternalServerError)
         }

@@ -6,6 +6,7 @@ import cats.{Eq, Semigroup}
 import com.sos.jobscheduler.base.problem.Problem._
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
+import io.circe.{Decoder, Json, JsonObject, ObjectEncoder}
 import scala.collection.immutable.Iterable
 import scala.language.implicitConversions
 import scala.util.control.NoStackTrace
@@ -40,6 +41,9 @@ object Problem
 
   def apply(messageFunction: ⇒ String): Problem =
     new Lazy(messageFunction)
+
+  def fromEager(message: String): Problem =
+    apply(message)
 
   def fromEagerThrowable(throwable: Throwable): Problem =
     fromLazyThrowable(throwable)
@@ -143,4 +147,13 @@ object Problem
       prefix
     else
       prefix + "\n & "
+
+  implicit val jsonEncoder: ObjectEncoder[Problem] =
+    problem ⇒ JsonObject(
+      "TYPE" → Json.fromString("Problem"),
+      "message" → Json.fromString(problem.toString))
+
+  implicit val jsonDecoder: Decoder[Problem] =
+    c ⇒ for (message ← c.get[String]("message")) yield
+      Problem.fromEager(message)
 }

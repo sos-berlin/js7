@@ -7,6 +7,7 @@ import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaTyp
 import akka.util.ByteString
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
+import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import scala.language.implicitConversions
 
 /**
@@ -15,21 +16,24 @@ import scala.language.implicitConversions
 object StandardMarshallers
 {
   private val ProblemStatusCode = BadRequest
+  private val Nl = ByteString("\n")
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
-    stringMarshaller(`text/plain`, _.toString)
+    Marshaller.oneOf(
+      stringMarshaller(`text/plain`, _.toString),
+      jsonOrYamlMarshaller[Problem])
 
   implicit val problemToResponseMarshaller: ToResponseMarshaller[Problem] =
     problemToEntityMarshaller map (entity ⇒ HttpResponse.apply(ProblemStatusCode, Nil, entity))
 
   def stringMarshaller[A](mediaType: MediaType.WithOpenCharset, toString: A ⇒ String): ToEntityMarshaller[A] =
     Marshaller.withOpenCharset(mediaType) { (a, charset) ⇒
-      HttpEntity.Strict(
-        ContentType(mediaType, charset),
-        ByteString(toString(a).getBytes(charset.nioCharset)))
+      var byteString = ByteString(toString(a), charset.nioCharset)
+      if (!byteString.endsWith(Nl)) byteString ++= Nl   // Append \n to terminate curl output properly
+      HttpEntity.Strict(ContentType(mediaType, charset), byteString)
     }
 
-  implicit def checkedToEntityMarshaller[A: ToEntityMarshaller]: ToResponseMarshaller[Checked[A]] =
+  implicit def checkedToEntityMarshaller[A: ToResponseMarshaller]: ToResponseMarshaller[Checked[A]] =
     Marshaller {
       implicit ec ⇒ {
         case Valid(a) ⇒
@@ -38,13 +42,4 @@ object StandardMarshallers
           problemToResponseMarshaller(problem)
       }
     }
-
-  //implicit def XXcheckedToEntityMarshaller[A: ToEntityMarshaller](checked: Checked[A]): ToResponseMarshaller[Checked[A]] =
-  //  new Marshaller[Checked[A], HttpResponse] {
-  //    def apply(checked: Checked[A])(implicit ec: ExecutionContext): Future[List[Marshalling[HttpResponse]]] =
-  //      checked match {
-  //      case Valid(a) ⇒ implicitly[A](a)
-  //      case Invalid(problem) ⇒ problemToResponseMarshaller(problem)
-  //      }
-  //  }
 }
