@@ -38,9 +38,11 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
   val agents = agentPaths.toVector map agentToTree
   closeOnError(this) {
     master.createDirectories()
-     for (a ← agentToTree.values) {
+    for (a ← agentToTree.values) {
       a.createDirectories()
-      (master.live / s"${a.name}.agent.xml").xml = <agent uri={a.conf.localUri.toString}/>
+      val file = master.live / s"${a.agentPath.withoutStartingSlash}.agent.xml"
+      Files.createDirectories(file.getParent)
+      file.xml = <agent uri={a.conf.localUri.toString}/>
     }
   }
 
@@ -126,8 +128,7 @@ object DirectoryProvider {
   }
 
   final class AgentTree(rootDirectory: Path, val agentPath: AgentPath) extends Tree(rootDirectory / agentPath.name) {
-    val name = agentPath.name
-    lazy val conf = AgentConfiguration.forTest(Some(directory)).copy(name = name)
+    lazy val conf = AgentConfiguration.forTest(Some(directory)).copy(name = agentPath.name)
     lazy val localUri = Uri("http://127.0.0.1:" + conf.http.get.address.getPort)
   }
 
