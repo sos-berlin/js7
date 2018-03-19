@@ -6,7 +6,5 @@ rm -fv "$hprof"
 
 exec /opt/jobscheduler/bin/jobscheduler-agent \
   -log4j-lmax \
-  -java-option="-XX:+HeapDumpOnOutOfMemoryError" \
-  -java-option="-XX:HeapDumpPath=$hprof" \
-  -java-option="--illegal-access=warn" \
+  -J"-XX:+HeapDumpOnOutOfMemoryError" -J"-XX:HeapDumpPath=$hprof" \
   "$@"
