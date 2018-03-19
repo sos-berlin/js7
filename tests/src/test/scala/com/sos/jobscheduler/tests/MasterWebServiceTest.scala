@@ -180,7 +180,7 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   "/master/api/event" in {
     val x = httpClient.get[Json](master.localUri + s"/master/api/event?after=1000000") await 99.s
     assert(x == json"""{
-      "eventId": 1000006,
+      "eventId": 1000005,
       "TYPE": "NonEmpty",
       "stampeds": [
         {

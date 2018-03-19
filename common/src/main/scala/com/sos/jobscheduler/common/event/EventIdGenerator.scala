@@ -35,21 +35,21 @@ final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Defaul
     * Wraps `EventCollector`'s `TearableEventSeq` (Iterator-based) into a Stamped with own `EventId`.
     */
   def stampTearableEventSeq[E](future: ⇒ Future[TearableEventSeq[Iterator, E]])(implicit ec: ExecutionContext): Future[Stamped[TearableEventSeq[Seq, E]]] = {
-    val Stamped(eventId, timestamp, ()) = stamp(())
+    val Stamped(eventId, timestamp, ()) = stampWithLast(())
     for (eventSeq ← future) yield
       eventSeq match {
         case eventSeq: EventSeq[Iterator,E] ⇒
           stampEventSeqWith(eventSeq, eventId, timestamp)
         case EventSeq.Torn ⇒
-          stamp(EventSeq.Torn)
+          stampWithLast(EventSeq.Torn)
       }
   }
 
   /**
     * Wraps an `EventSeq` (Iterator-based) into a Stamped with own `EventId`.
     */
-  def stampEventSeq[E](future: ⇒ Future[EventSeq[Iterator, E]])(implicit ec: ExecutionContext): Future[Stamped[EventSeq[Seq, E]]] = {
-    val Stamped(eventId, timestamp, ()) = stamp(())
+  private def stampEventSeq[E](future: ⇒ Future[EventSeq[Iterator, E]])(implicit ec: ExecutionContext): Future[Stamped[EventSeq[Seq, E]]] = {
+    val Stamped(eventId, timestamp, ()) = stampWithLast(())
     for (eventSeq ← future) yield stampEventSeqWith(eventSeq, eventId, timestamp)
   }
 
@@ -58,7 +58,7 @@ final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Defaul
       case EventSeq.NonEmpty(eventsIterator) ⇒
         Stamped(math.max(eventId, lastUsedEventId), timestamp, EventSeq.NonEmpty(eventsIterator.toVector))
       case o: EventSeq.Empty ⇒
-        stamp(o)
+        Stamped(eventId, timestamp, o)
     }
 
   def stamp[A](a: A, timestamp: Option[Timestamp] = None): Stamped[A] =
