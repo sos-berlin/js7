@@ -1,10 +1,8 @@
 package com.sos.jobscheduler.base.problem
 
+import cats.Applicative
 import cats.data.Validated.{Invalid, Valid}
-import cats.syntax.eq._
-import cats.{Applicative, Eq, FlatMap}
 import com.sos.jobscheduler.base.utils.StackTraces.StackTraceThrowable
-import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.language.higherKinds
 import scala.util.control.NonFatal
@@ -30,51 +28,33 @@ object Checked
       case NonFatal(t) ⇒ Invalid(Problem.fromEagerThrowable(t))
     }
 
-  implicit val flatMap: FlatMap[Checked] = new FlatMap[Checked]
-  {
-    def map[A, B](fa: Checked[A])(f: A ⇒ B) = fa match {
-      case Valid(a) ⇒ Valid(f(a))
-      case Invalid(o) ⇒ Invalid(o)
-    }
+  //implicit def checkedEq[A: Eq]: Eq[Checked[A]] = (x, y) ⇒
+  //  (x, y) match {
+  //    case (Valid(xx), Valid(yy)) ⇒ xx === yy
+  //    case (Invalid(xx), Invalid(yy)) ⇒ xx === yy
+  //    case _ ⇒ false
+  //  }
 
-    def flatMap[A, B](fa: Checked[A])(f: A ⇒ Checked[B]) =
-      fa match {
-        case Valid(a) ⇒ f(a)
-        case o @ Invalid(_) ⇒ o
-      }
-
-    def tailRecM[A, B](a: A)(f: A ⇒ Checked[Either[A, B]]): Checked[B] = {
-      @tailrec def loop(a: A): Checked[B] = f(a) match {
-        case Valid(Left(a2)) ⇒ loop(a2)
-        case Valid(Right(b)) ⇒ Valid(b)
-        case o @ Invalid(_) ⇒ o
-      }
-      loop(a)
-    }
-  }
-
-  implicit def eqv[A: Eq]: Eq[Checked[A]] = (x, y) ⇒
-    (x, y) match {
-      case (Valid(xx), Valid(yy)) ⇒ xx === yy
-      case (Invalid(xx), Invalid(yy)) ⇒ xx === yy
-      case _ ⇒ false
-    }
-
-  // Same as traverse or a CheckedT ???
+  /** `Checked[A[V] ] => A[Checked[V] ]`. */
   def evert[A[_], V](checked: Checked[A[V]])(implicit A: Applicative[A]): A[Checked[V]] =
     checked match {
-      case Valid(b) ⇒ A.map(b)(Valid.apply)
+      case Valid(a) ⇒ A.map(a)(Valid.apply)
       case o @ Invalid(_) ⇒ A.pure(o)
     }
 
   implicit final class EvertChecked[A[_], V](private val underlying: Checked[A[V]]) extends AnyVal {
+    /** `Checked[A[V] ] => A[Checked[V] ]`. */
     def evert(implicit A: Applicative[A]): A[Checked[V]] = Checked.evert(underlying)
   }
 
   implicit final class Ops[A](private val underlying: Checked[A]) extends AnyVal
   {
-    /** Same as Checked.flatMap - which is not recognized by Scala 2.12.4 in some circumstances. */
-    def flatMap_[B](f: A ⇒ Checked[B]): Checked[B] = Checked.flatMap.flatMap(underlying)(f)
+    /** Checked has flatMap but is not a FlatMap, since FlatMap fails fast and cannot combine two Invalid. (?) */
+    def flatMap[B](f: A ⇒ Checked[B]): Checked[B] =
+      underlying match {
+        case Valid(a) ⇒ f(a)
+        case o @ Invalid(_) ⇒ o
+      }
 
     def withProblemKey(key: Any): Checked[A] =
       mapProblem (_ withKey key)
@@ -105,6 +85,10 @@ object Checked
       case Valid(a) ⇒ a
       case Invalid(problem) ⇒ throw problem.throwable.appendCurrentStackTrace
     }
+  }
+
+  implicit final class CheckedFlattenOps[A](private val underlying: Checked[Checked[A]]) extends AnyVal {
+    def flatten: Checked[A] = underlying.flatMap(identity)
   }
 
   implicit final class CheckedOption[A](private val underlying: Option[A]) extends AnyVal {
