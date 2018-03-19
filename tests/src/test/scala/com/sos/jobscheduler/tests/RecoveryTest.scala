@@ -112,15 +112,12 @@ final class RecoveryTest extends FreeSpec {
     }
   }
 
-  private def runMaster(directoryProvider: DirectoryProvider, eventCollector: TestEventCollector)(body: RunningMaster ⇒ Unit): Unit = {
-    val injector = RunningMaster.newInjector(directoryProvider.directory)
-    eventCollector.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus])
-    RunningMaster.runForTest(injector) { master ⇒
+  private def runMaster(directoryProvider: DirectoryProvider, eventCollector: TestEventCollector)(body: RunningMaster ⇒ Unit): Unit =
+    RunningMaster.runForTest(directoryProvider.directory, Some(eventCollector)) { master ⇒
       master.executeCommand(MasterCommand.ScheduleOrdersEvery(2.s.toFiniteDuration))  // Will block on recovery until Agents are started: await 99.s
       body(master)
       logger.info("🔥🔥🔥 TERMINATE MASTER 🔥🔥🔥")
     }
-  }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] ⇒ Unit): Unit =
     multipleAutoClosing(directoryProvider.agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒

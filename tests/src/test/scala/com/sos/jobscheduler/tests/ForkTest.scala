@@ -33,8 +33,8 @@ final class ForkTest extends FreeSpec {
         directoryProvider.master.writeJson(TestWorkflow.withoutVersion)
         for (a ← directoryProvider.agents) a.file(TestJobPath, SourceType.Xml).xml = jobXml(100.ms)
 
-        directoryProvider.runAgents { _ ⇒
-          directoryProvider.runMaster { master ⇒
+        directoryProvider.runAgents() { _ ⇒
+          directoryProvider.runMaster() { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
             master.addOrder(TestOrder) await 99.s

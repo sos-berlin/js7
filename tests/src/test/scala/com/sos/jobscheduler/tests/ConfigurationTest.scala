@@ -34,10 +34,8 @@ final class ConfigurationTest extends FreeSpec {
         directoryProvider.agents.head.file(JobPath(s"/JOB-V$v"), SourceType.Xml).xml =
           <job><script language="shell">echo /VERSION-{v.toString}/</script></job>
 
-      directoryProvider.runAgents { _ ⇒
-        directoryProvider.runMaster { master ⇒
-          eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
-
+      directoryProvider.runAgents() { _ ⇒
+        directoryProvider.runMaster(eventCollector = Some(eventCollector)) { master ⇒
           // Add Workflow
           addWorkflowAndRunOrder(master, V1, AWorkflowPath, OrderId("A"))
 
@@ -52,7 +50,7 @@ final class ConfigurationTest extends FreeSpec {
           changeWorkflowAndRunOrder(master, V3, AWorkflowPath, OrderId("A-3"))
         }
         // Recovery
-        directoryProvider.runMaster { master ⇒
+        directoryProvider.runMaster() { master ⇒
           // V2
           eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
           // Previously defined workflow is still known

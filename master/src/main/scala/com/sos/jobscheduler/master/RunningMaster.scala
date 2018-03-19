@@ -31,6 +31,7 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.order.MasterOrderKeeper
+import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.master.web.MasterWebServer
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
@@ -82,8 +83,11 @@ object RunningMaster {
     }
   }
 
-  def runForTest(directory: Path)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
-    runForTest(newInjector(directory))(body)
+  def runForTest(directory: Path, eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit = {
+    val injector = newInjector(directory)
+    eventCollector foreach (_.start(injector.instance[ActorSystem], injector.instance[StampedKeyedEventBus]))
+    runForTest(injector)(body)
+  }
 
   def runForTest(injector: Injector)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     autoClosing(RunningMaster(injector) await 99.s) { master ⇒

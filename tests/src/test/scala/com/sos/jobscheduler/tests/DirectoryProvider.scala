@@ -18,6 +18,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.filebased.{FileBased, SourceType, TypedPath}
 import com.sos.jobscheduler.master.RunningMaster
+import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider._
 import io.circe.{Json, ObjectEncoder}
 import java.nio.file.Files.createTempDirectory
@@ -47,17 +48,17 @@ final class DirectoryProvider(agentPaths: Seq[AgentPath]) extends HasCloser {
   }
 
   def run(body: (RunningMaster, IndexedSeq[RunningAgent]) ⇒ Unit)(implicit ec: ExecutionContext): Unit =
-    runAgents(agents ⇒
-      runMaster(master ⇒
+    runAgents()(agents ⇒
+      runMaster()(master ⇒
         body(master, agents)))
 
-  def runMaster(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
-    RunningMaster.runForTest(directory)(body)
+  def runMaster(eventCollector: Option[TestEventCollector] = None)(body: RunningMaster ⇒ Unit)(implicit ec: ExecutionContext): Unit =
+    RunningMaster.runForTest(directory, eventCollector)(body)
 
   def startMaster(module: Module = EMPTY_MODULE)(implicit ec: ExecutionContext): Future[RunningMaster] =
     RunningMaster(RunningMaster.newInjector(directory, module))
 
-  def runAgents(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
+  def runAgents()(body: IndexedSeq[RunningAgent] ⇒ Unit)(implicit ec: ExecutionContext): Unit =
     multipleAutoClosing(agents map (_.conf) map RunningAgent.startForTest await 10.s) { agents ⇒
       body(agents)
       agents map (_.terminate()) await 99.s
