@@ -27,10 +27,13 @@ object EventSeq {
   final case class Empty(lastEventId: EventId)
   extends EventSeq[Nothing, Nothing]
 
-  case object Torn
-  extends TearableEventSeq[Nothing, Nothing] {
-    implicit val jsonCodec = singletonCodec(Torn)
-  }
+  /** Requested event is no longer available.
+    * `oldestKnownEventId` is for testing only.
+    * @param oldestKnownEventId
+    */
+  @JsonCodec
+  final case class Torn(oldestKnownEventId: EventId)
+  extends TearableEventSeq[Nothing, Nothing]
 
   implicit def nonEmptyJsonEncoder[E: ObjectEncoder]: ObjectEncoder[NonEmpty[Seq, E]] =
     eventSeq ⇒ JsonObject.singleton("stampeds", eventSeq.stampeds.asJson)
@@ -49,5 +52,5 @@ object TearableEventSeq {
   implicit def jsonCodec[E: ObjectEncoder: Decoder]: CirceObjectCodec[TearableEventSeq[Seq, E]] =
     TypedJsonCodec[TearableEventSeq[Seq, E]](
       Subtype[EventSeq[Seq, E]],
-      Subtype[Torn.type])
+      Subtype[Torn])
 }
