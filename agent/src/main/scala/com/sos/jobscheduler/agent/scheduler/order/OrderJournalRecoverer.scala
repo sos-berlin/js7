@@ -41,7 +41,7 @@ extends JournalRecoverer[Event] {
 
   protected def recoverEvent = {
     case Stamped(_, _, KeyedEvent(_: NoKey, event: WorkflowEvent.WorkflowAttached)) ⇒
-      workflowRegister.handleEvent(KeyedEvent(event))
+      workflowRegister.handleEvent(NoKey <-: event)
 
     case stamped @ Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) ⇒
       event match {

@@ -172,7 +172,7 @@ extends KeyedEventJournalingActor[AgentEvent] {
           response.success(AgentCommand.Accepted)
         } else {
           response completeWith
-            persist(KeyedEvent(AgentEvent.MasterAdded)(userId)) { case Stamped(_, _, keyedEvent) ⇒
+            persist(userId <-: AgentEvent.MasterAdded) { case Stamped(_, _, keyedEvent) ⇒
               update(keyedEvent)
               masterToOrderKeeper(userId) ! AgentOrderKeeper.Input.Start(jobs)
               AgentCommand.Accepted

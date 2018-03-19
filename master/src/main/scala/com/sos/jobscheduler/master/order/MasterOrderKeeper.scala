@@ -216,7 +216,7 @@ with KeyedEventJournalingActor[Event] {
             case _: OrderEvent.OrderAttached ⇒ OrderTransferredToAgent(agentId)  // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
             case _ ⇒ event
           }
-          persist(KeyedEvent(ownEvent)(orderId), Some(timestamp))(handleOrderEvent)
+          persist(orderId <-: ownEvent, Some(timestamp))(handleOrderEvent)
           lastAgentEventId = agentEventId.some
       }
       for (agentEventId ← lastAgentEventId) {
@@ -231,7 +231,7 @@ with KeyedEventJournalingActor[Event] {
         logger.error(s"Received OrdersDetached from Agent for unknown orders: "+ unknown.mkString(", "))
       }
       for (orderId ← orderIds -- unknown) {
-        persistAsync(KeyedEvent(OrderTransferredToMaster)(orderId))(handleOrderEvent)
+        persistAsync(orderId <-: OrderTransferredToMaster)(handleOrderEvent)
       }
 
     case msg @ JournalActor.Output.SerializationFailure(throwable) ⇒
@@ -281,7 +281,7 @@ with KeyedEventJournalingActor[Event] {
     protected def onConfigurationRead(events: Seq[RepoEvent], repo: Repo, sideEffect: IO[Unit]) = {
       //TODO journal transaction {
       for (event ← events) {
-        persist(KeyedEvent(event)) { stamped ⇒
+        persist(event) { stamped ⇒
           logNotableEvent(stamped)
         }
       }
@@ -338,7 +338,7 @@ with KeyedEventJournalingActor[Event] {
         fileBaseds.idToWorkflow(order.workflowId) match {
           case Invalid(problem) ⇒ Future.failed(problem.throwable)
           case Valid(workflow) ⇒
-            persistAsync(KeyedEvent(OrderAdded(workflow.id, order.state.scheduledAt, order.payload))(order.id)) { stamped ⇒
+            persistAsync(order.id <-: OrderAdded(workflow.id, order.state.scheduledAt, order.payload)) { stamped ⇒
               handleOrderEvent(stamped)
               true
             }
