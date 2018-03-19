@@ -27,7 +27,7 @@ final class LegacyJobchainXmlParserTest extends FreeSpec {
 
 
   "Workflow" in {
-    val workflow = LegacyJobchainXmlParser.parseXml(FolderPath("/FOLDER"), xml).force
+    val workflow = LegacyJobchainXmlParser.parseXml(FolderPath("/FOLDER"), xml).orThrow
     assert(workflow == Workflow.of(
       "A" @: Job(JobPath("/JOB-A"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),
              IfNonZeroReturnCodeGoto(Label("ERROR")),

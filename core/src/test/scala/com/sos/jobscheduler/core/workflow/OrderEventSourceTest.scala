@@ -211,7 +211,7 @@ object OrderEventSourceTest {
       }
 
     def step(orderId: OrderId): Option[KeyedEvent[OrderEvent]] = {
-      val keyedEventOption = nextEvent(orderId).force
+      val keyedEventOption = nextEvent(orderId).orThrow
       keyedEventOption foreach update
       keyedEventOption
     }
@@ -256,7 +256,7 @@ object OrderEventSourceTest {
           inProcess -= orderId
 
         case _ ⇒
-          eventHandler.handleEvent(keyedEvent).force foreach {
+          eventHandler.handleEvent(keyedEvent).orThrow foreach {
             case FollowUp.AddChild(derivedOrder) ⇒
               idToOrder.insert(derivedOrder.id → derivedOrder)
 

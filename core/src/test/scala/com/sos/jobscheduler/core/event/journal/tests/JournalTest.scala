@@ -216,13 +216,13 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
   private def journalKeyedEvents =
     journalJsons collect {
       case o if TestKeyedEventJsonCodec canDeserialize o ⇒
-        o.as[Stamped[KeyedEvent[TestEvent]]].map(_.value).force
+        o.as[Stamped[KeyedEvent[TestEvent]]].map(_.value).orThrow
     }
 
   private def journalAggregates =
     (journalJsons collect {
       case o if TestActor.SnapshotJsonFormat canDeserialize o ⇒
-        o.as[TestAggregate].force
+        o.as[TestAggregate].orThrow
     }).toSet
 
   private def journalJsons: Vector[Json] =

@@ -41,7 +41,7 @@ extends Actor with Stash {
       message match {
         case Input.Start ⇒
           val pathToActor = mutable.Map[JobPath, ActorRef]()
-          val fileBaseds = FileBasedReader.readDirectoryTree(Set(JobReader), jobConfigurationDirectory, TestVersion).force
+          val fileBaseds = FileBasedReader.readDirectoryTree(Set(JobReader), jobConfigurationDirectory, TestVersion).orThrow
           for (job ← fileBaseds collect { case o: JobConfiguration ⇒ o }) {
             logger.debug(s"Adding ${job.path}")
             val a = watch(actorOf(

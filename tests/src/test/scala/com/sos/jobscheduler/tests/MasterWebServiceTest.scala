@@ -40,9 +40,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
   "/master/api" in {
     val overview = httpClient.get[Json](master.localUri + "/master/api") await 99.s
-    assert(overview.forceField("version").forceString == BuildInfo.buildVersion)
-    assert(overview.forceField("startedAt").forceLong >= testStartedAt)
-    assert(overview.forceField("startedAt").forceLong < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
+    assert(overview.fieldOrThrow("version").stringOrThrow == BuildInfo.buildVersion)
+    assert(overview.fieldOrThrow("startedAt").longOrThrow >= testStartedAt)
+    assert(overview.fieldOrThrow("startedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
   }
 
   "/master/api/workflow" - {

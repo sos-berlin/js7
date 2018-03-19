@@ -25,7 +25,7 @@ final class FileBasedReaderTest extends FreeSpec {
   "readDirectoryTreeWithProblems" in {
     provideDirectory { directory ⇒
       createFiles(directory)
-      assert(readDirectoryTreeWithProblems(Set(WorkflowReader, AgentReader), directory, V0).force.toSet == Set(
+      assert(readDirectoryTreeWithProblems(Set(WorkflowReader, AgentReader), directory, V0).orThrow.toSet == Set(
         Valid(AWorkflow withVersion V0),
         Valid(BWorkflow withVersion V0),
         Valid(CWorkflow withVersion V0),

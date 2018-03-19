@@ -130,7 +130,7 @@ final class RecoveryTest extends FreeSpec {
     autoClosing(new JsonFileIterator(JournalMeta.Header, in ⇒ conversion.convertInputStream(in, journalFile), journalFile)) {
       _.toVector collect {
         case o if AgentEvent.KeyedEventJsonCodec.canDeserialize(o) ⇒
-          o.as[Stamped[KeyedEvent[AgentEvent]]].force
+          o.as[Stamped[KeyedEvent[AgentEvent]]].orThrow
       }
     }
   }

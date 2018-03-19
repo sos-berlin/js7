@@ -84,7 +84,7 @@ object LegacyJobchainTest {
       <job_chain_node     state="END"/>
       <job_chain_node.end state="FAILURE"/>
     </job_chain>.toString())
-    .force.copy(id = WorkflowPath("/WORKFLOW") % "(initial)")
+    .orThrow.copy(id = WorkflowPath("/WORKFLOW") % "(initial)")
   private val ExpectedWorkflow = Workflow.of(TestWorkflow.id,
     "A" @: /*0*/ Job(JobPath("/JOB-0"), AgentPath("/AGENT"), ReturnCodeMeaning.NoFailure),
            /*1*/ IfNonZeroReturnCodeGoto("FAILURE"),

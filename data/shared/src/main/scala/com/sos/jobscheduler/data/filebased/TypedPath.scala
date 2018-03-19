@@ -26,10 +26,10 @@ trait TypedPath extends IsString {
   lazy val name: String = string.substring(string.lastIndexOf('/') + 1)
 
   /** Has to be called in every implementing constructor. */
-  final def validate() = companion.check(string).force
+  final def validate() = companion.check(string).orThrow
 
   def requireNonAnonymous(): Unit =
-    companion.checked(string).force
+    companion.checked(string).orThrow
 
   def nesting = string stripSuffix "/" count { _ == '/' }
 

@@ -72,7 +72,7 @@ final class OrderEventSource(
       case Some(position) ⇒
         if (visited contains position)
           Invalid(Problem(s"${order.id} is in a workflow loop: " +
-            visited.reverse.map(pos ⇒ pos + " " + idToWorkflow(order.workflowId).force.labeledInstruction(pos).toShortString).mkString(" --> ")))
+            visited.reverse.map(pos ⇒ pos + " " + idToWorkflow(order.workflowId).orThrow.labeledInstruction(pos).toShortString).mkString(" --> ")))
         else
           applyMoveInstructions(order.withPosition(position), position :: visited)
       case None ⇒ Valid(Some(order.position))
@@ -107,7 +107,7 @@ final class OrderEventSource(
   }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
-    idToWorkflow(workflowPosition.workflowId).force.instruction(workflowPosition.position)
+    idToWorkflow(workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
 }
 
 object OrderEventSource {

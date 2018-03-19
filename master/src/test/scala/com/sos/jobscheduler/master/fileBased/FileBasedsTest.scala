@@ -87,9 +87,9 @@ object FileBasedsTest {
 
   private[fileBased] val AWorkflow = Workflow.of(WorkflowPath("/A") % u)
   private[fileBased] val BWorkflow = Workflow(WorkflowPath("/B") % u, Vector("B-END" @: ExplicitEnd))
-  private[fileBased] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C") % u, "// EMPTY").force
+  private[fileBased] val CWorkflow = WorkflowParser.parse(WorkflowPath("/C") % u, "// EMPTY").orThrow
   private[fileBased] val DWorkflow = Workflow(WorkflowPath("/D") % u, Vector("D-END" @: ExplicitEnd))
-  private[fileBased] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D") % u, "CHANGED-D-END: end").force
+  private[fileBased] val D1Workflow = WorkflowParser.parse(WorkflowPath("/D") % u, "CHANGED-D-END: end").orThrow
   private[fileBased] val AAgent = Agent(AgentPath("/A") % u, "http://A")
   private[fileBased] val BAgent = Agent(AgentPath("/folder/B") % u, "http://B")
 

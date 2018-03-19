@@ -26,7 +26,7 @@ final class ScheduledOrderGeneratorXmlParserTest extends FreeSpec {
           <period absolute_repeat="10"/>
         </run_time>
       </order>,
-      timeZone).force
+      timeZone).orThrow
     assert(orderGenerator == ScheduledOrderGenerator(
       id,
       WorkflowPath("/JOBCHAIN"),

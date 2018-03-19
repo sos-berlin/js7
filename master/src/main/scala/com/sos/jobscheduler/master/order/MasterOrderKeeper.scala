@@ -130,9 +130,9 @@ with KeyedEventJournalingActor[Event] {
       become(ready)
       unstashAll()
       if (!hasRecovered) {
-        fileBaseds.readConfigurationAndPersistEvents(InitialVersion.some).force.unsafeRunSync()  // Persists events
+        fileBaseds.readConfigurationAndPersistEvents(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events
       }
-      readScheduledOrderGeneratorConfiguration().force.unsafeRunSync()
+      readScheduledOrderGeneratorConfiguration().orThrow.unsafeRunSync()
       defer {  // Publish after configuration events have been persisted and published
         logger.info("Ready")
         keyedEventBus.publish(eventIdGenerator.stamp(MasterEvent.MasterReady))
@@ -450,7 +450,7 @@ with KeyedEventJournalingActor[Event] {
     }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
-    fileBaseds.idToWorkflow(workflowPosition.workflowId).force.instruction(workflowPosition.position)
+    fileBaseds.idToWorkflow(workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
 
   private def terminating: Receive = {
     case _: MasterCommand ⇒

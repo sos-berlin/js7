@@ -81,7 +81,7 @@ object Checked
         case Invalid(problem) ⇒ Future.failed(problem.throwable)
       }
 
-    def force: A = underlying match {
+    def orThrow: A = underlying match {
       case Valid(a) ⇒ a
       case Invalid(problem) ⇒ throw problem.throwable.appendCurrentStackTrace
     }

@@ -56,7 +56,7 @@ final class FileJsonSeqTest extends FreeSpec {
       assert(file.contentString endsWith "\n")
       autoClosing(new FileInputStream(file)) { in ⇒
         val iterator = new InputStreamJsonSeqIterator(in)
-        assert((iterator map { _.as[A].force }).toList == List(
+        assert((iterator map { _.as[A].orThrow }).toList == List(
           A(1, "a"),
           A(2, "b"),
           A(3, "c")))
@@ -133,7 +133,7 @@ final class FileJsonSeqTest extends FreeSpec {
               val stopwatch = new Stopwatch
               var dummy = 0
               for (_ ← 1 to n) {
-                dummy += iterator.next().forceObject.toMap.size
+                dummy += iterator.next().jsonObjectOrThrow.toMap.size
               }
               info("read: " + stopwatch.itemsPerSecondString(n, "events"))
               assert(dummy == n * (3 + 6))  // To avoid loop optimiziation

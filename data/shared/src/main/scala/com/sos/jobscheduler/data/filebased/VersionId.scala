@@ -13,10 +13,10 @@ import io.circe.{Decoder, Encoder, Json}
   */
 final case class VersionId(string: String) extends IsString
 {
-  VersionId.check(string).force
+  VersionId.check(string).orThrow
 
   def requireNonAnonymous(): Unit =
-    VersionId.checked(string).force
+    VersionId.checked(string).orThrow
 
   def isAnonymous = this == VersionId.Anonymous
 

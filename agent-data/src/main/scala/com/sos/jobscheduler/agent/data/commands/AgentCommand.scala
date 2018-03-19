@@ -118,7 +118,7 @@ object AgentCommand {
   final case class AttachOrder(order: Order[Order.Idle], workflow: Workflow)
   extends AttachOrDetachOrder {
     order.workflowId.requireNonAnonymous()
-    order.attachedToAgent.force  // throws
+    order.attachedToAgent.orThrow
 
     type Response = Accepted.type
 

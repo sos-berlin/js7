@@ -34,7 +34,7 @@ final class KeyedEventTypedJsonCodecTest extends FreeSpec {
 
   "decode unknown subclass" in {
     intercept[UnknownJsonTypeException] {
-      """{ "TYPE": "UNKNOWN" }""".parseJson.as[KeyedEvent[TestEvent]].force
+      """{ "TYPE": "UNKNOWN" }""".parseJson.as[KeyedEvent[TestEvent]].orThrow
     }.getMessage should include ("""Unexpected JSON {"TYPE": "UNKNOWN"} for class 'TestEvent'""")
   }
 

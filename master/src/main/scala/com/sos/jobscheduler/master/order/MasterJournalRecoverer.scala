@@ -36,7 +36,7 @@ extends JournalRecoverer[Event] {
       _agentToEventId(agentPath) = eventId
 
     case event: RepoEvent ⇒
-      _repo = _repo.applyEvent(event).force
+      _repo = _repo.applyEvent(event).orThrow
   }
 
   def recoverEvent = {
@@ -46,7 +46,7 @@ extends JournalRecoverer[Event] {
           orderScheduleGenerator ! KeyedJournalingActor.Input.RecoverFromEvent(stamped)
 
         case KeyedEvent(_: NoKey, event: RepoEvent) ⇒
-          _repo = _repo.applyEvent(event).force
+          _repo = _repo.applyEvent(event).orThrow
 
         case KeyedEvent(orderId: OrderId, event: OrderEvent) ⇒
           event match {

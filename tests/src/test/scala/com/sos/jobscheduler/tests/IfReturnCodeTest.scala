@@ -73,7 +73,7 @@ object IfReturnCodeTest {
       |};
       |job "JOB" on "AGENT";    // #2
     """.stripMargin
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "(initial)", script).force
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("/WORKFLOW") % "(initial)", script).orThrow
 
   private val ExpectedEvents = Map(
     ReturnCode(0) → Vector(

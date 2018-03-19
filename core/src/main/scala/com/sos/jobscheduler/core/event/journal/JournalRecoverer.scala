@@ -81,14 +81,14 @@ trait JournalRecoverer[E <: Event] {
 
   private def recoverSnapshotJson(json: Json): Unit = {
     snapshotCount += 1
-    val snapshot = snapshotJsonCodec.decodeJson(json).force
+    val snapshot = snapshotJsonCodec.decodeJson(json).orThrow
     recoverSnapshot.getOrElse(snapshot,
       sys.error(s"Unrecoverable snapshot in journal journalFile '$journalFile': $snapshot"))
   }
 
   private def recoverEventJson(json: Json): Unit = {
     eventCount += 1
-    val stamped = json.as[Stamped[KeyedEvent[E]]].force
+    val stamped = json.as[Stamped[KeyedEvent[E]]].orThrow
     if (stamped.eventId <= lastEventId)
       sys.error(s"Journal is corrupt, EventIds are out of order: ${EventId.toString(stamped.eventId)} follows ${EventId.toString(lastEventId)}")
     lastEventId = stamped.eventId

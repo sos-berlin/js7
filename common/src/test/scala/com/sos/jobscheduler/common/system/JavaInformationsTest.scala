@@ -14,7 +14,7 @@ final class JavaInformationsTest extends FreeSpec {
     val javaInformation = JavaInformations.javaInformation
     val json = javaInformation.asJson
     assert(json.as[JavaInformation] == Right(javaInformation))
-    assert(json.forceObject.toMap("systemProperties").forceObject.toMap contains "java.version")
-    assert(json.forceObject.toMap("systemProperties").forceObject.toMap contains "os.arch")
+    assert(json.jsonObjectOrThrow.toMap("systemProperties").jsonObjectOrThrow.toMap contains "java.version")
+    assert(json.jsonObjectOrThrow.toMap("systemProperties").jsonObjectOrThrow.toMap contains "os.arch")
   }
 }

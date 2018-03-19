@@ -125,7 +125,7 @@ final case class Order[+S <: Order.State](
     castState[Order.Processed]
 
   def castState[A <: State: ClassTag]: Order[A] =
-    checkedState[A].force
+    checkedState[A].orThrow
 
   def checkedState[A <: State: ClassTag]: Checked[Order[A]] =
     Checked.fromOption(ifState[A], Problem(s"'$id' should be in state ${implicitClass[A].simpleScalaName}, but is in state $state"))

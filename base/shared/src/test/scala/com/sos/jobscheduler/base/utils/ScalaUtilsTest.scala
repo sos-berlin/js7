@@ -202,11 +202,11 @@ final class ScalaUtilsTest extends FreeSpec {
     assert(Left[Throwable, Int](t).toChecked.swap.getOrElse(null).throwable eq t)
   }
 
-  "Either.force" in {
-    assert(Right[Throwable, Int](7).force == 7)
+  "Either.orThrow" in {
+    assert(Right[Throwable, Int](7).orThrow == 7)
     val t = new IllegalArgumentException
     intercept[IllegalArgumentException] {
-      Left[Throwable, Int](t).force
+      Left[Throwable, Int](t).orThrow
     } should be theSameInstanceAs (t)
   }
 

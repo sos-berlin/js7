@@ -189,7 +189,7 @@ object ScalaUtils {
         case Right(o) ⇒ Future.successful(o)
       }
 
-    def force: R =
+    def orThrow: R =
       underlying match {
         case Left(t) ⇒ throw t.appendCurrentStackTrace
         case Right(o) ⇒ o
@@ -216,6 +216,6 @@ object ScalaUtils {
   }
 
   implicit final class RichValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal {
-    def force: A = underlying.valueOr(t ⇒ throw t.appendCurrentStackTrace)
+    def orThrow: A = underlying.valueOr(t ⇒ throw t.appendCurrentStackTrace)
   }
 }

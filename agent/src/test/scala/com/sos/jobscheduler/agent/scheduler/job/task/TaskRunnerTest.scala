@@ -50,7 +50,7 @@ final class TaskRunnerTest extends FreeSpec with BeforeAndAfterAll {
               <param name="var1" value="VALUE1"/>
             </params>
             <script language="shell">{TestScript}</script>
-          </job>)).force
+          </job>)).orThrow
       val shellFile = newTemporaryShellFile("TaskRunnerTest")
       shellFile.contentString = jobConfiguration.script.string.trim
       val shellReturnValuesProvider = new ShellReturnValuesProvider

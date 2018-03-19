@@ -49,49 +49,49 @@ object CirceUtils {
     def compactPrint: String =
       CompactPrinter.pretty(underlying)
 
-    def forceInt: Int = {
-      val number = forceNumber
+    def intOrThrow: Int = {
+      val number = numberOrThrow
       number.toInt match {
         case Some(o) ⇒ o
         case None ⇒ throwUnexpected("Int", number.toString)
       }
     }
 
-    def forceLong: Long = {
-      val number = forceNumber
+    def longOrThrow: Long = {
+      val number = numberOrThrow
       number.toLong match {
         case Some(o) ⇒ o
         case None ⇒ throwUnexpected("Long", number.toString)
       }
     }
 
-    def forceNumber: JsonNumber =
+    def numberOrThrow: JsonNumber =
       underlying.asNumber match {
         case Some(o) ⇒ o
         case None ⇒ throwUnexpected("number", underlying.getClass.simpleScalaName)
       }
 
 
-    def forceString: String =
+    def stringOrThrow: String =
       underlying.asString match {
         case Some(o) ⇒ o
         case None ⇒ throwUnexpected("string", underlying.getClass.simpleScalaName)
       }
 
 
-    def forceObject: JsonObject =
+    def jsonObjectOrThrow: JsonObject =
       underlying.asObject match {
         case Some(o) ⇒ o
         case None ⇒ throwUnexpected("object", underlying.getClass.simpleScalaName)
       }
 
-    def forceArray: Vector[Json] =
+    def arrayOrThrow: Vector[Json] =
       underlying.asArray match {
         case Some(o) ⇒ o
         case None ⇒ throwUnexpected("array", underlying.getClass.simpleScalaName)
       }
 
-    def forceField(name: String): Json =
+    def fieldOrThrow(name: String): Json =
       underlying.asObject match {
         case Some(o) ⇒ o(name) getOrElse (throw new IllegalArgumentException(s"Unknown JSON field '$name'"))
         case None ⇒ throw new IllegalArgumentException("Not a JsonObject")
@@ -100,7 +100,7 @@ object CirceUtils {
 
   implicit final class RichCirceString(private val underlying: String) extends AnyVal {
     def parseJson: Json =
-      io.circe.parser.parse(underlying).force
+      io.circe.parser.parse(underlying).orThrow
   }
 
   implicit final class CirceUtilsChecked[A](private val underlying: Checked[A]) extends AnyVal {

@@ -216,7 +216,7 @@ final class OrderEventTest extends FreeSpec {
     println(f"${"Serialize"}%-20s Deserialize")
     for (_ ← 1 to 10) {
       val circeSerialize = measure(event.asJson.compactPrint)
-      val circeDeserialize = measure(jsonString.parseJson.as[OrderEvent].force: OrderEvent)
+      val circeDeserialize = measure(jsonString.parseJson.as[OrderEvent].orThrow: OrderEvent)
       println(f"$circeSerialize%-20s $circeDeserialize%-20s")
     }
     def measure[A](serialize: ⇒ Unit) = {
