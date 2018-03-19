@@ -5,10 +5,10 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.core.event.journal.{JournalRecoverer, KeyedJournalingActor}
 import com.sos.jobscheduler.core.filebased.Repo
-import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
-import com.sos.jobscheduler.data.filebased.RepoEvent
+import com.sos.jobscheduler.data.filebased.{FileBasedId, RepoEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderStdWritten}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId}
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
@@ -65,8 +65,8 @@ extends JournalRecoverer[Event] {
               //logger.debug(s"$orderId recovered $t: ${chunk.trim}")
           }
 
-        case KeyedEvent(agentId: AgentId, AgentEventIdEvent(agentEventId)) ⇒
-          _agentToEventId(agentId) = agentEventId
+        case KeyedEvent(FileBasedId(a: AgentPath, v)/*Scala 2.12.4 requires this pattern*/, AgentEventIdEvent(agentEventId)) ⇒
+          _agentToEventId(a % v) = agentEventId
 
         case _ ⇒
           sys.error(s"Unknown event in journal: $stamped")
