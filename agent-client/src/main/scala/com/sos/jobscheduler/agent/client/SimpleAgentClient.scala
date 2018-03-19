@@ -2,6 +2,7 @@ package com.sos.jobscheduler.agent.client
 
 import akka.http.scaladsl.model.Uri
 import com.sos.jobscheduler.common.akkautils.Akkas.newActorSystem
+import com.sos.jobscheduler.common.scalautil.Closers.implicits.RichClosersAny
 import com.sos.jobscheduler.data.agent.AgentAddress
 
 /**
@@ -11,18 +12,13 @@ import com.sos.jobscheduler.data.agent.AgentAddress
  *
  * @author Joacim Zschimmer
  */
-final class SimpleAgentClient private(val agentUri: Uri) extends AgentClient with AutoCloseable {
+final class SimpleAgentClient private(val agentUri: Uri) extends AgentClient {
 
   protected val licenseKeys = Nil
-  protected val actorSystem = newActorSystem("SimpleAgentClient")
+  protected val actorSystem = newActorSystem("SimpleAgentClient") withCloser (_.terminate())
   protected def executionContext = actorSystem.dispatcher
   protected def httpsConnectionContextOption = None
   protected def userAndPasswordOption = None
-
-  override def close() = {
-    try super.close()
-    finally actorSystem.terminate()
-  }
 }
 
 object SimpleAgentClient {
