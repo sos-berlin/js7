@@ -537,7 +537,7 @@ object MasterOrderKeeper {
                 _: OrderForked | _: OrderJoined | _: OrderOffered | _: OrderAwaiting | _: OrderStdWritten |
                 _: RepoEvent ) ⇒
         def string = if (stamped.value.key == NoKey) stamped.value.event.toString else stamped.value.toString
-        logger.info(Logger.Event, s"${stamped.timestamp} 🔶 $string")
+        logger.debug(Logger.Event, s"${stamped.timestamp} 🔶 $string")
       case _ ⇒
     }
 }
