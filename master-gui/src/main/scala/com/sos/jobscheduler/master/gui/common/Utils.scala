@@ -12,8 +12,6 @@ import scala.language.{higherKinds, implicitConversions}
   */
 object Utils {
 
-  val emptyTagMod: TagMod = TagMod()
-
   lazy val isMobile: Boolean = {
     val u = window.navigator.userAgent
     val is = u matches ".*\bMobile\b.*"
@@ -30,7 +28,7 @@ object Utils {
         if (underlying.nonEmpty)
           f(underlying)
         else
-          emptyTagMod
+          TagMod.empty
     }
   }
 

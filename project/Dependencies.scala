@@ -18,9 +18,9 @@ object Dependencies {
   val simulacrumVersion = "0.12.0"
   val disciplineVersion = "0.8"
   val monixVersion = "2.3.3"
+  val monocleVersion = "1.5.0"
   val scalaJsDomVersion = "0.9.5"
   val scajaJsJQueryVersion = "0.9.3"
-  val scalaJsReactVersion = "1.1.1"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion

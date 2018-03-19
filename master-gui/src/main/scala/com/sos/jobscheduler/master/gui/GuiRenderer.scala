@@ -2,7 +2,6 @@ package com.sos.jobscheduler.master.gui
 
 import com.sos.jobscheduler.data.event.EventId
 import com.sos.jobscheduler.master.gui.GuiRenderer._
-import com.sos.jobscheduler.master.gui.common.Utils.emptyTagMod
 import com.sos.jobscheduler.master.gui.components.SideBarComponent
 import com.sos.jobscheduler.master.gui.components.state.{AppState, GuiState, OrdersState}
 import com.sos.jobscheduler.master.gui.router.Router
@@ -51,9 +50,9 @@ final class GuiRenderer(
   private def eventsAndClock: (TagMod, TagMod) =
     state.ordersState.content match {
       case OrdersState.Initial ⇒
-        (emptyTagMod, emptyTagMod)
+        (TagMod.empty, TagMod.empty)
       case OrdersState.FetchingContent ⇒
-        (emptyTagMod,
+        (TagMod.empty,
           <.span(^.cls := "page-top-right-segment")(
             "..."))
       case OrdersState.FetchedContent(_, _, eventId, eventCount) ⇒

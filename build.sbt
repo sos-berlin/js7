@@ -377,17 +377,26 @@ lazy val `master-gui` = project
         "com.github.mpilquist" %% "simulacrum" % simulacrumVersion,
         "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion,
         "be.doeraene" %%% "scalajs-jquery" % scajaJsJQueryVersion,
-        "com.github.japgolly.scalajs-react" %%% "core" % scalaJsReactVersion,
-        "com.github.japgolly.scalajs-react" %%% "extra" % scalaJsReactVersion,
+        "com.github.japgolly.scalajs-react" %%% "core" % "1.2.0",
+        "com.github.japgolly.scalajs-react" %%% "extra" % "1.2.0",
+      //"com.github.japgolly.scalajs-react" %%% "ext-cats" % "1.2.0",
+      //"com.github.japgolly.scalajs-react" %%% "ext-monocle-cats" % "1.2.0",
+      //"com.github.julien-truffaut" %%% "monocle-core"  % monocleVersion,
+      //"com.github.julien-truffaut" %%% "monocle-macro" % monocleVersion,
         "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
     },
     jsDependencies ++= Seq(
-      "org.webjars.bower" % "jquery" % "3.3.1"           / "dist/jquery.js" minified "dist/jquery.min.js",
-      "org.webjars"       % "materializecss" % "0.100.2" / "materialize.js" minified "materialize.min.js" dependsOn "dist/jquery.js",
-      "org.webjars.bower" % "react" % "15.6.1"     / "react-with-addons.js" minified "react-with-addons.min.js" commonJSName "React",
-      "org.webjars.bower" % "react" % "15.6.1"     / "react-dom.js"         minified "react-dom.min.js"         commonJSName "ReactDOM"       dependsOn "react-with-addons.js",
-      "org.webjars.bower" % "react" % "15.6.1"     / "react-dom-server.js"  minified "react-dom-server.min.js"  commonJSName "ReactDOMServer" dependsOn "react-dom.js"))
-      //"org.webjars.npm"   % "react-transition-group" % "2.2.1" / "dist/react-transition-group.js" minified "dist/react-transition-group.min.js" dependsOn "react-dom.js"))
+      "org.webjars.bower" % "jquery" % "3.3.1" / "dist/jquery.js" minified "dist/jquery.min.js",
+      "org.webjars" % "materializecss" % "0.100.2" / "materialize.js" minified "materialize.min.js"
+        dependsOn "dist/jquery.js",
+      "org.webjars.bower" % "react" % "16.1.0" / "react.development.js" minified "react.production.min.js"
+        commonJSName "React",
+      "org.webjars.bower" % "react" % "16.1.0" / "react-dom.development.js" minified "react-dom.production.min.js"
+        commonJSName "ReactDOM"
+        dependsOn "react.development.js",
+      "org.webjars.bower" % "react" % "16.1.0" / "react-dom-server.browser.development.js" minified "react-dom-server.browser.production.min.js"
+        commonJSName "ReactDOMServer"
+        dependsOn "react-dom.development.js"))
 
 lazy val core = project.dependsOn(common, tester.jvm % "compile->test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)

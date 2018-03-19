@@ -36,11 +36,11 @@ object Router {
   }
 
   private def selectPage(stateSnapshot: StateSnapshot[GuiState]): TagMod = {
-    val state = stateSnapshot.value
-    try state.uriHash match {
+    val guiState = stateSnapshot.value
+    try guiState.uriHash match {
       case "" | "#" ⇒
         window.document.title = DefaultTitle
-        WorkflowListComponent(state.workflowListProps)
+        WorkflowListComponent(guiState.workflowListProps)
 
       case h if h startsWith WorkflowPrefix ⇒
         val originalPathAndVersion = decodeURIComponent(h.stripPrefix(WorkflowPrefix))
@@ -72,18 +72,21 @@ object Router {
             } else {
               window.document.title = id.pretty
               WorkflowOrdersComponent(
-                state.idToWorkflow(id),
-                StateSnapshot(state.ordersState)(s ⇒ stateSnapshot.modState(_.copy(ordersState = s))))
+                guiState.idToWorkflow(id),
+                StateSnapshot(guiState.ordersState)((orderStateOption, callback) ⇒
+                  stateSnapshot.modStateOption(
+                    guiState ⇒ orderStateOption map (o ⇒ guiState.copy(ordersState = o)),
+                    callback)))
           }
         }
 
       case h if h startsWith OrderPrefix ⇒
         val orderId = OrderId(decodeURIComponent(h.stripPrefix(OrderPrefix)))
         window.document.title = orderId.pretty
-        state.ordersState.content match {
+        guiState.ordersState.content match {
           case content: FetchedContent ⇒
             val orderEntry = content.idToEntry.getOrElse(orderId, sys.error(s"Unknown $orderId"))
-            val workflow = state.idToWorkflow(orderEntry.order.workflowId)
+            val workflow = guiState.idToWorkflow(orderEntry.order.workflowId)
             OrderComponent(orderEntry, content.idToEntry(_).order, workflow, isOwnPage = true)
 
           case _ ⇒

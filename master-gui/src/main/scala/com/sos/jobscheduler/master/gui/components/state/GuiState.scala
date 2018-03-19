@@ -18,8 +18,8 @@ final case class GuiState(
 {
   lazy val workflowListProps = WorkflowListComponent.Props(
     (for (prepared ← idToWorkflow.values) yield
-      WorkflowListComponent.Props.Entry(prepared.workflow, ordersState.orderCountByWorkflow(prepared.id))).toImmutableSeq
-  )
+      WorkflowListComponent.Props.Entry(prepared.workflow, ordersState.orderCountByWorkflow(prepared.id))
+    ).toImmutableSeq)
 
   def updateUriHash = copy(
     uriHash = window.document.location.hash)
