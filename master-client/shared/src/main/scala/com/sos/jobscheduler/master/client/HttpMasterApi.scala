@@ -6,7 +6,7 @@ import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrdersOverview}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.master.client.HttpMasterApi._
 import com.sos.jobscheduler.master.data.{MasterCommand, MasterOverview}
-import io.circe.{Decoder, Encoder, ObjectEncoder}
+import io.circe.{Decoder, ObjectEncoder}
 import scala.collection.immutable.Seq
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -36,7 +36,7 @@ trait HttpMasterApi extends MasterApi {
   final def orders: Future[Stamped[Seq[Order[Order.State]]]] =
     httpClient.get[Stamped[Seq[Order[Order.State]]]](uris.order.list[Order[Order.State]])
 
-  final def events[E <: Event: ObjectEncoder: Decoder: ClassTag](after: EventId, timeout: Duration)(implicit kd: Decoder[E#Key], ke: Encoder[E#Key])
+  final def events[E <: Event: ClassTag](after: EventId, timeout: Duration)(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
   : Future[Stamped[TearableEventSeq[Seq, KeyedEvent[E]]]] =
     httpClient.get[Stamped[TearableEventSeq[Seq, KeyedEvent[E]]]](
       uris.events[E](after = after, timeout = timeout),

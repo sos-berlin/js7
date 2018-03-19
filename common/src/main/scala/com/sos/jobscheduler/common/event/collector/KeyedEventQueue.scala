@@ -9,9 +9,10 @@ import scala.collection.JavaConverters._
 /**
   * @author Joacim Zschimmer
   */
-final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
+final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int)
+{
   private val queue = new java.util.concurrent.ConcurrentSkipListMap[java.lang.Long, Stamped[AnyKeyedEvent]]
-  private var queueSize: Int = 0
+  private var queueLength: Int = 0
   @volatile
   private var lastRemovedFirstId: EventId = initialOldestEventId
 
@@ -19,13 +20,13 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
     synchronized {
       require(lastEventId < stamped.eventId,
         s"EventId '${EventId.toString(stamped.eventId)}' is not greater than last Eventid ${EventId.toString(lastEventId)}")
-      if (queueSize >= sizeLimit) {
+      if (queueLength >= sizeLimit) {
         lastRemovedFirstId = queue.firstKey
         queue.remove(lastRemovedFirstId)
-        queueSize -= 1
+        queueLength -= 1
       }
       queue.put(stamped.eventId, stamped)
-      queueSize += 1
+      queueLength += 1
     }
 
   def hasAfter(after: EventId) = queue.navigableKeySet.higher(after) != null
@@ -60,7 +61,7 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
     lastRemovedFirstId
 
   def size: Int =
-    queueSize
+    queueLength
 
   private class EventIterator(firstEventId: EventId, stampedIterator: Iterator[Stamped[AnyKeyedEvent]])
   extends GuavaIterator[Stamped[AnyKeyedEvent]] {
@@ -81,4 +82,6 @@ final class KeyedEventQueue(initialOldestEventId: EventId, sizeLimit: Int) {
         endOfData
       }
   }
+
+  override def toString = s"KeyedEventQueue(length=$queueLength, lastRemovedFirstId=$lastRemovedFirstId)"
 }

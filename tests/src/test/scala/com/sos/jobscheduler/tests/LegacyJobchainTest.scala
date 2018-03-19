@@ -46,8 +46,8 @@ final class LegacyJobchainTest extends FreeSpec {
         for (a ← directoryProvider.agents) a.file(Test0JobPath, SourceType.Xml).xml = jobXml(ReturnCode(0))
         for (a ← directoryProvider.agents) a.file(Test1JobPath, SourceType.Xml).xml = jobXml(ReturnCode(1))
 
-        directoryProvider.runAgents { _ ⇒
-          directoryProvider.runMaster { master ⇒
+        directoryProvider.runAgents() { _ ⇒
+          directoryProvider.runMaster() { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
             master.addOrder(TestOrder) await 99.s
