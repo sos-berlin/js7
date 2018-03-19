@@ -35,7 +35,7 @@ trait AgentProxyRoute
         extractRequest { request ⇒
           completeTask(
             for {
-              checkedAgent ← fileBasedApi.fileBased[Agent](AgentPath(s"/$pathString"))
+              checkedAgent ← fileBasedApi.pathToCurrentFileBased[Agent](AgentPath(s"/$pathString"))
               checkedResponse ← checkedAgent.map(stampedAgent ⇒ forward(stampedAgent, request)).evert
             } yield checkedResponse)
         }

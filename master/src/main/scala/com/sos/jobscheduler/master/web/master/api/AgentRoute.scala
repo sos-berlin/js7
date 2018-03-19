@@ -38,7 +38,7 @@ trait AgentRoute
           }
         } ~
         path(remainingSegmentOrPath[AgentPath]) { agentPath ⇒
-          completeTask(fileBasedApi.fileBased[Agent](agentPath))
+          completeTask(fileBasedApi.pathToCurrentFileBased[Agent](agentPath))
         }
     }
 }

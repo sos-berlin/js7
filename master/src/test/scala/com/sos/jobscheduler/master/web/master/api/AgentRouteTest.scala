@@ -32,7 +32,7 @@ final class AgentRouteTest extends FreeSpec with ScalatestRouteTest with AgentRo
     def fileBaseds[A <: FileBased: FileBased.Companion] =
       Task.now(Stamped(2, pathToAgent.values.toVector map (_.cast[A])))
 
-    def fileBased[A <: FileBased: FileBased.Companion](path: A#Path) =
+    def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) =
       Task.now(
         for (a ← pathToAgent.checked(path.cast[AgentPath]))
           yield Stamped(3, a.cast[A]))

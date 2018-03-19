@@ -146,7 +146,7 @@ object RunningMaster {
           for (repo ← stamped) yield
             repo.currentTyped[A].values.toVector
 
-      def fileBased[A <: FileBased : FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
+      def pathToCurrentFileBased[A <: FileBased : FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
         for (stamped ← getRepo; repo = stamped.value) yield
           for (a ← repo.currentTyped[A].checked(path)) yield
             stamped.copy(value = a)

@@ -13,7 +13,7 @@ trait FileBasedApi
 {
   def overview[A <: FileBased: FileBased.Companion]: Task[Stamped[FileBasedsOverview]]
 
-  def fileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]]
+  def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]]
 
   def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]]
 
