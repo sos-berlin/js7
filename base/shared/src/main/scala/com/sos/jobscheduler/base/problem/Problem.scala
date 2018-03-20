@@ -56,7 +56,13 @@ object Problem
   }
 
   class Lazy protected[problem](messageFunction: ⇒ String) extends HasMessage {
-    final lazy val message = messageFunction
+    final lazy val message = {
+      messageFunction match {
+        case null ⇒ "A problem occurred (null)"
+        case "" ⇒ "A problem occurred (no message)"
+        case o ⇒ o
+      }
+    }
 
     final def throwable = new ProblemException(message)
 

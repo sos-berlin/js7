@@ -21,6 +21,9 @@ final class ProblemTest extends FreeSpec {
   }
 
   "String" in {
+    assert(Problem("").toString == "A problem occurred (no message)")
+    assert(Problem(null).toString == "A problem occurred (null)")
+
     val problem = Problem("MESSAGE")
     assert(problem.toString == "MESSAGE")
     assert(problem.throwableOption.isEmpty)
