@@ -1,14 +1,10 @@
 package com.sos.jobscheduler.data.workflow.instructions
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
-import com.sos.jobscheduler.data.order.OrderId
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
-import com.sos.jobscheduler.data.workflow.{Instruction, Label, Workflow}
+import com.sos.jobscheduler.data.workflow.{Instruction, Label}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
-import io.circe.Json
 import org.scalatest.FreeSpec
 
 /**
@@ -34,98 +30,16 @@ final class InstructionsTest extends FreeSpec {
         }""")
     }
 
-    testLabeled(
-      AwaitOrder(OrderId("ORDER")),
-      json"""{
-        "TYPE": "AwaitOrder",
-        "orderId": "ORDER"
-      }""")
-
-    "Job" in {
-      testLabeled(
-        Job(JobPath("/JOB"), AgentPath("/AGENT")),
-        json"""{
-          "TYPE": "Job",
-          "jobPath": "/JOB",
-          "agentPath": "/AGENT"
-        }""")
-    }
-
-    "Job returnCodeMeaning" in {
-      testLabeled(
-        Job(JobPath("/JOB"), AgentPath("/AGENT"), ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1)))),
-        json"""{
-          "TYPE": "Job",
-          "jobPath": "/JOB",
-          "agentPath": "/AGENT",
-          "returnCodeMeaning": {
-            "success": [ 0, 1 ]
-          }
-        }""")
-    }
-
-    "ForkJoin" in {
-      testLabeled(
-        ForkJoin.of(
-          "A" → Workflow.of(Job(JobPath("/A"), AgentPath("/AGENT"))),
-          "B" → Workflow.of(Job(JobPath("/B"), AgentPath("/AGENT")))),
-        json"""{
-          "TYPE": "ForkJoin",
-          "branches": [
-            {
-              "id": "A",
-              "workflow": {
-                "instructions": [
-                  { "TYPE": "Job", "jobPath": "/A", "agentPath": "/AGENT" }
-                ]
-              }
-            }, {
-              "id": "B",
-              "workflow": {
-                "instructions": [
-                  { "TYPE": "Job", "jobPath": "/B", "agentPath": "/AGENT" }
-                ]
-              }
-            }
-          ]
-        }""")
-    }
-
-    "Gap" in {
-      testLabeled(
-        Gap,
-        json"""{
-          "TYPE": "Gap"
-        }""")
-    }
-
-    "ExplicitEnd" in {
-      testLabeled(
-        ExplicitEnd,
-        json"""{
-          "TYPE": "End"
-        }""")
-    }
-
     "Goto" in {
-      testLabeled(
-        Goto(Label("A")),
-        json"""{
-          "TYPE": "Goto",
-          "to": "A"
-        }""")
     }
 
     "IfNonZeroReturnCodeGoto" in {
-      testLabeled(
+      testJson[Instruction.Labeled](
         IfNonZeroReturnCodeGoto(Label("A")),
         json"""{
           "TYPE": "IfNonZeroReturnCodeGoto",
           "to": "A"
         }""")
     }
-
-    def testLabeled(instruction: Instruction, json: Json) =
-      testJson(Labeled(Nil, instruction), json)
   }
 }

@@ -6,18 +6,20 @@ import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
+import scala.concurrent.duration._
 
 /**
   * @author Joacim Zschimmer
   */
-final class AwaitOrderTest extends FreeSpec {
+final class OfferTest extends FreeSpec {
 
   "JSON" in {
     testJson[Instruction.Labeled](
-      AwaitOrder(OrderId("ORDER")),
+      Offer(OrderId("OFFERED"), 60.seconds),
       json"""{
-        "TYPE": "AwaitOrder",
-        "orderId": "ORDER"
+        "TYPE": "Offer",
+        "orderId": "OFFERED",
+        "timeout": 60
       }""")
   }
 }

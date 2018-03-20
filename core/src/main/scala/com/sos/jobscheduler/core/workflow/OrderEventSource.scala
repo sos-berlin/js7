@@ -1,16 +1,15 @@
 package com.sos.jobscheduler.core.workflow
 
 import cats.data.Validated.{Invalid, Valid}
-import cats.syntax.flatMap._
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.scalautil.Logger
-import com.sos.jobscheduler.core.workflow.OrderEventSource._
+import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import com.sos.jobscheduler.data.order.{Order, OrderId}
 import com.sos.jobscheduler.data.workflow.instructions.{End, Goto, IfNonZeroReturnCodeGoto}
-import com.sos.jobscheduler.data.workflow.{EventInstruction, Instruction, OrderContext, Position, PositionInstruction, Workflow, WorkflowId, WorkflowPosition}
+import com.sos.jobscheduler.data.workflow.{Instruction, OrderContext, Position, Workflow, WorkflowId, WorkflowPosition}
 import scala.annotation.tailrec
 
 /**
@@ -39,18 +38,11 @@ final class OrderEventSource(
 
   def nextEvent(orderId: OrderId): Checked[Option[KeyedEvent[OrderActorEvent]]] = {
     val order = idToOrder(orderId)
-    instruction(order.workflowPosition) match {
-      case instr: EventInstruction ⇒
-        instr.toEvent(order, context) match {
-          case Some(oId <-: (moved: OrderMoved)) ⇒
-            applyMoveInstructions(oId, moved) map Some.apply
+    InstructionExecutor.toEvent(instruction(order.workflowPosition), order, context) match {
+      case Some(oId <-: (moved: OrderMoved)) ⇒
+        applyMoveInstructions(oId, moved) map Some.apply
 
-          case o ⇒ Valid(o)
-        }
-
-      case instruction ⇒
-        logger.trace(s"❓ $instruction")
-        Valid(None)
+      case o ⇒ Valid(o)
     }
   }
 
@@ -90,8 +82,8 @@ final class OrderEventSource(
           else
             Some(order.position.increment)
 
-        case instr: PositionInstruction ⇒
-          instr.nextPosition(order, context)
+        case instr: Instruction ⇒
+          InstructionExecutor.nextPosition(context, order, instr)
 
         //case _: End if order.position.isNested ⇒
         //  order.position.dropChild flatMap (returnPosition ⇒

@@ -1,9 +1,6 @@
 package com.sos.jobscheduler.data.workflow
 
 import com.sos.jobscheduler.base.utils.Strings.RichString
-import com.sos.jobscheduler.data.event.KeyedEvent
-import com.sos.jobscheduler.data.order.Order
-import com.sos.jobscheduler.data.order.OrderEvent.OrderActorEvent
 import com.sos.jobscheduler.data.workflow.Instruction.Labeled
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Json, ObjectEncoder}
@@ -21,14 +18,6 @@ trait Instruction
   final def @:(label: Label) = Labeled(label :: Nil, this)
   final def @:(label: String) = Labeled(Label(label) :: Nil, this)
   final def @:(unit: Unit) = Labeled(Nil, this)
-}
-
-trait EventInstruction extends Instruction {
-  def toEvent(order: Order[Order.State], context: OrderContext): Option[KeyedEvent[OrderActorEvent]]
-}
-
-trait PositionInstruction extends Instruction {
-  def nextPosition(order: Order[Order.Processed], context: OrderContext): Option[Position]
 }
 
 trait JumpInstruction extends Instruction {
