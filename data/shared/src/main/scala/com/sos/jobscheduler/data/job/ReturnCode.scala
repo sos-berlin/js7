@@ -9,11 +9,6 @@ import com.sos.jobscheduler.base.process.ProcessSignal
 final case class ReturnCode(number: Int) extends GenericInt {
 
   def isSuccess = number == 0
-
-  /**
-   * Maps this, as calculated by C++ JobScheduler Engine when process is interrupted, to normal unmodified ReturnCode.
-   */
-  def normalized = if (number >= 0) this else ReturnCode(128 - number)
 }
 
 object ReturnCode extends GenericInt.Companion[ReturnCode] {

@@ -34,10 +34,4 @@ final class ReturnCodeTest extends FreeSpec {
     assert(ReturnCode(SIGKILL) == ReturnCode(128 + 9))
     assert(ReturnCode(SIGTERM) == ReturnCode(128 + 15))
   }
-
-  "normalized C++ ReturnCode" in {
-    assert(ReturnCode(-9).normalized == ReturnCode(128 + 9))
-    assert(ReturnCode(-9).normalized == ReturnCode(SIGKILL))
-    for (i ← List(0, 100, 200, 300)) assert(ReturnCode(i).normalized == ReturnCode(i))
-  }
 }
