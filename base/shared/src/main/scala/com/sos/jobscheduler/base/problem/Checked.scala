@@ -49,6 +49,9 @@ object Checked
 
   implicit final class Ops[A](private val underlying: Checked[A]) extends AnyVal
   {
+    def >>=[B](f: A ⇒ Checked[B]): Checked[B] =
+      flatMap(f)
+
     /** Checked has flatMap but is not a FlatMap, since FlatMap fails fast and cannot combine two Invalid. (?) */
     def flatMap[B](f: A ⇒ Checked[B]): Checked[B] =
       underlying match {
