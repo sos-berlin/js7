@@ -9,6 +9,7 @@ import com.sos.jobscheduler.agent.data.commands.AgentCommand
 import com.sos.jobscheduler.agent.data.commands.AgentCommand._
 import com.sos.jobscheduler.agent.scheduler.AgentHandle
 import com.sos.jobscheduler.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
+import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.log.Log4j
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -64,9 +65,8 @@ extends Actor {
 
   private def logCommand(run: CommandRun): Unit =
     run.command match {
-      case Batch(Seq(_)) ⇒
-      case _ ⇒
-        logger.info(run.toString)
+      case Batch(_) ⇒ // Log only individual commands
+      case _ ⇒ logger.info(run.toString)
         //if (run.command.toStringIsLonger) logger.debug(s"${run.idString} ${run.command}")  // Complete string
     }
 
@@ -100,6 +100,8 @@ extends Actor {
 }
 
 object CommandActor {
+  intelliJuseImport(StringInstantJsonCodec)
+
   private val logger = Logger(getClass)
 
   object Command {
