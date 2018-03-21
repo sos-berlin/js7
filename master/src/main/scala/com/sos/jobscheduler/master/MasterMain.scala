@@ -62,8 +62,9 @@ object MasterMain {
             exitJava(t)
         }
     catch { case t: Throwable ⇒
-      println(s"JOBSCHEDULER MASTER TERMINATED DUE TO ERROR: $t")
       logger.error(t.toString, t)
+      println(t.toStringWithCauses)
+      println(s"JOBSCHEDULER MASTER TERMINATED DUE TO ERROR")
       Log4j.shutdown()
       sys.runtime.exit(1)
     }

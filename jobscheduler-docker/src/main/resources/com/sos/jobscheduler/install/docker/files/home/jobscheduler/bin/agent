@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-hprof=/var/opt/jobscheduler/agent/data/logs/OutOfMemoryError.hprof
-rm -fv "$hprof"
+data=/var/opt/jobscheduler/agent/data
+hprof=$data/logs/OutOfMemoryError.hprof
 
+rm -fv "$hprof"
 exec /opt/jobscheduler/bin/jobscheduler-agent \
   -log4j-lmax \
   -J"-XX:+HeapDumpOnOutOfMemoryError" -J"-XX:HeapDumpPath=$hprof" \

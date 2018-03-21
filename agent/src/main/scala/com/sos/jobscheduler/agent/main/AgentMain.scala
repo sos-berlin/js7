@@ -42,8 +42,9 @@ object AgentMain {
       0
     }
     catch { case t: Throwable ⇒
-      println(s"JOBSCHEDULER AGENT TERMINATED DUE TO ERROR: ${t.toStringWithCauses}")
       logger.error(t.toString, t)
+      println(t.toStringWithCauses)
+      println("JOBSCHEDULER AGENT TERMINATED DUE TO ERROR")
       1
     }
     Log4j.shutdown()
