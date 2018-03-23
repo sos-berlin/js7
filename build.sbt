@@ -89,6 +89,7 @@ val commonSettings = Seq(
   javacOptions in (Compile, compile) ++= Seq("-target", "1.8", "-deprecation", "-Xlint:all", "-Xlint:-serial"),
   dependencyOverrides += Dependencies.guava,
   dependencyOverrides += Dependencies.scalaXml,
+  dependencyOverrides += Dependencies.cats,
   sources in (Compile, doc) := Nil, // No ScalaDoc
   test in publishM2 := {},
   // Publish

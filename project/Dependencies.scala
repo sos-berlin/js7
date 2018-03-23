@@ -4,14 +4,15 @@ import scala.language.implicitConversions
 
 //noinspection TypeAnnotation
 object Dependencies {
-  val scalaVersion = "2.12.4"
+  val scalaVersion = "2.12.5"
 
   val akkaVersion = "2.5.11"
   val akkaHttpVersion = "10.1.0"
   val slf4jVersion = "1.7.25"
   val log4jVersion = "2.11.0"
-  val catsVersion = "1.0.1"
-  val catsEffectVersion = "0.9"
+  val catsVersion = "1.1.0"
+  val catsEffectVersion = "0.10"
+  val fastparseVersion = "1.0.0"
   val kittensVersion = "1.0.0-RC3"
   val circeVersion = "0.9.2"
   val scalaTestVersion = "3.0.5"
@@ -36,6 +37,7 @@ object Dependencies {
   val scalaXml            = "org.scala-lang.modules" %% "scala-xml" % "1.1.0"
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
+  val scalaCheck          = "org.scalacheck" %% "scalacheck" % "1.13.5"
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
 
@@ -54,7 +56,7 @@ object Dependencies {
                             "io.circe" %% "circe-parser" % circeVersion ::
                             "io.circe" %% "circe-generic" % circeVersion :: Nil
 
-  val fastparse           = "com.lihaoyi" %% "fastparse" % "1.0.0"
+  val fastparse           = "com.lihaoyi" %% "fastparse" % fastparseVersion
   val scalaTags           = "com.lihaoyi" %% "scalatags" % "0.6.7"
 
   val mockito             = "org.mockito" % "mockito-core" % "1.10.19"
