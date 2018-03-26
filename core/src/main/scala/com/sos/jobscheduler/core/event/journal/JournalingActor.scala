@@ -45,8 +45,9 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
       logger.trace(s"“$toString” Store ${keyedEvent.key} ${keyedEvent.event.getClass.simpleScalaName}")
       journalActor.forward(
         JournalActor.Input.Store(Some(keyedEvent) :: Nil, self, timestamp, noSync = noSync,
-          EventCallback(async = async, event ⇒
-            promise complete Try { callback(event.asInstanceOf[Stamped[KeyedEvent[EE]]]) })))
+          EventCallback(
+            async = async,
+            event ⇒ promise complete Try { callback(event.asInstanceOf[Stamped[KeyedEvent[EE]]]) })))
     }
 
   protected final def defer(callback: ⇒ Unit): Unit =

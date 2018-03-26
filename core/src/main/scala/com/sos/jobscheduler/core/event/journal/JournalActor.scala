@@ -161,10 +161,10 @@ extends Actor with Stash {
 
     case Input.GetState ⇒
       sender() ! (
-        if (jsonWriter != null)
-          Output.State(isFlushed = jsonWriter.isFlushed, isSynced = jsonWriter.isSynced)
+        if (jsonWriter == null)
+          Output.State(isFlushed = false, isSynced = false)
         else
-          Output.State(isFlushed = false, isSynced = false))
+          Output.State(isFlushed = jsonWriter.isFlushed, isSynced = jsonWriter.isSynced))
 
     case Terminated(a) ⇒
       val keys = keyToJournalingActor collect { case (k, `a`) ⇒ k }
@@ -224,9 +224,8 @@ extends Actor with Stash {
     new FileJsonWriter(Header, convertOutputStream, file, append = append)
 
   private def writeToDisk(jsons: Seq[Json], errorReplyTo: ActorRef): Unit =
-    try {
-      for (jsValue ← jsons) jsonWriter.writeJson(ByteString(jsValue.compactPrint))
-    } catch { case NonFatal(t) ⇒
+    try for (jsValue ← jsons) jsonWriter.writeJson(ByteString(jsValue.compactPrint))
+    catch { case NonFatal(t) ⇒
       val tt = t.appendCurrentStackTrace
       logger.error(s"$t", t)
       errorReplyTo.forward(Output.StoreFailure(tt))  // TODO Handle message in JournaledActor
