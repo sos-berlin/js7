@@ -58,12 +58,10 @@ extends KeyedJournalingActor[TestEvent] {
             sender() ! Response.Completed(disturbance)
           }
 
-        case Command.AppendNoSync(string) ⇒
-          for (c ← string) {
-            persist(TestEvent.Appended(c), noSync = true) { e ⇒
-              update(e)
-              sender() ! Response.Completed(disturbance)
-            }
+        case Command.AppendNoSync(char) ⇒
+          persist(TestEvent.Appended(char), noSync = true) { e ⇒
+            update(e)
+            sender() ! Response.Completed(disturbance)
           }
 
         case Command.AppendAsync(string) ⇒
@@ -142,7 +140,7 @@ private[tests] object TestAggregateActor {
     final case object DisturbAndRespond extends Command
     final case class Add(string: String) extends Command
     final case class Append(string: String) extends Command
-    final case class AppendNoSync(string: String) extends Command
+    final case class AppendNoSync(char: Char) extends Command
     final case class AppendAsync(string: String) extends Command with IsAsync
     final case class AppendNested(string: String) extends Command
     final case class AppendNestedAsync(string: String) extends Command with IsAsync
