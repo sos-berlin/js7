@@ -4,17 +4,19 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.base.exceptions.StandardPublicException
-import com.sos.jobscheduler.common.akkahttp.WebLogDirectives.handleErrorAndLog
 import org.scalatest.FreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest {
+final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest with WebLogDirectives {
+
+  protected def config = WebLogDirectives.TestConfig
+  protected def actorSystem = system
 
   "RuntimeException" in {
     Post("/") ~>
-      handleErrorAndLog(WebLogDirectives.TestConfig, system).apply {
+      handleErrorAndLog {
         complete {
           throw new RuntimeException("MESSAGE")
         }
@@ -27,7 +29,7 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest {
 
   "Any exception" in {
     Post("/") ~>
-      handleErrorAndLog(WebLogDirectives.TestConfig, system).apply {
+      handleErrorAndLog {
         complete { throw new RuntimeException("MESSAGE") {}
         }
       } ~>
@@ -39,7 +41,7 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest {
 
   "getMessage == null" in {
     Post("/") ~>
-      handleErrorAndLog(WebLogDirectives.TestConfig, system).apply {
+      handleErrorAndLog {
         complete {
           throw new RuntimeException
         }
@@ -52,7 +54,7 @@ final class WebLogDirectivesTest extends FreeSpec with ScalatestRouteTest {
 
   "PublicException" in {
     Post("/") ~>
-      handleErrorAndLog(WebLogDirectives.TestConfig, system).apply {
+      handleErrorAndLog {
         complete { throw new StandardPublicException("PUBLIC MESSAGE")
         }
       } ~>

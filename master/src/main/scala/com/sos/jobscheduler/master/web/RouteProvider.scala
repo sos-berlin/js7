@@ -3,7 +3,7 @@ package com.sos.jobscheduler.master.web
 import akka.actor.{ActorRefFactory, ActorSystem}
 import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
-import com.sos.jobscheduler.common.akkahttp.WebLogDirectives.handleErrorAndLog
+import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
@@ -26,14 +26,14 @@ extends AllRoute {
   protected val actorSystem = injector.instance[ActorSystem]
   protected def actorRefFactory = actorSystem
   protected val masterConfiguration = injector.instance[MasterConfiguration]
-  private val config                = injector.instance[Config]
+  protected val config              = injector.instance[Config]
   protected def eventCollector      = injector.instance[EventCollector]
   protected def eventIdGenerator    = injector.instance[EventIdGenerator]
   protected val executionContext    = injector.instance[ExecutionContext]
   protected val scheduler           = injector.instance[Scheduler]
 
   def route(implicit actorRefFactory: ActorRefFactory): Route =
-    handleErrorAndLog(config, actorSystem).apply {
+    WebLogDirectives(config, actorSystem).handleErrorAndLog {
       gateKeeper.restrict.apply { _ ⇒
         allRoutes
       }

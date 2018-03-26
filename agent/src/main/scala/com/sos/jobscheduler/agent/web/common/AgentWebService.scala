@@ -3,7 +3,7 @@ package com.sos.jobscheduler.agent.web.common
 import akka.actor.{ActorRefFactory, ActorSystem}
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.common.akkahttp.WebLogDirectives.handleErrorAndLog
+import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
 import com.sos.jobscheduler.common.akkahttp.web.auth.GateKeeper
 import com.sos.jobscheduler.common.akkahttp.web.session.SessionRegister
 import com.typesafe.config.Config
@@ -27,7 +27,7 @@ trait AgentWebService {
   protected final lazy val routeBuilder = new RouteBuilder(sessionRegister)
 
   final def buildRoute(gateKeeper: GateKeeper)(implicit actorRefFactory: ActorRefFactory): Route =
-    handleErrorAndLog(config, actorSystem).apply {
+    WebLogDirectives(config, actorSystem).handleErrorAndLog {
       routeBuilder.buildRoute(gateKeeper, uriPathPrefix = uriPathPrefix)
     }
 }

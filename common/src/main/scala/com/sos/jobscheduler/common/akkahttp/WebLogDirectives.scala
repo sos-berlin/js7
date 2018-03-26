@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError}
 import akka.http.scaladsl.model.headers.{CustomHeader, `Remote-Address`}
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, RemoteAddress}
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.directives.LoggingMagnet
 import akka.http.scaladsl.server.{Directive0, ExceptionHandler, RejectionHandler, RouteResult}
 import com.sos.jobscheduler.base.exceptions.PublicException
@@ -13,6 +14,7 @@ import com.sos.jobscheduler.base.utils.ScalaUtils.RichThrowable
 import com.sos.jobscheduler.base.utils.ScalazStyle.OptionRichBoolean
 import com.sos.jobscheduler.base.utils.Strings.RichString
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.{addHeader, passIf}
+import com.sos.jobscheduler.common.akkahttp.WebLogDirectives._
 import com.sos.jobscheduler.common.log.LogLevel
 import com.sos.jobscheduler.common.log.LogLevel._
 import com.sos.jobscheduler.common.scalautil.Logger
@@ -24,42 +26,51 @@ import scala.collection.JavaConverters._
 /**
   * @author Joacim Zschimmer
   */
-object WebLogDirectives {
-  private val webLogger = Logger("Web")
+trait WebLogDirectives {
 
-  val TestConfig = ConfigFactory.parseMap(Map(
-    "jobscheduler.webserver.log.level" → "debug",
-    "jobscheduler.webserver.log.elapsed-time" → false.toString,
-    "jobscheduler.webserver.verbose-error-messages" → true.toString)
-    .asJava)
+  protected def config: Config
+  protected def actorSystem: ActorSystem
 
-  def handleErrorAndLog(config: Config, system: ActorSystem): Directive0 = {
-    val logLevel = LogLevel(config.getString("jobscheduler.webserver.log.level"))
-    val withTimestamp = config.getBoolean("jobscheduler.webserver.log.elapsed-time")
-    val verboseErrorMessages = config.getBoolean("jobscheduler.webserver.verbose-error-messages")
-    val hasRemoteAddress = system.settings.config.getBoolean("akka.http.server.remote-address-header")
-    val exceptionHandler = ExceptionHandler {
-      case e: PublicException ⇒
-        extractRequest { request ⇒
-          webLogger.debug(toLogMessage(request, e), e)
-          complete((BadRequest, e.publicMessage + "\n"))
-        }
+  private lazy val logLevel = LogLevel(config.getString("jobscheduler.webserver.log.level"))
+  private lazy val withTimestamp = config.getBoolean("jobscheduler.webserver.log.elapsed-time")
+  private lazy val hasRemoteAddress = actorSystem.settings.config.getBoolean("akka.http.server.remote-address-header")
 
-      case e: HttpStatusCodeException ⇒
-        complete((e.statusCode, e.message + "\n"))
-
-      case e ⇒
-        extractRequest { request ⇒
-          webLogger.debug(toLogMessage(request, e), e)
-          if (verboseErrorMessages)
-            complete((InternalServerError, e.toStringWithCauses + "\n"))  // .toSimplifiedString hides combined Problems (see Problem.semigroup)
-          else
-            complete(InternalServerError)
-        }
-    }
+  def handleErrorAndLog: Directive0 =
     mapInnerRoute { inner ⇒
       (passIf(!withTimestamp) | addHeader(`X-JobScheduler-Request-Started-At`(System.nanoTime))) {
         logRequestResult(LoggingMagnet(_ ⇒ log(logLevel, hasRemoteAddress = hasRemoteAddress))) {
+          handleError {
+            inner
+          }
+        }
+      }
+    }
+
+  private lazy val verboseErrorMessages = config.getBoolean("jobscheduler.webserver.verbose-error-messages")
+  private val exceptionHandler = ExceptionHandler {
+    case e: PublicException ⇒
+      extractRequest { request ⇒
+        webLogger.debug(toLogMessage(request, e), e)
+        complete((BadRequest, e.publicMessage + "\n"))
+      }
+
+    case e: HttpStatusCodeException ⇒
+      complete((e.statusCode, e.message + "\n"))
+
+    case e ⇒
+      extractRequest { request ⇒
+        webLogger.debug(toLogMessage(request, e), e)
+        if (verboseErrorMessages)
+          complete((InternalServerError, e.toStringWithCauses + "\n"))  // .toSimplifiedString hides combined Problems (see Problem.semigroup)
+        else
+          complete(InternalServerError)
+      }
+  }
+
+  def handleError: Directive0 = {
+    mapInnerRoute { inner ⇒
+      extractSettings { implicit routingSettings ⇒
+        seal {
           handleExceptions(exceptionHandler) {
             handleRejections(RejectionHandler.default) {
               inner
@@ -128,4 +139,23 @@ object WebLogDirectives {
 
   private def toLogMessage(request: HttpRequest, throwable: Throwable) =
     s"Error while handling ${request.method.value} ${request.uri}: ${throwable.toStringWithCauses}"
+}
+
+object WebLogDirectives {
+  private val webLogger = Logger("Web")
+
+  val TestConfig = ConfigFactory.parseMap(Map(
+    "jobscheduler.webserver.log.level" → "debug",
+    "jobscheduler.webserver.log.elapsed-time" → false.toString,
+    "jobscheduler.webserver.verbose-error-messages" → true.toString)
+    .asJava)
+
+  def apply(config: Config, actorSystem: ActorSystem): WebLogDirectives = {
+    val c = config
+    val a = actorSystem
+    new WebLogDirectives {
+      def config = c
+      def actorSystem = a
+    }
+  }
 }
