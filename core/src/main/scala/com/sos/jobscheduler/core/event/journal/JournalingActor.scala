@@ -30,9 +30,6 @@ trait JournalingActor[E <: Event] extends Actor with Stash with ActorLogging {
     stashingCount = Inhibited
   }
 
-  private[event] final def persistAsyncKeyedEvent[EE <: E, A](keyedEvent: KeyedEvent[EE])(callback: Stamped[KeyedEvent[EE]] ⇒ A): Future[A] =
-    persistKeyedEvent(keyedEvent, async = true)(callback)
-
   private[event] final def persistKeyedEvent[EE <: E, A](
     keyedEvent: KeyedEvent[EE],
     timestamp: Option[Timestamp] = None,

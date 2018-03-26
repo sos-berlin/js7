@@ -54,8 +54,8 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
       assert(journalAggregates.isEmpty)
       assert(journalKeyedEvents == testEvents("TEST"))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
-        TestAggregate("TEST-A", "AAAabcdefghijkl"),
-        TestAggregate("TEST-C", "CCC"))
+        TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
+        TestAggregate("TEST-C", "(C.Add)"))
     }
   }
 
@@ -63,15 +63,15 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
     withTestActor { (actorSystem, actor) ⇒
       assert(journalAggregates.isEmpty)
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
-        TestAggregate("TEST-A", "AAAabcdefghijkl"),
-        TestAggregate("TEST-C", "CCC"))
+        TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
+        TestAggregate("TEST-C", "(C.Add)"))
 
       execute(actorSystem, actor, "TEST-D", TestAggregateActor.Command.Add("DDD")) await 99.s
 
       (actor ? TestActor.Input.TakeSnapshot).mapTo[JournalActor.Output.SnapshotTaken.type] await 99.s
       assert(journalAggregates == Set(
-        TestAggregate("TEST-A", "AAAabcdefghijkl"),
-        TestAggregate("TEST-C", "CCC"),
+        TestAggregate("TEST-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
+        TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD")))
       assert(journalKeyedEvents.isEmpty)
 
@@ -82,7 +82,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
   "Third run, recovering from snapshot and journal" in {
     withTestActor { (_, actor) ⇒
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
-        TestAggregate("TEST-C", "CCC"),
+        TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"))
     }
   }
@@ -97,7 +97,7 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
       execute(actorSystem, actor, "TEST-E", TestAggregateActor.Command.Append("Cc")) await 99.s
       assert(journalState == JournalActor.Output.State(isFlushed = true, isSynced = true))
       ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual Set(
-        TestAggregate("TEST-C", "CCC"),
+        TestAggregate("TEST-C", "(C.Add)"),
         TestAggregate("TEST-D", "DDD"),
         TestAggregate("TEST-E", "ABCc"))
     }
@@ -125,9 +125,9 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
         assert(prefixToKeyedEvents.keySet == prefixes.toSet)
         for (p ← prefixes) assert(prefixToKeyedEvents(p) == testEvents(p))
         ((actor ? TestActor.Input.GetAll).mapTo[Vector[TestAggregate]] await 99.s).toSet shouldEqual
-          (prefixes flatMap { p ⇒ Set(
-            TestAggregate(s"$p-A", "AAAabcdefghijkl"),
-            TestAggregate(s"$p-C", "CCC")) }
+          prefixes.flatMap(p ⇒ Set(
+            TestAggregate(s"$p-A", "(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
+            TestAggregate(s"$p-C", "(C.Add)"))
           ).toSet
       }
     }
@@ -195,8 +195,16 @@ final class JournalTest extends FreeSpec with BeforeAndAfterAll {
               command match {
                 case _: TestAggregateActor.Command.Add ⇒
                 case TestAggregateActor.Command.Remove ⇒
-                case _: TestAggregateActor.Command.IsAsync ⇒ assert(disturbance == before + 1, s" - Disturbance expected: $command -> $msg")
-                case _ ⇒ assert(disturbance == before, s" - persist operation has been disturbed: $command -> $msg")
+
+                case _: TestAggregateActor.Command.IsAsync ⇒
+                  // Async persist may be disturbed or not.
+                  // This test does not ensure arrival of message `Command.Disturb` before message `JournalActor.Output.Stored`
+                  if (disturbance != before) {
+                    assert(disturbance == before + 1, s" - Disturbance expected: $command -> $msg")
+                  }
+
+                case _ ⇒
+                  assert(disturbance == before, s" - persist operation has been disturbed: $command -> $msg")
               }
               promise.success(())
             }
@@ -251,31 +259,21 @@ object JournalTest {
   private val disturbanceCounter = new AtomicInteger
 
   private def testCommands(prefix: String) = Vector(
-    s"$prefix-A" → TestAggregateActor.Command.Add("AAA"),
-    s"$prefix-B" → TestAggregateActor.Command.Add("BBB"),
-    s"$prefix-C" → TestAggregateActor.Command.Add("CCC"),
-    s"$prefix-A" → TestAggregateActor.Command.Append("abc"),
+    s"$prefix-A" → TestAggregateActor.Command.Add("(A.Add)"),
+    s"$prefix-B" → TestAggregateActor.Command.Add("(B.Add)"),
+    s"$prefix-C" → TestAggregateActor.Command.Add("(C.Add)"),
+    s"$prefix-A" → TestAggregateActor.Command.Append("(A.Append)"),
     s"$prefix-A" → TestAggregateActor.Command.Append(""),
-    s"$prefix-A" → TestAggregateActor.Command.AppendAsync("def"),
-    s"$prefix-A" → TestAggregateActor.Command.AppendNested("ghi"),
-    s"$prefix-A" → TestAggregateActor.Command.AppendNestedAsync("jkl"),
+    s"$prefix-A" → TestAggregateActor.Command.AppendAsync("(A.AppendAsync)"),
+    s"$prefix-A" → TestAggregateActor.Command.AppendNested("(A.AppendNested)"),
+    s"$prefix-A" → TestAggregateActor.Command.AppendNestedAsync("(A.AppendNestedAsync)"),
     s"$prefix-B" → TestAggregateActor.Command.Remove)
 
-  private def testEvents(prefix: String) = Vector(
-    s"$prefix-A" <-: TestEvent.Added("AAA"),
-    s"$prefix-B" <-: TestEvent.Added("BBB"),
-    s"$prefix-C" <-: TestEvent.Added("CCC"),
-    s"$prefix-A" <-: TestEvent.Appended('a'),
-    s"$prefix-A" <-: TestEvent.Appended('b'),
-    s"$prefix-A" <-: TestEvent.Appended('c'),
-    s"$prefix-A" <-: TestEvent.Appended('d'),
-    s"$prefix-A" <-: TestEvent.Appended('e'),
-    s"$prefix-A" <-: TestEvent.Appended('f'),
-    s"$prefix-A" <-: TestEvent.Appended('g'),
-    s"$prefix-A" <-: TestEvent.Appended('h'),
-    s"$prefix-A" <-: TestEvent.Appended('i'),
-    s"$prefix-A" <-: TestEvent.Appended('j'),
-    s"$prefix-A" <-: TestEvent.Appended('k'),
-    s"$prefix-A" <-: TestEvent.Appended('l'),
-    s"$prefix-B" <-: TestEvent.Removed)
+  private def testEvents(prefix: String) =
+    Vector(
+      s"$prefix-A" <-: TestEvent.Added("(A.Add)"),
+      s"$prefix-B" <-: TestEvent.Added("(B.Add)"),
+      s"$prefix-C" <-: TestEvent.Added("(C.Add)")) ++
+    "(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)".map(ch ⇒ s"$prefix-A" <-: TestEvent.Appended(ch)) :+
+    (s"$prefix-B" <-: TestEvent.Removed)
 }
