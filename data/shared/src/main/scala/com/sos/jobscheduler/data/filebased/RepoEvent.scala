@@ -19,8 +19,8 @@ object RepoEvent {
 
   sealed trait FileBasedAddedOrChanged extends FileBasedEvent with Product {
     def fileBased: FileBased
-    final def path = id.path
-    def id = fileBased.id
+    final def path: FileBased#Path = id.path
+    def id: FileBasedId[FileBased#Path] = fileBased.id
     def toShortString = s"$productPrefix($id)"
   }
   object FileBasedAddedOrChanged {

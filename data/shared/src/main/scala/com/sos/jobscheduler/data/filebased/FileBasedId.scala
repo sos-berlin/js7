@@ -7,7 +7,7 @@ import io.circe.{Decoder, Encoder, JsonObject, ObjectEncoder}
 /**
   * @author Joacim Zschimmer
   */
-final case class FileBasedId[P <: TypedPath](path: P, versionId: VersionId)
+final case class FileBasedId[+P <: TypedPath](path: P, versionId: VersionId)
 {
   def toSimpleString = path.string + VersionSeparator + versionId.string
 
