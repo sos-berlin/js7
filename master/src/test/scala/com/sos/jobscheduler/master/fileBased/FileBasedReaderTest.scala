@@ -29,14 +29,14 @@ final class FileBasedReaderTest extends FreeSpec {
         Valid(AWorkflow withVersion V0),
         Valid(BWorkflow withVersion V0),
         Valid(CWorkflow withVersion V0),
-        Invalid(Problem("""Problem with 'Workflow:/D (txt)': Failure(End:1:1 ..."ERROR")""")),
+        Invalid(Problem("""Problem with 'Workflow:/D (txt)': End:1:1 ..."ERROR"""")),
         Invalid(Problem("""File 'folder/test.alien.json' is not recognized as a configuration file""")),
         Valid(AAgent withVersion V0),
         Valid(BAgent withVersion V0)))
 
       assert(readDirectoryTree(Set(WorkflowReader, AgentReader), directory, VersionId("VERSION")) ==
         Invalid(Problem.set(
-          """Problem with 'Workflow:/D (txt)': Failure(End:1:1 ..."ERROR")""",
+          """Problem with 'Workflow:/D (txt)': End:1:1 ..."ERROR"""",
           """File 'folder/test.alien.json' is not recognized as a configuration file""")))
 
       (directory / "A.workflow.txt").contentString = ""

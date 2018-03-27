@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.gui.components.workfloworders
 
 import com.sos.jobscheduler.data.workflow.Position.BranchId
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, IfReturnCode, ImplicitEnd}
+import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, If, ImplicitEnd}
 import com.sos.jobscheduler.data.workflow.{Instruction, InstructionNr, Position}
 import com.sos.jobscheduler.master.gui.common.Renderers._
 import com.sos.jobscheduler.master.gui.common.Utils.memoize
@@ -67,7 +67,7 @@ extends OnUnmount {
               renderNested(branch.workflow.numberedInstructions, position / branch.id, nesting + 1)
             }
 
-          case _if: IfReturnCode ⇒
+          case _if: If ⇒
             def renderBranch(branch: BranchId.Indexed) = for (w ← _if.workflow(branch.number))  // always Valid
               renderNested(stripImplicitEnd(w.numberedInstructions), position / branch, nesting + 1)
             renderBranch(0)  // then

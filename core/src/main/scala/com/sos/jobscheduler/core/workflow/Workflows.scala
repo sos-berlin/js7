@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.workflow
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.workflow.Instruction.{@:, Labeled}
 import com.sos.jobscheduler.data.workflow.Workflow
-import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, Job}
 
 /**
   * @author Joacim Zschimmer
@@ -16,7 +16,7 @@ object Workflows {
     def reduceForAgent(agentPath: AgentPath): Workflow =
       underlying.copy(
         labeledInstructions = labeledInstructions map {
-          case labels @: (instr: IfReturnCode) ⇒
+          case labels @: (instr: If) ⇒
             labels @: instr.copy(
               thenWorkflow = instr.thenWorkflow.reduceForAgent(agentPath),
               elseWorkflow = instr.elseWorkflow map (_.reduceForAgent(agentPath)))

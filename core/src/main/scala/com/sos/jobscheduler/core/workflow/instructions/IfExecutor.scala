@@ -1,0 +1,37 @@
+package com.sos.jobscheduler.core.workflow.instructions
+
+import com.sos.jobscheduler.base.problem.Checked._
+import com.sos.jobscheduler.base.utils.ScalazStyle._
+import com.sos.jobscheduler.common.scalautil.Logger
+import com.sos.jobscheduler.core.expression.{Evaluator, Scope}
+import com.sos.jobscheduler.data.order.{Order, Outcome}
+import com.sos.jobscheduler.data.workflow.instructions.If
+import com.sos.jobscheduler.data.workflow.{OrderContext, Position}
+
+/**
+  * @author Joacim Zschimmer
+  */
+object IfExecutor extends PositionInstructionExecutor {
+
+  type Instr = If
+
+  private val logger = Logger(getClass)
+
+  def nextPosition(context: OrderContext, order: Order[Order.Processed], instruction: If): Option[Position] = {
+    assert(order == context.idToOrder(order.id).withPosition(order.position))
+    order.state.outcome match {
+      case Outcome.Succeeded(returnCode) ⇒
+        Evaluator.evalBoolean(new Scope(returnCode, order.variables), instruction.predicate)
+          .map {
+            case true ⇒ Some(0)  // Then
+            case false ⇒ instruction.elseWorkflow.isDefined ? 1  // Else
+          }.map {
+            case Some(thenOrElse) ⇒ Position(Position.Parent(order.position.nr, thenOrElse) :: Nil, 0)
+            case None ⇒ order.position.increment  // Skip statement
+          }.onProblem(p ⇒ logger.error(s"$p")) // TODO None is an error. Return Invalid
+
+      case _ ⇒
+        None
+    }
+  }
+}

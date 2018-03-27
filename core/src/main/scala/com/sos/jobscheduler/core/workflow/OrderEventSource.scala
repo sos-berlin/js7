@@ -3,7 +3,6 @@ package com.sos.jobscheduler.core.workflow
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.workflow.instructions.InstructionExecutor
 import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
@@ -88,7 +87,7 @@ final class OrderEventSource(
         //case _: End if order.position.isNested ⇒
         //  order.position.dropChild flatMap (returnPosition ⇒
         //    workflow.instruction(returnPosition) match {
-        //      case _: IfReturnCode ⇒
+        //      case _: If ⇒
         //        nextPosition(order withPosition returnPosition)
         //      case _ ⇒
         //        None
@@ -100,8 +99,4 @@ final class OrderEventSource(
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
     idToWorkflow(workflowPosition.workflowId).orThrow.instruction(workflowPosition.position)
-}
-
-object OrderEventSource {
-  private val logger = Logger(getClass)
 }

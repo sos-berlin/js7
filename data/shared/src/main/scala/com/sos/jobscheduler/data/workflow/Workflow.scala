@@ -12,7 +12,7 @@ import com.sos.jobscheduler.data.folder.FolderPath
 import com.sos.jobscheduler.data.workflow.Instruction._
 import com.sos.jobscheduler.data.workflow.Workflow.isCorrectlyEnded
 import com.sos.jobscheduler.data.workflow.instructions.Instructions.jsonCodec
-import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{End, ForkJoin, Gap, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Job}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, JsonObject, ObjectEncoder}
 import scala.collection.immutable.{IndexedSeq, Seq}
@@ -104,7 +104,7 @@ extends FileBased
         }
       case Position(Position.Parent(nr, branch: Position.BranchId.Indexed) :: tail, tailNr) ⇒
         instruction(nr) match {
-          case instr: IfReturnCode ⇒ instr.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
+          case instr: If ⇒ instr.workflow(branch) exists (_ isDefinedAt Position(tail, tailNr))
           case _ ⇒ false
         }
     }
@@ -128,7 +128,7 @@ extends FileBased
 
       case Position(Position.Parent(nr, branchId) :: tail, tailNr) ⇒
         (instruction(nr), branchId) match {
-          case (instr: IfReturnCode, Position.BranchId.Indexed(index)) ⇒
+          case (instr: If, Position.BranchId.Indexed(index)) ⇒
             instr.workflow(index) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
           case (fj: ForkJoin, branchId: Position.BranchId.Named) ⇒
             fj.workflowOption(branchId) map (_.instruction(Position(tail, tailNr))) getOrElse Gap
@@ -157,7 +157,7 @@ extends FileBased
         (instruction(nr), branchId) match {
           case (o: ForkJoin, branchId: Position.BranchId.Named) ⇒
             o.workflowOption(branchId) flatMap (_.workflowOption(tail))
-          case (o: IfReturnCode, branchId: Position.BranchId.Indexed) ⇒
+          case (o: If, branchId: Position.BranchId.Indexed) ⇒
             o.workflow(branchId).toOption flatMap (_.workflowOption(tail))
           case _ ⇒
             None

@@ -10,21 +10,21 @@ import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPat
 import com.sos.jobscheduler.common.system.OperatingSystem.isWindows
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
-import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{EventSeq, KeyedEvent, TearableEventSeq}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderDetachable, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStopped, OrderTransferredToAgent, OrderTransferredToMaster}
 import com.sos.jobscheduler.data.order.{FreshOrder, OrderEvent, OrderId, Outcome, Payload}
+import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Position, WorkflowPath}
 import com.sos.jobscheduler.master.tests.TestEventCollector
-import com.sos.jobscheduler.tests.IfReturnCodeTest._
+import com.sos.jobscheduler.tests.IfTest._
 import org.scalatest.FreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.higherKinds
 
-final class IfReturnCodeTest extends FreeSpec {
+final class IfTest extends FreeSpec {
 
   "test" in {
     autoClosing(new DirectoryProvider(List(TestAgentPath))) { directoryProvider ⇒
@@ -62,11 +62,11 @@ final class IfReturnCodeTest extends FreeSpec {
   }
 }
 
-object IfReturnCodeTest {
+object IfTest {
   private val TestAgentPath = AgentPath("/AGENT")
   private val script = """
       |job "JOB-RC" on "AGENT" successReturnCodes=(0, 1); // #0
-      |if (returnCode 0) {      // #1
+      |if (returnCode == 0) {    // #1
       |  job "JOB" on "AGENT";  // #1/0/0
       |} else {
       |  job "JOB" on "AGENT";  // #1/1/0

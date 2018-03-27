@@ -6,9 +6,9 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.simpleByteStringSource
 import com.sos.jobscheduler.core.filebased.FileBasedReader
-import com.sos.jobscheduler.core.workflow.notation.WorkflowParser
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.folder.FolderPath
+import com.sos.jobscheduler.data.workflow.parser.WorkflowParser
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId}
 import com.sos.jobscheduler.master.order.LegacyJobchainXmlParser
 

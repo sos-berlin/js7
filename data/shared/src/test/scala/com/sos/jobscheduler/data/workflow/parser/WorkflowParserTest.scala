@@ -1,11 +1,11 @@
-package com.sos.jobscheduler.core.workflow.notation
+package com.sos.jobscheduler.data.workflow.parser
 
 import cats.data.Validated.{Invalid, Valid}
-import com.sos.jobscheduler.common.time.Stopwatch.{measureTime, measureTimeParallel}
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderId
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, Job, Offer, ReturnCodeMeaning}
+import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, In, ListExpression, NumericConstant, Or, OrderReturnCode, StringConstant, Variable}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, ExplicitEnd, Goto, If, IfNonZeroReturnCodeGoto, Job, Offer, ReturnCodeMeaning}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
 import com.sos.jobscheduler.data.workflow.{Label, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -72,23 +72,26 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "if (...)" in {
-    val source = """if (returnCode 1, 2, 3) { job "THEN" on "AGENT" }"""
+    val source = """if (returnCode in (1, 2) || $KEY == "VALUE") { job "THEN" on "AGENT" }"""
     assert(parse(source) ==
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          IfReturnCode(List(ReturnCode(1), ReturnCode(2), ReturnCode(3)),
+          If(
+            Or(
+              In(OrderReturnCode, ListExpression(NumericConstant(1) :: NumericConstant(2) :: Nil)),
+              Equal(Variable(StringConstant("KEY")), StringConstant("VALUE"))),
             Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT"))))),
         Some(source)))
   }
 
   "if (...) else" in {
-    val source = """if (returnCode -1) { job "THEN" on "AGENT" } else { job "ELSE" on "AGENT" }"""
+    val source = """if (returnCode == -1) { job "THEN" on "AGENT" } else { job "ELSE" on "AGENT" }"""
     assert(parse(source) ==
       Workflow(
         WorkflowPath.NoId,
         Vector(
-          IfReturnCode(List(ReturnCode(-1)),
+          If(Equal(OrderReturnCode, NumericConstant(-1)),
             Workflow.of(Job(JobPath("/THEN"), AgentPath("/AGENT"))),
             Some(Workflow.of(Job(JobPath("/ELSE"), AgentPath("/AGENT")))))),
         Some(source)))
@@ -126,19 +129,19 @@ final class WorkflowParserTest extends FreeSpec {
       Some(source)))
   }
 
-  for (n ← sys.props.get("test.speed") map (_.toInt)) "Speed" - {
-    s"Parsing $n processes" in {
-      info(measureTime(n, "processes") {
-        parse(TestWorkflowNotation)
-      }.toString)
-    }
-
-    s"Parsing and compiling $n processes, parallel" in {
-      info(measureTimeParallel(n, "processes") {
-        parse(TestWorkflowNotation)
-      }.toString)
-    }
-  }
+  //for (n ← sys.props.get("test.speed") map (_.toInt)) "Speed" - {
+  //  s"Parsing $n processes" in {
+  //    info(measureTime(n, "processes") {
+  //      parse(TestWorkflowNotation)
+  //    }.toString)
+  //  }
+  //
+  //  s"Parsing and compiling $n processes, parallel" in {
+  //    info(measureTimeParallel(n, "processes") {
+  //      parse(TestWorkflowNotation)
+  //    }.toString)
+  //  }
+  //}
 
   "Comments" in {
     val source = """/*comment

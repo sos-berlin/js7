@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.gui.components.workfloworders
 
 import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.data.workflow.Instruction.@:
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, IfReturnCode, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, If, ImplicitEnd, Job}
 import japgolly.scalajs.react.ScalaComponent
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.html_<^._
@@ -22,8 +22,8 @@ private[workfloworders] object InstructionComponent
           case _: ForkJoin ⇒
             "fork"
 
-          case instr: IfReturnCode ⇒
-            s"if (returnCode ${instr.returnCodes map (_.number) mkString ", "})"
+          case instr: If ⇒
+            s"if (${instr.predicate})"
 
           case job: Job ⇒
             VdomArray(

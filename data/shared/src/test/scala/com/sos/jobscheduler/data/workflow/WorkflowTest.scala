@@ -3,9 +3,10 @@ package com.sos.jobscheduler.data.workflow
 import cats.syntax.option.catsSyntaxOptionId
 import com.sos.jobscheduler.base.circeutils.CirceUtils.JsonStringInterpolator
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.workflow.WorkflowTest._
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, ImplicitEnd, Job}
+import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, ForkJoin, Goto, If, IfNonZeroReturnCodeGoto, ImplicitEnd, Job}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
@@ -18,7 +19,7 @@ final class WorkflowTest extends FreeSpec {
   "labelToPosition" in {
     val workflow = Workflow.of(
       "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")),
-      IfReturnCode(List(ReturnCode(1)),
+      If(Equal(OrderReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(
           "B" @: Job(JobPath("/JOB"), AgentPath("/AGENT")))),
       "B" @: ExplicitEnd)
@@ -100,8 +101,7 @@ final class WorkflowTest extends FreeSpec {
   "isDefinedAt, instruction" in {
     val addressToInstruction = List(
       Position(0) → AJob,
-      Position(1) → IfReturnCode(
-        ReturnCode(1) :: Nil,
+      Position(1) → If(Equal(OrderReturnCode, NumericConstant(1)),
         thenWorkflow = Workflow.of(AJob),
         elseWorkflow = Some(Workflow.of(BJob))),
       Position(1, 0, 0) → AJob,
@@ -138,8 +138,8 @@ final class WorkflowTest extends FreeSpec {
           "instructions": [
             { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
             {
-              "TYPE": "IfReturnCode",
-              "returnCodes": [ 1 ],
+              "TYPE": "If",
+              "predicate": "returnCode == 1",
               "then": {
                 "instructions": [
                   { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
@@ -192,8 +192,7 @@ object WorkflowTest {
   val TestWorkflow = Workflow.of(
     WorkflowPath("/TEST") % "VERSION",
     AJob,
-    IfReturnCode(
-      ReturnCode(1) :: Nil,
+    If(Equal(OrderReturnCode, NumericConstant(1)),
       thenWorkflow = Workflow.of(AJob),
       elseWorkflow = Some(Workflow.of(BJob))),
     ForkJoin.of(

@@ -3,7 +3,7 @@ package com.sos.jobscheduler.core.workflow.instructions
 import com.sos.jobscheduler.data.event.KeyedEvent
 import com.sos.jobscheduler.data.order.Order
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
-import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, ForkJoin, Gap, If, IfReturnCode, Job, Offer}
+import com.sos.jobscheduler.data.workflow.instructions.{AwaitOrder, End, ForkJoin, Gap, If, Job, Offer}
 import com.sos.jobscheduler.data.workflow.{Instruction, OrderContext, Position}
 
 /**
@@ -30,7 +30,6 @@ object InstructionExecutor
       case _: ForkJoin ⇒ ForkJoinExecutor
       case _: Gap ⇒ GapExecutor
       case _: If ⇒ IfExecutor
-      case _: IfReturnCode ⇒ IfReturnCodeExecutor
       case _: Job ⇒ JobExecutor
       case _: Offer ⇒ OfferExecutor
     }

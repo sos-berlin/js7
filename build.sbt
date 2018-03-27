@@ -203,6 +203,7 @@ lazy val data = crossProject
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      "com.lihaoyi" %%% "fastparse" % fastparseVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "discipline" % disciplineVersion % "test"
@@ -405,8 +406,8 @@ lazy val core = project.dependsOn(common, tester.jvm % "compile->test")
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      fastparse ++
       scalaTest % "test" ++
+      scalaCheck % "test" ++
       log4j % "test"
   }
 

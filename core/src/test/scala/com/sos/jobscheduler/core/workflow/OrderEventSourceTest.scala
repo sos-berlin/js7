@@ -13,7 +13,8 @@ import com.sos.jobscheduler.data.event.{<-:, KeyedEvent}
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted}
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
-import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Gap, Goto, IfNonZeroReturnCodeGoto, IfReturnCode, Job}
+import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, OrderReturnCode}
+import com.sos.jobscheduler.data.workflow.instructions.{ExplicitEnd, Gap, Goto, If, IfNonZeroReturnCodeGoto, Job}
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
 import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import org.scalatest.FreeSpec
@@ -32,10 +33,10 @@ final class OrderEventSourceTest extends FreeSpec {
       Valid(Some(disruptedOrder.id <-: OrderMoved(Position(0)))))  // Move to same InstructionNr, and set Order.Ready
   }
 
-  "if returnCode" - {
+  "if" - {
     val workflow = Workflow.of(TestWorkflowId,
       job,                              // 0
-      IfReturnCode(List(ReturnCode(0)), // 1
+      If(Equal(OrderReturnCode, NumericConstant(0)), // 1
         Workflow.of(job)),              // 1,0,0
       job)                              // 2
 
@@ -62,11 +63,11 @@ final class OrderEventSourceTest extends FreeSpec {
 
   "if returnCode else" - {
     val workflow = Workflow.of(TestWorkflowId,
-      job,                                        // 0
-      IfReturnCode(List(ReturnCode(0)),           // 1
-        thenWorkflow = Workflow.of(job),          // 1,0,0
-        elseWorkflow = Some(Workflow.of(job))),   // 1,1,0
-      job)                                        // 2
+      job,                                            // 0
+      If(Equal(OrderReturnCode, NumericConstant(0)),  // 1
+        thenWorkflow = Workflow.of(job),              // 1,0,0
+        elseWorkflow = Some(Workflow.of(job))),       // 1,1,0
+      job)                                            // 2
 
     "then branch executed" in {
       assert(step(workflow, Outcome.succeeded) == Some(OrderMoved(Position(1, 0, 0))))

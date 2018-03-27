@@ -28,10 +28,11 @@ import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.data.agent.AgentPath
 import com.sos.jobscheduler.data.event.{KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
+import com.sos.jobscheduler.data.job.JobPath
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
 import com.sos.jobscheduler.data.order.{OrderEvent, OrderId}
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, IfReturnCode, Job}
+import com.sos.jobscheduler.data.workflow.instructions.expr.Expression.{Equal, NumericConstant, Or, OrderReturnCode}
+import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, If, Job}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -195,7 +196,7 @@ object TestMasterAgent {
             Workflow(
               WorkflowPath("/TestMasterAgent") % "1",
               Vector.fill(conf.workflowLength) { Job(TestJobPath, agentPath) }))),
-      IfReturnCode(List(ReturnCode(0), ReturnCode(1)),
+      If(Or(Equal(OrderReturnCode, NumericConstant(0)), Equal(OrderReturnCode, NumericConstant(0))),
         Workflow.of(Job(TestJobPath, conf.agentPaths.head)),
         Some(Workflow.of(Job(TestJobPath, conf.agentPaths.head)))))
 
