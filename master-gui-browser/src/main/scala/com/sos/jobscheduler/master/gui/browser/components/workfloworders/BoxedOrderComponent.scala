@@ -29,7 +29,7 @@ private[workfloworders] final class BoxedOrderComponent
         val selectedClass = orderSelector.cssClass(order.id)
         val highlighted = false //updatedAt > highlighter.lastHighlightedAt && selectedClass.isEmpty
         <.div(^.id := OrderSelector.elementId(order.id),
-              ^.cls := "sheet z-depth-1 orders-Order " + orderToClass(order) + selectedClass + (if (highlighted) "orders-Order-changed" else ""),
+              ^.cls := "sheet depth-1 orders-Order " + orderToClass(order) + selectedClass + (if (highlighted) "orders-Order-changed" else ""),
               ^.title := "Double-click for details",
               ^.onMouseOver --> Callback { orderSelector.onMouseOver(order) },
               ^.onMouseOut --> Callback { orderSelector.onMouseOut(order.id) },

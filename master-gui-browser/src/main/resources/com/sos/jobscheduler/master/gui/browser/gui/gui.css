@@ -45,7 +45,8 @@
 @keyframes material-icons-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .gear { color: #505050 }
 
-html { font-size: 12px; font-family: "Open Sans", Roboto, sans-serif; background-color: #fffefc }
+html, body { font-size: 12px; font-family: "Open Sans", Roboto, sans-serif; background-color: #fffefc }
+body { background-color: transparent; }
 th { vertical-align: bottom; white-space: nowrap; }
 td { vertical-align: top; }
 th, td { padding: 1px 10px; }
@@ -63,14 +64,11 @@ table.no-padding tbody tr td { padding: 0 }
 .clickable-row:hover { cursor: pointer; background-color: gold !important; }
 .link-highlight { cursor: pointer; background-color: gold !important; }
 .sheet { padding: 7px; background-color: white; }
+.depth-1 { box-shadow: 0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12); }
 .sheet-headline { padding: 0 0 1rem 0; font-size: 2rem; }
 
 .side-nav { padding-top: 5px; width: 120px; background-color: initial; }
-.container { width: 99%; }
 
-@media only screen and (min-width: 993px) {
-  .page-center { margin-left: 125px; }
-}
 @media (max-width: 992px) {
   .hide-on-mobile { display: none !important; }
   td, th { padding: 1px 4px; }
@@ -89,12 +87,12 @@ header, main, footer { padding-left: 150px; }
 .app-disconnected { background-color: #f0f0f0; opacity: 0.7; }
 .app-freezed      { background-color: #f0faff; opacity: 0.8; }
 
-.page-top { border-bottom: lightgray 0 solid; margin-bottom: 3em; font-size: 0.85rem; }
+.page-top { width: 100%; border-bottom: lightgray 0 solid; margin-bottom: 3em; font-size: 0.85rem; }
 .page-top-left { padding: 0; }
 .page-top-right { padding: 0; text-align: right; }
 .page-top-left-segment { white-space: nowrap; padding-right: 12px; }
 .page-top-right-segment { white-space: nowrap; padding-left: 12px; }
-.page-content {}
+.page-center { padding: 0 0.5rem; }
 
 .experimental-monitor { letter-spacing: 1.5px; }
 .freezed { color: #7ccefd; font-weight: bold;  }

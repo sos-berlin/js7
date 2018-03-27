@@ -21,21 +21,20 @@ final class GuiRenderer(
   private def state = stateSnapshot.value
 
   def render =
-    <.div(
-      <.header(
-        //menuClickHtml,
-        SideBarComponent()),
+    <.div(^.cls := "container.fluid",
+      //<.header(
+      //  //menuClickHtml,
+      //  SideBarComponent()),
       //HtmlTag("main"),
       //<.div(^.cls := "section", ^.id :="index-banner"),
       centerVdom)
 
   private def centerVdom =
     <.div(^.cls := "row")(
-      <.div(^.cls := "col s12")(
+      <.div(^.cls := "col")(
         <.div(^.cls := "page-center")(
           topLineVdom,
-          <.div(^.cls := "page-content")(
-            Router.route(stateSnapshot)))))
+          Router.route(stateSnapshot))))
 
   private def topLineVdom = {
     val (events, clock) = eventsAndClock
@@ -105,7 +104,6 @@ object GuiRenderer {
   }
 
   private def menuClickVdom =
-    <.div(^.cls := "container")(
-      <.a(^.href := "#", VdomAttr("data-activates") := "nav-mobile", ^.cls := "button-collapse top-nav waves-effect waves-light circle hide-on-large-only")(
-        <.i(^.cls := "material-icons")("menu")))
+    <.a(^.href := "#", VdomAttr("data-activates") := "nav-mobile", ^.cls := "button-collapse top-nav waves-effect waves-light circle hide-on-large-only")(
+      <.i(^.cls := "material-icons")("menu"))
 }

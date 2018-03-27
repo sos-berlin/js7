@@ -1,9 +1,10 @@
 import java.nio.ByteBuffer
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{FileVisitOption, Files}
+import java.util.jar.JarFile
 import java.util.{Base64, UUID}
 import sbt.{File, ModuleID}
 import scala.collection.JavaConverters._
-import scala.collection.immutable.Seq
 
 object BuildUtils {
   val isWindows = sys.props("os.name") startsWith "Windows"
@@ -27,6 +28,17 @@ object BuildUtils {
 
   implicit final class PercentModuleIDSeq(private val delegate: Seq[sbt.ModuleID]) extends AnyVal {
     def %(configurations: String) = delegate map { _ % configurations }
+  }
+
+  def copyJarEntries(jar: File, entryToFile: Seq[(String, File)]): Seq[File] = {
+    val jarFile = new JarFile(jar)
+    try for ((entryPath, file) ← entryToFile) yield {
+      val entry = jarFile.getEntry(entryPath)
+      if (entry == null) sys.error(s"Missing entry in $jar: $entryPath")
+      Files.createDirectories(file.toPath.getParent)
+      Files.copy(jarFile.getInputStream(entry), file.toPath, REPLACE_EXISTING)
+      file
+    } finally jarFile.close()
   }
 
   def recursiveFileMapping(directory: File, to: String = ""): Seq[(File, String)] = {

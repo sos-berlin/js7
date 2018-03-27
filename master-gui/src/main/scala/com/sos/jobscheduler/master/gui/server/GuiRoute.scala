@@ -19,6 +19,7 @@ trait GuiRoute extends WebjarsRoute {
 
   // Lazy and not in object to avoid ExceptionInInitializerError
   private lazy val ResourceDirectory = JavaResource("com/sos/jobscheduler/master/gui/browser/gui")
+  protected def copiedWebjarsResource = ResourceDirectory / "webjars"
 
   final def indexHtmlRoute =
     pathEndElseRedirect {

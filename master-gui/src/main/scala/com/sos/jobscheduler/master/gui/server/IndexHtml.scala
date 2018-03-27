@@ -27,7 +27,7 @@ object IndexHtml extends HtmlPage.Cached {
         tags2.title("JobScheduler Master"),
         meta(name := "viewport", content := "width=device-width, initial-scale=1.0, shrink-to-fit=no"),
         link(rel := "icon", `type` := "image/vnd.microsoft.icon", attr("sizes") := "64x64", `href` := s"master/gui/images/jobscheduler.ico?v=$buildId"),
-        link(rel := "stylesheet", href := "master/gui/webjars/materializecss/0.100.2/css/materialize.min.css"),
+        link(rel := "stylesheet", href := "master/gui/webjars/bootstrap/4.0.0/dist/css/bootstrap.min.css"),
         link(rel := "stylesheet", href := s"master/gui/gui.css?v=$buildId")),
         body(
           div(id := "GUI")(

@@ -27,6 +27,7 @@
   * sbt allows to preset these command line options in the environment variable SBT_OPTS. Use one line per option.
   */
 import BuildUtils._
+import Dependencies.bootstrapVersion
 import java.nio.file.Paths
 import sbt.Keys.testOptions
 import sbt.librarymanagement.DependencyFilter.artifactFilter
@@ -323,7 +324,6 @@ lazy val `master-clientJVM` = `master-client`.jvm
 lazy val `master-clientJs` = `master-client`.js
 
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/browser/gui"
-val masterGuiJs = "master-gui-browser.js"
 lazy val masterGuiJsFilename = Def.task {
   // Scala.js uses different filenames for the generated application.js.
   // - master-gui-browser-opt.js for optimized production
@@ -339,13 +339,12 @@ lazy val `master-gui` = project
     libraryDependencies ++=
       scalaTags ++
       webjars.materialIcons ++
-      webjars.materializeCss ++
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++
       log4j % "test"
   }
   .settings(
-    // Provide master-gui-browser JavaScript code as resources placed in master-gui-browser package
+    // Provide master-gui-browser JavaScript code as resources placed in master-gui package
     resourceGenerators in Compile += Def.task {
       val file = (resourceManaged in Compile).value / "com/sos/jobscheduler/master/gui/server/gui-js.conf"
       IO.write(file, "jsName=" + masterGuiJsFilename.value)
@@ -383,6 +382,9 @@ lazy val `master-gui-browser` = project
     jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
     scalaJSUseMainModuleInitializer := true,
     scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
+    resourceGenerators in Compile += provideWebjarEntryAsResource(s"bootstrap-$bootstrapVersion.jar", Seq(
+      s"bootstrap/$bootstrapVersion/dist/css/bootstrap.min.css",
+      s"bootstrap/$bootstrapVersion/dist/css/bootstrap.min.css.map")),
     libraryDependencies ++= {
       import Dependencies._
       Seq(
@@ -398,8 +400,10 @@ lazy val `master-gui-browser` = project
         "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
     },
     jsDependencies ++= Seq(
-      "org.webjars.bower" % "jquery" % "3.3.1" / "dist/jquery.js" minified "dist/jquery.min.js",
-      "org.webjars" % "materializecss" % "0.100.2" / "materialize.js" minified "materialize.min.js"
+      "org.webjars.npm" % "jquery" % "3.3.1" / "dist/jquery.js" minified "dist/jquery.min.js"
+        commonJSName "jQuery",
+      "org.webjars.npm" % "bootstrap" % "4.0.0" / "dist/js/bootstrap.bundle.js" minified "dist/js/bootstrap.bundle.min.js"
+        commonJSName "Bootstrap"
         dependsOn "dist/jquery.js",
       "org.webjars.bower" % "react" % "16.1.0" / "react.development.js" minified "react.production.min.js"
         commonJSName "React",
@@ -409,6 +413,15 @@ lazy val `master-gui-browser` = project
       "org.webjars.bower" % "react" % "16.1.0" / "react-dom-server.browser.development.js" minified "react-dom-server.browser.production.min.js"
         commonJSName "ReactDOMServer"
         dependsOn "react-dom.development.js"))
+
+def provideWebjarEntryAsResource(jarName: String, entries: Seq[String]) =
+  provideJarEntryAsResource(jarName, entries map (e ⇒ s"META-INF/resources/webjars/$e" → s"$masterGuiPath/webjars/$e"))
+
+def provideJarEntryAsResource(jarName: String, entryToResource: Seq[(String, String)]) = Def.task[Seq[File]] {
+  val jar = (Compile / dependencyClasspathAsJars).value collectFirst { case Attributed(path) if path.name == jarName ⇒ path } getOrElse
+    sys.error(s"Missing $jarName in classpath")
+  copyJarEntries(jar, entryToResource map (o ⇒ o._1 → ((Compile / resourceManaged).value / o._2)))
+}
 
 lazy val core = project.dependsOn(common, tester.jvm % "compile->test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)

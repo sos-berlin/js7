@@ -22,6 +22,7 @@ object Dependencies {
   val monocleVersion = "1.5.0"
   val scalaJsDomVersion = "0.9.5"
   val scajaJsJQueryVersion = "0.9.3"
+  val bootstrapVersion = "4.0.0"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
@@ -64,15 +65,14 @@ object Dependencies {
   val snakeYaml           = "org.yaml" % "snakeyaml" % "1.20"
 
   val javaxAnnotations    = "com.google.code.findbugs" % "jsr305" % "1.3.9"  // Everyone uses this version
-//val javaxAnnotations    = "com.google.code.findbugs" % "jsr305" % "3.0.0"
   val guava               = "com.google.guava" % "guava" % "24.1-jre"
   val apacheCommonsBeanutils = "commons-beanutils" % "commons-beanutils" % "1.9.2"
   val reflections         = "org.reflections" % "reflections" % "0.9.11"
   val groovy              = "org.codehaus.groovy" % "groovy" % "1.8.6"
 
   object webjars {
+    val bootstrap = "org.webjars.npm" % "bootstrap" % bootstrapVersion
     val materialIcons = "org.webjars" % "material-design-icons" % "3.0.1"
-    val materializeCss = "org.webjars" % "materializecss" % "0.100.2"
   }
 
   implicit def singleModuleIDToList(o: sbt.ModuleID): List[ModuleID] = o :: Nil
