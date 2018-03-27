@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.tests
 
 import akka.actor.{Actor, ActorRefFactory, Props}
 import com.sos.jobscheduler.common.event.collector.EventCollector
-import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
+import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService

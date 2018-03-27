@@ -6,7 +6,7 @@ export JOBSCHEDULER_HOME=/opt/jobscheduler
 declare classpathString java
 
 directory=/var/opt/jobscheduler/testMasterAgent
-log4jXml="com/sos/jobscheduler/master/tests/log4j2.xml"   # Java resource
+log4jXml="com/sos/jobscheduler/tests/log4j2.xml"   # Java resource
 javaOptions=()
 args=()
 
@@ -47,7 +47,7 @@ execute=(
   "$java"
   "${javaOptions[@]}"
   -classpath "$classpathString"
-  "com.sos.jobscheduler.master.tests.TestMasterAgent"
+  "com.sos.jobscheduler.tests.TestMasterAgent"
   "-directory=$directory"
   "${args[@]}"
 )

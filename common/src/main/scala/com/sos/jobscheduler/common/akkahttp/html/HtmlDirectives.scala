@@ -9,13 +9,12 @@ import akka.http.scaladsl.model.{HttpRequest, MediaRange, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive0, RejectionHandler, Route}
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.passIf
-import scala.concurrent.Future
 import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
   */
-trait HtmlDirectives[C <: WebServiceContext] {
+object HtmlDirectives {
 
   def dontCache: Directive0 =
     mapInnerRoute { inner ⇒
@@ -141,18 +140,4 @@ trait HtmlDirectives[C <: WebServiceContext] {
       case MediaRange.One(`text/html`, 1.0f) ⇒ true  // Highest priority q < 1 is not respected (and should be unusual for a browser)
       case _ ⇒ false
     }
-}
-
-object HtmlDirectives {
-
-  trait ToHtmlPage[A] {
-    def apply(a: A, pageUri: Uri): Future[HtmlPage]
-  }
-
-  object ToHtmlPage {
-    def apply[A](body: (A, Uri) ⇒ Future[HtmlPage]) =
-      new ToHtmlPage[A] {
-        def apply(a: A, uri: Uri) = body(a, uri)
-      }
-  }
 }

@@ -1,0 +1,34 @@
+package com.sos.jobscheduler.master.gui.browser.components
+
+import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.gui.browser.services.MasterApi
+import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.{Callback, ScalaComponent}
+
+/**
+  * @author Joacim Zschimmer
+  */
+object SideBarComponent {
+
+  private val RabbitPictureUri = "master/gui/images/job_scheduler_rabbit_circle_60x60.gif"
+
+  type State = Unit
+
+  def apply() = reactComponent()
+
+  private val reactComponent = ScalaComponent.static("SideBar")(
+      <.ul(^.id := "nav-mobile", ^.cls := "side-nav fixed")(
+        <.li(^.cls := "logo")(
+          <.a(^.id := "logo-container", ^.href := "#", ^.cls := "brand-logo")(
+            <.img(^.width := "40", ^.height := "40", ^.alt := "Rabbit", ^.src := RabbitPictureUri))),
+        //<.li(
+        //  <.a(^.href := "#orders")(
+        //    "Orders")),
+        <.li(
+          <.button(^.cls := "waves-effect waves-light btn deep-orange", ^.onClick --> terminate)(
+            "Shutdown"))))
+
+  private def terminate = Callback {
+    MasterApi.executeCommand(MasterCommand.Terminate)
+  }
+}

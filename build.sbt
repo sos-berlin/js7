@@ -61,7 +61,7 @@ addCommandAlias("test-all",
 addCommandAlias("pack"           , "universal:packageZipTarball")
 addCommandAlias("publish-all"    , "universal:publish")  // Publishes artifacts too
 addCommandAlias("publish-install", "; install/universal:publish; install-docker:universal:publish")
-addCommandAlias("TestMasterAgent", "master/runMain com.sos.jobscheduler.master.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
+addCommandAlias("TestMasterAgent", "tests/runMain com.sos.jobscheduler.tests.TestMasterAgent -agents=2 -nodes-per-agent=3 -tasks=3 -job-duration=1.5s -period=10.s")
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest, "-oFCLOPQD")  // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
@@ -118,7 +118,8 @@ lazy val jobscheduler = (project in file("."))
     `master-client`.jvm,
     `master-data`.jvm,
     `master-client`.jvm,
-    //Requires node.js for testing: `master-gui`,
+    `master-gui`,
+    //Requires node.js for testing: `master-gui-browser`,
     `agent-client`,
     `agent-data`,
     `agent-test`,
@@ -133,7 +134,7 @@ lazy val jobscheduler = (project in file("."))
   .settings(skip in publish := true)
 
 lazy val `jobscheduler-install` = project
-  .dependsOn(master, agent)
+  .dependsOn(master, `master-gui`, agent)
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings(
@@ -227,14 +228,12 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       akkaHttp ++
       akkaActor ++
       akkaSlf4j ++
-      scalaTags ++
       guava ++
       intelliJAnnotations % "compile" ++
       javaxAnnotations % "compile" ++
       scalaTest % "test" ++
       mockito % "test" ++
-      log4j % "test" ++
-      Nil
+      log4j % "test"
     }
   .enablePlugins(GitVersioning)
   .enablePlugins(BuildInfoPlugin)
@@ -271,58 +270,18 @@ lazy val `common-http` = crossProject
     //scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
 
-val masterGuiPath = s"com/sos/jobscheduler/master/gui/frontend/gui"
-val masterGuiJs = "master-gui.js"
-
 lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core, common, `agent-client`, tester.jvm % "compile->test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(commonSettings)
-  // Provide master-gui JavaScript code as resources placed in master-gui package
   .settings(
-    resourceGenerators in Compile += Def.task {
-      val file = (resourceManaged in Compile).value / "com/sos/jobscheduler/master/web/master/gui-js.conf"
-      IO.write(file, "jsName=" + masterGuiJsFilename.value)
-      Seq(file)
-    }.taskValue,
-    resources in Compile ++= Seq(
-      new File((scalaJSLinkedFile in Compile in `master-gui`).value.path),            // master-gui-fastopt.js or master-gui-opt.js
-      new File((scalaJSLinkedFile in Compile in `master-gui`).value.path + ".map"),   // master-gui-...opt.js.map
-      (packageMinifiedJSDependencies in Compile in `master-gui`).value),              // master-gui-...opt-jsdeps.min.js
-    mappings in (Compile, packageBin) :=
-      (mappings in (Compile, packageBin)).value map { case (file, path) ⇒
-        val generatedJsName = masterGuiJsFilename.value
-        val sourcemapName = s"$generatedJsName.map"
-        val dependenciesJsName = (packageMinifiedJSDependencies in Compile in `master-gui`).value.getName
-        path match {
-          case `generatedJsName` | `sourcemapName` | `dependenciesJsName`  ⇒
-            //println(s"$o -> $masterGuiPath/$path")
-            (file, s"$masterGuiPath/$path")  // Move into right Java package
-          case _ ⇒
-            (file, path)
-        }
-      },
-    mappings in (Compile, packageBin) := {  // All assets from master-gui/$masterGuiPath: index.html, .css, .ico etc.
-      val m = recursiveFileMapping((classDirectory in Compile in `master-gui`).value / masterGuiPath, to = masterGuiPath).toMap
-      ((mappings in (Compile, packageBin)).value filterNot { case (file, _) ⇒ m contains file }) ++ m
-    },
     mappings in (Compile, packageDoc) := Seq())
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      webjars.materialIcons ++
-      webjars.materializeCss ++
       scalaTest % "test" ++
       akkaHttpTestkit % "test" ++
-      akkaHttp/*force version?*/ % "test" ++
       log4j % "test"
   }
-
-lazy val masterGuiJsFilename = Def.task {
-  // Scala.js uses different filenames for the generated application.js.
-  // - master-gui-opt.js for optimized production
-  // - master-gui-fastopt.js for development
-  Paths.get((scalaJSLinkedFile in Compile in `master-gui`).value.path).toFile.getName
-}
 
 lazy val `master-data` = crossProject
   .dependsOn(data, tester % "compile->test")
@@ -363,7 +322,58 @@ lazy val `master-client` = crossProject
 lazy val `master-clientJVM` = `master-client`.jvm
 lazy val `master-clientJs` = `master-client`.js
 
+val masterGuiPath = s"com/sos/jobscheduler/master/gui/browser/gui"
+val masterGuiJs = "master-gui-browser.js"
+lazy val masterGuiJsFilename = Def.task {
+  // Scala.js uses different filenames for the generated application.js.
+  // - master-gui-browser-opt.js for optimized production
+  // - master-gui-browser-fastopt.js for development
+  Paths.get((scalaJSLinkedFile in Compile in `master-gui-browser`).value.path).toFile.getName
+}
+
 lazy val `master-gui` = project
+  .dependsOn(master)
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      scalaTags ++
+      webjars.materialIcons ++
+      webjars.materializeCss ++
+      scalaTest % "test" ++
+      akkaHttpTestkit % "test" ++
+      log4j % "test"
+  }
+  .settings(
+    // Provide master-gui-browser JavaScript code as resources placed in master-gui-browser package
+    resourceGenerators in Compile += Def.task {
+      val file = (resourceManaged in Compile).value / "com/sos/jobscheduler/master/gui/server/gui-js.conf"
+      IO.write(file, "jsName=" + masterGuiJsFilename.value)
+      Seq(file)
+    }.taskValue,
+    resources in Compile ++= Seq(
+      new File((scalaJSLinkedFile in Compile in `master-gui-browser`).value.path),            // master-gui-browser-fastopt.js or master-gui-browser-opt.js
+      new File((scalaJSLinkedFile in Compile in `master-gui-browser`).value.path + ".map"),   // master-gui-browser-...opt.js.map
+      (packageMinifiedJSDependencies in Compile in `master-gui-browser`).value),              // master-gui-browser-...opt-jsdeps.min.js
+    mappings in (Compile, packageBin) :=
+      (mappings in (Compile, packageBin)).value map { case (file, path) ⇒
+        val generatedJsName = masterGuiJsFilename.value
+        val sourcemapName = s"$generatedJsName.map"
+        val dependenciesJsName = (packageMinifiedJSDependencies in Compile in `master-gui-browser`).value.getName
+        path match {
+          case `generatedJsName` | `sourcemapName` | `dependenciesJsName`  ⇒
+            //println(s"$o -> $masterGuiPath/$path")
+            (file, s"$masterGuiPath/$path")  // Move into right Java package
+          case _ ⇒
+            (file, path)
+        }
+      },
+    mappings in (Compile, packageBin) := {  // All assets from master-gui-browser/$masterGuiPath: index.html, .css, .ico etc.
+      val m = recursiveFileMapping((classDirectory in Compile in `master-gui-browser`).value / masterGuiPath, to = masterGuiPath).toMap
+      ((mappings in (Compile, packageBin)).value filterNot { case (file, _) ⇒ m contains file }) ++ m
+    })
+
+lazy val `master-gui-browser` = project
   .enablePlugins(ScalaJSPlugin)
   .dependsOn(data.js, `master-data`.js, `master-client`.js)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -641,7 +651,7 @@ lazy val `taskserver-dotnet` = project.dependsOn(`taskserver-moduleapi`, `engine
       }
     }.taskValue)
 
-lazy val tests = project.dependsOn(master, agent, `agent-client`)
+lazy val tests = project.dependsOn(master, `master-gui`, agent, `agent-client`)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
   .settings(
     commonSettings,

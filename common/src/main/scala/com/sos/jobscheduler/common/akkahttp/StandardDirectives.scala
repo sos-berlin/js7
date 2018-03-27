@@ -2,9 +2,10 @@ package com.sos.jobscheduler.common.akkahttp
 
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
-import akka.http.scaladsl.server.PathMatcher1
+import akka.http.scaladsl.server.{PathMatcher1, Route}
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.problem.{Checked, CheckedString}
+import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
@@ -31,4 +32,7 @@ object StandardDirectives {
       case _ ⇒
         P.checked("/" + uriPath)   // Slashes not encoded
     }
+
+  final def lazyRoute(lazyRoute: ⇒ Route): Route =
+    ctx ⇒ Future.successful(lazyRoute(ctx)).flatten
 }

@@ -3,23 +3,20 @@ package com.sos.jobscheduler.master.web.master
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.akkahttp.html.{HtmlDirectives, WebServiceContext}
+import com.sos.jobscheduler.common.akkahttp.WebLogDirectives
+import com.sos.jobscheduler.master.web.master.RouteService.RouteServiceRoute
 import com.sos.jobscheduler.master.web.master.api.ApiRoute
-import com.sos.jobscheduler.master.web.master.gui.GuiRoute
 
 /**
   * @author Joacim Zschimmer
   */
-trait MasterRoute extends HtmlDirectives[WebServiceContext] with ApiRoute with GuiRoute {
+trait MasterRoute extends ApiRoute with RouteServiceRoute with WebLogDirectives {
 
   final val masterRoute: Route =
-    pathEndElseRedirect {
-      indexHtmlRoute
-    } ~
     pathSegments("api") {
-      apiRoute
+      handleError {
+        apiRoute
+      }
     } ~
-    pathSegments("gui") {
-      guiRoute
-    }
+    routeServiceRoute
 }
