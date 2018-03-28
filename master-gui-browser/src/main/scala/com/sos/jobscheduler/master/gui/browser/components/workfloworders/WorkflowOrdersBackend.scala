@@ -63,7 +63,7 @@ extends OnUnmount {
         labeled.instruction match {
           case ForkJoin(branches) ⇒
             for (branch ← branches) {
-              tagMods += <.div(^.cls := "orders-Branch", moveElement(instructionXpx(nesting + 0.4), y - BranchHeight), branch.id.string)
+              tagMods += <.div(^.cls := "orders-Branch", moveElement(instructionXpx(nesting + 0.4), y - BranchIdHeight), branch.id.string)
               renderNested(branch.workflow.numberedInstructions, position / branch.id, nesting + 1)
             }
 
@@ -101,8 +101,8 @@ extends OnUnmount {
 
 object WorkflowOrdersBackend {
   private val OrderPerInstructionLimit = 20
-  private val InstructionHeight = 41
-  private val BranchHeight = 20
+  private val InstructionHeight = 42
+  private val BranchIdHeight = 12
   private val ElseY = -10
 
   private def instructionXpx(nesting: Double) = nestingPx(nesting)

@@ -115,7 +115,6 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
           step = state.ordersState.step + 1)))
     }
 
-
   private def requestAndHandleEvents(
     after: EventId,
     forStep: Int,

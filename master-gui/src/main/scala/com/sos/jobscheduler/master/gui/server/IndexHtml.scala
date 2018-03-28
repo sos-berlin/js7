@@ -34,14 +34,13 @@ object IndexHtml extends HtmlPage.Cached {
             pre("JobScheduler Master...")),
           script(`type` := "text/javascript", src := s"master/gui/master-gui-browser-jsdeps.min.js?v=$buildId"),
           script(`type` := "text/javascript")(s"""
+            |jobschedulerBuildId='$buildId';
+            |jobschedulerBuildVersion='$buildVersion';
             |jQuery(document).ready(function() {
-            |  jQuery('.button-collapse').sideNav();
             |  jQuery('#GUI').on('click', '.clickable-row', function() {
             |    window.location = jQuery(this).data('href');
             |  });
-            |});
-            |jobschedulerBuildId='$buildId';
-            |jobschedulerBuildVersion='$buildVersion';"""
+            |});"""
             .stripMargin + "\n"),
           jsName match {
             case Invalid(problem) ⇒

@@ -21,6 +21,8 @@ final case class FileBasedId[+P <: TypedPath](path: P, versionId: VersionId)
 
   def pretty = s"${path.pretty} ${versionId.string}"
 
+  def toShortString = s"${path.string} ${versionId.string}"
+
   override def toString = s"$path ${versionId.string}"
 }
 

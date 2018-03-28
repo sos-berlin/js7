@@ -41,7 +41,7 @@ object WorkflowListComponent {
     .render_P { entry ⇒
       <.div(
         <.a(^.cls := "hidden-link", ^.href := Router.hash(entry.workflow.id))(
-          <.b(entry.id.pretty)),
+          <.b(entry.id.toShortString)),
         entry.orderCount.whenDefined(n ⇒ s" · $n orders"))
     }
     .configure(Reusability.shouldComponentUpdate)
