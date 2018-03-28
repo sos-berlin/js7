@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.agent.views
 
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.system.SystemInformation
 import com.sos.jobscheduler.data.system.JavaInformation
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
@@ -20,21 +21,23 @@ final class AgentOverviewTest extends FreeSpec {
         isTerminating = false,
         system = SystemInformation(hostname = "TEST-HOSTNAME"),
         java = JavaInformation(
-          systemProperties = Map("test" → "TEST"),
-          JavaInformation.Memory(maximum = 3, total = 2, free = 1))),
-      s"""{
+          version = "x.y.z",
+          JavaInformation.Memory(maximum = 3, total = 2, free = 1),
+          systemProperties = Map("test" → "TEST"))),
+      json"""{
         "startedAt": "2015-06-01T12:00:00Z",
         "version": "TEST-VERSION",
         "buildId": "BUILD-ID",
         "isTerminating": false,
         "java": {
-          "systemProperties": {
-            "test": "TEST"
-          },
+          "version": "x.y.z",
           "memory": {
             "maximum": 3,
             "total": 2,
             "free": 1
+          },
+          "systemProperties": {
+            "test": "TEST"
           }
         },
         "system": {

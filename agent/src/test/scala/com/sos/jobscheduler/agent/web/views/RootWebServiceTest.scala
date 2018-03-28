@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.headers.Accept
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.agent.web.test.WebServiceTest
-import com.sos.jobscheduler.base.circeutils.CirceUtils.RichCirceString
+import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.system.SystemInformation
 import com.sos.jobscheduler.common.http.AkkaHttpUtils.RichHttpResponse
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
@@ -29,10 +29,11 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
     isTerminating = false,
     system = SystemInformation(hostname = "TEST-HOSTNAME"),
     java = JavaInformation(
-      systemProperties = Map("test" → "TEST"),
-      JavaInformation.Memory(maximum = 3, total = 2, free = 1))))
+      version = "x.y.z",
+      JavaInformation.Memory(maximum = 3, total = 2, free = 1),
+      systemProperties = Map("test" → "TEST"))))
 
-  private def expectedOverviewJsObject = """{
+  private def expectedOverviewJson = json"""{
     "startedAt": "2015-06-01T12:00:00Z",
     "version": "TEST-VERSION",
     "buildId": "BUILD-ID",
@@ -42,21 +43,22 @@ final class RootWebServiceTest extends FreeSpec with WebServiceTest with RootWeb
       "mxBeans": {}
     },
     "java": {
-      "systemProperties": {
-        "test": "TEST"
-      },
+      "version": "x.y.z",
       "memory": {
         "maximum": 3,
         "total": 2,
         "free": 1
+      },
+      "systemProperties": {
+        "test": "TEST"
       }
     }
-  }""".parseJson
+  }"""
 
   "overview" - {
     "Accept: application/json returns compact JSON" in {
       Get("/agent/api") ~> Accept(`application/json`) ~> route ~> check {
-        assert(responseAs[Json] == expectedOverviewJsObject)
+        assert(responseAs[Json] == expectedOverviewJson)
         assert(!(response.utf8StringFuture.await(99.s) contains " ")) // Compact JSON
       }
     }

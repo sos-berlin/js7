@@ -4,7 +4,11 @@ import com.sos.jobscheduler.data.system.JavaInformation._
 import io.circe.generic.JsonCodec
 
 @JsonCodec
-final case class JavaInformation(systemProperties: Map[String, String], memory: Memory)
+final case class JavaInformation(
+  version: String,
+  memory: Memory,
+  systemProperties: Map[String, String],
+)
 
 object JavaInformation {
 

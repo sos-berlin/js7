@@ -21,6 +21,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
+import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
@@ -115,7 +116,8 @@ object RunningMaster {
 
   def apply(injector: Injector)(implicit ec: ExecutionContext): Future[RunningMaster] = {
     val masterConfiguration = injector.instance[MasterConfiguration]
-    logger.info(s"config=${masterConfiguration.configDirectory} data=${masterConfiguration.dataDirectory}")
+
+    StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
 
     masterConfiguration.stateDirectory match {
       case o if !exists(o) ⇒ createDirectory(o)
