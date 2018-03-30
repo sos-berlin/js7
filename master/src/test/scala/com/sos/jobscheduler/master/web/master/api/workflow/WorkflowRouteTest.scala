@@ -12,29 +12,25 @@ import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.data.event.Stamped
+import com.sos.jobscheduler.data.filebased.FileBasedsOverview
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath, WorkflowsOverview}
-import com.sos.jobscheduler.master.WorkflowClient
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import com.sos.jobscheduler.master.web.master.api.workflow.WorkflowRouteTest._
+import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
-import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
 final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with WorkflowRoute {
 
-  protected implicit def executionContext = system.dispatcher
+  protected implicit def scheduler = Scheduler.global
+  protected val fileBasedApi = FileBasedApi.forTest[Workflow](pathToWorkflow)
   private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
   protected val eventCollector = new EventCollector.ForTest
   protected val eventIdGenerator = new EventIdGenerator
-  protected val workflowClient = new WorkflowClient {
-    def executionContext = WorkflowRouteTest.this.executionContext
-    def workflow(path: WorkflowPath) = Future.successful(pathToWorkflow.get(path))
-    def workflows = Future.successful(eventIdGenerator.stamp(pathToWorkflow.values.toVector))
-    def workflowCount = Future.successful(pathToWorkflow.values.size)
-  }
 
   private def route: Route =
     pathSegments("api/workflow") {
@@ -45,18 +41,18 @@ final class WorkflowRouteTest extends FreeSpec with ScalatestRouteTest with Work
   WorkflowUri in {
     Get(WorkflowUri) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
-      assert(responseAs[WorkflowsOverview] == WorkflowsOverview(workflowCount = pathToWorkflow.size))
+      assert(responseAs[FileBasedsOverview.Standard] == FileBasedsOverview.Standard(count = pathToWorkflow.size))
     }
   }
 
-  // Seq[WorkflowOverview]
+  // Seq[WorkflowsOverview]
   for (uri ← List(
       s"$WorkflowUri/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
         val Stamped(_, _, workflows) = responseAs[Stamped[Seq[WorkflowPath]]]
-        assert(workflows == (pathToWorkflow.keys.toList))
+        assert(workflows == pathToWorkflow.keys.toList)
       }
     }
   }

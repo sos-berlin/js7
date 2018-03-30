@@ -174,6 +174,7 @@ object Workflow extends FileBased.Companion[Workflow] {
   type ThisFileBased = Workflow
   type Path = WorkflowPath
 
+  implicit val fileBasedsOverview = WorkflowsOverview
   val typedPathCompanion = WorkflowPath
   private val empty = Workflow(FolderPath.Internal.resolve[WorkflowPath]("empty") % VersionId.Anonymous, Vector.empty)
 

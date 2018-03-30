@@ -30,7 +30,7 @@ import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
 import com.sos.jobscheduler.core.workflow.OrderEventHandler.FollowUp
 import com.sos.jobscheduler.core.workflow.OrderProcessor
 import com.sos.jobscheduler.core.workflow.Workflows.ExecutableWorkflow
-import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.agent.{Agent, AgentId}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.FileBasedAdded
@@ -44,7 +44,7 @@ import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
 import com.sos.jobscheduler.master.order.MasterOrderKeeper._
-import com.sos.jobscheduler.master.order.agent.{Agent, AgentDriver}
+import com.sos.jobscheduler.master.order.agent.AgentDriver
 import com.sos.jobscheduler.master.{AgentEventId, AgentEventIdEvent}
 import java.nio.file.Files
 import scala.collection.immutable.Seq

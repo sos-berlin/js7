@@ -45,8 +45,48 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     assert(overview.fieldOrThrow("startedAt").longOrThrow < Timestamp.parse("2100-01-01T00:00:00Z").toEpochMilli)
   }
 
-  "/master/api/workflow" - {
-    // TODO
+  "/master/api/workflow" in {
+    testJson(
+      httpClient.get[Json](master.localUri + "/master/api/workflow") await 99.s,
+      json"""{
+        "eventId": 1000004,
+        "count": 1
+      }""")
+  }
+
+  "/master/api/workflow/" in {
+    testJson(
+      httpClient.get[Json](master.localUri + "/master/api/workflow/") await 99.s,
+      json"""{
+        "eventId": 1000004,
+        "value": [
+          "/WORKFLOW"
+        ]
+      }""")
+  }
+
+  "/master/api/workflow/WORKFLOW" in {
+    testJson(
+      httpClient.get[Json](master.localUri + "/master/api/workflow/WORKFLOW") await 99.s,
+      json"""{
+        "eventId": 1000004,
+        "id": {
+          "path": "/WORKFLOW",
+          "versionId": "(initial)"
+        },
+        "instructions": [
+          {
+            "TYPE": "Job",
+            "agentPath": "/AGENT",
+            "jobPath": "/A"
+          },
+          {
+            "TYPE": "Job",
+            "agentPath": "/AGENT",
+            "jobPath": "/B"
+          }
+        ]
+      }""")
   }
 
   "/master/api/agent" in {

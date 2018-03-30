@@ -9,12 +9,10 @@ import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.base.monix.MonixForCats._
 import com.sos.jobscheduler.base.problem.Checked._
-import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.completeTask
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.Stamped
-import com.sos.jobscheduler.master.FileBasedApi
-import com.sos.jobscheduler.master.order.agent.Agent
+import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import com.sos.jobscheduler.master.web.master.api.AgentProxyRoute._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -33,7 +31,7 @@ trait AgentProxyRoute
     get {
       path(Segment) { pathString ⇒
         extractRequest { request ⇒
-          completeTask(
+          complete(
             for {
               checkedAgent ← fileBasedApi.pathToCurrentFileBased[Agent](AgentPath(s"/$pathString"))
               checkedResponse ← checkedAgent.map(stampedAgent ⇒ forward(stampedAgent, request)).evert

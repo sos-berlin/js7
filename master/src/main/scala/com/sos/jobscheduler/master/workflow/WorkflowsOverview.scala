@@ -1,7 +1,8 @@
-package com.sos.jobscheduler.data.workflow
+package com.sos.jobscheduler.master.workflow
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.data.filebased.FileBasedsOverview
+import com.sos.jobscheduler.data.workflow.Workflow
 import scala.collection.immutable.Seq
 
 /**

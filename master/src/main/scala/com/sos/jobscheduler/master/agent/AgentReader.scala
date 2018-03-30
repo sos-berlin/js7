@@ -3,9 +3,9 @@ package com.sos.jobscheduler.master.agent
 import akka.util.ByteString
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources.simpleByteStringSource
 import com.sos.jobscheduler.core.filebased.FileBasedReader
-import com.sos.jobscheduler.data.agent.AgentId
+import com.sos.jobscheduler.data.agent.{Agent, AgentId}
 import com.sos.jobscheduler.data.filebased.SourceType
-import com.sos.jobscheduler.master.order.agent.{Agent, AgentXmlParser}
+import com.sos.jobscheduler.master.order.agent.AgentXmlParser
 
 /**
   * @author Joacim Zschimmer

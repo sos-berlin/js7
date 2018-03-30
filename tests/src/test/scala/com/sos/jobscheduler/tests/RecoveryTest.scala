@@ -1,12 +1,10 @@
 package com.sos.jobscheduler.tests
 
-import akka.actor.ActorSystem
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.scheduler.AgentEvent
 import com.sos.jobscheduler.base.auth.UserId
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.base.utils.ScalaUtils.RichEither
-import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.{autoClosing, multipleAutoClosing}
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
@@ -14,9 +12,8 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.event.journal.{GzipCompression, JournalMeta, JsonFileIterator}
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, EventId, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, VersionAdded}
@@ -29,7 +26,6 @@ import com.sos.jobscheduler.data.workflow.{Position, Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.data.events.MasterEvent
-import com.sos.jobscheduler.master.order.agent.Agent
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.tests.DirectoryProvider.{StdoutOutput, jobXml}
 import com.sos.jobscheduler.tests.RecoveryTest._

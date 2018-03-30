@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.order.agent
 
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.tester.CirceJsonTester.testJson
 import org.scalatest.FreeSpec
 

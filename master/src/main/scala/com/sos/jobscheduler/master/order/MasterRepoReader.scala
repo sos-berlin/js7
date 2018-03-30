@@ -4,12 +4,11 @@ import cats.data.Validated.Valid
 import cats.effect.IO
 import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.core.filebased.{FileBaseds, Repo}
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.{FileBased, RepoEvent, TypedPath, VersionId}
 import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import com.sos.jobscheduler.master.agent.AgentReader
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.order.agent.Agent
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import scala.collection.immutable.Seq
 

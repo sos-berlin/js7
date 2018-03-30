@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.FileUtils.deleteDirectoryRecursivel
 import com.sos.jobscheduler.common.scalautil.FileUtils.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.core.filebased.FileBaseds
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.filebased.RepoEvent.{FileBasedAdded, FileBasedChanged, FileBasedDeleted, VersionAdded}
 import com.sos.jobscheduler.data.filebased.{FileBased, TypedPath, VersionId}
 import com.sos.jobscheduler.data.workflow.instructions.ExplicitEnd
@@ -16,7 +16,6 @@ import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.agent.AgentReader
 import com.sos.jobscheduler.master.fileBased.FileBasedsTest._
 import com.sos.jobscheduler.master.order.ScheduledOrderGeneratorReader
-import com.sos.jobscheduler.master.order.agent.Agent
 import com.sos.jobscheduler.master.workflow.WorkflowReader
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{createDirectories, createTempDirectory}

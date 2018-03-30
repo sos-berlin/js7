@@ -9,6 +9,7 @@ import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.sos.jobscheduler.base.generic.Completed
 import com.sos.jobscheduler.base.problem.Checked
+import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversableOnce
 import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.CatchingActor
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -27,10 +28,10 @@ import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
-import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
 import com.sos.jobscheduler.master.data.MasterCommand
+import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import com.sos.jobscheduler.master.order.MasterOrderKeeper
 import com.sos.jobscheduler.master.tests.TestEventCollector
 import com.sos.jobscheduler.master.web.MasterWebServer
@@ -142,17 +143,17 @@ object RunningMaster {
       )(actorSystem)
 
     val fileBasedApi: FileBasedApi = new FileBasedApi {
-      def overview[A <: FileBased : FileBased.Companion] =
+      def overview[A <: FileBased: FileBased.Companion](implicit O: FileBasedsOverview.Companion[A]): Task[Stamped[O.Overview]] =
         for (stamped ← getRepo) yield
           for (repo ← stamped) yield
-            FileBasedsOverview(repo.currentTyped[A].size)
+            O.fileBasedsToOverview(repo.currentTyped[A].values.toImmutableSeq)
 
-      def fileBaseds[A <: FileBased : FileBased.Companion]: Task[Stamped[Seq[A]]] =
+      def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]] =
         for (stamped ← getRepo) yield
           for (repo ← stamped) yield
             repo.currentTyped[A].values.toVector
 
-      def pathToCurrentFileBased[A <: FileBased : FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
+      def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
         for (stamped ← getRepo; repo = stamped.value) yield
           for (a ← repo.currentTyped[A].checked(path)) yield
             stamped.copy(value = a)
@@ -162,27 +163,6 @@ object RunningMaster {
         Task.defer(Task.fromFuture(
           (orderKeeper ? MasterOrderKeeper.Command.GetRepo).mapTo[Stamped[Repo]]))
       }
-    }
-
-    val workflowClient: WorkflowClient = new WorkflowClient {
-      import masterConfiguration.akkaAskTimeout
-
-      implicit def executionContext = ec
-
-      def workflow(path: WorkflowPath): Future[Option[Workflow]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflow(path)).
-          mapTo[Option[Workflow]]
-
-      def workflows: Future[Stamped[Seq[Workflow]]] =
-        (orderKeeper ? MasterOrderKeeper.Command.GetWorkflows).
-          mapTo[Stamped[Seq[Workflow]]]
-
-      //def workflowPaths =  TODO optimize
-      //(orderKeeper ? MasterOrderKeeper.Command.GetWorkflowPaths).
-      // mapTo[Stamped[Seq[WorkflowPath]]]
-
-      def workflowCount = (orderKeeper ? MasterOrderKeeper.Command.GetWorkflowCount).
-        mapTo[Int]
     }
 
     val orderClient = new OrderClient {
@@ -210,7 +190,7 @@ object RunningMaster {
           .mapTo[Int]
     }
 
-    webServer.setClients(fileBasedApi, workflowClient, orderClient)
+    webServer.setClients(fileBasedApi, orderClient)
     val webServerReady = webServer.start()
 
     val terminated = actorStopped

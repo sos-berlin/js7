@@ -1,6 +1,6 @@
 package com.sos.jobscheduler.common.akkahttp
 
-import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToResponseMarshaller}
+import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType}
@@ -8,6 +8,8 @@ import akka.util.ByteString
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
+import monix.eval.Task
+import monix.execution.Scheduler
 import scala.language.implicitConversions
 
 /**
@@ -17,6 +19,9 @@ object StandardMarshallers
 {
   private val ProblemStatusCode = BadRequest
   private val Nl = ByteString("\n")
+
+  implicit def taskToResponseMarshaller[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): ToResponseMarshallable =
+    task.runAsync
 
   implicit val problemToEntityMarshaller: ToEntityMarshaller[Problem] =
     Marshaller.oneOf(

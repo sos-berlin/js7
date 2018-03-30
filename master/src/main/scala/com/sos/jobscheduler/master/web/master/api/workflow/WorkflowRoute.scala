@@ -1,59 +1,41 @@
 package com.sos.jobscheduler.master.web.master.api.workflow
 
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
 import com.sos.jobscheduler.common.akkahttp.StandardDirectives.remainingSegmentOrPath
 import com.sos.jobscheduler.common.akkahttp.StandardMarshallers._
-import com.sos.jobscheduler.data.workflow.WorkflowPath
-import com.sos.jobscheduler.master.WorkflowClient
-import scala.concurrent.ExecutionContext
+import com.sos.jobscheduler.data.workflow.{Workflow, WorkflowPath}
+import com.sos.jobscheduler.master.fileBased.FileBasedApi
+import monix.execution.Scheduler
 
 /**
   * @author Joacim Zschimmer
   */
 trait WorkflowRoute {
 
-  protected def workflowClient: WorkflowClient
-  protected implicit def executionContext: ExecutionContext
+  protected implicit def scheduler: Scheduler
+  protected def fileBasedApi: FileBasedApi
 
   def workflowRoute: Route =
     get {
       pathEnd {
-        complete(workflowClient.workflowsOverview)
+        complete(fileBasedApi.overview[Workflow])
       } ~
       pathSingleSlash {
         parameter("return".?) {
-          case Some("WorkflowOverview") | None ⇒
-            complete(workflowClient.workflowOverviews)
+          case None ⇒
+            complete(fileBasedApi.paths[Workflow])
 
-          case Some("Workflow") | Some("Workflow") | None ⇒
-            complete(workflowClient.workflows)
+          case Some("Workflow") ⇒
+            complete(fileBasedApi.fileBaseds[Workflow])
 
           case _ ⇒
             reject
         }
       } ~
       path(remainingSegmentOrPath[WorkflowPath]) { workflowPath ⇒
-        singleWorkflow(workflowPath)
+        complete(fileBasedApi.pathToCurrentFileBased[Workflow](workflowPath))
       }
-    }
-
-  private def singleWorkflow(path: WorkflowPath): Route =
-    parameter("return".?) {
-      case Some("Workflow") | Some("Workflow") | None ⇒
-        complete {
-          workflowClient.workflow(path).map[ToResponseMarshallable] {
-            case Some(workflow) ⇒
-              workflow
-            case None ⇒
-              Problem(s"$path does not exist")
-          }
-        }
-
-      case o ⇒
-        complete(Problem(s"Unrecognized parameter return=$o"))
     }
 }

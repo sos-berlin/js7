@@ -5,6 +5,7 @@ import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.core.filebased.Repo
+import com.sos.jobscheduler.data.agent.Agent
 import com.sos.jobscheduler.data.event.KeyedEvent.NoKey
 import com.sos.jobscheduler.data.event.{Event, KeyedEvent, Stamped}
 import com.sos.jobscheduler.data.filebased.RepoEvent
@@ -13,7 +14,6 @@ import com.sos.jobscheduler.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, O
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome}
 import com.sos.jobscheduler.data.workflow.Workflow
 import com.sos.jobscheduler.data.workflow.instructions.Job
-import com.sos.jobscheduler.master.order.agent.Agent
 import com.sos.jobscheduler.tests.history.TestHistory._
 import scala.collection.immutable.Seq
 import scala.collection.mutable

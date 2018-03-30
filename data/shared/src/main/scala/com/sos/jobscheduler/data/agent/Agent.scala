@@ -1,13 +1,11 @@
-package com.sos.jobscheduler.master.order.agent
+package com.sos.jobscheduler.data.agent
 
-import com.sos.jobscheduler.data.agent.{AgentId, AgentPath}
+import com.sos.jobscheduler.base.circeutils.CirceUtils.deriveCodec
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId}
-import io.circe.generic.JsonCodec
 
 /**
   * @author Joacim Zschimmer
   */
-@JsonCodec
 final case class Agent(id: AgentId, uri: String) extends FileBased
 {
   type Self = Agent
@@ -21,6 +19,9 @@ object Agent extends FileBased.Companion[Agent]
 {
   type ThisFileBased = Agent
   type Path = AgentPath
+  implicit val jsonCodec = deriveCodec[Agent]
 
+  override val self = this
+  implicit val fileBasedsOverview = AgentsOverview
   val typedPathCompanion = AgentPath
 }

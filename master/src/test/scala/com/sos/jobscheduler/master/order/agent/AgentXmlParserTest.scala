@@ -2,7 +2,7 @@ package com.sos.jobscheduler.master.order.agent
 
 import cats.data.Validated.Valid
 import com.sos.jobscheduler.common.scalautil.xmls.XmlSources._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import org.scalatest.FreeSpec
 
 /**

@@ -5,16 +5,13 @@ import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
-import com.sos.jobscheduler.data.agent.AgentPath
+import com.sos.jobscheduler.data.agent.{Agent, AgentPath}
 import com.sos.jobscheduler.data.event.Stamped
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview}
-import com.sos.jobscheduler.master.FileBasedApi
-import com.sos.jobscheduler.master.order.agent.Agent
+import com.sos.jobscheduler.data.filebased.FileBasedsOverview
+import com.sos.jobscheduler.master.fileBased.FileBasedApi
 import com.sos.jobscheduler.master.web.master.api.AgentRouteTest._
-import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.FreeSpec
 import scala.collection.immutable.Seq
@@ -25,18 +22,7 @@ import scala.collection.immutable.Seq
 final class AgentRouteTest extends FreeSpec with ScalatestRouteTest with AgentRoute {
 
   protected implicit def scheduler = Scheduler.global
-  protected val fileBasedApi = new FileBasedApi {
-    def overview[A <: FileBased: FileBased.Companion] =
-      Task.now(Stamped(1, FileBasedsOverview(count = pathToAgent.values.size)))
-
-    def fileBaseds[A <: FileBased: FileBased.Companion] =
-      Task.now(Stamped(2, pathToAgent.values.toVector map (_.cast[A])))
-
-    def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path) =
-      Task.now(
-        for (a ← pathToAgent.checked(path.cast[AgentPath]))
-          yield Stamped(3, a.cast[A]))
-  }
+  protected val fileBasedApi = FileBasedApi.forTest[Agent](pathToAgent)
 
   private def route: Route =
     pathSegments("api/agent") {
@@ -47,18 +33,18 @@ final class AgentRouteTest extends FreeSpec with ScalatestRouteTest with AgentRo
   AgentUri in {
     Get(AgentUri) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
-      assert(responseAs[FileBasedsOverview] == FileBasedsOverview(count = pathToAgent.size))
+      assert(responseAs[FileBasedsOverview.Standard] == FileBasedsOverview.Standard(count = pathToAgent.size))
     }
   }
 
-  // Seq[AgentOverview]
+  // Seq[AgentsOverview]
   for (uri ← List(
       s"$AgentUri/")) {
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         assert(status == OK)
         val Stamped(_, _, agents) = responseAs[Stamped[Seq[AgentPath]]]
-        assert(agents == (pathToAgent.keys.toList))
+        assert(agents == pathToAgent.keys.toList)
       }
     }
   }

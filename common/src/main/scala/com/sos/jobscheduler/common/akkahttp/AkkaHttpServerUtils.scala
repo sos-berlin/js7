@@ -124,10 +124,6 @@ object AkkaHttpServerUtils {
       else reject(ValidationRejection(s"Invalid parameters: ${parameterMap.keys mkString ", "}"))
     }
 
-  /** Less red in IntelliJ IDE. **/
-  def completeTask[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): Route =
-    complete(task.runAsync)
-
   //implicit def asFromStringOptionDeserializer[A](implicit stringAsA: As[String, A]) =
   //  simpleFromStringOptionDeserializer(stringAsA.apply)
   //
