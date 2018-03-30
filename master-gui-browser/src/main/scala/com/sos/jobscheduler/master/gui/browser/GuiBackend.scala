@@ -170,7 +170,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
                       .delay(ContinueDelay).void
 
                 case Success(_: EventSeq.Torn) ⇒
-                  window.console.warn("EventSeq.Torn")
+                  window.console.info("EventSeq.Torn")
                   requestOrdersAndEvents.delay(TornDelay).void  // Request all orders
               }
           }

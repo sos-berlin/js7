@@ -84,12 +84,12 @@ extends OnUnmount {
     (tagMods.result().toTagMod, positionsWithXY.result())
   }
 
-  private def renderOrders(preparedWorkflow: PreparedWorkflow, instructionsWithXY: Seq[(Position, Int, Int)], content: FetchedContent) =
+  private def renderOrders(preparedWorkflow: PreparedWorkflow, positionsWithXY: Seq[(Position, Int, Int)], content: FetchedContent) =
     (for {
-        (position, x0, y) ← instructionsWithXY
+        (position, x0, y) ← positionsWithXY
         orderIds = content.workflowPositionToOrderIdSeq(preparedWorkflow.id /: position)
         n = min(orderIds.length, OrderPerInstructionLimit)
-        (orderEntry, i) ← Array.tabulate[OrderEntry](n)(i ⇒ content.idToEntry(orderIds(i))).zipWithIndex
+        (orderEntry, i) ← Array.tabulate[(OrderEntry, Int)](n)(i ⇒ content.idToEntry(orderIds(i)) → i)
         x = orderXpx(x0, i)
       } yield (orderEntry, x, y))
     .sortBy(_._1.id)  // Sort to allow React to identify known orders

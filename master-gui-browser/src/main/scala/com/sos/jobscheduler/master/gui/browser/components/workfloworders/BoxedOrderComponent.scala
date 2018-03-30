@@ -8,8 +8,7 @@ import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.Orde
 import com.sos.jobscheduler.master.gui.browser.router.Router
 import japgolly.scalajs.react.extra.Reusability
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{Callback, Ref, ScalaComponent}
-import org.scalajs.dom.raw.HTMLElement
+import japgolly.scalajs.react.{Callback, ScalaComponent}
 import org.scalajs.dom.window
 
 /**
@@ -18,7 +17,6 @@ import org.scalajs.dom.window
 private[workfloworders] final class BoxedOrderComponent
 {
   private val orderSelector = new OrderSelector  // Has state
-  private val elementRef = Ref[HTMLElement]
 
   def apply(orderEntry: OrderEntry) = component(orderEntry)
 
@@ -50,7 +48,6 @@ private[workfloworders] final class BoxedOrderComponent
               <.div(
                 <.span(^.cls := "orders-Order-State", order.state))
           })
-        .withRef(elementRef)
     }
     .configure {
       implicit val orderEntryReuse = Reusability.byRef[OrdersState.OrderEntry]
