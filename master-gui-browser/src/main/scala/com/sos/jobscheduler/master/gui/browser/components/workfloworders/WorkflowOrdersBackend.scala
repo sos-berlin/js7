@@ -1,8 +1,6 @@
 package com.sos.jobscheduler.master.gui.browser.components.workfloworders
 
-import com.sos.jobscheduler.data.workflow.Position.BranchId
-import com.sos.jobscheduler.data.workflow.instructions.{ForkJoin, If, ImplicitEnd}
-import com.sos.jobscheduler.data.workflow.{Instruction, InstructionNr, Position}
+import com.sos.jobscheduler.data.workflow.Instruction
 import com.sos.jobscheduler.master.gui.browser.common.Renderers._
 import com.sos.jobscheduler.master.gui.browser.common.Utils.memoize
 import com.sos.jobscheduler.master.gui.browser.components.state.OrdersState.{FetchedContent, FetchingContent, Initial, OrderEntry}
@@ -12,7 +10,6 @@ import com.sos.jobscheduler.master.gui.browser.components.workfloworders.Workflo
 import japgolly.scalajs.react.BackendScope
 import japgolly.scalajs.react.extra.OnUnmount
 import japgolly.scalajs.react.vdom.html_<^._
-import scala.collection.immutable.Seq
 import scala.math.min
 
 /**
@@ -39,57 +36,18 @@ extends OnUnmount {
             props.preparedWorkflow.id),
           <.div(sequence.length.toString, " orders"),
           ordersState.error.whenDefined(error ⇒ <.span(^.cls := "error")(error)),
-          renderWorkflowContent(props.preparedWorkflow, content))
+          <.div(^.cls := "Workflow-content",
+            WorkflowComponent(props.preparedWorkflow),
+            renderOrders(props.preparedWorkflow, content)))
     }
   }
 
-  private def renderWorkflowContent(preparedWorkflow: PreparedWorkflow, content: FetchedContent) = {
-    val (nodesVdom, instructionsWithXY) = renderInstructions(preparedWorkflow)
-    <.div(^.cls := "Workflow-content",
-      nodesVdom,
-      renderOrders(preparedWorkflow, instructionsWithXY, content))
-  }
-
-  private def renderInstructions(preparedWorkflow: PreparedWorkflow): (TagMod, Seq[(Position, Int, Int)]) = {
-    val tagMods = Vector.newBuilder[TagMod]
-    val positionsWithXY = Vector.newBuilder[(Position, Int, Int)]
-    var y = 0
-    def renderNested(numberedInstructions: Seq[(InstructionNr, Instruction.Labeled)], parents: Position.Parents, nesting: Int): Unit = {
-      for ((nr, labeled) ← numberedInstructions) {
-        val position = parents / nr
-        tagMods += <.div(^.cls := "orders-Instruction", moveElement(instructionXpx(nesting), y), InstructionComponent(labeled))
-        positionsWithXY += ((position, nestingPx(nesting), y))
-        y += InstructionHeight
-        labeled.instruction match {
-          case ForkJoin(branches) ⇒
-            for (branch ← branches) {
-              tagMods += <.div(^.cls := "orders-Branch", moveElement(instructionXpx(nesting + 0.4), y - BranchIdHeight), branch.id.string)
-              renderNested(branch.workflow.numberedInstructions, position / branch.id, nesting + 1)
-            }
-
-          case _if: If ⇒
-            def renderBranch(branch: BranchId.Indexed) = for (w ← _if.workflow(branch.number))  // always Valid
-              renderNested(stripImplicitEnd(w.numberedInstructions), position / branch, nesting + 1)
-            renderBranch(0)  // then
-            if (_if.elseWorkflow.isDefined) {
-              tagMods += <.div(^.cls := "orders-Branch", moveElement(instructionXpx(nesting), y + ElseY), "else")
-              renderBranch(1)  // else
-            }
-
-          case _ ⇒
-        }
-      }
-    }
-    renderNested(preparedWorkflow.workflow.numberedInstructions, Position.Parents.Empty, nesting = 0)
-    (tagMods.result().toTagMod, positionsWithXY.result())
-  }
-
-  private def renderOrders(preparedWorkflow: PreparedWorkflow, positionsWithXY: Seq[(Position, Int, Int)], content: FetchedContent) =
+  private def renderOrders(preparedWorkflow: PreparedWorkflow, content: FetchedContent) =
     (for {
-        (position, x0, y) ← positionsWithXY
+        (position, x0, y) ← preparedWorkflow.positionsWithXY
         orderIds = content.workflowPositionToOrderIdSeq(preparedWorkflow.id /: position)
         n = min(orderIds.length, OrderPerInstructionLimit)
-        (orderEntry, i) ← Array.tabulate[(OrderEntry, Int)](n)(i ⇒ content.idToEntry(orderIds(i)) → i)
+        (orderEntry, i) ← Iterator.tabulate[(OrderEntry, Int)](n)(i ⇒ content.idToEntry(orderIds(i)) → i)
         x = orderXpx(x0, i)
       } yield (orderEntry, x, y))
     .sortBy(_._1.id)  // Sort to allow React to identify known orders
@@ -101,18 +59,11 @@ extends OnUnmount {
 
 object WorkflowOrdersBackend {
   private val OrderPerInstructionLimit = 20
-  private val InstructionHeight = 42
-  private val BranchIdHeight = 12
-  private val ElseY = -10
-
-  private def instructionXpx(nesting: Double) = nestingPx(nesting)
 
   private def orderXpx(start: Int, i: Int) = start + 215 + 230*i
 
-  private def nestingPx(nesting: Double) = (35 * nesting).toInt
-
   private val moveElement = memoize[(Int, Int), TagMod] { case (x, y) ⇒
-    ^.transform := s"translate(${x}px,${y}px)"
+    WorkflowComponent.moveElement(x, y)
   }
 
   private case class Line(y: Int, content: Line.Content)
@@ -120,10 +71,4 @@ object WorkflowOrdersBackend {
     sealed trait Content
     final case class Instr(labeledInstruction: Instruction.Labeled) extends Content
   }
-
-  private def stripImplicitEnd(numbered: Seq[(InstructionNr, Instruction.Labeled)]): Seq[(InstructionNr, Instruction.Labeled)] =
-    if (numbered.last._2.instruction == ImplicitEnd)
-      numbered dropRight 1
-    else
-      numbered
 }

@@ -77,7 +77,7 @@ object OrdersState {
         for ((position, orderIds) ← positionToOrderIds -- dirty) {
           m(position) = orderIds
         }
-        positionCache(workflowPath)  = m
+        positionCache(workflowPath) = m
       }
       this
     }
