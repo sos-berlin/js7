@@ -9,27 +9,25 @@ import scala.concurrent.Future
   * @author Joacim Zschimmer
   */
 final class ParallelExecutingPipeline[A](output: A ⇒ Unit) {
-  // Replace with Akka Streams ?
 
-  private val writeQueue = new ArrayBlockingQueue[Future[A]](sys.runtime.availableProcessors + 1)
+  private val queue = new ArrayBlockingQueue[Future[A]](sys.runtime.availableProcessors)
 
   /**
     * Blocks until the queue contains not more than `sys.runtime.availableProcessors` entries.
     */
   def blockingAdd(a: ⇒ A): Unit = {
-    while (writeQueue.remainingCapacity == 0 || (!writeQueue.isEmpty && writeQueue.peek.isCompleted)) {
+    if (queue.remainingCapacity == 0) {
       writeNext()
     }
-    writeQueue.put(Future { a } )
-  }
-
-  def flush(): Unit = {
-    while (!writeQueue.isEmpty) {
+    queue.put(Future { a } )
+    while (!queue.isEmpty && queue.peek.isCompleted) {
       writeNext()
     }
   }
 
-  private def writeNext(): Unit = {
-    output(writeQueue.poll.awaitInfinite)
-  }
+  def flush(): Unit =
+    while (!queue.isEmpty) writeNext()
+
+  private def writeNext(): Unit =
+    output(queue.poll.awaitInfinite)
 }
