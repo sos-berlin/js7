@@ -83,7 +83,7 @@ object Expression
 
   final case class ToNumber(expression: Expression) extends NumericExpression {
     def precedence = Precedence.Factor
-    override def toString = s"toNumber($expression)"
+    override def toString = s"($expression).toNumber"
   }
 
   final case class BooleanConstant(bool: Boolean) extends BooleanExpression {

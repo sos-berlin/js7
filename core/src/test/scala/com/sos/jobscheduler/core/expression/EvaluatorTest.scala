@@ -9,6 +9,7 @@ import com.sos.jobscheduler.data.workflow.instructions.expr.Expression._
 import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
 import com.sos.jobscheduler.data.workflow.parser.Parsers.ops.RichParser
 import fastparse.all._
+import org.scalactic.source
 import org.scalatest.FreeSpec
 import org.scalatest.prop.PropertyChecks._
 
@@ -17,7 +18,7 @@ import org.scalatest.prop.PropertyChecks._
   */
 final class EvaluatorTest extends FreeSpec
 {
-  private val eval = new Evaluator(new Scope(ReturnCode(1), Map("A" → "AA", "B" → "BB", "N" → "7"))).eval _
+  private val eval = new Evaluator(new Scope(ReturnCode(1), Map("ASTRING" → "AA", "ANUMBER" → "7"))).eval _
   private val booleanError: BooleanExpression = LessThan(ToNumber(StringConstant("X")), NumericConstant(7))
 
   testEval("7",
@@ -58,17 +59,17 @@ final class EvaluatorTest extends FreeSpec
     result = true,
     Valid(BooleanConstant(true)))
 
-  testEval("$A",
+  testEval("$ASTRING",
     result = "AA",
-    Valid(Variable(StringConstant("A"))))
+    Valid(Variable(StringConstant("ASTRING"))))
 
   testEval("$UNKNOWN",
     result = Invalid(Problem("No such variable: UNKNOWN")),
     Valid(Variable(StringConstant("UNKNOWN"))))
 
-  testEval("""variable("A")""",
+  testEval("""variable("ASTRING")""",
     result = "AA",
-    Valid(Variable(StringConstant("A"))))
+    Valid(Variable(StringConstant("ASTRING"))))
 
   testEval("""variable("UNKNOWN")""",
     result = Invalid(Problem("No such variable: UNKNOWN")),
@@ -78,9 +79,13 @@ final class EvaluatorTest extends FreeSpec
     result = "DEFAULT",
     Valid(Variable(StringConstant("UNKNOWN"), Some(StringConstant("DEFAULT")))))
 
-  testEval("""toNumber($N)""",
+  testEval("""$ASTRING.toNumber""",
+    result = Invalid(Problem("Not a valid number: AA")),
+    Valid(ToNumber(Variable(StringConstant("ASTRING")))))
+
+  testEval("""$ANUMBER.toNumber""",
     result = 7,
-    Valid(ToNumber(Variable(StringConstant("N")))))
+    Valid(ToNumber(Variable(StringConstant("ANUMBER")))))
 
   testEval("""returnCode""",
     result = 1,
@@ -211,24 +216,23 @@ final class EvaluatorTest extends FreeSpec
       Valid(BooleanValue(true)))
   }
 
-
   private val completeExpression = ExpressionParser.expression ~ End
 
-  private def testSyntaxError(exprString: String, problem: String): Unit =
+  private def testSyntaxError(exprString: String, problem: String)(implicit pos: source.Position): Unit =
     registerTest(s"$exprString - should fail") {
       assert(completeExpression.checkedParse(exprString.trim) == Invalid(Problem(problem)))
     }
 
-  private def testEval(exprString: String, result: Boolean, expression: Checked[Expression]): Unit =
+  private def testEval(exprString: String, result: Boolean, expression: Checked[Expression])(implicit pos: source.Position): Unit =
     testEval(exprString, Valid(BooleanValue(result)), expression)
 
-  private def testEval(exprString: String, result: Int, expression: Checked[Expression]): Unit =
+  private def testEval(exprString: String, result: Int, expression: Checked[Expression])(implicit pos: source.Position): Unit =
     testEval(exprString, Valid(NumericValue(result)), expression)
 
-  private def testEval(exprString: String, result: String, expression: Checked[Expression]): Unit =
+  private def testEval(exprString: String, result: String, expression: Checked[Expression])(implicit pos: source.Position): Unit =
     testEval(exprString, Valid(StringValue(result)), expression)
 
-  private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression]): Unit =
+  private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])(implicit pos: source.Position): Unit =
     registerTest(exprString) {
       assert(completeExpression.checkedParse(exprString.trim) == expression)
       for (e ← expression) {

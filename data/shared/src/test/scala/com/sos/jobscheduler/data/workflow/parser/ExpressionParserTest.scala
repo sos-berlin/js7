@@ -103,7 +103,7 @@ final class ExpressionParserTest extends FreeSpec {
         Variable(StringConstant("result")),
         StringConstant("1"))))
 
-  testBooleanExpression("""returnCode==toNumber($expected)||$result=="1"||true&&returnCode>0""",
+  testBooleanExpression("""returnCode==$expected.toNumber||$result=="1"||true&&returnCode>0""",
     Or(
       Or(
         Equal(

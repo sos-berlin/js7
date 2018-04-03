@@ -63,13 +63,18 @@ object ExpressionParser
   }
 
   private[parser] val functionCall = P[Expression](
-    (keyword("toNumber") ~~/ inParentheses(stringExpression))
-      .map(e ⇒ ToNumber(e)) |
     P(keyword("variable") ~~/ inParentheses(stringExpression ~ (comma ~ stringExpression).?)
       .map { case (name, default) ⇒ Variable(name, default) }))
 
-  private val factor = P[Expression](
+  private val factorOnly = P[Expression](
     parenthesizedExpression | booleanConstant | numericConstant | stringConstant | returnCode | dollarVariable | functionCall)
+
+  private val factor = P[Expression](
+    factorOnly ~ (w ~ "." ~~/ keyword("toNumber").!).? map {
+      case (o, None) ⇒ o
+      case (o, Some("toNumber")) ⇒ ToNumber(o)
+    }
+  )
 
   // TODO Reject comparison of incomparable types ("1" != 1)
   private val comparison: P[Expression] =
