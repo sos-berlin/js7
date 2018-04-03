@@ -2,14 +2,12 @@ package com.sos.jobscheduler.data.workflow.parser
 
 import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.{Checked, Problem}
-import com.sos.jobscheduler.base.utils.Collections.implicits._
 import com.sos.jobscheduler.base.utils.Identifier.{isIdentifierPart, isIdentifierStart}
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.data.filebased.TypedPath
 import com.sos.jobscheduler.data.folder.FolderPath
 import fastparse.all._
 import fastparse.core
-import scala.collection.immutable.Seq
 import scala.reflect.ClassTag
 
 /**
@@ -54,20 +52,20 @@ private[parser] object BasicParsers
   def keyword(name: String) = P[Unit](name)  // TODO require word boundary
   val quotedString = P[String] {
     val singleQuoted = P("'" ~/
-      (CharsWhile(c ⇒ c != '\'' && c >= ' ').! ~ "'")
-        .opaque("Single-quoted (') string is not properly terminated or contains a non-printable character"))
+      (CharsWhile(ch ⇒ ch != '\'' && ch >= ' ', min = 0).! ~ "'").opaque(
+        "Single-quoted (') string is not properly terminated or contains a non-printable character"))
     val doubleQuoted = P("\"" ~/
-      CharsWhile(c ⇒ c != '"'  && c >= ' ' && c != '\\').! ~ "\"")
-        .opaque("Double-quoted (\") string is not properly terminated or contains a non-printable character or backslash (\\)")
-    singleQuoted | doubleQuoted.flatMap {
-      case o if o contains '$' ⇒ invalid("Variable interpolation via '$' in double-quoted is not implemented. Consider using single quotes (')")
-      case o ⇒ valid(o)
-    }
+      (CharsWhile(ch ⇒ ch != '"' && ch >= ' ' && ch != '\\', min = 0).! ~ "\"").opaque(
+        "Double-quoted (\") string is not properly terminated or contains a non-printable character or backslash (\\)"))
+      .flatMap {
+        case o if o contains '$' ⇒ invalid("Variable interpolation via '$' in double-quoted is not implemented. Consider using single quotes (')")
+        case o ⇒ valid(o)
+      }
+    singleQuoted | doubleQuoted
   }
   //val javaClassName = P((identifier ~ ("." ~ identifier).rep).!)
 
   val pathString = P[String](quotedString)
-  //val pathString = P(("/" ~ identifier ~ ("/" ~ identifier).rep).!)
 
   def path[P <: TypedPath: TypedPath.Companion] = P[P](
     pathString map (p ⇒ FolderPath.Root.resolve[P](p)))
@@ -78,13 +76,27 @@ private[parser] object BasicParsers
   def inParentheses[A](parser: Parser[A]): Parser[A] =
     P(h ~ "(" ~~/ parser ~~ ")")
 
-  def sequence[A](parser: Parser[A]): Parser[Seq[A]] =
-    P(P("(") ~~/ commaSeq(parser) ~~ ")")
+  def parenthesizedCommaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
+    P("(") ~~/ commaSeq(parser) ~~ ")"
 
-  def commaSeq[A](parser: Parser[A]): Parser[Seq[A]] =
+  def commaSeq[A](parser: Parser[A]): Parser[collection.Seq[A]] =
     P(parser ~ (comma ~ parser).rep ~ w) map {
-      case (head, tail) ⇒ (head +: tail).toImmutableSeq
+      case (head, tail) ⇒ head +: tail
     }
+
+  def leftRecurse[A, O](operand: P[A], operator: P[O])(operation: (A, O, A) ⇒ P[A]): P[A] = {
+    operand ~/ (w ~ operator ~~/ operand).rep(min = 0) flatMap {
+      case (head, tail) ⇒
+        def loop(left: A, tail: List[(O, A)]): P[A] =
+          tail match {
+            case Nil ⇒
+              valid(left)
+            case (op, right) :: tl ⇒
+              operation(left, op, right) flatMap (a ⇒ loop(a, tl))
+          }
+        loop(head, tail.toList)
+    }
+  }
 
   def newInstance[A: ClassTag](name: String): A =
     loadClass[A](name).newInstance()

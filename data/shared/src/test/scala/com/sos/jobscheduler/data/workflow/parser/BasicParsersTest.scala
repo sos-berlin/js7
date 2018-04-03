@@ -24,7 +24,9 @@ final class BasicParsersTest extends FreeSpec {
     }
 
     "Valid" in {
+      assert(quotedString.checkedParse("""''""") == Valid(""))
       assert(quotedString.checkedParse("""'x'""") == Valid("x"))
+      assert(quotedString.checkedParse("""'ö'""") == Valid("ö"))
       assert(quotedString.checkedParse("""'x\n'""") == Valid("""x\n"""))
       assert(quotedString.checkedParse("""'x$y'""") == Valid("x$y"))
     }
@@ -34,7 +36,7 @@ final class BasicParsersTest extends FreeSpec {
     "Backslash is not supported" in {
       // TODO Backslash in string
       assert(quotedString.checkedParse(""""x\n"""") == Invalid(Problem(
-        """Double-quoted (") string is not properly terminated or contains a non-printable character or backslash (\):1:1 ..."\"x\\n\""""")))
+        """Double-quoted (") string is not properly terminated or contains a non-printable character or backslash (\):1:2 ..."x\\n\""""")))
     }
 
     "String interpolation is not supported" in {
@@ -44,7 +46,9 @@ final class BasicParsersTest extends FreeSpec {
     }
 
     "Valid" in {
+      assert(quotedString.checkedParse("""""""") == Valid(""))
       assert(quotedString.checkedParse(""""x"""") == Valid("x"))
+      assert(quotedString.checkedParse(""""ö"""") == Valid("ö"))
     }
   }
 }

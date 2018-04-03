@@ -14,23 +14,25 @@ import org.scalatest.FreeSpec
   */
 final class ExpressionParserTest extends FreeSpec {
 
+  // See also EvaluatorTest
+
   "Variable" - {
     "$ with impossible names" in {
-      assert(variable.parse("$var/1") == Parsed.Success(Variable(StringConstant("var")), 4))
-      assert(variable.parse("$var.1") == Parsed.Success(Variable(StringConstant("var")), 4))
-      assert(variable.parse("$var-1") == Parsed.Success(Variable(StringConstant("var")), 4))
-      assert(variable.parse("$var_1") == Parsed.Success(Variable(StringConstant("var_1")), 6))
+      assert(dollarVariable.parse("$var/1") == Parsed.Success(Variable(StringConstant("var")), 4))
+      assert(dollarVariable.parse("$var.1") == Parsed.Success(Variable(StringConstant("var")), 4))
+      assert(dollarVariable.parse("$var-1") == Parsed.Success(Variable(StringConstant("var")), 4))
+      assert(dollarVariable.parse("$var_1") == Parsed.Success(Variable(StringConstant("var_1")), 6))
     }
 
     "$ with possible names" in {
-      assert(variable.checkedParse("$var") == Valid(Variable(StringConstant("var"))))
-      assert(variable.checkedParse("$gå") == Valid(Variable(StringConstant("gå"))))
-      assert(variable.checkedParse("$été") == Valid(Variable(StringConstant("été"))))
+      assert(dollarVariable.checkedParse("$var") == Valid(Variable(StringConstant("var"))))
+      assert(dollarVariable.checkedParse("$gå") == Valid(Variable(StringConstant("gå"))))
+      assert(dollarVariable.checkedParse("$été") == Valid(Variable(StringConstant("été"))))
     }
 
     "variable()" in {
-      assert(variable.checkedParse("""variable("gå")""") == Valid(Variable(StringConstant("gå"))))
-      assert(variable.checkedParse("""variable ( "gå" )""") == Valid(Variable(StringConstant("gå"))))
+      assert(functionCall.checkedParse("""variable("gå")""") == Valid(Variable(StringConstant("gå"))))
+      assert(functionCall.checkedParse("""variable ( "gå" )""") == Valid(Variable(StringConstant("gå"))))
     }
   }
 
@@ -38,12 +40,22 @@ final class ExpressionParserTest extends FreeSpec {
   testBooleanExpression("false", BooleanConstant(false))
   testBooleanExpression("(false)", BooleanConstant(false))
 
-  """"1" < 1 fails""" in {
-    booleanExpression.checkedParse(""""1" < 1""") match {
-      case Valid(_) ⇒ fail()
-      case Invalid(problem) ⇒ assert(problem == Problem("""Types are not comparable: "1" < 1:1:8 ..."""""))
-    }
+  testStringExpression("''", StringConstant(""))
+  testStringExpression("'x'", StringConstant("x"))
+  testStringExpression("'ö'", StringConstant("ö"))
+  testStringExpression("""'a\x'""", StringConstant("""a\x"""))
+  testStringExpression("""'a\\x'""", StringConstant("""a\\x"""))
+  testStringExpression(""" "" """.trim, StringConstant(""))
+  testStringExpression(""" "x" """.trim, StringConstant("x"))
+  testStringExpression(""" "ö" """.trim, StringConstant("ö"))
+
+  "Invalid strings" in {
+    assert(stringExpression.checkedParse(""" "\" """.trim).isInvalid)
+    assert(stringExpression.checkedParse(""" "\\" """.trim).isInvalid)
   }
+
+  testError(""""1" < 1""",
+    """Types are not comparable: '1' < 1:1:8 ...""""")
 
   testBooleanExpression("returnCode != 7", NotEqual(OrderReturnCode, NumericConstant(7)))
   testBooleanExpression("returnCode > 7", GreaterThan(OrderReturnCode, NumericConstant(7)))
@@ -62,28 +74,75 @@ final class ExpressionParserTest extends FreeSpec {
 
   testBooleanExpression("returnCode == 1 || returnCode == 2 || returnCode == 3",
     Or(
-      Equal(OrderReturnCode, NumericConstant(1)),
       Or(
-        Equal(OrderReturnCode, NumericConstant(2)),
-        Equal(OrderReturnCode, NumericConstant(3)))))
+        Equal(OrderReturnCode, NumericConstant(1)),
+        Equal(OrderReturnCode, NumericConstant(2))),
+      Equal(OrderReturnCode, NumericConstant(3))))
 
   testBooleanExpression("""returnCode >= 0 && returnCode <= 9 && $result == "OK"""",
     And(
-      GreaterOrEqual(OrderReturnCode, NumericConstant(0)),
       And(
-        LessOrEqual(OrderReturnCode, NumericConstant(9)),
-        Equal(Variable(StringConstant("result")), StringConstant("OK")))))
+        GreaterOrEqual(OrderReturnCode, NumericConstant(0)),
+        LessOrEqual(OrderReturnCode, NumericConstant(9))),
+      Equal(Variable(StringConstant("result")), StringConstant("OK"))))
 
   testBooleanExpression("""returnCode in (0, 3, 50)""",
     In(
       OrderReturnCode,
       ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
+  testError("""returnCode in (0, 3, 50) || $result == "1"""",
+    """Operator || requires Boolean operands: (0, 3, 50) || $result == '1':1:43 ...""""")
+
+  testBooleanExpression("""(returnCode in(0, 3, 50)) || $result == "1"""",
+    Or(
+      In(
+        OrderReturnCode,
+        ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))),
+      Equal(
+        Variable(StringConstant("result")),
+        StringConstant("1"))))
+
+  testBooleanExpression("""returnCode==toNumber($expected)||$result=="1"||true&&returnCode>0""",
+    Or(
+      Or(
+        Equal(
+          OrderReturnCode,
+          ToNumber(Variable(StringConstant("expected")))),
+        Equal(
+          Variable(StringConstant("result")),
+          StringConstant("1"))),
+      And(
+        BooleanConstant(true),
+        GreaterThan(
+          OrderReturnCode,
+          NumericConstant(0)))))
+
+  testBooleanExpression("""$result matches 'A.*'""",
+    Matches(
+      Variable(StringConstant("result")),
+      StringConstant("A.*")))
+
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
     registerTest(exprString) {
       import fastparse.all._
       val parser = booleanExpression ~ End
       assert(parser.checkedParse(exprString) == Valid(expr))
+      assert(parser.checkedParse(expr.toString) == Valid(expr), " - toString")
+    }
+
+  private def testStringExpression(exprString: String, expr: StringExpression)(implicit pos: source.Position) =
+    registerTest(exprString) {
+      import fastparse.all._
+      val parser = stringExpression ~ End
+      assert(parser.checkedParse(exprString) == Valid(expr))
       assert(parser.checkedParse(expr.toString) == Valid(expr))
+    }
+
+  private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
+    registerTest(exprString + " - should fail") {
+      import fastparse.all._
+      val parser = stringExpression ~ End
+      assert(parser.checkedParse(exprString) == Invalid(Problem(errorMessage)))
     }
 }

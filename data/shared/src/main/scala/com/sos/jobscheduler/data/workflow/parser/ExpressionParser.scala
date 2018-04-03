@@ -12,7 +12,7 @@ import fastparse.all._
 object ExpressionParser
 {
   lazy val expression: P[Expression] =
-    or
+    wordOperation
 
   lazy val booleanExpression: P[BooleanExpression] =
     expression flatMap {
@@ -32,6 +32,13 @@ object ExpressionParser
       case o ⇒ invalid(s"Expression is not of type String: $o")
     }
 
+  private val parenthesizedExpression = P[Expression](
+    parenthesizedCommaSeq(expression) map {
+      case Seq(o) ⇒ o
+      case seq ⇒ ListExpression(seq.toList)
+    }
+  )
+
   private val trueConstant = P[BooleanConstant](
     keyword("true") map (_ ⇒ BooleanConstant(true)))
 
@@ -43,52 +50,58 @@ object ExpressionParser
 
   private val booleanConstant = trueConstant | falseConstant
 
-  private val numericConstant = P[NumericConstant](int map (o ⇒ NumericConstant(o)))
+  private val numericConstant = P[NumericConstant](int
+    .map(o ⇒ NumericConstant(o)))
 
-  private val stringConstant = P[StringConstant](quotedString map StringConstant.apply)
+  private val stringConstant = P[StringConstant](quotedString
+    .map(StringConstant.apply))
 
-  private[parser] val variable = P[StringExpression] {
-    val variableFunction = P(keyword("variable") ~~/ (inParentheses(stringExpression) map Variable.apply))
+  private[parser] val dollarVariable = P[StringExpression] {
     val simpleName = P[String]((CharPred(Variable.isSimpleNameStart) ~ CharsWhile(Variable.isSimpleNamePart, min = 0)).!)
-    val dollarVariable = P((P("$") ~ simpleName) map (o ⇒ Variable(StringConstant(o))))
-    variableFunction | dollarVariable
+    (P("$") ~ simpleName)
+      .map(o ⇒ Variable(StringConstant(o)))
   }
 
+  private[parser] val functionCall = P[Expression](
+    (keyword("toNumber") ~~/ inParentheses(stringExpression))
+      .map(e ⇒ ToNumber(e)) |
+    P(keyword("variable") ~~/ inParentheses(stringExpression ~ (comma ~ stringExpression).?)
+      .map { case (name, default) ⇒ Variable(name, default) }))
+
   private val factor = P[Expression](
-    inParentheses(expression) | booleanConstant | numericConstant | stringConstant | returnCode | variable)
+    parenthesizedExpression | booleanConstant | numericConstant | stringConstant | returnCode | dollarVariable | functionCall)
 
   // TODO Reject comparison of incomparable types ("1" != 1)
-  private val comparison = P[Expression]{
-    val compareOperator = P(StringIn("==", "!=", "<=", ">=", "<", ">")).!
-    val inSet = P(sequence(expression) map (o ⇒ ListExpression(o.toList)))
-    val expr = P[(Expression, Option[(String, Expression)])](
-      factor ~~/ ((compareOperator ~~/ factor) | (keyword("in").! ~~/ inSet)).?)
-    expr flatMap {
-      case (a, None) ⇒ valid(a)
-      case (a: Expression, Some(("==", b: Expression))) ⇒ valid(Equal(a, b))
-      case (a: Expression, Some(("!=", b: Expression))) ⇒ valid(NotEqual(a, b))
-      case (a: NumericExpression, Some(("<=", b: NumericExpression))) ⇒ valid(LessOrEqual(a, b))
-      case (a: NumericExpression, Some((">=", b: NumericExpression))) ⇒ valid(GreaterOrEqual(a, b))
-      case (a: NumericExpression, Some(("<" , b: NumericExpression))) ⇒ valid(LessThan(a, b))
-      case (a: NumericExpression, Some((">" , b: NumericExpression))) ⇒ valid(GreaterThan(a, b))
-      case (a: Expression, Some(("in", list: ListExpression))) ⇒ valid(In(a, list))
-      case (a, Some((op: String, b: Expression))) ⇒ invalid(s"Types are not comparable: " + Precedence.toString(a, op, Precedence.Comparison, b))
-    }}
-
-  private val and: P[Expression] = P(
-    (comparison ~~/ (P("&&") ~~/ and).?) flatMap {
-      case (a, None) ⇒ valid(a)
-      case (a: BooleanExpression, Some(b: BooleanExpression)) ⇒ valid(And(a, b))
-      case (a, Some(b)) ⇒ invalid(s"Operator && requires Boolean operands: " + Precedence.toString(a, "&&", Precedence.And, b))
+  private val comparison: P[Expression] =
+    leftRecurse(factor, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!) {
+      case (a, "==", b) ⇒ valid(Equal(a, b))
+      case (a, "!=", b) ⇒ valid(NotEqual(a, b))
+      case (a: NumericExpression, "<=", b: NumericExpression) ⇒ valid(LessOrEqual(a, b))
+      case (a: NumericExpression, ">=", b: NumericExpression) ⇒ valid(GreaterOrEqual(a, b))
+      case (a: NumericExpression, "<" , b: NumericExpression) ⇒ valid(LessThan(a, b))
+      case (a: NumericExpression, ">" , b: NumericExpression) ⇒ valid(GreaterThan(a, b))
+      case (a, op: String, b) ⇒ invalid(s"Types are not comparable: " + Precedence.toString(a, op, Precedence.Comparison, b))
     }
-  )
 
-  private val or: P[Expression] = P(
-    (and ~~/ (P("||") ~~/ or).?) flatMap {
-      case (a, None) ⇒ valid(a)
-      case (a: BooleanExpression, Some(b: BooleanExpression)) ⇒ valid(Or(a, b))
-      case (a, Some(b)) ⇒ invalid(s"Operator || requires Boolean operands: " + Precedence.toString(a, "||", Precedence.Or, b))
+  private val and: P[Expression] =
+    leftRecurse(comparison, P("&&")) {
+      case (a: BooleanExpression, (), b: BooleanExpression) ⇒ valid(And(a, b))
+      case (a, (), b) ⇒ invalid(s"Operator && requires Boolean operands: " + Precedence.toString(a, "&&", Precedence.And, b))
     }
-  )
 
+  private val or: P[Expression] =
+    leftRecurse(and, P("||")) {
+      case (a: BooleanExpression, (), b: BooleanExpression) ⇒ valid(Or(a, b))
+      case (a, (), b) ⇒ invalid(s"Operator || requires Boolean operands: " + Precedence.toString(a, "||", Precedence.Or, b))
+    }
+
+  private val wordOperation: P[Expression] =
+    leftRecurse(or, (keyword("in") | keyword("matches")).!) {
+      case (a, "in", list: ListExpression) ⇒ valid(In(a, list))
+      case (_, "in", _) ⇒ invalid("List expected after operator 'in'")
+      case (a, "matches", b: StringExpression) ⇒ valid(Matches(a, b))
+      case (_, "matches", _) ⇒ invalid("String expected after operator 'matches'")
+      case (a, op, b) ⇒ invalid(s"Operator '$op' with unexpected operand type: " + Precedence.toString(a, op, Precedence.Or, b))
+
+    }
 }

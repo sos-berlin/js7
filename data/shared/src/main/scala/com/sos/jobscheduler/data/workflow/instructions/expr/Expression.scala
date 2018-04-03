@@ -5,7 +5,6 @@ import com.sos.jobscheduler.data.workflow.parser.ExpressionParser
 import com.sos.jobscheduler.data.workflow.parser.Parsers.ops._
 import io.circe.{Decoder, Encoder, Json}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
-import scala.collection.immutable.Seq
 
 /**
   * @author Joacim Zschimmer
@@ -68,8 +67,13 @@ object Expression
   }
 
   final case class In(a: Expression, b: ListExpression) extends BooleanExpression {
-    def precedence = Precedence.Comparison
+    def precedence = Precedence.WordOperator
     override def toString = toString(a, "in", b)
+  }
+
+  final case class Matches(a: Expression, b: StringExpression) extends BooleanExpression {
+    def precedence = Precedence.WordOperator
+    override def toString = toString(a, "matches", b)
   }
 
   final case class ListExpression(expressions: List[Expression]) extends Expression {
@@ -79,6 +83,7 @@ object Expression
 
   final case class ToNumber(expression: Expression) extends NumericExpression {
     def precedence = Precedence.Factor
+    override def toString = s"toNumber($expression)"
   }
 
   final case class BooleanConstant(bool: Boolean) extends BooleanExpression {
@@ -94,14 +99,19 @@ object Expression
   final case class StringConstant(string: String) extends StringExpression {
     if (string contains '"') throw new IllegalArgumentException("Quoted not allowed in String")  // TODO Escape quote and non-printable chars
     def precedence = Precedence.Factor
-    override def toString = '"' + string + '"'
+    override def toString =
+      if (string contains '\'')
+        '"' + string + '"'
+      else
+        '\'' + string + '\''
   }
 
-  final case class Variable(name: StringExpression) extends StringExpression {
+  final case class Variable(name: StringExpression, default: Option[StringExpression] = None) extends StringExpression {
     def precedence = Precedence.Factor
-    override def toString = name match {
-      case StringConstant(nam) if Variable.isSimpleName(nam) ⇒ "$" + nam
-      case _ ⇒ s"variable($name)"
+    override def toString = (name, default) match {
+      case (StringConstant(nam), None) if Variable.isSimpleName(nam) ⇒ "$" + nam
+      case (_, None) ⇒ s"variable($name)"
+      case (_, Some(o)) ⇒ s"variable($name, $o)"
     }
   }
   object Variable {
@@ -124,13 +134,14 @@ object Expression
       Precedence.toString(a, op, precedence, b)
   }
   object Precedence {
-    val Or = 1
-    val And = 2
-    val Comparison = 3
+    val WordOperator = 1
+    val Or = 2
+    val And = 3
+    val Comparison = 4
     val Factor = 99
 
     def toString(a: Expression, op: String, opPrecedence: Int, b: Expression): String =
-      inParentheses(a, opPrecedence) + " " + op + " " + inParentheses(b, opPrecedence)
+      inParentheses(a, opPrecedence) + " " + op + " " + inParentheses(b, opPrecedence + 1)
 
     def inParentheses(o: Precedence, opPrecedence: Int): String =
       if (o.precedence >= opPrecedence)

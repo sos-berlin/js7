@@ -34,6 +34,7 @@ final class Evaluator(scope: Scope)
       case LessOrEqual    (a, b) ⇒ numNumToBool(a, b)(_.number <= _.number)
       case GreaterOrEqual (a, b) ⇒ numNumToBool(a, b)(_.number >= _.number)
       case In(a, set: ListExpression) ⇒ eval(a).map2(evalListExpression(set))((a1, set1) ⇒ BooleanValue(set1 contains a1))
+      case Matches(a: StringExpression, b: StringExpression) ⇒ evalString(a).map2(evalString(b))(_.string matches _.string).map(BooleanValue.apply)
       case Not            (a)    ⇒ evalBoolean(a) map (o ⇒ !o.bool) map BooleanValue.apply
       case And            (a, b) ⇒ evalBoolean(a) flatMap (o ⇒ if (!o.bool) o.valid else evalBoolean(b))
       case Or             (a, b) ⇒ evalBoolean(a) flatMap (o ⇒ if (o.bool) o.valid else evalBoolean(b))
@@ -54,9 +55,11 @@ final class Evaluator(scope: Scope)
       case StringConstant(o) ⇒
         StringValue(o).valid
 
-      case Variable(stringExpr) ⇒
+      case Variable(stringExpr, default) ⇒
         evalString(stringExpr) flatMap (name ⇒
-          scope.variableNameToString.lift(name.string) map StringValue.apply toChecked Problem(s"No such variable: ${name.string}"))
+          scope.variableNameToString.lift(name.string) map StringConstant.apply orElse default
+            toChecked Problem(s"No such variable: ${name.string}")
+            flatMap evalString)
     }
 
   private def anyAnyToBool[A <: Expression, B <: Expression](a: A, b: B)(op: (Value, Value) ⇒ Boolean): Checked[BooleanValue] =

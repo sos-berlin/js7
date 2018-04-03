@@ -72,7 +72,7 @@ final class WorkflowParserTest extends FreeSpec {
   }
 
   "if (...)" in {
-    val source = """if (returnCode in (1, 2) || $KEY == "VALUE") { job "THEN" on "AGENT" }"""
+    val source = """if ((returnCode in (1, 2)) || $KEY == "VALUE") { job "THEN" on "AGENT" }"""
     assert(parse(source) ==
       Workflow(
         WorkflowPath.NoId,

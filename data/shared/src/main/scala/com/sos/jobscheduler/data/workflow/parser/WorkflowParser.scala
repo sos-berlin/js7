@@ -41,11 +41,11 @@ object WorkflowParser {
       label ~ h ~ ":" ~ w)
 
     private val successReturnCodes = P[ReturnCodeMeaning.Success](
-      sequence(int)
+      parenthesizedCommaSeq(int)
         map(numbers ⇒ ReturnCodeMeaning.Success(numbers.map(ReturnCode.apply).toSet)))
 
     private val failureReturnCodes = P[ReturnCodeMeaning.Failure](
-      sequence(int)
+      parenthesizedCommaSeq(int)
         map(numbers ⇒ ReturnCodeMeaning.Failure(numbers.map(ReturnCode.apply).toSet)))
 
     private val returnCodeMeaning = P[ReturnCodeMeaning](
