@@ -134,16 +134,28 @@ final class EvaluatorTest extends FreeSpec
     result = true,
     Valid(Matches(StringConstant("A-"), StringConstant("A.+"))))
 
-  testEval("""returnCode >= 1 && returnCode <= 9 && returnCode != 1""",
+  testEval("!false",
+    result = true,
+    Valid(Not(BooleanConstant(false))))
+
+  testEval("! true",
+    result = false,
+    Valid(Not(BooleanConstant(true))))
+
+  testEval("!!true",
+    result = true,
+    Valid(Not(Not(BooleanConstant(true)))))
+
+  testEval("returnCode >= 1 && !(returnCode <= 9) && returnCode != 1",
     result = false,
     Valid(
       And(
         And(
           GreaterOrEqual(OrderReturnCode, NumericConstant(1)),
-          LessOrEqual(OrderReturnCode, NumericConstant(9))),
+          Not(LessOrEqual(OrderReturnCode, NumericConstant(9)))),
         NotEqual(OrderReturnCode, NumericConstant(1)))))
 
-  testEval("""returnCode in (1, 2, 3)""",
+  testEval("returnCode in (1, 2, 3)",
     result = true,
     Valid(
       In(OrderReturnCode, ListExpression(List(NumericConstant(1), NumericConstant(2), NumericConstant(3))))))
@@ -236,7 +248,7 @@ final class EvaluatorTest extends FreeSpec
     registerTest(exprString) {
       assert(completeExpression.checkedParse(exprString.trim) == expression)
       for (e ← expression) {
-        assert(completeExpression.checkedParse(e.toString) == expression)
+        assert(completeExpression.checkedParse(e.toString) == expression, " *** toString ***")
         assert(eval(e) == result)
       }
     }

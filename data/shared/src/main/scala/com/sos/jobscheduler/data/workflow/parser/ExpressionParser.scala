@@ -62,23 +62,30 @@ object ExpressionParser
       .map(o ⇒ Variable(StringConstant(o)))
   }
 
-  private[parser] val functionCall = P[Expression](
+  private[parser] val functionCall = P(
     P(keyword("variable") ~~/ inParentheses(stringExpression ~ (comma ~ stringExpression).?)
       .map { case (name, default) ⇒ Variable(name, default) }))
 
-  private val factorOnly = P[Expression](
+  private val factorOnly = P(
     parenthesizedExpression | booleanConstant | numericConstant | stringConstant | returnCode | dollarVariable | functionCall)
 
-  private val factor = P[Expression](
+  private val factor = P(
     factorOnly ~ (w ~ "." ~~/ keyword).? map {
       case (o, None) ⇒ o
       case (o, Some("toNumber")) ⇒ ToNumber(o)
-    }
-  )
+    })
+
+  private lazy val not: P[Expression] = P(
+    (P("!") ~~/ bFactor) flatMap {
+      case o: BooleanExpression ⇒ valid(Not(o))
+      case _ ⇒ invalid("Operator '!' expects Boolean expression")
+    })
+
+  private val bFactor = not | factor
 
   // TODO Reject comparison of incomparable types ("1" != 1)
   private val comparison: P[Expression] =
-    leftRecurse(factor, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!) {
+    leftRecurse(bFactor, P(StringIn("==", "!=", "<=", ">=", "<", ">")).!) {
       case (a, "==", b) ⇒ valid(Equal(a, b))
       case (a, "!=", b) ⇒ valid(NotEqual(a, b))
       case (a: NumericExpression, "<=", b: NumericExpression) ⇒ valid(LessOrEqual(a, b))

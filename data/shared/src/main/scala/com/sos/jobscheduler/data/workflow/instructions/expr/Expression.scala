@@ -24,6 +24,7 @@ object Expression
 
   final case class Not(a: BooleanExpression) extends BooleanExpression {
     def precedence = Precedence.Factor
+    override def toString = "!" + Precedence.inParentheses(a, precedence)
   }
 
   final case class And(a: BooleanExpression, b: BooleanExpression) extends BooleanExpression {
@@ -83,7 +84,7 @@ object Expression
 
   final case class ToNumber(expression: Expression) extends NumericExpression {
     def precedence = Precedence.Factor
-    override def toString = s"($expression).toNumber"
+    override def toString = Precedence.inParentheses(expression, precedence) + ".toNumber"
   }
 
   final case class BooleanConstant(bool: Boolean) extends BooleanExpression {
