@@ -1,8 +1,9 @@
 package com.sos.jobscheduler.master.web.master.api.order
 
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.StatusCodes.{Created, NotFound, OK}
+import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound}
 import akka.http.scaladsl.model.Uri
+import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import com.sos.jobscheduler.base.problem.Problem
@@ -26,10 +27,14 @@ trait OrderRoute {
     post {
       pathEnd {
         entity(as[FreshOrder]) { order ⇒
-          complete {
-            orderClient.addOrder(order) map {
-              case true ⇒ Created
-              case false ⇒ OK  // Duplicate
+          extractUri { uri ⇒
+            respondWithHeader(Location(uri + "/" + order.id.string)) {
+              complete {
+                orderClient.addOrder(order) map {
+                  case true ⇒ Created: ToResponseMarshallable
+                  case false ⇒ Conflict → Problem(s"Order '${order.id.string}' has already been added"): ToResponseMarshallable
+                }
+              }
             }
           }
         }

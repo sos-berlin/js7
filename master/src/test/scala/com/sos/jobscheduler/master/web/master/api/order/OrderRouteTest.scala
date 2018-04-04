@@ -1,7 +1,7 @@
 package com.sos.jobscheduler.master.web.master.api.order
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.{Created, OK}
+import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
@@ -90,7 +90,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
   "POST duplicate order" in {
     val order = FreshOrder(DuplicateOrderId, WorkflowPath("/WORKFLOW"))
     Post(s"/master/api/order", order) ~> route ~> check {
-      assert(status == OK)  // Duplicate order
+      assert(status == Conflict)  // Duplicate order
     }
   }
 }
