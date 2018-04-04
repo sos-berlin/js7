@@ -26,7 +26,7 @@ import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.filebased.Repo
 import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
-import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedsOverview}
+import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule
@@ -116,6 +116,7 @@ object RunningMaster {
     apply(Guice.createInjector(PRODUCTION, module))
 
   def apply(injector: Injector)(implicit ec: ExecutionContext): Future[RunningMaster] = {
+    injector.instance[EventCollector]  // Start EventCollector
     val masterConfiguration = injector.instance[MasterConfiguration]
 
     StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
@@ -151,7 +152,7 @@ object RunningMaster {
       def fileBaseds[A <: FileBased: FileBased.Companion]: Task[Stamped[Seq[A]]] =
         for (stamped ← getRepo) yield
           for (repo ← stamped) yield
-            repo.currentTyped[A].values.toVector
+            repo.currentTyped[A].values.toImmutableSeq.sortBy/*for determinstic tests*/(_.id: FileBasedId[TypedPath])
 
       def pathToCurrentFileBased[A <: FileBased: FileBased.Companion](path: A#Path): Task[Checked[Stamped[A]]] =
         for (stamped ← getRepo; repo = stamped.value) yield

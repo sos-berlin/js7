@@ -12,10 +12,10 @@ import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.ActorEventCollector
+import com.sos.jobscheduler.master.AgentEventIdEvent
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
 import com.sos.jobscheduler.master.configuration.inject.MasterModule._
 import com.typesafe.config.Config
-import java.util.concurrent.Executors
 import javax.inject.Singleton
 import monix.execution.Scheduler
 import scala.concurrent.ExecutionContext
@@ -26,9 +26,12 @@ import scala.util.control.NonFatal
   */
 final class MasterModule(configuration: MasterConfiguration) extends AbstractModule {
 
-  override def configure() = {
-    bind(classOf[EventCollector]).to(classOf[ActorEventCollector]).asEagerSingleton()
-  }
+  @Provides @Singleton
+  def eventCollector(factory: ActorEventCollector.Factory): EventCollector =
+    factory.apply {
+      case _: AgentEventIdEvent ⇒ false
+      case _ ⇒ true
+    }
 
   @Provides @Singleton
   def eventCollectorConfiguration(config: Config): EventCollector.Configuration =

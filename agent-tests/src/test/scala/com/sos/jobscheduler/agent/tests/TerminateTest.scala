@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.tests
 
 import akka.actor.{ActorRefFactory, ActorSystem}
 import com.google.common.io.Closer
-import com.google.inject.{AbstractModule, Injector}
+import com.google.inject.{AbstractModule, Injector, Provides}
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.client.AgentClient
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
@@ -24,6 +24,7 @@ import com.sos.jobscheduler.core.event.ActorEventCollector
 import com.sos.jobscheduler.data.event.EventRequest
 import com.sos.jobscheduler.data.order.{Order, OrderEvent, OrderId, Outcome, Payload}
 import com.sos.jobscheduler.data.workflow.test.TestSetting._
+import javax.inject.Singleton
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.collection.immutable.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -99,9 +100,13 @@ object TerminateTest {
     }
   }
 
-  private def newEventCollector(injector: Injector) =
+  private def newEventCollector(injector: Injector): EventCollector =
     injector.createChildInjector(new AbstractModule {
       override def configure() = bind(classOf[EventCollector.Configuration]) toInstance
         new EventCollector.Configuration(queueSize = 100000, timeoutLimit = 99.s)
-    }).instance[ActorEventCollector]
+
+      @Provides @Singleton
+      def eventCollector(factory: ActorEventCollector.Factory): EventCollector =
+        factory.apply()
+    }).instance[EventCollector]
 }

@@ -2,7 +2,7 @@ package com.sos.jobscheduler.agent.scheduler.order
 
 import akka.actor.{ActorRef, Props}
 import com.google.common.io.Closer
-import com.google.inject.{AbstractModule, Guice}
+import com.google.inject.{AbstractModule, Guice, Provides}
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
 import com.sos.jobscheduler.agent.configuration.Akkas.newActorSystem
 import com.sos.jobscheduler.agent.configuration.inject.AgentModule
@@ -22,6 +22,7 @@ import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.{ActorEventCollector, StampedKeyedEventBus}
 import java.nio.file.Path
+import javax.inject.Singleton
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -49,7 +50,7 @@ object TestAgentActorProvider {
   def provide[A](body: TestAgentActorProvider ⇒ A): A =
     autoClosing(new TestAgentActorProvider)(body)
 
-  private def start(configAndData: Path)(implicit closer: Closer): (ActorEventCollector, ActorRef) = {
+  private def start(configAndData: Path)(implicit closer: Closer): (EventCollector, ActorRef) = {
     implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = Some(configAndData))
     val actorSystem = newActorSystem("TestAgentActorProvider")
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
@@ -61,7 +62,11 @@ object TestAgentActorProvider {
     val eventCollector = injector.createChildInjector(new AbstractModule {
       override def configure() = bind(classOf[EventCollector.Configuration]) toInstance
         new EventCollector.Configuration(queueSize = 100000, timeoutLimit = 99.s)
-    }).instance[ActorEventCollector]
+
+      @Provides @Singleton
+      def eventCollector(factory: ActorEventCollector.Factory): EventCollector =
+        factory.apply()
+    }).instance[EventCollector]
 
     val agentActor = actorSystem.actorOf(Props { injector.instance[AgentActor] }, "AgentActor")
     (eventCollector, agentActor)

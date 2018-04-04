@@ -6,15 +6,15 @@ import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.event.ActorEventCollector._
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, Stamped}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import javax.inject.{Inject, Singleton}
 import scala.concurrent.ExecutionContext
 
 /**
   * @author Joacim Zschimmer
   */
-@Singleton
-final class ActorEventCollector @Inject private(
+final class ActorEventCollector private(
+  isCollectable: Event ⇒ Boolean)(
   configuration: EventCollector.Configuration,
   timerService: TimerService,
   executionContext: ExecutionContext,
@@ -40,8 +40,10 @@ with AutoCloseable {
         }
 
         def receive = {
-          case event @ Stamped(_, _, _: AnyKeyedEvent) ⇒
-            addStamped(event.asInstanceOf[Stamped[AnyKeyedEvent]])
+          case stamped @ Stamped(_, _, KeyedEvent(_, event)) ⇒
+            if (isCollectable(event)) {
+              addStamped(stamped.asInstanceOf[Stamped[AnyKeyedEvent]])
+            }
         }
       }
     },
@@ -52,4 +54,24 @@ with AutoCloseable {
 
 object ActorEventCollector {
   private val logger = Logger(getClass)
+
+  @Singleton
+  final class Factory @Inject private(
+    configuration: EventCollector.Configuration,
+    timerService: TimerService,
+    executionContext: ExecutionContext,
+    protected val eventIdGenerator: EventIdGenerator,
+    keyedEventBus: StampedKeyedEventBus,
+    actorSystem: ActorSystem)
+  {
+    def apply(isCollectable: Event ⇒ Boolean = _ ⇒ true) =
+      new ActorEventCollector(
+        isCollectable)(
+        configuration,
+        timerService,
+        executionContext,
+        eventIdGenerator,
+        keyedEventBus,
+        actorSystem)
+  }
 }
