@@ -48,7 +48,8 @@ private[parser] object BasicParsers
   //val commaOrNewLine = P(h ~ ("," | (newline ~ w ~ ",".?)) ~ w)
   val int = P[Int](("-".? ~ CharsWhile(c ⇒ c >= '0' && c <= '9')).! map (_.toInt))
   //Scala-like: val instructionTerminator = P(h ~ (newline | (";" ~ w) | &("}") | End))
-  val identifier = P((CharPred(isIdentifierStart) ~ CharsWhile(isIdentifierPart, min = 0)).!)
+  val identifier = P[String]((CharPred(isIdentifierStart) ~ CharsWhile(isIdentifierPart, min = 0)).!)
+  def keyword = identifier
   def keyword(name: String) = P[Unit](name)  // TODO require word boundary
   val quotedString = P[String] {
     val singleQuoted = P("'" ~/

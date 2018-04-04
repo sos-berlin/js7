@@ -70,7 +70,7 @@ object ExpressionParser
     parenthesizedExpression | booleanConstant | numericConstant | stringConstant | returnCode | dollarVariable | functionCall)
 
   private val factor = P[Expression](
-    factorOnly ~ (w ~ "." ~~/ keyword("toNumber").!).? map {
+    factorOnly ~ (w ~ "." ~~/ keyword).? map {
       case (o, None) ⇒ o
       case (o, Some("toNumber")) ⇒ ToNumber(o)
     }
@@ -101,12 +101,11 @@ object ExpressionParser
     }
 
   private val wordOperation: P[Expression] =
-    leftRecurse(or, (keyword("in") | keyword("matches")).!) {
+    leftRecurse(or, keyword) {
       case (a, "in", list: ListExpression) ⇒ valid(In(a, list))
       case (_, "in", _) ⇒ invalid("List expected after operator 'in'")
       case (a, "matches", b: StringExpression) ⇒ valid(Matches(a, b))
       case (_, "matches", _) ⇒ invalid("String expected after operator 'matches'")
       case (a, op, b) ⇒ invalid(s"Operator '$op' with unexpected operand type: " + Precedence.toString(a, op, Precedence.Or, b))
-
     }
 }
