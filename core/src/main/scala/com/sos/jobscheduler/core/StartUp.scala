@@ -2,6 +2,8 @@ package com.sos.jobscheduler.core
 
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.JavaInformations
+import com.sos.jobscheduler.common.system.OperatingSystem.operatingSystem.{cpuModel, distributionNameAndVersionOption, hostname}
+import com.sos.jobscheduler.common.utils.ByteUnits.toMB
 import java.io.File
 import java.nio.file.Path
 
@@ -14,15 +16,16 @@ object StartUp {
   /** Log Java version, config and data directory, and classpath. */
   def logStartUp(configDir: Path, dataDir: Path): Unit = {
     logger.info(
-      s"Java ${JavaInformations.implementationVersion} · " +
       s"config=$configDir " +
-      s"data=$configDir")
+      s"Java " + JavaInformations.implementationVersion + " " +
+      "(" + toMB(sys.runtime.maxMemory) + ") · " +
+      sys.props("os.name") + (distributionNameAndVersionOption.map(o ⇒ s" ($o)").getOrElse("")) + " · " +
+      cpuModel.map(o ⇒ s"$o, ").getOrElse("") + sys.runtime.availableProcessors + " threads · " +
+      (if (hostname.nonEmpty) s"host=$hostname " else "") +
+      s"data=$dataDir")
 
-    for (o ← sys.props("java.class.path") split File.pathSeparator) logger.debug(s"Classpath $o")
-    //getClass.getClassLoader match {
-    //  case cl: URLClassLoader ⇒ for ((u, i) ← cl.getURLs.zipWithIndex) logger.debug(s"ClassLoader: #${i+1} $u")
-    // Java 10: jdk.internal.loader.ClassLoaders$AppClassLoader@1de0aca6
-    //  case o ⇒ logger.debug(s"getClassLoader=$o ?")
-    //}
+    for (o ← sys.props("java.class.path") split File.pathSeparator) {
+      logger.debug(Logger.Java, s"Classpath $o")
+    }
   }
 }

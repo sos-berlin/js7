@@ -95,22 +95,28 @@ object OperatingSystem {
         readFirstLine(anyFile)
       }
 
-      Try { readFirstLine(Paths.get("/etc/system-release")) }  // Best result under CentOS 7.2 (more version details than in /etc/os-release)
-        .recover { case _ ⇒ readFileOsRelease() }   // New standard ?
-        .recover { case _ ⇒ readFileAnyRelease() }  // Vendor-specific
-        .recover { case _ ⇒ readFirstLine(Paths.get("/etc/release")) } // Solaris ?
-        .toOption
+      if (isMac || isSolaris)
+        None
+      else
+        Try { readFirstLine(Paths.get("/etc/system-release")) }  // Best result under CentOS 7.2 (more version details than in /etc/os-release)
+          .recover { case _ ⇒ readFileOsRelease() }   // New standard ?
+          .recover { case _ ⇒ readFileAnyRelease() }  // Vendor-specific
+          .recover { case _ ⇒ readFirstLine(Paths.get("/etc/release")) } // Solaris ?
+          .toOption
     }
 
     def cpuModel =
-      Try {
-        val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
-        autoClosing(new FileInputStream("/proc/cpuinfo")) { in ⇒
-          fromInputStream(in).getLines collectFirst {  // Assuming all cores are of same model
-            case CpuModelRegex(model) ⇒ model.trim
+      if (isMac || isSolaris)
+        None
+      else
+        Try {
+          val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
+          autoClosing(new FileInputStream("/proc/cpuinfo")) { in ⇒
+            fromInputStream(in).getLines collectFirst {  // Assuming all cores are of same model
+              case CpuModelRegex(model) ⇒ model.trim
+            }
           }
-        }
-      } .toOption.flatten
+        } .toOption.flatten
   }
 
   def concatFileAndPathChain(f: File, pathChain: String): String = {

@@ -116,11 +116,10 @@ object RunningMaster {
     apply(Guice.createInjector(PRODUCTION, module))
 
   def apply(injector: Injector)(implicit ec: ExecutionContext): Future[RunningMaster] = {
-    injector.instance[EventCollector]  // Start EventCollector
     val masterConfiguration = injector.instance[MasterConfiguration]
 
     StartUp.logStartUp(masterConfiguration.configDirectory, masterConfiguration.dataDirectory)
-
+    injector.instance[EventCollector]  // Start EventCollector
     masterConfiguration.stateDirectory match {
       case o if !exists(o) ⇒ createDirectory(o)
       case _ ⇒
