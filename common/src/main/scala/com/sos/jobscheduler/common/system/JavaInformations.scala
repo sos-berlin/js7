@@ -25,5 +25,6 @@ object JavaInformations {
     systemProperties)
 
   lazy val implementationVersion: String =
-    Option(classOf[Runtime].getPackage.getImplementationVersion) getOrElse sys.props("java.version")
+    try classOf[Runtime].getMethod("version").invoke(null).toString
+    catch { case _: Throwable ⇒ sys.props("java.version") }
 }
