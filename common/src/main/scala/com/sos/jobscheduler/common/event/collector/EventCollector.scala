@@ -79,7 +79,7 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
     whenForKey[E](request.copy[E](limit = 1), key, predicate) map {
       case eventSeq: EventSeq.NonEmpty[Iterator, E] ⇒ eventSeq.stampeds.next().value
       case _: EventSeq.Empty ⇒ throw new TimeoutException(s"Timed out: $request")
-      case _: EventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")
+      case _: TearableEventSeq.Torn ⇒ throw new IllegalStateException("EventSeq is torn")
     }
 
   final def whenForKey[E <: Event](
@@ -107,7 +107,7 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
           whenAnyKeyedEvents2(lastEventId, until, delay, collect, limit)
         case EventSeq.Empty(lastEventId) ⇒
           Future.successful(EventSeq.Empty(lastEventId))
-        case o: EventSeq.Torn ⇒
+        case o: TearableEventSeq.Torn ⇒
           Future.successful(o)
     }).flatten
 
@@ -130,7 +130,7 @@ abstract class EventCollector(initialOldestEventId: EventId, configuration: Conf
         else
           EventSeq.Empty(lastEventId)
       case None ⇒
-        EventSeq.Torn(oldestKnownEventId = oldestEventId)
+        TearableEventSeq.Torn(oldestKnownEventId = oldestEventId)
     }
   }
 

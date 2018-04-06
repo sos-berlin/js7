@@ -45,8 +45,8 @@ final class EventSeqTest extends FreeSpec {
         }""")
   }
 
-  "JSON EventSeq.Torn" in {
-    checkTearableEventSeq[TestEvent.type](EventSeq.Torn(7),
+  "JSON TearableEventSeq.Torn" in {
+    checkTearableEventSeq[TestEvent.type](TearableEventSeq.Torn(7),
       """{
         "TYPE": "Torn",
         "oldestKnownEventId": 7

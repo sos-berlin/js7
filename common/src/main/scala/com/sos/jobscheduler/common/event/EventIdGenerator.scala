@@ -40,7 +40,7 @@ final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Defaul
         case eventSeq: EventSeq[Iterator,E] ⇒
           val Stamped(eventId, timestamp, ()) = stampWithLast(())
           stampEventSeqWith(eventSeq, eventId, timestamp)
-        case o: EventSeq.Torn ⇒
+        case o: TearableEventSeq.Torn ⇒
           stampWithLast(o)
       }
   }

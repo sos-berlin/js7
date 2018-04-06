@@ -5,7 +5,7 @@ import com.sos.jobscheduler.common.event.collector.EventCollectorExclusiveTest._
 import com.sos.jobscheduler.common.scalautil.Futures.implicits.SuccessFuture
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.common.time.timer.TimerService
-import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq}
+import com.sos.jobscheduler.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, TearableEventSeq}
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
 import scala.concurrent.ExecutionContext
 import scala.reflect.ClassTag
@@ -58,7 +58,7 @@ final class EventCollectorExclusiveTest extends FreeSpec with BeforeAndAfterAll 
     val EventSeq.NonEmpty(cEventIterator) = eventCollector.when(EventRequest.singleClass[BEvent](after = bEvents.last.eventId, 1.s)) await 100.ms
     assert((cEventIterator.toList map { _.value }) == List("2" <-: B1))
 
-    assert((eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 1.s)) await 500.ms).isInstanceOf[EventSeq.Torn])
+    assert((eventCollector.when(EventRequest.singleClass[BEvent](after = EventId.BeforeFirst, 1.s)) await 500.ms).isInstanceOf[TearableEventSeq.Torn])
   }
 
   "eventCollector.whenForKey, whenKeyedEvent" in {
