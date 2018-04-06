@@ -35,7 +35,7 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
     env.writeTxt(TestWorkflowId.path, TestWorkflowNotation)
     master = RunningMaster(MasterConfiguration.forTest(configAndData = env.masterDir)) await 99.s
     for (t ← master.terminated.failed) logger.error(t.toStringWithCauses, t)
-    api = new AkkaHttpMasterApi(master.localUri.toString)
+    api = new AkkaHttpMasterApi(master.localUri)
   }
 
   override def afterAll() = {
