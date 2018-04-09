@@ -50,7 +50,7 @@ trait WebLogDirectives {
   private val exceptionHandler = ExceptionHandler {
     case e: PublicException ⇒
       extractRequest { request ⇒
-        webLogger.debug(toLogMessage(request, e), e)
+        webLogger.warn(toLogMessage(request, e), e)
         complete((BadRequest, e.publicMessage + "\n"))
       }
 
@@ -59,6 +59,7 @@ trait WebLogDirectives {
 
     case e ⇒
       extractRequest { request ⇒
+        logger.warn(toLogMessage(request, e), e)
         webLogger.debug(toLogMessage(request, e), e)
         if (verboseErrorMessages)
           complete((InternalServerError, e.toStringWithCauses + "\n"))  // .toSimplifiedString hides combined Problems (see Problem.semigroup)
@@ -143,6 +144,7 @@ trait WebLogDirectives {
 
 object WebLogDirectives {
   private val webLogger = Logger("Web")
+  private val logger = Logger(getClass)
 
   val TestConfig = ConfigFactory.parseMap(Map(
     "jobscheduler.webserver.log.level" → "debug",
