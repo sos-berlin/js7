@@ -130,7 +130,7 @@ with KeyedEventJournalingActor[Event] {
       become(ready)
       unstashAll()
       if (!hasRecovered) {
-        fileBaseds.readConfigurationAndPersistEvents(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events
+        fileBaseds.readConfiguration(InitialVersion.some).orThrow.unsafeRunSync()  // Persists events
       }
       readScheduledOrderGeneratorConfiguration().orThrow.unsafeRunSync()
       defer {  // Publish after configuration events have been persisted and published
@@ -247,7 +247,7 @@ with KeyedEventJournalingActor[Event] {
     command match {
       case MasterCommand.ReadConfigurationDirectory(versionId) ⇒
         val checkedSideEffect = for {
-          a ← fileBaseds.readConfigurationAndPersistEvents(versionId)
+          a ← fileBaseds.readConfiguration(versionId)  // Persists events
           b ← readScheduledOrderGeneratorConfiguration()
         } yield a >> b
         (for (sideEffect ← checkedSideEffect) yield {

@@ -27,7 +27,7 @@ protected[order] trait MasterRepoReader extends FileBasedConfigurationReader
 
   final def repo = _repo
 
-  final def readConfigurationAndPersistEvents(versionId: Option[VersionId]): Checked[IO[Unit]] =
+  final def readConfiguration(versionId: Option[VersionId]): Checked[IO[Unit]] =
     for (eventsRepoAndSideEffect ← readConfiguration(repo, versionId)) yield
       IO {
         val (events, changedRepo, sideEffect) = eventsRepoAndSideEffect
