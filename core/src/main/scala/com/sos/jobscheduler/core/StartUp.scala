@@ -16,12 +16,12 @@ object StartUp {
   /** Log Java version, config and data directory, and classpath. */
   def logStartUp(configDir: Path, dataDir: Path): Unit = {
     logger.info(
-      s"config=$configDir " +
       s"Java " + JavaInformations.implementationVersion + " " +
       "(" + toMB(sys.runtime.maxMemory) + ") · " +
-      sys.props("os.name") + (distributionNameAndVersionOption.map(o ⇒ s" ($o)").getOrElse("")) + " · " +
-      cpuModel.map(o ⇒ s"$o, ").getOrElse("") + sys.runtime.availableProcessors + " threads · " +
+      sys.props("os.name") + distributionNameAndVersionOption.map(o ⇒ s" ($o)").getOrElse("") + " · " +
+      cpuModel.map(o ⇒ s"$o ").getOrElse("") + "(" + sys.runtime.availableProcessors + " threads) · " +
       (if (hostname.nonEmpty) s"host=$hostname " else "") +
+      s"config=$configDir " +
       s"data=$dataDir")
 
     for (o ← sys.props("java.class.path") split File.pathSeparator) {
