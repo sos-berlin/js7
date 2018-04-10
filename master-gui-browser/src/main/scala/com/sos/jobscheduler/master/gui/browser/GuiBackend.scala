@@ -128,7 +128,7 @@ final class GuiBackend(scope: BackendScope[GuiComponent.Props, GuiState]) {
             .andThen { case _ ⇒
               isRequestingEvents = false  // TODO Falls requestOrdersAndEvents() aufgerufen wird, während Events geholt werden, wird isRequestingEvents zu früh zurückgesetzt (wegen doppelter fetchEvents)
             }
-            .transform (o ⇒ Success(handleResponse(o map (_.value))))
+            .transform (o ⇒ Success(handleResponse(o)))
         }
 
       def handleResponse(response: Try[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]): Callback =

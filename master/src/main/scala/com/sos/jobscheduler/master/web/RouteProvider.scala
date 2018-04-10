@@ -29,7 +29,6 @@ extends AllRoute {
   protected val masterConfiguration = injector.instance[MasterConfiguration]
   protected val config              = injector.instance[Config]
   protected def eventCollector      = injector.instance[EventCollector]
-  protected def eventIdGenerator    = injector.instance[EventIdGenerator]
   protected val executionContext    = injector.instance[ExecutionContext]
   protected val scheduler           = injector.instance[Scheduler]
 

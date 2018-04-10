@@ -8,7 +8,6 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import com.sos.jobscheduler.common.event.EventIdGenerator
 import com.sos.jobscheduler.common.event.collector.EventCollector
 import com.sos.jobscheduler.common.http.CirceJsonSupport._
 import com.sos.jobscheduler.common.time.ScalaTime._
@@ -29,7 +28,6 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
 
   private implicit val timerService = new TimerService(idleTimeout = Some(1.s))
   protected val eventCollector = new EventCollector.ForTest
-  protected val eventIdGenerator = new EventIdGenerator
   protected implicit def executionContext = system.dispatcher
 
   TestEvents foreach eventCollector.addStamped
@@ -45,7 +43,7 @@ final class EventRouteTest extends FreeSpec with ScalatestRouteTest with EventRo
     s"$uri" in {
       Get(uri) ~> Accept(`application/json`) ~> route ~> check {
         if (status != OK) fail(s"$status - ${responseEntity.toStrict(9.seconds).value}")
-        val Stamped(_, _, EventSeq.NonEmpty(stampeds)) = responseAs[Stamped[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]]
+        val EventSeq.NonEmpty(stampeds) = responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
         assert(stampeds == TestEvents)
       }
     }

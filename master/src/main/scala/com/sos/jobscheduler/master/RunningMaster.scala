@@ -25,7 +25,7 @@ import com.sos.jobscheduler.common.time.timer.TimerService
 import com.sos.jobscheduler.core.StartUp
 import com.sos.jobscheduler.core.event.StampedKeyedEventBus
 import com.sos.jobscheduler.core.filebased.Repo
-import com.sos.jobscheduler.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import com.sos.jobscheduler.data.event.{Event, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import com.sos.jobscheduler.data.filebased.{FileBased, FileBasedId, FileBasedsOverview, TypedPath}
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
@@ -174,8 +174,12 @@ object RunningMaster {
         (orderKeeper ? MasterOrderKeeper.Command.AddOrder(order))
           .mapTo[MasterOrderKeeper.Response.AddOrderAccepted] map (_.created)
 
-      def events[E <: Event](request: EventRequest[E]): Future[Stamped[TearableEventSeq[Seq, KeyedEvent[E]]]] =
-        eventIdGenerator.stampTearableEventSeq(eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true))
+      def events[E <: Event](request: EventRequest[E]): Future[TearableEventSeq[Seq, KeyedEvent[E]]] =
+        eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true) map {
+          case EventSeq.NonEmpty(stampeds) ⇒ EventSeq.NonEmpty(stampeds.toImmutableSeq)
+          case o: EventSeq.Empty ⇒ o
+          case o: TearableEventSeq.Torn ⇒ o
+        }
 
       def order(orderId: OrderId): Future[Option[Order[Order.State]]] =
         (orderKeeper ? MasterOrderKeeper.Command.GetOrder(orderId))

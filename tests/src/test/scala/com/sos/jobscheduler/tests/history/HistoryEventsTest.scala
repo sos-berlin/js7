@@ -7,7 +7,7 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.xmls.ScalaXmls.implicits.RichXmlPath
 import com.sos.jobscheduler.common.time.ScalaTime._
 import com.sos.jobscheduler.data.agent.AgentPath
-import com.sos.jobscheduler.data.event.{Event, EventId, EventSeq, Stamped}
+import com.sos.jobscheduler.data.event.{Event, EventId, EventSeq, TearableEventSeq}
 import com.sos.jobscheduler.data.filebased.SourceType
 import com.sos.jobscheduler.data.job.{JobPath, ReturnCode}
 import com.sos.jobscheduler.data.order.OrderEvent.OrderFinished
@@ -39,13 +39,13 @@ final class HistoryEventsTest extends FreeSpec {
         provider.runAgents() { runningAgents ⇒
           val eventCollector = new TestEventCollector
           provider.runMaster(Some(eventCollector)) { master ⇒
-            autoClosing(new AkkaHttpMasterApi(uri = master.localUri.toString)) { api ⇒
-              val Stamped(_, _, EventSeq.Torn(oldestEventId)) = api.events[Event](after = EventId.BeforeFirst, 1.second) await 99.s
+            autoClosing(new AkkaHttpMasterApi(master.localUri)) { api ⇒
+              val TearableEventSeq.Torn(oldestEventId) = api.events[Event](after = EventId.BeforeFirst, 1.second) await 99.s
 
               master.addOrder(TestOrder) await 99.s
               eventCollector.await[OrderFinished](_.key == TestOrder.id)
 
-              val Stamped(_, _, EventSeq.NonEmpty(stampeds)) = api.events[Event](after = oldestEventId, 1.second) await 99.s
+              val EventSeq.NonEmpty(stampeds) = api.events[Event](after = oldestEventId, 1.second) await 99.s
 
               val history = new TestHistory
               stampeds foreach history.handleStampedKeyedEvent

@@ -37,8 +37,8 @@ trait HttpMasterApi extends MasterApi {
     httpClient.get[Stamped[Seq[Order[Order.State]]]](uris.order.list[Order[Order.State]])
 
   final def events[E <: Event: ClassTag](after: EventId, timeout: Duration)(implicit kd: Decoder[KeyedEvent[E]], ke: ObjectEncoder[KeyedEvent[E]])
-  : Future[Stamped[TearableEventSeq[Seq, KeyedEvent[E]]]] =
-    httpClient.get[Stamped[TearableEventSeq[Seq, KeyedEvent[E]]]](
+  : Future[TearableEventSeq[Seq, KeyedEvent[E]]] =
+    httpClient.get[TearableEventSeq[Seq, KeyedEvent[E]]](
       uris.events[E](after = after, timeout = timeout),
       timeout = timeout + ToleratedEventDelay)
 

@@ -34,7 +34,7 @@ final class EventIdGenerator @Inject()(clock: EventIdClock = EventIdClock.Defaul
   /**
     * Wraps `EventCollector`'s `TearableEventSeq` (Iterator-based) into a Stamped with own `EventId`.
     */
-  def stampTearableEventSeq[E](future: ⇒ Future[TearableEventSeq[Iterator, E]])(implicit ec: ExecutionContext): Future[Stamped[TearableEventSeq[Seq, E]]] = {
+  private def stampTearableEventSeq[E](future: ⇒ Future[TearableEventSeq[Iterator, E]])(implicit ec: ExecutionContext): Future[Stamped[TearableEventSeq[Seq, E]]] = {
     for (eventSeq ← future) yield
       eventSeq match {
         case eventSeq: EventSeq[Iterator,E] ⇒
