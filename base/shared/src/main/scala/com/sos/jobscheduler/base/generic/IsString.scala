@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.base.generic
 
 import com.sos.jobscheduler.base.convert.As
+import com.sos.jobscheduler.base.utils.ScalaUtils.RichJavaClass
 import io.circe.{Decoder, Encoder, Json, KeyDecoder, KeyEncoder}
 import javax.annotation.Nullable
 import scala.language.implicitConversions
@@ -37,7 +38,10 @@ object IsString {
   }
 
   trait Companion[A <: IsString] extends HasJsonCodec[A] {
+    val name = getClass.simpleScalaName
     implicit val ordering: Ordering[A] = Ordering by { _.string }
     implicit val IsStringAsString: As[String, A] = As(apply)
+
+    implicit def self: Companion[A] = this
   }
 }

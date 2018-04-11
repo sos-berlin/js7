@@ -86,7 +86,6 @@ object TypedPath {
 
   abstract class Companion[P <: TypedPath: ClassTag] extends IsString.Companion[P]
   {
-    val name = getClass.simpleScalaName
     val NameOrdering: Ordering[P] = Ordering by { _.name }
     lazy val Anonymous: P = apply(InternalPrefix + "anonymous")
     lazy val NoId: FileBasedId[P] = Anonymous % VersionId.Anonymous
