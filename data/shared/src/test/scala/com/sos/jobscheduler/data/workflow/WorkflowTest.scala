@@ -16,6 +16,75 @@ import org.scalatest.FreeSpec
   */
 final class WorkflowTest extends FreeSpec {
 
+  "JSON" - {
+    "Workflow without WorkflowID, when placed in configuration directory" in {
+      testJson[Workflow](Workflow.of(Job(JobPath("/JOB"), AgentPath("/AGENT"))),
+        json"""{
+          "instructions": [
+            { "TYPE": "Job", "jobPath": "/JOB", "agentPath": "/AGENT" }
+          ]
+        }""")
+    }
+
+    "Workflow with WorkflowId" in {
+      testJson[Workflow](TestWorkflow,
+        json"""{
+          "id": {
+            "path": "/TEST",
+            "versionId": "VERSION"
+          },
+          "instructions": [
+            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
+            {
+              "TYPE": "If",
+              "predicate": "returnCode == 1",
+              "then": {
+                "instructions": [
+                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
+                ]
+              },
+              "else": {
+                "instructions": [
+                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
+                ]
+              }
+            }, {
+              "TYPE": "ForkJoin",
+              "branches": [
+                {
+                  "id": "🥕",
+                  "workflow": {
+                    "instructions": [
+                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
+                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
+                    ]
+                  }
+                }, {
+                  "id": "🍋",
+                  "workflow": {
+                    "instructions": [
+                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
+                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
+                    ]
+                  }
+                }
+              ]
+            },
+            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
+          ]
+        }""")
+    }
+
+    "Workflow without path" in {
+      testJson(Workflow.of(AJob),
+        json"""{
+          "instructions": [
+            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
+          ]
+        }""")
+    }
+  }
+
   "labelToPosition" in {
     val workflow = Workflow.of(
       "A" @: Job(JobPath("/JOB"), AgentPath("/AGENT")),
@@ -125,66 +194,6 @@ final class WorkflowTest extends FreeSpec {
     assert(!TestWorkflow.isDefinedAt(Position(0, "🥕", 0)))
     assert(!TestWorkflow.isDefinedAt(Position(0, "🥕", 3)))
     assert(!TestWorkflow.isDefinedAt(Position(999)))
-  }
-
-  "JSON" - {
-    "Workflow with path" in {
-      testJson[Workflow](TestWorkflow,
-        json"""{
-          "id": {
-            "path": "/TEST",
-            "versionId": "VERSION"
-          },
-          "instructions": [
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
-            {
-              "TYPE": "If",
-              "predicate": "returnCode == 1",
-              "then": {
-                "instructions": [
-                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
-                ]
-              },
-              "else": {
-                "instructions": [
-                  { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
-                ]
-              }
-            }, {
-              "TYPE": "ForkJoin",
-              "branches": [
-                {
-                  "id": "🥕",
-                  "workflow": {
-                    "instructions": [
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" },
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
-                    ]
-                  }
-                }, {
-                  "id": "🍋",
-                  "workflow": {
-                    "instructions": [
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" },
-                      { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
-                    ]
-                  }
-                }
-              ]
-            },
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/B" }
-          ]
-        }""")
-    }
-
-    "Workflow without path" in {
-      testJson(Workflow.of(AJob),
-        json"""{
-          "instructions": [
-            { "TYPE": "Job", "agentPath": "/AGENT", "jobPath": "/A" }
-          ]
-        }""")
-    }
   }
 }
 

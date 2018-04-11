@@ -24,7 +24,7 @@ final class JobTest extends FreeSpec {
         }""")
     }
 
-    "returnCodeMeaning" in {
+    "returnCodeMeaning success" in {
       testJson[Instruction.Labeled](
         Job(JobPath("/JOB"), AgentPath("/AGENT"), ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1)))),
         json"""{
@@ -33,6 +33,19 @@ final class JobTest extends FreeSpec {
           "agentPath": "/AGENT",
           "returnCodeMeaning": {
             "success": [ 0, 1 ]
+          }
+        }""")
+    }
+
+    "returnCodeMeaning failure" in {
+      testJson[Instruction.Labeled](
+        Job(JobPath("/JOB"), AgentPath("/AGENT"), ReturnCodeMeaning.Failure(Set(ReturnCode(99)))),
+        json"""{
+          "TYPE": "Job",
+          "jobPath": "/JOB",
+          "agentPath": "/AGENT",
+          "returnCodeMeaning": {
+            "failure": [ 99 ]
           }
         }""")
     }

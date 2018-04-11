@@ -11,6 +11,8 @@ import org.scalatest.FreeSpec
   */
 final class GotoTest extends FreeSpec {
 
+  // For compatibility with JobScheduler 1 only.
+
   "JSON" in {
     testJson[Instruction.Labeled](
       Goto(Label("A")),
