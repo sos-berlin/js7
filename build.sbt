@@ -11,7 +11,7 @@
   *   sbt clean-build
   *
   * To build quickly, without running tests again:
-  *   sbt "; clean; build-quickly"
+  *   sbt "; clean-all; build-quickly"
   *
   * Under Windows, Microsoft SDK is required to compile taskserver-dotnet.
   *   set WINDOWS_NET_SDK_HOME=%windir%\Microsoft.NET\Framework\v4.0.30319
@@ -44,8 +44,10 @@ val testParallel                     = sys.props contains "test.parallel"
 val isForDevelopment                 = sys.props contains "dev"
 
 // Under Windows, compile engine-job-api first, to allow taskserver-dotnet accessing the class files of engine-job-api.
-addCommandAlias("clean-publish"  , "; clean ;build; publish-all")
-addCommandAlias("clean-build"    , "; clean; build")
+addCommandAlias("clean-all"      , "; clean; clean-js; testerJVM/clean")
+addCommandAlias("clean-js"       , "; baseJS/clean; dataJS/clean; common-httpJS/clean; master-clientJS/clean; master-dataJS/clean; master-gui-browser/clean; testerJS/clean")
+addCommandAlias("clean-publish"  , "; clean-all; build; publish-all")
+addCommandAlias("clean-build"    , "; clean-all; build")
 addCommandAlias("build"          , "; compile-all; test-all; pack")
 addCommandAlias("build-only"     , "; compile-only; pack")
 addCommandAlias("compile-all"    , "; engine-job-api/Test/compile; Test/compile; ForkedTest:compile")
@@ -162,6 +164,8 @@ lazy val `jobscheduler-docker` = project
     mappings in Universal :=
       recursiveFileMapping(baseDirectory.value / "src/main/resources/com/sos/jobscheduler/install/docker", to = "build/"))
 
+lazy val testerJVM = tester.jvm
+lazy val testerJS = tester.js
 lazy val tester = crossProject
   .settings(commonSettings)
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -173,9 +177,9 @@ lazy val tester = crossProject
       "io.circe" %%% "circe-generic" % circeVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion
   }
-lazy val testerJVM = tester.jvm
-lazy val testerJs = tester.js
 
+lazy val baseJVM = base.jvm
+lazy val baseJS = base.js
 lazy val base = crossProject
   .dependsOn(tester % "compile->test")
   .settings(commonSettings)
@@ -195,9 +199,9 @@ lazy val base = crossProject
       javaxAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test"
   }
-lazy val baseJVM = base.jvm
-lazy val baseJs = base.js
 
+lazy val dataJVM = data.jvm
+lazy val dataJS = data.js
 lazy val data = crossProject
   .dependsOn(base, tester % "compile->test")
   .settings(commonSettings)
@@ -210,8 +214,6 @@ lazy val data = crossProject
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
       "org.typelevel" %%% "discipline" % disciplineVersion % "test"
   }
-lazy val dataJVM = data.jvm
-lazy val dataJs = data.js
 
 lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, tester.jvm % "compile->test")
   .settings(commonSettings)
@@ -248,6 +250,8 @@ lazy val common = project.dependsOn(`common-http`.jvm, base.jvm, data.jvm, teste
       BuildInfoKey.action("buildId")(newBuildId)),
     buildInfoPackage := "com.sos.jobscheduler.common")
 
+lazy val `common-httpJVM` = `common-http`.jvm
+lazy val `common-httpJS` = `common-http`.js
 lazy val `common-http` = crossProject
   .dependsOn(base, tester % "compile->test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
@@ -284,6 +288,8 @@ lazy val master = project.dependsOn(`master-data`.jvm, `master-client`.jvm, core
       log4j % "test"
   }
 
+lazy val `master-dataJVM` = `master-data`.jvm
+lazy val `master-dataJS` = `master-data`.js
 lazy val `master-data` = crossProject
   .dependsOn(data, tester % "compile->test")
   .settings(commonSettings)
@@ -294,9 +300,9 @@ lazy val `master-data` = crossProject
       Seq(
         "org.scalatest" %%% "scalatest" % scalaTestVersion % "test")
     })
-lazy val `master-dataJVM` = `master-data`.jvm
-lazy val `master-dataJs` = `master-data`.js
 
+lazy val `master-clientJVM` = `master-client`.jvm
+lazy val `master-clientJS` = `master-client`.js
 lazy val `master-client` = crossProject
   .dependsOn(`master-data`, `common-http`, tester % "compile->test")
   .jvmConfigure(_.dependsOn(common))
@@ -319,9 +325,6 @@ lazy val `master-client` = crossProject
     jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),  // For tests. Requires: npm install jsdom
     scalaJSStage in Global := (if (isForDevelopment) FastOptStage else FullOptStage),
     libraryDependencies += "org.scala-js" %%% "scalajs-dom" % Dependencies.scalaJsDomVersion)
-
-lazy val `master-clientJVM` = `master-client`.jvm
-lazy val `master-clientJs` = `master-client`.js
 
 val masterGuiPath = s"com/sos/jobscheduler/master/gui/browser/gui"
 lazy val masterGuiJsFilename = Def.task {
@@ -470,8 +473,6 @@ lazy val `agent-client` = project.dependsOn(data.jvm, `common-http`.jvm, common,
       scalaTest % "test" ++
       log4j % "test"
   }
-lazy val `common-httpJVM` = `common-http`.jvm
-lazy val `common-httpJs` = `common-http`.js
 
 lazy val `agent-data` = project.dependsOn(common, data.jvm, tester.jvm % "compile->test")
   .configs(StandardTest, ExclusiveTest, ForkedTest).settings(testSettings)
