@@ -176,7 +176,7 @@ object Order {
     }
 
     @JsonCodec
-    final case class Agent(agentId: AgentId) extends AttachedTo
+    final case class Agent(agentId: AgentId) extends AgentOrDetachable
 
     @JsonCodec
     final case class Detachable(agentId: AgentId) extends AgentOrDetachable
