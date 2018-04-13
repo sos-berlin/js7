@@ -259,8 +259,8 @@ with KeyedEventJournalingActor[Event] {
         orderScheduleGenerator ! OrderScheduleGenerator.Input.ScheduleEvery(every.toJavaDuration)
         Future.successful(MasterCommand.Response.Accepted)
 
-      case cmd: MasterCommand.AddOrderIfNew ⇒
-        addOrder(cmd.toFreshOrder) map (_ ⇒ MasterCommand.Response.Accepted)
+      //case cmd: MasterCommand.AddOrderIfNew ⇒
+      //  addOrder(cmd.toFreshOrder) map (_ ⇒ MasterCommand.Response.Accepted)
 
       case MasterCommand.EmergencyStop ⇒       // For completeness. RunningMaster has handled the command already
         Future.failed(new NotImplementedError)

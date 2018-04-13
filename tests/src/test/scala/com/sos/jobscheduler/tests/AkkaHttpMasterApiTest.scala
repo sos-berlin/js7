@@ -7,14 +7,12 @@ import com.sos.jobscheduler.common.scalautil.Futures.implicits._
 import com.sos.jobscheduler.common.scalautil.Logger
 import com.sos.jobscheduler.common.system.FileUtils.temporaryDirectory
 import com.sos.jobscheduler.common.time.ScalaTime._
-import com.sos.jobscheduler.data.filebased.VersionId
 import com.sos.jobscheduler.data.order.{FreshOrder, Order, OrderId}
 import com.sos.jobscheduler.data.workflow.WorkflowPath
 import com.sos.jobscheduler.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowNotation}
 import com.sos.jobscheduler.master.RunningMaster
 import com.sos.jobscheduler.master.client.AkkaHttpMasterApi
 import com.sos.jobscheduler.master.configuration.MasterConfiguration
-import com.sos.jobscheduler.master.data.MasterCommand
 import com.sos.jobscheduler.master.tests.TestEnvironment
 import com.sos.jobscheduler.tests.AkkaHttpMasterApiTest._
 import org.scalatest.{BeforeAndAfterAll, FreeSpec}
@@ -66,12 +64,12 @@ final class AkkaHttpMasterApiTest extends FreeSpec with BeforeAndAfterAll {
     assert(api.workflows.await(99.s).value == List(TestWorkflow))
   }
 
-  "AddOrderIfNew" in {
-    // Deprecated
-    val freshOrder = FreshOrder(OrderId("ORDER-2"), TestWorkflowId.path)
-    api.executeCommand(MasterCommand.AddOrderIfNew.fromFreshOrder(freshOrder)) await 10.s
-    assert(api.orders.await(99.s).value.toSet == Set(TestOrder, freshOrder.toOrder(VersionId("(initial)"))))
-  }
+  //"AddOrderIfNew" in {
+  //  // Deprecated
+  //  val freshOrder = FreshOrder(OrderId("ORDER-2"), TestWorkflowId.path)
+  //  api.executeCommand(MasterCommand.AddOrderIfNew.fromFreshOrder(freshOrder)) await 10.s
+  //  assert(api.orders.await(99.s).value.toSet == Set(TestOrder, freshOrder.toOrder(VersionId("(initial)"))))
+  //}
 }
 
 private object AkkaHttpMasterApiTest {
