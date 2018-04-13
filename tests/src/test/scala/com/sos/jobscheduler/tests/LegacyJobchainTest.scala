@@ -50,7 +50,7 @@ final class LegacyJobchainTest extends FreeSpec {
           directoryProvider.runMaster() { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
-            master.addOrder(TestOrder) await 99.s
+            master.addOrder(TestOrder).await(99.s).orThrow
             eventCollector.await[OrderFinished](_.key == TestOrder.id)
             checkEventSeq(eventCollector.all[OrderEvent])
           }

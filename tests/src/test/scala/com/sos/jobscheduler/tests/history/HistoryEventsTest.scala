@@ -1,5 +1,6 @@
 package com.sos.jobscheduler.tests.history
 
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Closers.withCloser
@@ -42,7 +43,7 @@ final class HistoryEventsTest extends FreeSpec {
             autoClosing(new AkkaHttpMasterApi(master.localUri)) { api ⇒
               val TearableEventSeq.Torn(oldestEventId) = api.events[Event](after = EventId.BeforeFirst, 1.second) await 99.s
 
-              master.addOrder(TestOrder) await 99.s
+              master.addOrder(TestOrder).await(99.s).orThrow
               eventCollector.await[OrderFinished](_.key == TestOrder.id)
 
               val EventSeq.NonEmpty(stampeds) = api.events[Event](after = oldestEventId, 1.second) await 99.s

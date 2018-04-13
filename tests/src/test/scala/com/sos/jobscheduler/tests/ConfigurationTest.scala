@@ -1,7 +1,10 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
+import cats.data.Validated.Invalid
 import cats.syntax.option._
+import com.sos.jobscheduler.base.problem.Checked.Ops
+import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
 import com.sos.jobscheduler.common.scalautil.Futures.implicits._
@@ -82,8 +85,7 @@ final class ConfigurationTest extends FreeSpec {
       def addWorkflowAndRunOrder(master: RunningMaster, versionId: VersionId, path: WorkflowPath, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, path)
         // Command will be rejected because workflow is not yet defined
-        assert(Try { master.addOrder(order) await 99.s }
-          .failed.get.getMessage contains s"No such key 'Workflow:${path.string}'")
+        assert(master.addOrder(order).await(99.s) == Invalid(Problem(s"No such key 'Workflow:${path.string}'")))
         defineWorkflowAndRunOrder(master, versionId, path, orderId)
       }
 
@@ -97,13 +99,13 @@ final class ConfigurationTest extends FreeSpec {
         // Add Workflow
         directoryProvider.master.writeJson(workflow withId path % VersionId.Anonymous)
         master.executeCommand(ReadConfigurationDirectory(versionId.some)) await 99.s
-        master.addOrder(order) await 99.s
+        master.addOrder(order).await(99.s).orThrow
         awaitOrder(order.id, path % versionId)
       }
 
       def runOrder(master: RunningMaster, workflowId: WorkflowId, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, workflowId.path)
-        master.addOrder(order) await 99.s
+        master.addOrder(order).await(99.s).orThrow
         awaitOrder(orderId, workflowId)
       }
 

@@ -40,7 +40,7 @@ final class IfTest extends FreeSpec {
         eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
         for (returnCode ← ExpectedEvents.keys) withClue(s"$returnCode: ") {
           val orderId = OrderId("🔺" + returnCode.number)
-          master.addOrder(newOrder(orderId, returnCode)) await 99.s
+          master.addOrder(newOrder(orderId, returnCode)).await(99.s).orThrow
           if (returnCode == ReturnCode(2))
             eventCollector.await[OrderStopped](_.key == orderId)
           else

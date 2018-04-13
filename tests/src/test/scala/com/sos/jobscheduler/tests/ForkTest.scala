@@ -2,6 +2,7 @@ package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
 import com.sos.jobscheduler.common.scalautil.AutoClosing.autoClosing
@@ -37,7 +38,7 @@ final class ForkTest extends FreeSpec {
           directoryProvider.runMaster() { master ⇒
             val eventCollector = new TestEventCollector
             eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
-            master.addOrder(TestOrder) await 99.s
+            master.addOrder(TestOrder).await(99.s).orThrow
             eventCollector.await[OrderFinished](_.key == TestOrder.id)
             checkEventSeq(eventCollector.all[OrderEvent])
           }

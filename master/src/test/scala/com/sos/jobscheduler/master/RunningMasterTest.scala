@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorSystem, Props}
 import com.google.inject.Injector
 import com.sos.jobscheduler.agent.RunningAgent
 import com.sos.jobscheduler.agent.configuration.AgentConfiguration
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.utils.ScalaUtils.implicitClass
 import com.sos.jobscheduler.common.akkahttp.WebServerBinding
 import com.sos.jobscheduler.common.event.collector.EventCollector
@@ -85,7 +86,7 @@ final class RunningMasterTest extends FreeSpec {
 
         sleep(3.s)  // Let OrderGenerator generate some orders
         val agent1 = RunningAgent.startForTest(agentConfigs(1).copy(http = Some(WebServerBinding.Http(new InetSocketAddress("127.0.0.1", agent1Port))))) await 10.s  // Start early to recover orders
-        master.addOrder(FreshOrder(TestOrderId, TestWorkflowId.path)) await 10.s
+        master.addOrder(FreshOrder(TestOrderId, TestWorkflowId.path)).await(10.s).orThrow
 
         master.eventCollector.when[OrderEvent.OrderFinished](EventRequest.singleClass(after = lastEventId, 20.s), _.key == TestOrderId) await 99.s
         //Order has been deleted after OrderFinished:

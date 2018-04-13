@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import cats.data.Validated.{Invalid, Valid}
 import com.sos.jobscheduler.base.problem.Problem
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
 import com.sos.jobscheduler.common.akkahttp.CirceJsonOrYamlSupport._
@@ -31,8 +32,9 @@ trait OrderRoute {
             respondWithHeader(Location(uri + "/" + order.id.string)) {
               complete {
                 orderClient.addOrder(order) map {
-                  case true ⇒ Created: ToResponseMarshallable
-                  case false ⇒ Conflict → Problem(s"Order '${order.id.string}' has already been added"): ToResponseMarshallable
+                  case Invalid(problem) ⇒ problem: ToResponseMarshallable
+                  case Valid(false) ⇒ Conflict → Problem(s"Order '${order.id.string}' has already been added"): ToResponseMarshallable
+                  case Valid(true) ⇒ Created: ToResponseMarshallable
                 }
               }
             }

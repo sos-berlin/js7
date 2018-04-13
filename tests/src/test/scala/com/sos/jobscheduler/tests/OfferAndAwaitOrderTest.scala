@@ -1,6 +1,7 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorSystem
+import com.sos.jobscheduler.base.problem.Checked.Ops
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.MapDiff
 import com.sos.jobscheduler.common.guice.GuiceImplicits._
@@ -35,18 +36,18 @@ final class OfferAndAwaitOrderTest extends FreeSpec
         val eventCollector = new TestEventCollector
         eventCollector.start(master.injector.instance[ActorSystem], master.injector.instance[StampedKeyedEventBus])
 
-        master.addOrder(JoinBefore1Order) await 99.s
-        master.addOrder(JoinBefore2Order) await 99.s
+        master.addOrder(JoinBefore1Order).await(99.s).orThrow
+        master.addOrder(JoinBefore2Order).await(99.s).orThrow
         eventCollector.await[OrderAwaiting](_.key == JoinBefore1Order.id)
         eventCollector.await[OrderAwaiting](_.key == JoinBefore2Order.id)
 
-        master.addOrder(OfferedOrder) await 99.s
+        master.addOrder(OfferedOrder).await(99.s).orThrow
         eventCollector.await[OrderJoined]       (_.key == JoinBefore1Order.id)
         eventCollector.await[OrderJoined]       (_.key == JoinBefore2Order.id)
         eventCollector.await[OrderFinished](_.key == JoinBefore1Order.id)
         eventCollector.await[OrderFinished](_.key == JoinBefore2Order.id)
 
-        master.addOrder(JoinAfterOrder) await 99.s
+        master.addOrder(JoinAfterOrder).await(99.s).orThrow
         eventCollector.await[OrderJoined]       (_.key == JoinAfterOrder.id)
         eventCollector.await[OrderFinished](_.key == JoinAfterOrder.id)
 

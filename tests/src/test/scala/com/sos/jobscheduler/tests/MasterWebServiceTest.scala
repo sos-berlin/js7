@@ -1,13 +1,11 @@
 package com.sos.jobscheduler.tests
 
 import akka.actor.ActorRefFactory
-import akka.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, InternalServerError, NotFound}
 import akka.http.scaladsl.model.headers.Location
 import com.google.inject.{AbstractModule, Provides}
 import com.sos.jobscheduler.agent.views.AgentOverview
 import com.sos.jobscheduler.base.circeutils.CirceUtils._
 import com.sos.jobscheduler.base.time.Timestamp
-import com.sos.jobscheduler.base.utils.ScalazStyle._
 import com.sos.jobscheduler.common.BuildInfo
 import com.sos.jobscheduler.common.event.EventIdClock
 import com.sos.jobscheduler.common.guice.GuiceImplicits.RichInjector
@@ -45,6 +43,8 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
   override val masterModule = new AbstractModule {
     @Provides @Singleton def eventIdClock(): EventIdClock = new EventIdClock.Fixed(1000)
   }
+
+  import httpClient.materializer
 
   override def beforeAll() = {
     directoryProvider.master.writeTxt(WorkflowPath("/WORKFLOW"), """job "/A" on "/AGENT";""")
@@ -190,21 +190,21 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
     assert(
       intercept[AkkaHttpClient.HttpException] {
         httpClient.get[Json](master.localUri + "/master/api/agent-proxy/UNKNOWN") await 99.s
-      }.status == BadRequest)
+      }.status.intValue == 400/*BadRequest*/)
   }
 
   "/master/api/agent-proxy/FOLDER%2F/AGENT-A/NOT-FOUND returns 404" in {
     assert(
       intercept[AkkaHttpClient.HttpException] {
         httpClient.get[Json](master.localUri + "/master/api/agent-proxy/FOLDER%2FAGENT-A/task") await 99.s
-      }.status == NotFound)
+      }.status.intValue == 404/*NotFound*/)
   }
 
   "/master/api/agent-proxy/FOLDER%2F/AGENT-A/timer" in {
     assert(
       intercept[AkkaHttpClient.HttpException] {
         httpClient.get[Json](master.localUri + "/master/api/agent-proxy/FOLDER%2FAGENT-A/timer") await 99.s
-      }.status == NotFound)
+      }.status.intValue == 404/*NotFound*/)
   }
 
   "/master/api/order" - {
@@ -213,10 +213,9 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         "id": "ORDER-ID",
         "workflowPath": "/MISSING"
       }"""
-      val httpResponse = httpClient.post_(master.localUri + "/master/api/order", order) await 99.s
-      assert(httpResponse.status == InternalServerError/*500*/)  // Or 403 Bad Request
-      import httpClient.materializer
-      assert(httpResponse.utf8StringFuture.await(99.s) contains "No such key 'Workflow:/MISSING'")  // Or similar
+      val response = httpClient.post_(master.localUri + "/master/api/order", order) await 99.s
+      assert(response.status.intValue == 400/*BadRequest*/)
+      assert(response.utf8StringFuture.await(99.s) contains "No such key 'Workflow:/MISSING'")  // Or similar
     }
 
     "POST" - {
@@ -227,14 +226,16 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
 
       "First" in {
         val response = httpClient.post_[Json](master.localUri + "/master/api/order", order) await 99.s
-        assert(response.status == Created/*201*/)
+        assert(response.status.intValue == 201/*Created*/)
         assert(response.header[Location] == Some(Location(master.localUri + "/master/api/order/ORDER-ID")))
+        response.entity.discardBytes()
       }
 
       "Duplicate" in {
         val response = httpClient.post_[Json](master.localUri + "/master/api/order", order) await 99.s
-        assert(response.status == Conflict/*409*/)
+        assert(response.status.intValue == 409/*Conflict*/)
         assert(response.header[Location] == Some(Location(master.localUri + "/master/api/order/ORDER-ID")))
+        response.entity.discardBytes()
       }
     }
 
@@ -350,6 +351,13 @@ final class MasterWebServiceTest extends FreeSpec with BeforeAndAfterAll with Di
         }
       ]
     }""")
+  }
+
+  "Terminate" in {
+    val cmd = json"""{ "TYPE": "Terminate" }"""
+    val response = httpClient.post_(master.localUri + "/master/api", cmd) await 99.s
+    assert(response.status.intValue == 200/*OK*/)  // May fail if terminated before response (Master tries to delay termination until responded)
+    response.entity.discardBytes()
   }
 
   private def manipulateForTest(eventResponse: Json): Json = {

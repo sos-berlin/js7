@@ -64,7 +64,7 @@ extends AutoCloseable
 {
   def executeCommand(command: MasterCommand): Future[command.MyResponse]
 
-  def addOrder(order: FreshOrder): Future[Boolean] =
+  def addOrder(order: FreshOrder): Future[Checked[Boolean]] =
     orderClient.addOrder(order)
 
   val localUri: Uri = webServer.localUri
@@ -172,7 +172,7 @@ object RunningMaster {
 
       def addOrder(order: FreshOrder) =
         (orderKeeper ? MasterOrderKeeper.Command.AddOrder(order))
-          .mapTo[MasterOrderKeeper.Response.AddOrderAccepted] map (_.created)
+          .mapTo[MasterOrderKeeper.Response.ForAddOrder] map (_.created)
 
       def events[E <: Event](request: EventRequest[E]): Future[TearableEventSeq[Seq, KeyedEvent[E]]] =
         eventCollector.byPredicate(request, (_: KeyedEvent[E]) ⇒ true) map {

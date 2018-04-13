@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import cats.data.Validated.Valid
 import com.sos.jobscheduler.base.time.Timestamp
 import com.sos.jobscheduler.base.utils.Collections.implicits.RichTraversable
 import com.sos.jobscheduler.common.akkahttp.AkkaHttpServerUtils.pathSegments
@@ -31,7 +32,7 @@ final class OrderRouteTest extends FreeSpec with ScalatestRouteTest with OrderRo
   protected val eventIdGenerator = new EventIdGenerator
   protected val orderClient = new OrderClient {
     def executionContext = OrderRouteTest.this.executionContext
-    def addOrder(order: FreshOrder) = Future { order.id != DuplicateOrderId }
+    def addOrder(order: FreshOrder) = Future { Valid(order.id != DuplicateOrderId) }
     def order(orderId: OrderId) = Future.successful(TestOrders.get(orderId))
     def orders = Future.successful(eventIdGenerator.stamp(TestOrders.values.toVector))
     def orderCount = Future.successful(TestOrders.values.size)

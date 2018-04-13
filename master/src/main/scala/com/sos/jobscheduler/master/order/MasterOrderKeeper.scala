@@ -12,7 +12,7 @@ import com.sos.jobscheduler.base.problem.Checked
 import com.sos.jobscheduler.base.problem.Checked._
 import com.sos.jobscheduler.base.utils.Collections.implicits.InsertableMutableMap
 import com.sos.jobscheduler.base.utils.IntelliJUtils.intelliJuseImport
-import com.sos.jobscheduler.base.utils.ScalaUtils.RichPartialFunction
+import com.sos.jobscheduler.base.utils.ScalaUtils.{RichPartialFunction, RichThrowable}
 import com.sos.jobscheduler.common.akkautils.Akkas.encodeAsActorName
 import com.sos.jobscheduler.common.akkautils.SupervisorStrategies
 import com.sos.jobscheduler.common.event.EventIdGenerator
@@ -152,8 +152,10 @@ with KeyedEventJournalingActor[Event] {
     case Command.AddOrderSchedule(orders) ⇒
       for (order ← orders) {
         addOrderWithUncheckedId(order) onComplete {
-          case Success(_: Boolean) ⇒
-          case Failure(t) ⇒ logger.error(t.toString, t)
+          case Failure(t) ⇒ logger.error(s"AddOrderSchedule: ${t.toStringWithCauses}", t)
+          case Success(Invalid(problem)) ⇒ logger.error(problem withPrefix "AddOrderSchedule:")
+          case Success(Valid(false)) ⇒ logger.warn(s"AddOrderSchedule: Discarded duplicate order ${order.id}")
+          case Success(Valid(true)) ⇒
         }
       }
       deferAsync {
@@ -173,7 +175,7 @@ with KeyedEventJournalingActor[Event] {
       sender() ! (fileBaseds.pathToWorkflow.size: Int)
 
     case Command.AddOrder(order) ⇒
-      addOrder(order) map Response.AddOrderAccepted.apply pipeTo sender()
+      addOrder(order) map Response.ForAddOrder.apply pipeTo sender()
 
     case Command.GetOrder(orderId) ⇒
       sender() ! (orderRegister.get(orderId) map { _.order })
@@ -324,23 +326,26 @@ with KeyedEventJournalingActor[Event] {
     entry
   }
 
-  private def addOrder(order: FreshOrder): Future[Boolean] =
-    order.id.checkedNameSyntax.toFuture flatMap (_ ⇒ addOrderWithUncheckedId(order))
+  private def addOrder(order: FreshOrder): Future[Checked[Boolean]] =
+    order.id.checkedNameSyntax match {
+      case Invalid(problem) ⇒ Future.successful(Invalid(problem))
+      case Valid(_) ⇒ addOrderWithUncheckedId(order)
+    }
 
-  private def addOrderWithUncheckedId(freshOrder: FreshOrder): Future[Boolean] = {
+  private def addOrderWithUncheckedId(freshOrder: FreshOrder): Future[Checked[Boolean]] = {
     val order = freshOrder.toOrder(fileBaseds.repo.versionId)
     orderRegister.get(order.id) match {
       case Some(_) ⇒
-        logger.debug(s"Discarding duplicate AddOrderIfNew: ${order.id}")
-        Future.successful(false)
+        logger.debug(s"Discarding duplicate added Order: $freshOrder")
+        Future.successful(Valid(false))
 
       case None ⇒
         fileBaseds.idToWorkflow(order.workflowId) match {
-          case Invalid(problem) ⇒ Future.failed(problem.throwable)
+          case Invalid(problem) ⇒ Future.successful(Invalid(problem))
           case Valid(workflow) ⇒
             persistAsync(order.id <-: OrderAdded(workflow.id, order.state.scheduledAt, order.payload)) { stamped ⇒
               handleOrderEvent(stamped)
-              true
+              Valid(true)
             }
         }
     }
@@ -498,7 +503,7 @@ object MasterOrderKeeper {
 
   sealed trait Reponse
   object Response {
-    final case class AddOrderAccepted(created: Boolean)
+    final case class ForAddOrder(created: Checked[Boolean])
   }
 
   private class AgentRegister extends ActorRegister[AgentId, AgentEntry](_.actor) {
